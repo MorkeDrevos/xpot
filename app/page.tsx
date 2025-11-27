@@ -37,7 +37,8 @@ export default function Home() {
   function handleTweetClick() {
     // TODO: replace with your real pre-filled tweet URL
     const url =
-      "https://x.com/intent/tweet?text=I'm%20in%20the%20%24XPOT%20jackpot.";
+      'https://x.com/intent/tweet?text=I%27m%20in%20the%20%24XPOT%20jackpot.'; // note %27 instead of '
+
     window.open(url, '_blank');
 
     if (typeof window !== 'undefined') {
@@ -147,24 +148,22 @@ export default function Home() {
 
             {/* One-tweet-ever button */}
             <button
-  type="button"
-  onClick={tweetPosted ? undefined : handleTweetClick}
-  disabled={tweetPosted}
-  className={`mt-3 w-full rounded-full border border-emerald-400 px-4 py-2 text-sm font-medium transition ${
-    tweetPosted
-      ? 'cursor-not-allowed bg-slate-800 text-slate-500 border-slate-700'
-      : 'bg-slate-900 text-emerald-300 hover:bg-slate-800 hover:border-emerald-300'
-  }`}
->
-  {tweetPosted ? 'Tweet posted – you’re locked in' : 'Tweet today’s entry'}
-</button>
-<p className="mt-2 text-[11px] text-slate-500">
-  You only ever need to post once. From then on your XPOT balance decides your entries.
-</p>
-
+              type="button"
+              onClick={tweetPosted ? undefined : handleTweetClick}
+              disabled={tweetPosted}
+              className={`mt-3 w-full rounded-full border border-emerald-400 px-4 py-2 text-sm font-medium transition ${
+                tweetPosted
+                  ? 'cursor-not-allowed bg-slate-800 text-slate-500 border-slate-700'
+                  : 'bg-slate-900 text-emerald-300 hover:bg-slate-800 hover:border-emerald-300'
+              }`}
+            >
+              {tweetPosted
+                ? 'Tweet posted – you’re locked in'
+                : 'Tweet today’s entry'}
+            </button>
             <p className="mt-2 text-[11px] text-slate-500">
-              You only need to post once. From then on, your XPOT balance decides
-              how many entries you get in every draw.
+              You only ever need to post once. From then on your XPOT balance
+              decides your entries.
             </p>
           </div>
         </section>
