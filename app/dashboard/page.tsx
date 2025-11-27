@@ -55,6 +55,12 @@ export default function DashboardPage() {
   const isAuthed = !!session;
   const isVerified = !!user?.verified; // real flag from NextAuth (profile.verified)
 
+  const username =
+  user?.username ||
+  user?.screen_name ||
+  user?.handle ||
+  user?.name?.replace(/\s+/g, '').toLowerCase();
+
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [winnerClaimed, setWinnerClaimed] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -225,7 +231,7 @@ export default function DashboardPage() {
                     {isAuthed && isVerified && <span className="x-verified-badge" />}
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    @{user?.username ?? 'your_handle'}
+                    @{username}
                   </p>
                 </div>
               </div>
@@ -263,7 +269,7 @@ export default function DashboardPage() {
                           {isVerified && <span className="x-verified-badge" />}
                         </p>
                         <p className="text-[11px] text-slate-500">
-                          @{user?.username ?? 'your_handle'}
+                          @{username}
                         </p>
                       </div>
                     </div>
@@ -311,7 +317,7 @@ export default function DashboardPage() {
                     }}
                     className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
                   >
-                    Log out @{user?.username ?? 'your_handle'}
+                    Log out @{username}
                   </button>
                 </div>
               </div>
@@ -352,7 +358,7 @@ export default function DashboardPage() {
                   {isAuthed && isVerified && <span className="x-verified-badge" />}
                 </div>
                 <span className="text-xs text-slate-500">
-                  @{user?.username ?? 'your_handle'}
+                  @{username}
                 </span>
               </div>
             </div>
