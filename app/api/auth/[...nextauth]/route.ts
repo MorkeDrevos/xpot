@@ -4,8 +4,8 @@ import Twitter from "next-auth/providers/twitter";
 // Wrap Twitter provider but rename it to "x" so the callback URL matches
 const XProvider = {
   ...Twitter({
-    clientId: process.env.X_CLIENT_ID ?? "",
-    clientSecret: process.env.X_CLIENT_SECRET ?? "",
+    clientId: process.env.TWITTER_CLIENT_ID ?? "",
+    clientSecret: process.env.TWITTER_CLIENT_SECRET ?? "",
     version: "2.0", // OAuth 2.0
   }),
   id: "x",   // <-- callback will be /api/auth/callback/x
