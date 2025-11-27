@@ -84,7 +84,7 @@ export default function DashboardPage() {
 
     // NextAuth exposes this route:
     // /api/auth/signin/x?callbackUrl=/dashboard
-    const url = `/api/auth/signin/x?callbackUrl=${encodeURIComponent('/dashboard')}`;
+    const url = `/api/auth/signin/x?callbackUrl=${encodeURIComponent('/dashboard')}&prompt=login`;
 
     const popup = window.open(
       url,
