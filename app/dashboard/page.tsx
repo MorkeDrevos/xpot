@@ -194,95 +194,121 @@ export default function DashboardPage() {
           </div>
 
           {/* Mini user chip + account menu (X-style) */}
-          <div className="relative">
-            <div
-              className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
-              onClick={() => {
-                if (!isAuthed) {
-                  openXLoginPopup();
-                } else {
-                  setAccountMenuOpen(open => !open);
-                }
-              }}
-            >
-              <div className="flex items-center gap-2">
-                {user?.image ? (
-                  <img
-                    src={user.image}
-                    alt={user.name ?? 'X avatar'}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
-                    @
-                  </div>
-                )}
+<div className="relative">
+  {/* Bottom-left chip */}
+  <div
+    className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
+    onClick={() => {
+      if (!isAuthed) {
+        openXLoginPopup();
+      } else {
+        setAccountMenuOpen(open => !open);
+      }
+    }}
+  >
+    <div className="flex items-center gap-2">
+      {user?.image ? (
+        <img
+          src={user.image}
+          alt={user.name ?? 'X avatar'}
+          className="h-8 w-8 rounded-full object-cover"
+        />
+      ) : (
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
+          @
+        </div>
+      )}
 
-                <div className="leading-tight">
-                  <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
-  {user?.name ?? 'Your X handle'}
-  {isVerified && <span className="x-verified-badge">✓</span>}
-</p>
-                  <p className="text-[11px] text-slate-500">
-                    @{user?.username ?? 'your_handle'}
-                  </p>
-                </div>
-              </div>
+      <div className="leading-tight">
+        <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
+          {user?.name ?? 'Your X handle'}
+          {isAuthed && <span className="x-verified-badge" />}
+        </p>
+        <p className="text-[11px] text-slate-500">
+          @{user?.username ?? 'your_handle'}
+        </p>
+      </div>
+    </div>
 
-              {/* Right side: 3-dot menu like X */}
-              <span className="flex h-6 w-6 items-center justify-center rounded-full text-slate-500">
-                ⋯
-              </span>
-            </div>
+    {/* Right side: 3 dots */}
+    <span className="flex h-6 w-6 items-center justify-center rounded-full text-slate-500">
+      ⋯
+    </span>
+  </div>
 
-            {/* Dropdown menu when connected */}
-            {isAuthed && accountMenuOpen && (
-              <div className="absolute bottom-12 left-0 w-64 rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60 transition-all duration-150 ease-out origin-bottom-left">
-                {/* Active account row */}
-                <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-3 py-3">
-                  <div className="flex items-center gap-2">
-                    {user?.image ? (
-                      <img
-                        src={user.image}
-                        alt={user.name ?? 'X avatar'}
-                        className="h-9 w-9 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs">
-                        @
-                      </div>
-                    )}
-                    <div className="leading-tight">
-                      <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
-  {user?.name ?? 'Your X handle'}
-  {isVerified && <span className="x-verified-badge">✓</span>}
-</p>
-                      <p className="text-[11px] text-slate-500">
-                        @{user?.username ?? 'your_handle'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Little green check like “active account” */}
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-[11px] text-emerald-400">
-                    ✓
-                  </span>
-                </div>
-
-                {/* “Log out” row */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAccountMenuOpen(false);
-                    signOut({ callbackUrl: '/' });
-                  }}
-                  className="w-full px-3 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
-                >
-                  Log out @{user?.username ?? 'your_handle'}
-                </button>
+  {/* Dropdown menu – X-style accounts list */}
+  {isAuthed && accountMenuOpen && (
+    <div className="x-account-menu absolute bottom-14 left-0 w-72 rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60 overflow-hidden">
+      {/* Accounts list (we only have the current one for now) */}
+      <div className="divide-y divide-slate-800">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-900"
+        >
+          <div className="flex items-center gap-3">
+            {user?.image ? (
+              <img
+                src={user.image}
+                alt={user.name ?? 'X avatar'}
+                className="h-9 w-9 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs">
+                @
               </div>
             )}
+            <div className="leading-tight">
+              <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
+                {user?.name ?? 'Your X handle'}
+                {isAuthed && <span className="x-verified-badge" />}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                @{user?.username ?? 'your_handle'}
+              </p>
+            </div>
           </div>
+
+          {/* Green active check (like X) */}
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[11px] text-black">
+            ✓
+          </span>
+        </button>
+      </div>
+
+      {/* “Add / manage / logout” section */}
+      <div className="border-t border-slate-800 bg-slate-950">
+        <button
+          type="button"
+          onClick={() =>
+            window.open('https://x.com/i/flow/login', '_blank', 'noopener,noreferrer')
+          }
+          className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
+        >
+          Add an existing account
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            window.open('https://x.com/settings', '_blank', 'noopener,noreferrer')
+          }
+          className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
+        >
+          Manage accounts
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setAccountMenuOpen(false);
+            signOut({ callbackUrl: '/' });
+          }}
+          className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
+        >
+          Log out @{user?.username ?? 'your_handle'}
+        </button>
+      </div>
+    </div>
+  )}
+</div>
         </aside>
 
         {/* ── Center column (feed) ───────────────────────────── */}
