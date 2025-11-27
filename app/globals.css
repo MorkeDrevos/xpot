@@ -293,3 +293,20 @@ body {
     inset 0 1px 0 rgba(255,255,255,0.04);
   backdrop-filter: blur(8px);
 }
+
+/* Activated state glow */
+.xpot-locked {
+  box-shadow:
+    0 0 0 1px rgba(34,197,94,0.3),
+    0 0 14px rgba(34,197,94,0.35);
+}
+
+/* Premium pill animation */
+.premium-pill {
+  animation: premiumPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes premiumPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.01); }
+}
