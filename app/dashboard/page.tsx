@@ -439,11 +439,11 @@ export default function DashboardPage() {
                         );
                       }}
                       disabled={winnerClaimed}
-                      className={`mt-3 rounded-full px-5 py-2 text-sm font-semibold transition sm:mt-0 ${
-                        winnerClaimed
-                          ? 'cursor-not-allowed bg-slate-900 text-slate-500 border border-slate-800'
-                          : 'bg-emerald-400 text-slate-900 hover:bg-emerald-300'
-                      }`}
+                      className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold transition sm:mt-0 ${
+  winnerClaimed
+    ? 'cursor-not-allowed bg-slate-900 text-slate-500 border border-slate-800'
+    : 'bg-emerald-400 text-slate-900 hover:bg-emerald-300'
+}`}
                     >
                       {winnerClaimed ? 'Prize claimed' : 'Claim today’s jackpot'}
                     </button>
