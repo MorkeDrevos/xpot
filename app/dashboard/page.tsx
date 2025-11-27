@@ -74,7 +74,7 @@ export default function DashboardPage() {
   const isAuthed = !!session;
 
   // TEMP for launch: tick whenever signed in
-  const isVerified = !!user?.verified;
+  const isVerified = !!isAuthed;
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [winnerClaimed, setWinnerClaimed] = useState(false);
