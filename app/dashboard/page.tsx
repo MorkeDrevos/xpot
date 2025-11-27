@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { SessionProvider, useSession, signIn } from 'next-auth/react';
 import { useState } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 // ── Helpers / types ──────────────────────────────────────────────
 
@@ -47,32 +47,17 @@ if (initialEntries.length > 0) {
   initialEntries[0].status = 'won';
 }
 
-// ── Outer wrapper so only dashboard is under SessionProvider ─────
-
-export default function DashboardPageWrapper() {
-  return (
-    <SessionProvider>
-      <DashboardPageInner />
-    </SessionProvider>
-  );
-}
-
 // ── Page ─────────────────────────────────────────────────────────
 
-function DashboardPageInner() {
+export default function DashboardPage() {
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [winnerClaimed, setWinnerClaimed] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  const { data: session } = useSession();
-
   const activeEntries = entries.filter(e => e.status === 'in-draw' || e.status === 'won');
   const totalEntries = entries.length;
-  const winner = entries.find(e => e.status === 'won');
 
-  const displayName = session?.user?.name ?? 'Your X handle';
-  const username = (session?.user as any)?.username ?? 'your_handle';
-  const avatar = session?.user?.image ?? null;
+  const winner = entries.find(e => e.status === 'won');
 
   async function handleCopy(entry: Entry) {
     try {
@@ -82,11 +67,6 @@ function DashboardPageInner() {
     } catch {
       // ignore for now
     }
-  }
-
-  function handleSignInWithX() {
-    // Redirect back to /dashboard after Twitter auth
-    signIn('twitter', { callbackUrl: '/dashboard' });
   }
 
   return (
@@ -142,35 +122,18 @@ function DashboardPageInner() {
             </button>
           </div>
 
-          {/* Mini user profile - X style */}
-          <div className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/80 px-3 py-2">
+          {/* Mini user stub */}
+          <div className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2">
             <div className="flex items-center gap-2">
-              {avatar ? (
-                <img
-                  src={avatar}
-                  alt={displayName}
-                  className="h-8 w-8 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
-                  @
-                </div>
-              )}
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
+                @
+              </div>
               <div className="leading-tight">
-                <p className="flex items-center gap-1 text-xs font-semibold">
-                  {displayName}
-                  {session && (
-                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-[10px] text-white">
-                      ✓
-                    </span>
-                  )}
-                </p>
-                <p className="text-[11px] text-slate-500">@{username}</p>
+                <p className="text-xs font-semibold">Your X handle</p>
+                <p className="text-[11px] text-slate-500">@your_handle</p>
               </div>
             </div>
-            <span className="text-[11px] text-slate-500">
-              {session ? 'Connected' : 'Preview'}
-            </span>
+            <span className="text-xs text-slate-500">Preview</span>
           </div>
         </aside>
 
@@ -186,6 +149,37 @@ function DashboardPageInner() {
 
           {/* Scroll content */}
           <div className="space-y-4 border-x border-slate-900 px-0 sm:px-0">
+            {/* Profile header – X style */}
+            <section className="flex items-center justify-between border-b border-slate-900 px-4 pt-3 pb-2">
+              <div className="flex items-center gap-3">
+                {/* Avatar circle */}
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
+                  <span className="text-lg">🖤</span>
+                </div>
+
+                <div className="flex flex-col leading-tight">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-semibold text-slate-50">
+                      Mørke Drevos
+                    </span>
+                    {/* Blue check */}
+                    <span className="inline-flex items-center justify-center rounded-full bg-sky-500 px-1.5 py-[1px] text-[10px] font-semibold text-black">
+                      ✓
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-500">@MorkeDrevos</span>
+                </div>
+              </div>
+
+              {/* Three-dot menu */}
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+              >
+                ⋯
+              </button>
+            </section>
+
             {/* Summary “tweet” style card */}
             <article className="border-b border-slate-900 px-4 pt-4 pb-5">
               <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-400">
@@ -241,7 +235,7 @@ function DashboardPageInner() {
               </p>
             </article>
 
-            {/* Today’s result card */}
+            {/* Today’s result card (like a pinned tweet) */}
             <article className="border-b border-slate-900 px-4 pb-5 pt-3">
               <h2 className="text-sm font-semibold text-emerald-100">
                 Today’s result
@@ -398,7 +392,6 @@ function DashboardPageInner() {
             </p>
             <button
               type="button"
-              onClick={handleSignInWithX}
               className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
             >
               Sign in with X
