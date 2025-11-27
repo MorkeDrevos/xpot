@@ -26,28 +26,45 @@ body {
   color: #e5e7eb;
 }
 
-/* X-style verified badge (smaller, SVG-ish) */
+/* XPOT X-style verified badge (custom, non-copyrighted) */
 .x-verified-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.9rem;   /* smaller badge */
-  height: 0.9rem;
-  margin-left: 0.25rem;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+
   border-radius: 9999px;
-  background: radial-gradient(circle at 30% 0%, #f9fbff 0, #1d9bf0 45%, #0c65b5 100%);
+  background: #1d9bf0;
+
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 0 0 1px rgba(15, 23, 42, 0.9) inset;
-  position: relative;
-  color: transparent; /* hide any text inside */
-  flex-shrink: 0;
-  transform-origin: center;
-  transform: translateY(0);
+    0 1px 0 rgba(255,255,255,0.15) inset,
+    0 0 0 0 rgba(29,155,240,0);
+
   transition:
-    transform 0.12s ease-out,
-    box-shadow 0.12s ease-out,
-    filter 0.12s ease-out;
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+}
+
+/* Hover = subtle glow */
+.x-verified-badge:hover {
+  filter: brightness(1.08);
+  box-shadow:
+    0 0 6px rgba(29,155,240,0.4),
+    0 1px 0 rgba(255,255,255,0.15) inset;
+}
+
+/* Press animation */
+.x-verified-badge:active {
+  transform: scale(0.92);
+  box-shadow: 0 0 4px rgba(29,155,240,0.25);
 }
 
 /* Draw the check mark with borders so it’s vector-clean */
