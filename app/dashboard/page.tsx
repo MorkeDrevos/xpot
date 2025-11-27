@@ -147,7 +147,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-slate-50">
+    <main className="xpot-shell text-slate-50">
       <div className="mx-auto flex max-w-6xl">
         {/* ── Left nav (X-like) ─────────────────────────────── */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
@@ -192,11 +192,11 @@ export default function DashboardPage() {
 
             {/* Big CTA like “Post” */}
             <button
-              type="button"
-              className="mt-4 w-full rounded-full bg-emerald-500 py-3 text-sm font-semibold text-black shadow-xl shadow-emerald-500/30 hover:bg-emerald-400"
-            >
-              Create XPOT entry
-            </button>
+  type="button"
+  className="mt-4 w-full py-3 text-sm xpot-primary-btn"
+>
+  Create XPOT entry
+</button>
           </div>
 
           {/* Mini user chip + account menu (X-style) */}
@@ -329,10 +329,10 @@ export default function DashboardPage() {
         <section className="min-h-screen flex-1 border-r border-slate-900">
           {/* Sticky header like X */}
           <header className="sticky top-0 z-10 border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
-            <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
-            <p className="text-xs text-slate-500">
-              Your XPOT entries, jackpots and wins.
-            </p>
+            <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+<p className="text-sm text-slate-400">
+  Your XPOT entries, jackpots and wins.
+</p>
           </header>
 
           {/* X account strip at the very top of the feed */}
@@ -398,16 +398,16 @@ export default function DashboardPage() {
           <div className="space-y-4 border-x border-slate-900 px-0 sm:px-0">
             {/* Summary “tweet” style card */}
             <article className="border-b border-slate-900 px-4 pt-4 pb-5">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-400">
-                Overview
-              </p>
+              <p className="xpot-section-eyebrow">
+  Overview
+</p>
               <p className="mt-2 text-sm text-slate-300">
                 Once X login is live, we’ll sync your XPOT balance and entry codes
                 here. This is how your daily luck hub will feel.
               </p>
 
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                <div className="xpot-card-soft p-3">
                   <p className="text-[11px] text-slate-400">Entries this round</p>
                   <p className="mt-1 text-xl font-semibold">
                     {activeEntries.length}
@@ -416,14 +416,14 @@ export default function DashboardPage() {
                     Based on your XPOT balance.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                <div className="xpot-card-soft p-3">
                   <p className="text-[11px] text-slate-400">Total entries (preview)</p>
                   <p className="mt-1 text-xl font-semibold">{totalEntries}</p>
                   <p className="mt-1 text-[11px] text-slate-500">
                     Full history with X login.
                   </p>
                 </div>
-                <div className="col-span-2 rounded-2xl border border-emerald-600/40 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-slate-900/80 p-3 sm:col-span-1">
+                <div className="col-span-2 xpot-card p-3 sm:col-span-1 border-emerald-500/50">
                   <p className="text-[11px] text-emerald-300">Next daily jackpot</p>
                   <p className="mt-1 text-xl font-semibold text-emerald-100">
                     $10,000
