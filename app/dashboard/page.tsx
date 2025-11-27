@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 
 // ── Helpers / types ──────────────────────────────────────────────
 
@@ -64,7 +64,7 @@ export default function DashboardPage() {
   const totalEntries = entries.length;
   const winner = entries.find(e => e.status === 'won');
 
-  async function handleCopy(entry: Entry) {
+    async function handleCopy(entry: Entry) {
     try {
       await navigator.clipboard.writeText(entry.code);
       setCopiedId(entry.id);
@@ -72,6 +72,35 @@ export default function DashboardPage() {
     } catch {
       // ignore for now
     }
+  }
+
+  function openXLoginPopup() {
+    if (typeof window === 'undefined') return;
+
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    // NextAuth exposes this route:
+    // /api/auth/signin/x?callbackUrl=/dashboard
+    const url = `/api/auth/signin/x?callbackUrl=${encodeURIComponent('/dashboard')}`;
+
+    const popup = window.open(
+      url,
+      'xpot-x-login',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+    );
+
+    if (!popup) return;
+
+    // When popup closes, refresh dashboard so session + profile chip update
+    const timer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(timer);
+        window.location.reload();
+      }
+    }, 800);
   }
 
   return (
@@ -416,37 +445,36 @@ export default function DashboardPage() {
           </div>
 
           {/* Sign in with X */}
-          <div className="rounded-3xl bg-slate-900/80 p-4">
-            <h3 className="text-sm font-semibold">
-              {isAuthed ? 'Signed in with X' : 'Sign in with X'}
-            </h3>
-            <p className="mt-1 text-xs text-slate-400">
-              Connect your X account once. We’ll verify your tweet and lock your XPOT
-              holder status.
-            </p>
+<div className="rounded-3xl bg-slate-900/80 p-4">
+  <h3 className="text-sm font-semibold">
+    {isAuthed ? 'Signed in with X' : 'Sign in with X'}
+  </h3>
+  <p className="mt-1 text-xs text-slate-400">
+    Connect your X account once. We’ll verify your tweet and lock your XPOT holder status.
+  </p>
 
-            {!isAuthed ? (
-              <button
-                type="button"
-                onClick={() => signIn('x', { callbackUrl: '/dashboard' })}
-                className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
-              >
-                {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => signOut({ callbackUrl: '/' })}
-                className="mt-3 w-full rounded-full bg-slate-800 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
-              >
-                Sign out
-              </button>
-            )}
+  {!isAuthed ? (
+    <button
+      type="button"
+      onClick={openXLoginPopup}
+      className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+    >
+      {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => signOut({ callbackUrl: '/' })}
+      className="mt-3 w-full rounded-full bg-slate-800 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
+    >
+      Sign out
+    </button>
+  )}
 
-            <p className="mt-2 text-[11px] text-slate-500">
-              We never post for you. X is only used to verify entries.
-            </p>
-          </div>
+  <p className="mt-2 text-[11px] text-slate-500">
+    We never post for you. X is only used to verify entries.
+  </p>
+</div>
 
           {/* Wallet connect preview */}
           <div className="rounded-3xl bg-slate-900/80 p-4">
