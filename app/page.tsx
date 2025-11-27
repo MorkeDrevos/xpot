@@ -1,19 +1,22 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 function formatTime(ms: number) {
-  if (ms <= 0) return "00:00:00";
+  if (ms <= 0) return '00:00:00';
   const total = Math.floor(ms / 1000);
-  const h = String(Math.floor(total / 3600)).padStart(2, "0");
-  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-  const s = String(total % 60).padStart(2, "0");
+  const h = String(Math.floor(total / 3600)).padStart(2, '0');
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  const s = String(total % 60).padStart(2, '0');
   return `${h}:${m}:${s}`;
 }
 
+const TWEET_FLAG_KEY = 'xpot_tweet_posted';
+
 export default function Home() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [tweetPosted, setTweetPosted] = useState(false);
 
   // simple 24h countdown from page load (placeholder)
   useEffect(() => {
@@ -23,6 +26,25 @@ export default function Home() {
     }, 1000);
     return () => clearInterval(t);
   }, []);
+
+  // load tweet-flag from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(TWEET_FLAG_KEY);
+    if (stored === 'true') setTweetPosted(true);
+  }, []);
+
+  function handleTweetClick() {
+    // TODO: replace with your real pre-filled tweet URL
+    const url =
+      "https://x.com/intent/tweet?text=I'm%20in%20the%20%24XPOT%20jackpot.";
+    window.open(url, '_blank');
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(TWEET_FLAG_KEY, 'true');
+    }
+    setTweetPosted(true);
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4">
@@ -36,16 +58,16 @@ export default function Home() {
         {/* Hero copy */}
         <header className="space-y-3">
           <div className="flex justify-end">
-  <Link
-    href="/dashboard"
-    className="rounded-full border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-500 hover:text-slate-50 transition"
-  >
-    Dashboard
-  </Link>
-</div>
+            <Link
+              href="/dashboard"
+              className="rounded-full border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-500 hover:text-slate-50 transition"
+            >
+              Dashboard
+            </Link>
+          </div>
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
-            <span className="text-slate-300">💎 XPOT</span>{" "}
-            <span className="text-slate-50">– The X-powered crypto jackpot.</span>
+            <span className="text-slate-300">💎 XPOT</span>{' '}
+            <span className="text-slate-50">- The X-powered crypto jackpot.</span>
           </h1>
           <p className="text-sm md:text-base text-slate-300 max-w-2xl">
             Hold <span className="font-semibold text-emerald-300">$XPOT</span>, post
@@ -85,42 +107,66 @@ export default function Home() {
                 {formatTime(timeLeft)}
               </p>
               <p className="text-xs text-slate-400">
-                Live, provably fair draws. The winner wallet is picked on-chain and
-                paid directly.
+                Live, provably fair draws. The winner wallet is picked on-chain
+                and paid directly.
               </p>
             </div>
           </div>
 
           {/* Entry steps */}
           <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-6">
-  <h2 className="text-xl font-semibold text-slate-200">
-    How to enter the XPOT jackpot
-  </h2>
+            <h2 className="text-xl font-semibold text-slate-200">
+              How to enter the XPOT jackpot
+            </h2>
 
-  <ol className="mt-4 space-y-4 text-sm text-slate-300">
-    <li>
-      <span className="font-semibold text-slate-200">Buy & hold XPOT</span>
-      <br />
-      Pick up XPOT on Solana and hold the minimum for the round.
-    </li>
+            <ol className="mt-4 space-y-4 text-sm text-slate-300">
+              <li>
+                <span className="font-semibold text-slate-200">Buy &amp; hold XPOT</span>
+                <br />
+                Pick up XPOT on Solana and hold the minimum for the round.
+              </li>
 
-    <li>
-      <span className="font-semibold text-slate-200">Post your entry tweet</span>
-      <br />
-      Send one pre-filled tweet from XPOT. This activates your account forever.
-    </li>
+              <li>
+                <span className="font-semibold text-slate-200">
+                  Post your entry tweet
+                </span>
+                <br />
+                Send one pre-filled tweet from XPOT. This activates your account
+                forever.
+              </li>
 
-    <li>
-      <span className="font-semibold text-slate-200">Balance = more entries</span>
-      <br />
-      After activation, entries are based purely on how much XPOT you hold.
-    </li>
-  </ol>
+              <li>
+                <span className="font-semibold text-slate-200">
+                  Balance = more entries
+                </span>
+                <br />
+                After activation, entries are based purely on how much XPOT you
+                hold.
+              </li>
+            </ol>
 
-  <p className="mt-4 text-xs text-slate-400">
-    You only tweet once. Your balance controls entries forever.
-  </p>
-</div>
+            {/* One-tweet-ever button */}
+            <button
+  type="button"
+  onClick={tweetPosted ? undefined : handleTweetClick}
+  disabled={tweetPosted}
+  className={`mt-3 w-full rounded-full border border-emerald-400 px-4 py-2 text-sm font-medium transition ${
+    tweetPosted
+      ? 'cursor-not-allowed bg-slate-800 text-slate-500 border-slate-700'
+      : 'bg-slate-900 text-emerald-300 hover:bg-slate-800 hover:border-emerald-300'
+  }`}
+>
+  {tweetPosted ? 'Tweet posted – you’re locked in' : 'Tweet today’s entry'}
+</button>
+<p className="mt-2 text-[11px] text-slate-500">
+  You only ever need to post once. From then on your XPOT balance decides your entries.
+</p>
+
+            <p className="mt-2 text-[11px] text-slate-500">
+              You only need to post once. From then on, your XPOT balance decides
+              how many entries you get in every draw.
+            </p>
+          </div>
         </section>
       </div>
     </main>
