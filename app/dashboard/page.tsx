@@ -158,7 +158,7 @@ export default function DashboardPage() {
 
     switch (phase) {
       case 'preSnapshot':
-        label = 'Snapshot closes in';
+        label = 'Entry window closes in';
         target = snapshotAt;
         break;
       case 'betweenSnapshotAndDraw':
@@ -172,7 +172,7 @@ export default function DashboardPage() {
       case 'postDraw':
       default: {
         label = 'Next draw in';
-        const nextSnapshot = new Date(snapshotAt.getTime() + 24 * 60 * 60 * 1000);
+      const nextSnapshot = new Date(snapshotAt.getTime() + 24 * 60 * 60 * 1000);
         target = nextSnapshot;
         break;
       }
@@ -485,9 +485,8 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <p className="mt-1 text-[11px] text-slate-400">
-                        Snapshot at {snapshotTimeLabel}. Keep XPOT in your wallet until
-                        then to stay in the draw.
-                      </p>
+  Today’s cut-off at {snapshotTimeLabel}. Keep XPOT in your wallet until then to stay in the draw.
+</p>
                     </div>
 
                     <div className="rounded-2xl bg-slate-950/60 px-3 py-2 text-right text-[11px] text-slate-400">
@@ -514,8 +513,8 @@ export default function DashboardPage() {
                           : 'Not in today’s draw'}
                       </p>
                       <p className="mt-1 text-[11px] text-slate-500">
-                        Tickets are locked at snapshot.
-                      </p>
+  Tickets are locked at today’s cut-off time.
+</p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
@@ -533,10 +532,13 @@ export default function DashboardPage() {
                       <p className="mt-1 text-sm font-semibold text-emerald-50">
                         Daily snapshot · on-chain draw · transparent winner
                       </p>
-                      <p className="mt-1 text-[11px] text-emerald-100/80">
-                        XPOT uses your snapshot balance to generate tickets. No manual
-                        claiming, no off-chain lotteries.
-                      </p>
+                      <p className="mt-1 text-sm font-semibold text-emerald-50">
+  Daily cut-off · verifiable draw · transparent winner
+</p>
+<p className="mt-1 text-[11px] text-emerald-100/80">
+  XPOT uses your balance at cut-off time to generate tickets. No manual
+  claiming, no weird off-site lotteries.
+</p>
                     </div>
                   </div>
                 </div>
@@ -729,9 +731,9 @@ export default function DashboardPage() {
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">Wallet link (preview)</h3>
               <p className="mt-1 text-xs text-slate-400">
-                In v1, you’ll connect a Solana wallet so XPOT can read your balance at
-                snapshot and generate tickets automatically.
-              </p>
+  Connect a Solana wallet so XPOT can read your balance at
+  the daily cut-off and generate tickets automatically.
+</p>
               <button
                 type="button"
                 disabled
