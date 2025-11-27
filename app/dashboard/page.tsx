@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
 // ── Helpers / types ──────────────────────────────────────────────
@@ -53,6 +53,45 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
+
+    // ── Auto-update on new deploy ────────────────────────────────
+  const [currentBuildId, setCurrentBuildId] = useState<string | null>(null);
+  const [hasNewBuild, setHasNewBuild] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkBuild() {
+      try {
+        const res = await fetch('/api/build-info', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = (await res.json()) as { buildId?: string };
+        const incoming = data.buildId || 'unknown';
+
+        // First run: just store it
+        if (!currentBuildId) {
+          setCurrentBuildId(incoming);
+          return;
+        }
+
+        // Subsequent runs: if changed, show banner
+        if (incoming !== currentBuildId && !cancelled) {
+          setHasNewBuild(true);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    checkBuild();
+    const interval = setInterval(checkBuild, 30_000); // every 30s
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBuildId]);
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [winnerClaimed, setWinnerClaimed] = useState(false);
@@ -207,6 +246,22 @@ export default function DashboardPage() {
               Your XPOT entries, jackpots and wins.
             </p>
           </header>
+
+          {/* New version banner */}
+          {hasNewBuild && (
+            <div className="border-b border-emerald-700/60 bg-emerald-500/10 px-4 py-2">
+              <div className="flex items-center justify-between gap-3 text-xs text-emerald-100">
+                <span>New XPOT version is live.</span>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-black hover:bg-emerald-400"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Scroll content */}
           <div className="space-y-4 border-x border-slate-900 px-0 sm:px-0">
