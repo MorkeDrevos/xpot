@@ -349,61 +349,49 @@ export default function DashboardPage() {
               </section>
 
               {/* Summary “tweet” style card */}
-              <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
-                  Overview
-                </p>
-                <p className="mt-2 text-sm text-slate-300">
-                  Once X login is live, we’ll sync your XPOT balance and entry codes
-                  here. This is how your daily luck hub will feel.
-                </p>
+<article className="border-b border-slate-900/60 px-4 pt-4 pb-5">
+  <div className="card-premium rounded-3xl p-4">
+    <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-300">
+      Overview
+    </p>
+    <p className="mt-2 text-sm text-slate-300">
+      Once X login is live, we’ll sync your XPOT balance and entry codes here.
+      This is how your daily luck hub will feel.
+    </p>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
-                    <p className="text-[11px] text-slate-400">Entries this round</p>
-                    <p className="mt-1 text-xl font-semibold">
-                      {activeEntries.length}
-                    </p>
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      Based on your XPOT balance.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
-                    <p className="text-[11px] text-slate-400">
-                      Total entries (preview)
-                    </p>
-                    <p className="mt-1 text-xl font-semibold">{totalEntries}</p>
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      Full history with X login.
-                    </p>
-                  </div>
-                  <div className="premium-highlight col-span-2 p-3 sm:col-span-1">
-                    <p className="text-[11px] text-emerald-300">Next daily jackpot</p>
-                    <p className="mt-1 text-xl font-semibold text-emerald-100">
-                      $10,000
-                    </p>
-                    <p className="mt-1 text-[11px] text-emerald-200/80">
-                      Draws daily on-chain. One wallet hits the pot.
-                    </p>
-                  </div>
-                </div>
+    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+        <p className="text-[11px] text-slate-400">Entries this round</p>
+        <p className="mt-1 text-xl font-semibold">
+          {activeEntries.length}
+        </p>
+        <p className="mt-1 text-[11px] text-slate-500">
+          Based on your XPOT balance.
+        </p>
+      </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    alert(
-                      'XPOT access activated (preview). One tweet per account. Balance controls your entries.'
-                    )
-                  }
-                  className="btn-premium mt-4 rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 px-4 py-2 text-sm font-semibold text-black shadow-[0_20px_40px_rgba(22,163,74,0.5)] hover:brightness-110 active:scale-[0.97] transition-all"
-                >
-                  Activate XPOT access
-                </button>
-                <p className="mt-2 text-[11px] text-slate-500">
-                  You only activate once. From then on, your XPOT balance decides how
-                  many entries you get in every draw.
-                </p>
-              </article>
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+        <p className="text-[11px] text-slate-400">
+          Total entries (preview)
+        </p>
+        <p className="mt-1 text-xl font-semibold">{totalEntries}</p>
+        <p className="mt-1 text-[11px] text-slate-500">
+          Full history with X login.
+        </p>
+      </div>
+
+      <div className="premium-highlight col-span-2 p-3 sm:col-span-1">
+        <p className="text-[11px] text-emerald-300">Next daily jackpot</p>
+        <p className="mt-1 text-xl font-semibold text-emerald-100">
+          $10,000
+        </p>
+        <p className="mt-1 text-[11px] text-emerald-200/80">
+          Draws daily on-chain. One wallet hits the pot.
+        </p>
+      </div>
+    </div>
+  </div>
+</article>
 
               {/* Today’s result card */}
               <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
@@ -583,9 +571,27 @@ export default function DashboardPage() {
                 </button>
               )}
 
+              {/* Activate XPOT access - primary action */}
+<div className="mt-4 rounded-3xl bg-slate-900/70 p-4">
+  <h3 className="text-sm font-semibold text-slate-100">XPOT access</h3>
+  <p className="mt-1 text-xs text-slate-400">
+    Activate once to lock your entries to this X account.
+  </p>
+
+  <button
+    type="button"
+    onClick={() =>
+      alert('XPOT access activated (preview). Entries are now locked.')
+    }
+    className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 py-2 text-sm font-semibold text-black"
+  >
+    Activate XPOT access
+  </button>
+</div>
+
               <p className="mt-2 text-[11px] text-slate-500">
-                We never post for you. X is only used to verify entries.
-              </p>
+  We never post for you. X is only used to verify entries.
+</p>
             </div>
 
             {/* Wallet connect preview */}
