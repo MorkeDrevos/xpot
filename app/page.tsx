@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from 'next/link';
 
 function formatTime(ms: number) {
   if (ms <= 0) return "00:00:00";
@@ -34,6 +35,14 @@ export default function Home() {
 
         {/* Hero copy */}
         <header className="space-y-3">
+          <div className="flex justify-end">
+  <Link
+    href="/dashboard"
+    className="rounded-full border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-500 hover:text-slate-50 transition"
+  >
+    Dashboard
+  </Link>
+</div>
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
             <span className="text-slate-300">💎 XPOT</span>{" "}
             <span className="text-slate-50">– The X-powered crypto jackpot.</span>
