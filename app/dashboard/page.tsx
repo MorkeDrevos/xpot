@@ -220,14 +220,9 @@ export default function DashboardPage() {
       )}
 
       <div className="leading-tight">
-        <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
+        <<p className="flex items-center gap-1 text-xs font-semibold">
   {user?.name ?? 'Your X handle'}
-
-  {isAuthed && (
-    <span className="inline-flex items-center justify-center rounded-full bg-sky-500 px-1.5 py-[1px] text-[10px] font-semibold text-black">
-      ✓
-    </span>
-  )}
+  {isAuthed && <span className="x-verified-badge">✓</span>}
 </p>
       </div>
     </div>
@@ -258,13 +253,9 @@ export default function DashboardPage() {
           <div className="leading-tight">
             <p className="flex items-center gap-1 text-xs font-semibold">
   {user?.name ?? 'Your X handle'}
-
-  {isAuthed && (
-    <span className="inline-flex items-center justify-center rounded-full bg-sky-500 px-1.5 py-[1px] text-[10px] font-semibold text-black">
-      ✓
-    </span>
-  )}
+  {isAuthed && <span className="x-verified-badge">✓</span>}
 </p>
+            
             <p className="text-[11px] text-slate-500">
               @{user?.username ?? 'your_handle'}
             </p>
