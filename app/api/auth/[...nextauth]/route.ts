@@ -1,54 +1,87 @@
-import NextAuth from "next-auth";
-import Twitter from "next-auth/providers/twitter";
+// app/api/auth/[...nextauth]/route.ts
+import NextAuth, { NextAuthOptions } from 'next-auth';
+import TwitterProvider from 'next-auth/providers/twitter';
 
-// Wrap Twitter provider but rename it to "x" so the callback URL matches
-const XProvider = {
-  ...Twitter({
-    clientId: process.env.X_CLIENT_ID!,
-    clientSecret: process.env.X_CLIENT_SECRET!,
-    version: "2.0", // OAuth 2.0
-  }),
-  id: "x",   // <-- callback will be /api/auth/callback/x
-  name: "X",
-};
+export const authOptions: NextAuthOptions = {
+  providers: [
+    TwitterProvider({
+      id: 'x', // so signIn('x') works
+      clientId: process.env.X_CLIENT_ID ?? '',
+      clientSecret: process.env.X_CLIENT_SECRET ?? '',
+      version: '2.0', // X OAuth2
+    }),
+  ],
 
-const handler = NextAuth({
-  providers: [XProvider],
+  session: {
+    strategy: 'jwt',
+  },
+
   callbacks: {
-    async jwt({ token, profile, account }) {
-      // First time login – enrich token with X profile data
-      if (profile && account?.provider === "x") {
-        // Twitter v2 sometimes wraps data under .data
-        const raw = profile as any;
-        const p = raw.data ?? raw;
+    async jwt({ token, account, profile }) {
+      // On first sign in, enrich the token with X profile data
+      if (profile) {
+        const p = profile as any;
 
-        token.name = p.name ?? token.name;
+        // Basic identity
+        token.name =
+          (p.name as string | undefined) ??
+          (token.name as string | undefined) ??
+          null;
 
         token.picture =
-          p.profile_image_url_https ||
-          p.profile_image_url ||
-          token.picture;
+          (p.profile_image_url_https as string | undefined) ??
+          (p.profile_image_url as string | undefined) ??
+          (token.picture as string | undefined) ??
+          null;
 
-        // @username
         token.username =
-          p.screen_name || p.username || token.username;
+          (p.screen_name as string | undefined) ??
+          (p.username as string | undefined) ??
+          (p.login as string | undefined) ??
+          (token as any).username ??
+          null;
 
-        // blue check
-        if (typeof p.verified === "boolean") {
-          token.verified = p.verified;
+        // Real verified flags from X
+        const rawVerified = (p as any).verified;
+        const rawVerifiedType = (p as any).verified_type;
+
+        (token as any).verified =
+          typeof rawVerified === 'boolean' ? rawVerified : false;
+
+        if (typeof rawVerifiedType === 'string') {
+          (token as any).verified_type = rawVerifiedType;
+        } else {
+          delete (token as any).verified_type;
         }
       }
+
       return token;
     },
+
     async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).username = token.username;
-        (session.user as any).verified = token.verified;
-        (session.user as any).image = token.picture ?? session.user.image;
+      // Make sure session.user exists
+      if (!session.user) {
+        session.user = {};
       }
+
+      // Pass through identity from the token
+      session.user.name = token.name as string | undefined;
+      session.user.image = token.picture as string | undefined;
+      (session.user as any).username = (token as any).username ?? null;
+      (session.user as any).verified = (token as any).verified ?? false;
+      (session.user as any).verified_type = (token as any).verified_type ?? null;
+
       return session;
     },
+
+    // Optional: after login always land on /dashboard
+    async redirect({ url, baseUrl }) {
+      // If it's an absolute callback (X sending us back), ignore and go dashboard
+      return `${baseUrl}/dashboard`;
+    },
   },
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
