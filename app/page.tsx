@@ -92,63 +92,35 @@ export default function Home() {
           </div>
 
           {/* Entry steps */}
-          <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-6 flex flex-col gap-5">
-            <h2 className="text-sm font-semibold text-slate-100">
-              How to enter today&apos;s XPOT
-            </h2>
+          <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-6">
+  <h2 className="text-xl font-semibold text-slate-200">
+    How to enter the XPOT jackpot
+  </h2>
 
-            <ol className="space-y-4 text-sm text-slate-200">
-              <li className="flex gap-3">
-                <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold">
-                  1
-                </span>
-                <div>
-                  <p className="font-medium">Buy &amp; hold $XPOT</p>
-                  <p className="text-xs text-slate-400">
-                    Pick up XPOT on Solana and hold the minimum amount required for
-                    the round.
-                  </p>
-                </div>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold">
-                  2
-                </span>
-                <div>
-                  <p className="font-medium">Post your entry tweet</p>
-                  <p className="text-xs text-slate-400">
-                    Tweet with the pre-filled message from XPOT.app so your entry can
-                    be tracked.
-                  </p>
-                </div>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold">
-                  3
-                </span>
-                <div>
-                  <p className="font-medium">Watch the daily draw</p>
-                  <p className="text-xs text-slate-400">
-                    Come back for the live draw animation and see if your entry code
-                    hits the jackpot.
-                  </p>
-                </div>
-              </li>
-            </ol>
+  <ol className="mt-4 space-y-4 text-sm text-slate-300">
+    <li>
+      <span className="font-semibold text-slate-200">Buy & hold XPOT</span>
+      <br />
+      Pick up XPOT on Solana and hold the minimum for the round.
+    </li>
 
-            <div className="flex flex-col gap-3 pt-2">
-              <button className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-300 transition">
-                Buy $XPOT
-              </button>
-              <button className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-medium text-slate-100 hover:border-slate-500 transition">
-                Tweet today&apos;s entry
-              </button>
-              <p className="text-[11px] text-slate-500">
-                v1 mock UI – mechanics wiring coming next. No smart-contract or draw
-                logic is live yet.
-              </p>
-            </div>
-          </div>
+    <li>
+      <span className="font-semibold text-slate-200">Post your entry tweet</span>
+      <br />
+      Send one pre-filled tweet from XPOT. This activates your account forever.
+    </li>
+
+    <li>
+      <span className="font-semibold text-slate-200">Balance = more entries</span>
+      <br />
+      After activation, entries are based purely on how much XPOT you hold.
+    </li>
+  </ol>
+
+  <p className="mt-4 text-xs text-slate-400">
+    You only tweet once. Your balance controls entries forever.
+  </p>
+</div>
         </section>
       </div>
     </main>
