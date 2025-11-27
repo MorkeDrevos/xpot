@@ -617,18 +617,13 @@ export default function DashboardPage() {
                 <p className="mt-1 text-xs text-slate-400">
                   {xpotActivated
                     ? 'Your XPOT entries are now locked to this X account.'
-                    : 'Activate once to lock your entries to this X account.'}
+                    : 'One identity. One account. All XPOT entries are permanently bound to this X profile.'}
                 </p>
 
                 {!xpotActivated ? (
   <button
     type="button"
-    onClick={() => {
-      setXpotActivated(true);
-      alert(
-        'XPOT access activated (preview). One account = one identity.'
-      );
-    }}
+    onClick={() => setXpotActivated(true)}
     className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
   >
     Activate XPOT access
