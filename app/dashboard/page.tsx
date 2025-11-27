@@ -71,6 +71,7 @@ export default function DashboardPage() {
   // ── Auto-update on new deploy ────────────────────────────────
   const [currentBuildId, setCurrentBuildId] = useState<string | null>(null);
   const [hasNewBuild, setHasNewBuild] = useState(false);
+  const [xpotActivated, setXpotActivated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -573,20 +574,31 @@ export default function DashboardPage() {
 
               {/* Activate XPOT access - primary action */}
 <div className="mt-4 rounded-3xl bg-slate-900/70 p-4">
+  
   <h3 className="text-sm font-semibold text-slate-100">XPOT access</h3>
-<p className="mt-1 text-xs text-slate-400">
-    Activate once to lock your entries to this X account.
-  </p>
 
+<p className="mt-1 text-xs text-slate-400">
+  {xpotActivated
+    ? 'Your XPOT entries are now locked to this X account.'
+    : 'Activate once to lock your entries to this X account.'}
+</p>
+
+{!xpotActivated ? (
   <button
     type="button"
-    onClick={() =>
-      alert('XPOT access activated (preview). Entries are now locked.')
-    }
+    onClick={() => {
+      setXpotActivated(true);
+      alert('XPOT access activated (preview). One account = one identity.');
+    }}
     className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 py-2 text-sm font-semibold text-black"
   >
     Activate XPOT access
   </button>
+) : (
+  <div className="mt-3 premium-pill xpot-locked flex items-center justify-center gap-2 rounded-full bg-emerald-500/15 py-2 text-sm font-semibold text-emerald-300">
+    ✅ XPOT access locked
+  </div>
+)}
 </div>
 
               <p className="mt-2 text-[11px] text-slate-500">
