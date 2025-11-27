@@ -574,7 +574,7 @@ export default function DashboardPage() {
               {/* Activate XPOT access - primary action */}
 <div className="mt-4 rounded-3xl bg-slate-900/70 p-4">
   <h3 className="text-sm font-semibold text-slate-100">XPOT access</h3>
-  <p className="mt-1 text-xs text-slate-400">
+<p className="mt-1 text-xs text-slate-400">
     Activate once to lock your entries to this X account.
   </p>
 
