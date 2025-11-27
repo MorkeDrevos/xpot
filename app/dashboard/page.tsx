@@ -195,7 +195,7 @@ export default function DashboardPage() {
             {/* Big CTA like “Post” */}
             <button
               type="button"
-              className="mt-4 w-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 px-5 py-2.5 text-sm font-semibold text-black shadow-[0_20px_40px_rgba(22,163,74,0.5)] hover:brightness-110 active:scale-[0.97] transition-all"
+              className="btn-premium mt-4 w-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 px-5 py-2.5 text-sm font-semibold text-black shadow-[0_20px_40px_rgba(22,163,74,0.5)] hover:brightness-110 active:scale-[0.97] transition-all"
             >
               Create XPOT entry
             </button>
@@ -395,7 +395,7 @@ export default function DashboardPage() {
                       'XPOT access activated (preview). One tweet per account. Balance controls your entries.'
                     )
                   }
-                  className="mt-4 rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 px-4 py-2 text-sm font-semibold text-black shadow-[0_20px_40px_rgba(22,163,74,0.5)] hover:brightness-110 active:scale-[0.97] transition-all"
+                  className="btn-premium mt-4 rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 px-4 py-2 text-sm font-semibold text-black shadow-[0_20px_40px_rgba(22,163,74,0.5)] hover:brightness-110 active:scale-[0.97] transition-all"
                 >
                   Activate XPOT access
                 </button>
@@ -449,7 +449,7 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-slate-300">
+                  <p className="btn-premium mt-3 text-sm text-slate-300">
                     Your codes are in the draw. The result will appear here when the
                     timer hits zero.
                   </p>
@@ -546,7 +546,7 @@ export default function DashboardPage() {
               <p className="mt-1 text-xs text-slate-400">
                 In v1 this updates in real time from your Solana wallet.
               </p>
-              <p className="mt-3 text-2xl font-semibold">
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-emerald-100 to-white">
                 {mockBalance.toLocaleString()}{' '}
                 <span className="text-sm text-slate-400">XPOT</span>
               </p>
