@@ -1,14 +1,12 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 
-// ── Helpers / types ──────────────────────────────────────────────
-
-const MIN_PER_ENTRY = 1_000_000;
-const mockBalance = 3_400_000; // 3.4M XPOT (preview)
-const entryCount = Math.floor(mockBalance / MIN_PER_ENTRY);
+// ─────────────────────────────────────────────────────────────
+// Types & helpers
+// ─────────────────────────────────────────────────────────────
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
@@ -21,6 +19,14 @@ type Entry = {
   createdAt: string;
 };
 
+type Phase = 'preSnapshot' | 'betweenSnapshotAndDraw' | 'drawing' | 'postDraw';
+
+const MIN_PER_ENTRY = 1_000_000;
+const mockBalanceNow = 7_492_000; // live balance preview
+const entryCount = Math.floor(mockBalanceNow / MIN_PER_ENTRY);
+const JACKPOT_USD = 10_000;
+
+// generate ticket-style codes
 function makeCode(): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const block = () =>
@@ -30,50 +36,80 @@ function makeCode(): string {
   return `XPOT-${block()}-${block()}`;
 }
 
-const now = new Date();
-
-// Build preview entries based on balance
+// initial tickets – “today’s draw”
+const nowSeed = new Date();
 const initialEntries: Entry[] = Array.from({ length: entryCount }).map((_, i) => ({
   id: i + 1,
   code: makeCode(),
   status: 'in-draw',
   label: "Today's main jackpot • $10,000",
   jackpotUsd: '$10,000',
-  createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  createdAt: nowSeed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 }));
 
-// Mark first entry as winner (preview)
+// mark one as winner for preview
 if (initialEntries.length > 0) {
   initialEntries[0].status = 'won';
 }
 
-// ── Page ─────────────────────────────────────────────────────────
+// format countdown nicely
+function formatDuration(ms: number): string {
+  if (ms <= 0) return '00:00:00';
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
+  const isVerified = !!user?.verified;
 
   // robust username fallback
   const username =
     user?.username ||
     user?.screen_name ||
     user?.handle ||
-    user?.name?.replace(/\s+/g, '').toLowerCase() ||
+    (user?.name ? user.name.replace(/\s+/g, '').toLowerCase() : '') ||
     'your_handle';
 
+  // entries state
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [winnerClaimed, setWinnerClaimed] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
-  // ── Auto-update on new deploy ────────────────────────────────
+  // build auto-reload banner
   const [currentBuildId, setCurrentBuildId] = useState<string | null>(null);
   const [hasNewBuild, setHasNewBuild] = useState(false);
 
-  // XPOT access lock state (drives lock badge)
-  const [xpotActivated, setXpotActivated] = useState(false);
+  // live time
+  const [now, setNow] = useState<Date>(new Date());
 
+  // schedule for today (preview: snapshot in 2h, draw 1h later, results 10m later)
+  const [schedule] = useState(() => {
+    const base = new Date();
+    const snapshotAt = new Date(base.getTime() + 2 * 60 * 60 * 1000);
+    const drawAt = new Date(snapshotAt.getTime() + 60 * 60 * 1000);
+    const resultsAt = new Date(drawAt.getTime() + 10 * 60 * 1000);
+    return { snapshotAt, drawAt, resultsAt };
+  });
+
+  // live clock
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // build-info polling (for “New XPOT version is live” banner)
   useEffect(() => {
     let cancelled = false;
 
@@ -84,13 +120,11 @@ export default function DashboardPage() {
         const data = (await res.json()) as { buildId?: string };
         const incoming = data.buildId || 'unknown';
 
-        // First run: just store it
         if (!currentBuildId) {
           setCurrentBuildId(incoming);
           return;
         }
 
-        // Subsequent runs: if changed, show banner
         if (incoming !== currentBuildId && !cancelled) {
           setHasNewBuild(true);
         }
@@ -100,19 +134,72 @@ export default function DashboardPage() {
     }
 
     checkBuild();
-    const interval = setInterval(checkBuild, 30_000); // every 30s
-
+    const interval = setInterval(checkBuild, 30_000);
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
   }, [currentBuildId]);
 
+  // phase logic
+  const phase: Phase = useMemo(() => {
+    const { snapshotAt, drawAt, resultsAt } = schedule;
+    if (now < snapshotAt) return 'preSnapshot';
+    if (now < drawAt) return 'betweenSnapshotAndDraw';
+    if (now < resultsAt) return 'drawing';
+    return 'postDraw';
+  }, [now, schedule]);
+
+  // countdown target & label
+  const { countdownLabel, countdownValue } = useMemo(() => {
+    const { snapshotAt, drawAt, resultsAt } = schedule;
+    let label = '';
+    let target: Date | null = null;
+
+    switch (phase) {
+      case 'preSnapshot':
+        label = 'Snapshot closes in';
+        target = snapshotAt;
+        break;
+      case 'betweenSnapshotAndDraw':
+        label = 'Winner revealed in';
+        target = drawAt;
+        break;
+      case 'drawing':
+        label = 'Finalising results…';
+        target = resultsAt;
+        break;
+      case 'postDraw':
+      default: {
+        label = 'Next draw in';
+        const nextSnapshot = new Date(snapshotAt.getTime() + 24 * 60 * 60 * 1000);
+        target = nextSnapshot;
+        break;
+      }
+    }
+
+    const ms = target ? target.getTime() - now.getTime() : 0;
+    return {
+      countdownLabel: label,
+      countdownValue: formatDuration(ms),
+    };
+  }, [now, phase, schedule]);
+
   const activeEntries = entries.filter(
-    e => e.status === 'in-draw' || e.status === 'won'
+    (e) => e.status === 'in-draw' || e.status === 'won'
   );
   const totalEntries = entries.length;
-  const winner = entries.find(e => e.status === 'won');
+  const winner = entries.find((e) => e.status === 'won');
+
+  const inDraw = phase !== 'preSnapshot' && totalEntries > 0;
+  const snapshotTimeLabel = schedule.snapshotAt.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
+
+  // if they are “in draw”, treat identity as locked for today
+  const identityLocked = inDraw;
 
   async function handleCopy(entry: Entry) {
     try {
@@ -120,7 +207,7 @@ export default function DashboardPage() {
       setCopiedId(entry.id);
       setTimeout(() => setCopiedId(null), 1500);
     } catch {
-      // ignore for now
+      // ignore
     }
   }
 
@@ -150,30 +237,43 @@ export default function DashboardPage() {
     }, 800);
   }
 
+  // header status chip
+  const headerStatus = (() => {
+    switch (phase) {
+      case 'preSnapshot':
+        return { label: 'Daily draw', tone: 'status-pill' };
+      case 'betweenSnapshotAndDraw':
+        return { label: 'Draw locked', tone: 'status-pill-amber' };
+      case 'drawing':
+        return { label: 'Drawing winner…', tone: 'status-pill-emerald' };
+      case 'postDraw':
+      default:
+        return { label: 'Winner announced', tone: 'status-pill-emerald' };
+    }
+  })();
+
   return (
     <main className="min-h-screen bg-black text-slate-50">
-      <div className="mx-auto flex max-w-6xl">
-        {/* ── Left nav (X-like) ─────────────────────────────── */}
-        <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
+      <div className="mx-auto flex max-w-6xl px-4 py-6 lg:px-0">
+        {/* ── Left rail (X-like) ───────────────────────────── */}
+        <aside className="hidden min-h-[640px] w-56 flex-col justify-between border-r border-slate-900 pr-3 md:flex">
           <div className="space-y-6">
-            {/* Logo */}
+            {/* Logo / brand */}
             <div className="flex items-center gap-2 px-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10 text-lg">
                 💎
               </div>
               <div className="flex flex-col leading-tight">
                 <span className="text-sm font-semibold tracking-tight">XPOT</span>
-                <span className="text-[11px] text-slate-500">
-                  Daily crypto jackpot
-                </span>
+                <span className="text-[11px] text-slate-500">Daily crypto jackpot</span>
               </div>
             </div>
 
-            {/* Nav items */}
+            {/* Nav */}
             <nav className="space-y-1 text-sm">
               <Link
                 href="/dashboard"
-                className="flex items-center gap-3 rounded-full px-3 py-2 font-medium bg-slate-900 text-slate-50"
+                className="flex items-center gap-3 rounded-full bg-slate-900 px-3 py-2 font-medium text-slate-50"
               >
                 <span className="text-lg">🏠</span>
                 <span>Dashboard</span>
@@ -194,7 +294,7 @@ export default function DashboardPage() {
               </button>
             </nav>
 
-            {/* Big CTA like “Post” */}
+            {/* Primary CTA (placeholder for now) */}
             <button
               type="button"
               className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
@@ -203,16 +303,15 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Mini user chip + account menu (X-style) */}
+          {/* Account chip + dropdown */}
           <div className="relative">
-            {/* Bottom-left chip */}
             <div
-              className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
+              className="mb-2 flex cursor-pointer items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 hover:bg-slate-800/80"
               onClick={() => {
                 if (!isAuthed) {
                   openXLoginPopup();
                 } else {
-                  setAccountMenuOpen(open => !open);
+                  setAccountMenuOpen((open) => !open);
                 }
               }}
             >
@@ -229,31 +328,29 @@ export default function DashboardPage() {
                       @
                     </div>
                   )}
-                  {xpotActivated && (
-                    <div className="lock-badge" title="XPOT identity locked">
-                      🔒
-                    </div>
+                  {identityLocked && (
+                    <span className="x-avatar-lock">
+                      <span className="x-avatar-lock-glyph">🔒</span>
+                    </span>
                   )}
                 </div>
 
                 <div className="leading-tight">
                   <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
                     {user?.name ?? 'Your X handle'}
+                    {isAuthed && isVerified && <span className="x-verified-badge" />}
                   </p>
                   <p className="text-[11px] text-slate-500">@{username}</p>
                 </div>
               </div>
 
-              {/* Right side: 3 dots */}
               <span className="flex h-6 w-6 items-center justify-center rounded-full text-slate-500">
                 ⋯
               </span>
             </div>
 
-            {/* Dropdown menu – X-style account */}
             {isAuthed && accountMenuOpen && (
-              <div className="x-account-menu absolute bottom-14 left-0 w-72 rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60 overflow-hidden">
-                {/* Single account row */}
+              <div className="x-account-menu absolute bottom-14 left-0 w-72 overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-900"
@@ -271,36 +368,24 @@ export default function DashboardPage() {
                           @
                         </div>
                       )}
-                      {xpotActivated && (
-                        <div
-                          className="lock-badge"
-                          title="XPOT identity locked"
-                        >
-                          🔒
-                        </div>
+                      {identityLocked && (
+                        <span className="x-avatar-lock">
+                          <span className="x-avatar-lock-glyph">🔒</span>
+                        </span>
                       )}
                     </div>
                     <div className="leading-tight">
                       <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
                         {user?.name ?? 'Your X handle'}
-                        {xpotActivated && (
-                          <span
-                            className="ml-2 rounded-full bg-emerald-500/15 px-2 py-[2px] text-[10px] font-semibold text-emerald-300"
-                            title="XPOT access locked"
-                          >
-                            LOCKED
-                          </span>
-                        )}
+                        {isVerified && <span className="x-verified-badge" />}
                       </p>
                       <p className="text-[11px] text-slate-500">@{username}</p>
                     </div>
                   </div>
                 </button>
 
-                {/* Divider */}
-                <hr className="border-t border-slate-900" />
+                <hr />
 
-                {/* Logout row only (no add/manage) */}
                 <button
                   type="button"
                   onClick={() => {
@@ -316,19 +401,27 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* ── Main shell: center + right in one premium container ─ */}
-        <div className="flex flex-1 gap-6 rounded-[28px] border border-slate-800/70 bg-[#020617] shadow-[0_30px_100px_rgba(0,0,0,0.9)] overflow-hidden">
-          {/* ── Center column (feed) ───────────────────────────── */}
-          <section className="min-h-screen flex-1">
-            {/* Sticky header like X */}
-            <header className="sticky top-0 z-10 border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
-              <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-              <p className="text-[13px] text-slate-400">
-                Your XPOT entries, jackpots and wins.
-              </p>
+        {/* ── Main shell: center + right ────────────────────── */}
+        <div className="premium-shell flex flex-1 flex-col gap-0 rounded-[28px] border border-slate-800/70 bg-[#020617] shadow-[0_30px_100px_rgba(0,0,0,0.9)] lg:flex-row lg:gap-6">
+          {/* Center column */}
+          <section className="flex-1 border-slate-900/60 lg:border-r">
+            {/* Top bar like X */}
+            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
+                  <span className={headerStatus.tone}>{headerStatus.label}</span>
+                </div>
+                <p className="text-[13px] text-slate-400">
+                  One jackpot. One winner. XPOT tracks your entries and results.
+                </p>
+              </div>
+              <div className="text-right text-[11px] text-slate-500">
+                <p className="font-mono text-xs">{countdownLabel}</p>
+                <p className="font-mono text-sm text-slate-100">{countdownValue}</p>
+              </div>
             </header>
 
-            {/* New version banner */}
             {hasNewBuild && (
               <div className="border-b border-emerald-700/60 bg-emerald-500/10 px-4 py-2">
                 <div className="flex items-center justify-between gap-3 text-xs text-emerald-100">
@@ -344,33 +437,29 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Scroll content */}
-            <div className="space-y-4 px-0">
-              {/* Profile header – static X-style */}
+            {/* Scrollable content */}
+            <div className="space-y-4 px-0 pb-8">
+              {/* Profile header (static preview for now) */}
               <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
                 <div className="flex items-center gap-3">
                   <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
                     <span className="text-lg">🖤</span>
-                    {xpotActivated && (
-                      <div
-                        className="lock-badge"
-                        title="XPOT identity locked"
-                      >
-                        🔒
-                      </div>
+                    {identityLocked && (
+                      <span className="x-avatar-lock">
+                        <span className="x-avatar-lock-glyph">🔒</span>
+                      </span>
                     )}
                   </div>
-
                   <div className="flex flex-col leading-tight">
                     <div className="flex items-center gap-1">
                       <span className="text-sm font-semibold text-slate-50">
                         Mørke Drevos
                       </span>
+                      <span className="x-verified-badge" />
                     </div>
                     <span className="text-xs text-slate-500">@{username}</span>
                   </div>
                 </div>
-
                 <button
                   type="button"
                   className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100"
@@ -379,77 +468,104 @@ export default function DashboardPage() {
                 </button>
               </section>
 
-              {/* Summary “tweet” style card */}
+              {/* HERO: your entries today */}
               <article className="border-b border-slate-900/60 px-4 pt-4 pb-5">
                 <div className="card-premium rounded-3xl p-4">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-300">
-                    Overview
-                  </p>
-                  <p className="mt-2 text-sm text-slate-300">
-                    Once X login is live, we’ll sync your XPOT balance and entry
-                    codes here. This is how your daily luck hub will feel.
-                  </p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-300">
+                        Your entries today
+                      </p>
+                      <div className="mt-1 flex items-baseline gap-2">
+                        <p className="text-3xl font-semibold tracking-tight text-slate-50">
+                          {phase === 'preSnapshot' ? entryCount : activeEntries.length}
+                        </p>
+                        <span className="text-xs text-slate-400">
+                          {entryCount === 1 ? 'ticket' : 'tickets'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Snapshot at {snapshotTimeLabel}. Keep XPOT in your wallet until
+                        then to stay in the draw.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-950/60 px-3 py-2 text-right text-[11px] text-slate-400">
+                      <p className="font-mono text-xs text-slate-200">
+                        Balance now: {mockBalanceNow.toLocaleString()} XPOT
+                      </p>
+                      <p className="mt-0.5">
+                        1 ticket per{' '}
+                        <span className="font-mono text-[11px] text-slate-200">
+                          1,000,000 XPOT
+                        </span>
+                      </p>
+                    </div>
+                  </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
-                      <p className="text-[11px] text-slate-400">
-                        Entries this round
-                      </p>
-                      <p className="mt-1 text-xl font-semibold">
-                        {activeEntries.length}
+                      <p className="text-[11px] text-slate-400">Status</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-100">
+                        {phase === 'preSnapshot'
+                          ? 'Waiting for snapshot'
+                          : inDraw
+                          ? 'In today’s draw'
+                          : 'Not in today’s draw'}
                       </p>
                       <p className="mt-1 text-[11px] text-slate-500">
-                        Based on your XPOT balance.
+                        Tickets are locked at snapshot.
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
-                      <p className="text-[11px] text-slate-400">
-                        Total entries (preview)
+                      <p className="text-[11px] text-slate-400">Today’s jackpot</p>
+                      <p className="mt-1 text-xl font-semibold text-emerald-100">
+                        ${JACKPOT_USD.toLocaleString()}
                       </p>
-                      <p className="mt-1 text-xl font-semibold">
-                        {totalEntries}
-                      </p>
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        Full history with X login.
+                      <p className="mt-1 text-[11px] text-emerald-200/80">
+                        One winning ticket. One wallet.
                       </p>
                     </div>
 
                     <div className="premium-highlight jackpot-core col-span-2 p-3 sm:col-span-1">
-                      <p className="text-[11px] text-emerald-300">
-                        Next daily jackpot
+                      <p className="text-[11px] text-emerald-200">Draw rhythm</p>
+                      <p className="mt-1 text-sm font-semibold text-emerald-50">
+                        Daily snapshot · on-chain draw · transparent winner
                       </p>
-                      <p className="mt-1 text-xl font-semibold text-emerald-100">
-                        $10,000
-                      </p>
-                      <p className="mt-1 text-[11px] text-emerald-200/80">
-                        Draws daily on-chain. One wallet hits the pot.
+                      <p className="mt-1 text-[11px] text-emerald-100/80">
+                        XPOT uses your snapshot balance to generate tickets. No manual
+                        claiming, no off-chain lotteries.
                       </p>
                     </div>
                   </div>
                 </div>
               </article>
 
-              {/* Today’s result card */}
+              {/* Today’s result */}
               <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
-                <h2 className="text-sm font-semibold text-emerald-100">
-                  Today’s result
-                </h2>
+                <h2 className="text-sm font-semibold text-emerald-100">Today’s result</h2>
 
-                {winner ? (
+                {phase !== 'postDraw' && (
+                  <p className="mt-3 text-sm text-slate-300">
+                    Your tickets are in the draw. The result will appear here when the
+                    timer hits zero.
+                  </p>
+                )}
+
+                {phase === 'postDraw' && winner && (
                   <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-200">
-                        One of your codes{' '}
+                        One of your tickets{' '}
                         <span className="font-mono text-emerald-300">
                           {winner.code}
                         </span>{' '}
                         hit today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
-                        Return to your dashboard after the draw to claim. If you
-                        don’t claim in time, the unclaimed amount rolls over on top
-                        of the next jackpot.
+                        Prize is claimable for a limited time. After that, any unclaimed
+                        amount rolls into the next jackpot.
                       </p>
                     </div>
 
@@ -457,8 +573,8 @@ export default function DashboardPage() {
                       type="button"
                       onClick={() => {
                         setWinnerClaimed(true);
-                        setEntries(prev =>
-                          prev.map(e =>
+                        setEntries((prev) =>
+                          prev.map((e) =>
                             e.id === winner.id ? { ...e, status: 'claimed' } : e
                           )
                         );
@@ -466,43 +582,45 @@ export default function DashboardPage() {
                       disabled={winnerClaimed}
                       className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold transition sm:mt-0 ${
                         winnerClaimed
-                          ? 'cursor-not-allowed bg-slate-900 text-slate-500 border border-slate-800'
-                          : 'bg-emerald-400 text-slate-900 hover:bg-emerald-300'
+                          ? 'cursor-not-allowed border border-slate-800 bg-slate-900 text-slate-500'
+                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-slate-950 hover:brightness-110'
                       }`}
                     >
-                      {winnerClaimed ? 'Prize claimed' : 'Claim today’s jackpot'}
+                      {winnerClaimed ? 'Prize claimed' : 'Claim jackpot'}
                     </button>
                   </div>
-                ) : (
+                )}
+
+                {phase === 'postDraw' && !winner && (
                   <p className="mt-3 text-sm text-slate-300">
-                    Your codes are in the draw. The result will appear here when the
-                    timer hits zero.
+                    None of your tickets hit today. Your balance will generate new
+                    tickets for the next draw.
                   </p>
                 )}
 
                 {winnerClaimed && (
                   <p className="mt-3 text-xs text-emerald-300">
-                    Nice catch. Any unclaimed portion would roll over on top of
+                    Nice catch. Any unclaimed portion would have rolled over on top of
                     tomorrow’s jackpot.
                   </p>
                 )}
               </article>
 
-              {/* Entries “feed” */}
+              {/* Tickets feed */}
               <section className="pb-10 px-4">
                 <h2 className="pt-3 text-sm font-semibold text-slate-200">
-                  Your entry codes
+                  Your tickets
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Each code is one ticket into a specific draw. Generated from your
-                  XPOT balance after activation.
+                  Each ticket is tied to a snapshot and draw. Later you’ll be able to
+                  open a ticket to see on-chain proof.
                 </p>
 
-                <div className="mt-3 border-l border-slate-800/80 pl-3 space-y-2">
-                  {entries.map(entry => (
+                <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
+                  {entries.map((entry) => (
                     <article
                       key={entry.id}
-                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-4 pt-3 hover:border-slate-700 hover:bg-slate-950 transition"
+                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-4 pt-3 transition hover:border-slate-700 hover:bg-slate-950"
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -532,9 +650,7 @@ export default function DashboardPage() {
                               </span>
                             )}
                           </div>
-                          <p className="mt-1 text-xs text-slate-400">
-                            {entry.label}
-                          </p>
+                          <p className="mt-1 text-xs text-slate-400">{entry.label}</p>
                           <p className="mt-1 text-[11px] text-slate-500">
                             Created: {entry.createdAt}
                           </p>
@@ -552,7 +668,7 @@ export default function DashboardPage() {
                             type="button"
                             className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
                           >
-                            View entry tweet ↗
+                            View ticket (soon)
                           </button>
                         </div>
                       </div>
@@ -563,31 +679,31 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* ── Right sidebar (X “What’s happening”) ───────────── */}
-          <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
+          {/* Right column */}
+          <aside className="hidden w-full max-w-xs flex-col gap-4 border-t border-slate-900/60 bg-slate-950/40 px-4 py-4 lg:flex lg:border-t-0">
             {/* Balance preview */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">XPOT balance (preview)</h3>
               <p className="mt-1 text-xs text-slate-400">
                 In v1 this updates in real time from your Solana wallet.
               </p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-emerald-100 to-white">
-                {mockBalance.toLocaleString()}{' '}
-                <span className="text-sm text-slate-400">XPOT</span>
+              <p className="mt-3 bg-gradient-to-r from-emerald-200 via-emerald-100 to-white bg-clip-text text-3xl font-semibold tracking-tight text-transparent">
+                {mockBalanceNow.toLocaleString()}
+                <span className="ml-1 text-sm text-slate-400">XPOT</span>
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                = {entryCount} entries in today’s main draw.
+                = {entryCount} ticket{entryCount === 1 ? '' : 's'} in today’s draw.
               </p>
             </div>
 
-            {/* Sign in with X + XPOT access */}
+            {/* X sign-in */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">
-                {isAuthed ? 'Signed in with X' : 'Sign in with X'}
+                {isAuthed ? 'Connected with X' : 'Sign in with X'}
               </h3>
               <p className="mt-1 text-xs text-slate-400">
-                Connect your X account once. We’ll verify your tweet and lock your
-                XPOT holder status.
+                XPOT links your tickets to one X identity. Later, ticket views and
+                win-notifications will feel just like opening a tweet.
               </p>
 
               {!isAuthed ? (
@@ -604,56 +720,22 @@ export default function DashboardPage() {
                   onClick={() => signOut({ callbackUrl: '/' })}
                   className="mt-3 w-full rounded-full bg-slate-800 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
                 >
-                  Sign out
+                  Sign out @{username}
                 </button>
               )}
-
-              {/* Activate XPOT access - primary action */}
-              <div className="mt-4 rounded-3xl bg-slate-900/70 p-4">
-                <h3 className="text-sm font-semibold text-slate-100">
-                  XPOT access
-                </h3>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  {xpotActivated
-                    ? 'Your XPOT entries are now locked to this X account.'
-                    : 'One identity. One account. All XPOT entries are permanently bound to this X profile.'}
-                </p>
-
-                {!xpotActivated ? (
-  <button
-    type="button"
-    onClick={() => setXpotActivated(true)}
-    className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
-  >
-    Activate XPOT access
-  </button>
-) : (
-  <div className="mt-3 premium-pill xpot-locked flex items-center justify-center gap-2 rounded-full bg-emerald-500/15 py-2 text-sm font-semibold text-emerald-300">
-    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400/20 text-xs">
-      🔒
-    </span>
-    <span>XPOT access locked</span>
-  </div>
-)}
-              </div>
-
-              <p className="mt-2 text-[11px] text-slate-500">
-  X is only used to verify entries – never to post.
-</p>
             </div>
 
             {/* Wallet connect preview */}
             <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">Connect wallet (preview)</h3>
+              <h3 className="text-sm font-semibold">Wallet link (preview)</h3>
               <p className="mt-1 text-xs text-slate-400">
-                In v1, you’ll connect a Solana wallet so your XPOT balance can
-                update entries in real time.
+                In v1, you’ll connect a Solana wallet so XPOT can read your balance at
+                snapshot and generate tickets automatically.
               </p>
               <button
                 type="button"
                 disabled
-                className="mt-3 w-full rounded-full bg-slate-800 py-2 text-xs font-medium text-slate-500 cursor-not-allowed"
+                className="mt-3 w-full cursor-not-allowed rounded-full bg-slate-800 py-2 text-xs font-medium text-slate-500"
               >
                 Connect wallet (coming soon)
               </button>
