@@ -2,126 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────
+   Global reset / typography
+   ───────────────────────────────────────── */
+
 html,
 body {
   margin: 0;
   padding: 0;
 }
 
-/* Global XPOT typography */
 :root {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
     'SF Pro Display', sans-serif;
-  font-size: 16px; /* bump base size */
+  font-size: 15px; /* base */
 }
 
 @media (min-width: 1024px) {
   :root {
-    font-size: 17px; /* a little larger on desktop */
+    font-size: 16px; /* bump on desktop */
   }
 }
 
 body {
-  background:
-    radial-gradient(circle at top, #020617 0, #020617 42%, #020617 60%, #000 100%);
+  background-color: #000000;
   color: #e5e7eb;
 }
 
-/* Subtle page shell for the main app */
-.xpot-shell {
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top, rgba(15, 23, 42, 0.65), transparent 55%),
-    radial-gradient(circle at bottom, rgba(0, 0, 0, 0.9), #000);
-}
+/* ─────────────────────────────────────────
+   XPOT X-style verified badge
+   (custom SVG-ish pill, NOT X’s asset)
+   ───────────────────────────────────────── */
 
-/* Reusable premium card */
-.xpot-card {
-  border-radius: 1.5rem;
-  border: 1px solid rgba(30, 64, 175, 0.35); /* indigo-ish edge */
-  background: radial-gradient(circle at top left, #020617 0, #020617 55%, #020617 100%);
-  background-color: rgba(15, 23, 42, 0.96);
-  box-shadow:
-    0 24px 60px rgba(15, 23, 42, 0.95),
-    0 0 0 1px rgba(15, 23, 42, 0.95);
-}
-
-/* Slightly softer secondary card */
-.xpot-card-soft {
-  border-radius: 1.5rem;
-  border: 1px solid rgba(51, 65, 85, 0.8);
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.94));
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.88);
-}
-
-/* Primary pill buttons */
-.xpot-primary-btn {
-  border-radius: 9999px;
-  background: linear-gradient(135deg, #22c55e, #a3e635);
-  color: #020617;
-  font-weight: 600;
-  box-shadow:
-    0 16px 40px rgba(22, 163, 74, 0.5),
-    0 0 0 1px rgba(15, 23, 42, 0.8);
-  transition:
-    transform 0.12s ease-out,
-    box-shadow 0.12s ease-out,
-    filter 0.12s ease-out;
-}
-
-.xpot-primary-btn:hover {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
-  box-shadow:
-    0 20px 50px rgba(22, 163, 74, 0.55),
-    0 0 0 1px rgba(15, 23, 42, 1);
-}
-
-.xpot-primary-btn:active {
-  transform: translateY(0);
-  box-shadow:
-    0 8px 24px rgba(22, 163, 74, 0.45),
-    0 0 0 1px rgba(15, 23, 42, 1);
-}
-
-/* Subtle section eyebrow */
-.xpot-section-eyebrow {
-  font-size: 0.7rem;
-  letter-spacing: 0.19em;
-  text-transform: uppercase;
-  color: #4ade80;
-}
-
-/* XPOT X-style verified badge (custom, non-copyrighted) */
 .x-verified-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
   width: 13px;
   height: 13px;
   margin-left: 6px;
 
   border-radius: 9999px;
-  background: radial-gradient(circle at 30% 20%, #e0f2fe 0, #1d9bf0 35%, #0369a1 100%);
-  color: #fff;
-  font-size: 8px;
-  font-weight: 900;
-  line-height: 1;
+  background: radial-gradient(circle at 30% 20%, #ffffff 0, #e5f4ff 18%, #1d9bf0 55%, #1478c2 100%);
 
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.16) inset,
-    0 0 0 0 rgba(15, 23, 42, 0.9);
+    0 0 0 1px rgba(15, 23, 42, 1),
+    0 2px 4px rgba(15, 23, 42, 0.9);
 
+  position: relative;
+  transform-origin: center;
   transition:
-    transform 0.14s ease,
-    box-shadow 0.14s ease,
-    filter 0.14s ease;
+    transform 0.16s ease-out,
+    filter 0.16s ease-out,
+    box-shadow 0.16s ease-out;
 }
 
 /* Draw the check mark with borders so it’s vector-clean */
 .x-verified-badge::before {
   content: '';
-  width: 0.35rem;
+  width: 0.34rem;
   height: 0.22rem;
   border-style: solid;
   border-width: 0 0 2px 2px;
@@ -130,13 +70,15 @@ body {
   transform: translateY(-0.5px) rotate(-45deg);
 }
 
-/* Hover = tiny lift & glow */
-.x-verified-badge:hover {
-  transform: translateY(-0.5px);
-  filter: brightness(1.04);
+/* Hover / focus – tiny lift & shine */
+.x-verified-badge:hover,
+.x-verified-badge:focus-visible {
+  transform: translateY(-0.5px) scale(1.02);
+  filter: brightness(1.06);
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 5px 12px rgba(15, 23, 42, 0.9);
+    0 0 0 1px rgba(15, 23, 42, 1),
+    0 4px 10px rgba(15, 23, 42, 0.9),
+    0 0 8px rgba(29, 155, 240, 0.65);
 }
 
 /* Pressed – scale down like X */
@@ -144,19 +86,25 @@ body {
   transform: scale(0.9);
   filter: brightness(0.97);
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 0 0 1px rgba(15, 23, 42, 1),
     0 1px 4px rgba(15, 23, 42, 0.9);
 }
 
-/* Dropdown fade+slide in */
-.account-menu {
+/* ─────────────────────────────────────────
+   XPOT account dropdown (X-style)
+   ───────────────────────────────────────── */
+
+.x-account-menu {
+  border-radius: 1.5rem;
+  overflow: hidden;
+
   opacity: 0;
   transform: translateY(4px) scale(0.97);
   transform-origin: bottom left;
-  animation: account-menu-in 130ms ease-out forwards;
+  animation: x-account-menu-in 130ms ease-out forwards;
 }
 
-@keyframes account-menu-in {
+@keyframes x-account-menu-in {
   from {
     opacity: 0;
     transform: translateY(4px) scale(0.97);
@@ -167,7 +115,39 @@ body {
   }
 }
 
-/* XPOT legal pages */
+.x-account-menu hr {
+  border-color: #111827; /* slate-900-ish */
+  opacity: 1;
+  margin: 0;
+}
+
+/* ─────────────────────────────────────────
+   Premium cards + highlight blocks
+   ───────────────────────────────────────── */
+
+.premium-card {
+  border-radius: 1.5rem;
+  background: radial-gradient(circle at top left, #020617 0, #020617 45%, #020617 100%);
+  border: 1px solid rgba(15, 23, 42, 0.9);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.85);
+}
+
+/* Used for “Next daily jackpot” card */
+.premium-highlight {
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at top left, rgba(45, 212, 191, 0.28) 0, transparent 48%),
+    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.32) 0, transparent 50%),
+    #020617;
+  border: 1px solid rgba(45, 212, 191, 0.5);
+  box-shadow:
+    0 20px 50px rgba(5, 46, 22, 0.85);
+}
+
+/* ─────────────────────────────────────────
+   XPOT legal pages (Terms / Privacy)
+   ───────────────────────────────────────── */
 
 .legal-page {
   min-height: 100vh;
@@ -188,7 +168,8 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.35);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
   color: #e5e7eb;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    sans-serif;
 }
 
 @media (max-width: 640px) {
@@ -270,16 +251,4 @@ body {
 
 .legal-container a:hover {
   text-decoration-thickness: 2px;
-}
-
-/* XPOT account dropdown polish */
-.x-account-menu {
-  border-radius: 1.5rem;
-  overflow: hidden;
-}
-
-.x-account-menu hr {
-  border-color: #111827; /* slate-900-ish */
-  opacity: 1;
-  margin: 0;
 }
