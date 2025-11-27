@@ -252,3 +252,20 @@ body {
 .legal-container a:hover {
   text-decoration-thickness: 2px;
 }
+/* Premium floating card */
+.premium-card {
+  background: radial-gradient(circle at top left, #050b1e 0%, #020617 60%);
+  border: 1px solid rgba(51, 65, 85, 0.35);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(12, 25, 40, 0.6) inset;
+  backdrop-filter: blur(10px);
+}
+
+/* Subtle hover lift */
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(59, 130, 246, 0.25) inset;
+}
