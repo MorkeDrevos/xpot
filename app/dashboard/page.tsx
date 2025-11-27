@@ -53,17 +53,13 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
+  const isVerified = !!user?.verified; // real flag from NextAuth (profile.verified)
 
-  // Best-effort handle from different possible fields
   const username =
-    user?.username ||
-    user?.screen_name ||
-    user?.handle ||
-    (user?.name ? user.name.replace(/\s+/g, '').toLowerCase() : undefined);
-
-  // For now: show badge when logged in, but prefer real verified flag if present
-  const isVerified =
-    typeof user?.verified === 'boolean' ? user.verified : isAuthed;
+  user?.username ||
+  user?.screen_name ||
+  user?.handle ||
+  user?.name?.replace(/\s+/g, '').toLowerCase();
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [winnerClaimed, setWinnerClaimed] = useState(false);
@@ -151,10 +147,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="xpot-shell text-slate-50">
-      <div className="mx-auto flex max-w-6xl">
-        {/* ── Left nav (X-like) ─────────────────────────────── */}
-        <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
+  <main className="min-h-screen bg-black text-slate-50">
+    <div className="mx-auto flex max-w-6xl gap-6 px-4 py-6">
+      {/* ── Left nav (X-like) ─────────────────────────────── */}
+      <aside className="hidden min-h-screen w-56 px-3 py-4 md:flex flex-col justify-between">
           <div className="space-y-6">
             {/* Logo */}
             <div className="flex items-center gap-2 px-3">
@@ -196,11 +192,11 @@ export default function DashboardPage() {
 
             {/* Big CTA like “Post” */}
             <button
-              type="button"
-              className="mt-4 w-full py-3 text-sm xpot-primary-btn"
-            >
-              Create XPOT entry
-            </button>
+  type="button"
+  className="mt-4 w-full py-3 text-sm xpot-primary-btn"
+>
+  Create XPOT entry
+</button>
           </div>
 
           {/* Mini user chip + account menu (X-style) */}
@@ -232,10 +228,10 @@ export default function DashboardPage() {
                 <div className="leading-tight">
                   <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
                     {user?.name ?? 'Your X handle'}
-                    {isVerified && <span className="x-verified-badge" />}
+                    {isAuthed && isVerified && <span className="x-verified-badge" />}
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    @{username ?? 'your_handle'}
+                    @{username}
                   </p>
                 </div>
               </div>
@@ -248,10 +244,13 @@ export default function DashboardPage() {
 
             {/* Dropdown menu – X-style accounts list */}
             {isAuthed && accountMenuOpen && (
-              <div className="x-account-menu account-menu absolute bottom-14 left-0 w-72 border border-slate-800 bg-slate-950 shadow-xl shadow-black/60">
-                {/* Accounts list (single active account for now) */}
-                <div className="border-b border-slate-800">
-                  <div className="flex w-full items-center justify-between px-4 py-3">
+              <div className="x-account-menu absolute bottom-14 left-0 w-72 border border-slate-800 bg-slate-950 shadow-xl shadow-black/60">
+                {/* Accounts list (current account) */}
+                <div className="divide-y divide-slate-800">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-900"
+                  >
                     <div className="flex items-center gap-3">
                       {user?.image ? (
                         <img
@@ -270,40 +269,71 @@ export default function DashboardPage() {
                           {isVerified && <span className="x-verified-badge" />}
                         </p>
                         <p className="text-[11px] text-slate-500">
-                          @{username ?? 'your_handle'}
+                          @{username}
                         </p>
                       </div>
                     </div>
 
-                    {/* Green active check, like X */}
+                    {/* Green active check (like X) */}
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[11px] text-black">
                       ✓
                     </span>
-                  </div>
+                  </button>
                 </div>
 
-                {/* Only logout row (we removed “Add existing / Manage accounts”) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAccountMenuOpen(false);
-                    signOut({ callbackUrl: '/' });
-                  }}
-                  className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
-                >
-                  Log out @{username ?? 'your_handle'}
-                </button>
+                {/* “Add / manage / logout” section */}
+                <div className="border-t border-slate-800 bg-slate-950">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        'https://x.com/i/flow/login',
+                        '_blank',
+                        'noopener,noreferrer'
+                      )
+                    }
+                    className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
+                  >
+                    Add an existing account
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        'https://x.com/settings',
+                        '_blank',
+                        'noopener,noreferrer'
+                      )
+                    }
+                    className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
+                  >
+                    Manage accounts
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      signOut({ callbackUrl: '/' });
+                    }}
+                    className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
+                  >
+                    Log out @{username}
+                  </button>
+                </div>
               </div>
             )}
           </div>
-        </aside>
+        
+                </aside>
 
-        {/* ── Center column (feed) ───────────────────────────── */}
-        <section className="min-h-screen flex-1 border-r border-slate-900">
+      {/* ── Main glass panel: center + right column ───────── */}
+      <div className="flex flex-1 gap-4 rounded-[26px] bg-[#020617] border border-slate-900/70 shadow-[0_24px_80px_rgba(0,0,0,0.9)] overflow-hidden">
+        {/* ── Center column (feed) ────────────────────────── */}
+        <section className="min-h-screen flex-1">
           {/* Sticky header like X */}
           <header className="sticky top-0 z-10 border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
-            <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-            <p className="text-sm text-slate-400">
+            <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
+            <p className="text-xs text-slate-500">
               Your XPOT entries, jackpots and wins.
             </p>
           </header>
@@ -325,38 +355,12 @@ export default function DashboardPage() {
           )}
 
           {/* Scroll content */}
-          <div className="space-y-4 border-x border-slate-900 px-0 sm:px-0">
-            {/* Profile header – X-style user strip at top */}
-            <section className="flex items-center justify-between border-b border-slate-900 px-4 pt-3 pb-2">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
-                  <span className="text-lg">🖤</span>
-                </div>
-
-                <div className="flex flex-col leading-tight">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-semibold text-slate-50">
-                      Mørke Drevos
-                    </span>
-                    <span className="x-verified-badge" />
-                  </div>
-                  <span className="text-xs text-slate-500">
-                    @{username ?? 'your_handle'}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-              >
-                ⋯
-              </button>
-            </section>
-
+          <div className="space-y-4 px-0 sm:px-0">
             {/* Summary “tweet” style card */}
             <article className="border-b border-slate-900 px-4 pt-4 pb-5">
-              <p className="xpot-section-eyebrow">Overview</p>
+              <p className="xpot-section-eyebrow">
+  Overview
+</p>
               <p className="mt-2 text-sm text-slate-300">
                 Once X login is live, we’ll sync your XPOT balance and entry codes
                 here. This is how your daily luck hub will feel.
@@ -397,7 +401,7 @@ export default function DashboardPage() {
                     'XPOT access activated (preview). One tweet per account. Balance controls your entries.'
                   )
                 }
-                className="mt-4 px-4 py-2 text-sm xpot-primary-btn"
+                className="mt-4 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-400"
               >
                 Activate XPOT access
               </button>
@@ -541,7 +545,7 @@ export default function DashboardPage() {
         {/* ── Right sidebar (X “What’s happening”) ───────────── */}
         <aside className="hidden w-80 flex-col gap-4 px-4 py-4 lg:flex">
           {/* Balance preview */}
-          <div className="xpot-card-soft p-4">
+          <div className="rounded-3xl bg-slate-900/80 p-4">
             <h3 className="text-sm font-semibold">XPOT balance (preview)</h3>
             <p className="mt-1 text-xs text-slate-400">
               In v1 this updates in real time from your Solana wallet.
@@ -556,7 +560,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Sign in with X */}
-          <div className="xpot-card-soft p-4">
+          <div className="rounded-3xl bg-slate-900/80 p-4">
             <h3 className="text-sm font-semibold">
               {isAuthed ? 'Signed in with X' : 'Sign in with X'}
             </h3>
@@ -589,7 +593,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Wallet connect preview */}
-          <div className="xpot-card-soft p-4">
+          <div className="rounded-3xl bg-slate-900/80 p-4">
             <h3 className="text-sm font-semibold">Connect wallet (preview)</h3>
             <p className="mt-1 text-xs text-slate-400">
               In v1, you’ll connect a Solana wallet so your XPOT balance can update
@@ -605,6 +609,6 @@ export default function DashboardPage() {
           </div>
         </aside>
       </div>
-    </main>
-  );
-}
+    </div>
+  </main>
+);
