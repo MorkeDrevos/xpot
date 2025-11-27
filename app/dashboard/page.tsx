@@ -3,6 +3,13 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+function generateXPOTCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const block = () =>
+    Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return `XPOT-${block()}-${block()}`;
+}
+
 type EntryStatus = 'active' | 'won' | 'lost' | 'expired';
 
 type Entry = {
@@ -147,7 +154,7 @@ export default function DashboardPage() {
                   {activeEntries.length}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  One code per entry.
+                  Entries depend on your XPOT balance.
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
@@ -169,6 +176,19 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
+
+          <button
+  type="button"
+  onClick={() => alert('XPOT activated. One tweet per account. Balance now determines entries.')}
+  className="mt-6 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-black hover:bg-emerald-400 transition"
+>
+  Activate XPOT access
+</button>
+
+          <p className="mt-3 text-xs text-slate-400">
+  You only activate once. From then on, your XPOT balance determines your number of entries.
+</p>
+
           </div>
 
           {/* X login / connect */}
