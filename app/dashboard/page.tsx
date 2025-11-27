@@ -50,13 +50,18 @@ if (initialEntries.length > 0) {
 // ── Page ─────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const user = session?.user as any | undefined;
+  const isAuthed = !!session;
+
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [winnerClaimed, setWinnerClaimed] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  const activeEntries = entries.filter(e => e.status === 'in-draw' || e.status === 'won');
+  const activeEntries = entries.filter(
+    e => e.status === 'in-draw' || e.status === 'won'
+  );
   const totalEntries = entries.length;
-
   const winner = entries.find(e => e.status === 'won');
 
   async function handleCopy(entry: Entry) {
@@ -68,11 +73,6 @@ export default function DashboardPage() {
       // ignore for now
     }
   }
-
-export default function DashboardPage() {
-  const { data: session, status } = useSession();
-  const user = session?.user as any | undefined;
-  const isAuthed = !!session;
 
   return (
     <main className="min-h-screen bg-black text-slate-50">
@@ -128,49 +128,48 @@ export default function DashboardPage() {
           </div>
 
           {/* Mini user chip – clickable like X */}
-<div
-  className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
-  onClick={() => {
-    if (!isAuthed) {
-      signIn('x', { callbackUrl: '/dashboard' });
-    } else {
-      // optional: open settings later, for now do nothing
-    }
-  }}
->
-  <div className="flex items-center gap-2">
-    {user?.image ? (
-      // avatar from X
-      <img
-        src={user.image}
-        alt={user.name ?? 'X avatar'}
-        className="h-8 w-8 rounded-full object-cover"
-      />
-    ) : (
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
-        @
-      </div>
-    )}
+          <div
+            className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
+            onClick={() => {
+              if (!isAuthed) {
+                signIn('x', { callbackUrl: '/dashboard' });
+              } else {
+                // later: open profile/settings
+              }
+            }}
+          >
+            <div className="flex items-center gap-2">
+              {user?.image ? (
+                <img
+                  src={user.image}
+                  alt={user.name ?? 'X avatar'}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
+                  @
+                </div>
+              )}
 
-    <div className="leading-tight">
-      <p className="flex items-center gap-1 text-xs font-semibold">
-        {user?.name ?? 'Your X handle'}
-        {user?.verified && (
-          <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-500 text-[9px] text-white">
-            ✓
-          </span>
-        )}
-      </p>
-      <p className="text-[11px] text-slate-500">
-        @{user?.username ?? 'your_handle'}
-      </p>
-    </div>
-  </div>
+              <div className="leading-tight">
+                <p className="flex items-center gap-1 text-xs font-semibold">
+                  {user?.name ?? 'Your X handle'}
+                  {user?.verified && (
+                    <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-500 text-[9px] text-white">
+                      ✓
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  @{user?.username ?? 'your_handle'}
+                </p>
+              </div>
+            </div>
 
-  <span className="text-[11px] text-slate-500">
-    {isAuthed ? 'Connected' : 'Preview'}
-  </span>
-</div>
+            <span className="text-[11px] text-slate-500">
+              {isAuthed ? 'Connected' : 'Preview'}
+            </span>
+          </div>
         </aside>
 
         {/* ── Center column (feed) ───────────────────────────── */}
@@ -185,10 +184,9 @@ export default function DashboardPage() {
 
           {/* Scroll content */}
           <div className="space-y-4 border-x border-slate-900 px-0 sm:px-0">
-            {/* Profile header – X style */}
+            {/* Profile header – static X-style */}
             <section className="flex items-center justify-between border-b border-slate-900 px-4 pt-3 pb-2">
               <div className="flex items-center gap-3">
-                {/* Avatar circle */}
                 <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
                   <span className="text-lg">🖤</span>
                 </div>
@@ -198,7 +196,6 @@ export default function DashboardPage() {
                     <span className="text-sm font-semibold text-slate-50">
                       Mørke Drevos
                     </span>
-                    {/* Blue check */}
                     <span className="inline-flex items-center justify-center rounded-full bg-sky-500 px-1.5 py-[1px] text-[10px] font-semibold text-black">
                       ✓
                     </span>
@@ -207,7 +204,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Three-dot menu */}
               <button
                 type="button"
                 className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100"
@@ -222,8 +218,8 @@ export default function DashboardPage() {
                 Overview
               </p>
               <p className="mt-2 text-sm text-slate-300">
-                Once X login is live, we’ll sync your XPOT balance and entry codes here.
-                This is how your daily luck hub will feel.
+                Once X login is live, we’ll sync your XPOT balance and entry codes
+                here. This is how your daily luck hub will feel.
               </p>
 
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -271,7 +267,7 @@ export default function DashboardPage() {
               </p>
             </article>
 
-            {/* Today’s result card (like a pinned tweet) */}
+            {/* Today’s result card */}
             <article className="border-b border-slate-900 px-4 pb-5 pt-3">
               <h2 className="text-sm font-semibold text-emerald-100">
                 Today’s result
@@ -289,8 +285,8 @@ export default function DashboardPage() {
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
                       Return to your dashboard after the draw to claim. If you don’t
-                      claim in time, the unclaimed amount rolls over on top of the next
-                      jackpot.
+                      claim in time, the unclaimed amount rolls over on top of the
+                      next jackpot.
                     </p>
                   </div>
 
@@ -421,35 +417,36 @@ export default function DashboardPage() {
 
           {/* Sign in with X */}
           <div className="rounded-3xl bg-slate-900/80 p-4">
-  <h3 className="text-sm font-semibold">
-    {isAuthed ? 'Signed in with X' : 'Sign in with X'}
-  </h3>
-  <p className="mt-1 text-xs text-slate-400">
-    Connect your X account once. We’ll verify your tweet and lock your XPOT holder status.
-  </p>
+            <h3 className="text-sm font-semibold">
+              {isAuthed ? 'Signed in with X' : 'Sign in with X'}
+            </h3>
+            <p className="mt-1 text-xs text-slate-400">
+              Connect your X account once. We’ll verify your tweet and lock your XPOT
+              holder status.
+            </p>
 
-  {!isAuthed ? (
-    <button
-      type="button"
-      onClick={() => signIn('x', { callbackUrl: '/dashboard' })}
-      className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
-    >
-      {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-    </button>
-  ) : (
-    <button
-      type="button"
-      onClick={() => signOut({ callbackUrl: '/' })}
-      className="mt-3 w-full rounded-full bg-slate-800 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
-    >
-      Sign out
-    </button>
-  )}
+            {!isAuthed ? (
+              <button
+                type="button"
+                onClick={() => signIn('x', { callbackUrl: '/dashboard' })}
+                className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+              >
+                {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: '/' })}
+                className="mt-3 w-full rounded-full bg-slate-800 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
+              >
+                Sign out
+              </button>
+            )}
 
-  <p className="mt-2 text-[11px] text-slate-500">
-    We never post for you. X is only used to verify entries.
-  </p>
-</div>
+            <p className="mt-2 text-[11px] text-slate-500">
+              We never post for you. X is only used to verify entries.
+            </p>
+          </div>
 
           {/* Wallet connect preview */}
           <div className="rounded-3xl bg-slate-900/80 p-4">
