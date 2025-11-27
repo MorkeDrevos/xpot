@@ -1,14 +1,14 @@
 // app/api/auth/[...nextauth]/route.ts
-import NextAuth, { NextAuthOptions } from 'next-auth';
+import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   providers: [
     TwitterProvider({
       id: 'x', // so signIn('x') works
       clientId: process.env.X_CLIENT_ID ?? '',
       clientSecret: process.env.X_CLIENT_SECRET ?? '',
-      version: '2.0', // X OAuth2
+      version: '2.0', // OAuth2
     }),
   ],
 
@@ -28,60 +28,58 @@ export const authOptions: NextAuthOptions = {
           (token.name as string | undefined) ??
           null;
 
+        token.username =
+          (p.username as string | undefined) ??
+          (p.screen_name as string | undefined) ??
+          ((token as any).username as string | undefined) ??
+          null;
+
         token.picture =
-          (p.profile_image_url_https as string | undefined) ??
           (p.profile_image_url as string | undefined) ??
+          (p.profile_image_url_https as string | undefined) ??
           (token.picture as string | undefined) ??
           null;
 
-        token.username =
-          (p.screen_name as string | undefined) ??
-          (p.username as string | undefined) ??
-          (p.login as string | undefined) ??
-          (token as any).username ??
-          null;
+        // "Real" verified flag from X profile
+        const rawVerified =
+          typeof p.verified === 'boolean'
+            ? p.verified
+            : typeof p.verified_type === 'string'
+            ? ['blue', 'business', 'government', 'organization'].includes(
+                (p.verified_type as string).toLowerCase()
+              )
+            : false;
 
-        // Real verified flags from X
-        const rawVerified = (p as any).verified;
-        const rawVerifiedType = (p as any).verified_type;
-
-        (token as any).verified =
-          typeof rawVerified === 'boolean' ? rawVerified : false;
-
-        if (typeof rawVerifiedType === 'string') {
-          (token as any).verified_type = rawVerifiedType;
-        } else {
-          delete (token as any).verified_type;
-        }
+        (token as any).verified = rawVerified;
       }
 
       return token;
     },
 
     async session({ session, token }) {
-      // Make sure session.user exists
-      if (!session.user) {
-        session.user = {};
+      if (session.user) {
+        // username / handle
+        (session.user as any).username =
+          (token as any).username ??
+          (session.user as any).username ??
+          null;
+
+        // avatar
+        if (token.picture) {
+          session.user.image = token.picture as string;
+        }
+
+        // verified flag used by the UI
+        (session.user as any).verified = (token as any).verified ?? false;
       }
 
-      // Pass through identity from the token
-      session.user.name = token.name as string | undefined;
-      session.user.image = token.picture as string | undefined;
-      (session.user as any).username = (token as any).username ?? null;
-      (session.user as any).verified = (token as any).verified ?? false;
-      (session.user as any).verified_type = (token as any).verified_type ?? null;
-
       return session;
-    },
-
-    // Optional: after login always land on /dashboard
-    async redirect({ url, baseUrl }) {
-      // If it's an absolute callback (X sending us back), ignore and go dashboard
-      return `${baseUrl}/dashboard`;
     },
   },
 };
 
+// Create the route handler for Next.js App Router
 const handler = NextAuth(authOptions);
 
+// Only export GET / POST – nothing else
 export { handler as GET, handler as POST };
