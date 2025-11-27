@@ -53,7 +53,6 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
-  const isVerified = !!user?.verified;
 
   // robust username fallback
   const username =
@@ -71,6 +70,8 @@ export default function DashboardPage() {
   // ── Auto-update on new deploy ────────────────────────────────
   const [currentBuildId, setCurrentBuildId] = useState<string | null>(null);
   const [hasNewBuild, setHasNewBuild] = useState(false);
+
+  // XPOT access lock state (drives lock badge)
   const [xpotActivated, setXpotActivated] = useState(false);
 
   useEffect(() => {
@@ -196,7 +197,7 @@ export default function DashboardPage() {
             {/* Big CTA like “Post” */}
             <button
               type="button"
-              className="btn-premium mt-4 w-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 px-5 py-2.5 text-sm font-semibold text-black shadow-[0_20px_40px_rgba(22,163,74,0.5)] hover:brightness-110 active:scale-[0.97] transition-all"
+              className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
             >
               Create XPOT entry
             </button>
@@ -216,22 +217,28 @@ export default function DashboardPage() {
               }}
             >
               <div className="flex items-center gap-2">
-                {user?.image ? (
-                  <img
-                    src={user.image}
-                    alt={user.name ?? 'X avatar'}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
-                    @
-                  </div>
-                )}
+                <div className="relative">
+                  {user?.image ? (
+                    <img
+                      src={user.image}
+                      alt={user.name ?? 'X avatar'}
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
+                      @
+                    </div>
+                  )}
+                  {xpotActivated && (
+                    <div className="lock-badge" title="XPOT identity locked">
+                      🔒
+                    </div>
+                  )}
+                </div>
 
                 <div className="leading-tight">
                   <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
                     {user?.name ?? 'Your X handle'}
-                    {isAuthed && isVerified && <span className="x-verified-badge" />}
                   </p>
                   <p className="text-[11px] text-slate-500">@{username}</p>
                 </div>
@@ -252,21 +259,38 @@ export default function DashboardPage() {
                   className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-900"
                 >
                   <div className="flex items-center gap-3">
-                    {user?.image ? (
-                      <img
-                        src={user.image}
-                        alt={user.name ?? 'X avatar'}
-                        className="h-9 w-9 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs">
-                        @
-                      </div>
-                    )}
+                    <div className="relative">
+                      {user?.image ? (
+                        <img
+                          src={user.image}
+                          alt={user.name ?? 'X avatar'}
+                          className="h-9 w-9 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs">
+                          @
+                        </div>
+                      )}
+                      {xpotActivated && (
+                        <div
+                          className="lock-badge"
+                          title="XPOT identity locked"
+                        >
+                          🔒
+                        </div>
+                      )}
+                    </div>
                     <div className="leading-tight">
                       <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
                         {user?.name ?? 'Your X handle'}
-                        {isVerified && <span className="x-verified-badge" />}
+                        {xpotActivated && (
+                          <span
+                            className="ml-2 rounded-full bg-emerald-500/15 px-2 py-[2px] text-[10px] font-semibold text-emerald-300"
+                            title="XPOT access locked"
+                          >
+                            LOCKED
+                          </span>
+                        )}
                       </p>
                       <p className="text-[11px] text-slate-500">@{username}</p>
                     </div>
@@ -325,9 +349,16 @@ export default function DashboardPage() {
               {/* Profile header – static X-style */}
               <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
-                    {/* you can swap this for your real avatar later */}
+                  <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
                     <span className="text-lg">🖤</span>
+                    {xpotActivated && (
+                      <div
+                        className="lock-badge"
+                        title="XPOT identity locked"
+                      >
+                        🔒
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col leading-tight">
@@ -335,7 +366,6 @@ export default function DashboardPage() {
                       <span className="text-sm font-semibold text-slate-50">
                         Mørke Drevos
                       </span>
-                      <span className="x-verified-badge" />
                     </div>
                     <span className="text-xs text-slate-500">@{username}</span>
                   </div>
@@ -350,49 +380,55 @@ export default function DashboardPage() {
               </section>
 
               {/* Summary “tweet” style card */}
-<article className="border-b border-slate-900/60 px-4 pt-4 pb-5">
-  <div className="card-premium rounded-3xl p-4">
-    <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-300">
-      Overview
-    </p>
-    <p className="mt-2 text-sm text-slate-300">
-      Once X login is live, we’ll sync your XPOT balance and entry codes here.
-      This is how your daily luck hub will feel.
-    </p>
+              <article className="border-b border-slate-900/60 px-4 pt-4 pb-5">
+                <div className="card-premium rounded-3xl p-4">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-300">
+                    Overview
+                  </p>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Once X login is live, we’ll sync your XPOT balance and entry
+                    codes here. This is how your daily luck hub will feel.
+                  </p>
 
-    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
-        <p className="text-[11px] text-slate-400">Entries this round</p>
-        <p className="mt-1 text-xl font-semibold">
-          {activeEntries.length}
-        </p>
-        <p className="mt-1 text-[11px] text-slate-500">
-          Based on your XPOT balance.
-        </p>
-      </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                      <p className="text-[11px] text-slate-400">
+                        Entries this round
+                      </p>
+                      <p className="mt-1 text-xl font-semibold">
+                        {activeEntries.length}
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Based on your XPOT balance.
+                      </p>
+                    </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
-        <p className="text-[11px] text-slate-400">
-          Total entries (preview)
-        </p>
-        <p className="mt-1 text-xl font-semibold">{totalEntries}</p>
-        <p className="mt-1 text-[11px] text-slate-500">
-          Full history with X login.
-        </p>
-      </div>
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                      <p className="text-[11px] text-slate-400">
+                        Total entries (preview)
+                      </p>
+                      <p className="mt-1 text-xl font-semibold">
+                        {totalEntries}
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Full history with X login.
+                      </p>
+                    </div>
 
-      <div className="premium-highlight col-span-2 p-3 sm:col-span-1">
-        <p className="text-[11px] text-emerald-300">Next daily jackpot</p>
-        <p className="mt-1 text-xl font-semibold text-emerald-100">
-          $10,000
-        </p>
-        <p className="mt-1 text-[11px] text-emerald-200/80">
-          Draws daily on-chain. One wallet hits the pot.
-        </p>
-      </div>
-    </div>
-  </div>
-</article>
+                    <div className="premium-highlight jackpot-core col-span-2 p-3 sm:col-span-1">
+                      <p className="text-[11px] text-emerald-300">
+                        Next daily jackpot
+                      </p>
+                      <p className="mt-1 text-xl font-semibold text-emerald-100">
+                        $10,000
+                      </p>
+                      <p className="mt-1 text-[11px] text-emerald-200/80">
+                        Draws daily on-chain. One wallet hits the pot.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </article>
 
               {/* Today’s result card */}
               <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
@@ -429,16 +465,16 @@ export default function DashboardPage() {
                       }}
                       disabled={winnerClaimed}
                       className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold transition sm:mt-0 ${
-  winnerClaimed
-    ? 'cursor-not-allowed bg-slate-900 text-slate-500 border border-slate-800'
-    : 'bg-emerald-400 text-slate-900 hover:bg-emerald-300'
-}`}
+                        winnerClaimed
+                          ? 'cursor-not-allowed bg-slate-900 text-slate-500 border border-slate-800'
+                          : 'bg-emerald-400 text-slate-900 hover:bg-emerald-300'
+                      }`}
                     >
                       {winnerClaimed ? 'Prize claimed' : 'Claim today’s jackpot'}
                     </button>
                   </div>
                 ) : (
-                  <p className="btn-premium mt-3 text-sm text-slate-300">
+                  <p className="mt-3 text-sm text-slate-300">
                     Your codes are in the draw. The result will appear here when the
                     timer hits zero.
                   </p>
@@ -544,7 +580,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* Sign in with X */}
+            {/* Sign in with X + XPOT access */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">
                 {isAuthed ? 'Signed in with X' : 'Sign in with X'}
@@ -573,37 +609,40 @@ export default function DashboardPage() {
               )}
 
               {/* Activate XPOT access - primary action */}
-<div className="mt-4 rounded-3xl bg-slate-900/70 p-4">
-  
-  <h3 className="text-sm font-semibold text-slate-100">XPOT access</h3>
+              <div className="mt-4 rounded-3xl bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  XPOT access
+                </h3>
 
-<p className="mt-1 text-xs text-slate-400">
-  {xpotActivated
-    ? 'Your XPOT entries are now locked to this X account.'
-    : 'Activate once to lock your entries to this X account.'}
-</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {xpotActivated
+                    ? 'Your XPOT entries are now locked to this X account.'
+                    : 'Activate once to lock your entries to this X account.'}
+                </p>
 
-{!xpotActivated ? (
-  <button
-    type="button"
-    onClick={() => {
-      setXpotActivated(true);
-      alert('XPOT access activated (preview). One account = one identity.');
-    }}
-    className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 py-2 text-sm font-semibold text-black"
-  >
-    Activate XPOT access
-  </button>
-) : (
-  <div className="mt-3 premium-pill xpot-locked flex items-center justify-center gap-2 rounded-full bg-emerald-500/15 py-2 text-sm font-semibold text-emerald-300">
-    ✅ XPOT access locked
-  </div>
-)}
-</div>
+                {!xpotActivated ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setXpotActivated(true);
+                      alert(
+                        'XPOT access activated (preview). One account = one identity.'
+                      );
+                    }}
+                    className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
+                  >
+                    Activate XPOT access
+                  </button>
+                ) : (
+                  <div className="mt-3 premium-pill xpot-locked flex items-center justify-center gap-2 rounded-full bg-emerald-500/15 py-2 text-sm font-semibold text-emerald-300">
+                    ✅ XPOT access locked
+                  </div>
+                )}
+              </div>
 
               <p className="mt-2 text-[11px] text-slate-500">
-  We never post for you. X is only used to verify entries.
-</p>
+                We never post for you. X is only used to verify entries.
+              </p>
             </div>
 
             {/* Wallet connect preview */}
