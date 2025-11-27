@@ -47,34 +47,13 @@ if (initialEntries.length > 0) {
   initialEntries[0].status = 'won';
 }
 
-/* ── X-style verified badge (SVG) ─────────────────────────────── */
-
-function VerifiedBadge() {
-  return (
-    <span className="x-verified-badge" aria-label="Verified account">
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="x-verified-svg">
-        <circle cx="12" cy="12" r="12" fill="#1D9BF0" />
-        <path
-          d="M8.5 12.5 11 15 15.5 9.5"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </span>
-  );
-}
-
 // ── Page ─────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
-
-  // TEMP for launch: tick whenever signed in
-  const isVerified = !!isAuthed;
+  const isVerified = !!user?.verified; // real flag from NextAuth
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [winnerClaimed, setWinnerClaimed] = useState(false);
@@ -162,7 +141,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-slate-50 text-[15px]">
+    <main className="min-h-screen bg-black text-slate-50">
       <div className="mx-auto flex max-w-6xl">
         {/* ── Left nav (X-like) ─────────────────────────────── */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
@@ -217,7 +196,7 @@ export default function DashboardPage() {
           {/* Mini user chip + account menu (X-style) */}
           <div className="relative">
             <div
-              className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80 transition-transform duration-100 active:scale-[0.97]"
+              className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
               onClick={() => {
                 if (!isAuthed) {
                   openXLoginPopup();
@@ -241,9 +220,9 @@ export default function DashboardPage() {
 
                 <div className="leading-tight">
                   <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
-                    {user?.name ?? 'Your X handle'}
-                    {isVerified && <VerifiedBadge />}
-                  </p>
+  {user?.name ?? 'Your X handle'}
+  {isVerified && <span className="x-verified-badge">✓</span>}
+</p>
                   <p className="text-[11px] text-slate-500">
                     @{user?.username ?? 'your_handle'}
                   </p>
@@ -258,7 +237,7 @@ export default function DashboardPage() {
 
             {/* Dropdown menu when connected */}
             {isAuthed && accountMenuOpen && (
-              <div className="x-account-dropdown absolute bottom-12 left-0 w-64 rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60">
+              <div className="absolute bottom-12 left-0 w-64 rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60 transition-all duration-150 ease-out origin-bottom-left">
                 {/* Active account row */}
                 <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-3 py-3">
                   <div className="flex items-center gap-2">
@@ -275,9 +254,9 @@ export default function DashboardPage() {
                     )}
                     <div className="leading-tight">
                       <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
-                        {user?.name ?? 'Your X handle'}
-                        {isVerified && <VerifiedBadge />}
-                      </p>
+  {user?.name ?? 'Your X handle'}
+  {isVerified && <span className="x-verified-badge">✓</span>}
+</p>
                       <p className="text-[11px] text-slate-500">
                         @{user?.username ?? 'your_handle'}
                       </p>
@@ -372,7 +351,7 @@ export default function DashboardPage() {
                 here. This is how your daily luck hub will feel.
               </p>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols=3 sm:grid-cols-3">
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
                   <p className="text-[11px] text-slate-400">Entries this round</p>
                   <p className="mt-1 text-xl font-semibold">
