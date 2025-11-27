@@ -8,25 +8,88 @@ body {
   padding: 0;
 }
 
-/* Global XPOT typography / theme */
+/* Global XPOT typography */
 :root {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
     'SF Pro Display', sans-serif;
-  font-size: 16px; /* base up from 15px */
+  font-size: 16px; /* bump base size */
 }
 
 @media (min-width: 1024px) {
   :root {
-    font-size: 17px; /* bump on desktop for more premium feel */
+    font-size: 17px; /* a little larger on desktop */
   }
 }
 
 body {
   background:
-    radial-gradient(circle at top, #020617 0, #020617 40%, #000 100%);
+    radial-gradient(circle at top, #020617 0, #020617 42%, #020617 60%, #000 100%);
   color: #e5e7eb;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+}
+
+/* Subtle page shell for the main app */
+.xpot-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(15, 23, 42, 0.65), transparent 55%),
+    radial-gradient(circle at bottom, rgba(0, 0, 0, 0.9), #000);
+}
+
+/* Reusable premium card */
+.xpot-card {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(30, 64, 175, 0.35); /* indigo-ish edge */
+  background: radial-gradient(circle at top left, #020617 0, #020617 55%, #020617 100%);
+  background-color: rgba(15, 23, 42, 0.96);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 0.95);
+}
+
+/* Slightly softer secondary card */
+.xpot-card-soft {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.94));
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.88);
+}
+
+/* Primary pill buttons */
+.xpot-primary-btn {
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #22c55e, #a3e635);
+  color: #020617;
+  font-weight: 600;
+  box-shadow:
+    0 16px 40px rgba(22, 163, 74, 0.5),
+    0 0 0 1px rgba(15, 23, 42, 0.8);
+  transition:
+    transform 0.12s ease-out,
+    box-shadow 0.12s ease-out,
+    filter 0.12s ease-out;
+}
+
+.xpot-primary-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow:
+    0 20px 50px rgba(22, 163, 74, 0.55),
+    0 0 0 1px rgba(15, 23, 42, 1);
+}
+
+.xpot-primary-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 8px 24px rgba(22, 163, 74, 0.45),
+    0 0 0 1px rgba(15, 23, 42, 1);
+}
+
+/* Subtle section eyebrow */
+.xpot-section-eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: #4ade80;
 }
 
 /* XPOT X-style verified badge (custom, non-copyrighted) */
@@ -34,14 +97,12 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
-  width: 13px;   /* slightly smaller */
+  width: 13px;
   height: 13px;
   margin-left: 6px;
 
   border-radius: 9999px;
-  background: #1d9bf0;
-
+  background: radial-gradient(circle at 30% 20%, #e0f2fe 0, #1d9bf0 35%, #0369a1 100%);
   color: #fff;
   font-size: 8px;
   font-weight: 900;
@@ -49,12 +110,12 @@ body {
 
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.16) inset,
-    0 0 0 0 rgba(29, 155, 240, 0);
+    0 0 0 0 rgba(15, 23, 42, 0.9);
 
   transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    filter 0.15s ease;
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    filter 0.14s ease;
 }
 
 /* Draw the check mark with borders so it’s vector-clean */
@@ -69,14 +130,13 @@ body {
   transform: translateY(-0.5px) rotate(-45deg);
 }
 
-/* Hover / focus – tiny lift & shine */
+/* Hover = tiny lift & glow */
 .x-verified-badge:hover {
   transform: translateY(-0.5px);
-  filter: brightness(1.05);
+  filter: brightness(1.04);
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.95),
-    0 4px 10px rgba(15, 23, 42, 0.9),
-    0 0 6px rgba(29, 155, 240, 0.4);
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 5px 12px rgba(15, 23, 42, 0.9);
 }
 
 /* Pressed – scale down like X */
@@ -84,15 +144,12 @@ body {
   transform: scale(0.9);
   filter: brightness(0.97);
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 0.9),
     0 1px 4px rgba(15, 23, 42, 0.9);
 }
 
-/* XPOT account dropdown – fade+slide in + rounded sheet */
-.x-account-menu {
-  border-radius: 1.5rem;
-  overflow: hidden;
-
+/* Dropdown fade+slide in */
+.account-menu {
   opacity: 0;
   transform: translateY(4px) scale(0.97);
   transform-origin: bottom left;
@@ -110,12 +167,6 @@ body {
   }
 }
 
-.x-account-menu hr {
-  border-color: #111827; /* slate-900-ish */
-  opacity: 1;
-  margin: 0;
-}
-
 /* XPOT legal pages */
 
 .legal-page {
@@ -131,13 +182,11 @@ body {
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
-  background: rgba(15, 23, 42, 0.95);
+  background: rgba(15, 23, 42, 0.9);
   border-radius: 1.25rem;
-  padding: 2.75rem 2.25rem;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  box-shadow:
-    0 24px 60px rgba(15, 23, 42, 0.95),
-    0 0 0 1px rgba(15, 23, 42, 0.9);
+  padding: 2.5rem 2rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
   color: #e5e7eb;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
@@ -148,68 +197,68 @@ body {
   }
 
   .legal-container {
-    padding: 2.25rem 1.75rem;
+    padding: 2rem 1.5rem;
   }
 }
 
 .legal-eyebrow {
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
   color: #a5b4fc;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
 }
 
 .legal-title {
-  font-size: 2.2rem;
+  font-size: 2rem;
   line-height: 1.2;
   font-weight: 700;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.25rem;
 }
 
 .legal-updated {
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   color: #9ca3af;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .legal-intro {
-  margin-bottom: 1.1rem;
+  margin-bottom: 1rem;
 }
 
 .legal-container h2 {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  margin-top: 1.85rem;
-  margin-bottom: 0.6rem;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
   color: #e5e7eb;
 }
 
 .legal-container h3 {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 600;
-  margin-top: 1.3rem;
-  margin-bottom: 0.45rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
   color: #e5e7eb;
 }
 
 .legal-container p {
-  font-size: 1rem;
-  line-height: 1.8;
-  margin-bottom: 0.7rem;
+  font-size: 0.94rem;
+  line-height: 1.7;
+  margin-bottom: 0.6rem;
   color: #d1d5db;
 }
 
 .legal-container ul {
-  padding-left: 1.35rem;
-  margin: 0.3rem 0 0.85rem;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0 0.75rem;
 }
 
 .legal-container li {
-  font-size: 1rem;
-  line-height: 1.8;
+  font-size: 0.94rem;
+  line-height: 1.7;
   color: #d1d5db;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.25rem;
 }
 
 .legal-container a {
@@ -221,4 +270,16 @@ body {
 
 .legal-container a:hover {
   text-decoration-thickness: 2px;
+}
+
+/* XPOT account dropdown polish */
+.x-account-menu {
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+
+.x-account-menu hr {
+  border-color: #111827; /* slate-900-ish */
+  opacity: 1;
+  margin: 0;
 }
