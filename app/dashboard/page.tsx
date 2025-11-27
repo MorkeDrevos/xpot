@@ -82,7 +82,7 @@ export default function DashboardPage() {
   const left = window.screenX + (window.outerWidth - width) / 2;
   const top = window.screenY + (window.outerHeight - height) / 2;
 
-  const url = '/x-login'; // 👈 new
+  const url = `/api/auth/signin/x?callbackUrl=${encodeURIComponent('/auth/x-complete')}`;
 
   const popup = window.open(
     url,
