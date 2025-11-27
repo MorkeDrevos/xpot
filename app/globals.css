@@ -8,22 +8,25 @@ body {
   padding: 0;
 }
 
-/* Global XPOT typography */
+/* Global XPOT typography / theme */
 :root {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
     'SF Pro Display', sans-serif;
-  font-size: 15px; /* base */
+  font-size: 16px; /* base up from 15px */
 }
 
 @media (min-width: 1024px) {
   :root {
-    font-size: 16px; /* bump on desktop */
+    font-size: 17px; /* bump on desktop for more premium feel */
   }
 }
 
 body {
-  background-color: #000;
+  background:
+    radial-gradient(circle at top, #020617 0, #020617 40%, #000 100%);
   color: #e5e7eb;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* XPOT X-style verified badge (custom, non-copyrighted) */
@@ -31,40 +34,27 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+
+  width: 13px;   /* slightly smaller */
+  height: 13px;
   margin-left: 6px;
 
   border-radius: 9999px;
   background: #1d9bf0;
 
   color: #fff;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 900;
   line-height: 1;
 
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.15) inset,
-    0 0 0 0 rgba(29,155,240,0);
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 0 0 0 rgba(29, 155, 240, 0);
 
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
     filter 0.15s ease;
-}
-
-/* Hover = subtle glow */
-.x-verified-badge:hover {
-  filter: brightness(1.08);
-  box-shadow:
-    0 0 6px rgba(29,155,240,0.4),
-    0 1px 0 rgba(255,255,255,0.15) inset;
-}
-
-/* Press animation */
-.x-verified-badge:active {
-  transform: scale(0.92);
-  box-shadow: 0 0 4px rgba(29,155,240,0.25);
 }
 
 /* Draw the check mark with borders so it’s vector-clean */
@@ -82,10 +72,11 @@ body {
 /* Hover / focus – tiny lift & shine */
 .x-verified-badge:hover {
   transform: translateY(-0.5px);
-  filter: brightness(1.04);
+  filter: brightness(1.05);
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 4px 10px rgba(15, 23, 42, 0.85);
+    0 0 0 1px rgba(15, 23, 42, 0.95),
+    0 4px 10px rgba(15, 23, 42, 0.9),
+    0 0 6px rgba(29, 155, 240, 0.4);
 }
 
 /* Pressed – scale down like X */
@@ -93,12 +84,15 @@ body {
   transform: scale(0.9);
   filter: brightness(0.97);
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 0 0 1px rgba(15, 23, 42, 0.95),
     0 1px 4px rgba(15, 23, 42, 0.9);
 }
 
-/* Dropdown fade+slide in */
-.account-menu {
+/* XPOT account dropdown – fade+slide in + rounded sheet */
+.x-account-menu {
+  border-radius: 1.5rem;
+  overflow: hidden;
+
   opacity: 0;
   transform: translateY(4px) scale(0.97);
   transform-origin: bottom left;
@@ -116,6 +110,12 @@ body {
   }
 }
 
+.x-account-menu hr {
+  border-color: #111827; /* slate-900-ish */
+  opacity: 1;
+  margin: 0;
+}
+
 /* XPOT legal pages */
 
 .legal-page {
@@ -131,11 +131,13 @@ body {
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.95);
   border-radius: 1.25rem;
-  padding: 2.5rem 2rem;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
+  padding: 2.75rem 2.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
   color: #e5e7eb;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
@@ -146,68 +148,68 @@ body {
   }
 
   .legal-container {
-    padding: 2rem 1.5rem;
+    padding: 2.25rem 1.75rem;
   }
 }
 
 .legal-eyebrow {
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  font-size: 0.8rem;
   color: #a5b4fc;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .legal-title {
-  font-size: 2rem;
+  font-size: 2.2rem;
   line-height: 1.2;
   font-weight: 700;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.4rem;
 }
 
 .legal-updated {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   color: #9ca3af;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
 }
 
 .legal-intro {
-  margin-bottom: 1rem;
+  margin-bottom: 1.1rem;
 }
 
 .legal-container h2 {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  margin-top: 1.75rem;
-  margin-bottom: 0.5rem;
+  margin-top: 1.85rem;
+  margin-bottom: 0.6rem;
   color: #e5e7eb;
 }
 
 .legal-container h3 {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  margin-top: 1.25rem;
-  margin-bottom: 0.4rem;
+  margin-top: 1.3rem;
+  margin-bottom: 0.45rem;
   color: #e5e7eb;
 }
 
 .legal-container p {
-  font-size: 0.94rem;
-  line-height: 1.7;
-  margin-bottom: 0.6rem;
+  font-size: 1rem;
+  line-height: 1.8;
+  margin-bottom: 0.7rem;
   color: #d1d5db;
 }
 
 .legal-container ul {
-  padding-left: 1.25rem;
-  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.35rem;
+  margin: 0.3rem 0 0.85rem;
 }
 
 .legal-container li {
-  font-size: 0.94rem;
-  line-height: 1.7;
+  font-size: 1rem;
+  line-height: 1.8;
   color: #d1d5db;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
 }
 
 .legal-container a {
@@ -219,16 +221,4 @@ body {
 
 .legal-container a:hover {
   text-decoration-thickness: 2px;
-}
-
-/* XPOT account dropdown polish */
-.x-account-menu {
-  border-radius: 1.5rem;
-  overflow: hidden;
-}
-
-.x-account-menu hr {
-  border-color: #111827; /* slate-900-ish */
-  opacity: 1;
-  margin: 0;
 }
