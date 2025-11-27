@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 // ── Helpers / types ──────────────────────────────────────────────
 
@@ -160,12 +160,12 @@ export default function DashboardPage() {
           <div
             className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
             onClick={() => {
-              if (!isAuthed) {
-                signIn('x', { callbackUrl: '/dashboard' });
-              } else {
-                // later: open profile/settings
-              }
-            }}
+  if (!isAuthed) {
+    openXLoginPopup();
+  } else {
+    // later: open profile/settings
+  }
+}}
           >
             <div className="flex items-center gap-2">
               {user?.image ? (
