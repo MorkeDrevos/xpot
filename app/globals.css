@@ -8,54 +8,98 @@ body {
   padding: 0;
 }
 
-/* ─────────────────────────────────────────
-   Global typography scale
-   ───────────────────────────────────────── */
-
-html {
-  font-size: 17px;
+/* Global XPOT typography */
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'SF Pro Display', sans-serif;
+  font-size: 15px; /* base */
 }
 
 @media (min-width: 1024px) {
-  html {
-    font-size: 18px;
+  :root {
+    font-size: 16px; /* bump on desktop */
   }
 }
 
 body {
-  -webkit-font-smoothing: antialiased;
+  background-color: #000;
+  color: #e5e7eb;
 }
 
-/* ─────────────────────────────────────────
-   X-style verified badge (drop-in)
-   Usage in JSX:
-   <span className="x-verified-badge">✓</span>
-   ───────────────────────────────────────── */
-
+/* X-style verified badge (smaller, SVG-ish) */
 .x-verified-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.1rem;   /* ~18px at base */
-  height: 1.1rem;
+  width: 0.9rem;   /* smaller badge */
+  height: 0.9rem;
+  margin-left: 0.25rem;
   border-radius: 9999px;
-  background-color: #1d9bf0; /* X blue */
-  color: #020617;            /* near-black */
-  font-size: 0.7rem;
-  font-weight: 700;
+  background: radial-gradient(circle at 30% 0%, #f9fbff 0, #1d9bf0 45%, #0c65b5 100%);
   box-shadow:
     0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 2px 4px rgba(15, 23, 42, 0.65);
+    0 0 0 1px rgba(15, 23, 42, 0.9) inset;
+  position: relative;
+  color: transparent; /* hide any text inside */
+  flex-shrink: 0;
+  transform-origin: center;
+  transform: translateY(0);
+  transition:
+    transform 0.12s ease-out,
+    box-shadow 0.12s ease-out,
+    filter 0.12s ease-out;
 }
 
-.x-verified-badge svg {
-  width: 0.7rem;
-  height: 0.7rem;
+/* Draw the check mark with borders so it’s vector-clean */
+.x-verified-badge::before {
+  content: '';
+  width: 0.35rem;
+  height: 0.22rem;
+  border-style: solid;
+  border-width: 0 0 2px 2px;
+  border-color: #ffffff;
+  border-radius: 0.5px;
+  transform: translateY(-0.5px) rotate(-45deg);
 }
 
-/* ─────────────────────────────────────────
-   XPOT legal pages
-   ───────────────────────────────────────── */
+/* Hover / focus – tiny lift & shine */
+.x-verified-badge:hover {
+  transform: translateY(-0.5px);
+  filter: brightness(1.04);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 4px 10px rgba(15, 23, 42, 0.85);
+}
+
+/* Pressed – scale down like X */
+.x-verified-badge:active {
+  transform: scale(0.9);
+  filter: brightness(0.97);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 1px 4px rgba(15, 23, 42, 0.9);
+}
+
+/* Dropdown fade+slide in */
+.account-menu {
+  opacity: 0;
+  transform: translateY(4px) scale(0.97);
+  transform-origin: bottom left;
+  animation: account-menu-in 130ms ease-out forwards;
+}
+
+@keyframes account-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* XPOT legal pages */
 
 .legal-page {
   min-height: 100vh;
@@ -77,7 +121,6 @@ body {
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
   color: #e5e7eb;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
-  font-size: 1rem; /* follow global scale */
 }
 
 @media (max-width: 640px) {
@@ -99,7 +142,7 @@ body {
 }
 
 .legal-title {
-  font-size: 2.3rem;
+  font-size: 2rem;
   line-height: 1.2;
   font-weight: 700;
   margin-bottom: 0.25rem;
@@ -116,7 +159,7 @@ body {
 }
 
 .legal-container h2 {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
   margin-top: 1.75rem;
   margin-bottom: 0.5rem;
@@ -124,7 +167,7 @@ body {
 }
 
 .legal-container h3 {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   margin-top: 1.25rem;
   margin-bottom: 0.4rem;
@@ -132,7 +175,7 @@ body {
 }
 
 .legal-container p {
-  font-size: 1rem;
+  font-size: 0.94rem;
   line-height: 1.7;
   margin-bottom: 0.6rem;
   color: #d1d5db;
@@ -144,7 +187,7 @@ body {
 }
 
 .legal-container li {
-  font-size: 1rem;
+  font-size: 0.94rem;
   line-height: 1.7;
   color: #d1d5db;
   margin-bottom: 0.25rem;
@@ -159,206 +202,4 @@ body {
 
 .legal-container a:hover {
   text-decoration-thickness: 2px;
-}
-/* X-style verified badge */
-.x-verified-badge {
-  display: inline-grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  background: #1d9bf0;
-  color: black;
-  font-weight: 900;
-  font-size: 11px;
-  border-radius: 999px;
-  line-height: 1;
-}
-
-/* Bigger global typography */
-html {
-  font-size: 108%;
-}
-
-.nav-item {
-  width: 100%;
-  padding: 10px;
-  border-radius: 999px;
-  text-align: left;
-  color: #cbd5f5;
-}
-.nav-item:hover {
-  background: rgba(255,255,255,0.04);
-}
-
-.nav-item-active {
-  @apply nav-item bg-slate-900 text-white font-semibold;
-}
-
-.stat {
-  background: #0f172a;
-  padding: 12px;
-  border-radius: 14px;
-}
-.stat-label {
-  font-size: 12px;
-  color: #94a3b8;
-}
-.stat-value {
-  display: block;
-  font-size: 22px;
-  font-weight: 600;
-}
-.stat.special {
-  background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(0,0,0,0.6));
-  border: 1px solid rgba(16,185,129,0.4);
-}
-
-.entry {
-  display: flex;
-  justify-content: space-between;
-  background: #020617;
-  border-radius: 12px;
-  padding: 12px;
-}
-.entry button {
-  font-size: 12px;
-  color: #93c5fd;
-}
-/* Bigger default typography */
-html {
-  font-size: 108%;
-}
-
-/* X-style verified badge (SVG container) */
-.x-verified-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-}
-
-.x-verified-svg {
-  width: 100%;
-  height: 100%;
-}
-
-/* Dropdown entrance animation */
-.x-account-dropdown {
-  animation: xDropdownIn 140ms ease-out;
-  transform-origin: bottom left;
-}
-
-@keyframes xDropdownIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Left nav items */
-.nav-item {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 999px;
-  text-align: left;
-  color: #cbd5f5;
-  font-size: 0.9rem;
-}
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-.nav-item-active {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 999px;
-  text-align: left;
-  color: #f9fafb;
-  background: #020617;
-  font-weight: 600;
-}
-
-/* Overview stats */
-.stat {
-  background: #020617;
-  border-radius: 14px;
-  padding: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.9);
-}
-.stat-label {
-  font-size: 11px;
-  color: #94a3b8;
-}
-.stat-value {
-  display: block;
-  font-size: 22px;
-  font-weight: 600;
-  margin-top: 4px;
-}
-.stat.special {
-  background: radial-gradient(circle at top, rgba(16, 185, 129, 0.16), #020617);
-  border-color: rgba(16, 185, 129, 0.55);
-}
-
-/* Entry list + pills */
-.entry {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 14px;
-  background: #020617;
-  border: 1px solid rgba(15, 23, 42, 0.85);
-}
-
-.pill {
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 500;
-}
-.pill-emerald {
-  background: rgba(16, 185, 129, 0.12);
-  color: #6ee7b7;
-}
-.pill-amber {
-  background: rgba(251, 191, 36, 0.16);
-  color: #fde68a;
-}
-.pill-sky {
-  background: rgba(56, 189, 248, 0.12);
-  color: #7dd3fc;
-}
-.pill-muted {
-  background: rgba(148, 163, 184, 0.2);
-  color: #e5e7eb;
-}
-
-/* Ghost buttons on entries */
-.btn-ghost {
-  border-radius: 999px;
-  border: 1px solid #1f2937;
-  padding: 4px 12px;
-  font-size: 11px;
-  color: #e5e7eb;
-  background: transparent;
-}
-.btn-ghost:hover {
-  border-color: #4b5563;
-  background: #020617;
-}
-.btn-ghost-muted {
-  border-radius: 999px;
-  border: 1px solid #020617;
-  padding: 4px 12px;
-  font-size: 11px;
-  color: #9ca3af;
-  background: #020617;
-}
-.btn-ghost-muted:hover {
-  border-color: #1f2937;
 }
