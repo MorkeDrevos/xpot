@@ -621,28 +621,28 @@ export default function DashboardPage() {
                 </p>
 
                 {!xpotActivated ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setXpotActivated(true);
-                      alert(
-                        'XPOT access activated (preview). One account = one identity.'
-                      );
-                    }}
-                    className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
-                  >
-                    Activate XPOT access
-                  </button>
-                ) : (
-                  <div className="mt-3 premium-pill xpot-locked flex items-center justify-center gap-2 rounded-full bg-emerald-500/15 py-2 text-sm font-semibold text-emerald-300">
-                    ✅ XPOT access locked
-                  </div>
-                )}
+  <button
+    type="button"
+    onClick={() => {
+      setXpotActivated(true);
+      alert(
+        'XPOT access activated (preview). One account = one identity.'
+      );
+    }}
+    className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
+  >
+    Activate XPOT access
+  </button>
+) : (
+  <div className="mt-3 premium-pill xpot-locked flex items-center justify-center gap-2 rounded-full bg-emerald-500/15 py-2 text-sm font-semibold text-emerald-300">
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400/20 text-xs">
+      🔒
+    </span>
+    <span>XPOT access locked</span>
+  </div>
+)}
               </div>
 
-              <p className="mt-2 text-[11px] text-slate-500">
-                We never post for you. X is only used to verify entries.
-              </p>
             </div>
 
             {/* Wallet connect preview */}
