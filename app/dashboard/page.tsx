@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // ── Helpers / types ──────────────────────────────────────────────
 
@@ -20,6 +20,13 @@ type Entry = {
   createdAt: string;
 };
 
+type XProfile = {
+  name: string;
+  handle: string;
+};
+
+const X_PROFILE_KEY = 'xpot_x_profile';
+
 function makeCode(): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const block = () =>
@@ -32,14 +39,19 @@ function makeCode(): string {
 const now = new Date();
 
 // Build preview entries based on balance
-const initialEntries: Entry[] = Array.from({ length: entryCount }).map((_, i) => ({
-  id: i + 1,
-  code: makeCode(),
-  status: 'in-draw',
-  label: "Today's main jackpot • $10,000",
-  jackpotUsd: '$10,000',
-  createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-}));
+const initialEntries: Entry[] = Array.from({ length: entryCount }).map(
+  (_, i) => ({
+    id: i + 1,
+    code: makeCode(),
+    status: 'in-draw',
+    label: "Today's main jackpot • $10,000",
+    jackpotUsd: '$10,000',
+    createdAt: now.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  })
+);
 
 // Mark first entry as winner (preview)
 if (initialEntries.length > 0) {
@@ -53,10 +65,29 @@ export default function DashboardPage() {
   const [winnerClaimed, setWinnerClaimed] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  const activeEntries = entries.filter(e => e.status === 'in-draw' || e.status === 'won');
+  const [xProfile, setXProfile] = useState<XProfile | null>(null);
+
+  const activeEntries = entries.filter(
+    e => e.status === 'in-draw' || e.status === 'won'
+  );
   const totalEntries = entries.length;
 
   const winner = entries.find(e => e.status === 'won');
+
+  // Load X profile from localStorage (if previously “signed in”)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(X_PROFILE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as XProfile;
+      if (parsed && parsed.handle) {
+        setXProfile(parsed);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
 
   async function handleCopy(entry: Entry) {
     try {
@@ -65,6 +96,30 @@ export default function DashboardPage() {
       setTimeout(() => setCopiedId(null), 1500);
     } catch {
       // ignore for now
+    }
+  }
+
+  // Mock “Sign in with X” – ties button + profile block together
+  function handleMockXSignIn() {
+    const current = xProfile?.handle?.replace('@', '') ?? '';
+    const handleInput = prompt(
+      'Enter your X handle (without @):',
+      current || 'MorkeDrevos'
+    );
+    if (!handleInput) return;
+
+    const clean = handleInput.trim().replace(/^@+/, '');
+    if (!clean) return;
+
+    const profile: XProfile = {
+      name: clean,
+      handle: `@${clean}`,
+    };
+
+    setXProfile(profile);
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(X_PROFILE_KEY, JSON.stringify(profile));
     }
   }
 
@@ -80,7 +135,9 @@ export default function DashboardPage() {
                 💎
               </div>
               <div className="flex flex-col leading-tight">
-                <span className="text-sm font-semibold tracking-tight">XPOT</span>
+                <span className="text-sm font-semibold tracking-tight">
+                  XPOT
+                </span>
                 <span className="text-[11px] text-slate-500">
                   Daily crypto jackpot
                 </span>
@@ -121,18 +178,24 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Mini user stub */}
+          {/* Mini user stub – now wired to X profile */}
           <div className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
                 @
               </div>
               <div className="leading-tight">
-                <p className="text-xs font-semibold">Your X handle</p>
-                <p className="text-[11px] text-slate-500">@your_handle</p>
+                <p className="text-xs font-semibold">
+                  {xProfile ? xProfile.name : 'Your X handle'}
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  {xProfile ? xProfile.handle : '@your_handle'}
+                </p>
               </div>
             </div>
-            <span className="text-xs text-slate-500">Preview</span>
+            <span className="text-[11px] text-slate-500">
+              {xProfile ? 'Connected' : 'Preview'}
+            </span>
           </div>
         </aside>
 
@@ -148,50 +211,21 @@ export default function DashboardPage() {
 
           {/* Scroll content */}
           <div className="space-y-4 border-x border-slate-900 px-0 sm:px-0">
-            {/* Profile header – X style */}
-            <section className="flex items-center justify-between border-b border-slate-900 px-4 pt-3 pb-2">
-              <div className="flex items-center gap-3">
-                {/* Avatar circle */}
-                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
-                  <span className="text-lg">🖤</span>
-                </div>
-
-                <div className="flex flex-col leading-tight">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-semibold text-slate-50">
-                      Mørke Drevos
-                    </span>
-                    {/* Blue check */}
-                    <span className="inline-flex items-center justify-center rounded-full bg-sky-500 px-1.5 py-[1px] text-[10px] font-semibold text-black">
-                      ✓
-                    </span>
-                  </div>
-                  <span className="text-xs text-slate-500">@MorkeDrevos</span>
-                </div>
-              </div>
-
-              {/* Three-dot menu */}
-              <button
-                type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-              >
-                ⋯
-              </button>
-            </section>
-
             {/* Summary “tweet” style card */}
             <article className="border-b border-slate-900 px-4 pt-4 pb-5">
               <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-400">
                 Overview
               </p>
               <p className="mt-2 text-sm text-slate-300">
-                Once X login is live, we’ll sync your XPOT balance and entry codes here.
-                This is how your daily luck hub will feel.
+                Once X login is live, we’ll sync your XPOT balance and entry codes
+                here. This is how your daily luck hub will feel.
               </p>
 
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
-                  <p className="text-[11px] text-slate-400">Entries this round</p>
+                  <p className="text-[11px] text-slate-400">
+                    Entries this round
+                  </p>
                   <p className="mt-1 text-xl font-semibold">
                     {activeEntries.length}
                   </p>
@@ -200,14 +234,18 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
-                  <p className="text-[11px] text-slate-400">Total entries (preview)</p>
+                  <p className="text-[11px] text-slate-400">
+                    Total entries (preview)
+                  </p>
                   <p className="mt-1 text-xl font-semibold">{totalEntries}</p>
                   <p className="mt-1 text-[11px] text-slate-500">
                     Full history with X login.
                   </p>
                 </div>
                 <div className="col-span-2 rounded-2xl border border-emerald-600/40 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-slate-900/80 p-3 sm:col-span-1">
-                  <p className="text-[11px] text-emerald-300">Next daily jackpot</p>
+                  <p className="text-[11px] text-emerald-300">
+                    Next daily jackpot
+                  </p>
                   <p className="mt-1 text-xl font-semibold text-emerald-100">
                     $10,000
                   </p>
@@ -229,8 +267,8 @@ export default function DashboardPage() {
                 Activate XPOT access
               </button>
               <p className="mt-2 text-[11px] text-slate-500">
-                You only activate once. From then on, your XPOT balance decides how
-                many entries you get in every draw.
+                You only activate once. From then on, your XPOT balance decides
+                how many entries you get in every draw.
               </p>
             </article>
 
@@ -251,9 +289,9 @@ export default function DashboardPage() {
                       hit today’s jackpot.
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
-                      Return to your dashboard after the draw to claim. If you don’t
-                      claim in time, the unclaimed amount rolls over on top of the next
-                      jackpot.
+                      Return to your dashboard after the draw to claim. If you
+                      don’t claim in time, the unclaimed amount rolls over on top
+                      of the next jackpot.
                     </p>
                   </div>
 
@@ -263,7 +301,9 @@ export default function DashboardPage() {
                       setWinnerClaimed(true);
                       setEntries(prev =>
                         prev.map(e =>
-                          e.id === winner.id ? { ...e, status: 'claimed' } : e
+                          e.id === winner.id
+                            ? { ...e, status: 'claimed' }
+                            : e
                         )
                       );
                     }}
@@ -279,8 +319,8 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <p className="mt-3 text-sm text-slate-300">
-                  Your codes are in the draw. The result will appear here when the
-                  timer hits zero.
+                  Your codes are in the draw. The result will appear here when
+                  the timer hits zero.
                 </p>
               )}
 
@@ -298,8 +338,8 @@ export default function DashboardPage() {
                 Your entry codes
               </h2>
               <p className="px-4 text-xs text-slate-500">
-                Each code is one ticket into a specific draw. Generated from your XPOT
-                balance after activation.
+                Each code is one ticket into a specific draw. Generated from your
+                XPOT balance after activation.
               </p>
 
               <div className="mt-3 space-y-3">
@@ -336,7 +376,9 @@ export default function DashboardPage() {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-xs text-slate-400">{entry.label}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {entry.label}
+                        </p>
                         <p className="mt-1 text-[11px] text-slate-500">
                           Created: {entry.createdAt}
                         </p>
@@ -391,6 +433,7 @@ export default function DashboardPage() {
             </p>
             <button
               type="button"
+              onClick={handleMockXSignIn}
               className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
             >
               Sign in with X
@@ -404,8 +447,8 @@ export default function DashboardPage() {
           <div className="rounded-3xl bg-slate-900/80 p-4">
             <h3 className="text-sm font-semibold">Connect wallet (preview)</h3>
             <p className="mt-1 text-xs text-slate-400">
-              In v1, you’ll connect a Solana wallet so your XPOT balance can update
-              entries in real time.
+              In v1, you’ll connect a Solana wallet so your XPOT balance can
+              update entries in real time.
             </p>
             <button
               type="button"
