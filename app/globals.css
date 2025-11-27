@@ -7,3 +7,107 @@ body {
   margin: 0;
   padding: 0;
 }
+/* XPOT legal pages */
+
+.legal-page {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #020617 0, #020617 40%, #000 100%);
+  padding: 4rem 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.legal-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 1.25rem;
+  padding: 2.5rem 2rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+@media (max-width: 640px) {
+  .legal-page {
+    padding: 3rem 1.25rem;
+  }
+
+  .legal-container {
+    padding: 2rem 1.5rem;
+  }
+}
+
+.legal-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: #a5b4fc;
+  margin-bottom: 0.25rem;
+}
+
+.legal-title {
+  font-size: 2rem;
+  line-height: 1.2;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.legal-updated {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+}
+
+.legal-intro {
+  margin-bottom: 1rem;
+}
+
+.legal-container h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+  color: #e5e7eb;
+}
+
+.legal-container h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+  color: #e5e7eb;
+}
+
+.legal-container p {
+  font-size: 0.94rem;
+  line-height: 1.7;
+  margin-bottom: 0.6rem;
+  color: #d1d5db;
+}
+
+.legal-container ul {
+  padding-left: 1.25rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.legal-container li {
+  font-size: 0.94rem;
+  line-height: 1.7;
+  color: #d1d5db;
+  margin-bottom: 0.25rem;
+}
+
+.legal-container a {
+  color: #a5b4fc;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.legal-container a:hover {
+  text-decoration-thickness: 2px;
+}
