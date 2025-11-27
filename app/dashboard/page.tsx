@@ -643,6 +643,9 @@ export default function DashboardPage() {
 )}
               </div>
 
+              <p className="mt-2 text-[11px] text-slate-500">
+  X is only used to verify entries – never to post.
+</p>
             </div>
 
             {/* Wallet connect preview */}
