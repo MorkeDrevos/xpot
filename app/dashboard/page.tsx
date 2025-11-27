@@ -299,7 +299,7 @@ export default function DashboardPage() {
               type="button"
               className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
             >
-              Create XPOT entry
+              ENTER TODAY’S DRAW
             </button>
           </div>
 
