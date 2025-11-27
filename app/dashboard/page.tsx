@@ -69,6 +69,11 @@ export default function DashboardPage() {
     }
   }
 
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const user = session?.user as any | undefined;
+  const isAuthed = !!session;
+
   return (
     <main className="min-h-screen bg-black text-slate-50">
       <div className="mx-auto flex max-w-6xl">
@@ -122,19 +127,50 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Mini user stub */}
-          <div className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
-                @
-              </div>
-              <div className="leading-tight">
-                <p className="text-xs font-semibold">Your X handle</p>
-                <p className="text-[11px] text-slate-500">@your_handle</p>
-              </div>
-            </div>
-            <span className="text-xs text-slate-500">Preview</span>
-          </div>
+          {/* Mini user chip – clickable like X */}
+<div
+  className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
+  onClick={() => {
+    if (!isAuthed) {
+      signIn('x', { callbackUrl: '/dashboard' });
+    } else {
+      // optional: open settings later, for now do nothing
+    }
+  }}
+>
+  <div className="flex items-center gap-2">
+    {user?.image ? (
+      // avatar from X
+      <img
+        src={user.image}
+        alt={user.name ?? 'X avatar'}
+        className="h-8 w-8 rounded-full object-cover"
+      />
+    ) : (
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
+        @
+      </div>
+    )}
+
+    <div className="leading-tight">
+      <p className="flex items-center gap-1 text-xs font-semibold">
+        {user?.name ?? 'Your X handle'}
+        {user?.verified && (
+          <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-500 text-[9px] text-white">
+            ✓
+          </span>
+        )}
+      </p>
+      <p className="text-[11px] text-slate-500">
+        @{user?.username ?? 'your_handle'}
+      </p>
+    </div>
+  </div>
+
+  <span className="text-[11px] text-slate-500">
+    {isAuthed ? 'Connected' : 'Preview'}
+  </span>
+</div>
         </aside>
 
         {/* ── Center column (feed) ───────────────────────────── */}
@@ -385,21 +421,35 @@ export default function DashboardPage() {
 
           {/* Sign in with X */}
           <div className="rounded-3xl bg-slate-900/80 p-4">
-            <h3 className="text-sm font-semibold">Sign in with X (coming soon)</h3>
-            <p className="mt-1 text-xs text-slate-400">
-              Connect your X account once. We’ll verify your tweet and lock your
-              XPOT holder status.
-            </p>
-            <button
-              type="button"
-              className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
-            >
-              Sign in with X
-            </button>
-            <p className="mt-2 text-[11px] text-slate-500">
-              We never post for you. X is only used to verify entries.
-            </p>
-          </div>
+  <h3 className="text-sm font-semibold">
+    {isAuthed ? 'Signed in with X' : 'Sign in with X'}
+  </h3>
+  <p className="mt-1 text-xs text-slate-400">
+    Connect your X account once. We’ll verify your tweet and lock your XPOT holder status.
+  </p>
+
+  {!isAuthed ? (
+    <button
+      type="button"
+      onClick={() => signIn('x', { callbackUrl: '/dashboard' })}
+      className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+    >
+      {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => signOut({ callbackUrl: '/' })}
+      className="mt-3 w-full rounded-full bg-slate-800 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
+    >
+      Sign out
+    </button>
+  )}
+
+  <p className="mt-2 text-[11px] text-slate-500">
+    We never post for you. X is only used to verify entries.
+  </p>
+</div>
 
           {/* Wallet connect preview */}
           <div className="rounded-3xl bg-slate-900/80 p-4">
