@@ -220,3 +220,15 @@ body {
 .legal-container a:hover {
   text-decoration-thickness: 2px;
 }
+
+/* XPOT account dropdown polish */
+.x-account-menu {
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+
+.x-account-menu hr {
+  border-color: #111827; /* slate-900-ish */
+  opacity: 1;
+  margin: 0;
+}
