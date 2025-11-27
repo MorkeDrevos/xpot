@@ -75,33 +75,30 @@ export default function DashboardPage() {
   }
 
   function openXLoginPopup() {
-    if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
 
-    const width = 600;
-    const height = 700;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
+  const width = 600;
+  const height = 700;
+  const left = window.screenX + (window.outerWidth - width) / 2;
+  const top = window.screenY + (window.outerHeight - height) / 2;
 
-    // NextAuth exposes this route:
-    // /api/auth/signin/x?callbackUrl=/dashboard
-    const url = `/api/auth/signin/x?callbackUrl=/dashboard&redirect=true`;
+  const url = '/x-login'; // 👈 new
 
-    const popup = window.open(
-      url,
-      'xpot-x-login',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
-    );
+  const popup = window.open(
+    url,
+    'xpot-x-login',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+  );
 
-    if (!popup) return;
+  if (!popup) return;
 
-    // When popup closes, refresh dashboard so session + profile chip update
-    const timer = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(timer);
-        window.location.reload();
-      }
-    }, 800);
-  }
+  const timer = setInterval(() => {
+    if (popup.closed) {
+      clearInterval(timer);
+      window.location.reload();
+    }
+  }, 800);
+}
 
   return (
     <main className="min-h-screen bg-black text-slate-50">
@@ -455,12 +452,12 @@ export default function DashboardPage() {
 
   {!isAuthed ? (
     <button
-      type="button"
-      onClick={openXLoginPopup}
-      className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
-    >
-      {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-    </button>
+  type="button"
+  onClick={openXLoginPopup}
+  className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+>
+  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+</button>
   ) : (
     <button
       type="button"
