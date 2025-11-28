@@ -85,7 +85,7 @@ export default function DashboardPage() {
   const top = window.screenY + (window.outerHeight - height) / 2;
 
   const callbackUrl = `${window.location.origin}/auth/x-popup-complete`;
-  const url = `/api/auth/signin/x?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  const url = `/auth/x-start?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 
   const popup = window.open(
     url,
@@ -95,7 +95,6 @@ export default function DashboardPage() {
 
   if (!popup) return;
 
-  // When user finishes / closes popup, reload dashboard to pull new session
   const timer = setInterval(() => {
     if (popup.closed) {
       clearInterval(timer);
@@ -103,7 +102,6 @@ export default function DashboardPage() {
     }
   }, 800);
 }
-
   // ─────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────
