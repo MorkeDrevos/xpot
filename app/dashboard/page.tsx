@@ -615,20 +615,18 @@ export default function DashboardPage() {
   )}
 </div>
 
-            {/* How it works */}
-            <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">How today’s draw works</h3>
-              <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                <li>• Claim exactly one ticket per X account.</li>
-                <li>• Wallet is only checked when claiming.</li>
-                <li>• When the timer hits zero, one ticket wins.</li>
-                <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
-              </ul>
-            </div>
-
-          </aside>
-                </div>
-      </div>
+                      {/* How it works */}
+          <div className="premium-card p-4">
+            <h3 className="text-sm font-semibold">How today’s draw works</h3>
+            <ul className="mt-2 text-xs text-slate-400 space-y-1">
+              <li>• Claim exactly one ticket per X account.</li>
+              <li>• Wallet is only checked when claiming.</li>
+              <li>• When the timer hits zero, one ticket wins.</li>
+              <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
+            </ul>
+          </div>
+        </aside>
+      </div> {/* 👈 closes mx-auto flex max-w-6xl */}
 
       {/* LOGIN OVERLAY */}
       {!isAuthed && (
