@@ -7,27 +7,31 @@ export default function XLoginPage() {
   const { status } = useSession();
 
   useEffect(() => {
+    // Wait until we actually know the status
+    if (status !== 'unauthenticated' && status !== 'authenticated') return;
+
+    // 1) Not logged in yet → start Twitter/X OAuth inside the popup
     if (status === 'unauthenticated') {
-      signIn('twitter', {
-        callbackUrl: '/x-login',
+      void signIn('twitter', {
+        callbackUrl: '/x-login', // popup comes back here after OAuth
         redirect: true,
       });
+      return;
     }
 
-    if (status === 'authenticated') {
-      try {
-        if (window.opener) {
-          window.opener.postMessage(
-            { type: 'x-auth-complete' },
-            window.location.origin
-          );
-        }
-      } catch {
-        // ignore
+    // 2) Logged in → notify opener + close popup
+    try {
+      if (window.opener) {
+        window.opener.postMessage(
+          { type: 'x-auth-complete' },
+          window.location.origin
+        );
       }
-
-      window.close();
+    } catch {
+      // ignore postMessage errors
     }
+
+    window.close();
   }, [status]);
 
   return (
