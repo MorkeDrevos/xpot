@@ -1,12 +1,12 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
-import { useState } from 'react';
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // Types & helpers
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
@@ -19,6 +19,14 @@ type Entry = {
   createdAt: string;
 };
 
+type Phase = 'preSnapshot' | 'betweenSnapshotAndDraw' | 'drawing' | 'postDraw';
+
+const MIN_PER_ENTRY = 1_000_000;
+const mockBalanceNow = 7_492_000; // live balance preview
+const entryCount = Math.floor(mockBalanceNow / MIN_PER_ENTRY);
+const JACKPOT_USD = 10_000;
+
+// generate ticket-style codes
 function makeCode(): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const block = () =>
@@ -28,110 +36,170 @@ function makeCode(): string {
   return `XPOT-${block()}-${block()}`;
 }
 
-// Seed a couple of preview tickets for the list
-const now = new Date();
-const initialEntries: Entry[] = [
-  {
-    id: 1,
-    code: makeCode(),
-    status: 'won',
-    label: "Today's main jackpot • $10,000",
-    jackpotUsd: '$10,000',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  },
-  {
-    id: 2,
-    code: makeCode(),
-    status: 'in-draw',
-    label: "Yesterday's main jackpot • $8,400",
-    jackpotUsd: '$8,400',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  },
-];
+// initial tickets – “today’s draw”
+const nowSeed = new Date();
+const initialEntries: Entry[] = Array.from({ length: entryCount }).map((_, i) => ({
+  id: i + 1,
+  code: makeCode(),
+  status: 'in-draw',
+  label: "Today's main jackpot • $10,000",
+  jackpotUsd: '$10,000',
+  createdAt: nowSeed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+}));
+
+// mark one as winner for preview
+if (initialEntries.length > 0) {
+  initialEntries[0].status = 'won';
+}
+
+// format countdown nicely
+function formatDuration(ms: number): string {
+  if (ms <= 0) return '00:00:00';
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
+  const isVerified = !!user?.verified;
 
-  // Robust username fallback
+  // robust username fallback
   const username =
     user?.username ||
     user?.screen_name ||
     user?.handle ||
-    user?.name?.replace(/\s+/g, '').toLowerCase() ||
+    (user?.name ? user.name.replace(/\s+/g, '').toLowerCase() : '') ||
     'your_handle';
 
+  // entries state
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
-  const [ticketClaimed, setTicketClaimed] = useState(false);
-  const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
+  const [winnerClaimed, setWinnerClaimed] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
-  // For now this is just a boolean. Later we swap it for real wallets.
-  const [walletConnected, setWalletConnected] = useState(false);
+  // build auto-reload banner
+  const [currentBuildId, setCurrentBuildId] = useState<string | null>(null);
+  const [hasNewBuild, setHasNewBuild] = useState(false);
 
-  const winner = entries.find(e => e.status === 'won');
+  // live time
+  const [now, setNow] = useState<Date>(new Date());
 
-  // ─────────────────────────────────────────────
-  // X login popup (improved)
-  // ─────────────────────────────────────────────
-  function openXLoginPopup() {
-    if (typeof window === 'undefined') return;
+  // schedule for today (preview: snapshot in 2h, draw 1h later, results 10m later)
+  const [schedule] = useState(() => {
+    const base = new Date();
+    const snapshotAt = new Date(base.getTime() + 2 * 60 * 60 * 1000);
+    const drawAt = new Date(snapshotAt.getTime() + 60 * 60 * 1000);
+    const resultsAt = new Date(drawAt.getTime() + 10 * 60 * 1000);
+    return { snapshotAt, drawAt, resultsAt };
+  });
 
-    const width = 600;
-    const height = 700;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
+  // live clock
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-    // This should point to your existing X auth route
-    // e.g. a page that calls next-auth signIn('twitter' / 'x')
-    const url = '/x-login';
+  // build-info polling (for “New XPOT version is live” banner)
+  useEffect(() => {
+    let cancelled = false;
 
-    const popup = window.open(
-      url,
-      'xpot-x-login',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
-    );
-
-    if (!popup) return;
-
-    // Listen for a message from the popup so we can auto-close it
-    // On /x-login (or your callback page) you can later do:
-    // window.opener?.postMessage({ type: 'x-auth-complete' }, window.location.origin);
-    const handleMessage = (event: MessageEvent) => {
+    async function checkBuild() {
       try {
-        if (
-          event.origin === window.location.origin &&
-          event.data &&
-          (event.data.type === 'x-auth-complete' || event.data === 'x-auth-complete')
-        ) {
-          window.removeEventListener('message', handleMessage);
-          if (!popup.closed) {
-            popup.close();
-          }
-          window.location.reload();
+        const res = await fetch('/api/build-info', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = (await res.json()) as { buildId?: string };
+        const incoming = data.buildId || 'unknown';
+
+        if (!currentBuildId) {
+          setCurrentBuildId(incoming);
+          return;
+        }
+
+        if (incoming !== currentBuildId && !cancelled) {
+          setHasNewBuild(true);
         }
       } catch {
-        // ignore malformed messages
+        // ignore
       }
+    }
+
+    checkBuild();
+    const interval = setInterval(checkBuild, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
     };
+  }, [currentBuildId]);
 
-    window.addEventListener('message', handleMessage);
+  // phase logic
+  const phase: Phase = useMemo(() => {
+    const { snapshotAt, drawAt, resultsAt } = schedule;
+    if (now < snapshotAt) return 'preSnapshot';
+    if (now < drawAt) return 'betweenSnapshotAndDraw';
+    if (now < resultsAt) return 'drawing';
+    return 'postDraw';
+  }, [now, schedule]);
 
-    // Fallback: if user manually closes popup, reload to pick up session
-    const timer = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(timer);
-        window.removeEventListener('message', handleMessage);
-        window.location.reload();
+  // countdown target & label
+  const { countdownLabel, countdownValue } = useMemo(() => {
+    const { snapshotAt, drawAt, resultsAt } = schedule;
+    let label = '';
+    let target: Date | null = null;
+
+    switch (phase) {
+      case 'preSnapshot':
+        label = 'Snapshot closes in';
+        target = snapshotAt;
+        break;
+      case 'betweenSnapshotAndDraw':
+        label = 'Winner revealed in';
+        target = drawAt;
+        break;
+      case 'drawing':
+        label = 'Finalising results…';
+        target = resultsAt;
+        break;
+      case 'postDraw':
+      default: {
+        label = 'Next draw in';
+        const nextSnapshot = new Date(snapshotAt.getTime() + 24 * 60 * 60 * 1000);
+        target = nextSnapshot;
+        break;
       }
-    }, 800);
-  }
+    }
 
-  // ─────────────────────────────────────────────
-  // Helpers
-  // ─────────────────────────────────────────────
+    const ms = target ? target.getTime() - now.getTime() : 0;
+    return {
+      countdownLabel: label,
+      countdownValue: formatDuration(ms),
+    };
+  }, [now, phase, schedule]);
+
+  const activeEntries = entries.filter(
+    (e) => e.status === 'in-draw' || e.status === 'won'
+  );
+  const totalEntries = entries.length;
+  const winner = entries.find((e) => e.status === 'won');
+
+  const inDraw = phase !== 'preSnapshot' && totalEntries > 0;
+  const snapshotTimeLabel = schedule.snapshotAt.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
+
+  // if they are “in draw”, treat identity as locked for today
+  const identityLocked = inDraw;
 
   async function handleCopy(entry: Entry) {
     try {
@@ -143,67 +211,69 @@ export default function DashboardPage() {
     }
   }
 
-  function handleClaimTicket() {
-    // 1) Must be logged in with X
-    if (!isAuthed) {
-      openXLoginPopup();
-      return;
-    }
+  function openXLoginPopup() {
+    if (typeof window === 'undefined') return;
 
-    // 2) Must have wallet connected
-    if (!walletConnected) {
-      // Just block; UI copy explains why
-      return;
-    }
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
 
-    // 3) Prevent double-claim
-    if (ticketClaimed) return;
+    const url = '/auth/x-login';
 
-    const newEntry: Entry = {
-      id: Date.now(),
-      code: makeCode(),
-      status: 'in-draw',
-      label: "Today's main jackpot • $10,000",
-      jackpotUsd: '$10,000',
-      createdAt: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
+    const popup = window.open(
+      url,
+      'xpot-x-login',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+    );
 
-    setEntries(prev => [newEntry, ...prev]);
-    setTicketClaimed(true);
-    setTodaysTicket(newEntry);
+    if (!popup) return;
+
+    const timer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(timer);
+        window.location.reload();
+      }
+    }, 800);
   }
 
-  // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
+  // header status chip
+  const headerStatus = (() => {
+    switch (phase) {
+      case 'preSnapshot':
+        return { label: 'Daily draw', tone: 'status-pill' };
+      case 'betweenSnapshotAndDraw':
+        return { label: 'Draw locked', tone: 'status-pill-amber' };
+      case 'drawing':
+        return { label: 'Drawing winner…', tone: 'status-pill-emerald' };
+      case 'postDraw':
+      default:
+        return { label: 'Winner announced', tone: 'status-pill-emerald' };
+    }
+  })();
 
   return (
     <main className="min-h-screen bg-black text-slate-50">
-      <div className="mx-auto flex max-w-6xl">
-        {/* ── Left nav (X-style) ───────────────────────────── */}
-        <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
+      <div className="mx-auto flex max-w-6xl px-4 py-6 lg:px-0">
+        {/* ── Left rail (X-like) ───────────────────────────── */}
+        <aside className="hidden min-h-[640px] w-56 flex-col justify-between border-r border-slate-900 pr-3 md:flex">
           <div className="space-y-6">
-            {/* Logo */}
+            {/* Logo / brand */}
             <div className="flex items-center gap-2 px-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10 text-lg">
                 💎
               </div>
               <div className="flex flex-col leading-tight">
                 <span className="text-sm font-semibold tracking-tight">XPOT</span>
-                <span className="text-[11px] text-slate-500">
-                  Daily crypto jackpot
-                </span>
+                <span className="text-[11px] text-slate-500">Daily crypto jackpot</span>
               </div>
             </div>
 
-            {/* Nav items */}
+            {/* Nav */}
             <nav className="space-y-1 text-sm">
               <Link
                 href="/dashboard"
-                className="flex items-center gap-3 rounded-full px-3 py-2 font-medium bg-slate-900 text-slate-50"
+                className="flex items-center gap-3 rounded-full bg-slate-900 px-3 py-2 font-medium text-slate-50"
               >
                 <span className="text-lg">🏠</span>
                 <span>Dashboard</span>
@@ -224,53 +294,51 @@ export default function DashboardPage() {
               </button>
             </nav>
 
-            {/* Main CTA mirrors ticket claim */}
+            {/* Primary CTA (placeholder for now) */}
             <button
               type="button"
-              onClick={handleClaimTicket}
-              disabled={!isAuthed || !walletConnected}
-              className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-                !isAuthed || !walletConnected
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-              }`}
+              className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
             >
-              {!isAuthed
-                ? 'Sign in with X'
-                : !walletConnected
-                ? 'Connect wallet to claim'
-                : 'Claim today’s ticket'}
+              Create XPOT entry
             </button>
           </div>
 
-          {/* Mini user chip + account menu */}
+          {/* Account chip + dropdown */}
           <div className="relative">
             <div
-              className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
+              className="mb-2 flex cursor-pointer items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 hover:bg-slate-800/80"
               onClick={() => {
                 if (!isAuthed) {
                   openXLoginPopup();
                 } else {
-                  setAccountMenuOpen(open => !open);
+                  setAccountMenuOpen((open) => !open);
                 }
               }}
             >
               <div className="flex items-center gap-2">
-                {user?.image ? (
-                  <img
-                    src={user.image}
-                    alt={user.name ?? 'X avatar'}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
-                    @
-                  </div>
-                )}
+                <div className="relative">
+                  {user?.image ? (
+                    <img
+                      src={user.image}
+                      alt={user.name ?? 'X avatar'}
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
+                      @
+                    </div>
+                  )}
+                  {identityLocked && (
+                    <span className="x-avatar-lock">
+                      <span className="x-avatar-lock-glyph">🔒</span>
+                    </span>
+                  )}
+                </div>
 
                 <div className="leading-tight">
                   <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
                     {user?.name ?? 'Your X handle'}
+                    {isAuthed && isVerified && <span className="x-verified-badge" />}
                   </p>
                   <p className="text-[11px] text-slate-500">@{username}</p>
                 </div>
@@ -282,33 +350,41 @@ export default function DashboardPage() {
             </div>
 
             {isAuthed && accountMenuOpen && (
-              <div className="x-account-menu absolute bottom-14 left-0 w-72 rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60 overflow-hidden">
+              <div className="x-account-menu absolute bottom-14 left-0 w-72 overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-900"
                 >
                   <div className="flex items-center gap-3">
-                    {user?.image ? (
-                      <img
-                        src={user.image}
-                        alt={user.name ?? 'X avatar'}
-                        className="h-9 w-9 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs">
-                        @
-                      </div>
-                    )}
+                    <div className="relative">
+                      {user?.image ? (
+                        <img
+                          src={user.image}
+                          alt={user.name ?? 'X avatar'}
+                          className="h-9 w-9 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs">
+                          @
+                        </div>
+                      )}
+                      {identityLocked && (
+                        <span className="x-avatar-lock">
+                          <span className="x-avatar-lock-glyph">🔒</span>
+                        </span>
+                      )}
+                    </div>
                     <div className="leading-tight">
-                      <p className="text-xs font-semibold text-slate-50">
+                      <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
                         {user?.name ?? 'Your X handle'}
+                        {isVerified && <span className="x-verified-badge" />}
                       </p>
                       <p className="text-[11px] text-slate-500">@{username}</p>
                     </div>
                   </div>
                 </button>
 
-                <hr className="border-t border-slate-900" />
+                <hr />
 
                 <button
                   type="button"
@@ -325,50 +401,65 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* ── Main shell ───────────────────────────────────── */}
-        <div className="flex flex-1 gap-6 rounded-[28px] border border-slate-800/70 bg-[#020617] shadow-[0_30px_100px_rgba(0,0,0,0.9)] overflow-hidden">
+        {/* ── Main shell: center + right ────────────────────── */}
+        <div className="premium-shell flex flex-1 flex-col gap-0 rounded-[28px] border border-slate-800/70 bg-[#020617] shadow-[0_30px_100px_rgba(0,0,0,0.9)] lg:flex-row lg:gap-6">
           {/* Center column */}
-          <section className="min-h-screen flex-1">
-            {/* Sticky header */}
-            <header className="sticky top-0 z-10 border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">
-                    Dashboard
-                  </h1>
-                  <p className="text-[13px] text-slate-400">
-                    One jackpot. One winner. Your daily XPOT ticket.
-                  </p>
+          <section className="flex-1 border-slate-900/60 lg:border-r">
+            {/* Top bar like X */}
+            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
+                  <span className={headerStatus.tone}>{headerStatus.label}</span>
                 </div>
-                <div className="hidden text-right text-[11px] text-slate-500 sm:block">
-                  <p className="uppercase tracking-[0.16em] text-slate-400">
-                    Next draw in
-                  </p>
-                  {/* static preview countdown for now */}
-                  <p className="font-mono text-xs text-slate-200">02:14:09</p>
-                </div>
+                <p className="text-[13px] text-slate-400">
+                  One jackpot. One winner. XPOT tracks your entries and results.
+                </p>
+              </div>
+              <div className="text-right text-[11px] text-slate-500">
+                <p className="font-mono text-xs">{countdownLabel}</p>
+                <p className="font-mono text-sm text-slate-100">{countdownValue}</p>
               </div>
             </header>
 
-            {/* Scroll content */}
-            <div className="space-y-4 px-0">
-              {/* Profile header */}
+            {hasNewBuild && (
+              <div className="border-b border-emerald-700/60 bg-emerald-500/10 px-4 py-2">
+                <div className="flex items-center justify-between gap-3 text-xs text-emerald-100">
+                  <span>New XPOT version is live.</span>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-black hover:bg-emerald-400"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Scrollable content */}
+            <div className="space-y-4 px-0 pb-8">
+              {/* Profile header (static preview for now) */}
               <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
+                  <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
                     <span className="text-lg">🖤</span>
+                    {identityLocked && (
+                      <span className="x-avatar-lock">
+                        <span className="x-avatar-lock-glyph">🔒</span>
+                      </span>
+                    )}
                   </div>
-
                   <div className="flex flex-col leading-tight">
                     <div className="flex items-center gap-1">
                       <span className="text-sm font-semibold text-slate-50">
                         Mørke Drevos
                       </span>
+                      <span className="x-verified-badge" />
                     </div>
                     <span className="text-xs text-slate-500">@{username}</span>
                   </div>
                 </div>
-
                 <button
                   type="button"
                   className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100"
@@ -377,97 +468,140 @@ export default function DashboardPage() {
                 </button>
               </section>
 
-              {/* TODAY'S TICKET CARD – CLEAN ENTRY FLOW */}
-              <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
-                <h2 className="text-sm font-semibold text-emerald-100">
-                  Today’s ticket
-                </h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  One ticket per X account per draw. Hold the minimum XPOT when
-                  you claim. You can always buy or sell again later.
-                </p>
+              {/* HERO: your entries today */}
+              <article className="border-b border-slate-900/60 px-4 pt-4 pb-5">
+                <div className="card-premium rounded-3xl p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-300">
+                        Your entries today
+                      </p>
+                      <div className="mt-1 flex items-baseline gap-2">
+                        <p className="text-3xl font-semibold tracking-tight text-slate-50">
+                          {phase === 'preSnapshot' ? entryCount : activeEntries.length}
+                        </p>
+                        <span className="text-xs text-slate-400">
+                          {entryCount === 1 ? 'ticket' : 'tickets'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Snapshot at {snapshotTimeLabel}. Keep XPOT in your wallet until
+                        then to stay in the draw.
+                      </p>
+                    </div>
 
-                {!ticketClaimed ? (
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="rounded-2xl bg-slate-950/60 px-3 py-2 text-right text-[11px] text-slate-400">
+                      <p className="font-mono text-xs text-slate-200">
+                        Balance now: {mockBalanceNow.toLocaleString()} XPOT
+                      </p>
+                      <p className="mt-0.5">
+                        1 ticket per{' '}
+                        <span className="font-mono text-[11px] text-slate-200">
+                          1,000,000 XPOT
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                      <p className="text-[11px] text-slate-400">Status</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-100">
+                        {phase === 'preSnapshot'
+                          ? 'Waiting for snapshot'
+                          : inDraw
+                          ? 'In today’s draw'
+                          : 'Not in today’s draw'}
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Tickets are locked at snapshot.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                      <p className="text-[11px] text-slate-400">Today’s jackpot</p>
+                      <p className="mt-1 text-xl font-semibold text-emerald-100">
+                        ${JACKPOT_USD.toLocaleString()}
+                      </p>
+                      <p className="mt-1 text-[11px] text-emerald-200/80">
+                        One winning ticket. One wallet.
+                      </p>
+                    </div>
+
+                    <div className="premium-highlight jackpot-core col-span-2 p-3 sm:col-span-1">
+                      <p className="text-[11px] text-emerald-200">Draw rhythm</p>
+                      <p className="mt-1 text-sm font-semibold text-emerald-50">
+                        Daily snapshot · on-chain draw · transparent winner
+                      </p>
+                      <p className="mt-1 text-[11px] text-emerald-100/80">
+                        XPOT uses your snapshot balance to generate tickets. No manual
+                        claiming, no off-chain lotteries.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              {/* Today’s result */}
+              <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
+                <h2 className="text-sm font-semibold text-emerald-100">Today’s result</h2>
+
+                {phase !== 'postDraw' && (
+                  <p className="mt-3 text-sm text-slate-300">
+                    Your tickets are in the draw. The result will appear here when the
+                    timer hits zero.
+                  </p>
+                )}
+
+                {phase === 'postDraw' && winner && (
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-200">
-                        Claim your ticket for today’s jackpot.
+                        One of your tickets{' '}
+                        <span className="font-mono text-emerald-300">
+                          {winner.code}
+                        </span>{' '}
+                        hit today’s jackpot.
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Your ticket will be tied to this X account for today’s draw.
+                      <p className="mt-1 text-xs text-slate-400">
+                        Prize is claimable for a limited time. After that, any unclaimed
+                        amount rolls into the next jackpot.
                       </p>
-                      {isAuthed && !walletConnected && (
-                        <p className="mt-1 text-[11px] text-amber-300">
-                          Connect your wallet on the right to claim today’s ticket.
-                        </p>
-                      )}
                     </div>
 
                     <button
                       type="button"
-                      onClick={handleClaimTicket}
-                      disabled={!isAuthed || !walletConnected}
-                      className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 ${
-                        !isAuthed || !walletConnected
-                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+                      onClick={() => {
+                        setWinnerClaimed(true);
+                        setEntries((prev) =>
+                          prev.map((e) =>
+                            e.id === winner.id ? { ...e, status: 'claimed' } : e
+                          )
+                        );
+                      }}
+                      disabled={winnerClaimed}
+                      className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold transition sm:mt-0 ${
+                        winnerClaimed
+                          ? 'cursor-not-allowed border border-slate-800 bg-slate-900 text-slate-500'
+                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-slate-950 hover:brightness-110'
                       }`}
                     >
-                      {!isAuthed
-                        ? 'Sign in with X'
-                        : !walletConnected
-                        ? 'Connect wallet to claim'
-                        : 'Claim today’s ticket'}
+                      {winnerClaimed ? 'Prize claimed' : 'Claim jackpot'}
                     </button>
                   </div>
-                ) : (
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-emerald-100">
-                        ✅ Your ticket is in today’s draw.
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Come back when the countdown hits zero to see if you won.
-                      </p>
-                      {todaysTicket && (
-                        <p className="mt-2 text-xs text-slate-300">
-                          Ticket code:{' '}
-                          <span className="font-mono text-emerald-300">
-                            {todaysTicket.code}
-                          </span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
                 )}
-              </article>
 
-              {/* Today’s result card (preview) */}
-              <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
-                <h2 className="text-sm font-semibold text-slate-200">
-                  Today’s result
-                </h2>
-
-                {winner ? (
-                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-slate-200">
-                        One ticket{' '}
-                        <span className="font-mono text-emerald-300">
-                          {winner.code}
-                        </span>{' '}
-                        hit today’s jackpot (preview).
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        In the real draw, this will show the winning ticket and
-                        X handle once the countdown reaches zero.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
+                {phase === 'postDraw' && !winner && (
                   <p className="mt-3 text-sm text-slate-300">
-                    Your tickets are in the draw. The result will appear here when
-                    the timer hits zero.
+                    None of your tickets hit today. Your balance will generate new
+                    tickets for the next draw.
+                  </p>
+                )}
+
+                {winnerClaimed && (
+                  <p className="mt-3 text-xs text-emerald-300">
+                    Nice catch. Any unclaimed portion would have rolled over on top of
+                    tomorrow’s jackpot.
                   </p>
                 )}
               </article>
@@ -478,14 +612,15 @@ export default function DashboardPage() {
                   Your tickets
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Each ticket is tied to a specific daily draw and this X account.
+                  Each ticket is tied to a snapshot and draw. Later you’ll be able to
+                  open a ticket to see on-chain proof.
                 </p>
 
                 <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-                  {entries.map(entry => (
+                  {entries.map((entry) => (
                     <article
                       key={entry.id}
-                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-4 pt-3 hover:border-slate-700 hover:bg-slate-950 transition"
+                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-4 pt-3 transition hover:border-slate-700 hover:bg-slate-950"
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -499,7 +634,7 @@ export default function DashboardPage() {
                                 In draw
                               </span>
                             )}
-                            {entry.status === 'won' && (
+                            {entry.status === 'won' && !winnerClaimed && (
                               <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
                                 Winner
                               </span>
@@ -515,9 +650,7 @@ export default function DashboardPage() {
                               </span>
                             )}
                           </div>
-                          <p className="mt-1 text-xs text-slate-400">
-                            {entry.label}
-                          </p>
+                          <p className="mt-1 text-xs text-slate-400">{entry.label}</p>
                           <p className="mt-1 text-[11px] text-slate-500">
                             Created: {entry.createdAt}
                           </p>
@@ -535,7 +668,7 @@ export default function DashboardPage() {
                             type="button"
                             className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
                           >
-                            View entry tweet ↗
+                            View ticket (soon)
                           </button>
                         </div>
                       </div>
@@ -546,49 +679,31 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* Right sidebar */}
-          <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
-            {/* Wallet card */}
+          {/* Right column */}
+          <aside className="hidden w-full max-w-xs flex-col gap-4 border-t border-slate-900/60 bg-slate-950/40 px-4 py-4 lg:flex lg:border-t-0">
+            {/* Balance preview */}
             <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">Wallet</h3>
-
-              {walletConnected ? (
-                <>
-                  <p className="mt-1 text-xs text-emerald-300">
-                    Wallet connected (preview).
-                  </p>
-                  <p className="mt-2 text-xs text-slate-400">
-                    In v1, this will show your XPOT balance and basic checks at
-                    claim time.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Connect wallet before claiming today’s ticket.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setWalletConnected(true)}
-                    className="mt-3 w-full rounded-full bg-purple-600 py-2 text-sm font-semibold text-white hover:bg-purple-500"
-                  >
-                    Connect wallet (preview)
-                  </button>
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    Real Phantom / Solflare / Backpack wiring comes next.
-                  </p>
-                </>
-              )}
+              <h3 className="text-sm font-semibold">XPOT balance (preview)</h3>
+              <p className="mt-1 text-xs text-slate-400">
+                In v1 this updates in real time from your Solana wallet.
+              </p>
+              <p className="mt-3 bg-gradient-to-r from-emerald-200 via-emerald-100 to-white bg-clip-text text-3xl font-semibold tracking-tight text-transparent">
+                {mockBalanceNow.toLocaleString()}
+                <span className="ml-1 text-sm text-slate-400">XPOT</span>
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                = {entryCount} ticket{entryCount === 1 ? '' : 's'} in today’s draw.
+              </p>
             </div>
 
-            {/* Sign in with X */}
+            {/* X sign-in */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">
-                {isAuthed ? 'Signed in with X' : 'Sign in with X'}
+                {isAuthed ? 'Connected with X' : 'Sign in with X'}
               </h3>
               <p className="mt-1 text-xs text-slate-400">
-                XPOT uses your X account so each daily ticket belongs to one
-                identity. No posting is required.
+                XPOT links your tickets to one X identity. Later, ticket views and
+                win-notifications will feel just like opening a tweet.
               </p>
 
               {!isAuthed ? (
@@ -600,21 +715,30 @@ export default function DashboardPage() {
                   {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
                 </button>
               ) : (
-                <p className="mt-3 text-xs text-emerald-200">
-                  You’re ready to claim today’s ticket.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="mt-3 w-full rounded-full bg-slate-800 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700"
+                >
+                  Sign out @{username}
+                </button>
               )}
             </div>
 
-            {/* How it works */}
+            {/* Wallet connect preview */}
             <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">How today’s draw works</h3>
-              <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                <li>• Claim exactly one ticket per X account.</li>
-                <li>• Wallet is only checked when claiming.</li>
-                <li>• When the timer hits zero, one ticket wins.</li>
-                <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
-              </ul>
+              <h3 className="text-sm font-semibold">Wallet link (preview)</h3>
+              <p className="mt-1 text-xs text-slate-400">
+                In v1, you’ll connect a Solana wallet so XPOT can read your balance at
+                snapshot and generate tickets automatically.
+              </p>
+              <button
+                type="button"
+                disabled
+                className="mt-3 w-full cursor-not-allowed rounded-full bg-slate-800 py-2 text-xs font-medium text-slate-500"
+              >
+                Connect wallet (coming soon)
+              </button>
             </div>
           </aside>
         </div>
