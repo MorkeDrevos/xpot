@@ -586,27 +586,24 @@ export default function DashboardPage() {
               )}
             </div>
 
-              {!isAuthed ? (
-    <>
-      <button
-        type="button"
-        onClick={openXLoginPopup}
-        className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
-      >
-        {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-      </button>
+            {/* Sign in with X */}
+<div className="premium-card p-4">
+  <h3 className="text-sm font-semibold">
+    {isAuthed ? 'Signed in with X' : 'Sign in with X'}
+  </h3>
+  <p className="mt-1 text-xs text-slate-400">
+    XPOT uses your X account so each daily ticket belongs to one
+    identity. No posting is required.
+  </p>
 
-      <button
-        type="button"
-        onClick={() => {
-          if (typeof window === 'undefined') return;
-          window.open('https://x.com/logout', '_blank', 'noopener,noreferrer');
-        }}
-        className="mt-2 w-full text-[11px] text-slate-500 hover:text-slate-300 underline underline-offset-2"
-      >
-        Wrong X account? Log out on x.com first.
-      </button>
-    </>
+  {!isAuthed ? (
+    <button
+      type="button"
+      onClick={openXLoginPopup}
+      className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+    >
+      {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+    </button>
   ) : (
     <p className="mt-3 text-xs text-emerald-200">
       You’re ready to claim today’s ticket.
