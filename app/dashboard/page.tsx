@@ -59,8 +59,9 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
+
   const searchParams = useSearchParams();
-  const authError = searchParams.get('error'); // e.g. "Callback"
+  const authError = searchParams.get('error'); // e.g. "Callback" when user cancels on X side
 
   // Robust username fallback
   const username =
@@ -82,55 +83,16 @@ export default function DashboardPage() {
   const winner = entries.find(e => e.status === 'won');
 
   // ─────────────────────────────────────────────
-  // X login popup (improved)
+  // Auth helpers
   // ─────────────────────────────────────────────
-  function openXLoginPopup() {
-  if (typeof window === 'undefined') return;
 
-  const width = 600;
-  const height = 700;
-  const left = window.screenX + (window.outerWidth - width) / 2;
-  const top = window.screenY + (window.outerHeight - height) / 2;
-
-  const popup = window.open(
-    '/x-login',
-    'xpot-x-login',
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
-  );
-
-  if (!popup) return;
-
-  const handleMessage = (event: MessageEvent) => {
-    try {
-      if (
-        event.origin === window.location.origin &&
-        event.data &&
-        (event.data.type === 'x-auth-complete' ||
-          event.data === 'x-auth-complete')
-      ) {
-        window.removeEventListener('message', handleMessage);
-        if (!popup.closed) popup.close();
-        window.location.reload();
-      }
-    } catch {
-      // ignore
-    }
-  };
-
-  window.addEventListener('message', handleMessage);
-
-  // Fallback in case message never arrives but user closes popup manually
-  const timer = setInterval(() => {
-    if (popup.closed) {
-      clearInterval(timer);
-      window.removeEventListener('message', handleMessage);
-      window.location.reload();
-    }
-  }, 800);
-}
+  function handleSignInWithX() {
+    // Single source of truth for sign-in
+    signIn('x', { callbackUrl: '/dashboard' });
+  }
 
   // ─────────────────────────────────────────────
-  // Helpers
+  // Ticket helpers
   // ─────────────────────────────────────────────
 
   async function handleCopy(entry: Entry) {
@@ -144,10 +106,10 @@ export default function DashboardPage() {
   }
 
   function handleClaimTicket() {
-  // 1) Must be logged in with X
-  if (!isAuthed) {
-    signIn('x', { callbackUrl: '/dashboard' });
-    return;
+    // 1) Must be logged in with X
+    if (!isAuthed) {
+      handleSignInWithX();
+      return;
     }
 
     // 2) Must have wallet connected
@@ -176,19 +138,20 @@ export default function DashboardPage() {
     setTodaysTicket(newEntry);
   }
 
-    // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
 
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
+      {/* MAIN DASHBOARD SHELL (blurred when logged out) */}
       <div
-  className={`mx-auto flex max-w-6xl ${
-    !isAuthed
-      ? 'blur-[1px] brightness-95 contrast-110 pointer-events-none select-none'
-      : ''
-  }`}
->
+        className={`mx-auto flex max-w-6xl ${
+          !isAuthed
+            ? 'blur-[1px] brightness-95 contrast-110 pointer-events-none select-none'
+            : ''
+        }`}
+      >
         {/* ── Left nav (X-style) ───────────────────────────── */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
           <div className="space-y-6">
@@ -254,12 +217,12 @@ export default function DashboardPage() {
             <div
               className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
               onClick={() => {
-  if (!isAuthed) {
-    signIn('x', { callbackUrl: '/dashboard' });
-  } else {
-    setAccountMenuOpen(open => !open);
-  }
-}}
+                if (!isAuthed) {
+                  handleSignInWithX();
+                } else {
+                  setAccountMenuOpen(open => !open);
+                }
+              }}
             >
               <div className="flex items-center gap-2">
                 {user?.image ? (
@@ -356,11 +319,13 @@ export default function DashboardPage() {
               </div>
             </header>
 
+            {/* Auth error banner (e.g. cancelled on X) */}
             {authError && (
-  <div className="mx-4 mt-3 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-200">
-    X sign-in was cancelled. Nothing has changed – you can try again any time.
-  </div>
-)}
+              <div className="mx-4 mt-3 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-200">
+                X sign-in was cancelled. Nothing changed – you can try again
+                any time.
+              </div>
+            )}
 
             {/* Scroll content */}
             <div className="space-y-4 px-0">
@@ -406,11 +371,13 @@ export default function DashboardPage() {
                         Claim your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Your ticket will be tied to this X account for today’s draw.
+                        Your ticket will be tied to this X account for today’s
+                        draw.
                       </p>
                       {isAuthed && !walletConnected && (
                         <p className="mt-1 text-[11px] text-amber-300">
-                          Connect your wallet on the right to claim today’s ticket.
+                          Connect your wallet on the right to claim today’s
+                          ticket.
                         </p>
                       )}
                     </div>
@@ -439,7 +406,8 @@ export default function DashboardPage() {
                         ✅ Your ticket is in today’s draw.
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
-                        Come back when the countdown hits zero to see if you won.
+                        Come back when the countdown hits zero to see if you
+                        won.
                       </p>
                       {todaysTicket && (
                         <p className="mt-2 text-xs text-slate-300">
@@ -478,8 +446,8 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <p className="mt-3 text-sm text-slate-300">
-                    Your tickets are in the draw. The result will appear here when
-                    the timer hits zero.
+                    Your tickets are in the draw. The result will appear here
+                    when the timer hits zero.
                   </p>
                 )}
               </article>
@@ -490,7 +458,8 @@ export default function DashboardPage() {
                   Your tickets
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Each ticket is tied to a specific daily draw and this X account.
+                  Each ticket is tied to a specific daily draw and this X
+                  account.
                 </p>
 
                 <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
@@ -604,12 +573,22 @@ export default function DashboardPage() {
               </p>
 
               <button
-  type="button"
-  onClick={() => signIn('x', { callbackUrl: '/dashboard' })}
-  className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
->
-  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-</button>
+                type="button"
+                onClick={handleSignInWithX}
+                className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+              >
+                {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+              </button>
+
+              {!isAuthed && (
+                <button
+                  type="button"
+                  onClick={openXLogoutForSwitch}
+                  className="mt-2 w-full text-[11px] text-slate-500 hover:text-slate-300 underline underline-offset-2"
+                >
+                  Wrong X account? Log out on x.com first.
+                </button>
+              )}
             </div>
 
             {/* How it works */}
@@ -626,33 +605,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* LOGIN OVERLAY */}
-{!isAuthed && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
-    <div className="w-full max-w-md rounded-3xl border border-slate-700/80 bg-gradient-to-b from-slate-950 to-slate-900/95 p-7 shadow-[0_30px_120px_rgba(0,0,0,0.85)] ring-1 ring-emerald-400/20 backdrop-blur-xl text-center">
-      <div className="mb-3 inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
-        XPOT ACCESS
-      </div>
+      {/* XPOT access blur overlay for non-logged-in users */}
+      {!isAuthed && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/35 backdrop-blur-md">
+          <div className="pointer-events-auto max-w-md w-full mx-4 rounded-[26px] border border-slate-800 bg-gradient-to-b from-slate-900/90 via-slate-950/95 to-slate-950/98 px-8 py-7 shadow-[0_24px_80px_rgba(0,0,0,0.85)]">
+            <p className="text-[10px] font-semibold tracking-[0.22em] text-slate-400 uppercase mb-3 text-center">
+              XPOT ACCESS
+            </p>
+            <h2 className="text-center text-lg font-semibold text-slate-50">
+              Sign in to enter today’s draw
+            </h2>
+            <p className="mt-2 text-center text-xs text-slate-400">
+              One ticket per X account. Your identity is your entry.
+              No posting required.
+            </p>
 
-      <h2 className="text-xl font-semibold tracking-tight text-slate-50 mb-2">
-        Sign in to enter today’s draw
-      </h2>
-
-      <p className="text-xs text-slate-400 mb-5">
-        One ticket per X account. Your identity is your entry.
-        No posting required.
-      </p>
-
-      <button
-        type="button"
-        onClick={openXLoginPopup}
-        className="w-full rounded-full bg-gradient-to-r from-sky-400 to-sky-500 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-sky-500/30 hover:from-sky-300 hover:to-sky-500"
-      >
-        {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-      </button>
-    </div>
-  </div>
-)}
+            <button
+              type="button"
+              onClick={handleSignInWithX}
+              className="mt-6 w-full rounded-full bg-sky-500 py-2.5 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400 transition"
+            >
+              {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
