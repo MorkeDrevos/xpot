@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
+import ClaimTicketSection from '../components/ClaimTicketSection';
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -186,9 +187,9 @@ export default function DashboardPage() {
   };
 
   return (
-  <main className="min-h-screen bg-black text-slate-50">
-    <div className="mx-auto flex max-w-6xl">
+    <main className="min-h-screen bg-black text-slate-50">
       {/* full-screen hero for claim – keep or remove as needed */}
+      <ClaimTicketSection />
 
       <div className="mx-auto flex max-w-6xl">
         {/* ── Left nav (X-style) ───────────────────────────── */}
