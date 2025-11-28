@@ -477,22 +477,21 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* XPOT balance – informational only */}
-<div className="premium-card p-4 mb-4">
-  <h3 className="text-sm font-semibold">Your XPOT</h3>
-  <p className="mt-1 text-xs text-slate-400">
-    XPOT in your wallet right now. You can hold, buy or sell any time.
-  </p>
-
-  <p className="mt-3 text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-emerald-100 to-white">
-    {/* TODO: replace mockBalance with real on-chain balance later */}
-    {mockBalance.toLocaleString()}{" "}
-    <span className="text-sm text-slate-400">XPOT</span>
-  </p>
-</div>
-
           {/* Right sidebar */}
           <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
+            {/* XPOT balance – informational only */}
+  <div className="premium-card p-4">
+    <h3 className="text-sm font-semibold">Your XPOT</h3>
+    <p className="mt-1 text-xs text-slate-400">
+      XPOT in your wallet right now. You can hold, buy or sell any time.
+    </p>
+
+    <p className="mt-3 text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-emerald-100 to-white">
+      {mockBalance.toLocaleString()}{' '}
+      <span className="text-sm text-slate-400">XPOT</span>
+    </p>
+  </div>
+
             {/* Sign in with X */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">
