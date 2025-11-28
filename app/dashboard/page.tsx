@@ -610,10 +610,9 @@ export default function DashboardPage() {
           Sign in to enter today’s draw
         </h2>
 
-        <p className="mb-5 text-xs leading-relaxed text-slate-400">
-          One ticket per X account, per draw. No posts. No forms. Just one click to enter.
-          <br className="hidden sm:inline" />
-         
+        <p className="mb-4 text-xs leading-relaxed text-slate-400">
+          One ticket per X account, per draw. <br className="hidden sm:inline" />
+          No posts. No forms. Just one click to enter.
         </p>
 
         {/* Main CTA */}
@@ -640,7 +639,7 @@ export default function DashboardPage() {
         {/* Requirements + XPOT micro-link */}
 <div className="mt-3 flex flex-col items-center gap-[4px] text-center">
   <p className="text-[10.5px] leading-relaxed text-slate-500/75">
-    Requires a{' '}
+    Entry requires a{' '}
     <span className="relative group cursor-help text-slate-300 underline underline-offset-2 decoration-dotted">
       minimum XPOT balance
       <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-56 -translate-x-1/2 rounded-xl bg-[#05070c] px-3 py-2 text-[10px] text-slate-300 shadow-[0_8px_30px_rgba(0,0,0,0.8)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
@@ -652,7 +651,7 @@ export default function DashboardPage() {
       href="/what-is-xpot"
       className="ml-1 text-emerald-400 underline underline-offset-2 transition-colors hover:text-emerald-300"
     >
-      What is XPOT?
+      XPOT?
     </a>
   </p>
 
@@ -664,7 +663,7 @@ export default function DashboardPage() {
       rel="noopener noreferrer"
       className="underline underline-offset-2 transition-colors hover:text-slate-300"
     >
-      Switch on x.com first.
+      Switch on x.com.
     </a>
   </p>
 </div>
