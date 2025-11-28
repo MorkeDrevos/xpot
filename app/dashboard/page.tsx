@@ -82,57 +82,49 @@ export default function DashboardPage() {
   // X login popup (improved)
   // ─────────────────────────────────────────────
   function openXLoginPopup() {
-    if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
 
-    const width = 600;
-    const height = 700;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
+  const width = 600;
+  const height = 700;
+  const left = window.screenX + (window.outerWidth - width) / 2;
+  const top = window.screenY + (window.outerHeight - height) / 2;
 
-    // This should point to your existing X auth route
-    // e.g. a page that calls next-auth signIn('twitter' / 'x')
-    const url = '/x-login';
+  const popup = window.open(
+    '/x-login',
+    'xpot-x-login',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+  );
 
-    const popup = window.open(
-      url,
-      'xpot-x-login',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
-    );
+  if (!popup) return;
 
-    if (!popup) return;
-
-    // Listen for a message from the popup so we can auto-close it
-    // On /x-login (or your callback page) you can later do:
-    // window.opener?.postMessage({ type: 'x-auth-complete' }, window.location.origin);
-    const handleMessage = (event: MessageEvent) => {
-      try {
-        if (
-          event.origin === window.location.origin &&
-          event.data &&
-          (event.data.type === 'x-auth-complete' || event.data === 'x-auth-complete')
-        ) {
-          window.removeEventListener('message', handleMessage);
-          if (!popup.closed) {
-            popup.close();
-          }
-          window.location.reload();
-        }
-      } catch {
-        // ignore malformed messages
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-
-    // Fallback: if user manually closes popup, reload to pick up session
-    const timer = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(timer);
+  const handleMessage = (event: MessageEvent) => {
+    try {
+      if (
+        event.origin === window.location.origin &&
+        event.data &&
+        (event.data.type === 'x-auth-complete' ||
+          event.data === 'x-auth-complete')
+      ) {
         window.removeEventListener('message', handleMessage);
+        if (!popup.closed) popup.close();
         window.location.reload();
       }
-    }, 800);
-  }
+    } catch {
+      // ignore
+    }
+  };
+
+  window.addEventListener('message', handleMessage);
+
+  // Fallback in case message never arrives but user closes popup manually
+  const timer = setInterval(() => {
+    if (popup.closed) {
+      clearInterval(timer);
+      window.removeEventListener('message', handleMessage);
+      window.location.reload();
+    }
+  }, 800);
+}
 
   // ─────────────────────────────────────────────
   // Helpers
