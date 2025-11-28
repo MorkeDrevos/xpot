@@ -594,7 +594,7 @@ export default function DashboardPage() {
 
       {/* LOGIN OVERLAY – premium glass XPOT access */}
       {!isAuthed && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 backdrop-blur-sm + bg-black/40">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/65 backdrop-blur-sm">
           <div className="relative mx-4 w-full max-w-md rounded-3xl border border-slate-800
 bg-[#05070c] px-8 py-7
 shadow-[0_40px_160px_rgba(0,0,0,0.95)]
