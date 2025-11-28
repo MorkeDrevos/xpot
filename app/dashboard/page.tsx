@@ -189,7 +189,6 @@ export default function DashboardPage() {
   <main className="min-h-screen bg-black text-slate-50">
     <div className="mx-auto flex max-w-6xl">
       {/* full-screen hero for claim – keep or remove as needed */}
-      <ClaimTicketSection />
 
       <div className="mx-auto flex max-w-6xl">
         {/* ── Left nav (X-style) ───────────────────────────── */}
