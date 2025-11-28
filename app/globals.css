@@ -2,66 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─────────────────────────────────────────
-   Global reset / typography
-   ───────────────────────────────────────── */
-
 html,
 body {
   margin: 0;
   padding: 0;
 }
 
+/* Global XPOT typography */
 :root {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
     'SF Pro Display', sans-serif;
-  font-size: 15px; /* base */
+  font-size: 15px;
 }
 
 @media (min-width: 1024px) {
   :root {
-    font-size: 16px; /* bump on desktop */
+    font-size: 16px;
   }
 }
 
 body {
-  background-color: #000000;
+  background-color: #000;
   color: #e5e7eb;
 }
 
-/* ─────────────────────────────────────────
-   XPOT X-style verified badge
-   (custom SVG-ish pill, NOT X’s asset)
-   ───────────────────────────────────────── */
+/* ────────────────────────────────────────────────
+   XPOT verified badge (custom, non-copyrighted)
+   ──────────────────────────────────────────────── */
 
 .x-verified-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   margin-left: 6px;
 
   border-radius: 9999px;
-  background: radial-gradient(circle at 30% 20%, #ffffff 0, #e5f4ff 18%, #1d9bf0 55%, #1478c2 100%);
+  background: #1d9bf0;
 
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 1),
-    0 2px 4px rgba(15, 23, 42, 0.9);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
 
-  position: relative;
-  transform-origin: center;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset,
+    0 0 0 0 rgba(29, 155, 240, 0);
+
   transition:
-    transform 0.16s ease-out,
-    filter 0.16s ease-out,
-    box-shadow 0.16s ease-out;
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
 }
 
-/* Draw the check mark with borders so it’s vector-clean */
+/* Draw the check mark as pure CSS */
 .x-verified-badge::before {
   content: '';
-  width: 0.34rem;
+  width: 0.35rem;
   height: 0.22rem;
   border-style: solid;
   border-width: 0 0 2px 2px;
@@ -70,41 +67,36 @@ body {
   transform: translateY(-0.5px) rotate(-45deg);
 }
 
-/* Hover / focus – tiny lift & shine */
-.x-verified-badge:hover,
-.x-verified-badge:focus-visible {
-  transform: translateY(-0.5px) scale(1.02);
-  filter: brightness(1.06);
+/* Hover = tiny lift & glow */
+.x-verified-badge:hover {
+  transform: translateY(-0.5px);
+  filter: brightness(1.04);
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 1),
-    0 4px 10px rgba(15, 23, 42, 0.9),
-    0 0 8px rgba(29, 155, 240, 0.65);
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 4px 10px rgba(15, 23, 42, 0.85);
 }
 
-/* Pressed – scale down like X */
+/* Pressed = scale down */
 .x-verified-badge:active {
   transform: scale(0.9);
   filter: brightness(0.97);
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 1),
+    0 0 0 1px rgba(15, 23, 42, 0.9),
     0 1px 4px rgba(15, 23, 42, 0.9);
 }
 
-/* ─────────────────────────────────────────
-   XPOT account dropdown (X-style)
-   ───────────────────────────────────────── */
+/* ────────────────────────────────────────────────
+   Account dropdown animation
+   ──────────────────────────────────────────────── */
 
 .x-account-menu {
-  border-radius: 1.5rem;
-  overflow: hidden;
-
   opacity: 0;
   transform: translateY(4px) scale(0.97);
   transform-origin: bottom left;
-  animation: x-account-menu-in 130ms ease-out forwards;
+  animation: account-menu-in 130ms ease-out forwards;
 }
 
-@keyframes x-account-menu-in {
+@keyframes account-menu-in {
   from {
     opacity: 0;
     transform: translateY(4px) scale(0.97);
@@ -115,39 +107,137 @@ body {
   }
 }
 
-.x-account-menu hr {
-  border-color: #111827; /* slate-900-ish */
-  opacity: 1;
-  margin: 0;
+/* Avatar lock badge (identity locked to draw) */
+
+.x-avatar-lock {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 30% 20%, #bbf7d0 0, #22c55e 40%, #0f172a 100%);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 6px 14px rgba(15, 23, 42, 0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* ─────────────────────────────────────────
-   Premium cards + highlight blocks
-   ───────────────────────────────────────── */
+.x-avatar-lock-glyph {
+  font-size: 10px;
+  transform: translateY(-0.5px);
+}
+
+/* ────────────────────────────────────────────────
+   Premium shell + cards
+   ──────────────────────────────────────────────── */
+
+.premium-shell {
+  backdrop-filter: blur(20px);
+}
 
 .premium-card {
   border-radius: 1.5rem;
-  background: radial-gradient(circle at top left, #020617 0, #020617 45%, #020617 100%);
-  border: 1px solid rgba(15, 23, 42, 0.9);
+  background: radial-gradient(circle at top left, #020617 0, #020617 40%, #020617 100%);
+  border: 1px solid rgba(30, 64, 175, 0.34);
   box-shadow:
-    0 16px 40px rgba(0, 0, 0, 0.85);
+    0 20px 60px rgba(15, 23, 42, 0.9),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
 }
 
-/* Used for “Next daily jackpot” card */
-.premium-highlight {
-  border-radius: 1.5rem;
+/* hero-style card */
+.card-premium {
   background:
-    radial-gradient(circle at top left, rgba(45, 212, 191, 0.28) 0, transparent 48%),
-    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.32) 0, transparent 50%),
-    #020617;
-  border: 1px solid rgba(45, 212, 191, 0.5);
+    radial-gradient(circle at 0 0, rgba(94, 234, 212, 0.12), transparent 55%),
+    radial-gradient(circle at 100% 0, rgba(52, 211, 153, 0.12), transparent 50%),
+    linear-gradient(135deg, #020617, #020617 40%, #020617);
+  border: 1px solid rgba(51, 65, 85, 0.8);
   box-shadow:
-    0 20px 50px rgba(5, 46, 22, 0.85);
+    0 22px 70px rgba(15, 23, 42, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 1);
 }
 
-/* ─────────────────────────────────────────
-   XPOT legal pages (Terms / Privacy)
-   ───────────────────────────────────────── */
+/* jackpot highlight block */
+.premium-highlight.jackpot-core {
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at 0 0, rgba(34, 197, 94, 0.4), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.25), transparent 50%),
+    linear-gradient(135deg, #022c22, #022c22 40%, #020617);
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  box-shadow:
+    0 20px 50px rgba(6, 95, 70, 0.6),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
+}
+
+/* buttons */
+.btn-premium {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
+}
+
+.btn-premium:hover {
+  transform: translateY(-0.5px);
+  filter: brightness(1.05);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.8),
+    0 14px 30px rgba(22, 101, 52, 0.65);
+}
+
+.btn-premium:active {
+  transform: translateY(0.5px) scale(0.98);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 6px 16px rgba(15, 23, 42, 0.95);
+}
+
+/* soft glow for main CTA */
+.toolbar-glow {
+  box-shadow:
+    0 0 40px rgba(52, 211, 153, 0.55),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
+}
+
+/* status pills in header */
+.status-pill,
+.status-pill-amber,
+.status-pill-emerald {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.status-pill {
+  background: rgba(30, 64, 175, 0.22);
+  color: #bfdbfe;
+  border: 1px solid rgba(30, 64, 175, 0.6);
+}
+
+.status-pill-amber {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fed7aa;
+  border: 1px solid rgba(245, 158, 11, 0.55);
+}
+
+.status-pill-emerald {
+  background: rgba(16, 185, 129, 0.16);
+  color: #a7f3d0;
+  border: 1px solid rgba(16, 185, 129, 0.6);
+}
+
+/* ────────────────────────────────────────────────
+   Legal pages (unchanged)
+   ──────────────────────────────────────────────── */
 
 .legal-page {
   min-height: 100vh;
@@ -251,91 +341,4 @@ body {
 
 .legal-container a:hover {
   text-decoration-thickness: 2px;
-}
-/* Premium floating card */
-.premium-card {
-  background: radial-gradient(circle at top left, #050b1e 0%, #020617 60%);
-  border: 1px solid rgba(51, 65, 85, 0.35);
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.85),
-    0 0 0 1px rgba(12, 25, 40, 0.6) inset;
-  backdrop-filter: blur(10px);
-}
-
-/* Subtle hover lift */
-.premium-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 28px 80px rgba(0, 0, 0, 0.9),
-    0 0 0 1px rgba(59, 130, 246, 0.25) inset;
-}
-
-/* Premium button feel */
-.btn-premium {
-  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
-}
-
-.btn-premium:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.05);
-}
-
-.btn-premium:active {
-  transform: scale(0.97);
-}
-
-/* Premium XPOT cards */
-.card-premium {
-  background: linear-gradient(180deg, rgba(15,23,42,0.55), rgba(2,6,23,0.8));
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  box-shadow:
-    0 10px 40px rgba(0,0,0,0.8),
-    inset 0 1px 0 rgba(255,255,255,0.04);
-  backdrop-filter: blur(8px);
-}
-
-/* Activated state glow */
-.xpot-locked {
-  box-shadow:
-    0 0 0 1px rgba(34,197,94,0.3),
-    0 0 14px rgba(34,197,94,0.35);
-}
-
-/* Premium pill animation */
-.premium-pill {
-  animation: premiumPulse 1.8s ease-in-out infinite;
-}
-
-@keyframes premiumPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.01); }
-}
-
-/* Jackpot glow */
-.jackpot-core {
-  box-shadow:
-    0 0 0 1px rgba(34,197,94,0.25),
-    0 0 16px rgba(34,197,94,0.35);
-  animation: jackpotPulse 2s ease-in-out infinite;
-}
-
-@keyframes jackpotPulse {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.12); }
-}
-
-.toolbar-glow {
-  box-shadow:
-    0 6px 18px rgba(34,197,94,0.35),
-    inset 0 1px 0 rgba(255,255,255,0.15);
-}
-
-/* Card float */
-.premium-card {
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.premium-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
 }
