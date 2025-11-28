@@ -19,7 +19,7 @@ export default function XLoginPage() {
       // Tell the opener we're done and close the popup
       try {
         if (window.opener) {
-          window.opener.postMessage({ type: 'xpot-auth-success' }, window.location.origin);
+          window.opener.postMessage({ type: 'x-auth-complete' }, window.location.origin);
         }
       } catch {
         // ignore postMessage errors
