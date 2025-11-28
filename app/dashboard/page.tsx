@@ -1,371 +1,212 @@
 'use client';
 
-import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
-import { Connection, PublicKey } from '@solana/web3.js';
-import {
-  WalletAdapterNetwork
-} from '@solana/wallet-adapter-base';
-import {
-  ConnectionProvider,
-  WalletProvider,
-  useWallet
-} from '@solana/wallet-adapter-react';
+function InlineConnectWalletButton() {
+  const { publicKey, disconnect, connecting } = useWallet();
+  const { setVisible } = useWalletModal();
 
-import {
-  WalletModalProvider,
-  WalletMultiButton
-} from '@solana/wallet-adapter-react-ui';
+  const label = useMemo(() => {
+    if (connecting) return 'Connecting...';
+    if (!publicKey) return 'Connect wallet';
+    const addr = publicKey.toBase58();
+    return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+  }, [publicKey, connecting]);
 
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-  BackpackWalletAdapter,
-  LedgerWalletAdapter
-} from '@solana/wallet-adapter-wallets';
+  const handleClick = () => {
+    if (!publicKey) {
+      setVisible(true);
+      return;
+    }
+    disconnect();
+  };
 
-import '@solana/wallet-adapter-react-ui/styles.css';
-
-
-// -------------------------
-// CONFIG
-// -------------------------
-
-const RPC_URL = 'https://api.mainnet-beta.solana.com';
-const TEST_MINT = process.env.NEXT_PUBLIC_TEST_MINT!;
-
-
-// -------------------------
-// TYPES
-// -------------------------
-
-type EntryStatus = 'in-draw' | 'won' | 'claimed';
-
-type Entry = {
-  id: number;
-  code: string;
-  status: EntryStatus;
-  label: string;
-  createdAt: string;
-};
-
-
-// -------------------------
-// HELPERS
-// -------------------------
-
-function makeCode(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const block = () =>
-    Array.from({ length: 4 })
-      .map(() => alphabet[Math.floor(Math.random() * alphabet.length)])
-      .join('');
-  return `XPOT-${block()}-${block()}`;
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={connecting}
+      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {label}
+    </button>
+  );
 }
 
-
-// -------------------------
-// WALLET BALANCE READER
-// -------------------------
-
-function useTokenBalance(mintAddress: string) {
-  const { publicKey } = useWallet();
-  const [balance, setBalance] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!publicKey) return;
-
-    const fetchBalance = async () => {
-      try {
-        const connection = new Connection(RPC_URL, 'confirmed');
-        const mint = new PublicKey(mintAddress);
-
-        const accounts = await connection.getParsedTokenAccountsByOwner(
-          publicKey,
-          { mint }
-        );
-
-        const amount =
-          accounts.value[0]?.account.data.parsed.info.tokenAmount
-            .uiAmount || 0;
-
-        setBalance(amount);
-      } catch (err) {
-        setError('Could not load balance');
-      }
-    };
-
-    fetchBalance();
-  }, [publicKey, mintAddress]);
-
-  return { balance, error };
-}
-
-
-
-// -------------------------
-// INNER DASHBOARD UI
-// -------------------------
-
-function DashboardInner() {
+export default function XpotPage() {
   const { data: session } = useSession();
   const { publicKey } = useWallet();
 
-  const isAuthed = !!session;
-  const walletConnected = !!publicKey;
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [hasClaimed, setHasClaimed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const { balance, error } = useTokenBalance(TEST_MINT);
+  const isXLoggedIn = !!session;
+  const isWalletConnected = !!publicKey;
+  const canClaim = isXLoggedIn && isWalletConnected && !isClaiming;
 
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
-
-  const username =
+  const xName =
     (session?.user as any)?.username ||
-    (session?.user as any)?.screen_name ||
     (session?.user as any)?.name ||
-    'user';
+    null;
 
-  function openXLogin() {
-    window.location.href = '/x-login';
-  }
+  const handleXLogin = () => {
+    signIn('twitter'); // change if your provider id is different
+  };
 
-  function handleClaim() {
-    if (!isAuthed) {
-      openXLogin();
-      return;
+  const handleXLogout = () => {
+    signOut();
+  };
+
+  const handleClaim = async () => {
+    if (!canClaim) return;
+    setIsClaiming(true);
+    setHasClaimed(false);
+    setError(null);
+
+    try {
+      // UI only for now
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      setHasClaimed(true);
+    } catch (e: any) {
+      setError(e?.message || 'Could not claim ticket. Please try again.');
+    } finally {
+      setIsClaiming(false);
     }
-
-    if (!walletConnected) {
-      alert('Connect your wallet first.');
-      return;
-    }
-
-    if (todaysTicket) return;
-
-    const ticket: Entry = {
-      id: Date.now(),
-      code: makeCode(),
-      status: 'in-draw',
-      label: "Today's jackpot",
-      createdAt: new Date().toLocaleTimeString()
-    };
-
-    setEntries(prev => [ticket, ...prev]);
-    setTodaysTicket(ticket);
-  }
-
+  };
 
   return (
-    <main className="min-h-screen bg-black text-slate-50">
-      <div className="mx-auto flex max-w-6xl">
+    <main className="min-h-screen bg-black text-slate-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-3xl">
+        <header className="mb-8">
+          <h1 className="text-3xl font-semibold tracking-tight text-white">
+            XPOT Access
+          </h1>
+          <p className="mt-2 text-sm text-slate-300">
+            Connect X and your Solana wallet to claim an XPOT ticket.
+          </p>
+        </header>
 
-        {/* LEFT NAV */}
-        <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
-
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-9 w-9 rounded-full bg-emerald-700/20 flex items-center justify-center">💎</div>
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/40">
+          {/* STEP 1 – X LOGIN */}
+          <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold">XPOT</div>
-                <div className="text-xs text-slate-500">Daily Jackpot</div>
-              </div>
-            </div>
-
-            <nav className="space-y-2">
-              <div className="bg-slate-900 rounded-full px-3 py-2 text-sm">Dashboard</div>
-              <div className="text-sm text-slate-500 px-3">Draw history</div>
-            </nav>
-
-            <button
-              onClick={handleClaim}
-              className="mt-6 w-full rounded-full bg-gradient-to-r from-emerald-400 to-lime-300 text-black py-2 text-sm font-semibold"
-            >
-              Claim today’s ticket
-            </button>
-          </div>
-
-          {/* USER MENU */}
-          <div className="text-xs text-slate-400">
-            @{username}
-            <button onClick={() => signOut()} className="block mt-1 text-red-400">Log out</button>
-          </div>
-        </aside>
-
-
-
-        {/* MAIN */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_320px] rounded-[28px] border border-slate-800 bg-[#020617]">
-
-          {/* CENTER */}
-          <section className="p-6">
-
-            <header className="mb-6">
-              <h1 className="text-2xl font-semibold">Dashboard</h1>
-              <p className="text-xs text-slate-400">
-                One jackpot. One winner. One ticket per day.
-              </p>
-            </header>
-
-
-            {/* TICKET CARD */}
-            <div className="premium-card p-5 mb-4 border border-slate-800 rounded-xl">
-
-              <h2 className="text-sm font-semibold text-emerald-200">
-                Today's ticket
-              </h2>
-
-              {!todaysTicket ? (
-                <div className="mt-4 flex justify-between items-center">
-                  <div>
-                    <p className="text-sm">Claim your ticket for today.</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Requires X login + connected wallet.
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleClaim}
-                    disabled={!isAuthed || !walletConnected}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                      !isAuthed || !walletConnected
-                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-emerald-400 to-lime-300 text-black'
-                    }`}
-                  >
-                    {!isAuthed ? 'Sign in with X'
-                      : !walletConnected ? 'Connect wallet'
-                        : 'Claim ticket'}
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-4">
-                  ✅ Ticket in draw  
-                  <div className="mt-1 font-mono text-emerald-300">
-                    {todaysTicket.code}
-                  </div>
-                </div>
-              )}
-            </div>
-
-
-            {/* TICKETS */}
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Your tickets</h3>
-
-              {entries.length === 0 && (
-                <div className="text-xs text-slate-500">Nothing yet.</div>
-              )}
-
-              {entries.map(t => (
-                <div
-                  key={t.id}
-                  className="border border-slate-800 rounded-xl p-3 mb-2 flex justify-between"
-                >
-                  <div>
-                    <div className="font-mono text-sm">{t.code}</div>
-                    <div className="text-xs text-slate-500">{t.label}</div>
-                  </div>
-                  <span className="text-xs text-emerald-300">
-                    {t.status === 'in-draw' ? 'In draw' : ''}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-          </section>
-
-
-
-          {/* RIGHT SIDEBAR */}
-          <aside className="p-4 space-y-4 bg-slate-950/60">
-
-            {/* WALLET */}
-            <div className="premium-card p-4 border border-slate-800 rounded-xl">
-              <h3 className="text-sm font-semibold">Wallet</h3>
-
-              <div className="mt-2">
-                <WalletMultiButton className="!bg-sky-500 !text-black !text-xs !rounded-full" />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Step 1
+                </p>
+                <p className="text-sm font-medium text-slate-50">
+                  Connect X account
+                </p>
+                {!isXLoggedIn && (
+                  <p className="mt-1 text-xs text-slate-400">
+                    Sign in with X so we can link your ticket.
+                  </p>
+                )}
+                {isXLoggedIn && (
+                  <p className="mt-1 text-xs text-emerald-300">
+                    Connected as{' '}
+                    <span className="font-semibold">
+                      @{xName ?? 'your-account'}
+                    </span>
+                  </p>
+                )}
               </div>
 
-              {walletConnected && (
-                <>
-                  <div className="mt-3 text-xs text-slate-400">
-                    Token balance
-                  </div>
-
-                  {error && (
-                    <div className="text-xs text-red-400">
-                      {error}
-                    </div>
-                  )}
-
-                  {balance !== null && (
-                    <div className="mt-1 text-2xl font-semibold text-emerald-300">
-                      {balance.toLocaleString()}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-
-            {/* X LOGIN */}
-            <div className="premium-card p-4 border border-slate-800 rounded-xl">
-              <h3 className="text-sm font-semibold">X account</h3>
-              {!isAuthed ? (
+              {!isXLoggedIn ? (
                 <button
-                  onClick={openXLogin}
-                  className="mt-2 w-full rounded-full bg-sky-500 py-2 text-black text-sm"
+                  type="button"
+                  onClick={handleXLogin}
+                  className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-slate-100"
                 >
                   Sign in with X
                 </button>
               ) : (
-                <div className="mt-2 text-emerald-300 text-xs">
-                  Signed in as @{username}
-                </div>
+                <button
+                  type="button"
+                  onClick={handleXLogout}
+                  className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/5"
+                >
+                  Sign out
+                </button>
               )}
             </div>
+          </div>
 
+          {/* STEP 2 – WALLET */}
+          <div className="mt-3 rounded-xl border border-white/10 bg-black/40 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Step 2
+                </p>
+                <p className="text-sm font-medium text-slate-50">
+                  Connect Solana wallet
+                </p>
+                {!isWalletConnected && (
+                  <p className="mt-1 text-xs text-slate-400">
+                    Use Phantom, Backpack, or Solflare.
+                  </p>
+                )}
+                {isWalletConnected && (
+                  <p className="mt-1 text-xs text-emerald-300">
+                    Wallet connected
+                  </p>
+                )}
+              </div>
 
-            {/* RULES */}
-            <div className="premium-card p-4 border border-slate-800 rounded-xl text-xs text-slate-400">
-              <div>• One ticket per X account</div>
-              <div>• Wallet only checked when claiming</div>
-              <div>• Winner has 24h to claim or rollover</div>
+              <div className="w-40">
+                <InlineConnectWalletButton />
+              </div>
             </div>
+          </div>
 
-          </aside>
+          {/* STEP 3 – CLAIM */}
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={handleClaim}
+              disabled={!canClaim}
+              className={`flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                canClaim
+                  ? 'bg-emerald-400 text-black hover:bg-emerald-300'
+                  : 'bg-white/5 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              {isClaiming ? 'Claiming ticket…' : 'Claim XPOT ticket'}
+            </button>
 
-        </div>
+            {!isXLoggedIn && (
+              <p className="mt-2 text-xs text-slate-400">
+                To claim a ticket, connect your X account first.
+              </p>
+            )}
+            {isXLoggedIn && !isWalletConnected && (
+              <p className="mt-2 text-xs text-slate-400">
+                Connect your wallet to unlock the claim button.
+              </p>
+            )}
+            {isXLoggedIn && isWalletConnected && !hasClaimed && !error && (
+              <p className="mt-2 text-xs text-emerald-300">
+                You&apos;re ready. Hit claim to lock in your ticket.
+              </p>
+            )}
+            {hasClaimed && !error && (
+              <p className="mt-2 text-xs font-medium text-emerald-300">
+                Ticket claimed (UI only for now).
+              </p>
+            )}
+            {error && (
+              <p className="mt-2 text-xs font-medium text-red-400">
+                {error}
+              </p>
+            )}
+          </div>
+        </section>
       </div>
     </main>
-  );
-}
-
-
-
-// -------------------------
-// ROOT WRAPPER (WALLET PROVIDERS)
-// -------------------------
-
-export default function DashboardPage() {
-
-  const wallets = [
-    new PhantomWalletAdapter(),
-    new SolflareWalletAdapter(),
-    new BackpackWalletAdapter(),
-    new LedgerWalletAdapter()
-  ];
-
-  return (
-    <ConnectionProvider endpoint={RPC_URL}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          <DashboardInner />
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
   );
 }
