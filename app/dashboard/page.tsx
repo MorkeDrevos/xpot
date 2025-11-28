@@ -188,12 +188,12 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
       <div
-        className={`mx-auto flex max-w-6xl ${
-          !isAuthed
-            ? 'blur-sm brightness-75 pointer-events-none select-none'
-            : ''
-        }`}
-      >
+  className={`mx-auto flex max-w-6xl ${
+    !isAuthed
+      ? 'blur-[2px] brightness-90 pointer-events-none select-none'
+      : ''
+  }`}
+>
         {/* ── Left nav (X-style) ───────────────────────────── */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
           <div className="space-y-6">
@@ -632,28 +632,32 @@ export default function DashboardPage() {
       </div>
 
       {/* LOGIN OVERLAY */}
-      {!isAuthed && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-[#020617] p-6 shadow-2xl text-center">
-            <h2 className="text-lg font-semibold mb-2">
-              Sign in to enter today’s draw
-            </h2>
+{!isAuthed && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
+    <div className="w-full max-w-md rounded-3xl border border-slate-700/80 bg-gradient-to-b from-slate-950 to-slate-900/95 p-7 shadow-[0_24px_80px_rgba(0,0,0,0.9)] ring-1 ring-emerald-500/10 text-center">
+      <div className="mb-3 inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+        XPOT ACCESS
+      </div>
 
-            <p className="text-xs text-slate-400 mb-5">
-              One ticket per X account. Your identity is your entry.
-              No posting required.
-            </p>
+      <h2 className="text-xl font-semibold tracking-tight text-slate-50 mb-2">
+        Sign in to enter today’s draw
+      </h2>
 
-            <button
-              type="button"
-              onClick={openXLoginPopup}
-              className="w-full rounded-full bg-sky-500 py-2.5 text-sm font-semibold text-black hover:bg-sky-400"
-            >
-              {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-            </button>
-          </div>
-        </div>
-      )}
+      <p className="text-xs text-slate-400 mb-5">
+        One ticket per X account. Your identity is your entry.
+        No posting required.
+      </p>
+
+      <button
+        type="button"
+        onClick={openXLoginPopup}
+        className="w-full rounded-full bg-gradient-to-r from-sky-400 to-sky-500 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-sky-500/30 hover:from-sky-300 hover:to-sky-500"
+      >
+        {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+      </button>
+    </div>
+  </div>
+)}
     </main>
   );
 }
