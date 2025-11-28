@@ -594,7 +594,7 @@ export default function DashboardPage() {
 
       {/* LOGIN OVERLAY – premium glass XPOT access */}
 {!isAuthed && (
-  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-[24px]">
+  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 backdrop-blur-[24px]">
     <div className="relative mx-4 w-full max-w-md">
 
       {/* Glow frame */}
@@ -633,7 +633,7 @@ export default function DashboardPage() {
     </div>
   </div>
 )}
-      
+
     </main>
   );
 }
