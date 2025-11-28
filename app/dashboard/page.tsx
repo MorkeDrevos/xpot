@@ -638,21 +638,22 @@ export default function DashboardPage() {
 </button>
 
         {/* Requirements + XPOT micro-link */}
-        <p className="mt-3 text-[10.5px] leading-relaxed text-slate-500/70 text-center">
-          Requires wallet connection and {' '}
-          <span className="relative group cursor-help text-slate-400 underline underline-offset-2 decoration-dotted">
-            minimum XPOT balance
-            <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-56 -translate-x-1/2 rounded-xl bg-[#05070c] px-3 py-2 text-[10px] text-slate-300 shadow-[0_8px_30px_rgba(0,0,0,0.8)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-              You must hold the required amount of XPOT at the moment you enter the draw.
-            </span>
-          </span>.
-          <a
-            href="/what-is-xpot"
-            className="xpot-link ml-1 text-sky-400/90 underline underline-offset-2 transition-colors hover:text-sky-300"
-          >
-            What is XPOT?
-          </a>
-        </p>
+<p className="mt-3 text-[10.5px] leading-relaxed text-slate-500/70 text-center">
+  Requires a{' '}
+  <span className="relative group cursor-help text-slate-400 underline underline-offset-2 decoration-dotted">
+    minimum XPOT balance
+    <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-56 -translate-x-1/2 rounded-xl bg-[#05070c] px-3 py-2 text-[10px] text-slate-300 shadow-[0_8px_30px_rgba(0,0,0,0.8)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+      You must hold the required amount of XPOT at the moment you enter the draw.
+    </span>
+  </span>{' '}
+  and a connected wallet.
+  <a
+    href="/what-is-xpot"
+    className="xpot-link ml-1 text-sky-400/90 underline underline-offset-2 transition-colors hover:text-sky-300"
+  >
+    What is XPOT?
+  </a>
+</p>
 
         {/* Wrong account helper */}
         <p className="mt-3 text-[10px] text-slate-500">
