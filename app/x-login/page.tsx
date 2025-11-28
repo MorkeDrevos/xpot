@@ -7,7 +7,7 @@ export default function XLoginPage() {
   const { status } = useSession();
 
   useEffect(() => {
-    // Wait until status is resolved
+    // Only act once status is resolved
     if (status !== 'unauthenticated' && status !== 'authenticated') return;
 
     // 1) Not logged in yet → start X OAuth inside the popup
@@ -21,17 +21,19 @@ export default function XLoginPage() {
 
     // 2) Logged in → notify opener + close popup
     try {
-      if (window.opener) {
+      if (typeof window !== 'undefined' && window.opener) {
         window.opener.postMessage(
           { type: 'x-auth-complete' },
           window.location.origin
         );
       }
     } catch {
-      // ignore
+      // ignore postMessage errors
     }
 
-    window.close();
+    if (typeof window !== 'undefined') {
+      window.close();
+    }
   }, [status]);
 
   return (
