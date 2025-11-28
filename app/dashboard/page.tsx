@@ -614,7 +614,7 @@ export default function DashboardPage() {
 
         {/* Body copy */}
         <p className="mb-5 text-xs leading-relaxed text-slate-400">
-          One entry per X account per draw. Your X-verified account is your ticket.
+          One entry per X account per draw.
           <br className="hidden sm:inline" /> No posts. No forms. Just one click to enter.
         </p>
 
