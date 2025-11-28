@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
@@ -23,7 +23,7 @@ function makeCode(): string {
   return `XPOT-${block()}-${block()}`;
 }
 
-// Seed preview entries so the list never looks empty
+// Seed a couple of preview tickets
 const now = new Date();
 const initialEntries: Entry[] = [
   {
@@ -48,8 +48,6 @@ export default function ClaimTicketSection() {
   const { data: session, status } = useSession();
   const isAuthed = !!session;
 
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
@@ -57,32 +55,10 @@ export default function ClaimTicketSection() {
 
   const winner = entries.find(e => e.status === 'won');
 
-  function handleMockConnectWallet() {
-    // TEMP: pretend a wallet is connected
-    setWalletConnected(true);
-    // Just a preview-style fake address
-    setWalletAddress('2krTwN...u6LrUk');
-  }
-
-  async function handleCopy(entry: Entry) {
-    try {
-      await navigator.clipboard.writeText(entry.code);
-      setCopiedId(entry.id);
-      setTimeout(() => setCopiedId(null), 1500);
-    } catch {
-      // ignore clipboard errors
-    }
-  }
-
   function handleClaimTicket() {
     if (!isAuthed) {
-      // Force X login first
-      signIn(undefined, { callbackUrl: '/dashboard' });
-      return;
-    }
-
-    if (!walletConnected) {
-      // Do nothing – button is disabled anyway
+      // For now just bounce them to X login page or home.
+      window.location.href = '/x-login';
       return;
     }
 
@@ -105,9 +81,19 @@ export default function ClaimTicketSection() {
     setTodaysTicket(newEntry);
   }
 
+  async function handleCopy(entry: Entry) {
+    try {
+      await navigator.clipboard.writeText(entry.code);
+      setCopiedId(entry.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {
+      // ignore
+    }
+  }
+
   return (
     <section className="space-y-4">
-      {/* TODAY'S TICKET – MAIN CARD */}
+      {/* TODAY'S TICKET */}
       <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
         <h2 className="text-sm font-semibold text-emerald-100">
           Today’s ticket
@@ -132,111 +118,60 @@ export default function ClaimTicketSection() {
                   Sign in with X first. No posting is required.
                 </p>
               )}
-
-              {isAuthed && !walletConnected && (
-                <p className="mt-2 text-[11px] text-amber-300">
-                  Connect a wallet before claiming today’s ticket.
-                </p>
-              )}
             </div>
 
             <button
               type="button"
               onClick={handleClaimTicket}
-              disabled={!isAuthed || !walletConnected}
-              className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 ${
-                !isAuthed || !walletConnected
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-              }`}
+              disabled={status === 'loading'}
+              className="btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow sm:mt-0"
             >
-              {!isAuthed
-                ? 'Sign in with X'
-                : !walletConnected
-                ? 'Connect wallet to claim'
-                : 'Claim today’s ticket'}
+              {status === 'loading'
+                ? 'Checking session…'
+                : isAuthed
+                ? 'Claim today’s ticket'
+                : 'Sign in with X'}
             </button>
           </div>
         ) : (
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-emerald-100">
-                ✅ Your ticket is in today’s draw.
+          <div className="mt-4">
+            <p className="text-sm text-emerald-100">
+              ✅ Your ticket is in today’s draw.
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Come back when the countdown hits zero to see if you won.
+            </p>
+            {todaysTicket && (
+              <p className="mt-2 text-xs text-slate-300">
+                Ticket code:{' '}
+                <span className="font-mono text-emerald-300">
+                  {todaysTicket.code}
+                </span>
               </p>
-              <p className="mt-1 text-xs text-slate-400">
-                Come back when the countdown hits zero to see if you won.
-              </p>
-              {todaysTicket && (
-                <p className="mt-2 text-xs text-slate-300">
-                  Ticket code:{' '}
-                  <span className="font-mono text-emerald-300">
-                    {todaysTicket.code}
-                  </span>
-                </p>
-              )}
-            </div>
+            )}
           </div>
         )}
       </article>
 
-      {/* WALLET CARD (PREVIEW – NO REAL CHAIN YET) */}
-      <article className="premium-card px-4 py-4">
-        <h3 className="text-sm font-semibold">Wallet</h3>
-        <p className="mt-1 text-xs text-slate-400">
-          Connect a wallet before claiming today’s ticket. Real Solana wiring
-          comes next.
-        </p>
-
-        <div className="mt-3 flex flex-col gap-2">
-          {walletConnected && walletAddress ? (
-            <p className="text-xs text-emerald-200">
-              Wallet connected:{' '}
-              <span className="font-mono text-emerald-300">
-                {walletAddress}
-              </span>
-            </p>
-          ) : (
-            <p className="text-xs text-slate-500">
-              No wallet connected yet.
-            </p>
-          )}
-
-          <button
-            type="button"
-            onClick={handleMockConnectWallet}
-            className="mt-1 inline-flex items-center justify-center rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-white"
-          >
-            {walletConnected ? 'Change wallet (preview)' : 'Connect wallet (preview)'}
-          </button>
-
-          <p className="mt-1 text-[11px] text-slate-500">
-            This is a visual preview only. On-chain wallet + XPOT balance checks
-            will be added next.
-          </p>
-        </div>
-      </article>
-
-      {/* TODAY'S RESULT (PREVIEW) */}
+      {/* TODAY'S RESULT */}
       <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
         <h2 className="text-sm font-semibold text-slate-200">
           Today’s result
         </h2>
 
         {winner ? (
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-slate-200">
-                One ticket{' '}
-                <span className="font-mono text-emerald-300">
-                  {winner.code}
-                </span>{' '}
-                hit today’s jackpot (preview).
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                In the real draw, this will show the winning ticket and X handle
-                once the countdown reaches zero.
-              </p>
-            </div>
+          <div className="mt-3">
+            <p className="text-sm text-slate-200">
+              One ticket{' '}
+              <span className="font-mono text-emerald-300">
+                {winner.code}
+              </span>{' '}
+              hit today’s jackpot (preview).
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              In the real draw, this will show the winning ticket and X handle
+              once the countdown reaches zero.
+            </p>
           </div>
         ) : (
           <p className="mt-3 text-sm text-slate-300">
@@ -246,7 +181,7 @@ export default function ClaimTicketSection() {
         )}
       </article>
 
-      {/* YOUR TICKETS LIST */}
+      {/* YOUR TICKETS */}
       <section className="pb-2 px-0">
         <h2 className="px-4 pt-3 text-sm font-semibold text-slate-200">
           Your tickets
