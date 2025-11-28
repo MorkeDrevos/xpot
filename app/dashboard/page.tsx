@@ -49,9 +49,6 @@ const initialEntries: Entry[] = [
   },
 ];
 
-// Temporary preview balance – replace with real on-chain balance later
-const mockBalance = 7_492_000;
-
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
@@ -71,6 +68,10 @@ export default function DashboardPage() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
+  // TEMP wallet state (mock – no Solana yet)
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [mockWallet, setMockWallet] = useState<string | null>(null);
+
   const winner = entries.find(e => e.status === 'won');
 
   function openXLoginPopup() {
@@ -81,7 +82,7 @@ export default function DashboardPage() {
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
 
-    const url = '/x-login'; // use whatever path you already have for X login
+    const url = '/x-login'; // your existing X login route
 
     const popup = window.open(
       url,
@@ -109,13 +110,25 @@ export default function DashboardPage() {
     }
   }
 
+  function connectWalletMock() {
+    // purely local mock – just to drive the UX
+    setWalletConnected(true);
+    setMockWallet('DemoWallet123…XYZ');
+  }
+
   function handleClaimTicket() {
-    // If not logged in, push them to X login
+    // 1) Force X login first
     if (!isAuthed) {
       openXLoginPopup();
       return;
     }
 
+    // 2) Wallet must be connected
+    if (!walletConnected) {
+      return;
+    }
+
+    // 3) Prevent double claim
     if (ticketClaimed) return;
 
     const newEntry: Entry = {
@@ -183,9 +196,18 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={handleClaimTicket}
-              className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
+              disabled={!isAuthed || !walletConnected}
+              className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
+                !isAuthed || !walletConnected
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+              }`}
             >
-              Claim today’s ticket
+              {!isAuthed
+                ? 'Sign in with X'
+                : !walletConnected
+                ? 'Connect wallet to claim'
+                : 'Claim today’s ticket'}
             </button>
           </div>
 
@@ -344,15 +366,30 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleClaimTicket}
-                      className="btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow sm:mt-0"
-                    >
-                      {isAuthed
-                        ? 'Claim today’s ticket'
-                        : 'Sign in & claim ticket'}
-                    </button>
+                    <div className="flex flex-col items-start sm:items-end">
+                      <button
+                        type="button"
+                        onClick={handleClaimTicket}
+                        disabled={!isAuthed || !walletConnected}
+                        className={`btn-premium rounded-full px-5 py-2 text-sm font-semibold ${
+                          !isAuthed || !walletConnected
+                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+                        }`}
+                      >
+                        {!isAuthed
+                          ? 'Sign in with X'
+                          : !walletConnected
+                          ? 'Connect wallet to claim'
+                          : 'Claim today’s ticket'}
+                      </button>
+
+                      {isAuthed && !walletConnected && (
+                        <p className="mt-1 text-[11px] text-amber-300">
+                          Connect your wallet on the right to claim today’s ticket.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -482,18 +519,39 @@ export default function DashboardPage() {
 
           {/* Right sidebar */}
           <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
-            {/* XPOT balance – informational only */}
-  <div className="premium-card p-4">
-    <h3 className="text-sm font-semibold">Your XPOT</h3>
-    <p className="mt-1 text-xs text-slate-400">
-      XPOT in your wallet right now. You can hold, buy or sell any time.
-    </p>
+            {/* Wallet */}
+            <div className="premium-card p-4">
+              <h3 className="text-sm font-semibold">Wallet</h3>
 
-    <p className="mt-3 text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-emerald-100 to-white">
-      {mockBalance.toLocaleString()}{' '}
-      <span className="text-sm text-slate-400">XPOT</span>
-    </p>
-  </div>
+              {!walletConnected ? (
+                <>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Connect wallet before claiming today’s ticket.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={connectWalletMock}
+                    className="mt-3 w-full rounded-full bg-emerald-500 py-2 text-sm font-semibold text-black hover:bg-emerald-400"
+                  >
+                    Connect wallet (demo)
+                  </button>
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    This is a preview. Real Phantom / Solflare / Backpack comes
+                    after launch.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-xs text-emerald-300">
+                    Wallet connected
+                  </p>
+                  <p className="mt-2 text-xs text-slate-400">Address:</p>
+                  <code className="text-[11px] text-slate-300 break-all">
+                    {mockWallet}
+                  </code>
+                </>
+              )}
+            </div>
 
             {/* Sign in with X */}
             <div className="premium-card p-4">
@@ -523,11 +581,12 @@ export default function DashboardPage() {
             {/* How it works */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">How today’s draw works</h3>
-<ul className="mt-2 text-xs text-slate-400 space-y-1">
-  <li>• Claim exactly one ticket per X account.</li>
-  <li>• When the timer hits zero, one ticket wins.</li>
-  <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
-</ul>
+              <ul className="mt-2 text-xs text-slate-400 space-y-1">
+                <li>• Claim exactly one ticket per X account.</li>
+                <li>• Wallet is only checked when claiming.</li>
+                <li>• When the timer hits zero, one ticket wins.</li>
+                <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
+              </ul>
             </div>
           </aside>
         </div>
