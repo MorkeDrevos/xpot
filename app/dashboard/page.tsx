@@ -628,14 +628,14 @@ export default function DashboardPage() {
 
         {/* Helper line */}
         <p className="mt-3 text-[11px] text-slate-500">
-          Wrong X account?{' '}
+          Use a different X account?{' '}
           <a
             href="https://x.com/logout"
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-slate-300 transition"
           >
-            Switch on x.com first
+            Switch on x.com
           </a>.
         </p>
       </div>
