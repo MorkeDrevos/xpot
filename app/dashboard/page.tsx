@@ -28,6 +28,11 @@ function makeCode(): string {
   return `XPOT-${block()}-${block()}`;
 }
 
+function openXLogoutForSwitch() {
+  if (typeof window === 'undefined') return;
+  window.open('https://x.com/logout', '_blank', 'noopener,noreferrer');
+}
+
 // Seed a couple of preview tickets for the list
 const now = new Date();
 const initialEntries: Entry[] = [
@@ -311,15 +316,18 @@ export default function DashboardPage() {
                 <hr className="border-t border-slate-900" />
 
                 <button
-                  type="button"
-                  onClick={() => {
-                    setAccountMenuOpen(false);
-                    signOut({ callbackUrl: '/' });
-                  }}
-                  className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
-                >
-                  Log out @{username}
-                </button>
+  type="button"
+  onClick={() => {
+    setAccountMenuOpen(false);
+    // 1) Log out of XPOT
+    signOut({ callbackUrl: '/' });
+    // 2) Open X logout so user can switch account
+    openXLogoutForSwitch();
+  }}
+  className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
+>
+  Log out & switch X account
+</button>
               </div>
             )}
           </div>
