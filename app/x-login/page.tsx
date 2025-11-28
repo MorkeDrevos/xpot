@@ -8,29 +8,31 @@ export default function XLoginPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      // Kick off Twitter / X OAuth inside the popup
       signIn('twitter', {
-        callbackUrl: '/x-login', // popup will land back here after OAuth
+        callbackUrl: '/x-login',
         redirect: true,
       });
     }
 
     if (status === 'authenticated') {
-      // Tell the opener we're done and close the popup
       try {
         if (window.opener) {
-          window.opener.postMessage({ type: 'x-auth-complete' }, window.location.origin);
+          window.opener.postMessage(
+            { type: 'x-auth-complete' },
+            window.location.origin
+          );
         }
       } catch {
-        // ignore postMessage errors
+        // ignore
       }
+
       window.close();
     }
   }, [status]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-black text-slate-50">
-      <p className="text-sm text-slate-300">Connecting your X account…</p>
+    <main className="min-h-screen flex items-center justify-center bg-black text-slate-400">
+      <p className="text-sm">Connecting your X account…</p>
     </main>
   );
 }
