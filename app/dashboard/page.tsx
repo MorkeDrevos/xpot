@@ -611,19 +611,31 @@ export default function DashboardPage() {
         </h2>
 
         <p className="mb-5 text-xs leading-relaxed text-slate-400">
-          One ticket per X account, per draw.
+          One ticket per X account, per draw. No posts. No forms. Just one click to enter.
           <br className="hidden sm:inline" />
-          No posts. No forms. Just one click to enter.
+         
         </p>
 
         {/* Main CTA */}
         <button
-          type="button"
-          onClick={handleSignInWithX}
-          className="xpot-cta-pulse w-full rounded-full bg-gradient-to-r from-sky-400 to-sky-500 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-sky-500/30 transition-transform duration-200 hover:from-sky-300 hover:to-sky-500 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-        >
-          {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-        </button>
+  type="button"
+  onClick={handleSignInWithX}
+  className="
+    w-full rounded-full 
+    bg-gradient-to-r from-sky-400 to-sky-500
+    py-2.5 
+    text-sm font-semibold 
+    text-slate-950
+    shadow-md shadow-sky-500/30
+
+    transition-all duration-200
+    hover:from-sky-300 hover:to-sky-500 hover:shadow-lg hover:shadow-sky-400/30
+    active:scale-[0.97]
+    focus:outline-none focus:ring-2 focus:ring-sky-400/40
+  "
+>
+  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+</button>
 
         {/* Requirements + XPOT micro-link */}
         <p className="mt-3 text-[10.5px] leading-relaxed text-slate-500/70 text-center">
