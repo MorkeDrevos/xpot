@@ -1,35 +1,33 @@
-// app/auth/x-start/page.tsx
 'use client';
 
 import { useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+
+export const dynamic = 'force-dynamic';
 
 export default function XStartPage() {
-  const searchParams = useSearchParams();
-
   useEffect(() => {
-    const cb = searchParams.get('callbackUrl') || '/dashboard';
+    if (typeof window === 'undefined') return;
 
-    // Immediately start the NextAuth sign-in flow for provider "x"
-    // This will redirect straight to X without showing the NextAuth button page.
-    signIn('x', {
-      callbackUrl: cb,
-      redirect: true,
-    });
-  }, [searchParams]);
+    const params = new URLSearchParams(window.location.search);
+    const callbackUrl = params.get('callbackUrl') || '/dashboard';
+
+    // Kick off X login directly
+    window.location.href = `/api/auth/signin/x?callbackUrl=${encodeURIComponent(
+      callbackUrl
+    )}`;
+  }, []);
 
   return (
     <main
       style={{
         minHeight: '100vh',
-        background: '#000',
+        background: '#020617',
         color: '#e5e7eb',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontFamily:
-          "system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', sans-serif",
+          'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
       }}
     >
       <p style={{ fontSize: 14, opacity: 0.7 }}>
