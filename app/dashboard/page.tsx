@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -58,6 +59,8 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
+  const searchParams = useSearchParams();
+  const authError = searchParams.get('error'); // e.g. "Callback"
 
   // Robust username fallback
   const username =
@@ -353,6 +356,12 @@ export default function DashboardPage() {
               </div>
             </header>
 
+            {authError && (
+  <div className="mx-4 mt-3 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-200">
+    X sign-in was cancelled. Nothing has changed – you can try again any time.
+  </div>
+)}
+
             {/* Scroll content */}
             <div className="space-y-4 px-0">
               {/* Profile header */}
@@ -644,34 +653,6 @@ export default function DashboardPage() {
     </div>
   </div>
 )}
-
-      {/* XPOT access blur overlay for non-logged-in users */}
-      {!isAuthed && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/35 backdrop-blur-md">
-          {/* allow interaction only with the card */}
-          <div className="pointer-events-auto max-w-md w-full mx-4 rounded-[26px] border border-slate-800 bg-gradient-to-b from-slate-900/90 via-slate-950/95 to-slate-950/98 px-8 py-7 shadow-[0_24px_80px_rgba(0,0,0,0.85)]">
-            <p className="text-[10px] font-semibold tracking-[0.22em] text-slate-400 uppercase mb-3 text-center">
-              XPOT ACCESS
-            </p>
-            <h2 className="text-center text-lg font-semibold text-slate-50">
-              Sign in to enter today’s draw
-            </h2>
-            <p className="mt-2 text-center text-xs text-slate-400">
-              One ticket per X account. Your identity is your entry.
-              No posting required.
-            </p>
-
-            <button
-              type="button"
-              onClick={handleSignInWithX}
-              className="mt-6 w-full rounded-full bg-sky-500 py-2.5 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400 transition"
-            >
-              {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-            </button>
-          </div>
-        </div>
-      )}
-      
     </main>
   );
 }
