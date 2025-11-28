@@ -144,7 +144,7 @@ export default function DashboardPage() {
 }
 
   return (
-  <>
+  <div>
     <ClaimTicketSection />
 
     <main className="min-h-screen bg-black text-slate-50">
