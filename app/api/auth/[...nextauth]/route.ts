@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -58,6 +59,8 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
+  const searchParams = useSearchParams();
+  const authError = searchParams.get('error'); // e.g. "Callback"
 
   // Robust username fallback
   const username =
@@ -352,6 +355,12 @@ export default function DashboardPage() {
                 </div>
               </div>
             </header>
+
+            {authError && (
+  <div className="mx-4 mt-3 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-200">
+    X sign-in was cancelled. Nothing has changed – you can try again any time.
+  </div>
+)}
 
             {/* Scroll content */}
             <div className="space-y-4 px-0">
