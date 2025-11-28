@@ -2,13 +2,16 @@
 import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 
-const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     TwitterProvider({
-      id: 'x', // so signIn('x') works
-      clientId: process.env.X_CLIENT_ID ?? '',
-      clientSecret: process.env.X_CLIENT_SECRET ?? '',
-      version: '2.0', // OAuth2
+      // IMPORTANT: this must match:
+      // - signIn('x', ...) in /x-login
+      // - /api/auth/callback/x in X Dev Portal
+      id: 'x',
+      clientId: process.env.X_CLIENT_ID!,
+      clientSecret: process.env.X_CLIENT_SECRET!,
+      version: '2.0', // OAuth 2.0 (Twitter/X v2)
     }),
   ],
 
@@ -17,40 +20,65 @@ const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    async jwt({ token, account, profile }) {
-      // On first sign in, enrich the token with X profile data
+    async jwt({ token, user, profile }) {
+      // On first sign in, enrich the token with X profile / user data
+      // `user` is what the provider's `profile()` returns (id, name, username, image)
+      // `profile` is the raw provider profile (shape can vary), so we guard heavily.
+
+      if (user) {
+        // Basic identity from NextAuth user object
+        token.name = user.name ?? token.name ?? null;
+        (token as any).username =
+          (user as any).username ??
+          (token as any).username ??
+          null;
+
+        if (user.image) {
+          token.picture = user.image;
+        }
+      }
+
       if (profile) {
         const p = profile as any;
 
-        // Basic identity
-        token.name =
-          (p.name as string | undefined) ??
-          (token.name as string | undefined) ??
+        // Try to grab username / image from possible raw shapes as a safety net
+        // (Twitter v2 often exposes data under profile.data.*)
+        const rawUsername =
+          p.username ??
+          p.screen_name ??
+          p.handle ??
+          p.data?.username ??
+          p.data?.screen_name ??
           null;
 
-        token.username =
-          (p.username as string | undefined) ??
-          (p.screen_name as string | undefined) ??
-          ((token as any).username as string | undefined) ??
+        const rawImage =
+          p.profile_image_url ??
+          p.profile_image_url_https ??
+          p.data?.profile_image_url ??
           null;
 
-        token.picture =
-          (p.profile_image_url as string | undefined) ??
-          (p.profile_image_url_https as string | undefined) ??
-          (token.picture as string | undefined) ??
-          null;
+        if (rawUsername && !(token as any).username) {
+          (token as any).username = rawUsername;
+        }
 
-        // "Real" verified flag from X profile
+        if (rawImage && !token.picture) {
+          token.picture = rawImage;
+        }
+
+        // "Real" verified flag from X profile – try multiple shapes, default false
         const rawVerified =
           typeof p.verified === 'boolean'
             ? p.verified
             : typeof p.verified_type === 'string'
             ? ['blue', 'business', 'government', 'organization'].includes(
-                (p.verified_type as string).toLowerCase()
+                String(p.verified_type).toLowerCase()
               )
+            : typeof p.data?.verified === 'boolean'
+            ? p.data.verified
             : false;
 
-        (token as any).verified = rawVerified;
+        (token as any).verified =
+          rawVerified ?? (token as any).verified ?? false;
       }
 
       return token;
@@ -70,7 +98,8 @@ const authOptions: NextAuthOptions = {
         }
 
         // verified flag used by the UI
-        (session.user as any).verified = (token as any).verified ?? false;
+        (session.user as any).verified =
+          (token as any).verified ?? false;
       }
 
       return session;
@@ -78,8 +107,6 @@ const authOptions: NextAuthOptions = {
   },
 };
 
-// Create the route handler for Next.js App Router
 const handler = NextAuth(authOptions);
 
-// Only export GET / POST – nothing else
 export { handler as GET, handler as POST };
