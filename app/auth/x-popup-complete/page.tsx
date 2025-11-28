@@ -1,4 +1,3 @@
-// app/auth/x-popup-complete/page.tsx
 'use client';
 
 import { useEffect } from 'react';
@@ -8,39 +7,23 @@ export default function XPopupCompletePage() {
     if (typeof window === 'undefined') return;
 
     try {
-      // If we were opened as a popup from the dashboard:
-      if (window.opener) {
-        // Reload XPOT dashboard in the opener
-        window.opener.location.reload();
-        // Close popup
-        window.close();
-        return;
+      // Tell the opener “auth done”
+      if (window.opener && window.opener !== window) {
+        window.opener.postMessage(
+          { type: 'x-auth-complete' },
+          window.location.origin
+        );
       }
     } catch {
-      // ignore cross-origin issues, fall back below
+      // ignore cross-origin issues just in case
     }
 
-    // Fallback: if not opened as popup, just go to dashboard
+    // Try to close popup
+    window.close();
+
+    // Fallback if close() is blocked – just send user to dashboard
     window.location.href = '/dashboard';
   }, []);
 
-  return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: '#000000',
-        color: '#e5e7eb',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily:
-          "system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', sans-serif",
-      }}
-    >
-      <p style={{ fontSize: 14, opacity: 0.7 }}>
-        Finishing sign-in… If this window doesn’t close automatically, you can close it
-        and refresh your XPOT dashboard.
-      </p>
-    </main>
-  );
+  return null;
 }
