@@ -49,6 +49,9 @@ const initialEntries: Entry[] = [
   },
 ];
 
+// Temporary preview balance – replace with real on-chain balance later
+const mockBalance = 7_492_000;
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
