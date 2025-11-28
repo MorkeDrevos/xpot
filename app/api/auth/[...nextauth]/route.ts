@@ -1,33 +1,39 @@
-import NextAuth, { type NextAuthOptions } from 'next-auth';
+// app/api/auth/[...nextauth]/route.ts  (or pages/api/auth/[...nextauth].ts)
+
+import NextAuth, { NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 
-const clientId =
-  process.env.X_CLIENT_ID ??
-  process.env.TWITTER_CLIENT_ID ??
-  '';
-
-const clientSecret =
-  process.env.X_CLIENT_SECRET ??
-  process.env.TWITTER_CLIENT_SECRET ??
-  '';
-
-const authOptions: NextAuthOptions = {
-  debug: process.env.NODE_ENV !== 'production',
+export const authOptions: NextAuthOptions = {
   providers: [
     TwitterProvider({
-      id: 'x',          // important: we signIn('x')
-      clientId,
-      clientSecret,
+      // IMPORTANT: this id must match signIn('x', ...) on the client
+      id: 'x',
+      name: 'X',
+      clientId: process.env.X_CLIENT_ID!,
+      clientSecret: process.env.X_CLIENT_SECRET!,
       version: '2.0',
     }),
   ],
 
-  // ⬇️ NEW: redirect all auth errors back to dashboard
+  // Send users back to the dashboard for sign in + errors
   pages: {
-    error: '/dashboard', // NextAuth will append ?error=Callback, etc.
+    signIn: '/dashboard',
+    error: '/dashboard',
   },
 
-  session: { strategy: 'jwt' },
+  callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Always end up on /dashboard after auth unless you explicitly pass another callbackUrl
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      try {
+        const target = new URL(url);
+        if (target.origin === baseUrl) return url;
+      } catch {
+        // ignore malformed urls
+      }
+      return `${baseUrl}/dashboard`;
+    },
+  },
 };
 
 const handler = NextAuth(authOptions);
