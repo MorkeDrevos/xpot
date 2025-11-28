@@ -2,7 +2,6 @@
 import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 
-// Support both naming styles so prod can't silently fail
 const clientId =
   process.env.X_CLIENT_ID ??
   process.env.TWITTER_CLIENT_ID ??
@@ -21,15 +20,14 @@ if (!clientId || !clientSecret) {
 }
 
 const authOptions: NextAuthOptions = {
+  debug: process.env.NODE_ENV !== 'production',
+
   providers: [
     TwitterProvider({
-      // IMPORTANT:
-      // - id "x" => NextAuth exposes /api/auth/callback/x
-      // - must match signIn('x') and X Dev Portal callback
-      id: 'x',
+      id: 'x',          // => /api/auth/callback/x
       clientId,
       clientSecret,
-      version: '2.0', // OAuth 2.0 (Twitter/X v2)
+      version: '2.0',
     }),
   ],
 
