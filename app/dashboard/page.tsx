@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react'; // ✅ NEW
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -55,11 +54,8 @@ const mockBalance = 7_492_000;
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
-  const user = (session?.user as any) || undefined;
+  const user = session?.user as any | undefined;
   const isAuthed = !!session;
-
-  const { publicKey } = useWallet(); // ✅ REAL WALLET STATE
-  const walletConnected = !!publicKey; // ✅ replaces useState(false)
 
   // Robust username fallback
   const username =
@@ -114,19 +110,12 @@ export default function DashboardPage() {
   }
 
   function handleClaimTicket() {
-    // 1) Force X login first
+    // If not logged in, push them to X login
     if (!isAuthed) {
       openXLoginPopup();
       return;
     }
 
-    // 2) Wallet must be connected (now derived from real wallet adapter)
-    if (!walletConnected) {
-      // you can show a toast here later
-      return;
-    }
-
-    // 3) Prevent double claim
     if (ticketClaimed) return;
 
     const newEntry: Entry = {
@@ -358,25 +347,12 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={handleClaimTicket}
-                      disabled={!isAuthed || !walletConnected}
-                      className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 ${
-                        !isAuthed || !walletConnected
-                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-                      }`}
+                      className="btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow sm:mt-0"
                     >
-                      {!isAuthed
-                        ? 'Sign in with X'
-                        : !walletConnected
-                        ? 'Connect wallet to claim'
-                        : 'Claim today’s ticket'}
+                      {isAuthed
+                        ? 'Claim today’s ticket'
+                        : 'Sign in & claim ticket'}
                     </button>
-
-                    {isAuthed && !walletConnected && (
-                      <p className="mt-1 text-[11px] text-amber-300">
-                        Connect your wallet on the right to claim today’s ticket.
-                      </p>
-                    )}
                   </div>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -504,7 +480,56 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* You probably have a right column / “How it works” etc. here in your real file */}
+          {/* Right sidebar */}
+          <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
+            {/* XPOT balance – informational only */}
+  <div className="premium-card p-4">
+    <h3 className="text-sm font-semibold">Your XPOT</h3>
+    <p className="mt-1 text-xs text-slate-400">
+      XPOT in your wallet right now. You can hold, buy or sell any time.
+    </p>
+
+    <p className="mt-3 text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-emerald-100 to-white">
+      {mockBalance.toLocaleString()}{' '}
+      <span className="text-sm text-slate-400">XPOT</span>
+    </p>
+  </div>
+
+            {/* Sign in with X */}
+            <div className="premium-card p-4">
+              <h3 className="text-sm font-semibold">
+                {isAuthed ? 'Signed in with X' : 'Sign in with X'}
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">
+                XPOT uses your X account so each daily ticket belongs to one
+                identity. No posting is required.
+              </p>
+
+              {!isAuthed ? (
+                <button
+                  type="button"
+                  onClick={openXLoginPopup}
+                  className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+                >
+                  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+                </button>
+              ) : (
+                <p className="mt-3 text-xs text-emerald-200">
+                  You’re ready to claim today’s ticket.
+                </p>
+              )}
+            </div>
+
+            {/* How it works */}
+            <div className="premium-card p-4">
+              <h3 className="text-sm font-semibold">How today’s draw works</h3>
+<ul className="mt-2 text-xs text-slate-400 space-y-1">
+  <li>• Claim exactly one ticket per X account.</li>
+  <li>• When the timer hits zero, one ticket wins.</li>
+  <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
+</ul>
+            </div>
+          </aside>
         </div>
       </div>
     </main>
