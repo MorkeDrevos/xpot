@@ -594,7 +594,7 @@ export default function DashboardPage() {
 
       {/* LOGIN OVERLAY – premium glass XPOT access */}
 {!isAuthed && (
-  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/90 backdrop-blur-[24px]">
+  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-[24px]">
     <div className="relative mx-4 w-full max-w-md">
 
       {/* Glow frame */}
@@ -609,18 +609,15 @@ export default function DashboardPage() {
           <span>XPOT Access</span>
         </div>
 
-        {/* Title */}
         <h2 className="mb-2 text-[20px] font-semibold tracking-tight text-slate-50">
           Sign in to enter today’s draw
         </h2>
 
-        {/* Subtitle */}
         <p className="mb-6 text-[11px] leading-relaxed text-slate-400">
           One ticket per X account per draw. Your identity is your entry.
           <br className="hidden sm:inline" /> No posting required.
         </p>
 
-        {/* Main CTA */}
         <button
           type="button"
           onClick={handleSignInWithX}
@@ -629,7 +626,6 @@ export default function DashboardPage() {
           {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
         </button>
 
-        {/* Helper line */}
         <p className="mt-3 text-[11px] text-slate-500">
           Want a different X account? Switch on x.com first, then come back here.
         </p>
