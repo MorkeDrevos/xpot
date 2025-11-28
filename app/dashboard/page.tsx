@@ -594,70 +594,76 @@ export default function DashboardPage() {
 
             {/* LOGIN OVERLAY – premium glass XPOT access */}
 {!isAuthed && (
-  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-[18px]">
-    <div
-      className="relative mx-4 w-full max-w-md rounded-3xl border border-slate-800
-                 bg-gradient-to-b from-slate-950/95 via-slate-900/95 to-slate-950/98
-                 px-8 py-7 shadow-[0_40px_160px_rgba(0,0,0,0.95)] animate-fade-in"
-    >
+  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-[18px]">
+    <div className="relative mx-4 w-full max-w-md rounded-3xl border border-slate-800 bg-[#05070c] px-8 py-7 shadow-[0_40px_160px_rgba(0,0,0,0.95)] ring-1 ring-emerald-400/30 text-center xpot-modal-enter">
       {/* Soft glow halo */}
-      <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-emerald-400/10 via-transparent to-sky-400/10 blur-xl" />
+      <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-emerald-400/8 via-transparent to-sky-400/6 blur-xl" />
 
       {/* Content */}
-      <div className="relative text-center">
-        {/* Pill label */}
+      <div className="relative">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
           <span className="h-1 w-1 rounded-full bg-emerald-400/80 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
           <span>XPOT Access</span>
         </div>
 
-        {/* Heading */}
         <h2 className="mb-2 text-xl font-semibold tracking-tight text-slate-50">
           Sign in to enter today’s draw
         </h2>
 
-        {/* Main description */}
-        <p className="mb-4 text-xs leading-relaxed text-slate-400">
-          One ticket per X account, per draw.
-          <br className="hidden sm:inline" /> No posts. No forms. Just one click to enter.
+        <p className="mb-5 text-xs leading-relaxed text-slate-400">
+          One ticket per X account, per draw. No posts. No forms. Just one click to enter.
+          <br className="hidden sm:inline" />
+         
         </p>
 
         {/* Main CTA */}
         <button
-          type="button"
-          onClick={handleSignInWithX}
-          className="w-full rounded-full bg-gradient-to-r from-sky-400 to-sky-500 py-2.5
-                     text-sm font-semibold text-slate-950 shadow-md shadow-sky-500/30
-                     hover:from-sky-300 hover:to-sky-500 transition-transform duration-150
-                     active:scale-[0.97]"
-        >
-          {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-        </button>
+  type="button"
+  onClick={handleSignInWithX}
+  className="
+    w-full rounded-full 
+    bg-gradient-to-r from-sky-400 to-sky-500
+    py-2.5 
+    text-sm font-semibold 
+    text-slate-950
+    shadow-md shadow-sky-500/30
 
-        {/* Requirements + XPOT link (under button) */}
-        <p className="mt-2 text-[11px] leading-snug text-slate-500">
-          Requires wallet connection and minimum{' '}
-          <Link
+    transition-all duration-200
+    hover:from-sky-300 hover:to-sky-500 hover:shadow-lg hover:shadow-sky-400/30
+    active:scale-[0.97]
+    focus:outline-none focus:ring-2 focus:ring-sky-400/40
+  "
+>
+  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+</button>
+
+        {/* Requirements + XPOT micro-link */}
+        <p className="mt-3 text-[10.5px] leading-relaxed text-slate-500/70 text-center">
+          Wallet connection and minimum XPOT ba{' '}
+          <span className="relative group cursor-help text-slate-400 underline underline-offset-2 decoration-dotted">
+            minimum XPOT balance
+            <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-56 -translate-x-1/2 rounded-xl bg-[#05070c] px-3 py-2 text-[10px] text-slate-300 shadow-[0_8px_30px_rgba(0,0,0,0.8)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              You must hold the required amount of XPOT at the moment you enter the draw.
+            </span>
+          </span>.
+          <a
             href="/what-is-xpot"
-            className="inline-flex items-center text-[11px] font-medium text-emerald-300 hover:text-emerald-200 underline underline-offset-2"
+            className="xpot-link ml-1 text-sky-400/90 underline underline-offset-2 transition-colors hover:text-sky-300"
           >
-            XPOT balance
-          </Link>
-          .
+            XPOT?
+          </a>
         </p>
 
         {/* Wrong account helper */}
-        <p className="mt-1 text-[11px] text-slate-500">
+        <p className="mt-3 text-[10px] text-slate-500">
           Wrong X account?{' '}
-          <a
-            href="https://x.com"
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2 hover:text-slate-300"
+          <button
+            type="button"
+            onClick={() => window.open('https://x.com', '_blank', 'noopener,noreferrer')}
+            className="text-slate-400 underline underline-offset-2 hover:text-slate-200 transition-colors"
           >
-            Switch on x.com first
-          </a>
-          .
+            Switch on x.com first.
+          </button>
         </p>
       </div>
     </div>
