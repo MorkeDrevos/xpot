@@ -21,10 +21,10 @@ export default function Home() {
   // simple 24h countdown from page load (placeholder)
   useEffect(() => {
     const end = Date.now() + 24 * 60 * 60 * 1000;
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       setTimeLeft(end - Date.now());
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, []);
 
   // load tweet-flag from localStorage
@@ -35,11 +35,10 @@ export default function Home() {
   }, []);
 
   function handleTweetClick() {
-    // TODO: replace with your real pre-filled tweet URL
     const url =
-      'https://x.com/intent/tweet?text=I%27m%20in%20the%20%24XPOT%20jackpot.'; // note %27 instead of '
+      'https://x.com/intent/tweet?text=I%27m%20in%20the%20%24XPOT%20jackpot.'; // %27 = '
 
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
 
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(TWEET_FLAG_KEY, 'true');
@@ -108,8 +107,8 @@ export default function Home() {
                 {formatTime(timeLeft)}
               </p>
               <p className="text-xs text-slate-400">
-                Live, provably fair draws. The winner wallet is picked on-chain
-                and paid directly.
+                Live, provably fair draws. The winner wallet is picked on-chain and paid
+                directly.
               </p>
             </div>
           </div>
@@ -132,8 +131,7 @@ export default function Home() {
                   Post your entry tweet
                 </span>
                 <br />
-                Send one pre-filled tweet from XPOT. This activates your account
-                forever.
+                Send one pre-filled tweet from XPOT. This activates your account forever.
               </li>
 
               <li>
@@ -141,8 +139,7 @@ export default function Home() {
                   Balance = more entries
                 </span>
                 <br />
-                After activation, entries are based purely on how much XPOT you
-                hold.
+                After activation, entries are based purely on how much XPOT you hold.
               </li>
             </ol>
 
@@ -162,8 +159,8 @@ export default function Home() {
                 : 'Tweet today’s entry'}
             </button>
             <p className="mt-2 text-[11px] text-slate-500">
-              You only ever need to post once. From then on your XPOT balance
-              decides your entries.
+              You only ever need to post once. From then on your XPOT balance decides
+              your entries.
             </p>
           </div>
         </section>
