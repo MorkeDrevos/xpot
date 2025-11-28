@@ -646,7 +646,7 @@ export default function DashboardPage() {
       You must hold the required amount of XPOT at the moment you enter the draw.
     </span>
   </span>{' '}
-  and wallet connection.
+  and a connected wallet.
   <a
     href="/what-is-xpot"
     className="xpot-link ml-1 text-sky-400/90 underline underline-offset-2 transition-colors hover:text-sky-300"
