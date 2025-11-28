@@ -145,7 +145,6 @@ export default function DashboardPage() {
 
   return (
   <main className="min-h-screen bg-black text-slate-50">
-
     <ClaimTicketSection />
       <div className="mx-auto flex max-w-6xl">
         {/* ── Left nav (X-style) ───────────────────────────── */}
