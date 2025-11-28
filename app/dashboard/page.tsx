@@ -70,6 +70,7 @@ export default function DashboardPage() {
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [walletConnected, setWalletConnected] = useState(false);
 
   const winner = entries.find(e => e.status === 'won');
 
@@ -110,30 +111,36 @@ export default function DashboardPage() {
   }
 
   function handleClaimTicket() {
-    // If not logged in, push them to X login
-    if (!isAuthed) {
-      openXLoginPopup();
-      return;
-    }
-
-    if (ticketClaimed) return;
-
-    const newEntry: Entry = {
-      id: Date.now(),
-      code: makeCode(),
-      status: 'in-draw',
-      label: "Today's main jackpot • $10,000",
-      jackpotUsd: '$10,000',
-      createdAt: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
-
-    setEntries(prev => [newEntry, ...prev]);
-    setTicketClaimed(true);
-    setTodaysTicket(newEntry);
+  // 1) Force X login first
+  if (!isAuthed) {
+    openXLoginPopup();
+    return;
   }
+
+  // 2) Wallet must be connected
+  if (!walletConnected) {
+    return;
+  }
+
+  // 3) Prevent double claim
+  if (ticketClaimed) return;
+
+  const newEntry: Entry = {
+    id: Date.now(),
+    code: makeCode(),
+    status: 'in-draw',
+    label: "Today's main jackpot • $10,000",
+    jackpotUsd: '$10,000',
+    createdAt: new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  };
+
+  setEntries(prev => [newEntry, ...prev]);
+  setTicketClaimed(true);
+  setTodaysTicket(newEntry);
+}
 
   return (
     <main className="min-h-screen bg-black text-slate-50">
@@ -345,14 +352,27 @@ export default function DashboardPage() {
                     </div>
 
                     <button
-                      type="button"
-                      onClick={handleClaimTicket}
-                      className="btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow sm:mt-0"
-                    >
-                      {isAuthed
-                        ? 'Claim today’s ticket'
-                        : 'Sign in & claim ticket'}
-                    </button>
+  type="button"
+  onClick={handleClaimTicket}
+  disabled={!isAuthed || !walletConnected}
+  className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 ${
+    !isAuthed || !walletConnected
+      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+      : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+  }`}
+>
+  {!isAuthed
+    ? 'Sign in with X'
+    : !walletConnected
+    ? 'Connect wallet to claim'
+    : 'Claim today’s ticket'}
+</button>
+
+{isAuthed && !walletConnected && (
+  <p className="mt-1 text-[11px] text-amber-300">
+    Connect your wallet on the right to claim today’s ticket.
+  </p>
+)}
                   </div>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
