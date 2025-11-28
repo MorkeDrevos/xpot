@@ -190,7 +190,7 @@ export default function DashboardPage() {
       <div
   className={`mx-auto flex max-w-6xl ${
     !isAuthed
-      ? 'blur-[2px] brightness-90 pointer-events-none select-none'
+      ? 'blur-[1px] brightness-95 contrast-110 pointer-events-none select-none'
       : ''
   }`}
 >
@@ -634,7 +634,7 @@ export default function DashboardPage() {
       {/* LOGIN OVERLAY */}
 {!isAuthed && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
-    <div className="w-full max-w-md rounded-3xl border border-slate-700/80 bg-gradient-to-b from-slate-950 to-slate-900/95 p-7 shadow-[0_24px_80px_rgba(0,0,0,0.9)] ring-1 ring-emerald-500/10 text-center">
+    <div className="w-full max-w-md rounded-3xl border border-slate-700/80 bg-gradient-to-b from-slate-950 to-slate-900/95 p-7 shadow-[0_30px_120px_rgba(0,0,0,0.85)] ring-1 ring-emerald-400/20 backdrop-blur-xl text-center">
       <div className="mb-3 inline-flex items-center rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
         XPOT ACCESS
       </div>
