@@ -10,9 +10,9 @@ export default function XLoginPage() {
     // Wait until we actually know the status
     if (status !== 'unauthenticated' && status !== 'authenticated') return;
 
-    // 1) Not logged in yet → start Twitter/X OAuth inside the popup
+    // 1) Not logged in yet → start X OAuth inside the popup
     if (status === 'unauthenticated') {
-      void signIn('twitter', {
+      void signIn('x', {
         callbackUrl: '/x-login', // popup comes back here after OAuth
         redirect: true,
       });
