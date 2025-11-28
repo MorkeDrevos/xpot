@@ -141,10 +141,10 @@ export default function DashboardPage() {
   }
 
   function handleClaimTicket() {
-    // 1) Must be logged in with X
-    if (!isAuthed) {
-      openXLoginPopup();
-      return;
+  // 1) Must be logged in with X
+  if (!isAuthed) {
+    signIn('x', { callbackUrl: '/dashboard' });
+    return;
     }
 
     // 2) Must have wallet connected
@@ -251,12 +251,12 @@ export default function DashboardPage() {
             <div
               className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
               onClick={() => {
-                if (!isAuthed) {
-                  openXLoginPopup();
-                } else {
-                  setAccountMenuOpen(open => !open);
-                }
-              }}
+  if (!isAuthed) {
+    signIn('x', { callbackUrl: '/dashboard' });
+  } else {
+    setAccountMenuOpen(open => !open);
+  }
+}}
             >
               <div className="flex items-center gap-2">
                 {user?.image ? (
@@ -594,19 +594,13 @@ export default function DashboardPage() {
                 identity. No posting is required.
               </p>
 
-              {!isAuthed ? (
-                <button
-                  type="button"
-                  onClick={openXLoginPopup}
-                  className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
-                >
-                  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-                </button>
-              ) : (
-                <p className="mt-3 text-xs text-emerald-200">
-                  You’re ready to claim today’s ticket.
-                </p>
-              )}
+              <button
+  type="button"
+  onClick={() => signIn('x', { callbackUrl: '/dashboard' })}
+  className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+>
+  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+</button>
             </div>
 
             {/* How it works */}
