@@ -15,10 +15,10 @@ function formatTime(ms: number) {
 const TWEET_FLAG_KEY = 'xpot_tweet_posted';
 
 export default function Home() {
-  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [tweetPosted, setTweetPosted] = useState(false);
 
-  // simple 24h countdown from page load (placeholder)
+  // simple 24h countdown from first render (placeholder)
   useEffect(() => {
     const end = Date.now() + 24 * 60 * 60 * 1000;
     const timer = setInterval(() => {
@@ -35,20 +35,20 @@ export default function Home() {
   }, []);
 
   function handleTweetClick() {
-    const url =
+    const tweetUrl =
       'https://x.com/intent/tweet?text=I%27m%20in%20the%20%24XPOT%20jackpot.'; // %27 = '
 
-    window.open(url, '_blank', 'noopener,noreferrer');
-
     if (typeof window !== 'undefined') {
+      window.open(tweetUrl, '_blank', 'noopener,noreferrer');
       window.localStorage.setItem(TWEET_FLAG_KEY, 'true');
     }
+
     setTweetPosted(true);
   }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4">
-      <div className="w-full max-w-4xl rounded-3xl border border-slate-800 bg-slate-950/60 shadow-[0_0_80px_rgba(15,23,42,0.9)] backdrop-blur-xl px-6 py-8 md:px-10 md:py-10 space-y-8">
+      <div className="w-full max-w-4xl space-y-8 rounded-3xl border border-slate-800 bg-slate-950/60 px-6 py-8 shadow-[0_0_80px_rgba(15,23,42,0.9)] backdrop-blur-xl md:px-10 md:py-10">
         {/* Top label */}
         <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-xs font-medium text-emerald-300">
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -60,50 +60,50 @@ export default function Home() {
           <div className="flex justify-end">
             <Link
               href="/dashboard"
-              className="rounded-full border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-500 hover:text-slate-50 transition"
+              className="rounded-full border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-500 hover:text-slate-50"
             >
               Dashboard
             </Link>
           </div>
-          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
             <span className="text-slate-300">💎 XPOT</span>{' '}
             <span className="text-slate-50">- The X-powered crypto jackpot.</span>
           </h1>
-          <p className="text-sm md:text-base text-slate-300 max-w-2xl">
-            Hold <span className="font-semibold text-emerald-300">$XPOT</span>, post
-            your entry tweet, and watch the daily draw. One winner. One jackpot.
+          <p className="max-w-2xl text-sm text-slate-300 md:text-base">
+            Hold <span className="font-semibold text-emerald-300">$XPOT</span>, post your
+            entry tweet, and watch the daily draw. One winner. One jackpot.
           </p>
         </header>
 
         {/* Main area */}
         <section className="grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           {/* Jackpot card */}
-          <div className="rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 p-6 flex flex-col gap-6 justify-between">
+          <div className="flex flex-col justify-between gap-6 rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 p-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
                   Today&apos;s main jackpot
                 </span>
-                <span className="text-[10px] rounded-full border border-amber-400/40 bg-amber-400/5 px-2 py-0.5 text-amber-200 uppercase tracking-[0.18em]">
+                <span className="text-[10px] rounded-full border border-amber-400/40 bg-amber-400/5 px-2 py-0.5 uppercase tracking-[0.18em] text-amber-200">
                   One winner only
                 </span>
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl md:text-4xl font-semibold text-emerald-300">
+                <span className="text-3xl font-semibold text-emerald-300 md:text-4xl">
                   $10,000
                 </span>
-                <span className="text-xs text-slate-400 uppercase tracking-[0.2em]">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   est. prize pool
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <p className="text-xs text-slate-400 uppercase tracking-[0.18em]">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
                 Next draw starts in
               </p>
-              <p className="font-mono text-2xl md:text-3xl text-slate-50">
+              <p className="font-mono text-2xl text-slate-50 md:text-3xl">
                 {formatTime(timeLeft)}
               </p>
               <p className="text-xs text-slate-400">
@@ -150,8 +150,8 @@ export default function Home() {
               disabled={tweetPosted}
               className={`mt-3 w-full rounded-full border border-emerald-400 px-4 py-2 text-sm font-medium transition ${
                 tweetPosted
-                  ? 'cursor-not-allowed bg-slate-800 text-slate-500 border-slate-700'
-                  : 'bg-slate-900 text-emerald-300 hover:bg-slate-800 hover:border-emerald-300'
+                  ? 'cursor-not-allowed border-slate-700 bg-slate-800 text-slate-500'
+                  : 'bg-slate-900 text-emerald-300 hover:border-emerald-300 hover:bg-slate-800'
               }`}
             >
               {tweetPosted
