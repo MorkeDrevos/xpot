@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
-import { useWallet } from '@solana/wallet-adapter-react';
 import ConnectWalletButton from './ConnectWalletButton';
 
 export default function ClaimTicketSection() {
