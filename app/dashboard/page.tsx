@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useSession, signOut, signIn } from 'next-auth/react';
-import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -60,8 +59,15 @@ export default function DashboardPage() {
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
 
-  const searchParams = useSearchParams();
-  const authError = searchParams.get('error'); // e.g. "Callback" when user cancels on X side
+  // Read ?error= from URL on the client (no useSearchParams)
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get('error');
+    if (err) setAuthError(err);
+  }, []);
 
   // Robust username fallback
   const username =
@@ -87,7 +93,6 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
 
   function handleSignInWithX() {
-    // Single source of truth for sign-in
     signIn('x', { callbackUrl: '/dashboard' });
   }
 
@@ -114,7 +119,6 @@ export default function DashboardPage() {
 
     // 2) Must have wallet connected
     if (!walletConnected) {
-      // Just block; UI copy explains why
       return;
     }
 
@@ -313,7 +317,6 @@ export default function DashboardPage() {
                   <p className="uppercase tracking-[0.16em] text-slate-400">
                     Next draw in
                   </p>
-                  {/* static preview countdown for now */}
                   <p className="font-mono text-xs text-slate-200">02:14:09</p>
                 </div>
               </div>
