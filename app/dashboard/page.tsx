@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
-import { useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react'; // ✅ NEW
+import { useState, useEffect } from 'react';
+import ClaimTicketSection from '../components/ClaimTicketSection';
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -55,11 +55,8 @@ const mockBalance = 7_492_000;
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
-  const user = (session?.user as any) || undefined;
-  const isAuthed = !!session;
-
-  const { publicKey } = useWallet(); // ✅ REAL WALLET STATE
-  const walletConnected = !!publicKey; // ✅ replaces useState(false)
+  const user = session?.user as any | undefined;
+  const isAuthed = status === 'authenticated';
 
   // Robust username fallback
   const username =
@@ -75,6 +72,9 @@ export default function DashboardPage() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
+  // TEMP: wallet connection state – wire this to real wallet adapter later
+  const [walletConnected, setWalletConnected] = useState(false);
+
   const winner = entries.find(e => e.status === 'won');
 
   function openXLoginPopup() {
@@ -85,7 +85,7 @@ export default function DashboardPage() {
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
 
-    const url = '/x-login'; // use whatever path you already have for X login
+    const url = '/x-login';
 
     const popup = window.open(
       url,
@@ -114,15 +114,15 @@ export default function DashboardPage() {
   }
 
   function handleClaimTicket() {
-    // 1) Force X login first
+    // 1) Must be signed in with X
     if (!isAuthed) {
       openXLoginPopup();
       return;
     }
 
-    // 2) Wallet must be connected (now derived from real wallet adapter)
+    // 2) Must have wallet connected (real wiring later)
     if (!walletConnected) {
-      // you can show a toast here later
+      // later: open wallet modal here
       return;
     }
 
@@ -146,8 +146,51 @@ export default function DashboardPage() {
     setTodaysTicket(newEntry);
   }
 
+  // Close account menu when clicking outside (simple escape key version)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setAccountMenuOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // ─────────────────────────────────────────────
+  // Today CTA button logic
+  // ─────────────────────────────────────────────
+
+  const showClaimCtaLabel = (() => {
+    if (!isAuthed) return 'Sign in with X';
+    if (!walletConnected) return 'Connect wallet to claim';
+    return 'Claim today’s ticket';
+  })();
+
+  const showClaimCtaDisabled = (() => {
+    // Logged out: button should be clickable to trigger sign-in
+    if (!isAuthed) return false;
+    // Logged in but no wallet yet: disable until wallet wiring is done
+    if (!walletConnected) return true;
+    // Logged in + wallet → only disable after claiming
+    return ticketClaimed;
+  })();
+
+  const handleClaimCtaClick = () => {
+    if (!isAuthed) {
+      openXLoginPopup();
+      return;
+    }
+    if (!walletConnected) {
+      // later: open wallet connect modal
+      return;
+    }
+    handleClaimTicket();
+  };
+
   return (
     <main className="min-h-screen bg-black text-slate-50">
+      {/* full-screen hero for claim – keep or remove as needed */}
+      <ClaimTicketSection />
+
       <div className="mx-auto flex max-w-6xl">
         {/* ── Left nav (X-style) ───────────────────────────── */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
@@ -193,10 +236,10 @@ export default function DashboardPage() {
             {/* Main CTA mirrors ticket claim */}
             <button
               type="button"
-              onClick={handleClaimTicket}
+              onClick={handleClaimCtaClick}
               className="btn-premium mt-3 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 py-2 text-sm font-semibold text-black toolbar-glow"
             >
-              Claim today’s ticket
+              {showClaimCtaLabel}
             </button>
           </div>
 
@@ -313,16 +356,26 @@ export default function DashboardPage() {
               <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
-                    <span className="text-lg">🖤</span>
+                    {user?.image ? (
+                      <img
+                        src={user.image}
+                        alt={user.name ?? 'X avatar'}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-lg">🖤</span>
+                    )}
                   </div>
 
                   <div className="flex flex-col leading-tight">
                     <div className="flex items-center gap-1">
                       <span className="text-sm font-semibold text-slate-50">
-                        Mørke Drevos
+                        {user?.name ?? 'Not signed in'}
                       </span>
                     </div>
-                    <span className="text-xs text-slate-500">@{username}</span>
+                    <span className="text-xs text-slate-500">
+                      {isAuthed ? `@${username}` : 'Sign in with X to claim tickets'}
+                    </span>
                   </div>
                 </div>
 
@@ -355,28 +408,32 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleClaimTicket}
-                      disabled={!isAuthed || !walletConnected}
-                      className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 ${
-                        !isAuthed || !walletConnected
-                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-                      }`}
-                    >
-                      {!isAuthed
-                        ? 'Sign in with X'
-                        : !walletConnected
-                        ? 'Connect wallet to claim'
-                        : 'Claim today’s ticket'}
-                    </button>
+                    <div className="flex flex-col items-start sm:items-end">
+                      <button
+                        type="button"
+                        onClick={handleClaimCtaClick}
+                        disabled={showClaimCtaDisabled}
+                        className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 ${
+                          showClaimCtaDisabled
+                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+                        }`}
+                      >
+                        {showClaimCtaLabel}
+                      </button>
 
-                    {isAuthed && !walletConnected && (
-                      <p className="mt-1 text-[11px] text-amber-300">
-                        Connect your wallet on the right to claim today’s ticket.
-                      </p>
-                    )}
+                      {!isAuthed && (
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          Sign in with X to claim your daily ticket.
+                        </p>
+                      )}
+
+                      {isAuthed && !walletConnected && (
+                        <p className="mt-1 text-[11px] text-amber-300">
+                          Connect your wallet on the right to claim today’s ticket.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -504,7 +561,81 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* You probably have a right column / “How it works” etc. here in your real file */}
+          {/* Right sidebar */}
+          <aside className="hidden w-72 shrink-0 flex-col gap-4 border-l border-slate-900 bg-slate-950/40 p-4 lg:flex">
+            {/* Your XPOT */}
+            <div className="premium-card mb-4 rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+              <h3 className="text-sm font-semibold text-slate-100">Your XPOT</h3>
+              <p className="mt-1 text-xs text-slate-400">
+                XPOT in your wallet right now. You can hold, buy or sell any time.
+              </p>
+              <p className="mt-3 text-2xl font-semibold tracking-tight text-emerald-300">
+                {mockBalance.toLocaleString()} XPOT
+              </p>
+            </div>
+
+            {/* Sign in with X card */}
+            <div className="premium-card mb-4 rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+              <h3 className="text-sm font-semibold text-slate-100">
+                {isAuthed ? 'Signed in with X' : 'Sign in with X'}
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">
+                XPOT uses your X account so each daily ticket belongs to one
+                identity. No posting is required.
+              </p>
+
+              {!isAuthed ? (
+                <button
+                  type="button"
+                  onClick={openXLoginPopup}
+                  className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 hover:bg-sky-400"
+                >
+                  Sign in with X
+                </button>
+              ) : (
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {user?.image ? (
+                      <img
+                        src={user.image}
+                        alt={user.name ?? 'X avatar'}
+                        className="h-7 w-7 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-700 text-[11px]">
+                        @
+                      </div>
+                    )}
+                    <div className="leading-tight">
+                      <p className="text-xs font-semibold text-slate-50">
+                        {user?.name ?? 'Your X handle'}
+                      </p>
+                      <p className="text-[11px] text-slate-500">@{username}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => signOut({ callbackUrl: '/' })}
+                    className="text-[11px] text-slate-400 hover:text-red-400"
+                  >
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* How it works */}
+            <div className="premium-card rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+              <h3 className="text-sm font-semibold text-slate-100">
+                How today’s draw works
+              </h3>
+              <ul className="mt-2 space-y-1 text-xs text-slate-400">
+                <li>• Claim exactly one ticket per X account.</li>
+                <li>• When the timer hits zero, one ticket wins.</li>
+                <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
+              </ul>
+            </div>
+          </aside>
         </div>
       </div>
     </main>
