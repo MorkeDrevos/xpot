@@ -2,6 +2,24 @@
 import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 
+// Support both naming styles so prod can't silently fail
+const clientId =
+  process.env.X_CLIENT_ID ??
+  process.env.TWITTER_CLIENT_ID ??
+  '';
+
+const clientSecret =
+  process.env.X_CLIENT_SECRET ??
+  process.env.TWITTER_CLIENT_SECRET ??
+  '';
+
+if (!clientId || !clientSecret) {
+  // This will show up in Vercel logs if env vars are missing / wrong
+  console.warn(
+    '[auth] Missing X/Twitter clientId or clientSecret. Check X_CLIENT_ID / X_CLIENT_SECRET or TWITTER_CLIENT_ID / TWITTER_CLIENT_SECRET.'
+  );
+}
+
 const authOptions: NextAuthOptions = {
   providers: [
     TwitterProvider({
@@ -9,8 +27,8 @@ const authOptions: NextAuthOptions = {
       // - signIn('x', ...) in /x-login
       // - /api/auth/callback/x in X Dev Portal
       id: 'x',
-      clientId: process.env.X_CLIENT_ID!,
-      clientSecret: process.env.X_CLIENT_SECRET!,
+      clientId,
+      clientSecret,
       version: '2.0', // OAuth 2.0 (Twitter/X v2)
     }),
   ],
