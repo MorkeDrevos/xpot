@@ -28,7 +28,6 @@ function makeCode(): string {
   return `XPOT-${block()}-${block()}`;
 }
 
-// Optional helper if we ever want a direct logout link
 function openXLogoutForSwitch() {
   if (typeof window === 'undefined') return;
   window.open('https://x.com/logout', '_blank', 'noopener,noreferrer');
@@ -90,6 +89,8 @@ export default function DashboardPage() {
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
 
+    // This should point to your existing X auth route
+    // e.g. a page that calls next-auth signIn('twitter' / 'x')
     const url = '/x-login';
 
     const popup = window.open(
@@ -100,6 +101,9 @@ export default function DashboardPage() {
 
     if (!popup) return;
 
+    // Listen for a message from the popup so we can auto-close it
+    // On /x-login (or your callback page) you can later do:
+    // window.opener?.postMessage({ type: 'x-auth-complete' }, window.location.origin);
     const handleMessage = (event: MessageEvent) => {
       try {
         if (
@@ -182,8 +186,12 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
 
   return (
-    <main className="min-h-screen bg-black text-slate-50">
-      <div className="mx-auto flex max-w-6xl">
+  <main className="min-h-screen bg-black text-slate-50 relative">
+      <div
+  className={`mx-auto flex max-w-6xl ${
+    !isAuthed ? 'blur-sm brightness-75 pointer-events-none select-none' : ''
+  }`}
+>
         {/* ── Left nav (X-style) ───────────────────────────── */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
           <div className="space-y-6">
@@ -312,15 +320,15 @@ export default function DashboardPage() {
                 <hr className="border-t border-slate-900" />
 
                 <button
-                  type="button"
-                  onClick={() => {
-                    setAccountMenuOpen(false);
-                    signOut({ callbackUrl: '/' });
-                  }}
-                  className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
-                >
-                  Log out of XPOT
-                </button>
+  type="button"
+  onClick={() => {
+    setAccountMenuOpen(false);
+    signOut({ callbackUrl: '/' });
+  }}
+  className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
+>
+  Log out of XPOT
+</button>
               </div>
             )}
           </div>
@@ -378,7 +386,7 @@ export default function DashboardPage() {
                 </button>
               </section>
 
-              {/* TODAY'S TICKET CARD */}
+              {/* TODAY'S TICKET CARD – CLEAN ENTRY FLOW */}
               <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
                 <h2 className="text-sm font-semibold text-emerald-100">
                   Today’s ticket
@@ -582,40 +590,30 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Sign in with X card */}
-            <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">
-                {isAuthed ? 'Signed in with X' : 'Sign in with X'}
-              </h3>
-              <p className="mt-1 text-xs text-slate-400">
-                XPOT uses your X account so each daily ticket belongs to one identity.
-                No posting is required.
-              </p>
+            {/* Sign in with X */}
+<div className="premium-card p-4">
+  <h3 className="text-sm font-semibold">
+    {isAuthed ? 'Signed in with X' : 'Sign in with X'}
+  </h3>
+  <p className="mt-1 text-xs text-slate-400">
+    XPOT uses your X account so each daily ticket belongs to one
+    identity. No posting is required.
+  </p>
 
-              {!isAuthed ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={openXLoginPopup}
-                    className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
-                  >
-                    {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={openXLogoutForSwitch}
-                    className="mt-2 w-full text-[11px] text-slate-500 hover:text-slate-300 underline underline-offset-2"
-                  >
-                    Wrong X account? Log out on x.com first.
-                  </button>
-                </>
-              ) : (
-                <p className="mt-3 text-xs text-emerald-200">
-                  You’re ready to claim today’s ticket.
-                </p>
-              )}
-            </div>
+  {!isAuthed ? (
+    <button
+      type="button"
+      onClick={openXLoginPopup}
+      className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+    >
+      {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+    </button>
+  ) : (
+    <p className="mt-3 text-xs text-emerald-200">
+      You’re ready to claim today’s ticket.
+    </p>
+  )}
+</div>
 
             {/* How it works */}
             <div className="premium-card p-4">
@@ -627,6 +625,33 @@ export default function DashboardPage() {
                 <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
               </ul>
             </div>
+
+            {/* LOGIN OVERLAY */}
+{!isAuthed && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-[#020617] p-6 shadow-2xl text-center">
+
+      <h2 className="text-lg font-semibold mb-2">
+        Sign in to enter today’s draw
+      </h2>
+
+      <p className="text-xs text-slate-400 mb-5">
+        One ticket per X account. Your identity is your entry.
+        No posting required.
+      </p>
+
+      <button
+        type="button"
+        onClick={openXLoginPopup}
+        className="w-full rounded-full bg-sky-500 py-2.5 text-sm font-semibold text-black hover:bg-sky-400"
+      >
+        {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+      </button>
+
+    </div>
+  </div>
+)}
+
           </aside>
         </div>
       </div>
