@@ -626,35 +626,34 @@ export default function DashboardPage() {
               </ul>
             </div>
 
-            {/* LOGIN OVERLAY */}
-{!isAuthed && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-    <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-[#020617] p-6 shadow-2xl text-center">
-
-      <h2 className="text-lg font-semibold mb-2">
-        Sign in to enter today’s draw
-      </h2>
-
-      <p className="text-xs text-slate-400 mb-5">
-        One ticket per X account. Your identity is your entry.
-        No posting required.
-      </p>
-
-      <button
-        type="button"
-        onClick={openXLoginPopup}
-        className="w-full rounded-full bg-sky-500 py-2.5 text-sm font-semibold text-black hover:bg-sky-400"
-      >
-        {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-      </button>
-
-    </div>
-  </div>
-)}
-
           </aside>
-        </div>
+                </div>
       </div>
+
+      {/* LOGIN OVERLAY */}
+      {!isAuthed && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-[#020617] p-6 shadow-2xl text-center">
+            <h2 className="text-lg font-semibold mb-2">
+              Sign in to enter today’s draw
+            </h2>
+
+            <p className="text-xs text-slate-400 mb-5">
+              One ticket per X account. Your identity is your entry.
+              No posting required.
+            </p>
+
+            <button
+              type="button"
+              onClick={openXLoginPopup}
+              className="w-full rounded-full bg-sky-500 py-2.5 text-sm font-semibold text-black hover:bg-sky-400"
+            >
+              {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+            </button>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
