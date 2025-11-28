@@ -594,68 +594,40 @@ export default function DashboardPage() {
 
       {/* LOGIN OVERLAY – premium glass XPOT access */}
 {!isAuthed && (
-  <div className="fixed inset-0 z-40 flex items-center justify-center
-    bg-gradient-to-b from-black/55 via-black/30 to-black/65
-    backdrop-blur-[28px]">
+  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 backdrop-blur-[24px]">
+    <div className="relative mx-4 w-full max-w-md">
 
-    <div className="relative mx-4 w-full max-w-md rounded-3xl
-      border border-slate-700/40
-      bg-gradient-to-b from-[#070b14]/95 via-[#05070d]/95 to-[#04060b]/98
-      px-8 py-7
-      shadow-[0_50px_160px_rgba(0,0,0,0.95)]
-      ring-1 ring-emerald-400/25
-      text-center
-      backdrop-blur-xl">
+      {/* Glow frame */}
+      <div className="pointer-events-none absolute -inset-[1px] rounded-[28px] bg-gradient-to-b from-emerald-400/40 via-sky-400/10 to-transparent opacity-70 blur-lg" />
 
-      {/* Soft glow edge */}
-      <div className="pointer-events-none absolute -inset-px rounded-3xl
-        bg-gradient-to-b
-        from-emerald-400/12 via-transparent to-sky-400/10
-        blur-xl" />
+      {/* Card */}
+      <div className="relative rounded-[28px] border border-slate-800/90 bg-[#05070c] px-8 py-7 shadow-[0_50px_200px_rgba(0,0,0,1)] text-center">
 
-      {/* Inner depth border */}
-      <div className="pointer-events-none absolute inset-[1px] rounded-[22px]
-        border border-white/5" />
-
-      {/* Content */}
-      <div className="relative">
-        <div className="mb-4 inline-flex items-center gap-2
-          rounded-full border border-slate-700/40
-          bg-slate-900/60 px-3 py-1
-          text-[10px] font-semibold uppercase
-          tracking-[0.22em] text-slate-400">
-
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400
-            shadow-[0_0_14px_rgba(52,211,153,0.9)]" />
-          XPOT ACCESS
+        {/* XPOT pill */}
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.95)]" />
+          <span>XPOT Access</span>
         </div>
 
-        <h2 className="mb-2 text-xl font-semibold tracking-tight text-slate-50">
+        <h2 className="mb-2 text-[20px] font-semibold tracking-tight text-slate-50">
           Sign in to enter today’s draw
         </h2>
 
-        <p className="mb-5 text-xs leading-relaxed text-slate-400">
+        <p className="mb-6 text-[11px] leading-relaxed text-slate-400">
           One ticket per X account per draw. Your identity is your entry.
           <br className="hidden sm:inline" /> No posting required.
         </p>
 
-        {/* Main CTA */}
         <button
           type="button"
           onClick={handleSignInWithX}
-          className="w-full rounded-full
-            bg-gradient-to-r from-sky-400 via-sky-500 to-sky-400
-            py-2.5 text-sm font-semibold text-slate-950
-            shadow-lg shadow-sky-500/40
-            hover:brightness-110
-            transition-all duration-200
-            active:scale-[0.97]"
+          className="w-full rounded-full bg-gradient-to-r from-sky-400 to-sky-500 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-sky-500/40 hover:from-sky-300 hover:to-sky-500 transition-transform duration-200 active:scale-[0.97]"
         >
           {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
         </button>
 
         <p className="mt-3 text-[11px] text-slate-500">
-          Want another X account? Switch on x.com first, then come back here.
+          Want a different X account? Switch on x.com first, then come back here.
         </p>
       </div>
     </div>
