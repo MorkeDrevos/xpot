@@ -76,7 +76,7 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
   // X login popup (improved)
   // ─────────────────────────────────────────────
-    function openXLoginPopup() {
+  function openXLoginPopup() {
     if (typeof window === 'undefined') return;
 
     const width = 600;
@@ -84,13 +84,9 @@ export default function DashboardPage() {
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
 
-    // IMPORTANT:
-    // - "twitter" is the NextAuth provider id (change if yours is different)
-    // - callbackUrl points to our popup-complete page
-    const callbackUrl = `${window.location.origin}/auth/x-popup-complete`;
-    const url = `/api/auth/signin/twitter?callbackUrl=${encodeURIComponent(
-      callbackUrl
-    )}`;
+    // This should point to your existing X auth route
+    // e.g. a page that calls next-auth signIn('twitter' / 'x')
+    const url = '/x-login';
 
     const popup = window.open(
       url,
@@ -100,14 +96,26 @@ export default function DashboardPage() {
 
     if (!popup) return;
 
-    // Fallback: if popup is closed manually, reload the dashboard
-    const timer = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(timer);
-        window.location.reload();
+    // Listen for a message from the popup so we can auto-close it
+    // On /x-login (or your callback page) you can later do:
+    // window.opener?.postMessage({ type: 'x-auth-complete' }, window.location.origin);
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        if (
+          event.origin === window.location.origin &&
+          event.data &&
+          (event.data.type === 'x-auth-complete' || event.data === 'x-auth-complete')
+        ) {
+          window.removeEventListener('message', handleMessage);
+          if (!popup.closed) {
+            popup.close();
+          }
+          window.location.reload();
+        }
+      } catch {
+        // ignore malformed messages
       }
-    }, 800);
-  }
+    };
 
     window.addEventListener('message', handleMessage);
 
