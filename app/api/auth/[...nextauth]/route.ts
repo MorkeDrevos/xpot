@@ -14,18 +14,18 @@ const clientSecret =
   '';
 
 if (!clientId || !clientSecret) {
-  // This will show up in Vercel logs if env vars are missing / wrong
   console.warn(
-    '[auth] Missing X/Twitter clientId or clientSecret. Check X_CLIENT_ID / X_CLIENT_SECRET or TWITTER_CLIENT_ID / TWITTER_CLIENT_SECRET.'
+    '[auth] Missing X/Twitter clientId or clientSecret. ' +
+      'Set X_CLIENT_ID / X_CLIENT_SECRET or TWITTER_CLIENT_ID / TWITTER_CLIENT_SECRET in Vercel.'
   );
 }
 
 const authOptions: NextAuthOptions = {
   providers: [
     TwitterProvider({
-      // IMPORTANT: this must match:
-      // - signIn('x', ...) in /x-login
-      // - /api/auth/callback/x in X Dev Portal
+      // IMPORTANT:
+      // - id "x" => NextAuth exposes /api/auth/callback/x
+      // - must match signIn('x') and X Dev Portal callback
       id: 'x',
       clientId,
       clientSecret,
@@ -39,12 +39,7 @@ const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user, profile }) {
-      // On first sign in, enrich the token with X profile / user data
-      // `user` is what the provider's `profile()` returns (id, name, username, image)
-      // `profile` is the raw provider profile (shape can vary), so we guard heavily.
-
       if (user) {
-        // Basic identity from NextAuth user object
         token.name = user.name ?? token.name ?? null;
         (token as any).username =
           (user as any).username ??
@@ -59,8 +54,6 @@ const authOptions: NextAuthOptions = {
       if (profile) {
         const p = profile as any;
 
-        // Try to grab username / image from possible raw shapes as a safety net
-        // (Twitter v2 often exposes data under profile.data.*)
         const rawUsername =
           p.username ??
           p.screen_name ??
@@ -83,7 +76,6 @@ const authOptions: NextAuthOptions = {
           token.picture = rawImage;
         }
 
-        // "Real" verified flag from X profile – try multiple shapes, default false
         const rawVerified =
           typeof p.verified === 'boolean'
             ? p.verified
@@ -104,18 +96,15 @@ const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       if (session.user) {
-        // username / handle
         (session.user as any).username =
           (token as any).username ??
           (session.user as any).username ??
           null;
 
-        // avatar
         if (token.picture) {
           session.user.image = token.picture as string;
         }
 
-        // verified flag used by the UI
         (session.user as any).verified =
           (token as any).verified ?? false;
       }
