@@ -477,6 +477,20 @@ export default function DashboardPage() {
             </div>
           </section>
 
+          {/* XPOT balance – informational only */}
+<div className="premium-card p-4 mb-4">
+  <h3 className="text-sm font-semibold">Your XPOT</h3>
+  <p className="mt-1 text-xs text-slate-400">
+    XPOT in your wallet right now. You can hold, buy or sell any time.
+  </p>
+
+  <p className="mt-3 text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-emerald-100 to-white">
+    {/* TODO: replace mockBalance with real on-chain balance later */}
+    {mockBalance.toLocaleString()}{" "}
+    <span className="text-sm text-slate-400">XPOT</span>
+  </p>
+</div>
+
           {/* Right sidebar */}
           <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
             {/* Sign in with X */}
@@ -507,12 +521,11 @@ export default function DashboardPage() {
             {/* How it works */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">How today’s draw works</h3>
-              <ul className="mt-2 space-y-1 text-xs text-slate-400">
-                <li>• Hold the minimum XPOT when you claim.</li>
-                <li>• Claim exactly one ticket per X account.</li>
-                <li>• When the timer hits zero, one ticket wins.</li>
-                <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
-              </ul>
+<ul className="mt-2 text-xs text-slate-400 space-y-1">
+  <li>• Claim exactly one ticket per X account.</li>
+  <li>• When the timer hits zero, one ticket wins.</li>
+  <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
+</ul>
             </div>
           </aside>
         </div>
