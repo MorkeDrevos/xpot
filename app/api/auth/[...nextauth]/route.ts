@@ -1,4 +1,3 @@
-// app/api/auth/[...nextauth]/route.ts
 import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 
@@ -14,32 +13,22 @@ const clientSecret =
 
 const authOptions: NextAuthOptions = {
   debug: process.env.NODE_ENV !== 'production',
-
   providers: [
     TwitterProvider({
-      id: 'x',                   // so our signIn('x') works
+      id: 'x',          // important: we signIn('x')
       clientId,
       clientSecret,
-      version: '2.0',            // OAuth2
-
-      // 👇 Ask X to *always* show a login / account screen
-      authorization: {
-        params: {
-          // OAuth2 standard hint
-          prompt: 'login',
-          // Old Twitter-style hint (harmless if ignored)
-          force_login: 'true' as any,
-        },
-      },
+      version: '2.0',
     }),
   ],
 
-  session: { strategy: 'jwt' },
+  // ⬇️ NEW: redirect all auth errors back to dashboard
+  pages: {
+    error: '/dashboard', // NextAuth will append ?error=Callback, etc.
+  },
 
-  // You can re-add your callbacks here if you had them before.
-  // callbacks: { ... }
+  session: { strategy: 'jwt' },
 };
 
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };
