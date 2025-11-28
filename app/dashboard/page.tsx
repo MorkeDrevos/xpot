@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useState } from 'react';
+import { Connection, PublicKey } from '@solana/web3.js';
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -49,8 +50,27 @@ const initialEntries: Entry[] = [
   },
 ];
 
-// simple preview balance
-const mockBalance = 7_492_000;
+// Solana RPC + token mint (for now: test token)
+const RPC_URL = 'https://api.mainnet-beta.solana.com';
+const TEST_MINT_STRING =
+  process.env.NEXT_PUBLIC_TEST_MINT ??
+  // fallback just so build never breaks – replace this anyway
+  'So11111111111111111111111111111111111111112';
+
+let TEST_MINT: PublicKey;
+try {
+  TEST_MINT = new PublicKey(TEST_MINT_STRING);
+} catch {
+  // if env is wrong, use SOL wrapped mint so app still runs
+  TEST_MINT = new PublicKey('So11111111111111111111111111111111111111112');
+}
+
+// allow window.solana without TS yelling
+declare global {
+  interface Window {
+    solana?: any;
+  }
+}
 
 // ─────────────────────────────────────────────
 // Page
@@ -74,7 +94,12 @@ export default function DashboardPage() {
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [walletConnected, setWalletConnected] = useState(false);
+
+  // Wallet state
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
 
   const winner = entries.find(e => e.status === 'won');
 
@@ -104,6 +129,65 @@ export default function DashboardPage() {
     }, 800);
   }
 
+  async function fetchTokenBalance(owner: PublicKey) {
+    setIsLoadingBalance(true);
+    setWalletError(null);
+
+    try {
+      const connection = new Connection(RPC_URL, 'confirmed');
+
+      const response = await connection.getParsedTokenAccountsByOwner(owner, {
+        mint: TEST_MINT,
+      });
+
+      if (!response.value.length) {
+        setTokenBalance(0);
+      } else {
+        const info =
+          response.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+        setTokenBalance(info ?? 0);
+      }
+    } catch (err) {
+      console.error(err);
+      setWalletError('Could not load balance');
+      setTokenBalance(null);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  }
+
+  async function handleConnectWallet() {
+    if (typeof window === 'undefined') return;
+
+    const provider = window.solana;
+
+    if (!provider || !provider.isPhantom) {
+      setWalletError('Install Phantom to connect a wallet.');
+      return;
+    }
+
+    try {
+      setWalletError(null);
+      const res = await provider.connect();
+      const pubkey: PublicKey =
+        res.publicKey ?? new PublicKey(res?.publicKey?.toString());
+
+      const address = pubkey.toString();
+      setWalletAddress(address);
+
+      // fetch balance for test mint
+      await fetchTokenBalance(pubkey);
+    } catch (err: any) {
+      console.error(err);
+      if (err?.code === 4001) {
+        // user rejected
+        setWalletError('Wallet connection was cancelled.');
+      } else {
+        setWalletError('Failed to connect wallet.');
+      }
+    }
+  }
+
   async function handleCopy(entry: Entry) {
     try {
       await navigator.clipboard.writeText(entry.code);
@@ -121,6 +205,8 @@ export default function DashboardPage() {
       return;
     }
 
+    // in v1 we do NOT hard-require wallet for claiming,
+    // but you *could* enforce walletAddress here later if you want
     if (ticketClaimed) return;
 
     const newEntry: Entry = {
@@ -139,6 +225,10 @@ export default function DashboardPage() {
     setTicketClaimed(true);
     setTodaysTicket(newEntry);
   }
+
+  // ─────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────
 
   return (
     <main className="min-h-screen bg-black text-slate-50">
@@ -491,7 +581,7 @@ export default function DashboardPage() {
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">Wallet</h3>
 
-              {!walletConnected ? (
+              {!walletAddress ? (
                 <>
                   <p className="mt-1 text-xs text-slate-400">
                     Connect wallet before claiming today’s ticket.
@@ -499,25 +589,49 @@ export default function DashboardPage() {
 
                   <button
                     type="button"
-                    onClick={() => setWalletConnected(true)}
+                    onClick={handleConnectWallet}
                     className="mt-3 w-full rounded-full bg-slate-800 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-700"
                   >
-                    Connect wallet (preview)
+                    Connect wallet (Phantom)
                   </button>
 
+                  {walletError && (
+                    <p className="mt-2 text-[11px] text-rose-300">
+                      {walletError}
+                    </p>
+                  )}
+
                   <p className="mt-2 text-[11px] text-slate-500">
-                    Real Phantom / Solana wiring comes next.
+                    For now we’re reading a test token mint. Later this becomes
+                    XPOT.
                   </p>
                 </>
               ) : (
                 <>
                   <p className="mt-1 text-xs text-slate-400">
-                    Wallet connected.
+                    Wallet connected:
                   </p>
-                  <p className="mt-3 text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-emerald-100 to-white">
-                    {mockBalance.toLocaleString()}{' '}
-                    <span className="text-sm text-slate-400">XPOT</span>
+                  <p className="mt-1 font-mono text-[11px] text-slate-300 break-all">
+                    {walletAddress}
                   </p>
+
+                  <p className="mt-3 text-xs text-slate-400">
+                    Test token balance
+                  </p>
+
+                  <p className="mt-1 text-2xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-emerald-100 to-white">
+                    {isLoadingBalance
+                      ? 'Loading…'
+                      : tokenBalance !== null
+                      ? tokenBalance.toLocaleString()
+                      : '—'}
+                  </p>
+
+                  {walletError && (
+                    <p className="mt-2 text-[11px] text-rose-300">
+                      {walletError}
+                    </p>
+                  )}
                 </>
               )}
             </div>
