@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useSession, signOut, signIn } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -59,15 +60,8 @@ export default function DashboardPage() {
   const user = session?.user as any | undefined;
   const isAuthed = !!session;
 
-  // Read ?error= from URL on the client (no useSearchParams)
-  const [authError, setAuthError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const err = params.get('error');
-    if (err) setAuthError(err);
-  }, []);
+  const searchParams = useSearchParams();
+  const authError = searchParams.get('error'); // e.g. "Callback" when user cancels on X side
 
   // Robust username fallback
   const username =
@@ -93,6 +87,7 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
 
   function handleSignInWithX() {
+    // Single source of truth for sign-in
     signIn('x', { callbackUrl: '/dashboard' });
   }
 
@@ -119,6 +114,7 @@ export default function DashboardPage() {
 
     // 2) Must have wallet connected
     if (!walletConnected) {
+      // Just block; UI copy explains why
       return;
     }
 
@@ -317,6 +313,7 @@ export default function DashboardPage() {
                   <p className="uppercase tracking-[0.16em] text-slate-400">
                     Next draw in
                   </p>
+                  {/* static preview countdown for now */}
                   <p className="font-mono text-xs text-slate-200">02:14:09</p>
                 </div>
               </div>
@@ -608,31 +605,47 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* XPOT access blur overlay for non-logged-in users */}
-      {!isAuthed && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/35 backdrop-blur-md">
-          <div className="pointer-events-auto max-w-md w-full mx-4 rounded-[26px] border border-slate-800 bg-gradient-to-b from-slate-900/90 via-slate-950/95 to-slate-950/98 px-8 py-7 shadow-[0_24px_80px_rgba(0,0,0,0.85)]">
-            <p className="text-[10px] font-semibold tracking-[0.22em] text-slate-400 uppercase mb-3 text-center">
-              XPOT ACCESS
-            </p>
-            <h2 className="text-center text-lg font-semibold text-slate-50">
-              Sign in to enter today’s draw
-            </h2>
-            <p className="mt-2 text-center text-xs text-slate-400">
-              One ticket per X account. Your identity is your entry.
-              No posting required.
-            </p>
+      {/* LOGIN OVERLAY – premium glass XPOT access */}
+{!isAuthed && (
+  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 backdrop-blur-md">
+    <div className="relative mx-4 w-full max-w-md rounded-3xl border border-slate-700/80 bg-gradient-to-b from-slate-950/95 via-slate-900/95 to-slate-950/98 px-8 py-7 shadow-[0_30px_120px_rgba(0,0,0,0.9)] ring-1 ring-emerald-400/25 text-center">
 
-            <button
-              type="button"
-              onClick={handleSignInWithX}
-              className="mt-6 w-full rounded-full bg-sky-500 py-2.5 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400 transition"
-            >
-              {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-            </button>
-          </div>
+      {/* Soft glow halo */}
+      <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-emerald-400/8 via-transparent to-sky-400/6 blur-xl" />
+
+      {/* Content */}
+      <div className="relative">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+          <span className="h-1 w-1 rounded-full bg-emerald-400/80 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
+          <span>XPOT Access</span>
         </div>
-      )}
+
+        <h2 className="mb-2 text-xl font-semibold tracking-tight text-slate-50">
+          Sign in to enter today’s draw
+        </h2>
+
+        <p className="mb-5 text-xs leading-relaxed text-slate-400">
+          One ticket per X account per draw. Your identity is your entry.
+          <br className="hidden sm:inline" /> No posting required.
+        </p>
+
+        {/* Main CTA */}
+        <button
+          type="button"
+          onClick={() => signIn('x', { callbackUrl: '/dashboard' })}
+          className="w-full rounded-full bg-gradient-to-r from-sky-400 to-sky-500 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-sky-500/30 hover:from-sky-300 hover:to-sky-500 transition-transform duration-200 active:scale-[0.97]"
+        >
+          {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+        </button>
+
+        {/* Helper line */}
+        <p className="mt-3 text-[11px] text-slate-500">
+          Want a different X account? Switch on x.com first, then come back here.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
     </main>
   );
 }
