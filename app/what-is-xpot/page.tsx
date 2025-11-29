@@ -639,11 +639,7 @@ export default function DashboardPage() {
         {/* Requirements + XPOT micro-link */}
     <div className="mt-5 flex flex-col items-center gap-[6px] text-center">
   <p className="text-[11px] leading-relaxed text-slate-500/60">
-    Entry requires a{' '}
-    <span className="text-slate-300 font-medium">
-      minimum XPOT balance
-    </span>{' '}
-    and a connected wallet.
+    Entry requires a minimum XPOT balance and a connected wallet.
     <a
       href="/what-is-xpot"
       target="_blank"
