@@ -3,7 +3,7 @@ import Link from 'next/link';
 export default function WhatIsXpotPage() {
   return (
     <main className="min-h-screen bg-[#02040a] text-slate-50">
-      <div className="mx-auto flex max-w-5xl flex-col px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col px-4 pb-16 pt-8 sm:px-6 lg:px-8">
         {/* Top nav / back link */}
         <header className="mb-8 flex items-center justify-between gap-4">
           <Link
@@ -20,16 +20,16 @@ export default function WhatIsXpotPage() {
           </div>
         </header>
 
-        {/* HERO – calm, premium, 2-column */}
-        <section className="relative mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-slate-800 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.18),transparent_55%),linear-gradient(to_bottom,#050816,#02030a)] px-7 pb-7 pt-8 shadow-[0_40px_140px_rgba(0,0,0,0.9)]">
-          <div className="relative grid gap-10 md:grid-cols-[minmax(0,3fr)_minmax(0,2.5fr)]">
+        {/* HERO – wider, no bullets */}
+        <section className="relative mx-auto max-w-6xl overflow-hidden rounded-[32px] border border-slate-800 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.18),transparent_55%),linear-gradient(to_bottom,#050816,#02030a)] px-8 pb-7 pt-8 shadow-[0_40px_140px_rgba(0,0,0,0.9)]">
+          <div className="relative grid gap-10 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)]">
             {/* Left: story */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-300/80">
                 What is XPOT?
               </p>
-              <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight sm:text-[2.1rem]">
-                XPOT is your entry key<br className="hidden sm:block" /> to the crypto jackpot draw
+              <h1 className="mt-3 text-[2.1rem] font-semibold leading-tight tracking-tight sm:text-[2.25rem]">
+                XPOT is your entry key to the crypto jackpot draw
               </h1>
               <p className="mt-4 text-sm text-slate-200/90">
                 XPOT is the token the XPOT.bet draw revolves around. Hold the minimum XPOT balance,
@@ -37,31 +37,17 @@ export default function WhatIsXpotPage() {
                 for the current draw.
               </p>
 
-              {/* Core rules – very lightweight, no heavy cards */}
-              <div className="mt-6 space-y-2 text-sm text-slate-200/90">
-                <div className="flex items-start gap-2">
-                  <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <p>
-                    <span className="font-medium">One ticket per X account.</span>{' '}
-                    Each draw, your X handle can claim exactly one ticket.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-sky-400" />
-                  <p>
-                    <span className="font-medium">Wallet-based entry.</span>{' '}
-                    Your wallet must hold at least the minimum XPOT balance when you enter.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-violet-400" />
-                  <p>
-                    <span className="font-medium">No auto posting.</span>{' '}
-                    XPOT.bet never posts from your X account automatically. Posting is always
-                    optional.
-                  </p>
-                </div>
-              </div>
+              <p className="mt-5 text-sm text-slate-200/90">
+                XPOT follows three simple rules:
+                {' '}
+                <span className="font-medium">one ticket per X account</span>,
+                {' '}
+                <span className="font-medium">wallet-based eligibility using a minimum XPOT balance</span>,
+                {' '}
+                and
+                {' '}
+                <span className="font-medium">no automatic posting from your X account</span>.
+              </p>
             </div>
 
             {/* Right: compact fact card */}
@@ -126,9 +112,9 @@ export default function WhatIsXpotPage() {
           </div>
         </section>
 
-        {/* Lower content – simplified, still trustworthy */}
+        {/* Lower content – kept lean */}
         <div className="mx-auto mt-12 flex max-w-4xl flex-col gap-10 text-sm text-slate-300">
-          {/* How it works – lean */}
+          {/* How it works */}
           <section>
             <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
               How the XPOT draw works
