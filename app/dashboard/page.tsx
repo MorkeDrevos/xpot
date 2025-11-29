@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -14,21 +15,8 @@ import {
 } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 
-const MIN_XPOT_REQUIRED = 100_000; // later we swap to XPOT balance
+const MIN_XPOT_REQUIRED = 10_000; // later we swap to XPOT balance
 const endpoint = 'https://api.mainnet-beta.solana.com';
-
-const STORAGE_PREFIX = 'xpot-ticket-';
-
-type SavedTicket = {
-  wallet: string;
-  code: string;
-  createdAt: string;
-};
-
-function getTodayStorageKey() {
-  // YYYY-MM-DD for "today's draw"
-  return `${STORAGE_PREFIX}${new Date().toISOString().slice(0, 10)}`;
-}
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -43,6 +31,7 @@ type Entry = {
   label: string;
   jackpotUsd: string;
   createdAt: string;
+  walletAddress: string; // <- key: which wallet this ticket belongs to
 };
 
 function makeCode(): string {
@@ -53,27 +42,6 @@ function makeCode(): string {
       .join('');
   return `XPOT-${block()}-${block()}`;
 }
-
-// Seed a couple of preview tickets for the list
-const now = new Date();
-const initialEntries: Entry[] = [
-  {
-    id: 1,
-    code: makeCode(),
-    status: 'won',
-    label: "Today's main jackpot • $10,000",
-    jackpotUsd: '$10,000',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  },
-  {
-    id: 2,
-    code: makeCode(),
-    status: 'in-draw',
-    label: "Yesterday's main jackpot • $8,400",
-    jackpotUsd: '$8,400',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  },
-];
 
 // ─────────────────────────────────────────────
 // Root wrapper: Solana connection + wallet
@@ -94,110 +62,98 @@ export default function DashboardPage() {
 }
 
 // ─────────────────────────────────────────────
-// Inner dashboard – uses wallet + SOL balance
+// Inner dashboard – wallet + SOL balance + tickets
 // ─────────────────────────────────────────────
 
 function DashboardInner() {
   const username = 'your_handle';
 
-  const [entries, setEntries] = useState<Entry[]>(initialEntries);
-  const [ticketClaimed, setTicketClaimed] = useState(false);
-  const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const { publicKey, connected } = useWallet();
   const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
-  const walletConnected = !!publicKey && connected;
-  const winner = entries.find(e => e.status === 'won');
 
-  // Keep "one ticket per wallet per draw" using localStorage
-useEffect(() => {
-  if (!walletConnected || !publicKey) {
-    // Wallet not connected -> reset local UI (storage still keeps history)
-    setTicketClaimed(false);
-    setTodaysTicket(null);
-    return;
-  }
+  const walletAddress = publicKey?.toBase58() ?? null;
+  const walletConnected = !!walletAddress && connected;
 
-  if (typeof window === 'undefined') return;
+  // ─────────────────────────────────────────────
+  // Restore & persist tickets (per browser)
+  // ─────────────────────────────────────────────
 
-  const key = getTodayStorageKey();
-  const raw = window.localStorage.getItem(key);
-  if (!raw) {
-    setTicketClaimed(false);
-    setTodaysTicket(null);
-    return;
-  }
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('xpotTicketsV1');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Entry[];
+      if (Array.isArray(parsed)) {
+        setEntries(parsed);
+      }
+    } catch (err) {
+      console.error('Error loading stored XPOT tickets', err);
+    }
+  }, []);
 
-  try {
-    const map = JSON.parse(raw) as Record<string, SavedTicket>;
-    const saved = map[publicKey.toBase58()];
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('xpotTicketsV1', JSON.stringify(entries));
+    } catch (err) {
+      console.error('Error saving XPOT tickets', err);
+    }
+  }, [entries]);
 
-    if (!saved) {
-      setTicketClaimed(false);
-      setTodaysTicket(null);
+  // ─────────────────────────────────────────────
+  // Load SOL balance via API when wallet changes
+  // ─────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!walletAddress) {
+      setSolBalance(null);
       return;
     }
 
-    // Rebuild an Entry for today from saved data
-    const existingEntry: Entry = {
-      id: Date.now(), // just a local ID for the list
-      code: saved.code,
-      status: 'in-draw',
-      label: "Today's main jackpot • $10,000",
-      jackpotUsd: '$10,000',
-      createdAt: saved.createdAt,
-    };
+    let cancelled = false;
+    setSolBalance(null); // show "Loading..." while fetching
 
-    setTicketClaimed(true);
-    setTodaysTicket(existingEntry);
+    (async () => {
+      try {
+        const res = await fetch(`/api/sol-balance?address=${walletAddress}`);
+        if (!res.ok) {
+          throw new Error(`API error: ${res.status}`);
+        }
 
-    // Ensure it appears once in the entries list
-    setEntries(prev => {
-      const already = prev.some(e => e.code === saved.code);
-      return already ? prev : [existingEntry, ...prev];
-    });
-  } catch {
-    // If parsing fails, ignore the stored value for today
-    setTicketClaimed(false);
-    setTodaysTicket(null);
-  }
-}, [walletConnected, publicKey, setEntries]);
+        const data: { lamports: number } = await res.json();
+        if (cancelled) return;
 
-useEffect(() => {
-  if (!publicKey) {
-    setSolBalance(null);
-    return;
-  }
-
-  let cancelled = false;
-  setSolBalance(null); // show "Loading..." while fetching
-
-  (async () => {
-    try {
-      const res = await fetch(
-        `/api/sol-balance?address=${publicKey.toBase58()}`
-      );
-
-      if (!res.ok) {
-        throw new Error(`API error: ${res.status}`);
+        setSolBalance(data.lamports / LAMPORTS_PER_SOL);
+      } catch (err) {
+        console.error('Error loading SOL balance (via API)', err);
+        if (!cancelled) setSolBalance('error');
       }
+    })();
 
-      const data: { lamports: number } = await res.json();
-      if (cancelled) return;
+    return () => {
+      cancelled = true;
+    };
+  }, [walletAddress]);
 
-      setSolBalance(data.lamports / LAMPORTS_PER_SOL);
-    } catch (err) {
-      console.error('Error loading SOL balance (via API)', err);
-      if (!cancelled) setSolBalance('error');
-    }
-  })();
+  // ─────────────────────────────────────────────
+  // Derived per-wallet state
+  // ─────────────────────────────────────────────
 
-  return () => {
-    cancelled = true;
-  };
-}, [publicKey]);
+  // All tickets for the current connected wallet
+  const currentWalletEntries = walletAddress
+    ? entries.filter(e => e.walletAddress === walletAddress)
+    : [];
+
+  const hasTicketForCurrentWallet = currentWalletEntries.length > 0;
+  const latestTicketForWallet = currentWalletEntries[0] ?? null;
+
+  // Winner preview logic (later you’ll wire real RNG)
+  const winner = entries.find(e => e.status === 'won');
 
   // ─────────────────────────────────────────────
   // Ticket helpers
@@ -214,46 +170,34 @@ useEffect(() => {
   }
 
   function handleClaimTicket() {
-  if (!walletConnected || !publicKey) return; // must be connected
-  if (ticketClaimed) return; // prevent double-claim in memory
+    if (!walletConnected || !walletAddress) return; // must be connected
+    if (hasTicketForCurrentWallet) return; // this wallet already entered
 
-  const createdAt = new Date().toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+    const newEntry: Entry = {
+      id: Date.now(),
+      code: makeCode(),
+      status: 'in-draw',
+      label: "Today's main jackpot • $10,000",
+      jackpotUsd: '$10,000',
+      createdAt: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      walletAddress,
+    };
 
-  const newEntry: Entry = {
-    id: Date.now(),
-    code: makeCode(),
-    status: 'in-draw',
-    label: "Today's main jackpot • $10,000",
-    jackpotUsd: '$10,000',
-    createdAt,
-  };
-
-  setEntries(prev => [newEntry, ...prev]);
-  setTicketClaimed(true);
-  setTodaysTicket(newEntry);
-
-  // Persist to localStorage so refresh / reconnect can't mint another
-  if (typeof window !== 'undefined') {
-    try {
-      const key = getTodayStorageKey();
-      const raw = window.localStorage.getItem(key);
-      const map: Record<string, SavedTicket> = raw ? JSON.parse(raw) : {};
-
-      map[publicKey.toBase58()] = {
-        wallet: publicKey.toBase58(),
-        code: newEntry.code,
-        createdAt,
-      };
-
-      window.localStorage.setItem(key, JSON.stringify(map));
-    } catch {
-      // If storage fails, we still have in-memory protection
-    }
+    // Newest first
+    setEntries(prev => [newEntry, ...prev]);
   }
-}
+
+  // ─────────────────────────────────────────────
+  // Small helper to display wallet short form
+  // ─────────────────────────────────────────────
+
+  function formatWalletShort(addr: string) {
+    if (addr.length <= 8) return addr;
+    return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+  }
 
   // ─────────────────────────────────────────────
   // Render
@@ -308,15 +252,26 @@ useEffect(() => {
             <button
               type="button"
               onClick={handleClaimTicket}
-              disabled={!walletConnected}
+              disabled={!walletConnected || hasTicketForCurrentWallet}
               className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
                 !walletConnected
                   ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  : hasTicketForCurrentWallet
+                  ? 'bg-slate-800 text-slate-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
               }`}
             >
-              {!walletConnected ? 'Connect wallet to claim' : 'Claim today’s ticket'}
+              {!walletConnected
+                ? 'Connect wallet to claim'
+                : hasTicketForCurrentWallet
+                ? 'This wallet is already in'
+                : 'Claim today’s ticket'}
             </button>
+
+            <p className="px-3 text-[11px] text-slate-500 mt-1">
+              One ticket per wallet, per draw. Switching wallets lets you enter
+              again with a different wallet.
+            </p>
           </div>
 
           {/* Mini account chip */}
@@ -365,7 +320,7 @@ useEffect(() => {
                   type="button"
                   className="block w-full px-4 py-3 text-left text-[13px] text-slate-400 hover:bg-slate-900 cursor-default"
                 >
-                  Login with X coming soon
+                  Wallet-native preview. X login wiring comes later.
                 </button>
               </div>
             )}
@@ -437,22 +392,20 @@ useEffect(() => {
                   later.
                 </p>
 
-                {!ticketClaimed ? (
+                {!walletConnected ? (
+                  <div className="mt-4 text-xs text-amber-300">
+                    Connect your wallet on the right to claim today’s ticket.
+                  </div>
+                ) : !hasTicketForCurrentWallet ? (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-200">
-                        Claim your ticket for today’s jackpot.
+                        This wallet has not entered yet.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Your ticket will be tied to your connected wallet for
-                        today’s draw.
+                        Claim your ticket for today’s jackpot. Each wallet can
+                        enter once per draw.
                       </p>
-                      {!walletConnected && (
-                        <p className="mt-1 text-[11px] text-amber-300">
-                          Connect your wallet on the right to claim today’s
-                          ticket.
-                        </p>
-                      )}
                     </div>
 
                     <button
@@ -465,26 +418,32 @@ useEffect(() => {
                           : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
                       }`}
                     >
-                      {!walletConnected
-                        ? 'Connect wallet to claim'
-                        : 'Claim today’s ticket'}
+                      Claim today’s ticket
                     </button>
                   </div>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-emerald-100">
-                        ✅ Your ticket is in today’s draw.
+                        ✅ This wallet is in today’s draw.
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
-                        Come back when the countdown hits zero to see if you
-                        won.
+                        You can switch wallets if you want another wallet to
+                        enter too.
                       </p>
-                      {todaysTicket && (
+                      {latestTicketForWallet && (
                         <p className="mt-2 text-xs text-slate-300">
                           Ticket code:{' '}
                           <span className="font-mono text-emerald-300">
-                            {todaysTicket.code}
+                            {latestTicketForWallet.code}
+                          </span>
+                        </p>
+                      )}
+                      {walletAddress && (
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          Wallet:{' '}
+                          <span className="font-mono">
+                            {formatWalletShort(walletAddress)}
                           </span>
                         </p>
                       )}
@@ -529,10 +488,17 @@ useEffect(() => {
                   Your tickets
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Each ticket is tied to a specific daily draw and your wallet.
+                  Tickets from all wallets you’ve connected in this browser
+                  session. Each ticket is tied to a specific wallet and draw.
                 </p>
 
                 <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
+                  {entries.length === 0 && (
+                    <p className="text-xs text-slate-500">
+                      No tickets yet. Connect a wallet and claim today’s entry.
+                    </p>
+                  )}
+
                   {entries.map(entry => (
                     <article
                       key={entry.id}
@@ -572,6 +538,12 @@ useEffect(() => {
                           <p className="mt-1 text-[11px] text-slate-500">
                             Created: {entry.createdAt}
                           </p>
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            Wallet:{' '}
+                            <span className="font-mono">
+                              {formatWalletShort(entry.walletAddress)}
+                            </span>
+                          </p>
                         </div>
 
                         <div className="flex gap-2">
@@ -605,22 +577,22 @@ useEffect(() => {
               <h3 className="text-sm font-semibold">Wallet</h3>
 
               <p className="mt-1 text-xs text-slate-400">
-                Connect wallet before claiming today’s ticket.
+                Connect a wallet before claiming today’s ticket.
               </p>
 
               <div className="mt-3">
                 <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
               </div>
 
-              {publicKey && (
+              {walletAddress && (
                 <div className="mt-3 text-xs text-slate-300">
                   <p className="break-all">
                     Wallet:{' '}
-                    <span className="font-mono">{publicKey.toBase58()}</span>
+                    <span className="font-mono">{walletAddress}</span>
                   </p>
                   <p className="mt-1">
                     SOL balance:{' '}
-                    {solBalance === null && publicKey
+                    {solBalance === null && walletAddress
                       ? 'Loading...'
                       : solBalance === 'error'
                       ? 'Unavailable'
@@ -628,10 +600,13 @@ useEffect(() => {
                       ? `${solBalance.toFixed(4)} SOL`
                       : '-'}
                   </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    This wallet can claim one ticket per draw.
+                  </p>
                 </div>
               )}
 
-              {!publicKey && (
+              {!walletAddress && (
                 <p className="mt-2 text-[11px] text-slate-500">
                   Phantom and other Solana wallets work here. This is live
                   mainnet SOL.
