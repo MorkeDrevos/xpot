@@ -215,49 +215,54 @@ useEffect(() => {
     }
   }
 
-  function handleClaimTicket() {
-    if (!walletConnected || !publicKey) return; // must be connected
-    if (ticketClaimed) return; // prevent double-claim in memory
+  async function handleClaimTicket() {
+  if (!walletConnected || !publicKey) return;
+  if (loadingTickets) return; // avoid spamming while we're still loading
 
-    const createdAt = new Date().toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
+  const walletAddress = publicKey.toBase58();
+
+  try {
+    const res = await fetch('/api/tickets/claim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ walletAddress }),
     });
 
-    const walletAddress = publicKey.toBase58();
-
-   const newEntry: Entry = {
-  id: String(Date.now()),
-  code: makeCode(),
-  status: 'in-draw',
-  label: "Today's main jackpot • $10,000",
-  jackpotUsd: '$10,000',
-  createdAt,
-  walletAddress,
-};
-
-    setEntries(prev => [newEntry, ...prev]);
-    setTicketClaimed(true);
-    setTodaysTicket(newEntry);
-
-    // Persist to localStorage so refresh / reconnect can't mint another
-    if (typeof window !== 'undefined') {
-      try {
-        const key = getTodayStorageKey();
-        const raw = window.localStorage.getItem(key);
-        const map: Record<string, SavedTicket> = raw ? JSON.parse(raw) : {};
-
-        map[walletAddress] = {
-          wallet: walletAddress,
-          code: newEntry.code,
-          createdAt,
-        };
-
-        window.localStorage.setItem(key, JSON.stringify(map));
-      } catch {
-        // If storage fails, we still have in-memory protection
-      }
+    if (!res.ok) {
+      console.error('Claim failed', await res.text());
+      return;
     }
+
+    const data: {
+      ok: boolean;
+      ticket: Entry;
+      tickets?: Entry[];
+    } = await res.json();
+
+    if (!data.ok || !data.ticket) {
+      console.error('Claim response missing ticket', data);
+      return;
+    }
+
+    // If API sends full refreshed list, trust that
+    if (Array.isArray(data.tickets) && data.tickets.length > 0) {
+      setEntries(data.tickets);
+    } else {
+      // Otherwise just merge the single ticket into existing list
+      setEntries(prev => {
+        const others = prev.filter(t => t.id !== data.ticket.id);
+        return [data.ticket, ...others];
+      });
+    }
+
+    setTicketClaimed(true);
+    setTodaysTicket(data.ticket);
+  } catch (err) {
+    console.error('Error calling /api/tickets/claim', err);
+  }
+}
   }
 
   // ─────────────────────────────────────────────
