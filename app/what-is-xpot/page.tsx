@@ -2,234 +2,298 @@ import Link from 'next/link';
 
 export default function WhatIsXpotPage() {
   return (
-    <main className="min-h-screen bg-[#02040a] text-slate-50">
+    <main className="min-h-screen bg-[#070707] text-[#f4f1ea]">
       <div className="mx-auto flex max-w-6xl flex-col px-4 pb-16 pt-8 sm:px-6 lg:px-8">
-        {/* Top nav / back link */}
+        {/* Top bar */}
         <header className="mb-8 flex items-center justify-between gap-4">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-100"
+            className="inline-flex items-center gap-2 text-[11px] font-medium text-[#8c867c] hover:text-[#f4f1ea]"
           >
-            <span className="rounded-full bg-slate-900 px-2 py-1 text-[10px]">← Back</span>
+            <span className="rounded-full bg-[#111111] px-2 py-1 text-[10px] uppercase tracking-[0.16em]">
+              ← Back
+            </span>
             <span className="hidden sm:inline">Return to XPOT dashboard</span>
           </Link>
 
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.9)]" />
-            <span>XPOT Key facts</span>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#2a2418] bg-[#0b0b0b] px-4 py-1 text-[10px] uppercase tracking-[0.22em] text-[#b7afa3]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#8dd2b4] shadow-[0_0_14px_rgba(141,210,180,0.9)]" />
+            <span>XPOT Key Facts</span>
           </div>
         </header>
 
-        {/* HERO – wider, no bullets */}
-        <section className="relative mx-auto max-w-6xl overflow-hidden rounded-[32px] border border-slate-800 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.18),transparent_55%),linear-gradient(to_bottom,#050816,#02030a)] px-8 pb-7 pt-8 shadow-[0_40px_140px_rgba(0,0,0,0.9)]">
-          <div className="relative grid gap-10 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)]">
-            {/* Left: story */}
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-300/80">
-                What is XPOT?
+        {/* HERO: Black Gold Vault */}
+        <section className="relative overflow-hidden rounded-[32px] border border-[#262019] bg-[radial-gradient(circle_at_10%_0%,rgba(201,179,125,0.14),transparent_55%),radial-gradient(circle_at_90%_120%,rgba(141,210,180,0.12),transparent_52%),linear-gradient(to_bottom,#101010,#050505)] px-6 py-8 sm:px-10 sm:py-10 shadow-[0_60px_220px_rgba(0,0,0,1)]">
+          {/* Inner soft border glow */}
+          <div className="pointer-events-none absolute inset-px rounded-[30px] border border-[#1a140e]/60" />
+
+          <div className="relative flex flex-col gap-10 lg:flex-row lg:items-start">
+            {/* Left side – story */}
+            <div className="max-w-xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#8dd2b4]">
+                What is XPOT
               </p>
-              <h1 className="mt-3 text-[2.1rem] font-semibold leading-tight tracking-tight sm:text-[2.25rem]">
-                XPOT is your entry key to the crypto jackpot draw
+              <h1 className="mt-3 text-[2.3rem] font-[500] leading-tight tracking-tight text-[#f4f1ea] sm:text-[2.6rem]">
+                XPOT is your entry key
+                <span className="block">to a controlled crypto jackpot draw</span>
               </h1>
-              <p className="mt-4 text-sm text-slate-200/90">
+
+              <p className="mt-4 text-[13px] leading-relaxed text-[#b7afa3]">
                 XPOT is the token the XPOT.bet draw revolves around. Hold the minimum XPOT balance,
-                connect your wallet and sign in with X – then your X account can claim one ticket
-                for the current draw.
+                connect your wallet and sign in with X – then your X account can claim exactly one
+                ticket for the current draw.
               </p>
 
-              <p className="mt-5 text-sm text-slate-200/90">
-                XPOT follows three simple rules:
-                {' '}
-                <span className="font-medium">one ticket per X account</span>,
-                {' '}
-                <span className="font-medium">wallet-based eligibility using a minimum XPOT balance</span>,
-                {' '}
-                and
-                {' '}
-                <span className="font-medium">no automatic posting from your X account</span>.
+              {/* Three key assurances */}
+              <div className="mt-6 space-y-3 text-[13px] text-[#f4f1ea]">
+                <div className="rounded-2xl bg-[#121212]/80 px-4 py-3 ring-1 ring-[#29231a]">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[#b7afa3]">
+                    One ticket per X account
+                  </p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-[#f4f1ea]">
+                    Each draw, your X handle can claim one ticket only. No spam, no multi-account
+                    farming.
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-[#121212]/80 px-4 py-3 ring-1 ring-[#29231a]">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[#b7afa3]">
+                    Wallet-based eligibility
+                  </p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-[#f4f1ea]">
+                    Your wallet must hold at least the minimum XPOT balance at the moment you enter
+                    the draw.
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-[#121212]/80 px-4 py-3 ring-1 ring-[#29231a]">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[#b7afa3]">
+                    No auto posting
+                  </p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-[#f4f1ea]">
+                    XPOT.bet never posts from your X account automatically. Posting is always a
+                    choice.
+                  </p>
+                </div>
+              </div>
+
+              {/* CTAs */}
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center rounded-full bg-[#c9b37d] px-5 py-2.5 text-[12px] font-semibold tracking-[0.14em] text-[#16130c] shadow-[0_0_40px_rgba(201,179,125,0.55)] transition-colors hover:bg-[#e1c88a]"
+                >
+                  Enter today&apos;s draw
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center justify-center rounded-full border border-[#2a2418] bg-[#111111]/70 px-5 py-2.5 text-[12px] font-medium tracking-[0.16em] text-[#b7afa3] transition-colors hover:border-[#3a2f1f] hover:text-[#f4f1ea]"
+                >
+                  Go to dashboard
+                </Link>
+              </div>
+
+              <p className="mt-4 max-w-md text-[11px] leading-relaxed text-[#8c867c]">
+                XPOT is not an investment recommendation. It is a utility token used exclusively
+                inside the XPOT.bet draw mechanic.
               </p>
             </div>
 
-            {/* Right: compact fact card */}
-            <aside className="rounded-3xl border border-slate-800/80 bg-slate-950/70 px-5 py-5 text-sm text-slate-200/95">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+            {/* Right side – vault facts */}
+            <aside className="w-full max-w-sm rounded-[28px] border border-[#262019] bg-[#0b0b0b]/95 px-5 py-5 text-[12px] text-[#b7afa3] shadow-[0_0_120px_rgba(0,0,0,0.9)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b7afa3]">
                 At a glance
               </p>
 
-              <div className="mt-4 space-y-4 text-[13px] leading-relaxed">
+              <div className="mt-4 space-y-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]">
                     Clear rules
                   </p>
-                  <p className="mt-1 text-slate-200">
-                    Each ticket is linked to one X account and one wallet at the time of entry. No
-                    spam, no ticket farming.
+                  <p className="mt-1 leading-relaxed">
+                    Each ticket is linked to one X account and one wallet at the moment of entry.
+                    No spam, no ticket stacking.
                   </p>
                 </div>
 
+                <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-[#302619] to-transparent" />
+
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]">
                     Eligibility at entry
                   </p>
-                  <p className="mt-1 text-slate-200">
-                    Your XPOT balance is checked when you enter. For that round, your ticket stays
-                    valid even if the balance changes later.
+                  <p className="mt-1 leading-relaxed">
+                    Your XPOT balance is checked when you enter. For that round, your ticket
+                    remains valid even if the balance changes later.
                   </p>
                 </div>
 
+                <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-[#302619] to-transparent" />
+
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]">
                     Identity, not access
                   </p>
-                  <p className="mt-1 text-slate-200">
+                  <p className="mt-1 leading-relaxed">
                     Sign in with X is used only to confirm which account owns the ticket. XPOT.bet
                     never gains control of your X account.
                   </p>
                 </div>
               </div>
 
-              <p className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/80 px-3 py-3 text-[11px] leading-relaxed text-slate-400">
+              <div className="mt-5 rounded-2xl bg-[#101010] px-4 py-3 text-[11px] text-[#8c867c] ring-1 ring-[#27201a]">
                 XPOT and XPOT.bet are experimental crypto products. Only use funds you can afford to
                 lose and always double-check contract addresses.
-              </p>
+              </div>
             </aside>
           </div>
+        </section>
 
-          {/* Hero CTAs */}
-          <div className="mt-7 flex flex-wrap items-center gap-3 border-t border-slate-800 pt-4">
+        {/* WHY XPOT FEELS CONTROLLED */}
+        <section className="mt-9 rounded-3xl border border-[#262019] bg-[#090909] px-6 py-4 text-[12px] text-[#b7afa3] sm:px-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#f4f1ea]">
+              Why XPOT feels controlled
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#121212] px-3 py-1 text-[11px] text-[#b7afa3] ring-1 ring-[#302619]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8dd2b4]" />
+                <span>One ticket per X account</span>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#121212] px-3 py-1 text-[11px] text-[#b7afa3] ring-1 ring-[#302619]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8dd2b4]" />
+                <span>Wallet + XPOT balance at entry</span>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#121212] px-3 py-1 text-[11px] text-[#b7afa3] ring-1 ring-[#302619]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8dd2b4]" />
+                <span>No automatic posting from X</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* HOW THE DRAW WORKS */}
+        <section className="mt-10 text-[13px] text-[#b7afa3]">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-[#f4f1ea]">
+            How the XPOT draw works
+          </h2>
+          <div className="mt-4 space-y-2">
+            <p>
+              1. You sign in with X on XPOT.bet and connect a wallet that holds at least the
+              minimum XPOT balance.
+            </p>
+            <p>2. You generate one ticket for the current draw – one ticket per X account.</p>
+            <p>3. When the draw closes, one ticket is selected as the winner.</p>
+            <p>4. The winner can claim the jackpot within the published claim window.</p>
+          </div>
+        </section>
+
+        {/* ENTRY REQUIREMENTS */}
+        <section className="mt-10 text-[13px] text-[#b7afa3]">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-[#f4f1ea]">
+            Entry requirements
+          </h2>
+          <p className="mt-3">
+            To keep entries fair and limit spam, XPOT uses three simple requirements:
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-[#262019] bg-[#0b0b0b] px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]">
+                X account
+              </p>
+              <p className="mt-1">
+                You must sign in with X. Your X handle is what the winning ticket will display if
+                your ticket is selected.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#262019] bg-[#0b0b0b] px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]">
+                Wallet connection
+              </p>
+              <p className="mt-1">
+                You connect a wallet on the supported network. This is where XPOT is held and where
+                jackpots are paid out.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#262019] bg-[#0b0b0b] px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]">
+                Minimum XPOT balance
+              </p>
+              <p className="mt-1">
+                Your wallet must hold at least the published minimum XPOT amount at the moment you
+                enter the draw.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#262019] bg-[#0b0b0b] px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f4f1ea]">
+                One ticket per draw
+              </p>
+              <p className="mt-1">
+                Each X account can generate exactly one ticket per draw. When a new draw opens, your
+                entry resets and you can qualify again.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* QUICK QUESTIONS */}
+        <section className="mt-10 text-[13px] text-[#b7afa3]">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-[#f4f1ea]">
+            Quick questions
+          </h2>
+          <div className="mt-4 space-y-4">
+            <div>
+              <p className="font-medium text-[#f4f1ea]">Is XPOT a guarantee of winning?</p>
+              <p className="mt-1">
+                No. XPOT lets you join the draw when you meet the requirements, but only one ticket
+                wins each round.
+              </p>
+            </div>
+            <div>
+              <p className="font-medium text-[#f4f1ea]">
+                Can I sell my XPOT after I enter a draw?
+              </p>
+              <p className="mt-1">
+                The requirement is checked when you enter. Selling later does not retroactively
+                cancel your ticket for that draw, but you will need the minimum XPOT again to enter a
+                future draw.
+              </p>
+            </div>
+            <div>
+              <p className="font-medium text-[#f4f1ea]">
+                Does XPOT or XPOT.bet ever post from my X account?
+              </p>
+              <p className="mt-1">
+                No. Sign in with X is used only to confirm which account owns the ticket. Posting is
+                always optional.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Safety / disclaimer */}
+        <section className="mt-8 rounded-2xl border border-[#262019] bg-[#0b0b0b] px-5 py-4 text-[11px] leading-relaxed text-[#8c867c]">
+          XPOT and XPOT.bet are experimental crypto products. Do not buy XPOT with money you cannot
+          afford to lose. Nothing on this page is financial advice or a guarantee of returns. Always
+          double-check contract addresses and only use official links shared by the XPOT team.
+        </section>
+
+        {/* Final CTA */}
+        <section className="mt-8 flex flex-wrap items-center justify-between gap-4 text-[12px] text-[#b7afa3]">
+          <p>Ready to see if you qualify for the next draw?</p>
+          <div className="flex flex-wrap gap-3">
             <Link
               href="/"
-              className="inline-flex items-center justify-center rounded-full bg-sky-500 px-5 py-2.5 text-xs font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+              className="inline-flex items-center justify-center rounded-full bg-[#c9b37d] px-5 py-2.5 text-[12px] font-semibold tracking-[0.14em] text-[#16130c] shadow-[0_0_40px_rgba(201,179,125,0.55)] transition-colors hover:bg-[#e1c88a]"
             >
               Enter today&apos;s draw
             </Link>
             <Link
               href="/dashboard"
-              className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-950/80 px-5 py-2.5 text-xs font-medium text-slate-100 hover:border-slate-500 hover:bg-slate-900"
+              className="inline-flex items-center justify-center rounded-full border border-[#2a2418] bg-[#111111]/70 px-5 py-2.5 text-[12px] font-medium tracking-[0.16em] text-[#b7afa3] transition-colors hover:border-[#3a2f1f] hover:text-[#f4f1ea]"
             >
               Go to dashboard
             </Link>
           </div>
         </section>
-
-        {/* Lower content – kept lean */}
-        <div className="mx-auto mt-12 flex max-w-4xl flex-col gap-10 text-sm text-slate-300">
-          {/* How it works */}
-          <section>
-            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-              How the XPOT draw works
-            </h2>
-            <ol className="mt-4 space-y-2 text-sm">
-              <li>1. You sign in with X on XPOT.bet.</li>
-              <li>2. You connect a wallet that holds at least the minimum XPOT balance.</li>
-              <li>3. You claim one ticket for the current draw – one ticket per X account.</li>
-              <li>4. When the draw closes, one ticket is selected as the winner.</li>
-              <li>5. The winner can claim the jackpot within the published claim window.</li>
-            </ol>
-          </section>
-
-          {/* Requirements */}
-          <section>
-            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Entry requirements
-            </h2>
-            <p className="mt-3 text-sm">
-              To keep entries fair and limit spam, XPOT uses three simple requirements:
-            </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  X account
-                </p>
-                <p className="mt-1 text-sm">
-                  You must sign in with X. Your X handle is what the winning ticket will show.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  Wallet connection
-                </p>
-                <p className="mt-1 text-sm">
-                  You connect a wallet on the supported network. This is where XPOT is held and
-                  where jackpots are paid out.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  Minimum XPOT balance
-                </p>
-                <p className="mt-1 text-sm">
-                  Your wallet must hold at least the published minimum XPOT amount when you enter
-                  the draw.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* FAQ */}
-          <section>
-            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Quick questions
-            </h2>
-            <div className="mt-4 space-y-3 text-sm">
-              <div>
-                <p className="font-medium text-slate-100">Is XPOT a guarantee of winning?</p>
-                <p className="text-slate-300">
-                  No. XPOT lets you join the draw when you meet the requirements, but only one
-                  ticket wins each round.
-                </p>
-              </div>
-              <div>
-                <p className="font-medium text-slate-100">
-                  Can I sell my XPOT after I enter a draw?
-                </p>
-                <p className="text-slate-300">
-                  The requirement is checked when you enter. Selling later does not retroactively
-                  cancel your ticket for that draw, but you will need the minimum XPOT again to
-                  enter a future draw.
-                </p>
-              </div>
-              <div>
-                <p className="font-medium text-slate-100">
-                  Does XPOT or XPOT.bet ever post from my X account?
-                </p>
-                <p className="text-slate-300">
-                  No. Sign in with X is used only to confirm which account owns the ticket. Posting
-                  is always optional.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Safety strip */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-[11px] leading-relaxed text-slate-400">
-            XPOT and XPOT.bet are experimental crypto products. Do not buy XPOT with money you
-            cannot afford to lose. Nothing on this page is financial advice or a guarantee of
-            returns. Always double-check contract addresses and only use official links shared by
-            the XPOT team.
-          </section>
-
-          {/* Final CTA */}
-          <section className="mt-2 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-400">
-              Ready to see if you qualify for the next draw?
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/"
-                className="inline-flex items-center justify-center rounded-full bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
-              >
-                Enter today&apos;s draw
-              </Link>
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-950/80 px-4 py-2 text-xs font-medium text-slate-100 hover:border-slate-500 hover:bg-slate-900"
-              >
-                Go to dashboard
-              </Link>
-            </div>
-          </section>
-        </div>
       </div>
     </main>
   );
