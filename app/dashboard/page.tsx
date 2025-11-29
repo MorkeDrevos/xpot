@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -15,8 +14,30 @@ import {
 } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 
-const MIN_XPOT_REQUIRED = 10_000; // later we swap to XPOT balance
+// ─────────────────────────────────────────────
+// Config
+// ─────────────────────────────────────────────
+
+const MIN_XPOT_REQUIRED = 100_000; // later we swap to XPOT balance
 const endpoint = 'https://api.mainnet-beta.solana.com';
+
+const STORAGE_PREFIX = 'xpot-ticket-';
+
+type SavedTicket = {
+  wallet: string;
+  code: string;
+  createdAt: string;
+};
+
+function getTodayStorageKey() {
+  // YYYY-MM-DD for "today's draw"
+  return `${STORAGE_PREFIX}${new Date().toISOString().slice(0, 10)}`;
+}
+
+function shortWallet(addr: string) {
+  if (!addr || addr.length < 8) return addr;
+  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+}
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -31,7 +52,7 @@ type Entry = {
   label: string;
   jackpotUsd: string;
   createdAt: string;
-  walletAddress: string; // <- key: which wallet this ticket belongs to
+  walletAddress: string;
 };
 
 function makeCode(): string {
@@ -42,6 +63,29 @@ function makeCode(): string {
       .join('');
   return `XPOT-${block()}-${block()}`;
 }
+
+// Seed a couple of preview tickets for the list
+const now = new Date();
+const initialEntries: Entry[] = [
+  {
+    id: 1,
+    code: makeCode(),
+    status: 'won',
+    label: "Today's main jackpot • $10,000",
+    jackpotUsd: '$10,000',
+    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    walletAddress: 'preview-wallet-1',
+  },
+  {
+    id: 2,
+    code: makeCode(),
+    status: 'in-draw',
+    label: "Yesterday's main jackpot • $8,400",
+    jackpotUsd: '$8,400',
+    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    walletAddress: 'preview-wallet-2',
+  },
+];
 
 // ─────────────────────────────────────────────
 // Root wrapper: Solana connection + wallet
@@ -62,55 +106,88 @@ export default function DashboardPage() {
 }
 
 // ─────────────────────────────────────────────
-// Inner dashboard – wallet + SOL balance + tickets
+// Inner dashboard – uses wallet + SOL balance
 // ─────────────────────────────────────────────
 
 function DashboardInner() {
   const username = 'your_handle';
 
-  const [entries, setEntries] = useState<Entry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>(initialEntries);
+  const [ticketClaimed, setTicketClaimed] = useState(false);
+  const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const { publicKey, connected } = useWallet();
   const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
 
-  const walletAddress = publicKey?.toBase58() ?? null;
-  const walletConnected = !!walletAddress && connected;
+  const walletConnected = !!publicKey && connected;
+  const winner = entries.find(e => e.status === 'won');
+  const currentWalletAddress = publicKey?.toBase58() ?? null;
 
   // ─────────────────────────────────────────────
-  // Restore & persist tickets (per browser)
+  // Keep "one ticket per wallet per draw" using localStorage
+  // and rehydrate today's ticket for the current wallet
   // ─────────────────────────────────────────────
 
   useEffect(() => {
+    if (!walletConnected || !publicKey) {
+      setTicketClaimed(false);
+      setTodaysTicket(null);
+      return;
+    }
+
     if (typeof window === 'undefined') return;
+
+    const key = getTodayStorageKey();
+    const raw = window.localStorage.getItem(key);
+
+    if (!raw) {
+      setTicketClaimed(false);
+      setTodaysTicket(null);
+      return;
+    }
+
     try {
-      const raw = window.localStorage.getItem('xpotTicketsV1');
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Entry[];
-      if (Array.isArray(parsed)) {
-        setEntries(parsed);
+      const map = JSON.parse(raw) as Record<string, SavedTicket>;
+      const saved = map[publicKey.toBase58()];
+
+      if (!saved) {
+        setTicketClaimed(false);
+        setTodaysTicket(null);
+        return;
       }
-    } catch (err) {
-      console.error('Error loading stored XPOT tickets', err);
-    }
-  }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem('xpotTicketsV1', JSON.stringify(entries));
-    } catch (err) {
-      console.error('Error saving XPOT tickets', err);
+      const existingEntry: Entry = {
+        id: Date.now(),
+        code: saved.code,
+        status: 'in-draw',
+        label: "Today's main jackpot • $10,000",
+        jackpotUsd: '$10,000',
+        createdAt: saved.createdAt,
+        walletAddress: saved.wallet,
+      };
+
+      setTicketClaimed(true);
+      setTodaysTicket(existingEntry);
+
+      // Ensure it appears once in the entries list
+      setEntries(prev => {
+        const already = prev.some(e => e.code === saved.code);
+        return already ? prev : [existingEntry, ...prev];
+      });
+    } catch {
+      setTicketClaimed(false);
+      setTodaysTicket(null);
     }
-  }, [entries]);
+  }, [walletConnected, publicKey]);
 
   // ─────────────────────────────────────────────
-  // Load SOL balance via API when wallet changes
+  // SOL balance (via API route)
   // ─────────────────────────────────────────────
 
   useEffect(() => {
-    if (!walletAddress) {
+    if (!publicKey) {
       setSolBalance(null);
       return;
     }
@@ -120,7 +197,10 @@ function DashboardInner() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/sol-balance?address=${walletAddress}`);
+        const res = await fetch(
+          `/api/sol-balance?address=${publicKey.toBase58()}`
+        );
+
         if (!res.ok) {
           throw new Error(`API error: ${res.status}`);
         }
@@ -138,22 +218,7 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [walletAddress]);
-
-  // ─────────────────────────────────────────────
-  // Derived per-wallet state
-  // ─────────────────────────────────────────────
-
-  // All tickets for the current connected wallet
-  const currentWalletEntries = walletAddress
-    ? entries.filter(e => e.walletAddress === walletAddress)
-    : [];
-
-  const hasTicketForCurrentWallet = currentWalletEntries.length > 0;
-  const latestTicketForWallet = currentWalletEntries[0] ?? null;
-
-  // Winner preview logic (later you’ll wire real RNG)
-  const winner = entries.find(e => e.status === 'won');
+  }, [publicKey]);
 
   // ─────────────────────────────────────────────
   // Ticket helpers
@@ -170,8 +235,15 @@ function DashboardInner() {
   }
 
   function handleClaimTicket() {
-    if (!walletConnected || !walletAddress) return; // must be connected
-    if (hasTicketForCurrentWallet) return; // this wallet already entered
+    if (!walletConnected || !publicKey) return; // must be connected
+    if (ticketClaimed) return; // prevent double-claim in memory
+
+    const createdAt = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const walletAddress = publicKey.toBase58();
 
     const newEntry: Entry = {
       id: Date.now(),
@@ -179,24 +251,32 @@ function DashboardInner() {
       status: 'in-draw',
       label: "Today's main jackpot • $10,000",
       jackpotUsd: '$10,000',
-      createdAt: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+      createdAt,
       walletAddress,
     };
 
-    // Newest first
     setEntries(prev => [newEntry, ...prev]);
-  }
+    setTicketClaimed(true);
+    setTodaysTicket(newEntry);
 
-  // ─────────────────────────────────────────────
-  // Small helper to display wallet short form
-  // ─────────────────────────────────────────────
+    // Persist to localStorage so refresh / reconnect can't mint another
+    if (typeof window !== 'undefined') {
+      try {
+        const key = getTodayStorageKey();
+        const raw = window.localStorage.getItem(key);
+        const map: Record<string, SavedTicket> = raw ? JSON.parse(raw) : {};
 
-  function formatWalletShort(addr: string) {
-    if (addr.length <= 8) return addr;
-    return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+        map[walletAddress] = {
+          wallet: walletAddress,
+          code: newEntry.code,
+          createdAt,
+        };
+
+        window.localStorage.setItem(key, JSON.stringify(map));
+      } catch {
+        // If storage fails, we still have in-memory protection
+      }
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -252,26 +332,15 @@ function DashboardInner() {
             <button
               type="button"
               onClick={handleClaimTicket}
-              disabled={!walletConnected || hasTicketForCurrentWallet}
+              disabled={!walletConnected}
               className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
                 !walletConnected
                   ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  : hasTicketForCurrentWallet
-                  ? 'bg-slate-800 text-slate-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
               }`}
             >
-              {!walletConnected
-                ? 'Connect wallet to claim'
-                : hasTicketForCurrentWallet
-                ? 'This wallet is already in'
-                : 'Claim today’s ticket'}
+              {!walletConnected ? 'Connect wallet to claim' : 'Claim today’s ticket'}
             </button>
-
-            <p className="px-3 text-[11px] text-slate-500 mt-1">
-              One ticket per wallet, per draw. Switching wallets lets you enter
-              again with a different wallet.
-            </p>
           </div>
 
           {/* Mini account chip */}
@@ -320,7 +389,7 @@ function DashboardInner() {
                   type="button"
                   className="block w-full px-4 py-3 text-left text-[13px] text-slate-400 hover:bg-slate-900 cursor-default"
                 >
-                  Wallet-native preview. X login wiring comes later.
+                  Login with X coming soon
                 </button>
               </div>
             )}
@@ -392,20 +461,22 @@ function DashboardInner() {
                   later.
                 </p>
 
-                {!walletConnected ? (
-                  <div className="mt-4 text-xs text-amber-300">
-                    Connect your wallet on the right to claim today’s ticket.
-                  </div>
-                ) : !hasTicketForCurrentWallet ? (
+                {!ticketClaimed ? (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-200">
-                        This wallet has not entered yet.
+                        Claim your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Claim your ticket for today’s jackpot. Each wallet can
-                        enter once per draw.
+                        Your ticket will be tied to your connected wallet for
+                        today’s draw.
                       </p>
+                      {!walletConnected && (
+                        <p className="mt-1 text-[11px] text-amber-300">
+                          Connect your wallet on the right to claim today’s
+                          ticket.
+                        </p>
+                      )}
                     </div>
 
                     <button
@@ -418,32 +489,26 @@ function DashboardInner() {
                           : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
                       }`}
                     >
-                      Claim today’s ticket
+                      {!walletConnected
+                        ? 'Connect wallet to claim'
+                        : 'Claim today’s ticket'}
                     </button>
                   </div>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-emerald-100">
-                        ✅ This wallet is in today’s draw.
+                        ✅ Your ticket is in today’s draw.
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
-                        You can switch wallets if you want another wallet to
-                        enter too.
+                        Come back when the countdown hits zero to see if you
+                        won.
                       </p>
-                      {latestTicketForWallet && (
+                      {todaysTicket && (
                         <p className="mt-2 text-xs text-slate-300">
                           Ticket code:{' '}
                           <span className="font-mono text-emerald-300">
-                            {latestTicketForWallet.code}
-                          </span>
-                        </p>
-                      )}
-                      {walletAddress && (
-                        <p className="mt-1 text-[11px] text-slate-500">
-                          Wallet:{' '}
-                          <span className="font-mono">
-                            {formatWalletShort(walletAddress)}
+                            {todaysTicket.code}
                           </span>
                         </p>
                       )}
@@ -488,83 +553,99 @@ function DashboardInner() {
                   Your tickets
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Tickets from all wallets you’ve connected in this browser
-                  session. Each ticket is tied to a specific wallet and draw.
+                  Each ticket is tied to a specific daily draw and wallet.
+                  Tickets from your{' '}
+                  <span className="font-semibold text-emerald-300">
+                    currently connected wallet
+                  </span>{' '}
+                  are highlighted.
                 </p>
 
                 <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-                  {entries.length === 0 && (
-                    <p className="text-xs text-slate-500">
-                      No tickets yet. Connect a wallet and claim today’s entry.
-                    </p>
-                  )}
+                  {entries.map(entry => {
+                    const isCurrentWallet =
+                      currentWalletAddress &&
+                      entry.walletAddress === currentWalletAddress;
 
-                  {entries.map(entry => (
-                    <article
-                      key={entry.id}
-                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-4 pt-3 hover:border-slate-700 hover:bg-slate-950 transition"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm text-slate-50">
-                              {entry.code}
-                            </span>
+                    return (
+                      <article
+                        key={entry.id}
+                        className={`rounded-2xl px-4 pb-4 pt-3 transition border
+                          ${
+                            isCurrentWallet
+                              ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
+                              : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
+                          }`}
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-sm text-slate-50">
+                                {entry.code}
+                              </span>
 
-                            {entry.status === 'in-draw' && (
-                              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
-                                In draw
+                              {entry.status === 'in-draw' && (
+                                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+                                  In draw
+                                </span>
+                              )}
+                              {entry.status === 'won' && (
+                                <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                                  Winner
+                                </span>
+                              )}
+                              {entry.status === 'claimed' && (
+                                <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
+                                  Claimed
+                                </span>
+                              )}
+                              {entry.status === 'expired' && (
+                                <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+                                  Expired
+                                </span>
+                              )}
+
+                              {isCurrentWallet && (
+                                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                                  Current wallet
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-1 text-xs text-slate-400">
+                              {entry.label}
+                            </p>
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              Created: {entry.createdAt}
+                            </p>
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              Wallet:{' '}
+                              <span className="font-mono">
+                                {shortWallet(entry.walletAddress)}
                               </span>
-                            )}
-                            {entry.status === 'won' && (
-                              <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                                Winner
-                              </span>
-                            )}
-                            {entry.status === 'claimed' && (
-                              <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
-                                Claimed
-                              </span>
-                            )}
-                            {entry.status === 'expired' && (
-                              <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
-                                Expired
-                              </span>
-                            )}
+                            </p>
                           </div>
-                          <p className="mt-1 text-xs text-slate-400">
-                            {entry.label}
-                          </p>
-                          <p className="mt-1 text-[11px] text-slate-500">
-                            Created: {entry.createdAt}
-                          </p>
-                          <p className="mt-1 text-[11px] text-slate-500">
-                            Wallet:{' '}
-                            <span className="font-mono">
-                              {formatWalletShort(entry.walletAddress)}
-                            </span>
-                          </p>
-                        </div>
 
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(entry)}
-                            className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
-                          >
-                            {copiedId === entry.id ? 'Copied' : 'Copy code'}
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
-                            disabled
-                          >
-                            View entry tweet (soon)
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(entry)}
+                              className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
+                            >
+                              {copiedId === entry.id ? 'Copied' : 'Copy code'}
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
+                              disabled
+                            >
+                              View entry tweet (soon)
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
               </section>
             </div>
@@ -577,22 +658,22 @@ function DashboardInner() {
               <h3 className="text-sm font-semibold">Wallet</h3>
 
               <p className="mt-1 text-xs text-slate-400">
-                Connect a wallet before claiming today’s ticket.
+                Connect wallet before claiming today’s ticket.
               </p>
 
               <div className="mt-3">
                 <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
               </div>
 
-              {walletAddress && (
+              {publicKey && (
                 <div className="mt-3 text-xs text-slate-300">
                   <p className="break-all">
                     Wallet:{' '}
-                    <span className="font-mono">{walletAddress}</span>
+                    <span className="font-mono">{publicKey.toBase58()}</span>
                   </p>
                   <p className="mt-1">
                     SOL balance:{' '}
-                    {solBalance === null && walletAddress
+                    {solBalance === null && publicKey
                       ? 'Loading...'
                       : solBalance === 'error'
                       ? 'Unavailable'
@@ -600,13 +681,10 @@ function DashboardInner() {
                       ? `${solBalance.toFixed(4)} SOL`
                       : '-'}
                   </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    This wallet can claim one ticket per draw.
-                  </p>
                 </div>
               )}
 
-              {!walletAddress && (
+              {!publicKey && (
                 <p className="mt-2 text-[11px] text-slate-500">
                   Phantom and other Solana wallets work here. This is live
                   mainnet SOL.
