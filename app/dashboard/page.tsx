@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-const MIN_XPOT_REQUIRED = 10_000; // <- change this whenever you want
+const MIN_XPOT_REQUIRED = 100_000; // <- change this whenever you want
 
 // ─────────────────────────────────────────────
 // Types & helpers
