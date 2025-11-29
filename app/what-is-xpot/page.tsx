@@ -43,19 +43,19 @@ export default function WhatIsXpotPage() {
               <p className="mt-4 text-sm leading-relaxed text-slate-200/90">
                 XPOT is the token the XPOT.bet draw revolves around. Hold the
                 minimum XPOT balance, connect your wallet and sign in with X –
-                then your X account can claim exactly one ticket for the
-                current draw.
+                then that wallet can claim exactly one ticket for the current
+                draw.
               </p>
 
               {/* Core pillars – no bullets, just short premium lines */}
               <div className="mt-6 space-y-3 text-sm text-slate-100/90">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-200/80">
-                    One ticket per X account
+                    One ticket per wallet
                   </p>
                   <p className="mt-1 text-sm text-slate-200/90">
-                    Each draw, your X handle can issue one ticket only. No spam,
-                    no multi-account farming.
+                    Each draw, every wallet can issue one ticket only. Refreshing
+                    or reconnecting with the same wallet doesn&apos;t give you more.
                   </p>
                 </div>
                 <div>
@@ -63,17 +63,17 @@ export default function WhatIsXpotPage() {
                     Wallet-based eligibility
                   </p>
                   <p className="mt-1 text-sm text-slate-200/90">
-                    Your wallet must hold at least the minimum XPOT balance at
-                    the moment you enter.
+                    Your connected wallet must hold at least the minimum XPOT
+                    balance at the moment you enter.
                   </p>
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-200/80">
-                    No auto-posting from X
+                    NO SECOND CHANCES
                   </p>
                   <p className="mt-1 text-sm text-slate-200/90">
-                    XPOT.bet never posts from your X account automatically.
-                    Posting is always a choice, never a requirement.
+                    Miss a draw and it’s gone.
+                    Each wallet gets one shot per round.
                   </p>
                 </div>
               </div>
@@ -112,8 +112,9 @@ export default function WhatIsXpotPage() {
                     Clear rules
                   </p>
                   <p className="mt-1 text-sm">
-                    Each ticket is linked to one X account and one wallet at the
-                    time of entry. No spam, no ticket stacking.
+                    Each ticket is linked to a single wallet at the time of
+                    entry. No spam, no multi-ticket stacking from the same
+                    wallet.
                   </p>
                 </div>
 
@@ -132,8 +133,8 @@ export default function WhatIsXpotPage() {
                     Identity, not access
                   </p>
                   <p className="mt-1 text-sm">
-                    Sign in with X confirms which account owns the ticket.
-                    XPOT.bet never gains control of your X account.
+                    Sign in with X confirms which account is associated with the
+                    ticket. XPOT.bet never gains control of your X account.
                   </p>
                 </div>
               </div>
@@ -157,8 +158,9 @@ export default function WhatIsXpotPage() {
 
           <p className="mt-4">
             Each draw selects a single winning ticket out of all valid entries.
-            Every ticket is linked to one X account and one wallet at the time
-            of entry.
+            Every ticket is linked to one wallet (and the X account you sign in
+            with) at the time of entry. The limit is one ticket per wallet per
+            draw.
           </p>
 
           <div className="mt-4 space-y-2">
@@ -172,7 +174,7 @@ export default function WhatIsXpotPage() {
             </p>
             <p>
               <span className="font-medium text-slate-100">3.</span> You claim
-              one ticket for the current draw – one ticket per X account.
+              one ticket for the current draw – one ticket per wallet.
             </p>
             <p>
               <span className="font-medium text-slate-100">4.</span> When the
@@ -202,7 +204,7 @@ export default function WhatIsXpotPage() {
               </p>
               <p className="mt-2">
                 You must sign in with X. Your X handle is what the winning
-                ticket will display.
+                ticket can display publicly.
               </p>
             </div>
             <div className="rounded-2xl border border-[#26242a] bg-[#070811] px-4 py-3">
