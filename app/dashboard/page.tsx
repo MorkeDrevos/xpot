@@ -656,18 +656,6 @@ export default function DashboardPage() {
   XPOT.
 </a>
   </p>
-
-  <p className="text-[10px] text-slate-500">
-    Wrong X account?{' '}
-    <a
-      href="https://x.com"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="underline underline-offset-2 transition-colors hover:text-slate-300"
-    >
-      Switch on x.com.
-    </a>
-  </p>
 </div>
       </div>
     </div>
