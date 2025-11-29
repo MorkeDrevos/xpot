@@ -68,7 +68,7 @@ function makeCode(): string {
 const now = new Date();
 const initialEntries: Entry[] = [
   {
-    id: 1,
+    id: 'preview-1',
     code: makeCode(),
     status: 'won',
     label: "Today's main jackpot • $10,000",
@@ -77,7 +77,7 @@ const initialEntries: Entry[] = [
     walletAddress: 'preview-wallet-1',
   },
   {
-    id: 2,
+    id: 'preview-2',
     code: makeCode(),
     status: 'in-draw',
     label: "Yesterday's main jackpot • $8,400",
@@ -150,7 +150,7 @@ useEffect(() => {
 }, []);
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const { publicKey, connected } = useWallet();
@@ -160,36 +160,6 @@ useEffect(() => {
   const winner = entries.find(e => e.status === 'won');
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
-  // Load today's tickets from DB
-useEffect(() => {
-  let cancelled = false;
-
-  async function loadTickets() {
-    try {
-      const res = await fetch('/api/tickets/today');
-      if (!res.ok) throw new Error('Failed to load today tickets');
-
-      const data = await res.json();
-
-      if (!cancelled && Array.isArray(data.tickets)) {
-        if (data.tickets.length > 0) {
-          setEntries(data.tickets); // ✅ real DB replaces preview tickets
-        }
-      }
-    } catch (err) {
-      console.error('Ticket load failed:', err);
-      if (!cancelled) {
-        // keep preview tickets if DB fails
-      }
-    }
-  }
-
-  loadTickets();
-
-  return () => {
-    cancelled = true;
-  };
-}, []);
 
   // ─────────────────────────────────────────────
   // Keep "one ticket per wallet per draw" using localStorage
@@ -225,15 +195,14 @@ useEffect(() => {
       }
 
       const existingEntry: Entry = {
-        id: Date.now(),
-        code: saved.code,
-        status: 'in-draw',
-        label: "Today's main jackpot • $10,000",
-        jackpotUsd: '$10,000',
-        createdAt: saved.createdAt,
-        walletAddress: saved.wallet,
-      };
-
+  id: String(Date.now()),      // ✅ now matches Entry.id: string
+  code: saved.code,
+  status: 'in-draw',
+  label: "Today's main jackpot • $10,000",
+  jackpotUsd: '$10,000',
+  createdAt: saved.createdAt,
+  walletAddress: saved.wallet,
+};
       setTicketClaimed(true);
       setTodaysTicket(existingEntry);
 
@@ -311,15 +280,15 @@ useEffect(() => {
 
     const walletAddress = publicKey.toBase58();
 
-    const newEntry: Entry = {
-      id: Date.now(),
-      code: makeCode(),
-      status: 'in-draw',
-      label: "Today's main jackpot • $10,000",
-      jackpotUsd: '$10,000',
-      createdAt,
-      walletAddress,
-    };
+   const newEntry: Entry = {
+  id: String(Date.now()),
+  code: makeCode(),
+  status: 'in-draw',
+  label: "Today's main jackpot • $10,000",
+  jackpotUsd: '$10,000',
+  createdAt,
+  walletAddress,
+};
 
     setEntries(prev => [newEntry, ...prev]);
     setTicketClaimed(true);
