@@ -1,9 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { clusterApiUrl, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import {
+  ConnectionProvider,
+  WalletProvider,
+  useConnection,
+  useWallet,
+} from '@solana/wallet-adapter-react';
+import {
+  WalletModalProvider,
+  WalletMultiButton,
+} from '@solana/wallet-adapter-react-ui';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 
-const MIN_XPOT_REQUIRED = 100_000; // <- change this whenever you want
+const MIN_XPOT_REQUIRED = 10_000; // later we swap to XPOT balance
+const endpoint = clusterApiUrl('mainnet-beta');
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -50,7 +63,29 @@ const initialEntries: Entry[] = [
   },
 ];
 
+// ─────────────────────────────────────────────
+// Root wrapper: Solana connection + wallet
+// ─────────────────────────────────────────────
+
 export default function DashboardPage() {
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <DashboardInner />
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Inner dashboard – uses wallet + SOL balance
+// ─────────────────────────────────────────────
+
+function DashboardInner() {
   const username = 'your_handle';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
@@ -59,10 +94,37 @@ export default function DashboardPage() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
-  // For now this is just a boolean. Later we swap it for real wallets.
-  const [walletConnected, setWalletConnected] = useState(false);
+  const { connection } = useConnection();
+  const { publicKey, connected } = useWallet();
+  const [solBalance, setSolBalance] = useState<number | null>(null);
 
+  const walletConnected = !!publicKey && connected;
   const winner = entries.find(e => e.status === 'won');
+
+  // Load SOL balance when wallet changes
+  useEffect(() => {
+    if (!publicKey) {
+      setSolBalance(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const lamports = await connection.getBalance(publicKey);
+        if (!cancelled) {
+          setSolBalance(lamports / LAMPORTS_PER_SOL);
+        }
+      } catch {
+        if (!cancelled) setSolBalance(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [publicKey, connection]);
 
   // ─────────────────────────────────────────────
   // Ticket helpers
@@ -79,11 +141,8 @@ export default function DashboardPage() {
   }
 
   function handleClaimTicket() {
-    // 1) Must have wallet connected
-    if (!walletConnected) return;
-
-    // 2) Prevent double-claim
-    if (ticketClaimed) return;
+    if (!walletConnected) return;    // must be connected
+    if (ticketClaimed) return;       // prevent double-claim
 
     const newEntry: Entry = {
       id: Date.now(),
@@ -110,7 +169,7 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-black text-slate-50 relative">
       {/* MAIN DASHBOARD SHELL */}
       <div className="mx-auto flex max-w-6xl">
-        {/* ── Left nav (X-style) ───────────────────────────── */}
+        {/* Left nav */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
           <div className="space-y-6">
             {/* Logo */}
@@ -126,7 +185,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Nav items */}
+            {/* Nav */}
             <nav className="space-y-1 text-sm">
               <Link
                 href="/dashboard"
@@ -151,7 +210,7 @@ export default function DashboardPage() {
               </button>
             </nav>
 
-            {/* Main CTA mirrors ticket claim */}
+            {/* Main CTA */}
             <button
               type="button"
               onClick={handleClaimTicket}
@@ -166,7 +225,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Mini user chip + account menu (static preview) */}
+          {/* Mini account chip */}
           <div className="relative">
             <div
               className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
@@ -219,7 +278,7 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* ── Main shell ───────────────────────────────────── */}
+        {/* Main shell */}
         <div className="flex flex-1 gap-6 rounded-[28px] border border-slate-800/70 bg-[#020617] shadow-[0_30px_100px_rgba(0,0,0,0.9)] overflow-hidden">
           {/* Center column */}
           <section className="min-h-screen flex-1">
@@ -238,7 +297,6 @@ export default function DashboardPage() {
                   <p className="uppercase tracking-[0.16em] text-slate-400">
                     Next draw in
                   </p>
-                  {/* static preview countdown for now */}
                   <p className="font-mono text-xs text-slate-200">02:14:09</p>
                 </div>
               </div>
@@ -271,7 +329,7 @@ export default function DashboardPage() {
                 </button>
               </section>
 
-              {/* TODAY'S TICKET CARD – CLEAN ENTRY FLOW */}
+              {/* Today's ticket */}
               <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
                 <h2 className="text-sm font-semibold text-emerald-100">
                   Today’s ticket
@@ -341,7 +399,7 @@ export default function DashboardPage() {
                 )}
               </article>
 
-              {/* Today’s result card (preview) */}
+              {/* Today's result (preview) */}
               <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
                 <h2 className="text-sm font-semibold text-slate-200">
                   Today’s result
@@ -452,32 +510,34 @@ export default function DashboardPage() {
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">Wallet</h3>
 
-              {walletConnected ? (
-                <>
-                  <p className="mt-1 text-xs text-emerald-300">
-                    Wallet connected (preview).
+              <p className="mt-1 text-xs text-slate-400">
+                Connect wallet before claiming today’s ticket.
+              </p>
+
+              <div className="mt-3">
+                <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
+              </div>
+
+              {publicKey && (
+                <div className="mt-3 text-xs text-slate-300">
+                  <p className="break-all">
+                    Wallet:{' '}
+                    <span className="font-mono">{publicKey.toBase58()}</span>
                   </p>
-                  <p className="mt-2 text-xs text-slate-400">
-                    In v1, this will show your XPOT balance and basic checks at
-                    claim time.
+                  <p className="mt-1">
+                    SOL balance:{' '}
+                    {solBalance === null
+                      ? 'Loading...'
+                      : `${solBalance.toFixed(4)} SOL`}
                   </p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Connect wallet before claiming today’s ticket.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setWalletConnected(true)}
-                    className="mt-3 w-full rounded-full bg-purple-600 py-2 text-sm font-semibold text-white hover:bg-purple-500"
-                  >
-                    Connect wallet (preview)
-                  </button>
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    Real Phantom / Solflare / Backpack wiring comes next.
-                  </p>
-                </>
+                </div>
+              )}
+
+              {!publicKey && (
+                <p className="mt-2 text-[11px] text-slate-500">
+                  Phantom and other Solana wallets work here. This is live mainnet
+                  SOL.
+                </p>
               )}
             </div>
 
@@ -490,8 +550,7 @@ export default function DashboardPage() {
                   • At claim time, your wallet must hold at least{' '}
                   <span className="font-semibold text-emerald-300">
                     {MIN_XPOT_REQUIRED.toLocaleString()} XPOT
-                  </span>
-                  .
+                  </span>.
                 </li>
                 <li>• Wallet is only checked when claiming.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
