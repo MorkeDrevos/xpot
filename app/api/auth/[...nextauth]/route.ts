@@ -1,8 +1,11 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 
-// Make sure these env vars are set in Vercel:
-// X_CLIENT_ID, X_CLIENT_SECRET, NEXTAUTH_SECRET, NEXTAUTH_URL
+// Env vars expected (set in Vercel):
+// - X_CLIENT_ID
+// - X_CLIENT_SECRET
+// - NEXTAUTH_SECRET
+// - NEXTAUTH_URL
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -16,29 +19,31 @@ const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, account, profile }) {
-      // When we first sign in, enrich the token with Twitter data
-      if (account && profile) {
-        const p = profile as any;
+      // Cast to any so TS doesn't complain about extra fields
+      const t = token as any;
+      const p = profile as any;
 
-        token.username =
+      if (account && p) {
+        t.username =
           p.username ||
           p.screen_name ||
           p.data?.username ||
           null;
 
-        token.picture = p.profile_image_url || token.picture || null;
-        token.name = p.name || token.name || null;
+        t.picture = p.profile_image_url || t.picture || null;
+        t.name = p.name || t.name || null;
       }
 
       return token;
     },
 
     async session({ session, token }) {
-      // Expose username + picture on session.user
+      const t = token as any;
+
       if (session.user) {
-        (session.user as any).username = token.username ?? null;
-        session.user.image = (token.picture as string | undefined) ?? session.user.image;
-        session.user.name = token.name as string | undefined;
+        (session.user as any).username = t.username ?? null;
+        session.user.image = (t.picture as string | undefined) ?? session.user.image;
+        session.user.name = (t.name as string | undefined) ?? session.user.name;
       }
 
       return session;
@@ -46,7 +51,9 @@ const authOptions: NextAuthOptions = {
   },
 
   pages: {
-    signIn: '/dashboard', // we use the modal on /dashboard
+    // We don't use a standalone sign-in page,
+    // the dashboard shows the modal instead.
+    signIn: '/dashboard',
   },
 
   session: {
