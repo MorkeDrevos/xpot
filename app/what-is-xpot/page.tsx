@@ -640,7 +640,7 @@ export default function DashboardPage() {
 <div className="mt-5 flex flex-col items-center gap-[6px] text-center">
   <p className="text-[11px] leading-relaxed text-slate-500/60">
     Entry requires a{' '}
-    <span className="relative group text-slate-300 underline underline-offset-2 decoration-dotted hover:text-slate-200 transition-colors">
+    <span className="text-slate-300 underline underline-offset-2 decoration-dotted">
       minimum XPOT balance
     </span>{' '}
     and a connected wallet.
@@ -650,7 +650,7 @@ export default function DashboardPage() {
       rel="noopener noreferrer"
       className="inline-block whitespace-nowrap ml-1 text-emerald-400/80 underline underline-offset-2 transition-colors hover:text-emerald-300"
     >
-      About XPOT.
+      About XPOT
     </a>
   </p>
 </div>
