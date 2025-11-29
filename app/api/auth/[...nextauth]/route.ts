@@ -1,12 +1,10 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 
-// Uses TWITTER_CLIENT_ID / TWITTER_CLIENT_SECRET from Vercel
-
 const authOptions: NextAuthOptions = {
   providers: [
     TwitterProvider({
-      id: 'twitter',               // the id we call in signIn('twitter', ...)
+      id: 'twitter',
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
       version: '2.0',
@@ -34,9 +32,11 @@ const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).username = token.username ?? null;
-        session.user.image = (token.picture as string | undefined) ?? session.user.image;
+        session.user.image =
+          (token.picture as string | undefined) ?? session.user.image;
         session.user.name = token.name as string | undefined;
       }
+
       return session;
     },
   },
