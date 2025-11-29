@@ -1,6 +1,6 @@
 // app/api/tickets/claim/route.ts
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/prisma';
+import { prisma } from '../../../../lib/prisma';
 
 // Same code generator as on the client
 function makeCode(): string {
