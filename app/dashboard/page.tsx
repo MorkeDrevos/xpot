@@ -134,6 +134,7 @@ useEffect(() => {
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [claiming, setClaiming] = useState(false);
 
   const { publicKey, connected } = useWallet();
   const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
@@ -217,7 +218,9 @@ useEffect(() => {
 
   async function handleClaimTicket() {
   if (!walletConnected || !publicKey) return;
-  if (loadingTickets) return; // avoid spamming while we're still loading
+  if (loadingTickets || claiming) return; // avoid double clicks
+
+  setClaiming(true);
 
   const walletAddress = publicKey.toBase58();
 
@@ -246,11 +249,9 @@ useEffect(() => {
       return;
     }
 
-    // If API sends full refreshed list, trust that
     if (Array.isArray(data.tickets) && data.tickets.length > 0) {
       setEntries(data.tickets);
     } else {
-      // Otherwise just merge the single ticket into existing list
       setEntries(prev => {
         const others = prev.filter(t => t.id !== data.ticket.id);
         return [data.ticket, ...others];
@@ -261,6 +262,8 @@ useEffect(() => {
     setTodaysTicket(data.ticket);
   } catch (err) {
     console.error('Error calling /api/tickets/claim', err);
+  } finally {
+    setClaiming(false);
   }
 }
 
@@ -315,17 +318,21 @@ useEffect(() => {
 
             {/* Main CTA */}
             <button
-              type="button"
-              onClick={handleClaimTicket}
-              disabled={!walletConnected}
-              className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-                !walletConnected
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-              }`}
-            >
-              {!walletConnected ? 'Connect wallet to claim' : 'Claim today’s ticket'}
-            </button>
+  type="button"
+  onClick={handleClaimTicket}
+  disabled={!walletConnected || claiming || loadingTickets}
+  className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
+    !walletConnected || claiming || loadingTickets
+      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+      : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+  }`}
+>
+  {!walletConnected
+    ? 'Connect wallet to claim'
+    : claiming
+    ? 'Claiming…'
+    : 'Claim today’s ticket'}
+</button>
           </div>
 
           {/* Mini account chip */}
@@ -453,9 +460,14 @@ useEffect(() => {
                         Claim your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Your ticket will be tied to your connected wallet for
-                        today’s draw.
-                      </p>
+  Your ticket will be tied to your connected wallet for today’s draw.
+</p>
+
+{claiming && (
+  <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
+    Verifying wallet → Locking today’s draw → Minting ticket…
+  </p>
+)}
                       {!walletConnected && (
                         <p className="mt-1 text-[11px] text-amber-300">
                           Connect your wallet on the right to claim today’s
@@ -465,19 +477,23 @@ useEffect(() => {
                     </div>
 
                     <button
-                      type="button"
-                      onClick={handleClaimTicket}
-                      disabled={!walletConnected}
-                      className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 ${
-                        !walletConnected
-                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-                      }`}
-                    >
-                      {!walletConnected
-                        ? 'Connect wallet to claim'
-                        : 'Claim today’s ticket'}
-                    </button>
+  type="button"
+  onClick={handleClaimTicket}
+  disabled={!walletConnected || claiming || loadingTickets}
+  className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
+    !walletConnected
+      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+      : claiming
+        ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
+        : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
+  }`}
+>
+  {!walletConnected
+    ? 'Connect wallet to claim'
+    : claiming
+      ? 'Generating ticket...'
+      : 'Claim today’s ticket'}
+</button>
                   </div>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
