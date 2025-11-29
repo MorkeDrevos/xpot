@@ -26,25 +26,19 @@ model Wallet {
 
 model Draw {
   id        String   @id @default(cuid())
-  date      DateTime @unique
   isClosed  Boolean  @default(false)
-  tickets   Ticket[]
+
+  tickets   Ticket[] @relation("DrawTickets")
+
   winnerId  String?  @unique
-  winner    Ticket?  @relation(fields: [winnerId], references: [id])
-  createdAt DateTime @default(now())
+  winner    Ticket?  @relation("DrawWinner", fields: [winnerId], references: [id])
 }
 
 model Ticket {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  userId    String
-  walletId  String
-  drawId    String
-  createdAt DateTime @default(now())
+  id         String  @id @default(cuid())
 
-  user   User   @relation(fields: [userId], references: [id])
-  wallet Wallet @relation(fields: [walletId], references: [id])
-  draw   Draw   @relation(fields: [drawId], references: [id])
+  drawId     String
+  draw       Draw    @relation("DrawTickets", fields: [drawId], references: [id])
 
-  @@unique([walletId, drawId]) // ✅ ONE TICKET PER WALLET PER DRAW (ENFORCED BY DB)
+  winnerOf   Draw?   @relation("DrawWinner")
 }
