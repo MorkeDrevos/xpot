@@ -594,7 +594,7 @@ export default function DashboardPage() {
 
             {/* LOGIN OVERLAY – premium glass XPOT access */}
 {!isAuthed && (
-  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-[18px]">
+  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 backdrop-blur-[8px]">
     <div className="relative mx-4 w-full max-w-md rounded-3xl border border-slate-800 bg-[#05070c] px-8 py-7 shadow-[0_40px_160px_rgba(0,0,0,0.95)] ring-1 ring-emerald-400/30 text-center xpot-modal-enter">
       {/* Soft glow halo */}
       <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-emerald-400/8 via-transparent to-sky-400/6 blur-xl" />
