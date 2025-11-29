@@ -94,7 +94,8 @@ function DashboardInner() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const { publicKey, connected } = useWallet();
-const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
+  const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
+  const walletConnected = !!publicKey && connected;
 
 useEffect(() => {
   if (!publicKey) {
