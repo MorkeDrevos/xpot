@@ -636,24 +636,19 @@ export default function DashboardPage() {
   {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
 </button>
 
-        {/* Requirements + XPOT micro-link */}
     {/* Requirements + XPOT micro-link */}
-<div className="mt-4 flex flex-col items-center gap-[4px] text-center">
-  <p className="text-[11px] leading-relaxed text-slate-500/60">
-    Entry requires a{' '}
-    <span className="text-slate-300 font-medium">
-      minimum XPOT balance
-    </span>{' '}
-    and a connected wallet.
-    <a
-      href="/what-is-xpot"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-block whitespace-nowrap ml-1 text-emerald-400/80 underline underline-offset-2 transition-colors hover:text-emerald-300"
-    >
-      About XPOT.
-    </a>
-  </p>
+<div className="mt-4 text-center text-xs text-slate-500">
+  Entry requires a{' '}
+  <span className="text-slate-300">minimum XPOT balance</span>{' '}
+  and a connected wallet.
+  <a
+    href="/what-is-xpot"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="ml-1 text-emerald-400/80 hover:text-emerald-300 transition"
+  >
+    About XPOT
+  </a>
 </div>
       </div>
     </div>
