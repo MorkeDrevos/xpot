@@ -487,6 +487,7 @@ const initialEntries: Entry[] = [
           </aside>
         </div>
       </div>
+          </div>
     </main>
   );
 }
