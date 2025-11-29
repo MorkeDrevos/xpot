@@ -15,7 +15,7 @@ import {
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 
 const MIN_XPOT_REQUIRED = 10_000; // later we swap to XPOT balance
-const endpoint = 'https://rpc.ankr.com/solana';
+const endpoint = 'https://api.mainnet-beta.solana.com';
 
 // ─────────────────────────────────────────────
 // Types & helpers
