@@ -11,6 +11,7 @@ model User {
   id        String   @id @default(cuid())
   xHandle   String   @unique
   createdAt DateTime @default(now())
+
   tickets   Ticket[]
   wallets   Wallet[]
 }
@@ -18,15 +19,17 @@ model User {
 model Wallet {
   id        String   @id @default(cuid())
   address   String   @unique
+
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+
   tickets   Ticket[]
   createdAt DateTime @default(now())
 }
 
 model Draw {
-  id        String   @id @default(cuid())
-  isClosed  Boolean  @default(false)
+  id        String  @id @default(cuid())
+  isClosed  Boolean @default(false)
 
   tickets   Ticket[] @relation("DrawTickets")
 
@@ -35,21 +38,17 @@ model Draw {
 }
 
 model Ticket {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
 
-  // Draw this ticket belongs to
-  drawId    String
-  draw      Draw     @relation("DrawTickets", fields: [drawId], references: [id])
+  drawId     String
+  draw       Draw     @relation("DrawTickets", fields: [drawId], references: [id])
 
-  // If this ticket is the winner of a draw (back relation to Draw.winner)
-  winnerOf  Draw?    @relation("DrawWinner")
+  winnerOf   Draw?    @relation("DrawWinner")
 
-  // Owner user – satisfies User.tickets
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
 
-  // Wallet used – satisfies Wallet.tickets
-  walletId  String?
-  wallet    Wallet?  @relation(fields: [walletId], references: [id])
+  walletId   String?
+  wallet     Wallet?  @relation(fields: [walletId], references: [id])
 }
