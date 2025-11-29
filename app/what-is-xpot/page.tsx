@@ -636,11 +636,11 @@ export default function DashboardPage() {
   {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
 </button>
 
-    {/* Requirements + XPOT micro-link */}
+        {/* Requirements + XPOT micro-link */}
     <div className="mt-5 flex flex-col items-center gap-[6px] text-center">
-    <p className="text-[11px] leading-relaxed text-slate-500/60">
+  <p className="text-[11px] leading-relaxed text-slate-500/60">
     Entry requires a{' '}
-    <span className="text-slate-300 underline underline-offset-2 decoration-dotted">
+    <span className="text-slate-300 font-medium">
       minimum XPOT balance
     </span>{' '}
     and a connected wallet.
