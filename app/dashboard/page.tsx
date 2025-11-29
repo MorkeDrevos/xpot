@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession, signOut, signIn } from 'next-auth/react';
 import { useState } from 'react';
 
 // ─────────────────────────────────────────────
@@ -28,11 +27,6 @@ function makeCode(): string {
   return `XPOT-${block()}-${block()}`;
 }
 
-function openXLogoutForSwitch() {
-  if (typeof window === 'undefined') return;
-  window.open('https://x.com/logout', '_blank', 'noopener,noreferrer');
-}
-
 // Seed a couple of preview tickets for the list
 const now = new Date();
 const initialEntries: Entry[] = [
@@ -55,19 +49,10 @@ const initialEntries: Entry[] = [
 ];
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
-  const user = session?.user as any | undefined;
+  // No more NextAuth – everything is local state for now
+  const isAuthed = true; // treat everyone as “signed in” until we re-add auth
 
-  // ✅ SINGLE source of truth for auth state
-  const isAuthed = status === 'authenticated';
-
-  // Robust username fallback
-  const username =
-    user?.username ||
-    user?.screen_name ||
-    user?.handle ||
-    user?.name?.replace(/\s+/g, '').toLowerCase() ||
-    'your_handle';
+  const username = 'your_handle';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [ticketClaimed, setTicketClaimed] = useState(false);
@@ -79,22 +64,6 @@ export default function DashboardPage() {
   const [walletConnected, setWalletConnected] = useState(false);
 
   const winner = entries.find(e => e.status === 'won');
-
-  // ─────────────────────────────────────────────
-  // Auth helpers
-  // ─────────────────────────────────────────────
-
-  function handleSignInWithX() {
-    // Uses the "twitter" provider id from route.ts
-    signIn('twitter', {
-      callbackUrl: '/dashboard',
-      redirect: true,
-    });
-  }
-
-  function handleSignOut() {
-    signOut({ callbackUrl: '/' });
-  }
 
   // ─────────────────────────────────────────────
   // Ticket helpers
@@ -111,19 +80,10 @@ export default function DashboardPage() {
   }
 
   function handleClaimTicket() {
-    // 1) Must be logged in with X
-    if (!isAuthed) {
-      handleSignInWithX();
-      return;
-    }
+    // 1) Must have wallet connected
+    if (!walletConnected) return;
 
-    // 2) Must have wallet connected
-    if (!walletConnected) {
-      // Just block; UI copy explains why
-      return;
-    }
-
-    // 3) Prevent double-claim
+    // 2) Prevent double-claim
     if (ticketClaimed) return;
 
     const newEntry: Entry = {
@@ -149,14 +109,8 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
-      {/* MAIN DASHBOARD SHELL (blurred when logged out) */}
-      <div
-        className={`mx-auto flex max-w-6xl ${
-          !isAuthed
-            ? 'blur-[1px] brightness-95 contrast-110 pointer-events-none select-none'
-            : ''
-        }`}
-      >
+      {/* MAIN DASHBOARD SHELL */}
+      <div className="mx-auto flex max-w-6xl">
         {/* ── Left nav (X-style) ───────────────────────────── */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
           <div className="space-y-6">
@@ -202,49 +156,31 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={handleClaimTicket}
-              disabled={!isAuthed || !walletConnected}
+              disabled={!walletConnected}
               className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-                !isAuthed || !walletConnected
+                !walletConnected
                   ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
               }`}
             >
-              {!isAuthed
-                ? 'Sign in with X'
-                : !walletConnected
-                ? 'Connect wallet to claim'
-                : 'Claim today’s ticket'}
+              {!walletConnected ? 'Connect wallet to claim' : 'Claim today’s ticket'}
             </button>
           </div>
 
-          {/* Mini user chip + account menu */}
+          {/* Mini user chip + account menu (static preview) */}
           <div className="relative">
             <div
               className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
-              onClick={() => {
-                if (!isAuthed) {
-                  handleSignInWithX();
-                } else {
-                  setAccountMenuOpen(open => !open);
-                }
-              }}
+              onClick={() => setAccountMenuOpen(open => !open)}
             >
               <div className="flex items-center gap-2">
-                {user?.image ? (
-                  <img
-                    src={user.image}
-                    alt={user.name ?? 'X avatar'}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
-                    @
-                  </div>
-                )}
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs">
+                  @
+                </div>
 
                 <div className="leading-tight">
                   <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
-                    {user?.name ?? 'Your X handle'}
+                    XPOT user
                   </p>
                   <p className="text-[11px] text-slate-500">@{username}</p>
                 </div>
@@ -255,41 +191,29 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            {isAuthed && accountMenuOpen && (
+            {accountMenuOpen && (
               <div className="x-account-menu absolute bottom-14 left-0 w-72 rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60 overflow-hidden">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-900"
-                >
+                <div className="flex w-full items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3">
-                    {user?.image ? (
-                      <img
-                        src={user.image}
-                        alt={user.name ?? 'X avatar'}
-                        className="h-9 w-9 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs">
-                        @
-                      </div>
-                    )}
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-xs">
+                      @
+                    </div>
                     <div className="leading-tight">
                       <p className="text-xs font-semibold text-slate-50">
-                        {user?.name ?? 'Your X handle'}
+                        XPOT user
                       </p>
                       <p className="text-[11px] text-slate-500">@{username}</p>
                     </div>
                   </div>
-                </button>
+                </div>
 
                 <hr className="border-t border-slate-900" />
 
                 <button
                   type="button"
-                  onClick={handleSignOut}
-                  className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
+                  className="block w-full px-4 py-3 text-left text-[13px] text-slate-400 hover:bg-slate-900 cursor-default"
                 >
-                  Log out of XPOT
+                  Login with X coming soon
                 </button>
               </div>
             )}
@@ -354,7 +278,7 @@ export default function DashboardPage() {
                   Today’s ticket
                 </h2>
                 <p className="mt-1 text-xs text-slate-400">
-                  One ticket per X account per draw. Hold the minimum XPOT when
+                  One ticket per wallet per draw. Hold the minimum XPOT when
                   you claim. You can always buy or sell again later.
                 </p>
 
@@ -365,10 +289,10 @@ export default function DashboardPage() {
                         Claim your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Your ticket will be tied to this X account for today’s
-                        draw.
+                        Your ticket will be tied to your connected wallet for
+                        today’s draw.
                       </p>
-                      {isAuthed && !walletConnected && (
+                      {!walletConnected && (
                         <p className="mt-1 text-[11px] text-amber-300">
                           Connect your wallet on the right to claim today’s
                           ticket.
@@ -379,16 +303,14 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={handleClaimTicket}
-                      disabled={!isAuthed || !walletConnected}
+                      disabled={!walletConnected}
                       className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 ${
-                        !isAuthed || !walletConnected
+                        !walletConnected
                           ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                           : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
                       }`}
                     >
-                      {!isAuthed
-                        ? 'Sign in with X'
-                        : !walletConnected
+                      {!walletConnected
                         ? 'Connect wallet to claim'
                         : 'Claim today’s ticket'}
                     </button>
@@ -434,7 +356,7 @@ export default function DashboardPage() {
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
                         In the real draw, this will show the winning ticket and
-                        X handle once the countdown reaches zero.
+                        wallet once the countdown reaches zero.
                       </p>
                     </div>
                   </div>
@@ -452,8 +374,7 @@ export default function DashboardPage() {
                   Your tickets
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Each ticket is tied to a specific daily draw and this X
-                  account.
+                  Each ticket is tied to a specific daily draw and your wallet.
                 </p>
 
                 <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
@@ -509,8 +430,9 @@ export default function DashboardPage() {
                           <button
                             type="button"
                             className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
+                            disabled
                           >
-                            View entry tweet ↗
+                            View entry tweet (soon)
                           </button>
                         </div>
                       </div>
@@ -556,40 +478,11 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Sign in with X */}
-            <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">
-                {isAuthed ? 'Signed in with X' : 'Sign in with X'}
-              </h3>
-              <p className="mt-1 text-xs text-slate-400">
-                XPOT uses your X account so each daily ticket belongs to one
-                identity. No posting is required.
-              </p>
-
-              <button
-                type="button"
-                onClick={handleSignInWithX}
-                className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
-              >
-                {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-              </button>
-
-              {!isAuthed && (
-                <button
-                  type="button"
-                  onClick={openXLogoutForSwitch}
-                  className="mt-2 w-full text-[11px] text-slate-500 hover:text-slate-300 underline underline-offset-2"
-                >
-                  Wrong X account? Log out on x.com first.
-                </button>
-              )}
-            </div>
-
             {/* How it works */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">How today’s draw works</h3>
               <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                <li>• Claim exactly one ticket per X account.</li>
+                <li>• Claim exactly one ticket per wallet.</li>
                 <li>• Wallet is only checked when claiming.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
                 <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
@@ -598,66 +491,6 @@ export default function DashboardPage() {
           </aside>
         </div>
       </div>
-
-      {/* LOGIN OVERLAY – premium glass XPOT access */}
-      {!isAuthed && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-[6px]">
-          <div className="relative mx-4 w-full max-w-md rounded-3xl border border-slate-800 bg-[#05070c] px-8 py-7 shadow-[0_60px_200px_rgba(0,0,0,0.9)] ring-2 ring-emerald-400/30 text-center xpot-modal-enter">
-            {/* Soft glow halo */}
-            <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-emerald-400/8 via-transparent to-sky-400/6 blur-xl" />
-
-            {/* Content */}
-            <div className="relative">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                <span className="h-1 w-1 rounded-full bg-emerald-400/80 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
-                <span>XPOT Access</span>
-              </div>
-
-              <h2 className="mb-2 text-xl font-semibold tracking-tight text-slate-50">
-                Sign in to enter today’s draw
-              </h2>
-
-              <p className="mb-4 text-xs leading-relaxed text-slate-400">
-                One ticket per X account, per draw. <br className="hidden sm:inline" />
-                No posts. No forms. Just one click to enter.
-              </p>
-
-              {/* Main CTA */}
-              <button
-                type="button"
-                onClick={handleSignInWithX}
-                className="
-                  w-full rounded-full 
-                  bg-gradient-to-r from-sky-400 to-sky-500
-                  py-2.5 
-                  text-sm font-semibold 
-                  text-slate-950
-                  shadow-md shadow-sky-500/30
-                  transition-all duration-200
-                  hover:from-sky-300 hover:to-sky-500 hover:shadow-lg hover:shadow-sky-400/30
-                  active:scale-[0.97]
-                  focus:outline-none focus:ring-2 focus:ring-sky-400/40
-                "
-              >
-                {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-              </button>
-
-              {/* Requirements + XPOT micro-link */}
-              <div className="mt-4 text-center text-[11px] tracking-wide text-slate-400/80">
-                Entry requires a{' '}
-                <span className="text-slate-200/90">minimum XPOT balance</span>{' '}
-                and a connected wallet.
-                <a
-                  href="/what-is-xpot"
-                  className="ml-1 text-emerald-300/80 hover:text-emerald-200 transition"
-                >
-                  About XPOT.
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
