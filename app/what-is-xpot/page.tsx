@@ -69,11 +69,11 @@ export default function WhatIsXpotPage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-200/80">
-                    No auto-posting from X
+                    NO SECOND CHANCES
                   </p>
                   <p className="mt-1 text-sm text-slate-200/90">
-                    XPOT.bet never posts from your X account automatically.
-                    Posting is always a choice, never a requirement.
+                    Miss a draw and it’s gone.
+                    Each wallet gets one shot per round.
                   </p>
                 </div>
               </div>
