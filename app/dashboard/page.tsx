@@ -648,13 +648,13 @@ export default function DashboardPage() {
     </span>{' '}
     and a connected wallet.
     <a
-    href="/what-is-xpot"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="ml-1 text-emerald-400 underline underline-offset-2 transition-colors hover:text-emerald-300"
-  >
-      About XPOT.
-    </a>
+  href="/what-is-xpot"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-block whitespace-nowrap ml-1 text-emerald-400 underline underline-offset-2 transition-colors hover:text-emerald-300"
+>
+  About XPOT.
+</a>
   </p>
 
   <p className="text-[10px] text-slate-500">
