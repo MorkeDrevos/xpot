@@ -1,54 +1,71 @@
-model User {
-  id        String   @id @default(cuid())
-  xHandle   String   @unique
-  createdAt DateTime @default(now())
+generator client {
+  provider = "prisma-client-js"
+}
 
-  wallets   Wallet[]
-  tickets   Ticket[]
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  xHandle    String   @unique
+  createdAt  DateTime @default(now())
+
+  wallets    Wallet[]
+  tickets    Ticket[]
 }
 
 model Wallet {
-  id        String   @id @default(cuid())
-  address   String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  address    String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
 
-  tickets   Ticket[]
-  balance   XpUserBalance?
+  balances   XpUserBalance[]
+  tickets    Ticket[]
 }
 
 model XpUserBalance {
   id        String   @id @default(cuid())
   walletId  String   @unique
   wallet    Wallet   @relation(fields: [walletId], references: [id])
-
   balance   Int
   updatedAt DateTime @updatedAt
 }
 
 model Draw {
-  id        String   @id @default(cuid())
-  date      DateTime @unique
-  isClosed  Boolean  @default(false)
+  id             String   @id @default(cuid())
+  drawDate       DateTime @unique        // one main draw per day
+  isClosed       Boolean  @default(false)
+  resolvedAt     DateTime?
 
-  tickets   Ticket[]
-  winnerId  String?
-  winner    Ticket? @relation(fields: [winnerId], references: [id])
+  // All tickets in this draw
+  tickets        Ticket[] @relation("DrawTickets")
+
+  // Winning ticket (when resolved)
+  winnerTicketId String?  @unique
+  winnerTicket   Ticket?  @relation("DrawWinner", fields: [winnerTicketId], references: [id])
 }
 
 model Ticket {
   id        String   @id @default(cuid())
+  code      String   @unique
   createdAt DateTime @default(now())
 
+  // Draw this ticket belongs to
   drawId    String
-  draw      Draw    @relation(fields: [drawId], references: [id])
+  draw      Draw     @relation("DrawTickets", fields: [drawId], references: [id])
 
-  walletId  String
-  wallet    Wallet  @relation(fields: [walletId], references: [id])
-
+  // Owning user
   userId    String
-  user      User    @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
-  @@unique([drawId, walletId]) // one ticket per wallet per day
+  // Wallet that claimed it
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+
+  // If this ticket is the winner of a draw
+  winnerOf  Draw?    @relation("DrawWinner")
 }
