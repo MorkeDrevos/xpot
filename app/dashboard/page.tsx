@@ -637,13 +637,13 @@ export default function DashboardPage() {
 </button>
 
     {/* Requirements + XPOT micro-link */}
-<div className="mt-4 text-center text-[11px] tracking-wide text-slate-400">
+<div className="mt-4 text-center text-[11px] tracking-wide text-slate-400/80">
   Entry requires a{' '}
-  <span className="text-slate-200">minimum XPOT balance</span>{' '}
+  <span className="text-slate-200/90">minimum XPOT balance</span>{' '}
   and a connected wallet.
   <a
     href="/what-is-xpot"
-    className="ml-1 text-emerald-300 hover:text-emerald-200 transition"
+    className="ml-1 text-emerald-300/80 hover:text-emerald-200 transition"
   >
     About XPOT.
   </a>
