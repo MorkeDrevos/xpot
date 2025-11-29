@@ -653,7 +653,7 @@ export default function DashboardPage() {
   rel="noopener noreferrer"
   className="inline-block whitespace-nowrap ml-1 text-emerald-400 underline underline-offset-2 transition-colors hover:text-emerald-300"
 >
-  About XPOT.
+  XPOT.
 </a>
   </p>
 
