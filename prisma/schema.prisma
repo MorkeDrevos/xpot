@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  xHandle   String   @unique
+  createdAt DateTime @default(now())
+  tickets   Ticket[]
+  wallets   Wallet[]
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tickets   Ticket[]
+  createdAt DateTime @default(now())
+}
+
+model Draw {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  isClosed  Boolean  @default(false)
+  tickets   Ticket[]
+  winnerId  String?  @unique
+  winner    Ticket?  @relation(fields: [winnerId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  userId    String
+  walletId  String
+  drawId    String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id])
+  draw   Draw   @relation(fields: [drawId], references: [id])
+
+  @@unique([walletId, drawId]) // ✅ ONE TICKET PER WALLET PER DRAW (ENFORCED BY DB)
+}
