@@ -14,8 +14,21 @@ import {
 } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 
-const MIN_XPOT_REQUIRED = 10_000; // later we swap to XPOT balance
+const MIN_XPOT_REQUIRED = 100_000; // later we swap to XPOT balance
 const endpoint = 'https://api.mainnet-beta.solana.com';
+
+const STORAGE_PREFIX = 'xpot-ticket-';
+
+type SavedTicket = {
+  wallet: string;
+  code: string;
+  createdAt: string;
+};
+
+function getTodayStorageKey() {
+  // YYYY-MM-DD for "today's draw"
+  return `${STORAGE_PREFIX}${new Date().toISOString().slice(0, 10)}`;
+}
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -98,6 +111,60 @@ function DashboardInner() {
   const walletConnected = !!publicKey && connected;
   const winner = entries.find(e => e.status === 'won');
 
+  // Keep "one ticket per wallet per draw" using localStorage
+useEffect(() => {
+  if (!walletConnected || !publicKey) {
+    // Wallet not connected -> reset local UI (storage still keeps history)
+    setTicketClaimed(false);
+    setTodaysTicket(null);
+    return;
+  }
+
+  if (typeof window === 'undefined') return;
+
+  const key = getTodayStorageKey();
+  const raw = window.localStorage.getItem(key);
+  if (!raw) {
+    setTicketClaimed(false);
+    setTodaysTicket(null);
+    return;
+  }
+
+  try {
+    const map = JSON.parse(raw) as Record<string, SavedTicket>;
+    const saved = map[publicKey.toBase58()];
+
+    if (!saved) {
+      setTicketClaimed(false);
+      setTodaysTicket(null);
+      return;
+    }
+
+    // Rebuild an Entry for today from saved data
+    const existingEntry: Entry = {
+      id: Date.now(), // just a local ID for the list
+      code: saved.code,
+      status: 'in-draw',
+      label: "Today's main jackpot • $10,000",
+      jackpotUsd: '$10,000',
+      createdAt: saved.createdAt,
+    };
+
+    setTicketClaimed(true);
+    setTodaysTicket(existingEntry);
+
+    // Ensure it appears once in the entries list
+    setEntries(prev => {
+      const already = prev.some(e => e.code === saved.code);
+      return already ? prev : [existingEntry, ...prev];
+    });
+  } catch {
+    // If parsing fails, ignore the stored value for today
+    setTicketClaimed(false);
+    setTodaysTicket(null);
+  }
+}, [walletConnected, publicKey, setEntries]);
+
 useEffect(() => {
   if (!publicKey) {
     setSolBalance(null);
@@ -147,25 +214,46 @@ useEffect(() => {
   }
 
   function handleClaimTicket() {
-    if (!walletConnected) return; // must be connected
-    if (ticketClaimed) return; // prevent double-claim
+  if (!walletConnected || !publicKey) return; // must be connected
+  if (ticketClaimed) return; // prevent double-claim in memory
 
-    const newEntry: Entry = {
-      id: Date.now(),
-      code: makeCode(),
-      status: 'in-draw',
-      label: "Today's main jackpot • $10,000",
-      jackpotUsd: '$10,000',
-      createdAt: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
+  const createdAt = new Date().toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
-    setEntries(prev => [newEntry, ...prev]);
-    setTicketClaimed(true);
-    setTodaysTicket(newEntry);
+  const newEntry: Entry = {
+    id: Date.now(),
+    code: makeCode(),
+    status: 'in-draw',
+    label: "Today's main jackpot • $10,000",
+    jackpotUsd: '$10,000',
+    createdAt,
+  };
+
+  setEntries(prev => [newEntry, ...prev]);
+  setTicketClaimed(true);
+  setTodaysTicket(newEntry);
+
+  // Persist to localStorage so refresh / reconnect can't mint another
+  if (typeof window !== 'undefined') {
+    try {
+      const key = getTodayStorageKey();
+      const raw = window.localStorage.getItem(key);
+      const map: Record<string, SavedTicket> = raw ? JSON.parse(raw) : {};
+
+      map[publicKey.toBase58()] = {
+        wallet: publicKey.toBase58(),
+        code: newEntry.code,
+        createdAt,
+      };
+
+      window.localStorage.setItem(key, JSON.stringify(map));
+    } catch {
+      // If storage fails, we still have in-memory protection
+    }
   }
+}
 
   // ─────────────────────────────────────────────
   // Render
