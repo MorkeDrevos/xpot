@@ -263,7 +263,6 @@ useEffect(() => {
     console.error('Error calling /api/tickets/claim', err);
   }
 }
-  }
 
   // ─────────────────────────────────────────────
   // Render
