@@ -1,29 +1,26 @@
-import NextAuth from 'next-auth';
-import TwitterProvider from 'next-auth/providers/twitter';
+import NextAuth from "next-auth";
+import TwitterProvider from "next-auth/providers/twitter";
 
 const handler = NextAuth({
   providers: [
     TwitterProvider({
-      id: 'x',            // MUST MATCH signIn('x')
-      name: 'X',
       clientId: process.env.X_CLIENT_ID!,
       clientSecret: process.env.X_CLIENT_SECRET!,
-      version: '2.0',
+      // Use OAuth 2.0
+      version: "2.0",
     }),
   ],
 
+  // Optional but keeps things tidy
   pages: {
-    signIn: '/dashboard',
-    error: '/dashboard',
+    signIn: "/x-login", // or "/dashboard" if you don't use a separate sign-in page
   },
 
   callbacks: {
     async redirect({ url, baseUrl }) {
-      if (url.startsWith('/')) return `${baseUrl}${url}`;
-      try {
-        const target = new URL(url);
-        if (target.origin === baseUrl) return url;
-      } catch {}
+      // Always send people back to the dashboard after signing in
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      if (new URL(url).origin === baseUrl) return url;
       return `${baseUrl}/dashboard`;
     },
   },
