@@ -640,7 +640,7 @@ export default function DashboardPage() {
 <div className="mt-5 flex flex-col items-center gap-[6px] text-center">
   <p className="text-[10.5px] leading-relaxed text-slate-500/60">
     Entry requires a{' '}
-    <span className="relative group cursor-help text-slate-300 underline underline-offset-2 decoration-dotted">
+    <span className="relative group cursor-help text-slate-300 underline-offset-2 hover:text-slate-200 cursor-help">
       minimum XPOT balance
       <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-56 -translate-x-1/2 rounded-xl bg-[#05070c] px-3 py-2 text-[10px] text-slate-300 shadow-[0_8px_30px_rgba(0,0,0,0.8)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
         You must hold the required amount of XPOT at the moment you enter the draw.
@@ -651,7 +651,7 @@ export default function DashboardPage() {
   href="/what-is-xpot"
   target="_blank"
   rel="noopener noreferrer"
-  className="inline-block whitespace-nowrap ml-1 text-emerald-400 underline underline-offset-2 transition-colors hover:text-emerald-300"
+  className="inline-block whitespace-nowrap ml-1 text-emerald-400/80 underline underline-offset-2 transition-colors hover:text-emerald-300"
 >
   About XPOT.
 </a>
