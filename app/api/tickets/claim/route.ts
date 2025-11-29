@@ -1,6 +1,6 @@
 // app/api/tickets/claim/route.ts
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/prisma'; // adjust if TS paths use "@/lib/prisma"
+import { prisma } from '../../../lib/prisma';
 
 // Same code generator as on the client
 function makeCode(): string {
@@ -12,9 +12,30 @@ function makeCode(): string {
   return `XPOT-${block()}-${block()}`;
 }
 
-// Date key like "2025-11-29" for today's draw
-function getTodayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+// Shape we send back to the UI
+type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
+
+type Entry = {
+  id: string;
+  code: string;
+  status: EntryStatus;
+  label: string;
+  jackpotUsd: string;
+  createdAt: string;
+  walletAddress: string;
+};
+
+// Map Prisma Ticket + Draw to dashboard Entry
+function toEntry(ticket: any, draw: any): Entry {
+  return {
+    id: ticket.id,
+    code: ticket.code,
+    status: (ticket.status ?? 'in-draw') as EntryStatus,
+    label: "Today's main jackpot • $10,000",
+    jackpotUsd: `$${(draw.jackpotUsd ?? 10_000).toLocaleString()}`,
+    createdAt: ticket.createdAt.toISOString(),
+    walletAddress: ticket.walletAddress,
+  };
 }
 
 export async function POST(req: Request) {
@@ -36,63 +57,73 @@ export async function POST(req: Request) {
       );
     }
 
-    const dateKey = getTodayKey();
+    // ─────────────────────────────────────
+    // 1) Find or create *today's* Draw row
+    // ─────────────────────────────────────
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
 
-    // 1) Make sure today's Draw row exists
-    const draw = await prisma.draw.upsert({
-      where: { dateKey },
-      create: {
-        dateKey,
-        jackpotUsd: 10_000, // adjust later if dynamic
-        status: 'open',
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    let draw = await prisma.draw.findFirst({
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
       },
-      update: {}, // nothing to update for now
     });
 
-    // 2) Check if this wallet already has a ticket for today's draw
-    const existing = await prisma.ticket.findFirst({
+    if (!draw) {
+      draw = await prisma.draw.create({
+        data: {
+          jackpotUsd: 10_000, // adjust later if dynamic
+          status: 'open',
+        },
+      });
+    }
+
+    // ─────────────────────────────────────
+    // 2) Enforce one ticket per wallet/day
+    // ─────────────────────────────────────
+    let ticket = await prisma.ticket.findFirst({
       where: {
         walletAddress,
         drawId: draw.id,
       },
     });
 
-    if (existing) {
-      const tickets = await prisma.ticket.findMany({
-        where: { drawId: draw.id },
-        orderBy: { createdAt: 'desc' },
-      });
-
-      return NextResponse.json({
-        ok: true,
-        ticket: existing,
-        tickets,
+    if (!ticket) {
+      ticket = await prisma.ticket.create({
+        data: {
+          code: makeCode(),
+          status: 'in-draw',
+          walletAddress,
+          drawId: draw.id,
+        },
       });
     }
 
-    // 3) Create a new ticket
-    const code = makeCode();
-
-    const ticket = await prisma.ticket.create({
-      data: {
-        code,
-        status: 'in-draw',
-        walletAddress,
-        drawId: draw.id,
-      },
-    });
-
-    // 4) Return full list for this draw (so UI can sync)
-    const tickets = await prisma.ticket.findMany({
+    // ─────────────────────────────────────
+    // 3) Load all tickets for this draw
+    // ─────────────────────────────────────
+    const ticketsDb = await prisma.ticket.findMany({
       where: { drawId: draw.id },
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({
-      ok: true,
-      ticket,
-      tickets,
-    });
+    const entries: Entry[] = ticketsDb.map(t => toEntry(t, draw));
+    const entry = toEntry(ticket, draw);
+
+    return NextResponse.json(
+      {
+        ok: true,
+        ticket: entry,
+        tickets: entries,
+      },
+      { status: 200 }
+    );
   } catch (err) {
     console.error('Error in /api/tickets/claim', err);
     return NextResponse.json(
