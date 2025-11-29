@@ -637,24 +637,21 @@ export default function DashboardPage() {
 </button>
 
         {/* Requirements + XPOT micro-link */}
-<div className="mt-5 flex flex-col items-center gap-[6px] text-center">
+    <div className="mt-5 flex flex-col items-center gap-[6px] text-center">
   <p className="text-[11px] leading-relaxed text-slate-500/60">
     Entry requires a{' '}
-    <span className="relative group cursor-help text-slate-300 underline underline-offset-2 decoration-dotted">
+    <span className="text-slate-300 font-medium">
       minimum XPOT balance
-      <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-56 -translate-x-1/2 rounded-xl bg-[#05070c] px-3 py-2 text-[10px] text-slate-300 shadow-[0_8px_30px_rgba(0,0,0,0.8)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-        You must hold the required amount of XPOT at the moment you enter the draw.
-      </span>
     </span>{' '}
     and a connected wallet.
     <a
-  href="/what-is-xpot"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="inline-block whitespace-nowrap ml-1 text-emerald-400/80 underline underline-offset-2 transition-colors hover:text-emerald-300"
->
-  About XPOT.
-</a>
+      href="/what-is-xpot"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-block whitespace-nowrap ml-1 text-emerald-400/80 underline underline-offset-2 transition-colors hover:text-emerald-300"
+    >
+      !!!!!About XPOT.
+    </a>
   </p>
 </div>
       </div>
