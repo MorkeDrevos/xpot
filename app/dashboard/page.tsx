@@ -48,10 +48,6 @@ const initialEntries: Entry[] = [
   },
 ];
 
-export default function DashboardPage() {
-  // No more NextAuth – everything is local state for now
-  const isAuthed = true; // treat everyone as “signed in” until we re-add auth
-
   const username = 'your_handle';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
