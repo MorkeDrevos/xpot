@@ -2,6 +2,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 
+// ─────────────────────────────────────────────
+// Config
+// ─────────────────────────────────────────────
+
+const JACKPOT_USD = 10_000;
+
 // Same code generator as on the client
 function makeCode(): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -27,14 +33,20 @@ type Entry = {
 
 // Map Prisma Ticket + Draw to dashboard Entry
 function toEntry(ticket: any, draw: any): Entry {
+  const createdAt =
+    ticket.createdAt instanceof Date
+      ? ticket.createdAt.toISOString()
+      : new Date(ticket.createdAt).toISOString();
+
   return {
     id: ticket.id,
     code: ticket.code,
-    status: (ticket.status ?? 'in-draw') as EntryStatus,
+    // Your schema doesn't have ticket.status yet, so we treat all as in-draw for now
+    status: 'in-draw',
     label: "Today's main jackpot • $10,000",
-    jackpotUsd: `$${(draw.jackpotUsd ?? 10_000).toLocaleString()}`,
-    createdAt: ticket.createdAt.toISOString(),
-    walletAddress: ticket.walletAddress,
+    jackpotUsd: `$${JACKPOT_USD.toLocaleString()}`,
+    createdAt,
+    walletAddress: ticket.wallet?.address ?? 'unknown',
   };
 }
 
@@ -58,8 +70,37 @@ export async function POST(req: Request) {
     }
 
     // ─────────────────────────────────────
-    // 1) Find or create *today's* Draw row
+    // 1) Find or create wallet + user
     // ─────────────────────────────────────
+
+    let wallet = await prisma.wallet.findUnique({
+      where: { address: walletAddress },
+    });
+
+    if (!wallet) {
+      // Create a minimal user + wallet combo so relations are satisfied
+      const user = await prisma.user.create({
+        data: {
+          // xHandle is unique; use wallet-based slug
+          xHandle: `wallet_${walletAddress.slice(0, 8)}_${Date.now().toString(
+            36
+          )}`,
+        },
+      });
+
+      wallet = await prisma.wallet.create({
+        data: {
+          address: walletAddress,
+          userId: user.id,
+        },
+      });
+    }
+
+    // ─────────────────────────────────────
+    // 2) Find or create *today's* Draw row
+    //    (using drawDate, not createdAt)
+    // ─────────────────────────────────────
+
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -68,7 +109,7 @@ export async function POST(req: Request) {
 
     let draw = await prisma.draw.findFirst({
       where: {
-        createdAt: {
+        drawDate: {
           gte: start,
           lte: end,
         },
@@ -78,19 +119,23 @@ export async function POST(req: Request) {
     if (!draw) {
       draw = await prisma.draw.create({
         data: {
-          jackpotUsd: 10_000, // adjust later if dynamic
-          status: 'open',
+          drawDate: new Date(),
+          // isClosed defaults to false
         },
       });
     }
 
     // ─────────────────────────────────────
-    // 2) Enforce one ticket per wallet/day
+    // 3) Enforce one ticket per wallet/day
     // ─────────────────────────────────────
+
     let ticket = await prisma.ticket.findFirst({
       where: {
-        walletAddress,
+        walletId: wallet.id,
         drawId: draw.id,
+      },
+      include: {
+        wallet: true,
       },
     });
 
@@ -98,19 +143,26 @@ export async function POST(req: Request) {
       ticket = await prisma.ticket.create({
         data: {
           code: makeCode(),
-          status: 'in-draw',
-          walletAddress,
           drawId: draw.id,
+          walletId: wallet.id,
+          userId: wallet.userId,
+        },
+        include: {
+          wallet: true,
         },
       });
     }
 
     // ─────────────────────────────────────
-    // 3) Load all tickets for this draw
+    // 4) Load all tickets for this draw
     // ─────────────────────────────────────
+
     const ticketsDb = await prisma.ticket.findMany({
       where: { drawId: draw.id },
       orderBy: { createdAt: 'desc' },
+      include: {
+        wallet: true,
+      },
     });
 
     const entries: Entry[] = ticketsDb.map(t => toEntry(t, draw));
