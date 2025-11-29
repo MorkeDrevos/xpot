@@ -8,6 +8,23 @@ const MIN_SOL_REQUIRED = 0.01;
 // Config
 // ─────────────────────────────────────────────
 
+async function getSolBalance(address: string): Promise<number> {
+  const res = await fetch(`https://api.mainnet-beta.solana.com`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'getBalance',
+      params: [address],
+    }),
+  });
+
+  const json = await res.json();
+  const lamports = json?.result?.value || 0;
+  return lamports / 1_000_000_000;
+}
+
 const JACKPOT_USD = 10_000;
 
 // Same code generator as on the client
@@ -70,6 +87,24 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    // ─────────────────────────────
+// SOL BALANCE GATE
+// ─────────────────────────────
+
+const solBalance = await getSolBalance(walletAddress);
+
+if (solBalance < MIN_SOL_REQUIRED) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: 'NOT_ENOUGH_SOL',
+      required: MIN_SOL_REQUIRED,
+      balance: solBalance,
+    },
+    { status: 403 }
+  );
+}
 
     // ─────────────────────────────────────
     // 1) Find or create wallet + user
