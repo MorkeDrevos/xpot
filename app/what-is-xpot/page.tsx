@@ -35,9 +35,9 @@ export default function WhatIsXpotPage() {
                 What is XPOT
               </p>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-                XPOT is your entry key
+                XPOT is your entry key to a 
                 <br />
-                to a crypto jackpot draw
+                crypto jackpot draw
               </h1>
 
               <p className="mt-4 text-sm leading-relaxed text-slate-200/90">
