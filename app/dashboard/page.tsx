@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+const MIN_XPOT_REQUIRED = 10_000; // <- change this whenever you want
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -48,8 +49,6 @@ const initialEntries: Entry[] = [
   },
 ];
 
-export default function DashboardPage() {
-  // No auth for now – treat everything as a local preview
   const username = 'your_handle';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
@@ -78,7 +77,10 @@ export default function DashboardPage() {
   }
 
   function handleClaimTicket() {
+    // 1) Must have wallet connected
     if (!walletConnected) return;
+
+    // 2) Prevent double-claim
     if (ticketClaimed) return;
 
     const newEntry: Entry = {
@@ -273,9 +275,12 @@ export default function DashboardPage() {
                   Today’s ticket
                 </h2>
                 <p className="mt-1 text-xs text-slate-400">
-                  One ticket per wallet per draw. Hold the minimum XPOT when
-                  you claim. You can always buy or sell again later.
-                </p>
+  One ticket per wallet per draw. You must hold at least{' '}
+  <span className="font-semibold text-emerald-300">
+    {MIN_XPOT_REQUIRED.toLocaleString()} XPOT
+  </span>{' '}
+  at the moment you claim. You can always buy or sell again later.
+</p>
 
                 {!ticketClaimed ? (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -477,15 +482,22 @@ export default function DashboardPage() {
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">How today’s draw works</h3>
               <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                <li>• Claim exactly one ticket per wallet.</li>
-                <li>• Wallet is only checked when claiming.</li>
-                <li>• When the timer hits zero, one ticket wins.</li>
-                <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
-              </ul>
+  <li>• Claim exactly one ticket per wallet.</li>
+  <li>
+    • At claim time, your wallet must hold at least{' '}
+    <span className="font-semibold text-emerald-300">
+      {MIN_XPOT_REQUIRED.toLocaleString()} XPOT
+    </span>.
+  </li>
+  <li>• Wallet is only checked when claiming.</li>
+  <li>• When the timer hits zero, one ticket wins.</li>
+  <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
+</ul>
             </div>
           </aside>
         </div>
       </div>
+          </div>
     </main>
   );
 }
