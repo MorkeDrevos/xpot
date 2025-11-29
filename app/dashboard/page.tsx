@@ -48,6 +48,8 @@ const initialEntries: Entry[] = [
   },
 ];
 
+export default function DashboardPage() {
+  // No auth for now – treat everything as a local preview
   const username = 'your_handle';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
@@ -76,10 +78,7 @@ const initialEntries: Entry[] = [
   }
 
   function handleClaimTicket() {
-    // 1) Must have wallet connected
     if (!walletConnected) return;
-
-    // 2) Prevent double-claim
     if (ticketClaimed) return;
 
     const newEntry: Entry = {
@@ -487,7 +486,6 @@ const initialEntries: Entry[] = [
           </aside>
         </div>
       </div>
-          </div>
     </main>
   );
 }
