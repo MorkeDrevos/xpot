@@ -645,7 +645,7 @@ export default function DashboardPage() {
     href="/what-is-xpot"
     className="ml-1 text-emerald-300/60 hover:text-emerald-200 transition"
   >
-    About XPOT
+    About XPOT.
   </a>
 </div>
       </div>
