@@ -42,7 +42,10 @@ const initialEntries: Entry[] = [
     status: 'won',
     label: "Today's main jackpot • $10,000",
     jackpotUsd: '$10,000',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    createdAt: now.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
   },
   {
     id: 2,
@@ -50,9 +53,16 @@ const initialEntries: Entry[] = [
     status: 'in-draw',
     label: "Yesterday's main jackpot • $8,400",
     jackpotUsd: '$8,400',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    createdAt: now.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
   },
 ];
+
+// ─────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -83,7 +93,10 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
 
   function handleSignInWithX() {
-    signIn('x', { callbackUrl: '/dashboard' });
+    // Provider id must match [...nextauth].route.ts (twitter)
+    signIn('twitter', {
+      callbackUrl: '/dashboard',
+    });
   }
 
   // ─────────────────────────────────────────────
@@ -138,17 +151,17 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
 
   return (
-    <main className="min-h-screen bg-black text-slate-50 relative">
+    <main className="relative min-h-screen bg-black text-slate-50">
       {/* MAIN DASHBOARD SHELL (blurred when logged out) */}
       <div
         className={`mx-auto flex max-w-6xl ${
           !isAuthed
-            ? 'blur-[1px] brightness-95 contrast-110 pointer-events-none select-none'
+            ? 'pointer-events-none select-none blur-[1px] brightness-95 contrast-110'
             : ''
         }`}
       >
         {/* ── Left nav (X-style) ───────────────────────────── */}
-        <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
+        <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex md:flex-col md:justify-between">
           <div className="space-y-6">
             {/* Logo */}
             <div className="flex items-center gap-2 px-3">
@@ -167,7 +180,7 @@ export default function DashboardPage() {
             <nav className="space-y-1 text-sm">
               <Link
                 href="/dashboard"
-                className="flex items-center gap-3 rounded-full px-3 py-2 font-medium bg-slate-900 text-slate-50"
+                className="flex items-center gap-3 rounded-full bg-slate-900 px-3 py-2 font-medium text-slate-50"
               >
                 <span className="text-lg">🏠</span>
                 <span>Dashboard</span>
@@ -195,8 +208,8 @@ export default function DashboardPage() {
               disabled={!isAuthed || !walletConnected}
               className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
                 !isAuthed || !walletConnected
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+                  ? 'cursor-not-allowed bg-slate-800 text-slate-500'
+                  : 'toolbar-glow bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black'
               }`}
             >
               {!isAuthed
@@ -210,7 +223,7 @@ export default function DashboardPage() {
           {/* Mini user chip + account menu */}
           <div className="relative">
             <div
-              className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
+              className="mb-2 flex cursor-pointer items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 hover:bg-slate-800/80"
               onClick={() => {
                 if (!isAuthed) {
                   handleSignInWithX();
@@ -246,7 +259,7 @@ export default function DashboardPage() {
             </div>
 
             {isAuthed && accountMenuOpen && (
-              <div className="x-account-menu absolute bottom-14 left-0 w-72 rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60 overflow-hidden">
+              <div className="x-account-menu absolute bottom-14 left-0 w-72 overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-900"
@@ -290,7 +303,7 @@ export default function DashboardPage() {
         </aside>
 
         {/* ── Main shell ───────────────────────────────────── */}
-        <div className="flex flex-1 gap-6 rounded-[28px] border border-slate-800/70 bg-[#020617] shadow-[0_30px_100px_rgba(0,0,0,0.9)] overflow-hidden">
+        <div className="flex flex-1 gap-6 overflow-hidden rounded-[28px] border border-slate-800/70 bg-[#020617] shadow-[0_30px_100px_rgba(0,0,0,0.9)]">
           {/* Center column */}
           <section className="min-h-screen flex-1">
             {/* Sticky header */}
@@ -375,8 +388,8 @@ export default function DashboardPage() {
                       disabled={!isAuthed || !walletConnected}
                       className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 ${
                         !isAuthed || !walletConnected
-                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+                          ? 'cursor-not-allowed bg-slate-800 text-slate-500'
+                          : 'toolbar-glow bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black'
                       }`}
                     >
                       {!isAuthed
@@ -453,7 +466,7 @@ export default function DashboardPage() {
                   {entries.map(entry => (
                     <article
                       key={entry.id}
-                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-4 pt-3 hover:border-slate-700 hover:bg-slate-950 transition"
+                      className="transition rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-4 pt-3 hover:border-slate-700 hover:bg-slate-950"
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -571,7 +584,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={openXLogoutForSwitch}
-                  className="mt-2 w-full text-[11px] text-slate-500 hover:text-slate-300 underline underline-offset-2"
+                  className="mt-2 w-full text-[11px] text-slate-500 underline underline-offset-2 hover:text-slate-300"
                 >
                   Wrong X account? Log out on x.com first.
                 </button>
@@ -581,7 +594,7 @@ export default function DashboardPage() {
             {/* How it works */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">How today’s draw works</h3>
-              <ul className="mt-2 text-xs text-slate-400 space-y-1">
+              <ul className="mt-2 space-y-1 text-xs text-slate-400">
                 <li>• Claim exactly one ticket per X account.</li>
                 <li>• Wallet is only checked when claiming.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
@@ -592,66 +605,55 @@ export default function DashboardPage() {
         </div>
       </div>
 
-            {/* LOGIN OVERLAY – premium glass XPOT access */}
-{!isAuthed && (
-  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-[6px]">
-    <div className="relative mx-4 w-full max-w-md rounded-3xl border border-slate-800 bg-[#05070c] px-8 py-7 shadow-[0_60px_200px_rgba(0,0,0,0.9)] ring-2 ring-emerald-400/30 text-center xpot-modal-enter">
-      {/* Soft glow halo */}
-      <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-emerald-400/8 via-transparent to-sky-400/6 blur-xl" />
+      {/* LOGIN OVERLAY – premium glass XPOT access */}
+      {!isAuthed && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-[6px]">
+          <div className="xpot-modal-enter relative mx-4 w-full max-w-md rounded-3xl border border-slate-800 bg-[#05070c] px-8 py-7 text-center shadow-[0_60px_200px_rgba(0,0,0,0.9)] ring-2 ring-emerald-400/30">
+            {/* Soft glow halo */}
+            <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-emerald-400/8 via-transparent to-sky-400/6 blur-xl" />
 
-      {/* Content */}
-      <div className="relative">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-          <span className="h-1 w-1 rounded-full bg-emerald-400/80 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
-          <span>XPOT Access</span>
+            {/* Content */}
+            <div className="relative">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                <span className="h-1 w-1 rounded-full bg-emerald-400/80 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
+                <span>XPOT Access</span>
+              </div>
+
+              <h2 className="mb-2 text-xl font-semibold tracking-tight text-slate-50">
+                Sign in to enter today’s draw
+              </h2>
+
+              <p className="mb-4 text-xs leading-relaxed text-slate-400">
+                One ticket per X account, per draw.
+                <br className="hidden sm:inline" />
+                No posts. No forms. Just one click to enter.
+              </p>
+
+              {/* Main CTA */}
+              <button
+                type="button"
+                onClick={handleSignInWithX}
+                className="w-full rounded-full bg-gradient-to-r from-sky-400 to-sky-500 py-2.5 text-sm font-semibold text-slate-950 shadow-md shadow-sky-500/30 transition-all duration-200 hover:from-sky-300 hover:to-sky-500 hover:shadow-lg hover:shadow-sky-400/30 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-sky-400/40"
+              >
+                {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+              </button>
+
+              {/* Requirements + XPOT micro-link */}
+              <div className="mt-4 text-center text-[11px] tracking-wide text-slate-400/80">
+                Entry requires a{' '}
+                <span className="text-slate-200/90">minimum XPOT balance</span>{' '}
+                and a connected wallet.
+                <a
+                  href="/what-is-xpot"
+                  className="ml-1 text-emerald-300/80 transition hover:text-emerald-200"
+                >
+                  About XPOT.
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <h2 className="mb-2 text-xl font-semibold tracking-tight text-slate-50">
-          Sign in to enter today’s draw
-        </h2>
-
-        <p className="mb-4 text-xs leading-relaxed text-slate-400">
-          One ticket per X account, per draw. <br className="hidden sm:inline" />
-          No posts. No forms. Just one click to enter.
-        </p>
-
-        {/* Main CTA */}
-        <button
-  type="button"
-  onClick={handleSignInWithX}
-  className="
-    w-full rounded-full 
-    bg-gradient-to-r from-sky-400 to-sky-500
-    py-2.5 
-    text-sm font-semibold 
-    text-slate-950
-    shadow-md shadow-sky-500/30
-
-    transition-all duration-200
-    hover:from-sky-300 hover:to-sky-500 hover:shadow-lg hover:shadow-sky-400/30
-    active:scale-[0.97]
-    focus:outline-none focus:ring-2 focus:ring-sky-400/40
-  "
->
-  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-</button>
-
-    {/* Requirements + XPOT micro-link */}
-<div className="mt-4 text-center text-[11px] tracking-wide text-slate-400/80">
-  Entry requires a{' '}
-  <span className="text-slate-200/90">minimum XPOT balance</span>{' '}
-  and a connected wallet.
-  <a
-    href="/what-is-xpot"
-    className="ml-1 text-emerald-300/80 hover:text-emerald-200 transition"
-  >
-    About XPOT.
-  </a>
-</div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </main>
   );
 }
