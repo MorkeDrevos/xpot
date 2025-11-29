@@ -67,24 +67,6 @@ function makeCode(): string {
 // Seed a couple of preview tickets for the list
 const now = new Date();
 const initialEntries: Entry[] = [
-  {
-    id: 'preview-1',
-    code: makeCode(),
-    status: 'won',
-    label: "Today's main jackpot • $10,000",
-    jackpotUsd: '$10,000',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    walletAddress: 'preview-wallet-1',
-  },
-  {
-    id: 'preview-2',
-    code: makeCode(),
-    status: 'in-draw',
-    label: "Yesterday's main jackpot • $8,400",
-    jackpotUsd: '$8,400',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    walletAddress: 'preview-wallet-2',
-  },
 ];
 
 // ─────────────────────────────────────────────
@@ -160,62 +142,26 @@ useEffect(() => {
   const winner = entries.find(e => e.status === 'won');
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
+  // Sync today's ticket purely from DB
+useEffect(() => {
+  if (!currentWalletAddress) {
+    setTicketClaimed(false);
+    setTodaysTicket(null);
+    return;
+  }
 
-  // ─────────────────────────────────────────────
-  // Keep "one ticket per wallet per draw" using localStorage
-  // and rehydrate today's ticket for the current wallet
-  // ─────────────────────────────────────────────
+  const myTicket = entries.find(
+    t => t.walletAddress === currentWalletAddress && t.status === 'in-draw'
+  );
 
-  useEffect(() => {
-    if (!walletConnected || !publicKey) {
-      setTicketClaimed(false);
-      setTodaysTicket(null);
-      return;
-    }
-
-    if (typeof window === 'undefined') return;
-
-    const key = getTodayStorageKey();
-    const raw = window.localStorage.getItem(key);
-
-    if (!raw) {
-      setTicketClaimed(false);
-      setTodaysTicket(null);
-      return;
-    }
-
-    try {
-      const map = JSON.parse(raw) as Record<string, SavedTicket>;
-      const saved = map[publicKey.toBase58()];
-
-      if (!saved) {
-        setTicketClaimed(false);
-        setTodaysTicket(null);
-        return;
-      }
-
-      const existingEntry: Entry = {
-  id: String(Date.now()),      // ✅ now matches Entry.id: string
-  code: saved.code,
-  status: 'in-draw',
-  label: "Today's main jackpot • $10,000",
-  jackpotUsd: '$10,000',
-  createdAt: saved.createdAt,
-  walletAddress: saved.wallet,
-};
-      setTicketClaimed(true);
-      setTodaysTicket(existingEntry);
-
-      // Ensure it appears once in the entries list
-      setEntries(prev => {
-        const already = prev.some(e => e.code === saved.code);
-        return already ? prev : [existingEntry, ...prev];
-      });
-    } catch {
-      setTicketClaimed(false);
-      setTodaysTicket(null);
-    }
-  }, [walletConnected, publicKey]);
+  if (myTicket) {
+    setTicketClaimed(true);
+    setTodaysTicket(myTicket);
+  } else {
+    setTicketClaimed(false);
+    setTodaysTicket(null);
+  }
+}, [entries, currentWalletAddress]);
 
   // ─────────────────────────────────────────────
   // SOL balance (via API route)
