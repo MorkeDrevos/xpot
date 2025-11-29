@@ -637,8 +637,8 @@ export default function DashboardPage() {
 </button>
 
         {/* Requirements + XPOT micro-link */}
-<div className="mt-3 flex flex-col items-center gap-[4px] text-center">
-  <p className="text-[10.5px] leading-relaxed text-slate-500/75">
+<div className="mt-5 flex flex-col items-center gap-[6px] text-center">
+  <p className="text-[10.5px] leading-relaxed text-slate-500/60">
     Entry requires a{' '}
     <span className="relative group cursor-help text-slate-300 underline underline-offset-2 decoration-dotted">
       minimum XPOT balance
