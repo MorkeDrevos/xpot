@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   ConnectionProvider,
   WalletProvider,
@@ -94,37 +94,41 @@ function DashboardInner() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const { publicKey, connected } = useWallet();
-  const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
+const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
 
-  const walletConnected = !!publicKey && connected;
-  const winner = entries.find(e => e.status === 'won');
+useEffect(() => {
+  if (!publicKey) {
+    setSolBalance(null);
+    return;
+  }
 
-  // Load SOL balance when wallet changes
-  useEffect(() => {
-    if (!publicKey) {
-      setSolBalance(null);
-      return;
-    }
+  let cancelled = false;
+  setSolBalance(null); // show "Loading..." while fetching
 
-    let cancelled = false;
+  (async () => {
+    try {
+      const res = await fetch(
+        `/api/sol-balance?address=${publicKey.toBase58()}`
+      );
 
-    (async () => {
-      try {
-        const connection = new Connection(endpoint, 'confirmed');
-        const lamports = await connection.getBalance(publicKey);
-        if (!cancelled) {
-          setSolBalance(lamports / LAMPORTS_PER_SOL);
-        }
-      } catch (err) {
-        console.error('Error loading SOL balance', err);
-        if (!cancelled) setSolBalance('error');
+      if (!res.ok) {
+        throw new Error(`API error: ${res.status}`);
       }
-    })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [publicKey]);
+      const data: { lamports: number } = await res.json();
+      if (cancelled) return;
+
+      setSolBalance(data.lamports / LAMPORTS_PER_SOL);
+    } catch (err) {
+      console.error('Error loading SOL balance (via API)', err);
+      if (!cancelled) setSolBalance('error');
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [publicKey]);
 
   // ─────────────────────────────────────────────
   // Ticket helpers
