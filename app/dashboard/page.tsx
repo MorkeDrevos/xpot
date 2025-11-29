@@ -46,7 +46,7 @@ function shortWallet(addr: string) {
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
 type Entry = {
-  id: number;
+  id: string;
   code: string;
   status: EntryStatus;
   label: string;
@@ -112,7 +112,42 @@ export default function DashboardPage() {
 function DashboardInner() {
   const username = 'your_handle';
 
-  const [entries, setEntries] = useState<Entry[]>(initialEntries);
+ const [entries, setEntries] = useState<Entry[]>(initialEntries);
+const [loadingTickets, setLoadingTickets] = useState(true);
+const [ticketsError, setTicketsError] = useState<string | null>(null);
+
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadTickets() {
+    try {
+      const res = await fetch('/api/tickets/today');
+      if (!res.ok) throw new Error('Failed to load tickets');
+
+      const data = await res.json();
+
+      if (!cancelled && Array.isArray(data.tickets)) {
+        // Only override preview tickets if DB actually returned something
+        if (data.tickets.length > 0) {
+          setEntries(data.tickets);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load tickets from DB', err);
+      if (!cancelled) {
+        setTicketsError((err as Error).message ?? 'Failed to load tickets');
+      }
+    } finally {
+      if (!cancelled) setLoadingTickets(false);
+    }
+  }
+
+  loadTickets();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -124,6 +159,37 @@ function DashboardInner() {
   const walletConnected = !!publicKey && connected;
   const winner = entries.find(e => e.status === 'won');
   const currentWalletAddress = publicKey?.toBase58() ?? null;
+
+  // Load today's tickets from DB
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadTickets() {
+    try {
+      const res = await fetch('/api/tickets/today');
+      if (!res.ok) throw new Error('Failed to load today tickets');
+
+      const data = await res.json();
+
+      if (!cancelled && Array.isArray(data.tickets)) {
+        if (data.tickets.length > 0) {
+          setEntries(data.tickets); // ✅ real DB replaces preview tickets
+        }
+      }
+    } catch (err) {
+      console.error('Ticket load failed:', err);
+      if (!cancelled) {
+        // keep preview tickets if DB fails
+      }
+    }
+  }
+
+  loadTickets();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   // ─────────────────────────────────────────────
   // Keep "one ticket per wallet per draw" using localStorage
