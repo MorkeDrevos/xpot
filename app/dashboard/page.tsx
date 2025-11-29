@@ -57,7 +57,9 @@ const initialEntries: Entry[] = [
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const user = session?.user as any | undefined;
-  const isAuthed = !!session;
+
+  // ✅ SINGLE source of truth for auth state
+  const isAuthed = status === 'authenticated';
 
   // Robust username fallback
   const username =
@@ -79,22 +81,20 @@ export default function DashboardPage() {
   const winner = entries.find(e => e.status === 'won');
 
   // ─────────────────────────────────────────────
-// Auth helpers
-// ─────────────────────────────────────────────
+  // Auth helpers
+  // ─────────────────────────────────────────────
 
-const isAuthed = status === 'authenticated';
+  function handleSignInWithX() {
+    // Uses the "twitter" provider id from route.ts
+    signIn('twitter', {
+      callbackUrl: '/dashboard',
+      redirect: true,
+    });
+  }
 
-function handleSignInWithX() {
-  // Uses the "twitter" provider id from route.ts
-  signIn('twitter', {
-    callbackUrl: '/dashboard',
-    redirect: true,
-  });
-}
-
-function handleSignOut() {
-  signOut({ callbackUrl: '/' });
-}
+  function handleSignOut() {
+    signOut({ callbackUrl: '/' });
+  }
 
   // ─────────────────────────────────────────────
   // Ticket helpers
@@ -286,10 +286,7 @@ function handleSignOut() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setAccountMenuOpen(false);
-                    signOut({ callbackUrl: '/' });
-                  }}
+                  onClick={handleSignOut}
                   className="block w-full px-4 py-3 text-left text-[13px] text-slate-200 hover:bg-slate-900"
                 >
                   Log out of XPOT
@@ -570,12 +567,12 @@ function handleSignOut() {
               </p>
 
               <button
-  type="button"
-  onClick={handleSignInWithX}
-  className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
->
-  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-</button>
+                type="button"
+                onClick={handleSignInWithX}
+                className="mt-3 w-full rounded-full bg-sky-500 py-2 text-sm font-semibold text-slate-950 shadow shadow-sky-500/40 hover:bg-sky-400"
+              >
+                {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+              </button>
 
               {!isAuthed && (
                 <button
@@ -602,65 +599,65 @@ function handleSignOut() {
         </div>
       </div>
 
-            {/* LOGIN OVERLAY – premium glass XPOT access */}
-{!isAuthed && (
-  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-[6px]">
-    <div className="relative mx-4 w-full max-w-md rounded-3xl border border-slate-800 bg-[#05070c] px-8 py-7 shadow-[0_60px_200px_rgba(0,0,0,0.9)] ring-2 ring-emerald-400/30 text-center xpot-modal-enter">
-      {/* Soft glow halo */}
-      <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-emerald-400/8 via-transparent to-sky-400/6 blur-xl" />
+      {/* LOGIN OVERLAY – premium glass XPOT access */}
+      {!isAuthed && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-[6px]">
+          <div className="relative mx-4 w-full max-w-md rounded-3xl border border-slate-800 bg-[#05070c] px-8 py-7 shadow-[0_60px_200px_rgba(0,0,0,0.9)] ring-2 ring-emerald-400/30 text-center xpot-modal-enter">
+            {/* Soft glow halo */}
+            <div className="pointer-events-none absolute -inset-px rounded-3xl bg-gradient-to-b from-emerald-400/8 via-transparent to-sky-400/6 blur-xl" />
 
-      {/* Content */}
-      <div className="relative">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-          <span className="h-1 w-1 rounded-full bg-emerald-400/80 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
-          <span>XPOT Access</span>
+            {/* Content */}
+            <div className="relative">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                <span className="h-1 w-1 rounded-full bg-emerald-400/80 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
+                <span>XPOT Access</span>
+              </div>
+
+              <h2 className="mb-2 text-xl font-semibold tracking-tight text-slate-50">
+                Sign in to enter today’s draw
+              </h2>
+
+              <p className="mb-4 text-xs leading-relaxed text-slate-400">
+                One ticket per X account, per draw. <br className="hidden sm:inline" />
+                No posts. No forms. Just one click to enter.
+              </p>
+
+              {/* Main CTA */}
+              <button
+                type="button"
+                onClick={handleSignInWithX}
+                className="
+                  w-full rounded-full 
+                  bg-gradient-to-r from-sky-400 to-sky-500
+                  py-2.5 
+                  text-sm font-semibold 
+                  text-slate-950
+                  shadow-md shadow-sky-500/30
+                  transition-all duration-200
+                  hover:from-sky-300 hover:to-sky-500 hover:shadow-lg hover:shadow-sky-400/30
+                  active:scale-[0.97]
+                  focus:outline-none focus:ring-2 focus:ring-sky-400/40
+                "
+              >
+                {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
+              </button>
+
+              {/* Requirements + XPOT micro-link */}
+              <div className="mt-4 text-center text-[11px] tracking-wide text-slate-400/80">
+                Entry requires a{' '}
+                <span className="text-slate-200/90">minimum XPOT balance</span>{' '}
+                and a connected wallet.
+                <a
+                  href="/what-is-xpot"
+                  className="ml-1 text-emerald-300/80 hover:text-emerald-200 transition"
+                >
+                  About XPOT.
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <h2 className="mb-2 text-xl font-semibold tracking-tight text-slate-50">
-          Sign in to enter today’s draw
-        </h2>
-
-        <p className="mb-4 text-xs leading-relaxed text-slate-400">
-          One ticket per X account, per draw. <br className="hidden sm:inline" />
-          No posts. No forms. Just one click to enter.
-        </p>
-
-        {/* Main CTA */}
-        <button
-  type="button"
-  onClick={handleSignInWithX}
-  className="
-    w-full rounded-full 
-    bg-gradient-to-r from-sky-400 to-sky-500
-    py-2.5 
-    text-sm font-semibold 
-    text-slate-950
-    shadow-md shadow-sky-500/30
-    transition-all duration-200
-    hover:from-sky-300 hover:to-sky-500 hover:shadow-lg hover:shadow-sky-400/30
-    active:scale-[0.97]
-    focus:outline-none focus:ring-2 focus:ring-sky-400/40
-  "
->
-  {status === 'loading' ? 'Checking session…' : 'Sign in with X'}
-</button>
-
-    {/* Requirements + XPOT micro-link */}
-<div className="mt-4 text-center text-[11px] tracking-wide text-slate-400/80">
-  Entry requires a{' '}
-  <span className="text-slate-200/90">minimum XPOT balance</span>{' '}
-  and a connected wallet.
-  <a
-    href="/what-is-xpot"
-    className="ml-1 text-emerald-300/80 hover:text-emerald-200 transition"
-  >
-    About XPOT.
-  </a>
-</div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </main>
   );
 }
