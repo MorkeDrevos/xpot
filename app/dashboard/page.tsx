@@ -2,11 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { clusterApiUrl, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   ConnectionProvider,
   WalletProvider,
-  useConnection,
   useWallet,
 } from '@solana/wallet-adapter-react';
 import {
@@ -94,9 +93,8 @@ function DashboardInner() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
-  const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
-  const [solBalance, setSolBalance] = useState<number | null>(null);
+  const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
 
   const walletConnected = !!publicKey && connected;
   const winner = entries.find(e => e.status === 'won');
@@ -112,19 +110,21 @@ function DashboardInner() {
 
     (async () => {
       try {
+        const connection = new Connection(endpoint, 'confirmed');
         const lamports = await connection.getBalance(publicKey);
         if (!cancelled) {
           setSolBalance(lamports / LAMPORTS_PER_SOL);
         }
-      } catch {
-        if (!cancelled) setSolBalance(null);
+      } catch (err) {
+        console.error('Error loading SOL balance', err);
+        if (!cancelled) setSolBalance('error');
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [publicKey, connection]);
+  }, [publicKey]);
 
   // ─────────────────────────────────────────────
   // Ticket helpers
@@ -141,8 +141,8 @@ function DashboardInner() {
   }
 
   function handleClaimTicket() {
-    if (!walletConnected) return;    // must be connected
-    if (ticketClaimed) return;       // prevent double-claim
+    if (!walletConnected) return; // must be connected
+    if (ticketClaimed) return; // prevent double-claim
 
     const newEntry: Entry = {
       id: Date.now(),
@@ -526,17 +526,21 @@ function DashboardInner() {
                   </p>
                   <p className="mt-1">
                     SOL balance:{' '}
-                    {solBalance === null
+                    {solBalance === null && publicKey
                       ? 'Loading...'
-                      : `${solBalance.toFixed(4)} SOL`}
+                      : solBalance === 'error'
+                      ? 'Unavailable'
+                      : typeof solBalance === 'number'
+                      ? `${solBalance.toFixed(4)} SOL`
+                      : '-'}
                   </p>
                 </div>
               )}
 
               {!publicKey && (
                 <p className="mt-2 text-[11px] text-slate-500">
-                  Phantom and other Solana wallets work here. This is live mainnet
-                  SOL.
+                  Phantom and other Solana wallets work here. This is live
+                  mainnet SOL.
                 </p>
               )}
             </div>
@@ -550,7 +554,8 @@ function DashboardInner() {
                   • At claim time, your wallet must hold at least{' '}
                   <span className="font-semibold text-emerald-300">
                     {MIN_XPOT_REQUIRED.toLocaleString()} XPOT
-                  </span>.
+                  </span>
+                  .
                 </li>
                 <li>• Wallet is only checked when claiming.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
