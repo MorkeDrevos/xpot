@@ -637,7 +637,8 @@ export default function DashboardPage() {
 </button>
 
         {/* Requirements + XPOT micro-link */}
-    <div className="mt-5 flex flex-col items-center gap-[6px] text-center">
+    {/* Requirements + XPOT micro-link */}
+<div className="mt-4 flex flex-col items-center gap-[4px] text-center">
   <p className="text-[11px] leading-relaxed text-slate-500/60">
     Entry requires a{' '}
     <span className="text-slate-300 font-medium">
@@ -650,7 +651,7 @@ export default function DashboardPage() {
       rel="noopener noreferrer"
       className="inline-block whitespace-nowrap ml-1 text-emerald-400/80 underline underline-offset-2 transition-colors hover:text-emerald-300"
     >
-      !!!!!About XPOT.
+      About XPOT.
     </a>
   </p>
 </div>
