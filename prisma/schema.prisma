@@ -35,10 +35,21 @@ model Draw {
 }
 
 model Ticket {
-  id         String  @id @default(cuid())
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  drawId     String
-  draw       Draw    @relation("DrawTickets", fields: [drawId], references: [id])
+  // Draw this ticket belongs to
+  drawId    String
+  draw      Draw     @relation("DrawTickets", fields: [drawId], references: [id])
 
-  winnerOf   Draw?   @relation("DrawWinner")
+  // If this ticket is the winner of a draw (back relation to Draw.winner)
+  winnerOf  Draw?    @relation("DrawWinner")
+
+  // Owner user – satisfies User.tickets
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  // Wallet used – satisfies Wallet.tickets
+  walletId  String?
+  wallet    Wallet?  @relation(fields: [walletId], references: [id])
 }
