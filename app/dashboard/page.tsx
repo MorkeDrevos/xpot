@@ -96,6 +96,7 @@ function DashboardInner() {
   const { publicKey, connected } = useWallet();
   const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
   const walletConnected = !!publicKey && connected;
+  const winner = entries.find(e => e.status === 'won');
 
 useEffect(() => {
   if (!publicKey) {
