@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 
+const MIN_SOL_REQUIRED = 0.01;
+
 // ─────────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────────
