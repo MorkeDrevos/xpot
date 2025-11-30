@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -6,10 +7,14 @@ import { useEffect, useState } from 'react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { WalletReadyState } from '@solana/wallet-adapter-base';
+import { useSession } from 'next-auth/react';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 
-import { useSession } from 'next-auth/react';
+// ─────────────────────────────────────────────
+// Formatting helpers
+// ─────────────────────────────────────────────
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
@@ -26,12 +31,6 @@ function formatDateTime(date: string | Date) {
     minute: '2-digit',
   });
 }
-
-// ─────────────────────────────────────────────
-// Config
-// ─────────────────────────────────────────────
-
-const endpoint = 'https://api.mainnet-beta.solana.com';
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -54,6 +53,7 @@ function shortWallet(addr: string) {
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
+// Debug logger for wallet state
 function WalletDebug() {
   const { publicKey, connected, wallet } = useWallet();
 
@@ -68,6 +68,33 @@ function WalletDebug() {
   return null;
 }
 
+// Optional UX helper: show hint under wallet button
+function WalletStatusHint() {
+  const { wallets, connected } = useWallet();
+
+  const anyDetected = wallets.some(
+    w =>
+      w.readyState === WalletReadyState.Installed ||
+      w.readyState === WalletReadyState.Loadable
+  );
+
+  if (connected) return null;
+
+  if (!anyDetected) {
+    return (
+      <p className="mt-2 text-xs text-amber-300">
+        No Solana wallet detected. Install Phantom or Jupiter to continue.
+      </p>
+    );
+  }
+
+  return (
+    <p className="mt-2 text-xs text-slate-500">
+      Click “Select Wallet” and choose Phantom or Jupiter to connect.
+    </p>
+  );
+}
+
 // Start with empty list – DB will fill this
 const initialEntries: Entry[] = [];
 
@@ -76,11 +103,12 @@ const initialEntries: Entry[] = [];
 // ─────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const username =
-  session?.user?.name ||
-  session?.user?.email?.split('@')[0] ||
-  'XPOT user';
   const { data: session } = useSession();
+
+  const username =
+    session?.user?.name ||
+    session?.user?.email?.split('@')[0] ||
+    'XPOT user';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -391,13 +419,13 @@ export default function DashboardPage() {
                     XPOT user
                   </p>
                   <a
-  href={`https://x.com/${username.replace('@', '')}`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="text-xs text-slate-500 hover:text-emerald-300"
->
-  @{username.replace('@', '')}
-</a>
+                    href={`https://x.com/${username.replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-slate-500 hover:text-emerald-300"
+                  >
+                    @{username.replace('@', '')}
+                  </a>
                 </div>
               </div>
 
@@ -423,13 +451,13 @@ export default function DashboardPage() {
                         XPOT user
                       </p>
                       <a
-  href={`https://x.com/${username.replace('@', '')}`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="text-xs text-slate-500 hover:text-emerald-300"
->
-  @{username.replace('@', '')}
-</a>
+                        href={`https://x.com/${username.replace('@', '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-slate-500 hover:text-emerald-300"
+                      >
+                        @{username.replace('@', '')}
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -455,12 +483,19 @@ export default function DashboardPage() {
             <header className="sticky top-0 z-10 border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
               <div className="flex items-center justify-between">
                 <div>
-  <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-  <p className="text-[13px] text-slate-400">
-    One jackpot. One winner. Your daily XPOT ticket.
-  </p>
-</div>
-                {/* ... */}
+                  <h1 className="text-2xl font-semibold tracking-tight">
+                    Dashboard
+                  </h1>
+                  <p className="text-[13px] text-slate-400">
+                    One jackpot. One winner. Your daily XPOT ticket.
+                  </p>
+                </div>
+                <div className="hidden text-right text-[11px] text-slate-500 sm:block">
+                  <p className="uppercase tracking-[0.16em] text-slate-400">
+                    Next draw in
+                  </p>
+                  <p className="font-mono text-xs text-slate-200">02:14:09</p>
+                </div>
               </div>
             </header>
 
@@ -485,13 +520,13 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <a
-  href={`https://x.com/${username.replace('@', '')}`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="text-xs text-slate-500 hover:text-emerald-300"
->
-  @{username.replace('@', '')}
-</a>
+                      href={`https://x.com/${username.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-slate-500 hover:text-emerald-300"
+                    >
+                      @{username.replace('@', '')}
+                    </a>
                   </div>
                 </div>
 
@@ -724,7 +759,7 @@ export default function DashboardPage() {
 
               {/* Draw history preview */}
               <section className="pb-10 px-4">
-                <div className="flex itemscenter justify-between">
+                <div className="flex items-center justify-between">
                   <h2 className="text-sm font-semibold text-slate-200">
                     Draw history
                   </h2>
@@ -792,6 +827,7 @@ export default function DashboardPage() {
 
               <div className="mt-3">
                 <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
+                <WalletStatusHint />
               </div>
 
               {publicKey && (
