@@ -15,14 +15,14 @@ export const IS_DEV_XPOT = false; // 🔁 switch to false at real launch
 const PROD = {
   SYMBOL: 'PANDU',
   MINT: '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk',
-  REQUIRED: 100_000,
+  REQUIRED: 1_000_000,
 };
 
 // 🟡 DEV / TEST TOKEN (any token for testing)
 const DEV = {
   SYMBOL: 'BONK',
   MINT: 'DezXAZ8z7PnrnRJjz3wXBoHyRnHv7QBB7aLteS7r2N6v',
-  REQUIRED: 1_000_000,
+  REQUIRED: 1_000,
 };
 
 export const TOKEN = IS_DEV_XPOT ? DEV : PROD;
