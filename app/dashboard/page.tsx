@@ -131,6 +131,10 @@ export default function DashboardPage() {
   const currentWalletAddress = publicKey?.toBase58() ?? null;
   const winner = entries.find(e => e.status === 'won');
 
+  const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   // ─────────────────────────────────────────────
   // Load today's tickets from DB
   // ─────────────────────────────────────────────
@@ -227,6 +231,64 @@ export default function DashboardPage() {
       cancelled = true;
     };
   }, [publicKey]);
+
+  // ─────────────────────────────────────────────
+// Load wallet-specific draw history
+// ─────────────────────────────────────────────
+
+useEffect(() => {
+  if (!publicKey) {
+    setHistoryEntries([]);
+    setHistoryError(null);
+    return;
+  }
+
+  let cancelled = false;
+  setLoadingHistory(true);
+  setHistoryError(null);
+
+  (async () => {
+    try {
+      const res = await fetch(
+        `/api/tickets/history?wallet=${publicKey.toBase58()}`
+      );
+      if (!res.ok) throw new Error('Failed to load history');
+
+      const data = await res.json();
+      if (cancelled) return;
+
+      if (Array.isArray(data.tickets)) {
+        // API returns HistoryEntry but we only need the Entry fields here
+        setHistoryEntries(
+          data.tickets.map((t: any) => ({
+            id: t.id,
+            code: t.code,
+            status: t.status as EntryStatus,
+            label: t.label,
+            jackpotUsd: `$${(t.jackpotUsd ?? 10_000).toLocaleString?.() ?? '10,000'}`,
+            createdAt: t.createdAt,
+            walletAddress: t.walletAddress,
+          }))
+        );
+      } else {
+        setHistoryEntries([]);
+      }
+    } catch (err) {
+      console.error('Failed to load history', err);
+      if (!cancelled) {
+        setHistoryError(
+          (err as Error).message ?? 'Failed to load history'
+        );
+      }
+    } finally {
+      if (!cancelled) setLoadingHistory(false);
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [publicKey]);
 
   // ─────────────────────────────────────────────
   // Ticket helpers
@@ -787,60 +849,74 @@ export default function DashboardPage() {
               </section>
 
               {/* Draw history preview */}
-              <section className="pb-10 px-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-slate-200">
-                    Draw history
-                  </h2>
+<section className="pb-10 px-4">
+  <div className="flex items-center justify-between">
+    <h2 className="text-sm font-semibold text-slate-200">
+      Draw history
+    </h2>
 
-                  <Link
-                    href="/dashboard/history"
-                    className="text-[11px] text-slate-400 hover:text-emerald-300"
-                  >
-                    View full history →
-                  </Link>
-                </div>
+    <Link
+      href="/dashboard/history"
+      className="text-[11px] text-slate-400 hover:text-emerald-300"
+    >
+      View full history →
+    </Link>
+  </div>
 
-                <p className="text-xs text-slate-500">
-                  Your previous tickets from earlier draws.
-                </p>
+  <p className="text-xs text-slate-500">
+    Your previous tickets from earlier draws.
+  </p>
 
-                <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-                  {entries.length === 0 && (
-                    <p className="text-xs text-slate-500">
-                      No previous draws yet.
-                    </p>
-                  )}
+  {!publicKey && (
+    <p className="mt-2 text-xs text-slate-500">
+      Connect your wallet to see your ticket history.
+    </p>
+  )}
 
-                  {entries.slice(0, 5).map(entry => (
-                    <article
-                      key={entry.id}
-                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-mono text-sm text-slate-50">
-                            {entry.code}
-                          </span>
-                          <p className="mt-1 text-[11px] text-slate-500">
-                            {formatDate(entry.createdAt)}
-                          </p>
-                        </div>
+  {publicKey && (
+    <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
+      {loadingHistory && (
+        <p className="text-xs text-slate-500">
+          Loading history…
+        </p>
+      )}
 
-                        <span className="text-[11px] text-slate-400">
-                          {entry.status}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+      {!loadingHistory && historyEntries.length === 0 && (
+        <p className="text-xs text-slate-500">
+          No previous draws yet for this wallet.
+        </p>
+      )}
 
-                {ticketsError && (
-                  <p className="mt-2 text-[11px] text-amber-300">
-                    {ticketsError}
-                  </p>
-                )}
-              </section>
+      {historyEntries.slice(0, 5).map(entry => (
+        <article
+          key={entry.id}
+          className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-mono text-sm text-slate-50">
+                {entry.code}
+              </span>
+              <p className="mt-1 text-[11px] text-slate-500">
+                {formatDate(entry.createdAt)}
+              </p>
+            </div>
+
+            <span className="text-[11px] text-slate-400">
+              {entry.status}
+            </span>
+          </div>
+        </article>
+      ))}
+
+      {historyError && (
+        <p className="mt-2 text-[11px] text-amber-300">
+          {historyError}
+        </p>
+      )}
+    </div>
+  )}
+</section>
             </div>
           </section>
 
