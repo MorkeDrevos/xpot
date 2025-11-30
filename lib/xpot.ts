@@ -1,20 +1,46 @@
 // lib/xpot.ts
 
-// 🔹 Paste the real XPOT CA here at launch
-export const XPOT_MINT = 'PASTE_REAL_XPOT_CA_HERE';
+/* ============================
+   ENV MODE
+   Toggle dev token here
+============================ */
 
-// 🔹 How many XPOT are required to enter the draw
-export const REQUIRED_XPOT = 100_000;
+export const IS_DEV_XPOT = true; // 🔁 switch to false at real launch
 
-// 🔹 Temp: minimum SOL to cover gas while we are XPOT-testing
+/* ============================
+   TOKEN CONFIG
+============================ */
+
+// 🔴 PRODUCTION TOKEN (real XPOT)
+const PROD = {
+  SYMBOL: 'XPOT',
+  MINT: 'PASTE_REAL_XPOT_MINT_HERE',
+  REQUIRED: 100_000,
+};
+
+// 🟡 DEV / TEST TOKEN (any token for testing)
+const DEV = {
+  SYMBOL: 'TEST',
+  MINT: 'PASTE_TEST_TOKEN_MINT_HERE',
+  REQUIRED: 10, // LOW for testing
+};
+
+export const TOKEN = IS_DEV_XPOT ? DEV : PROD;
+
+/* ============================
+   EXPORT NORMALIZED VALUES
+============================ */
+
+export const REQUIRED_XPOT = TOKEN.REQUIRED;
+export const TOKEN_SYMBOL = TOKEN.SYMBOL;
+
+/* TEMP SOL GATE */
 export const MIN_SOL_FOR_GAS = 0.01;
 
-// 🔹 Helper: are we still in "pre-launch" (no real CA)?
-export const IS_DEV_XPOT =
-  !XPOT_MINT || XPOT_MINT === 'PASTE_REAL_XPOT_CA_HERE';
+/* ============================
+   SWAP LINK GENERATOR
+============================ */
 
-// 🔹 Optional: prebuilt Jupiter swap URL
-export function getXpotSwapUrl() {
-  // You can tweak this later – core idea is CA comes from XPOT_MINT
-  return `https://jup.ag/swap/SOL-XPOT?outputMint=${XPOT_MINT}`;
+export function getXpotSwapUrl(wallet?: string) {
+  return `https://jup.ag/swap/SOL-${TOKEN.MINT}?user=${wallet ?? ''}`;
 }
