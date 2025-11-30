@@ -1,18 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import {
-  ConnectionProvider,
-  WalletProvider,
-  useWallet,
-} from '@solana/wallet-adapter-react';
-import {
-  WalletModalProvider,
-  WalletMultiButton,
-} from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 
@@ -66,7 +58,7 @@ const initialEntries: Entry[] = [];
 // Inner dashboard – uses wallet + SOL balance
 // ─────────────────────────────────────────────
 
-function DashboardPage() {
+export default function DashboardPage() {
   const username = 'your_handle';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
