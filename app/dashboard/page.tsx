@@ -357,7 +357,7 @@ export default function DashboardPage() {
 <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-0 pb-4 md:flex flex-col">
   <div className="space-y-5">
     {/* Logo */}
-    <div className="pt-3 px-1">
+    <div className="pt-4 px-1">
       <Link href="/" className="inline-flex flex-col gap-1">
         <Image
           src="/img/xpot-logo-light.png"
