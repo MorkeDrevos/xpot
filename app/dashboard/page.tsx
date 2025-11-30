@@ -309,12 +309,12 @@ useEffect(() => {
 
   {/* NEW: Draw history link */}
   <Link
-    href="/history"
-    className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
-  >
-    <span className="text-lg">🎟️</span>
-    <span>Draw history</span>
-  </Link>
+  href="/dashboard/history"
+  className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
+>
+  <span className="text-lg">🎟️</span>
+  <span>Draw history</span>
+</Link>
 
   <button
     type="button"
