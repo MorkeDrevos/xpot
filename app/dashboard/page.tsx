@@ -14,36 +14,13 @@ import {
 } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 
-import {
-  REQUIRED_XPOT,
-  MIN_SOL_FOR_GAS,
-  IS_DEV_XPOT,
-  getXpotSwapUrl,
-} from '../../lib/xpot';
+import { REQUIRED_XPOT } from '../../lib/xpot';
 
 // ─────────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────────
 
 const endpoint = 'https://api.mainnet-beta.solana.com';
-
-const STORAGE_PREFIX = 'xpot-ticket-';
-
-type SavedTicket = {
-  wallet: string;
-  code: string;
-  createdAt: string;
-};
-
-function getTodayStorageKey() {
-  // YYYY-MM-DD for "today's draw"
-  return `${STORAGE_PREFIX}${new Date().toISOString().slice(0, 10)}`;
-}
-
-function shortWallet(addr: string) {
-  if (!addr || addr.length < 8) return addr;
-  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
-}
 
 // ─────────────────────────────────────────────
 // Types & helpers
@@ -61,19 +38,13 @@ type Entry = {
   walletAddress: string;
 };
 
-function makeCode(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const block = () =>
-    Array.from({ length: 4 })
-      .map(() => alphabet[Math.floor(Math.random() * alphabet.length)])
-      .join('');
-  return `XPOT-${block()}-${block()}`;
+function shortWallet(addr: string) {
+  if (!addr || addr.length < 8) return addr;
+  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
-// Seed a couple of preview tickets for the list
-const now = new Date();
-const initialEntries: Entry[] = [
-];
+// Start with empty list – DB will fill this
+const initialEntries: Entry[] = [];
 
 // ─────────────────────────────────────────────
 // Root wrapper: Solana connection + wallet
@@ -100,42 +71,10 @@ export default function DashboardPage() {
 function DashboardInner() {
   const username = 'your_handle';
 
- const [entries, setEntries] = useState<Entry[]>(initialEntries);
-const [loadingTickets, setLoadingTickets] = useState(true);
-const [ticketsError, setTicketsError] = useState<string | null>(null);
+  const [entries, setEntries] = useState<Entry[]>(initialEntries);
+  const [loadingTickets, setLoadingTickets] = useState(true);
+  const [ticketsError, setTicketsError] = useState<string | null>(null);
 
-useEffect(() => {
-  let cancelled = false;
-
-  async function loadTickets() {
-    try {
-      const res = await fetch('/api/tickets/today');
-      if (!res.ok) throw new Error('Failed to load tickets');
-
-      const data = await res.json();
-
-      if (!cancelled && Array.isArray(data.tickets)) {
-        // Only override preview tickets if DB actually returned something
-        if (data.tickets.length > 0) {
-          setEntries(data.tickets);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load tickets from DB', err);
-      if (!cancelled) {
-        setTicketsError((err as Error).message ?? 'Failed to load tickets');
-      }
-    } finally {
-      if (!cancelled) setLoadingTickets(false);
-    }
-  }
-
-  loadTickets();
-
-  return () => {
-    cancelled = true;
-  };
-}, []);
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -146,29 +85,70 @@ useEffect(() => {
   const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
 
   const walletConnected = !!publicKey && connected;
-  const winner = entries.find(e => e.status === 'won');
   const currentWalletAddress = publicKey?.toBase58() ?? null;
+  const winner = entries.find(e => e.status === 'won');
 
-  // Sync today's ticket purely from DB
-useEffect(() => {
-  if (!currentWalletAddress) {
-    setTicketClaimed(false);
-    setTodaysTicket(null);
-    return;
-  }
+  // ─────────────────────────────────────────────
+  // Load today's tickets from DB
+  // ─────────────────────────────────────────────
 
-  const myTicket = entries.find(
-    t => t.walletAddress === currentWalletAddress && t.status === 'in-draw'
-  );
+  useEffect(() => {
+    let cancelled = false;
 
-  if (myTicket) {
-    setTicketClaimed(true);
-    setTodaysTicket(myTicket);
-  } else {
-    setTicketClaimed(false);
-    setTodaysTicket(null);
-  }
-}, [entries, currentWalletAddress]);
+    async function loadTickets() {
+      try {
+        const res = await fetch('/api/tickets/today');
+        if (!res.ok) throw new Error('Failed to load tickets');
+
+        const data = await res.json();
+
+        if (!cancelled && Array.isArray(data.tickets)) {
+          if (data.tickets.length > 0) {
+            setEntries(data.tickets);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load tickets from DB', err);
+        if (!cancelled) {
+          setTicketsError(
+            (err as Error).message ?? 'Failed to load tickets'
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingTickets(false);
+      }
+    }
+
+    loadTickets();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ─────────────────────────────────────────────
+  // Sync "today's ticket" state with DB
+  // ─────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!currentWalletAddress) {
+      setTicketClaimed(false);
+      setTodaysTicket(null);
+      return;
+    }
+
+    const myTicket = entries.find(
+      t => t.walletAddress === currentWalletAddress && t.status === 'in-draw'
+    );
+
+    if (myTicket) {
+      setTicketClaimed(true);
+      setTodaysTicket(myTicket);
+    } else {
+      setTicketClaimed(false);
+      setTodaysTicket(null);
+    }
+  }, [entries, currentWalletAddress]);
 
   // ─────────────────────────────────────────────
   // SOL balance (via API route)
@@ -181,17 +161,14 @@ useEffect(() => {
     }
 
     let cancelled = false;
-    setSolBalance(null); // show "Loading..." while fetching
+    setSolBalance(null);
 
     (async () => {
       try {
         const res = await fetch(
           `/api/sol-balance?address=${publicKey.toBase58()}`
         );
-
-        if (!res.ok) {
-          throw new Error(`API error: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
 
         const data: { lamports: number } = await res.json();
         if (cancelled) return;
@@ -223,55 +200,53 @@ useEffect(() => {
   }
 
   async function handleClaimTicket() {
-  if (!walletConnected || !publicKey) return;
-  if (loadingTickets || claiming) return; // avoid double clicks
+    if (!walletConnected || !publicKey) return;
+    if (loadingTickets || claiming) return; // avoid double clicks
 
-  setClaiming(true);
+    setClaiming(true);
 
-  const walletAddress = publicKey.toBase58();
+    const walletAddress = publicKey.toBase58();
 
-  try {
-    const res = await fetch('/api/tickets/claim', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ walletAddress }),
-    });
-
-    if (!res.ok) {
-      console.error('Claim failed', await res.text());
-      return;
-    }
-
-    const data: {
-      ok: boolean;
-      ticket: Entry;
-      tickets?: Entry[];
-    } = await res.json();
-
-    if (!data.ok || !data.ticket) {
-      console.error('Claim response missing ticket', data);
-      return;
-    }
-
-    if (Array.isArray(data.tickets) && data.tickets.length > 0) {
-      setEntries(data.tickets);
-    } else {
-      setEntries(prev => {
-        const others = prev.filter(t => t.id !== data.ticket.id);
-        return [data.ticket, ...others];
+    try {
+      const res = await fetch('/api/tickets/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress }),
       });
-    }
 
-    setTicketClaimed(true);
-    setTodaysTicket(data.ticket);
-  } catch (err) {
-    console.error('Error calling /api/tickets/claim', err);
-  } finally {
-    setClaiming(false);
+      if (!res.ok) {
+        console.error('Claim failed', await res.text());
+        return;
+      }
+
+      const data: {
+        ok: boolean;
+        ticket: Entry;
+        tickets?: Entry[];
+      } = await res.json();
+
+      if (!data.ok || !data.ticket) {
+        console.error('Claim response missing ticket', data);
+        return;
+      }
+
+      if (Array.isArray(data.tickets) && data.tickets.length > 0) {
+        setEntries(data.tickets);
+      } else {
+        setEntries(prev => {
+          const others = prev.filter(t => t.id !== data.ticket.id);
+          return [data.ticket, ...others];
+        });
+      }
+
+      setTicketClaimed(true);
+      setTodaysTicket(data.ticket);
+    } catch (err) {
+      console.error('Error calling /api/tickets/claim', err);
+    } finally {
+      setClaiming(false);
+    }
   }
-}
 
   // ─────────────────────────────────────────────
   // Render
@@ -279,7 +254,6 @@ useEffect(() => {
 
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
-      {/* MAIN DASHBOARD SHELL */}
       <div className="mx-auto flex max-w-6xl">
         {/* Left nav */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
@@ -290,7 +264,9 @@ useEffect(() => {
                 💎
               </div>
               <div className="flex flex-col leading-tight">
-                <span className="text-sm font-semibold tracking-tight">XPOT</span>
+                <span className="text-sm font-semibold tracking-tight">
+                  XPOT
+                </span>
                 <span className="text-[11px] text-slate-500">
                   Daily crypto jackpot
                 </span>
@@ -299,49 +275,48 @@ useEffect(() => {
 
             {/* Nav */}
             <nav className="space-y-1 text-sm">
-  <Link
-    href="/dashboard"
-    className="flex items-center gap-3 rounded-full px-3 py-2 font-medium bg-slate-900 text-slate-50"
-  >
-    <span className="text-lg">🏠</span>
-    <span>Dashboard</span>
-  </Link>
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-3 rounded-full px-3 py-2 font-medium bg-slate-900 text-slate-50"
+              >
+                <span className="text-lg">🏠</span>
+                <span>Dashboard</span>
+              </Link>
 
-  {/* NEW: Draw history link */}
-  <Link
-  href="/dashboard/history"
-  className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
->
-  <span className="text-lg">🎟️</span>
-  <span>Draw history</span>
-</Link>
+              <Link
+                href="/dashboard/history"
+                className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
+              >
+                <span className="text-lg">🎟️</span>
+                <span>Draw history</span>
+              </Link>
 
-  <button
-    type="button"
-    className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
-  >
-    <span className="text-lg">⚙️</span>
-    <span>Settings</span>
-  </button>
-</nav>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
+              >
+                <span className="text-lg">⚙️</span>
+                <span>Settings</span>
+              </button>
+            </nav>
 
             {/* Main CTA */}
             <button
-  type="button"
-  onClick={handleClaimTicket}
-  disabled={!walletConnected || claiming || loadingTickets}
-  className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-    !walletConnected || claiming || loadingTickets
-      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-      : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-  }`}
->
-  {!walletConnected
-    ? 'Connect wallet to claim'
-    : claiming
-    ? 'Claiming…'
-    : 'Claim today’s ticket'}
-</button>
+              type="button"
+              onClick={handleClaimTicket}
+              disabled={!walletConnected || claiming || loadingTickets}
+              className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
+                !walletConnected || claiming || loadingTickets
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+              }`}
+            >
+              {!walletConnected
+                ? 'Connect wallet to claim'
+                : claiming
+                ? 'Claiming…'
+                : 'Claim today’s ticket'}
+            </button>
           </div>
 
           {/* Mini account chip */}
@@ -449,17 +424,18 @@ useEffect(() => {
               </section>
 
               {/* Today's ticket */}
-<article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
-  <h2 className="text-sm font-semibold text-emerald-100">
-    Today’s ticket
-  </h2>
-  <p className="mt-1 text-xs text-slate-400">
-    One ticket per wallet per draw. You must hold at least{' '}
-    <span className="font-semibold text-emerald-300">
-      {REQUIRED_XPOT.toLocaleString()} XPOT
-    </span>{' '}
-    at the moment you claim. You can always buy or sell again later.
-  </p>
+              <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
+                <h2 className="text-sm font-semibold text-emerald-100">
+                  Today’s ticket
+                </h2>
+                <p className="mt-1 text-xs text-slate-400">
+                  One ticket per wallet per draw. You must hold at least{' '}
+                  <span className="font-semibold text-emerald-300">
+                    {REQUIRED_XPOT.toLocaleString()} XPOT
+                  </span>{' '}
+                  at the moment you claim. You can always buy or sell again
+                  later.
+                </p>
 
                 {!ticketClaimed ? (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -468,14 +444,17 @@ useEffect(() => {
                         Claim your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-  Your ticket will be tied to your connected wallet for today’s draw.
-</p>
+                        Your ticket will be tied to your connected wallet for
+                        today’s draw.
+                      </p>
 
-{claiming && (
-  <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
-    Verifying wallet → Locking today’s draw → Minting ticket…
-  </p>
-)}
+                      {claiming && (
+                        <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
+                          Verifying wallet → Locking today’s draw → Minting
+                          ticket…
+                        </p>
+                      )}
+
                       {!walletConnected && (
                         <p className="mt-1 text-[11px] text-amber-300">
                           Connect your wallet on the right to claim today’s
@@ -485,23 +464,23 @@ useEffect(() => {
                     </div>
 
                     <button
-  type="button"
-  onClick={handleClaimTicket}
-  disabled={!walletConnected || claiming || loadingTickets}
-  className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
-    !walletConnected
-      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-      : claiming
-        ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
-        : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
-  }`}
->
-  {!walletConnected
-    ? 'Connect wallet to claim'
-    : claiming
-      ? 'Generating ticket...'
-      : 'Claim today’s ticket'}
-</button>
+                      type="button"
+                      onClick={handleClaimTicket}
+                      disabled={!walletConnected || claiming || loadingTickets}
+                      className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
+                        !walletConnected
+                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                          : claiming
+                          ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
+                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
+                      }`}
+                    >
+                      {!walletConnected
+                        ? 'Connect wallet to claim'
+                        : claiming
+                        ? 'Generating ticket...'
+                        : 'Claim today’s ticket'}
+                    </button>
                   </div>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -579,12 +558,11 @@ useEffect(() => {
                     return (
                       <article
                         key={entry.id}
-                        className={`rounded-2xl px-4 pb-4 pt-3 transition border
-                          ${
-                            isCurrentWallet
-                              ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
-                              : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
-                          }`}
+                        className={`rounded-2xl px-4 pb-4 pt-3 transition border ${
+                          isCurrentWallet
+                            ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
+                            : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
+                        }`}
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
@@ -707,12 +685,12 @@ useEffect(() => {
               <ul className="mt-2 text-xs text-slate-400 space-y-1">
                 <li>• Claim exactly one ticket per wallet.</li>
                 <li>
-  • At claim time, your wallet must hold at least{' '}
-  <span className="font-semibold text-emerald-300">
-    {REQUIRED_XPOT.toLocaleString()} XPOT
-  </span>
-  .
-</li>
+                  • At claim time, your wallet must hold at least{' '}
+                  <span className="font-semibold text-emerald-300">
+                    {REQUIRED_XPOT.toLocaleString()} XPOT
+                  </span>
+                  .
+                </li>
                 <li>• Wallet is only checked when claiming.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
                 <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
