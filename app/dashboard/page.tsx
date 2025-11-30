@@ -331,6 +331,10 @@ export default function DashboardPage() {
     }
   }
 
+  const myTickets: Entry[] = currentWalletAddress
+  ? entries.filter(e => e.walletAddress === currentWalletAddress)
+  : [];
+
   // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
@@ -404,7 +408,7 @@ export default function DashboardPage() {
               disabled={!walletConnected || claiming || loadingTickets}
               className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
                 !walletConnected || claiming || loadingTickets
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  ? ': 'bg-slate-900 text-emerald-300 border border-emerald-500/30 hover:bg-slate-800 hover:shadow-[0_0_14px_rgba(16,185,129,0.18)] transition''
                   : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
               }`}
             >
@@ -689,90 +693,97 @@ export default function DashboardPage() {
                 </p>
 
                 <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-                  {entries.map(entry => {
-                    const isCurrentWallet =
-                      currentWalletAddress &&
-                      entry.walletAddress === currentWalletAddress;
+  {myTickets.length === 0 ? (
+    <p className="text-xs text-slate-500">
+      No tickets yet for this wallet in today&apos;s draw.
+    </p>
+  ) : (
+    myTickets.map(entry => {
+      const isCurrentWallet =
+        currentWalletAddress &&
+        entry.walletAddress === currentWalletAddress;
 
-                    return (
-                      <article
-                        key={entry.id}
-                        className={`rounded-2xl px-4 pb-4 pt-3 transition border ${
-                          isCurrentWallet
-                            ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
-                            : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
-                        }`}
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-sm text-slate-50">
-                                {entry.code}
-                              </span>
+      return (
+        <article
+          key={entry.id}
+          className={`rounded-2xl px-4 pb-4 pt-3 transition border ${
+            isCurrentWallet
+              ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
+              : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
+          }`}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-sm text-slate-50">
+                  {entry.code}
+                </span>
 
-                              {entry.status === 'in-draw' && (
-                                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
-                                  In draw
-                                </span>
-                              )}
-                              {entry.status === 'won' && (
-                                <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                                  Winner
-                                </span>
-                              )}
-                              {entry.status === 'claimed' && (
-                                <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
-                                  Claimed
-                                </span>
-                              )}
-                              {entry.status === 'expired' && (
-                                <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
-                                  Expired
-                                </span>
-                              )}
+                {entry.status === 'in-draw' && (
+                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+                    In draw
+                  </span>
+                )}
+                {entry.status === 'won' && (
+                  <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                    Winner
+                  </span>
+                )}
+                {entry.status === 'claimed' && (
+                  <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
+                    Claimed
+                  </span>
+                )}
+                {entry.status === 'expired' && (
+                  <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+                    Expired
+                  </span>
+                )}
 
-                              {isCurrentWallet && (
-                                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                                  Current wallet
-                                </span>
-                              )}
-                            </div>
+                {isCurrentWallet && (
+                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                    Current wallet
+                  </span>
+                )}
+              </div>
 
-                            <p className="mt-1 text-xs text-slate-400">
-                              {entry.label}
-                            </p>
-                            <p className="mt-1 text-[11px] text-slate-500">
-                              Created: {formatDateTime(entry.createdAt)}
-                            </p>
-                            <p className="mt-1 text-[11px] text-slate-500">
-                              Wallet:{' '}
-                              <span className="font-mono">
-                                {shortWallet(entry.walletAddress)}
-                              </span>
-                            </p>
-                          </div>
+              <p className="mt-1 text-xs text-slate-400">
+                {entry.label}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500">
+                Created: {formatDateTime(entry.createdAt)}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500">
+                Wallet:{' '}
+                <span className="font-mono">
+                  {shortWallet(entry.walletAddress)}
+                </span>
+              </p>
+            </div>
 
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(entry)}
-                              className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
-                            >
-                              {copiedId === entry.id ? 'Copied' : 'Copy code'}
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
-                              disabled
-                            >
-                              View entry tweet (soon)
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleCopy(entry)}
+                className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
+              >
+                {copiedId === entry.id ? 'Copied' : 'Copy code'}
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
+                disabled
+              >
+                View entry tweet (soon)
+              </button>
+            </div>
+          </div>
+        </article>
+      );
+    })
+  )}
+</div>
+
               </section>
 
               {/* Draw history preview */}
