@@ -437,24 +437,12 @@ export default function DashboardPage() {
             {/* Sticky header */}
             <header className="sticky top-0 z-10 border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="hidden sm:block">
-                    <Image
-                      src="/img/xpot-mark.png"
-                      alt="XPOT icon"
-                      width={28}
-                      height={28}
-                    />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                      Dashboard
-                    </h1>
-                    <p className="text-[13px] text-slate-400">
-                      One jackpot. One winner. Your daily XPOT ticket.
-                    </p>
-                  </div>
-                </div>
+                <div>
+  <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+  <p className="text-[13px] text-slate-400">
+    One jackpot. One winner. Your daily XPOT ticket.
+  </p>
+</div>
                 {/* ... */}
               </div>
             </header>
