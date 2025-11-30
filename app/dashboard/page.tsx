@@ -63,10 +63,28 @@ function shortWallet(addr: string) {
 const initialEntries: Entry[] = [];
 
 // ─────────────────────────────────────────────
+// Root wrapper: Solana connection + wallet
+// ─────────────────────────────────────────────
+
+export default function DashboardPage() {
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <DashboardInner />
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Inner dashboard – uses wallet + SOL balance
 // ─────────────────────────────────────────────
 
-function DashboardPage() {
+function DashboardInner() {
   const username = 'your_handle';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
@@ -78,10 +96,10 @@ function DashboardPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   const { publicKey, connected } = useWallet();
   const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
-  const [claimError, setClaimError] = useState<string | null>(null);
 
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
@@ -188,94 +206,104 @@ function DashboardPage() {
   // Ticket helpers
   // ─────────────────────────────────────────────
 
-  async function handleClaimTicket() {
-  if (!walletConnected || !publicKey) return;
-  if (loadingTickets || claiming) return; // avoid double clicks
-
-  setClaimError(null);
-  setClaiming(true);
-
-  const walletAddress = publicKey.toBase58();
-
-  try {
-    const res = await fetch('/api/tickets/claim', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress }),
-    });
-
-    const text = await res.text();
-    let data: any = {};
+  async function handleCopy(entry: Entry) {
     try {
-      data = text ? JSON.parse(text) : {};
+      await navigator.clipboard.writeText(entry.code);
+      setCopiedId(entry.id);
+      setTimeout(() => setCopiedId(null), 1500);
     } catch {
-      data = {};
+      // ignore
     }
+  }
 
-    if (!res.ok || !data.ok) {
-      const code = data.error as string | undefined;
+  async function handleClaimTicket() {
+    if (!walletConnected || !publicKey) return;
+    if (loadingTickets || claiming) return; // avoid double clicks
 
-      switch (code) {
-        case 'NOT_ENOUGH_XPOT':
-          setClaimError(
-            `You need at least ${(
-              data.required ?? REQUIRED_XPOT
-            ).toLocaleString()} XPOT to claim today’s ticket. Your wallet currently has ${Number(
-              data.balance ?? 0
-            ).toLocaleString()} XPOT.`
-          );
-          break;
+    setClaimError(null);
+    setClaiming(true);
 
-        case 'NOT_ENOUGH_SOL':
-          setClaimError(
-            `Your wallet needs some SOL for network fees before you can claim today’s ticket.`
-          );
-          break;
+    const walletAddress = publicKey.toBase58();
 
-        case 'XPOT_CHECK_FAILED':
-          setClaimError(
-            'Could not verify your XPOT balance right now. Please try again in a moment.'
-          );
-          break;
+    try {
+      const res = await fetch('/api/tickets/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress }),
+      });
 
-        case 'MISSING_WALLET':
-        case 'INVALID_BODY':
-          setClaimError(
-            'Something is wrong with your wallet address. Try reconnecting your wallet and claiming again.'
-          );
-          break;
-
-        default:
-          setClaimError('Ticket claim failed. Please try again.');
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
       }
 
-      console.error('Claim failed', res.status, text);
-      return;
+      if (!res.ok || !data.ok) {
+        const code = data.error as string | undefined;
+
+        switch (code) {
+          case 'NOT_ENOUGH_XPOT':
+            setClaimError(
+              `You need at least ${(
+                data.required ?? REQUIRED_XPOT
+              ).toLocaleString()} XPOT to claim today’s ticket. Your wallet currently has ${Number(
+                data.balance ?? 0
+              ).toLocaleString()} XPOT.`
+            );
+            break;
+
+          case 'NOT_ENOUGH_SOL':
+            setClaimError(
+              `Your wallet needs some SOL for network fees before you can claim today’s ticket.`
+            );
+            break;
+
+          case 'XPOT_CHECK_FAILED':
+            setClaimError(
+              'Could not verify your XPOT balance right now. Please try again in a moment.'
+            );
+            break;
+
+          case 'MISSING_WALLET':
+          case 'INVALID_BODY':
+            setClaimError(
+              'Something is wrong with your wallet address. Try reconnecting your wallet and claiming again.'
+            );
+            break;
+
+          default:
+            setClaimError('Ticket claim failed. Please try again.');
+        }
+
+        console.error('Claim failed', res.status, text);
+        return;
+      }
+
+      // Success path
+      const ticket: Entry = data.ticket;
+      const tickets: Entry[] | undefined = data.tickets;
+
+      if (Array.isArray(tickets) && tickets.length > 0) {
+        setEntries(tickets);
+      } else if (ticket) {
+        setEntries(prev => {
+          const others = prev.filter(t => t.id !== ticket.id);
+          return [ticket, ...others];
+        });
+      }
+
+      setTicketClaimed(true);
+      setTodaysTicket(ticket);
+      setClaimError(null);
+    } catch (err) {
+      console.error('Error calling /api/tickets/claim', err);
+      setClaimError('Unexpected error while claiming. Please try again.');
+    } finally {
+      setClaiming(false);
     }
-
-    // Success path
-    const ticket: Entry = data.ticket;
-    const tickets: Entry[] | undefined = data.tickets;
-
-    if (Array.isArray(tickets) && tickets.length > 0) {
-      setEntries(tickets);
-    } else if (ticket) {
-      setEntries(prev => {
-        const others = prev.filter(t => t.id !== ticket.id);
-        return [ticket, ...others];
-      });
-    }
-
-    setTicketClaimed(true);
-    setTodaysTicket(ticket);
-    setClaimError(null);
-  } catch (err) {
-    console.error('Error calling /api/tickets/claim', err);
-    setClaimError('Unexpected error while claiming. Please try again.');
-  } finally {
-    setClaiming(false);
   }
-}
 
   // ─────────────────────────────────────────────
   // Render
@@ -453,87 +481,92 @@ function DashboardPage() {
               </section>
 
               {/* Today's ticket */}
-<article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
-  <h2 className="text-sm font-semibold text-emerald-100">
-    Today’s ticket
-  </h2>
-  <p className="mt-1 text-xs text-slate-400">
-    One ticket per wallet per draw. You must hold at least{' '}
-    <span className="font-semibold text-emerald-300">
-      {REQUIRED_XPOT.toLocaleString()} XPOT
-    </span>{' '}
-    at the moment you claim. You can always buy or sell again later.
-  </p>
+              <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
+                <h2 className="text-sm font-semibold text-emerald-100">
+                  Today’s ticket
+                </h2>
+                <p className="mt-1 text-xs text-slate-400">
+                  One ticket per wallet per draw. You must hold at least{' '}
+                  <span className="font-semibold text-emerald-300">
+                    {REQUIRED_XPOT.toLocaleString()} XPOT
+                  </span>{' '}
+                  at the moment you claim. You can always buy or sell again
+                  later.
+                </p>
 
-  {!ticketClaimed ? (
-    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm text-slate-200">
-          Claim your ticket for today’s jackpot.
-        </p>
-        <p className="mt-1 text-xs text-slate-500">
-          Your ticket will be tied to your connected wallet for today’s draw.
-        </p>
+                {!ticketClaimed ? (
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-slate-200">
+                        Claim your ticket for today’s jackpot.
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Your ticket will be tied to your connected wallet for
+                        today’s draw.
+                      </p>
 
-        {claiming && (
-          <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
-            Verifying wallet → Locking today’s draw → Minting ticket…
-          </p>
-        )}
+                      {claiming && (
+                        <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
+                          Verifying wallet → Locking today’s draw → Minting
+                          ticket…
+                        </p>
+                      )}
 
-        {!walletConnected && (
-          <p className="mt-1 text-[11px] text-amber-300">
-            Connect your wallet on the right to claim today’s ticket.
-          </p>
-        )}
+                      {!walletConnected && (
+                        <p className="mt-1 text-[11px] text-amber-300">
+                          Connect your wallet on the right to claim today’s
+                          ticket.
+                        </p>
+                      )}
 
-        {claimError && (
-          <p className="mt-2 text-[11px] text-amber-300">
-            {claimError}
-          </p>
-        )}
-      </div>
+                      {claimError && (
+                        <p className="mt-2 text-[11px] text-amber-300">
+                          {claimError}
+                        </p>
+                      )}
+                    </div>
 
-      <button
-        type="button"
-        onClick={handleClaimTicket}
-        disabled={!walletConnected || claiming || loadingTickets}
-        className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
-          !walletConnected
-            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-            : claiming
-            ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
-            : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
-        }`}
-      >
-        {!walletConnected
-          ? 'Connect wallet to claim'
-          : claiming
-          ? 'Generating ticket...'
-          : 'Claim today’s ticket'}
-      </button>
-    </div>
-  ) : (
-    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm text-emerald-100">
-          ✅ Your ticket is in today’s draw.
-        </p>
-        <p className="mt-1 text-xs text-slate-400">
-          Come back when the countdown hits zero to see if you won.
-        </p>
-        {todaysTicket && (
-          <p className="mt-2 text-xs text-slate-300">
-            Ticket code:{' '}
-            <span className="font-mono text-emerald-300">
-              {todaysTicket.code}
-            </span>
-          </p>
-        )}
-      </div>
-    </div>
-  )}
-</article>
+                    <button
+                      type="button"
+                      onClick={handleClaimTicket}
+                      disabled={!walletConnected || claiming || loadingTickets}
+                      className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
+                        !walletConnected
+                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                          : claiming
+                          ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
+                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
+                      }`}
+                    >
+                      {!walletConnected
+                        ? 'Connect wallet to claim'
+                        : claiming
+                        ? 'Generating ticket...'
+                        : 'Claim today’s ticket'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-emerald-100">
+                        ✅ Your ticket is in today’s draw.
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Come back when the countdown hits zero to see if you
+                        won.
+                      </p>
+                      {todaysTicket && (
+                        <p className="mt-2 text-xs text-slate-300">
+                          Ticket code:{' '}
+                          <span className="font-mono text-emerald-300">
+                            {todaysTicket.code}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </article>
 
               {/* Today's result (preview) */}
               <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
@@ -633,8 +666,8 @@ function DashboardPage() {
                               {entry.label}
                             </p>
                             <p className="mt-1 text-[11px] text-slate-500">
-  Created: {formatDateTime(entry.createdAt)}
-</p>
+                              Created: {formatDateTime(entry.createdAt)}
+                            </p>
                             <p className="mt-1 text-[11px] text-slate-500">
                               Wallet:{' '}
                               <span className="font-mono">
@@ -703,8 +736,8 @@ function DashboardPage() {
                             {entry.code}
                           </span>
                           <p className="mt-1 text-[11px] text-slate-500">
-  {formatDate(entry.createdAt)}
-</p>
+                            {formatDate(entry.createdAt)}
+                          </p>
                         </div>
 
                         <span className="text-[11px] text-slate-400">
@@ -721,7 +754,6 @@ function DashboardPage() {
                   </p>
                 )}
               </section>
-
             </div>
           </section>
 
