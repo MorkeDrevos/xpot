@@ -306,20 +306,20 @@ export default function DashboardPage() {
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
           <div className="space-y-6">
             {/* Logo */}
-<div className="px-3">
-  <Link href="/" className="inline-flex flex-col gap-1">
-    <Image
-      src="/xpot-logo-light.png"
-      alt="XPOT"
-      width={120}
-      height={32}
-      priority
-    />
-    <span className="text-[11px] text-slate-500">
-      Daily crypto jackpot
-    </span>
-  </Link>
-</div>
+            <div className="px-3">
+              <Link href="/" className="inline-flex flex-col gap-1">
+                <Image
+                  src="/img/xpot-logo-light.png"
+                  alt="XPOT"
+                  width={120}
+                  height={32}
+                  priority
+                />
+                <span className="text-[11px] text-slate-500">
+                  Daily crypto jackpot
+                </span>
+              </Link>
+            </div>
 
             {/* Nav */}
             <nav className="space-y-1 text-sm">
@@ -375,13 +375,13 @@ export default function DashboardPage() {
             >
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700">
-  <Image
-    src="/xpot-mark.png"
-    alt="XPOT icon"
-    width={20}
-    height={20}
-  />
-</div>
+                  <Image
+                    src="/img/xpot-mark.png"
+                    alt="XPOT icon"
+                    width={20}
+                    height={20}
+                  />
+                </div>
 
                 <div className="leading-tight">
                   <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
@@ -401,13 +401,13 @@ export default function DashboardPage() {
                 <div className="flex w-full items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700">
-  <Image
-    src="/xpot-mark.png"
-    alt="XPOT icon"
-    width={22}
-    height={22}
-  />
-</div>
+                      <Image
+                        src="/img/xpot-mark.png"
+                        alt="XPOT icon"
+                        width={22}
+                        height={22}
+                      />
+                    </div>
                     <div className="leading-tight">
                       <p className="text-xs font-semibold text-slate-50">
                         XPOT user
@@ -436,26 +436,28 @@ export default function DashboardPage() {
           <section className="min-h-screen flex-1">
             {/* Sticky header */}
             <header className="sticky top-0 z-10 border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
-  <div className="flex items-center justify-between">
-    <div className="flex items-center gap-3">
-      <div className="hidden sm:block">
-        <Image
-          src="/xpot-mark.png"
-          alt="XPOT icon"
-          width={28}
-          height={28}
-        />
-      </div>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-[13px] text-slate-400">
-          One jackpot. One winner. Your daily XPOT ticket.
-        </p>
-      </div>
-    </div>
-    {/* ... */}
-  </div>
-</header>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="hidden sm:block">
+                    <Image
+                      src="/img/xpot-mark.png"
+                      alt="XPOT icon"
+                      width={28}
+                      height={28}
+                    />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                      Dashboard
+                    </h1>
+                    <p className="text-[13px] text-slate-400">
+                      One jackpot. One winner. Your daily XPOT ticket.
+                    </p>
+                  </div>
+                </div>
+                {/* ... */}
+              </div>
+            </header>
 
             {/* Scroll content */}
             <div className="space-y-4 px-0">
@@ -463,13 +465,13 @@ export default function DashboardPage() {
               <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
-  <Image
-    src="/xpot-mark.png"
-    alt="XPOT icon"
-    width={28}
-    height={28}
-  />
-</div>
+                    <Image
+                      src="/img/xpot-mark.png"
+                      alt="XPOT icon"
+                      width={28}
+                      height={28}
+                    />
+                  </div>
 
                   <div className="flex flex-col leading-tight">
                     <div className="flex items-center gap-1">
@@ -710,7 +712,7 @@ export default function DashboardPage() {
 
               {/* Draw history preview */}
               <section className="pb-10 px-4">
-                <div className="flex items-center justify-between">
+                <div className="flex itemscenter justify-between">
                   <h2 className="text-sm font-semibold text-slate-200">
                     Draw history
                   </h2>
