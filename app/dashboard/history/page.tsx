@@ -58,7 +58,9 @@ function HistoryInner() {
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
+  // ─────────────────────────────────────────────
   // SOL balance (same as dashboard)
+  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!publicKey) {
       setSolBalance(null);
@@ -89,9 +91,11 @@ function HistoryInner() {
     };
   }, [publicKey]);
 
-  // Load history for this wallet
+  // ─────────────────────────────────────────────
+  // Load ticket history for this wallet
+  // ─────────────────────────────────────────────
   useEffect(() => {
-    if (!currentWalletAddress) {
+    if (!publicKey) {
       setTickets([]);
       return;
     }
@@ -103,9 +107,10 @@ function HistoryInner() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/tickets/history?walletAddress=${currentWalletAddress}`
+          `/api/tickets/history?wallet=${publicKey.toBase58()}`
         );
         if (!res.ok) throw new Error(`API error: ${res.status}`);
+
         const data = await res.json();
         if (cancelled) return;
 
@@ -116,8 +121,11 @@ function HistoryInner() {
         }
       } catch (err) {
         console.error('Error loading ticket history', err);
-        if (!cancelled)
-          setError((err as Error).message ?? 'Failed to load history');
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to load history'
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -126,7 +134,7 @@ function HistoryInner() {
     return () => {
       cancelled = true;
     };
-  }, [currentWalletAddress]);
+  }, [publicKey]);
 
   // Group by draw date (YYYY-MM-DD)
   const grouped = tickets.reduce<Record<string, HistoryTicket[]>>(
@@ -141,9 +149,7 @@ function HistoryInner() {
     {}
   );
 
-  const orderedDates = Object.keys(grouped).sort((a, b) =>
-    a < b ? 1 : -1
-  );
+  const orderedDates = Object.keys(grouped).sort((a, b) => (a < b ? 1 : -1));
 
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
@@ -176,7 +182,7 @@ function HistoryInner() {
                 <span>Dashboard</span>
               </Link>
               <Link
-                href="/history"
+                href="/dashboard/history"
                 className="flex items-center gap-3 rounded-full px-3 py-2 font-medium bg-slate-900 text-slate-50"
               >
                 <span className="text-lg">🎟️</span>
@@ -192,7 +198,7 @@ function HistoryInner() {
             </nav>
           </div>
 
-          {/* Mini account chip (same style) */}
+          {/* Mini account chip */}
           <div className="relative">
             <div className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2">
               <div className="flex items-center gap-2">
@@ -270,7 +276,7 @@ function HistoryInner() {
                       <h2 className="text-sm font-semibold text-slate-100">
                         Draw day: {date}
                       </h2>
-                      <p className="mt-1 text-[11px] text-slate-500">
+                      <p className="mt-1 text[11px] text-slate-500">
                         Tickets for this day’s jackpot draw.
                       </p>
 
