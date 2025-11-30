@@ -4,50 +4,97 @@ import { prisma } from '../../../../lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+const JACKPOT_USD = 10_000;
+
+type HistoryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
+
+type HistoryEntry = {
+  id: string;
+  code: string;
+  status: HistoryStatus;
+  label: string;
+  jackpotUsd: number;
+  createdAt: string;
+  walletAddress: string;
+  drawDate: string | null;
+};
+
+// Map Prisma Ticket + Draw to history entry
+function toHistoryEntry(ticket: any): HistoryEntry {
+  const createdAt =
+    ticket.createdAt instanceof Date
+      ? ticket.createdAt.toISOString()
+      : new Date(ticket.createdAt).toISOString();
+
+  const rawDrawDate = ticket.draw?.drawDate;
+  const drawDate =
+    rawDrawDate instanceof Date
+      ? rawDrawDate.toISOString()
+      : rawDrawDate
+      ? new Date(rawDrawDate).toISOString()
+      : null;
+
+  // Basic status logic using Draw
+  let status: HistoryStatus = 'in-draw';
+
+  if (ticket.draw?.isClosed) {
+    if (ticket.draw?.winnerTicketId === ticket.id) {
+      status = 'won';
+    } else {
+      status = 'not-picked';
+    }
+  }
+
+  return {
+    id: ticket.id,
+    code: ticket.code,
+    status,
+    label: "Today's main jackpot • $10,000",
+    jackpotUsd: JACKPOT_USD,
+    createdAt,
+    walletAddress: ticket.wallet?.address ?? 'unknown',
+    drawDate,
+  };
+}
+
+// GET /api/tickets/history?wallet=ADDRESS
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const walletAddress = url.searchParams.get('wallet')?.trim();
+    const walletParam = url.searchParams.get('wallet')?.trim() ?? '';
 
-    if (!walletAddress) {
+    if (!walletParam) {
+      // No wallet param = no history
       return NextResponse.json({ tickets: [] }, { status: 200 });
     }
 
+    // Find wallet row
     const wallet = await prisma.wallet.findUnique({
-      where: { address: walletAddress },
+      where: { address: walletParam },
     });
 
     if (!wallet) {
+      // No tickets yet for this wallet
       return NextResponse.json({ tickets: [] }, { status: 200 });
     }
 
-    const tickets = await prisma.ticket.findMany({
+    const ticketsDb = await prisma.ticket.findMany({
       where: { walletId: wallet.id },
       orderBy: { createdAt: 'desc' },
       include: {
-        draw: true,
         wallet: true,
+        draw: true,
       },
     });
 
-    const formatted = tickets.map(ticket => ({
-      id: ticket.id,
-      code: ticket.code,
-      status: ticket.draw?.isClosed
-        ? ticket.draw?.winnerTicketId === ticket.id
-          ? 'won'
-          : 'not-picked'
-        : 'in-draw',
-      label: "Today's main jackpot • $10,000",
-      jackpotUsd: "$10,000",
-      createdAt: ticket.createdAt.toISOString(),
-      walletAddress: ticket.wallet.address,
-      drawDate: ticket.draw?.drawDate?.toISOString() ?? null,
-    }));
+    const tickets: HistoryEntry[] = ticketsDb.map(toHistoryEntry);
 
-    return NextResponse.json({ tickets: formatted }, { status: 200 });
+    return NextResponse.json({ tickets }, { status: 200 });
   } catch (err) {
-    console.error('History API error:', err);
-    return NextResponse.json({ tickets: [] }, { status: 500 });
+    console.error('Error in /api/tickets/history', err);
+    return NextResponse.json(
+      { tickets: [], error: 'Internal error' },
+      { status: 500 }
+    );
   }
 }
