@@ -27,32 +27,23 @@ export async function GET(req: Request) {
   take: 200,
 });
 
-  const history = tickets.map(t => ({
+  const history = tickets.map(t => {
+  // Derive status from draw
+  const status =
+    !t.draw?.isClosed
+      ? 'in-draw'
+      : t.draw?.winnerTicketId === t.id
+        ? 'won'
+        : 'expired';
+
+  return {
     id: t.id,
     code: t.code,
-    status: t.status,
-    label: t.label,
-    jackpotUsd: t.jackpotUsd,
-    walletAddress: t.walletAddress,
-
-    // ✅ SAFE fields
-    createdAt: t.createdAt
-      ? new Date(t.createdAt).toISOString()
-      : null,
-
-    drawDate: t.draw?.drawDate
-      ? new Date(t.draw.drawDate).toISOString()
-      : null,
-
-    resolvedAt: t.draw?.resolvedAt
-      ? new Date(t.draw.resolvedAt).toISOString()
-      : null,
-
-    isClosed: t.draw?.isClosed ?? false,
-  }));
-
-  return NextResponse.json(
-    { ok: true, tickets: history },
-    { status: 200 }
-  );
-}
+    status, // computed above
+    label: "Today’s main jackpot • $10,000",
+    jackpotUsd: 10000,
+    createdAt: t.createdAt.toISOString(),
+    walletAddress: t.wallet.address,
+    drawDate: t.draw?.drawDate?.toISOString() ?? null,
+  };
+});
