@@ -14,11 +14,17 @@ import {
 } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 
+import {
+  REQUIRED_XPOT,
+  MIN_SOL_FOR_GAS,
+  IS_DEV_XPOT,
+  getXpotSwapUrl,
+} from '../../lib/xpot';
+
 // ─────────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────────
 
-const MIN_XPOT_REQUIRED = 100_000; // later we swap to XPOT balance
 const endpoint = 'https://api.mainnet-beta.solana.com';
 
 const STORAGE_PREFIX = 'xpot-ticket-';
@@ -440,18 +446,17 @@ useEffect(() => {
               </section>
 
               {/* Today's ticket */}
-              <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
-                <h2 className="text-sm font-semibold text-emerald-100">
-                  Today’s ticket
-                </h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  One ticket per wallet per draw. You must hold at least{' '}
-                  <span className="font-semibold text-emerald-300">
-                    {MIN_XPOT_REQUIRED.toLocaleString()} XPOT
-                  </span>{' '}
-                  at the moment you claim. You can always buy or sell again
-                  later.
-                </p>
+<article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
+  <h2 className="text-sm font-semibold text-emerald-100">
+    Today’s ticket
+  </h2>
+  <p className="mt-1 text-xs text-slate-400">
+    One ticket per wallet per draw. You must hold at least{' '}
+    <span className="font-semibold text-emerald-300">
+      {REQUIRED_XPOT.toLocaleString()} XPOT
+    </span>{' '}
+    at the moment you claim. You can always buy or sell again later.
+  </p>
 
                 {!ticketClaimed ? (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -699,12 +704,12 @@ useEffect(() => {
               <ul className="mt-2 text-xs text-slate-400 space-y-1">
                 <li>• Claim exactly one ticket per wallet.</li>
                 <li>
-                  • At claim time, your wallet must hold at least{' '}
-                  <span className="font-semibold text-emerald-300">
-                    {MIN_XPOT_REQUIRED.toLocaleString()} XPOT
-                  </span>
-                  .
-                </li>
+  • At claim time, your wallet must hold at least{' '}
+  <span className="font-semibold text-emerald-300">
+    {REQUIRED_XPOT.toLocaleString()} XPOT
+  </span>
+  .
+</li>
                 <li>• Wallet is only checked when claiming.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
                 <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
