@@ -63,28 +63,10 @@ function shortWallet(addr: string) {
 const initialEntries: Entry[] = [];
 
 // ─────────────────────────────────────────────
-// Root wrapper: Solana connection + wallet
-// ─────────────────────────────────────────────
-
-export default function DashboardPage() {
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
-
-  return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          <DashboardInner />
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
-  );
-}
-
-// ─────────────────────────────────────────────
 // Inner dashboard – uses wallet + SOL balance
 // ─────────────────────────────────────────────
 
-function DashboardInner() {
+function DashboardPage() {
   const username = 'your_handle';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
@@ -206,21 +188,11 @@ function DashboardInner() {
   // Ticket helpers
   // ─────────────────────────────────────────────
 
-  async function handleCopy(entry: Entry) {
-    try {
-      await navigator.clipboard.writeText(entry.code);
-      setCopiedId(entry.id);
-      setTimeout(() => setCopiedId(null), 1500);
-    } catch {
-      // ignore
-    }
-  }
-
   async function handleClaimTicket() {
   if (!walletConnected || !publicKey) return;
-  if (loadingTickets || claiming) return;
+  if (loadingTickets || claiming) return; // avoid double clicks
 
-  setClaimError(null);        // reset old error
+  setClaimError(null);
   setClaiming(true);
 
   const walletAddress = publicKey.toBase58();
@@ -232,53 +204,74 @@ function DashboardInner() {
       body: JSON.stringify({ walletAddress }),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const text = await res.text();
+    let data: any = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {};
+    }
 
     if (!res.ok || !data.ok) {
-      // Decode our known errors
-      switch (data?.error) {
+      const code = data.error as string | undefined;
+
+      switch (code) {
         case 'NOT_ENOUGH_XPOT':
           setClaimError(
-            `You need at least ${data.required?.toLocaleString?.() ?? REQUIRED_XPOT.toLocaleString()} XPOT in this wallet to claim today’s ticket. Current balance: ${data.balance?.toLocaleString?.() ?? 0} XPOT.`
+            `You need at least ${(
+              data.required ?? REQUIRED_XPOT
+            ).toLocaleString()} XPOT to claim today’s ticket. Your wallet currently has ${Number(
+              data.balance ?? 0
+            ).toLocaleString()} XPOT.`
           );
           break;
+
         case 'NOT_ENOUGH_SOL':
           setClaimError(
-            `Your wallet does not have enough SOL for network fees. Top up at least ${data.required ?? 0.01} SOL and try again.`
+            `Your wallet needs some SOL for network fees before you can claim today’s ticket.`
           );
           break;
+
         case 'XPOT_CHECK_FAILED':
           setClaimError(
             'Could not verify your XPOT balance right now. Please try again in a moment.'
           );
           break;
+
         case 'MISSING_WALLET':
         case 'INVALID_BODY':
-          setClaimError('Something is wrong with this wallet address.');
+          setClaimError(
+            'Something is wrong with your wallet address. Try reconnecting your wallet and claiming again.'
+          );
           break;
+
         default:
           setClaimError('Ticket claim failed. Please try again.');
       }
 
-      console.error('Claim failed', { status: res.status, data });
+      console.error('Claim failed', res.status, text);
       return;
     }
 
     // Success path
-    if (Array.isArray(data.tickets) && data.tickets.length > 0) {
-      setEntries(data.tickets);
-    } else if (data.ticket) {
+    const ticket: Entry = data.ticket;
+    const tickets: Entry[] | undefined = data.tickets;
+
+    if (Array.isArray(tickets) && tickets.length > 0) {
+      setEntries(tickets);
+    } else if (ticket) {
       setEntries(prev => {
-        const others = prev.filter(t => t.id !== data.ticket.id);
-        return [data.ticket, ...others];
+        const others = prev.filter(t => t.id !== ticket.id);
+        return [ticket, ...others];
       });
     }
 
     setTicketClaimed(true);
-    setTodaysTicket(data.ticket ?? null);
+    setTodaysTicket(ticket);
+    setClaimError(null);
   } catch (err) {
     console.error('Error calling /api/tickets/claim', err);
-    setClaimError('Unexpected error while claiming ticket. Please try again.');
+    setClaimError('Unexpected error while claiming. Please try again.');
   } finally {
     setClaiming(false);
   }
