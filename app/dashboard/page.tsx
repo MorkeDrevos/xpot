@@ -1,6 +1,7 @@
 // app/dashboard/page.tsx
-export const dynamic = 'force-dynamic';
 'use client';
+
+export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,7 +9,6 @@ import { useEffect, useState } from 'react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useSession } from 'next-auth/react';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
