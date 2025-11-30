@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 const JACKPOT_USD = 10_000;
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
@@ -16,23 +18,6 @@ type Entry = {
   walletAddress: string;
 };
 
-// Map Prisma TicketStatus → EntryStatus
-function mapStatus(status: string | null | undefined): EntryStatus {
-  switch (status) {
-    case 'WON':
-      return 'won';
-    case 'CLAIMED':
-      return 'claimed';
-    case 'NOT_PICKED':
-      return 'not-picked';
-    case 'EXPIRED':
-      return 'expired';
-    case 'IN_DRAW':
-    default:
-      return 'in-draw';
-  }
-}
-
 // Map Prisma Ticket + Draw to dashboard Entry
 function toEntry(ticket: any, draw: any): Entry {
   const createdAt =
@@ -43,7 +28,8 @@ function toEntry(ticket: any, draw: any): Entry {
   return {
     id: ticket.id,
     code: ticket.code,
-    status: mapStatus(ticket.status),
+    // for now: everything that exists today is “in-draw”
+    status: 'in-draw',
     label: "Today's main jackpot • $10,000",
     jackpotUsd: `$${JACKPOT_USD.toLocaleString()}`,
     createdAt,
@@ -54,6 +40,7 @@ function toEntry(ticket: any, draw: any): Entry {
 // GET /api/tickets/today
 export async function GET() {
   try {
+    // today’s date window
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -70,6 +57,7 @@ export async function GET() {
     });
 
     if (!draw) {
+      // no draw yet today
       return NextResponse.json({ tickets: [] }, { status: 200 });
     }
 
