@@ -51,6 +51,23 @@ type Entry = {
   walletAddress: string;
 };
 
+// Map Prisma TicketStatus (IN_DRAW, WON, etc.) to UI status
+function mapStatus(status: string | null | undefined): EntryStatus {
+  switch (status) {
+    case 'WON':
+      return 'won';
+    case 'CLAIMED':
+      return 'claimed';
+    case 'NOT_PICKED':
+      return 'not-picked';
+    case 'EXPIRED':
+      return 'expired';
+    case 'IN_DRAW':
+    default:
+      return 'in-draw';
+  }
+}
+
 // Map Prisma Ticket + Draw to dashboard Entry
 function toEntry(ticket: any, draw: any): Entry {
   const createdAt =
@@ -61,8 +78,7 @@ function toEntry(ticket: any, draw: any): Entry {
   return {
     id: ticket.id,
     code: ticket.code,
-    // Your schema doesn't have ticket.status yet, so we treat all as in-draw for now
-    status: 'in-draw',
+    status: mapStatus(ticket.status ?? 'IN_DRAW'),
     label: "Today's main jackpot • $10,000",
     jackpotUsd: `$${JACKPOT_USD.toLocaleString()}`,
     createdAt,
@@ -80,7 +96,7 @@ export async function POST(req: Request) {
 
     if (!body || typeof body.walletAddress !== 'string') {
       return NextResponse.json(
-        { ok: false, error: 'Invalid body' },
+        { ok: false, error: 'INVALID_BODY' },
         { status: 400 }
       );
     }
@@ -89,7 +105,7 @@ export async function POST(req: Request) {
 
     if (!walletAddress) {
       return NextResponse.json(
-        { ok: false, error: 'Empty wallet address' },
+        { ok: false, error: 'MISSING_WALLET' },
         { status: 400 }
       );
     }
@@ -209,6 +225,7 @@ export async function POST(req: Request) {
           drawId: draw.id,
           walletId: wallet.id,
           userId: wallet.userId,
+          // status will default to IN_DRAW
         },
         include: {
           wallet: true,
