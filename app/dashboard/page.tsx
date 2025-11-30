@@ -105,7 +105,9 @@ const initialEntries: Entry[] = [];
 // ─────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  // useSession may return undefined during prerender, so be defensive
+  const sessionResult = useSession();
+  const session = sessionResult?.data ?? null;
 
   const username =
     session?.user?.name ||
