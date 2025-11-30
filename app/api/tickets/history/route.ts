@@ -2,6 +2,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 
+// app/api/tickets/history/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { ... } from '...'; // your existing imports
+
+export const dynamic = 'force-dynamic';  // 👈 add this line
+
+export async function GET(req: NextRequest) {
+  // existing handler code...
+}
+
 const JACKPOT_USD = 10_000;
 
 type HistoryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
