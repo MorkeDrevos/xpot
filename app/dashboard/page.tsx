@@ -118,12 +118,12 @@ export default function DashboardPage() {
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
-  const [ticketClaimed, setTicketClaimed] = useState(false);
+  const [ticketTaken, setTicketTaken] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [claiming, setClaiming] = useState(false);
-  const [claimError, setClaimError] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  const [ticketError, setTicketError] = useState<string | null>(null);
 
   const { publicKey, connected } = useWallet();
   const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
@@ -131,15 +131,7 @@ export default function DashboardPage() {
 
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
-
-  const winner = entries.find(e => e.status === 'won') || null;
-  const inDrawCount = entries.filter(e => e.status === 'in-draw').length;
-  const jackpotLabel =
-    winner?.jackpotUsd || entries[0]?.jackpotUsd || '$10,000';
-
-  const hasXpotNumber = typeof xpotBalance === 'number';
-  const meetsRequirement =
-    hasXpotNumber && xpotBalance >= REQUIRED_XPOT;
+  const winner = entries.find(e => e.status === 'won');
 
   // ─────────────────────────────────────────────
   // Load today's tickets from DB
@@ -185,7 +177,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!currentWalletAddress) {
-      setTicketClaimed(false);
+      setTicketTaken(false);
       setTodaysTicket(null);
       return;
     }
@@ -195,10 +187,10 @@ export default function DashboardPage() {
     );
 
     if (myTicket) {
-      setTicketClaimed(true);
+      setTicketTaken(true);
       setTodaysTicket(myTicket);
     } else {
-      setTicketClaimed(false);
+      setTicketTaken(false);
       setTodaysTicket(null);
     }
   }, [entries, currentWalletAddress]);
@@ -219,7 +211,7 @@ export default function DashboardPage() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/sol-balance?address=${publicKey.toBase64()}`
+          `/api/sol-balance?address=${publicKey.toBase58()}`
         );
         if (!res.ok) throw new Error(`API error: ${res.status}`);
 
@@ -240,7 +232,7 @@ export default function DashboardPage() {
 
   // ─────────────────────────────────────────────
   // XPOT balance (via API route)
-  // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!publicKey) {
@@ -287,17 +279,18 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleClaimTicket() {
+  async function handleGetTicket() {
     if (!walletConnected || !publicKey) return;
-    if (loadingTickets || claiming) return; // avoid double clicks
+    if (loadingTickets || requesting) return; // avoid double clicks
 
-    setClaimError(null);
-    setClaiming(true);
+    setTicketError(null);
+    setRequesting(true);
 
     const walletAddress = publicKey.toBase58();
 
     try {
       const res = await fetch('/api/tickets/claim', {
+        // API route name unchanged for now
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress }),
@@ -316,39 +309,39 @@ export default function DashboardPage() {
 
         switch (code) {
           case 'NOT_ENOUGH_XPOT':
-            setClaimError(
+            setTicketError(
               `You need at least ${(
                 data.required ?? REQUIRED_XPOT
-              ).toLocaleString()} XPOT to claim today’s ticket. Your wallet currently has ${Number(
+              ).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
                 data.balance ?? 0
               ).toLocaleString()} XPOT.`
             );
             break;
 
           case 'NOT_ENOUGH_SOL':
-            setClaimError(
-              'Your wallet needs some SOL for network fees before you can claim today’s ticket.'
+            setTicketError(
+              `Your wallet needs some SOL for network fees before you can get today’s ticket.`
             );
             break;
 
           case 'XPOT_CHECK_FAILED':
-            setClaimError(
+            setTicketError(
               'Could not verify your XPOT balance right now. Please try again in a moment.'
             );
             break;
 
           case 'MISSING_WALLET':
           case 'INVALID_BODY':
-            setClaimError(
-              'Something is wrong with your wallet address. Try reconnecting your wallet and claiming again.'
+            setTicketError(
+              'Something is wrong with your wallet address. Try reconnecting your wallet and trying again.'
             );
             break;
 
           default:
-            setClaimError('Ticket claim failed. Please try again.');
+            setTicketError('Ticket request failed. Please try again.');
         }
 
-        console.error('Claim failed', res.status, text);
+        console.error('Ticket request failed', res.status, text);
         return;
       }
 
@@ -365,14 +358,16 @@ export default function DashboardPage() {
         });
       }
 
-      setTicketClaimed(true);
+      setTicketTaken(true);
       setTodaysTicket(ticket);
-      setClaimError(null);
+      setTicketError(null);
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
-      setClaimError('Unexpected error while claiming. Please try again.');
+      setTicketError(
+        'Unexpected error while getting your ticket. Please try again.'
+      );
     } finally {
-      setClaiming(false);
+      setRequesting(false);
     }
   }
 
@@ -430,19 +425,19 @@ export default function DashboardPage() {
             {/* Main CTA */}
             <button
               type="button"
-              onClick={handleClaimTicket}
-              disabled={!walletConnected || claiming || loadingTickets}
+              onClick={handleGetTicket}
+              disabled={!walletConnected || requesting || loadingTickets}
               className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-                !walletConnected || claiming || loadingTickets
+                !walletConnected || requesting || loadingTickets
                   ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
               }`}
             >
               {!walletConnected
-                ? 'Connect wallet to claim'
-                : claiming
-                ? 'Claiming…'
-                : 'Claim today’s ticket'}
+                ? 'Connect wallet to get ticket'
+                : requesting
+                ? 'Getting ticket…'
+                : 'Get today’s ticket'}
             </button>
           </div>
 
@@ -545,22 +540,6 @@ export default function DashboardPage() {
                   <p className="font-mono text-xs text-slate-200">02:14:09</p>
                 </div>
               </div>
-
-              {/* Jackpot + participation mini-bar */}
-              <div className="mt-3 flex flex-wrap items-center justify-between rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-300">
-                <span>
-                  💰 Jackpot today:{' '}
-                  <span className="font-semibold text-emerald-300">
-                    {jackpotLabel}
-                  </span>
-                </span>
-                <span className="mt-1 sm:mt-0">
-                  👥 Wallets in draw:{' '}
-                  <span className="font-mono text-slate-100">
-                    {inDrawCount.toLocaleString()}
-                  </span>
-                </span>
-              </div>
             </header>
 
             {/* Scroll content */}
@@ -602,74 +581,6 @@ export default function DashboardPage() {
                 </button>
               </section>
 
-              {/* Eligibility / status card */}
-              <section className="premium-card border-b border-slate-900/60 px-4 pt-3 pb-4">
-                <h2 className="text-sm font-semibold text-slate-100">
-                  Today’s status
-                </h2>
-                <div className="mt-2 text-xs text-slate-300 space-y-1.5">
-                  {!walletConnected && (
-                    <p className="text-amber-300">
-                      Connect your wallet on the right to see if you’re ready
-                      for today’s draw.
-                    </p>
-                  )}
-
-                  {walletConnected && xpotBalance === null && (
-                    <p className="text-slate-400">
-                      Checking your XPOT balance for today’s draw…
-                    </p>
-                  )}
-
-                  {walletConnected && xpotBalance === 'error' && (
-                    <p className="text-amber-300">
-                      We couldn’t verify your XPOT balance right now. You can
-                      still try to enter – we’ll re-check at entry time.
-                    </p>
-                  )}
-
-                  {walletConnected &&
-                    hasXpotNumber &&
-                    meetsRequirement &&
-                    !ticketClaimed && (
-                      <p className="text-emerald-300">
-                        ✅ Your wallet holds enough XPOT. You’re ready to enter
-                        today’s draw.
-                      </p>
-                    )}
-
-                  {walletConnected &&
-                    hasXpotNumber &&
-                    meetsRequirement &&
-                    ticketClaimed && (
-                      <>
-                        <p className="text-emerald-300">
-                          ✅ You’re locked into today’s draw with this wallet.
-                        </p>
-                        {todaysTicket && (
-                          <p className="text-slate-400">
-                            Ticket code:{' '}
-                            <span className="font-mono text-emerald-300">
-                              {todaysTicket.code}
-                            </span>
-                          </p>
-                        )}
-                      </>
-                    )}
-
-                  {walletConnected &&
-                    hasXpotNumber &&
-                    !meetsRequirement && (
-                      <p className="text-amber-300">
-                        ❌ Not enough XPOT yet. You need at least{' '}
-                        {REQUIRED_XPOT.toLocaleString()} XPOT. Your wallet
-                        currently holds{' '}
-                        {Math.floor(xpotBalance).toLocaleString()} XPOT.
-                      </p>
-                    )}
-                </div>
-              </section>
-
               {/* Today's ticket */}
               <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
                 <h2 className="text-sm font-semibold text-emerald-100">
@@ -680,59 +591,59 @@ export default function DashboardPage() {
                   <span className="font-semibold text-emerald-300">
                     {REQUIRED_XPOT.toLocaleString()} XPOT
                   </span>{' '}
-                  at the moment you claim. You can always buy or sell again
-                  later.
+                  at the moment you get your ticket. You can always buy or sell
+                  again later.
                 </p>
 
-                {!ticketClaimed ? (
+                {!ticketTaken ? (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-200">
-                        Claim your ticket for today’s jackpot.
+                        Get your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         Your ticket will be tied to your connected wallet for
                         today’s draw.
                       </p>
 
-                      {claiming && (
+                      {requesting && (
                         <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
-                          Verifying wallet → Locking today’s draw → Minting
+                          Verifying wallet → Registering entry → Minting
                           ticket…
                         </p>
                       )}
 
                       {!walletConnected && (
                         <p className="mt-1 text-[11px] text-amber-300">
-                          Connect your wallet on the right to claim today’s
+                          Connect your wallet on the right to get today’s
                           ticket.
                         </p>
                       )}
 
-                      {claimError && (
+                      {ticketError && (
                         <p className="mt-2 text-[11px] text-amber-300">
-                          {claimError}
+                          {ticketError}
                         </p>
                       )}
                     </div>
 
                     <button
                       type="button"
-                      onClick={handleClaimTicket}
-                      disabled={!walletConnected || claiming || loadingTickets}
+                      onClick={handleGetTicket}
+                      disabled={!walletConnected || requesting || loadingTickets}
                       className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
                         !walletConnected
                           ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : claiming
+                          : requesting
                           ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
                           : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
                       }`}
                     >
                       {!walletConnected
-                        ? 'Connect wallet to claim'
-                        : claiming
-                        ? 'Generating ticket...'
-                        : 'Claim today’s ticket'}
+                        ? 'Connect wallet to get ticket'
+                        : requesting
+                        ? 'Getting ticket…'
+                        : 'Get today’s ticket'}
                     </button>
                   </div>
                 ) : (
@@ -763,17 +674,6 @@ export default function DashboardPage() {
                 <h2 className="text-sm font-semibold text-slate-200">
                   Today’s result
                 </h2>
-
-                <p className="mt-1 text-[11px] text-slate-400">
-                  Today’s jackpot:{' '}
-                  <span className="font-semibold text-emerald-300">
-                    {jackpotLabel}
-                  </span>{' '}
-                  • Wallets in draw:{' '}
-                  <span className="font-mono">
-                    {inDrawCount.toLocaleString()}
-                  </span>
-                </p>
 
                 {winner ? (
                   <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -965,7 +865,7 @@ export default function DashboardPage() {
               <h3 className="text-sm font-semibold">Wallet</h3>
 
               <p className="mt-1 text-xs text-slate-400">
-                Connect wallet before claiming today’s ticket.
+                Connect wallet before getting today’s ticket.
               </p>
 
               <div className="mt-3">
@@ -990,13 +890,6 @@ export default function DashboardPage() {
                       ? `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                       : '-'}
                   </p>
-
-                  {typeof solBalance === 'number' &&
-                    solBalance <= 0.0005 && (
-                      <p className="mt-1 text-[11px] text-amber-300">
-                        You’ll need a tiny bit of SOL for network fees.
-                      </p>
-                    )}
                 </div>
               )}
 
@@ -1012,17 +905,17 @@ export default function DashboardPage() {
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">How today’s draw works</h3>
               <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                <li>• Claim exactly one ticket per wallet.</li>
+                <li>• Get exactly one ticket per wallet.</li>
                 <li>
-                  • At claim time, your wallet must hold at least{' '}
+                  • At ticket time, your wallet must hold at least{' '}
                   <span className="font-semibold text-emerald-300">
                     {REQUIRED_XPOT.toLocaleString()} XPOT
                   </span>
                   .
                 </li>
-                <li>• Wallet is only checked when claiming.</li>
+                <li>• Wallet is only checked when you get your ticket.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
-                <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
+                <li>• Winner has 24 hours to collect or jackpot rolls over.</li>
               </ul>
             </div>
           </aside>
