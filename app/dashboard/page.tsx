@@ -1,4 +1,5 @@
 // app/dashboard/page.tsx
+export const dynamic = 'force-dynamic';
 'use client';
 
 import Link from 'next/link';
@@ -424,7 +425,7 @@ export default function DashboardPage() {
                     rel="noopener noreferrer"
                     className="text-xs text-slate-500 hover:text-emerald-300"
                   >
-                    @{username.replace('@', '')}
+                    @{(username || 'xpot').replace('@', '')}
                   </a>
                 </div>
               </div>
@@ -456,7 +457,7 @@ export default function DashboardPage() {
                         rel="noopener noreferrer"
                         className="text-xs text-slate-500 hover:text-emerald-300"
                       >
-                        @{username.replace('@', '')}
+                        @{(username || 'xpot').replace('@', '')}
                       </a>
                     </div>
                   </div>
@@ -525,7 +526,7 @@ export default function DashboardPage() {
                       rel="noopener noreferrer"
                       className="text-xs text-slate-500 hover:text-emerald-300"
                     >
-                      @{username.replace('@', '')}
+                      @{(username || 'xpot').replace('@', '')}
                     </a>
                   </div>
                 </div>
