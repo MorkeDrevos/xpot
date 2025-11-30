@@ -884,23 +884,8 @@ export default function DashboardPage() {
                       ? `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                       : '-'}
                   </p>
-
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    (You still need a little SOL for network fees.)
-                  </p>
-
-                  <p className="mt-1">
-                    SOL balance:{' '}
-                    {solBalance === null && publicKey
-                      ? 'Loading...'
-                      : solBalance === 'error'
-                      ? 'Unavailable'
-                      : typeof solBalance === 'number'
-                      ? `${solBalance.toFixed(4)} SOL`
-                      : '-'}
-                  </p>
                 </div>
-              )}
+              )}  
 
               {!publicKey && (
                 <p className="mt-2 text-[11px] text-slate-500">
