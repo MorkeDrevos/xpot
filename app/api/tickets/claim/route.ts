@@ -5,9 +5,10 @@ import { getXpotBalanceUi } from '../../../../lib/solana';
 import { REQUIRED_XPOT } from '../../../../lib/xpot';
 
 const MIN_SOL_REQUIRED = 0.01;
+const JACKPOT_USD = 10_000;
 
 // ─────────────────────────────────────────────
-// Config
+// Helpers
 // ─────────────────────────────────────────────
 
 async function getSolBalance(address: string): Promise<number> {
@@ -26,8 +27,6 @@ async function getSolBalance(address: string): Promise<number> {
   const lamports = json?.result?.value || 0;
   return lamports / 1_000_000_000;
 }
-
-const JACKPOT_USD = 10_000;
 
 // Same code generator as on the client
 function makeCode(): string {
@@ -71,69 +70,67 @@ function toEntry(ticket: any, draw: any): Entry {
   };
 }
 
-const walletAddress = body.walletAddress.trim();
+// ─────────────────────────────────────────────
+// POST /api/tickets/claim
+// ─────────────────────────────────────────────
 
-if (!walletAddress) {
-  return NextResponse.json(
-    { ok: false, error: 'Empty wallet address' },
-    { status: 400 }
-  );
-}
+export async function POST(req: Request) {
+  try {
+    const body = await req.json().catch(() => null);
 
-/* ───────── XPOT BALANCE GATE ───────── */
-try {
-  const xpotBalance = await getXpotBalanceUi(walletAddress);
+    if (!body || typeof body.walletAddress !== 'string') {
+      return NextResponse.json(
+        { ok: false, error: 'Invalid body' },
+        { status: 400 }
+      );
+    }
 
-  if (xpotBalance < REQUIRED_XPOT) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'NOT_ENOUGH_XPOT',
-        required: REQUIRED_XPOT,
-        balance: xpotBalance,
-      },
-      { status: 403 }
-    );
-  }
-} catch (err) {
-  console.error('Failed to check XPOT balance:', err);
-  return NextResponse.json(
-    { ok: false, error: 'XPOT_CHECK_FAILED' },
-    { status: 500 }
-  );
-}
+    const walletAddress = body.walletAddress.trim();
 
-/* ───────── SOL BALANCE GATE ───────── */
-const solBalance = await getSolBalance(walletAddress);
-if (solBalance < MIN_SOL_REQUIRED) {
-  return NextResponse.json(
-    {
-      ok: false,
-      error: 'NOT_ENOUGH_SOL',
-      required: MIN_SOL_REQUIRED,
-      balance: solBalance,
-    },
-    { status: 403 }
-  );
-}
+    if (!walletAddress) {
+      return NextResponse.json(
+        { ok: false, error: 'Empty wallet address' },
+        { status: 400 }
+      );
+    }
 
-    // ─────────────────────────────
-// SOL BALANCE GATE
-// ─────────────────────────────
+    /* ───────── XPOT BALANCE GATE ───────── */
+    try {
+      const xpotBalance = await getXpotBalanceUi(walletAddress);
 
-const solBalance = await getSolBalance(walletAddress);
+      if (xpotBalance < REQUIRED_XPOT) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'NOT_ENOUGH_XPOT',
+            required: REQUIRED_XPOT,
+            balance: xpotBalance,
+          },
+          { status: 403 }
+        );
+      }
+    } catch (err) {
+      console.error('Failed to check XPOT balance:', err);
+      return NextResponse.json(
+        { ok: false, error: 'XPOT_CHECK_FAILED' },
+        { status: 500 }
+      );
+    }
 
-if (solBalance < MIN_SOL_REQUIRED) {
-  return NextResponse.json(
-    {
-      ok: false,
-      error: 'NOT_ENOUGH_SOL',
-      required: MIN_SOL_REQUIRED,
-      balance: solBalance,
-    },
-    { status: 403 }
-  );
-}
+    /* ───────── SOL BALANCE GATE ───────── */
+    const solBalance = await getSolBalance(walletAddress);
+
+    if (solBalance < MIN_SOL_REQUIRED) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'NOT_ENOUGH_SOL',
+          required: MIN_SOL_REQUIRED,
+          balance: solBalance,
+        },
+        { status: 403 }
+      );
+    }
 
     // ─────────────────────────────────────
     // 1) Find or create wallet + user
