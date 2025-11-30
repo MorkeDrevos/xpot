@@ -403,21 +403,21 @@ export default function DashboardPage() {
 
             {/* Main CTA */}
             <button
-              type="button"
-              onClick={handleClaimTicket}
-              disabled={!walletConnected || claiming || loadingTickets}
-              className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-                !walletConnected || claiming || loadingTickets
-                  ? ': 'bg-slate-900 text-emerald-300 border border-emerald-500/30 hover:bg-slate-800 hover:shadow-[0_0_14px_rgba(16,185,129,0.18)] transition''
-                  : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-              }`}
-            >
-              {!walletConnected
-                ? 'Connect wallet to continue'
-                : claiming
-                ? 'Processing...'
-                : 'Lock in today’s ticket'}
-            </button>
+  type="button"
+  onClick={handleClaimTicket}
+  disabled={!walletConnected || claiming || loadingTickets}
+  className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
+    !walletConnected || claiming || loadingTickets
+      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+      : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+  }`}
+>
+  {!walletConnected
+    ? 'Connect wallet to continue'
+    : claiming
+    ? 'Processing...'
+    : 'Lock in today’s ticket'}
+</button>
           </div>
 
           {/* Mini account chip */}
