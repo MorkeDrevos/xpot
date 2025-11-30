@@ -4,9 +4,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useWallet } from '@solana/wallet-adapter-react';
 
@@ -395,8 +394,9 @@ export default function HistoryPage() {
                 Connect wallet to see your draw history.
               </p>
               <div className="mt-3">
-                <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
-              </div>
+  <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
+  <WalletStatusHint />
+</div>
 
               {publicKey && (
                 <div className="mt-3 text-xs text-slate-300">
