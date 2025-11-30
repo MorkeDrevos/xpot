@@ -299,28 +299,31 @@ useEffect(() => {
 
             {/* Nav */}
             <nav className="space-y-1 text-sm">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-3 rounded-full px-3 py-2 font-medium bg-slate-900 text-slate-50"
-              >
-                <span className="text-lg">🏠</span>
-                <span>Dashboard</span>
-              </Link>
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
-              >
-                <span className="text-lg">🎟️</span>
-                <span>Draw history</span>
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
-              >
-                <span className="text-lg">⚙️</span>
-                <span>Settings</span>
-              </button>
-            </nav>
+  <Link
+    href="/dashboard"
+    className="flex items-center gap-3 rounded-full px-3 py-2 font-medium bg-slate-900 text-slate-50"
+  >
+    <span className="text-lg">🏠</span>
+    <span>Dashboard</span>
+  </Link>
+
+  {/* NEW: Draw history link */}
+  <Link
+    href="/history"
+    className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
+  >
+    <span className="text-lg">🎟️</span>
+    <span>Draw history</span>
+  </Link>
+
+  <button
+    type="button"
+    className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
+  >
+    <span className="text-lg">⚙️</span>
+    <span>Settings</span>
+  </button>
+</nav>
 
             {/* Main CTA */}
             <button
