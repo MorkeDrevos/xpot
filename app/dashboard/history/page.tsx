@@ -91,50 +91,48 @@ function HistoryInner() {
     };
   }, [publicKey]);
 
-  // ─────────────────────────────────────────────
   // Load ticket history for this wallet
-  // ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!publicKey) {
-      setTickets([]);
-      return;
-    }
+useEffect(() => {
+  if (!currentWalletAddress) {
+    setTickets([]);
+    return;
+  }
 
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+  let cancelled = false;
+  setLoading(true);
+  setError(null);
 
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/tickets/history?wallet=${publicKey.toBase58()}`
-        );
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
+  (async () => {
+    try {
+      const res = await fetch(
+        `/api/tickets/history?wallet=${currentWalletAddress}`
+      );
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
 
-        const data = await res.json();
-        if (cancelled) return;
+      const data = await res.json();
+      if (cancelled) return;
 
-        if (Array.isArray(data.tickets)) {
-          setTickets(data.tickets);
-        } else {
-          setTickets([]);
-        }
-      } catch (err) {
-        console.error('Error loading ticket history', err);
-        if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : 'Failed to load history'
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (Array.isArray(data.tickets)) {
+        setTickets(data.tickets);
+      } else {
+        setTickets([]);
       }
-    })();
+    } catch (err) {
+      console.error('Error loading ticket history', err);
+      if (!cancelled) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to load history'
+        );
+      }
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
+  })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [publicKey]);
+  return () => {
+    cancelled = true;
+  };
+}, [currentWalletAddress]);
 
   // Group by draw date (YYYY-MM-DD)
   const grouped = tickets.reduce<Record<string, HistoryTicket[]>>(
@@ -276,9 +274,9 @@ function HistoryInner() {
                       <h2 className="text-sm font-semibold text-slate-100">
                         Draw day: {date}
                       </h2>
-                      <p className="mt-1 text[11px] text-slate-500">
-                        Tickets for this day’s jackpot draw.
-                      </p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+  Tickets for this day’s jackpot draw.
+</p>
 
                       <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
                         {grouped[date].map(ticket => (
