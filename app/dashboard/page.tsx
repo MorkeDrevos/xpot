@@ -689,8 +689,8 @@ function DashboardInner() {
                             {entry.code}
                           </span>
                           <p className="mt-1 text-[11px] text-slate-500">
-                            {new Date(entry.createdAt).toLocaleDateString()}
-                          </p>
+  {formatDate(entry.createdAt)}
+</p>
                         </div>
 
                         <span className="text-[11px] text-slate-400">
