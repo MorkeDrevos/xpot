@@ -19,6 +19,23 @@ type HistoryEntry = {
   drawDate: string | null;
 };
 
+// Map Prisma TicketStatus → HistoryStatus
+function mapStatus(status: string | null | undefined): HistoryStatus {
+  switch (status) {
+    case 'WON':
+      return 'won';
+    case 'CLAIMED':
+      return 'claimed';
+    case 'NOT_PICKED':
+      return 'not-picked';
+    case 'EXPIRED':
+      return 'expired';
+    case 'IN_DRAW':
+    default:
+      return 'in-draw';
+  }
+}
+
 // Map Prisma Ticket + Draw to history entry
 function toHistoryEntry(ticket: any): HistoryEntry {
   const createdAt =
@@ -33,17 +50,7 @@ function toHistoryEntry(ticket: any): HistoryEntry {
       ? new Date(ticket.draw.drawDate).toISOString()
       : null;
 
-  // Basic status logic using Draw
-  let status: HistoryStatus = 'in-draw';
-  const isClosed = !!ticket.draw?.isClosed;
-
-  if (isClosed) {
-    if (ticket.draw?.winningTicketId === ticket.id) {
-      status = 'won';
-    } else {
-      status = 'not-picked';
-    }
-  }
+  const status: HistoryStatus = mapStatus(ticket.status);
 
   return {
     id: ticket.id,
