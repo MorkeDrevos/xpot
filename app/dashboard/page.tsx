@@ -535,62 +535,6 @@ function DashboardInner() {
                 )}
               </article>
 
-              {/* Draw history preview */}
-              <section className="pb-10 px-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-slate-200">
-                    Draw history
-                  </h2>
-
-                  <Link
-                    href="/dashboard/history"
-                    className="text-[11px] text-slate-400 hover:text-emerald-300"
-                  >
-                    View full history →
-                  </Link>
-                </div>
-
-                <p className="text-xs text-slate-500">
-                  Your previous tickets from earlier draws.
-                </p>
-
-                <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-                  {entries.length === 0 && (
-                    <p className="text-xs text-slate-500">
-                      No previous draws yet.
-                    </p>
-                  )}
-
-                  {entries.slice(0, 5).map(entry => (
-                    <article
-                      key={entry.id}
-                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-mono text-sm text-slate-50">
-                            {entry.code}
-                          </span>
-                          <p className="mt-1 text-[11px] text-slate-500">
-                            {new Date(entry.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-
-                        <span className="text-[11px] text-slate-400">
-                          {entry.status}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-
-                {ticketsError && (
-                  <p className="mt-2 text-[11px] text-amber-300">
-                    {ticketsError}
-                  </p>
-                )}
-              </section>
-
               {/* Tickets feed */}
               <section className="pb-10 px-4">
                 <h2 className="pt-3 text-sm font-semibold text-slate-200">
@@ -691,6 +635,63 @@ function DashboardInner() {
                   })}
                 </div>
               </section>
+
+              {/* Draw history preview */}
+              <section className="pb-10 px-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-slate-200">
+                    Draw history
+                  </h2>
+
+                  <Link
+                    href="/dashboard/history"
+                    className="text-[11px] text-slate-400 hover:text-emerald-300"
+                  >
+                    View full history →
+                  </Link>
+                </div>
+
+                <p className="text-xs text-slate-500">
+                  Your previous tickets from earlier draws.
+                </p>
+
+                <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
+                  {entries.length === 0 && (
+                    <p className="text-xs text-slate-500">
+                      No previous draws yet.
+                    </p>
+                  )}
+
+                  {entries.slice(0, 5).map(entry => (
+                    <article
+                      key={entry.id}
+                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-mono text-sm text-slate-50">
+                            {entry.code}
+                          </span>
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            {new Date(entry.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+
+                        <span className="text-[11px] text-slate-400">
+                          {entry.status}
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                {ticketsError && (
+                  <p className="mt-2 text-[11px] text-amber-300">
+                    {ticketsError}
+                  </p>
+                )}
+              </section>
+
             </div>
           </section>
 
