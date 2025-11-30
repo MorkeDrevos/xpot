@@ -135,6 +135,9 @@ export default function DashboardPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  const hasRequiredXpot =
+    typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
+
   // ─────────────────────────────────────────────
   // Load today's tickets from DB
   // ─────────────────────────────────────────────
@@ -233,62 +236,61 @@ export default function DashboardPage() {
   }, [publicKey]);
 
   // ─────────────────────────────────────────────
-// Load wallet-specific draw history
-// ─────────────────────────────────────────────
+  // Load wallet-specific draw history
+  // ─────────────────────────────────────────────
 
-useEffect(() => {
-  if (!publicKey) {
-    setHistoryEntries([]);
-    setHistoryError(null);
-    return;
-  }
-
-  let cancelled = false;
-  setLoadingHistory(true);
-  setHistoryError(null);
-
-  (async () => {
-    try {
-      const res = await fetch(
-        `/api/tickets/history?wallet=${publicKey.toBase58()}`
-      );
-      if (!res.ok) throw new Error('Failed to load history');
-
-      const data = await res.json();
-      if (cancelled) return;
-
-      if (Array.isArray(data.tickets)) {
-        // API returns HistoryEntry but we only need the Entry fields here
-        setHistoryEntries(
-          data.tickets.map((t: any) => ({
-            id: t.id,
-            code: t.code,
-            status: t.status as EntryStatus,
-            label: t.label,
-            jackpotUsd: `$${(t.jackpotUsd ?? 10_000).toLocaleString?.() ?? '10,000'}`,
-            createdAt: t.createdAt,
-            walletAddress: t.walletAddress,
-          }))
-        );
-      } else {
-        setHistoryEntries([]);
-      }
-    } catch (err) {
-      console.error('Failed to load history', err);
-      if (!cancelled) {
-        setHistoryError(
-          (err as Error).message ?? 'Failed to load history'
-        );
-      }
-    } finally {
-      if (!cancelled) setLoadingHistory(false);
+  useEffect(() => {
+    if (!publicKey) {
+      setHistoryEntries([]);
+      setHistoryError(null);
+      return;
     }
-  })();
 
-  return () => {
-    cancelled = true;
-  };
-}, [publicKey]);
+    let cancelled = false;
+    setLoadingHistory(true);
+    setHistoryError(null);
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/tickets/history?wallet=${publicKey.toBase58()}`
+        );
+        if (!res.ok) throw new Error('Failed to load history');
+
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (Array.isArray(data.tickets)) {
+          setHistoryEntries(
+            data.tickets.map((t: any) => ({
+              id: t.id,
+              code: t.code,
+              status: t.status as EntryStatus,
+              label: t.label,
+              jackpotUsd: `$${(t.jackpotUsd ?? 10_000).toLocaleString?.() ?? '10,000'}`,
+              createdAt: t.createdAt,
+              walletAddress: t.walletAddress,
+            }))
+          );
+        } else {
+          setHistoryEntries([]);
+        }
+      } catch (err) {
+        console.error('Failed to load history', err);
+        if (!cancelled) {
+          setHistoryError(
+            (err as Error).message ?? 'Failed to load history'
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [publicKey]);
 
   // ─────────────────────────────────────────────
   // Ticket helpers
@@ -336,7 +338,7 @@ useEffect(() => {
             setClaimError(
               `You need at least ${(
                 data.required ?? REQUIRED_XPOT
-              ).toLocaleString()} XPOT to claim today’s ticket. Your wallet currently has ${Number(
+              ).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
                 data.balance ?? 0
               ).toLocaleString()} XPOT.`
             );
@@ -344,7 +346,7 @@ useEffect(() => {
 
           case 'NOT_ENOUGH_SOL':
             setClaimError(
-              `Your wallet needs some SOL for network fees before you can claim today’s ticket.`
+              `Your wallet needs some SOL for network fees before you can get today’s ticket.`
             );
             break;
 
@@ -357,12 +359,12 @@ useEffect(() => {
           case 'MISSING_WALLET':
           case 'INVALID_BODY':
             setClaimError(
-              'Something is wrong with your wallet address. Try reconnecting your wallet and claiming again.'
+              'Something is wrong with your wallet address. Try reconnecting your wallet and trying again.'
             );
             break;
 
           default:
-            setClaimError('Ticket claim failed. Please try again.');
+            setClaimError('Ticket request failed. Please try again.');
         }
 
         console.error('Claim failed', res.status, text);
@@ -387,15 +389,15 @@ useEffect(() => {
       setClaimError(null);
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
-      setClaimError('Unexpected error while claiming. Please try again.');
+      setClaimError('Unexpected error while getting your ticket. Please try again.');
     } finally {
       setClaiming(false);
     }
   }
 
   const myTickets: Entry[] = currentWalletAddress
-  ? entries.filter(e => e.walletAddress === currentWalletAddress)
-  : [];
+    ? entries.filter(e => e.walletAddress === currentWalletAddress)
+    : [];
 
   // ─────────────────────────────────────────────
   // Render
@@ -404,37 +406,38 @@ useEffect(() => {
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
       <WalletDebug />
-      {/* Mobile top bar */}
-<header className="flex items-center justify-between px-4 py-3 md:hidden">
-  <Link href="/" className="flex items-center gap-2">
-    <Image
-      src="/img/xpot-logo-light.png"
-      alt="XPOT"
-      width={110}
-      height={30}
-      priority
-    />
-  </Link>
 
-  <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
-</header>
+      {/* Mobile top bar */}
+      <header className="flex items-center justify-between px-4 py-3 md:hidden">
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/img/xpot-logo-light.png"
+            alt="XPOT"
+            width={110}
+            height={30}
+            priority
+          />
+        </Link>
+
+        <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
+      </header>
+
       <div className="mx-auto flex max-w-6xl">
         {/* Left nav */}
-<aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-0 pb-4 md:flex flex-col">
-  <div className="space-y-5">
-    {/* Logo */}
-    <div className="pt-3 px-1">
-      <Link href="/" className="inline-flex flex-col gap-1">
-        <Image
-          src="/img/xpot-logo-light.png"
-          alt="XPOT"
-          width={120}
-          height={32}
-          priority
-        />
-      </Link>
-    </div>
-    {/* Nav … */}
+        <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-0 pb-4 md:flex flex-col">
+          <div className="space-y-5">
+            {/* Logo */}
+            <div className="pt-3 px-1">
+              <Link href="/" className="inline-flex flex-col gap-1">
+                <Image
+                  src="/img/xpot-logo-light.png"
+                  alt="XPOT"
+                  width={120}
+                  height={32}
+                  priority
+                />
+              </Link>
+            </div>
 
             {/* Nav */}
             <nav className="space-y-1 text-sm">
@@ -465,21 +468,21 @@ useEffect(() => {
 
             {/* Main CTA */}
             <button
-  type="button"
-  onClick={handleClaimTicket}
-  disabled={!walletConnected || claiming || loadingTickets}
-  className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-    !walletConnected || claiming || loadingTickets
-      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-      : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-  }`}
->
-  {!walletConnected
-    ? 'Connect wallet to continue'
-    : claiming
-    ? 'Processing...'
-    : 'Lock in today’s ticket'}
-</button>
+              type="button"
+              onClick={handleClaimTicket}
+              disabled={!walletConnected || claiming || loadingTickets}
+              className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
+                !walletConnected || claiming || loadingTickets
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+              }`}
+            >
+              {!walletConnected
+                ? 'Connect wallet to get ticket'
+                : claiming
+                ? 'Processing...'
+                : 'Get today’s ticket'}
+            </button>
           </div>
 
           {/* Mini account chip */}
@@ -632,15 +635,27 @@ useEffect(() => {
                   <span className="font-semibold text-emerald-300">
                     {REQUIRED_XPOT.toLocaleString()} XPOT
                   </span>{' '}
-                  at the moment you claim. You can always buy or sell again
-                  later.
+                  at the moment you get your ticket. You can always buy or sell
+                  again later.
+                </p>
+
+                {/* Jackpot state (with rollover) */}
+                <p className="mt-2 text-[11px] text-slate-500">
+                  <span className="font-semibold text-slate-200">
+                    Today’s jackpot:
+                  </span>{' '}
+                  {todaysTicket?.jackpotUsd || '$10,000'}{' '}
+                  <span className="text-slate-500">
+                    · If the winner doesn’t collect in time, the jackpot rolls
+                    into the next draw.
+                  </span>
                 </p>
 
                 {!ticketClaimed ? (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-200">
-                        Lock in your ticket for today’s jackpot.
+                        Get your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         Your ticket will be tied to your connected wallet for
@@ -681,10 +696,10 @@ useEffect(() => {
                       }`}
                     >
                       {!walletConnected
-                        ? 'Connect wallet to continue'
+                        ? 'Connect wallet to get ticket'
                         : claiming
                         ? 'Generating ticket...'
-                        : 'Lock in today’s ticket'}
+                        : 'Get today’s ticket'}
                     </button>
                   </div>
                 ) : (
@@ -710,51 +725,63 @@ useEffect(() => {
                 )}
               </article>
 
-              {/* Today's result (preview) */}
-<article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
-  <h2 className="text-sm font-semibold text-slate-200">
-    Today’s result
-  </h2>
+              {/* Today's result + “What happens if I win?” */}
+              <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
+                <h2 className="text-sm font-semibold text-slate-200">
+                  Today’s result
+                </h2>
 
-  {!walletConnected ? (
-    // No wallet yet
-    <p className="mt-3 text-sm text-slate-300">
-      Connect your wallet and claim today’s ticket to join the draw.
-      Once the countdown hits zero, today’s winning ticket will appear here.
-    </p>
-  ) : myTickets.length === 0 ? (
-    // Wallet connected but no ticket
-    <p className="mt-3 text-sm text-slate-300">
-      You haven’t claimed a ticket for today’s draw yet. Claim your ticket
-      above to enter. The result will appear here when the timer hits zero.
-    </p>
-  ) : winner ? (
-    // (Later) when you actually mark a winner in the DB
-    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm text-slate-200">
-          One ticket{' '}
-          <span className="font-mono text-emerald-300">
-            {winner.code}
-          </span>{' '}
-          hit today’s jackpot (preview).
-        </p>
-        <p className="mt-1 text-xs text-slate-400">
-          In the real draw, this will show the winning ticket and wallet
-          once the countdown reaches zero.
-        </p>
-      </div>
-    </div>
-  ) : (
-    // Wallet + ticket, but draw not resolved yet
-    <p className="mt-3 text-sm text-slate-300">
-      Your ticket is in today’s draw. The result will appear here when
-      the timer hits zero.
-    </p>
-  )}
-</article>
+                {!walletConnected ? (
+                  <p className="mt-3 text-sm text-slate-300">
+                    Connect your wallet and get today’s ticket to join the draw.
+                    Once the countdown hits zero, today’s winning ticket will
+                    appear here.
+                  </p>
+                ) : myTickets.length === 0 ? (
+                  <p className="mt-3 text-sm text-slate-300">
+                    You haven’t got a ticket for today’s draw yet. Get your
+                    ticket above to enter. The result will appear here when the
+                    timer hits zero.
+                  </p>
+                ) : winner ? (
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-slate-200">
+                        One ticket{' '}
+                        <span className="font-mono text-emerald-300">
+                          {winner.code}
+                        </span>{' '}
+                        hit today’s jackpot (preview).
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        In the real draw, this will show the winning ticket and
+                        wallet once the countdown reaches zero.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-300">
+                    Your ticket is in today’s draw. The result will appear here
+                    when the timer hits zero.
+                  </p>
+                )}
 
-              {/* Tickets feed */}
+                {/* What happens if I win? */}
+                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    What happens if I win?
+                  </p>
+                  <p className="mt-2 text-[11px] text-slate-400">
+                    If your ticket is selected, the winning ticket and wallet
+                    are highlighted here and in the history view. You’ll have a
+                    fixed claim window to collect the jackpot. If it’s not
+                    collected in time, the full amount rolls into the next
+                    draw.
+                  </p>
+                </div>
+              </article>
+
+              {/* Your tickets */}
               <section className="pb-10 px-4">
                 <h2 className="pt-3 text-sm font-semibold text-slate-200">
                   Your tickets
@@ -769,168 +796,179 @@ useEffect(() => {
                 </p>
 
                 <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-  {myTickets.length === 0 ? (
-    <p className="text-xs text-slate-500">
-      No tickets yet for this wallet in today&apos;s draw.
-    </p>
-  ) : (
-    myTickets.map(entry => {
-      const isCurrentWallet =
-        currentWalletAddress &&
-        entry.walletAddress === currentWalletAddress;
+                  {myTickets.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      No tickets yet for this wallet in today&apos;s draw.
+                    </p>
+                  ) : (
+                    myTickets.map(entry => {
+                      const isCurrentWallet =
+                        currentWalletAddress &&
+                        entry.walletAddress === currentWalletAddress;
 
-      return (
-        <article
-          key={entry.id}
-          className={`rounded-2xl px-4 pb-4 pt-3 transition border ${
-            isCurrentWallet
-              ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
-              : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
-          }`}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-sm text-slate-50">
-                  {entry.code}
-                </span>
+                      return (
+                        <article
+                          key={entry.id}
+                          className={`rounded-2xl px-4 pb-4 pt-3 transition border ${
+                            isCurrentWallet
+                              ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
+                              : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
+                          }`}
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-sm text-slate-50">
+                                  {entry.code}
+                                </span>
 
-                {entry.status === 'in-draw' && (
-                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
-                    In draw
-                  </span>
-                )}
-                {entry.status === 'won' && (
-                  <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                    Winner
-                  </span>
-                )}
-                {entry.status === 'claimed' && (
-                  <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
-                    Claimed
-                  </span>
-                )}
-                {entry.status === 'expired' && (
-                  <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
-                    Expired
-                  </span>
-                )}
+                                {entry.status === 'in-draw' && (
+                                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+                                    In draw
+                                  </span>
+                                )}
+                                {entry.status === 'won' && (
+                                  <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                                    Winner
+                                  </span>
+                                )}
+                                {entry.status === 'claimed' && (
+                                  <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
+                                    Claimed
+                                  </span>
+                                )}
+                                {entry.status === 'expired' && (
+                                  <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+                                    Expired
+                                  </span>
+                                )}
 
-                {isCurrentWallet && (
-                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                    Current wallet
-                  </span>
-                )}
-              </div>
+                                {isCurrentWallet && (
+                                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                                    Current wallet
+                                  </span>
+                                )}
+                              </div>
 
-              <p className="mt-1 text-xs text-slate-400">
-                {entry.label}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-500">
-                Created: {formatDateTime(entry.createdAt)}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-500">
-                Wallet:{' '}
-                <span className="font-mono">
-                  {shortWallet(entry.walletAddress)}
-                </span>
-              </p>
-            </div>
+                              <p className="mt-1 text-xs text-slate-400">
+                                {entry.label}
+                              </p>
+                              <p className="mt-1 text-[11px] text-slate-500">
+                                Created: {formatDateTime(entry.createdAt)}
+                              </p>
+                              <p className="mt-1 text-[11px] text-slate-500">
+                                Wallet:{' '}
+                                <span className="font-mono">
+                                  {shortWallet(entry.walletAddress)}
+                                </span>
+                              </p>
+                            </div>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleCopy(entry)}
-                className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
-              >
-                {copiedId === entry.id ? 'Copied' : 'Copy code'}
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
-                disabled
-              >
-                View entry tweet (soon)
-              </button>
-            </div>
-          </div>
-        </article>
-      );
-    })
-  )}
-</div>
-
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(entry)}
+                                className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
+                              >
+                                {copiedId === entry.id ? 'Copied' : 'Copy code'}
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
+                                disabled
+                              >
+                                View entry tweet (soon)
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
               </section>
 
-              {/* Draw history preview */}
-<section className="pb-10 px-4">
-  <div className="flex items-center justify-between">
-    <h2 className="text-sm font-semibold text-slate-200">
-      Draw history
-    </h2>
+              {/* Draw history preview + recent winners placeholder */}
+              <section className="pb-10 px-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-slate-200">
+                    Draw history
+                  </h2>
 
-    <Link
-      href="/dashboard/history"
-      className="text-[11px] text-slate-400 hover:text-emerald-300"
-    >
-      View full history →
-    </Link>
-  </div>
+                  <Link
+                    href="/dashboard/history"
+                    className="text-[11px] text-slate-400 hover:text-emerald-300"
+                  >
+                    View full history →
+                  </Link>
+                </div>
 
-  <p className="text-xs text-slate-500">
-    Your previous tickets from earlier draws.
-  </p>
+                <p className="text-xs text-slate-500">
+                  Your previous tickets from earlier draws.
+                </p>
 
-  {!publicKey && (
-    <p className="mt-2 text-xs text-slate-500">
-      Connect your wallet to see your ticket history.
-    </p>
-  )}
+                {!publicKey && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    Connect your wallet to see your ticket history.
+                  </p>
+                )}
 
-  {publicKey && (
-    <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-      {loadingHistory && (
-        <p className="text-xs text-slate-500">
-          Loading history…
-        </p>
-      )}
+                {publicKey && (
+                  <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
+                    {loadingHistory && (
+                      <p className="text-xs text-slate-500">
+                        Loading history…
+                      </p>
+                    )}
 
-      {!loadingHistory && historyEntries.length === 0 && (
-        <p className="text-xs text-slate-500">
-          No previous draws yet for this wallet.
-        </p>
-      )}
+                    {!loadingHistory && historyEntries.length === 0 && (
+                      <p className="text-xs text-slate-500">
+                        No previous draws yet for this wallet.
+                      </p>
+                    )}
 
-      {historyEntries.slice(0, 5).map(entry => (
-        <article
-          key={entry.id}
-          className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="font-mono text-sm text-slate-50">
-                {entry.code}
-              </span>
-              <p className="mt-1 text-[11px] text-slate-500">
-                {formatDate(entry.createdAt)}
-              </p>
-            </div>
+                    {historyEntries.slice(0, 5).map(entry => (
+                      <article
+                        key={entry.id}
+                        className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-mono text-sm text-slate-50">
+                              {entry.code}
+                            </span>
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              {formatDate(entry.createdAt)}
+                            </p>
+                          </div>
 
-            <span className="text-[11px] text-slate-400">
-              {entry.status}
-            </span>
-          </div>
-        </article>
-      ))}
+                          <span className="text-[11px] text-slate-400">
+                            {entry.status}
+                          </span>
+                        </div>
+                      </article>
+                    ))}
 
-      {historyError && (
-        <p className="mt-2 text-[11px] text-amber-300">
-          {historyError}
-        </p>
-      )}
-    </div>
-  )}
-</section>
+                    {historyError && (
+                      <p className="mt-2 text-[11px] text-amber-300">
+                        {historyError}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Recent winners (structure ready for real data later) */}
+                <div className="mt-6 rounded-2xl border border-slate-900 bg-slate-950/60 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    Recent winners
+                  </p>
+                  <p className="mt-2 text-[11px] text-slate-400">
+                    Soon you’ll see a short list of the latest winning tickets
+                    and wallets here. For now, use the full history view to
+                    browse past draws.
+                  </p>
+                </div>
+              </section>
             </div>
           </section>
 
@@ -941,7 +979,7 @@ useEffect(() => {
               <h3 className="text-sm font-semibold">Wallet</h3>
 
               <p className="mt-1 text-xs text-slate-400">
-                Connect wallet before claiming today’s ticket.
+                Connect a wallet before getting today’s ticket.
               </p>
 
               <div className="mt-3">
@@ -959,7 +997,7 @@ useEffect(() => {
                   <p className="mt-1">
                     XPOT balance:{' '}
                     {xpotBalance === null && publicKey
-                      ? 'Loading...'
+                      ? 'Checking...'
                       : xpotBalance === 'error'
                       ? 'Unavailable'
                       : typeof xpotBalance === 'number'
@@ -991,23 +1029,86 @@ useEffect(() => {
                   Phantom and other Solana wallets work here.
                 </p>
               )}
+
+              {/* Wallet truth line */}
+              <p className="mt-3 text-[11px] text-slate-500">
+                XPOT.bet never takes custody of your funds. We only read your
+                public wallet balance to check eligibility.
+              </p>
+            </div>
+
+            {/* Eligibility status card */}
+            <div className="premium-card p-4">
+              <h3 className="text-sm font-semibold">Today’s eligibility</h3>
+
+              {!walletConnected && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Connect a wallet to see if you currently qualify for today’s
+                  draw.
+                </p>
+              )}
+
+              {walletConnected && (
+                <div className="mt-2 text-xs">
+                  {xpotBalance === null && (
+                    <p className="text-slate-500">Checking XPOT balance…</p>
+                  )}
+
+                  {xpotBalance === 'error' && (
+                    <p className="text-amber-300">
+                      We couldn’t read your XPOT balance. Try again in a
+                      moment.
+                    </p>
+                  )}
+
+                  {typeof xpotBalance === 'number' && (
+                    <>
+                      <p
+                        className={
+                          hasRequiredXpot
+                            ? 'text-emerald-300'
+                            : 'text-amber-300'
+                        }
+                      >
+                        {hasRequiredXpot
+                          ? 'You currently meet the XPOT requirement for today’s draw.'
+                          : 'Your XPOT balance is below today’s requirement.'}
+                      </p>
+                      <p className="mt-1 text-slate-400">
+                        Current balance:{' '}
+                        <span className="font-mono text-slate-100">
+                          {Math.floor(xpotBalance).toLocaleString()} XPOT
+                        </span>
+                      </p>
+                      <p className="text-slate-400">
+                        Minimum required:{' '}
+                        <span className="font-mono text-slate-100">
+                          {REQUIRED_XPOT.toLocaleString()} XPOT
+                        </span>
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* How it works */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">How today’s draw works</h3>
               <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                <li>• Claim exactly one ticket per wallet.</li>
+                <li>• Get exactly one ticket per wallet.</li>
                 <li>
-                  • At claim time, your wallet must hold at least{' '}
+                  • At entry time, your wallet must hold at least{' '}
                   <span className="font-semibold text-emerald-300">
                     {REQUIRED_XPOT.toLocaleString()} XPOT
                   </span>
                   .
                 </li>
-                <li>• Wallet is only checked when claiming.</li>
+                <li>• Wallet is only checked when you get your ticket.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
-                <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
+                <li>
+                  • Winner has 24 hours to collect or the jackpot rolls over.
+                </li>
               </ul>
             </div>
           </aside>
