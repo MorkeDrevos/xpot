@@ -2,7 +2,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 
-// Must match the dashboard Entry type
+const JACKPOT_USD = 10_000;
+
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
 type Entry = {
@@ -15,35 +16,35 @@ type Entry = {
   walletAddress: string;
 };
 
-// Map Prisma Ticket + Draw -> dashboard Entry
+// Map Prisma Ticket + Draw to dashboard Entry
 function toEntry(ticket: any, draw: any): Entry {
-  const jackpotUsdNumber = draw?.jackpotUsd ?? 10_000; // fallback
   const createdAt =
-    ticket?.createdAt instanceof Date
+    ticket.createdAt instanceof Date
       ? ticket.createdAt.toISOString()
-      : new Date(ticket?.createdAt ?? Date.now()).toISOString();
+      : new Date(ticket.createdAt).toISOString();
 
   return {
     id: ticket.id,
     code: ticket.code,
-    status: (ticket.status ?? 'in-draw') as EntryStatus,
+    // for now: everything that exists today is “in-draw”
+    status: 'in-draw',
     label: "Today's main jackpot • $10,000",
-    jackpotUsd: `$${Number(jackpotUsdNumber).toLocaleString()}`,
+    jackpotUsd: `$${JACKPOT_USD.toLocaleString()}`,
     createdAt,
-    walletAddress: ticket.walletAddress,
+    walletAddress: ticket.wallet?.address ?? 'unknown',
   };
 }
 
+// GET /api/tickets/today
 export async function GET() {
   try {
-    // Today range in server time
+    // today’s date window
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
     const end = new Date();
     end.setHours(23, 59, 59, 999);
 
-    // Find today's draw by drawDate
     const draw = await prisma.draw.findFirst({
       where: {
         drawDate: {
@@ -54,32 +55,22 @@ export async function GET() {
     });
 
     if (!draw) {
-      // No draw yet today → empty list
-      return NextResponse.json(
-        {
-          ok: true,
-          draw: null,
-          tickets: [] as Entry[],
-        },
-        { status: 200 }
-      );
+      // no draw yet today
+      return NextResponse.json({ tickets: [] }, { status: 200 });
     }
 
-    // Load all tickets for this draw
     const ticketsDb = await prisma.ticket.findMany({
       where: { drawId: draw.id },
       orderBy: { createdAt: 'desc' },
+      include: {
+        wallet: true,
+      },
     });
 
     const entries: Entry[] = ticketsDb.map(t => toEntry(t, draw));
 
     return NextResponse.json(
       {
-        ok: true,
-        draw: {
-          id: draw.id,
-          drawDate: draw.drawDate,
-        },
         tickets: entries,
       },
       { status: 200 }
@@ -87,7 +78,7 @@ export async function GET() {
   } catch (err) {
     console.error('Error in /api/tickets/today', err);
     return NextResponse.json(
-      { ok: false, error: 'Internal error', tickets: [] as Entry[] },
+      { tickets: [], error: 'Internal error' },
       { status: 500 }
     );
   }
