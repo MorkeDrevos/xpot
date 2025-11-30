@@ -24,7 +24,6 @@ export async function GET(req: Request) {
       );
     }
 
-    // Fetch all XPOT token accounts for this wallet
     const res = await fetch('https://api.mainnet-beta.solana.com', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -41,10 +40,9 @@ export async function GET(req: Request) {
     });
 
     const json = await res.json();
-
     const accounts = json?.result?.value ?? [];
+
     if (!Array.isArray(accounts) || accounts.length === 0) {
-      // No XPOT at all
       return NextResponse.json({
         balance: 0,
         raw: '0',
@@ -63,7 +61,7 @@ export async function GET(req: Request) {
       const amountStr: string = tokenAmount.amount;
       const dec: number = tokenAmount.decimals ?? 6;
 
-      decimals = dec; // they should all match
+      decimals = dec;
       rawTotal += BigInt(amountStr);
     }
 
