@@ -99,6 +99,7 @@ function DashboardInner() {
 
   const { publicKey, connected } = useWallet();
   const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
@@ -216,53 +217,72 @@ function DashboardInner() {
   }
 
   async function handleClaimTicket() {
-    if (!walletConnected || !publicKey) return;
-    if (loadingTickets || claiming) return;
+  if (!walletConnected || !publicKey) return;
+  if (loadingTickets || claiming) return;
 
-    setClaiming(true);
+  setClaimError(null);        // reset old error
+  setClaiming(true);
 
-    const walletAddress = publicKey.toBase58();
+  const walletAddress = publicKey.toBase58();
 
-    try {
-      const res = await fetch('/api/tickets/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress }),
-      });
+  try {
+    const res = await fetch('/api/tickets/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress }),
+    });
 
-      if (!res.ok) {
-        console.error('Claim failed', await res.text());
-        return;
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data.ok) {
+      // Decode our known errors
+      switch (data?.error) {
+        case 'NOT_ENOUGH_XPOT':
+          setClaimError(
+            `You need at least ${data.required?.toLocaleString?.() ?? REQUIRED_XPOT.toLocaleString()} XPOT in this wallet to claim today’s ticket. Current balance: ${data.balance?.toLocaleString?.() ?? 0} XPOT.`
+          );
+          break;
+        case 'NOT_ENOUGH_SOL':
+          setClaimError(
+            `Your wallet does not have enough SOL for network fees. Top up at least ${data.required ?? 0.01} SOL and try again.`
+          );
+          break;
+        case 'XPOT_CHECK_FAILED':
+          setClaimError(
+            'Could not verify your XPOT balance right now. Please try again in a moment.'
+          );
+          break;
+        case 'MISSING_WALLET':
+        case 'INVALID_BODY':
+          setClaimError('Something is wrong with this wallet address.');
+          break;
+        default:
+          setClaimError('Ticket claim failed. Please try again.');
       }
 
-      const data: {
-        ok: boolean;
-        ticket: Entry;
-        tickets?: Entry[];
-      } = await res.json();
-
-      if (!data.ok || !data.ticket) {
-        console.error('Claim response missing ticket', data);
-        return;
-      }
-
-      if (Array.isArray(data.tickets) && data.tickets.length > 0) {
-        setEntries(data.tickets);
-      } else {
-        setEntries(prev => {
-          const others = prev.filter(t => t.id !== data.ticket.id);
-          return [data.ticket, ...others];
-        });
-      }
-
-      setTicketClaimed(true);
-      setTodaysTicket(data.ticket);
-    } catch (err) {
-      console.error('Error calling /api/tickets/claim', err);
-    } finally {
-      setClaiming(false);
+      console.error('Claim failed', { status: res.status, data });
+      return;
     }
+
+    // Success path
+    if (Array.isArray(data.tickets) && data.tickets.length > 0) {
+      setEntries(data.tickets);
+    } else if (data.ticket) {
+      setEntries(prev => {
+        const others = prev.filter(t => t.id !== data.ticket.id);
+        return [data.ticket, ...others];
+      });
+    }
+
+    setTicketClaimed(true);
+    setTodaysTicket(data.ticket ?? null);
+  } catch (err) {
+    console.error('Error calling /api/tickets/claim', err);
+    setClaimError('Unexpected error while claiming ticket. Please try again.');
+  } finally {
+    setClaiming(false);
   }
+}
 
   // ─────────────────────────────────────────────
   // Render
@@ -440,86 +460,87 @@ function DashboardInner() {
               </section>
 
               {/* Today's ticket */}
-              <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
-                <h2 className="text-sm font-semibold text-emerald-100">
-                  Today’s ticket
-                </h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  One ticket per wallet per draw. You must hold at least{' '}
-                  <span className="font-semibold text-emerald-300">
-                    {REQUIRED_XPOT.toLocaleString()} XPOT
-                  </span>{' '}
-                  at the moment you claim. You can always buy or sell again
-                  later.
-                </p>
+<article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
+  <h2 className="text-sm font-semibold text-emerald-100">
+    Today’s ticket
+  </h2>
+  <p className="mt-1 text-xs text-slate-400">
+    One ticket per wallet per draw. You must hold at least{' '}
+    <span className="font-semibold text-emerald-300">
+      {REQUIRED_XPOT.toLocaleString()} XPOT
+    </span>{' '}
+    at the moment you claim. You can always buy or sell again later.
+  </p>
 
-                {!ticketClaimed ? (
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-slate-200">
-                        Claim your ticket for today’s jackpot.
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Your ticket will be tied to your connected wallet for
-                        today’s draw.
-                      </p>
+  {!ticketClaimed ? (
+    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm text-slate-200">
+          Claim your ticket for today’s jackpot.
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Your ticket will be tied to your connected wallet for today’s draw.
+        </p>
 
-                      {claiming && (
-                        <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
-                          Verifying wallet → Locking today’s draw → Minting
-                          ticket…
-                        </p>
-                      )}
+        {claiming && (
+          <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
+            Verifying wallet → Locking today’s draw → Minting ticket…
+          </p>
+        )}
 
-                      {!walletConnected && (
-                        <p className="mt-1 text-[11px] text-amber-300">
-                          Connect your wallet on the right to claim today’s
-                          ticket.
-                        </p>
-                      )}
-                    </div>
+        {!walletConnected && (
+          <p className="mt-1 text-[11px] text-amber-300">
+            Connect your wallet on the right to claim today’s ticket.
+          </p>
+        )}
 
-                    <button
-                      type="button"
-                      onClick={handleClaimTicket}
-                      disabled={!walletConnected || claiming || loadingTickets}
-                      className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
-                        !walletConnected
-                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : claiming
-                          ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
-                          : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
-                      }`}
-                    >
-                      {!walletConnected
-                        ? 'Connect wallet to claim'
-                        : claiming
-                        ? 'Generating ticket...'
-                        : 'Claim today’s ticket'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-emerald-100">
-                        ✅ Your ticket is in today’s draw.
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Come back when the countdown hits zero to see if you
-                        won.
-                      </p>
-                      {todaysTicket && (
-                        <p className="mt-2 text-xs text-slate-300">
-                          Ticket code:{' '}
-                          <span className="font-mono text-emerald-300">
-                            {todaysTicket.code}
-                          </span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </article>
+        {claimError && (
+          <p className="mt-2 text-[11px] text-amber-300">
+            {claimError}
+          </p>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={handleClaimTicket}
+        disabled={!walletConnected || claiming || loadingTickets}
+        className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
+          !walletConnected
+            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+            : claiming
+            ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
+            : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
+        }`}
+      >
+        {!walletConnected
+          ? 'Connect wallet to claim'
+          : claiming
+          ? 'Generating ticket...'
+          : 'Claim today’s ticket'}
+      </button>
+    </div>
+  ) : (
+    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm text-emerald-100">
+          ✅ Your ticket is in today’s draw.
+        </p>
+        <p className="mt-1 text-xs text-slate-400">
+          Come back when the countdown hits zero to see if you won.
+        </p>
+        {todaysTicket && (
+          <p className="mt-2 text-xs text-slate-300">
+            Ticket code:{' '}
+            <span className="font-mono text-emerald-300">
+              {todaysTicket.code}
+            </span>
+          </p>
+        )}
+      </div>
+    </div>
+  )}
+</article>
 
               {/* Today's result (preview) */}
               <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
