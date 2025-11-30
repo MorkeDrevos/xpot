@@ -354,7 +354,7 @@ export default function DashboardPage() {
 </header>
       <div className="mx-auto flex max-w-6xl">
         {/* Left nav */}
-<aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-2 pb-4 md:flex flex-col justify-between">
+<aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-2 pb-4 md:flex flex-col">
   <div className="space-y-5">
     {/* Logo */}
     <div className="px-1">
@@ -417,7 +417,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Mini account chip */}
-          <div className="relative">
+          <div className="relative mt-auto">
             <div
               className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
               onClick={() => setAccountMenuOpen(open => !open)}
