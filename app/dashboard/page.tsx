@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
@@ -118,20 +117,23 @@ export default function DashboardPage() {
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
-  const [ticketTaken, setTicketTaken] = useState(false);
+  const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [requesting, setRequesting] = useState(false);
-  const [ticketError, setTicketError] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
-  const { publicKey, connected } = useWallet();
-  const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
+  const { publicKey, connected, disconnect } = useWallet();
   const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
 
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
   const winner = entries.find(e => e.status === 'won');
+
+  const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // ─────────────────────────────────────────────
   // Load today's tickets from DB
@@ -177,7 +179,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!currentWalletAddress) {
-      setTicketTaken(false);
+      setTicketClaimed(false);
       setTodaysTicket(null);
       return;
     }
@@ -187,52 +189,17 @@ export default function DashboardPage() {
     );
 
     if (myTicket) {
-      setTicketTaken(true);
+      setTicketClaimed(true);
       setTodaysTicket(myTicket);
     } else {
-      setTicketTaken(false);
+      setTicketClaimed(false);
       setTodaysTicket(null);
     }
   }, [entries, currentWalletAddress]);
 
   // ─────────────────────────────────────────────
-  // SOL balance (via API route)
-  // ─────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!publicKey) {
-      setSolBalance(null);
-      return;
-    }
-
-    let cancelled = false;
-    setSolBalance(null);
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/sol-balance?address=${publicKey.toBase58()}`
-        );
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
-
-        const data: { lamports: number } = await res.json();
-        if (cancelled) return;
-
-        setSolBalance(data.lamports / LAMPORTS_PER_SOL);
-      } catch (err) {
-        console.error('Error loading SOL balance (via API)', err);
-        if (!cancelled) setSolBalance('error');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [publicKey]);
-
-  // ─────────────────────────────────────────────
   // XPOT balance (via API route)
-// ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!publicKey) {
@@ -266,6 +233,64 @@ export default function DashboardPage() {
   }, [publicKey]);
 
   // ─────────────────────────────────────────────
+// Load wallet-specific draw history
+// ─────────────────────────────────────────────
+
+useEffect(() => {
+  if (!publicKey) {
+    setHistoryEntries([]);
+    setHistoryError(null);
+    return;
+  }
+
+  let cancelled = false;
+  setLoadingHistory(true);
+  setHistoryError(null);
+
+  (async () => {
+    try {
+      const res = await fetch(
+        `/api/tickets/history?wallet=${publicKey.toBase58()}`
+      );
+      if (!res.ok) throw new Error('Failed to load history');
+
+      const data = await res.json();
+      if (cancelled) return;
+
+      if (Array.isArray(data.tickets)) {
+        // API returns HistoryEntry but we only need the Entry fields here
+        setHistoryEntries(
+          data.tickets.map((t: any) => ({
+            id: t.id,
+            code: t.code,
+            status: t.status as EntryStatus,
+            label: t.label,
+            jackpotUsd: `$${(t.jackpotUsd ?? 10_000).toLocaleString?.() ?? '10,000'}`,
+            createdAt: t.createdAt,
+            walletAddress: t.walletAddress,
+          }))
+        );
+      } else {
+        setHistoryEntries([]);
+      }
+    } catch (err) {
+      console.error('Failed to load history', err);
+      if (!cancelled) {
+        setHistoryError(
+          (err as Error).message ?? 'Failed to load history'
+        );
+      }
+    } finally {
+      if (!cancelled) setLoadingHistory(false);
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [publicKey]);
+
+  // ─────────────────────────────────────────────
   // Ticket helpers
   // ─────────────────────────────────────────────
 
@@ -279,18 +304,17 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleGetTicket() {
+  async function handleClaimTicket() {
     if (!walletConnected || !publicKey) return;
-    if (loadingTickets || requesting) return; // avoid double clicks
+    if (loadingTickets || claiming) return; // avoid double clicks
 
-    setTicketError(null);
-    setRequesting(true);
+    setClaimError(null);
+    setClaiming(true);
 
     const walletAddress = publicKey.toBase58();
 
     try {
       const res = await fetch('/api/tickets/claim', {
-        // API route name unchanged for now
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress }),
@@ -309,39 +333,39 @@ export default function DashboardPage() {
 
         switch (code) {
           case 'NOT_ENOUGH_XPOT':
-            setTicketError(
+            setClaimError(
               `You need at least ${(
                 data.required ?? REQUIRED_XPOT
-              ).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
+              ).toLocaleString()} XPOT to claim today’s ticket. Your wallet currently has ${Number(
                 data.balance ?? 0
               ).toLocaleString()} XPOT.`
             );
             break;
 
           case 'NOT_ENOUGH_SOL':
-            setTicketError(
-              `Your wallet needs some SOL for network fees before you can get today’s ticket.`
+            setClaimError(
+              `Your wallet needs some SOL for network fees before you can claim today’s ticket.`
             );
             break;
 
           case 'XPOT_CHECK_FAILED':
-            setTicketError(
+            setClaimError(
               'Could not verify your XPOT balance right now. Please try again in a moment.'
             );
             break;
 
           case 'MISSING_WALLET':
           case 'INVALID_BODY':
-            setTicketError(
-              'Something is wrong with your wallet address. Try reconnecting your wallet and trying again.'
+            setClaimError(
+              'Something is wrong with your wallet address. Try reconnecting your wallet and claiming again.'
             );
             break;
 
           default:
-            setTicketError('Ticket request failed. Please try again.');
+            setClaimError('Ticket claim failed. Please try again.');
         }
 
-        console.error('Ticket request failed', res.status, text);
+        console.error('Claim failed', res.status, text);
         return;
       }
 
@@ -358,18 +382,20 @@ export default function DashboardPage() {
         });
       }
 
-      setTicketTaken(true);
+      setTicketClaimed(true);
       setTodaysTicket(ticket);
-      setTicketError(null);
+      setClaimError(null);
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
-      setTicketError(
-        'Unexpected error while getting your ticket. Please try again.'
-      );
+      setClaimError('Unexpected error while claiming. Please try again.');
     } finally {
-      setRequesting(false);
+      setClaiming(false);
     }
   }
+
+  const myTickets: Entry[] = currentWalletAddress
+  ? entries.filter(e => e.walletAddress === currentWalletAddress)
+  : [];
 
   // ─────────────────────────────────────────────
   // Render
@@ -378,22 +404,37 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
       <WalletDebug />
+      {/* Mobile top bar */}
+<header className="flex items-center justify-between px-4 py-3 md:hidden">
+  <Link href="/" className="flex items-center gap-2">
+    <Image
+      src="/img/xpot-logo-light.png"
+      alt="XPOT"
+      width={110}
+      height={30}
+      priority
+    />
+  </Link>
+
+  <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
+</header>
       <div className="mx-auto flex max-w-6xl">
         {/* Left nav */}
-        <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
-          <div className="space-y-6">
-            {/* Logo */}
-            <div className="px-3">
-              <Link href="/" className="inline-flex flex-col gap-1">
-                <Image
-                  src="/img/xpot-logo-light.png"
-                  alt="XPOT"
-                  width={120}
-                  height={32}
-                  priority
-                />
-              </Link>
-            </div>
+<aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-0 pb-4 md:flex flex-col">
+  <div className="space-y-5">
+    {/* Logo */}
+    <div className="pt-3 px-1">
+      <Link href="/" className="inline-flex flex-col gap-1">
+        <Image
+          src="/img/xpot-logo-light.png"
+          alt="XPOT"
+          width={120}
+          height={32}
+          priority
+        />
+      </Link>
+    </div>
+    {/* Nav … */}
 
             {/* Nav */}
             <nav className="space-y-1 text-sm">
@@ -424,25 +465,25 @@ export default function DashboardPage() {
 
             {/* Main CTA */}
             <button
-              type="button"
-              onClick={handleGetTicket}
-              disabled={!walletConnected || requesting || loadingTickets}
-              className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-                !walletConnected || requesting || loadingTickets
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
-              }`}
-            >
-              {!walletConnected
-                ? 'Connect wallet to get ticket'
-                : requesting
-                ? 'Getting ticket…'
-                : 'Get today’s ticket'}
-            </button>
+  type="button"
+  onClick={handleClaimTicket}
+  disabled={!walletConnected || claiming || loadingTickets}
+  className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
+    !walletConnected || claiming || loadingTickets
+      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+      : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+  }`}
+>
+  {!walletConnected
+    ? 'Connect wallet to continue'
+    : claiming
+    ? 'Processing...'
+    : 'Lock in today’s ticket'}
+</button>
           </div>
 
           {/* Mini account chip */}
-          <div className="relative">
+          <div className="relative mt-auto">
             <div
               className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
               onClick={() => setAccountMenuOpen(open => !open)}
@@ -591,24 +632,24 @@ export default function DashboardPage() {
                   <span className="font-semibold text-emerald-300">
                     {REQUIRED_XPOT.toLocaleString()} XPOT
                   </span>{' '}
-                  at the moment you get your ticket. You can always buy or sell
-                  again later.
+                  at the moment you claim. You can always buy or sell again
+                  later.
                 </p>
 
-                {!ticketTaken ? (
+                {!ticketClaimed ? (
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-200">
-                        Get your ticket for today’s jackpot.
+                        Lock in your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         Your ticket will be tied to your connected wallet for
                         today’s draw.
                       </p>
 
-                      {requesting && (
+                      {claiming && (
                         <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
-                          Verifying wallet → Registering entry → Minting
+                          Verifying wallet → Locking today’s draw → Minting
                           ticket…
                         </p>
                       )}
@@ -620,30 +661,30 @@ export default function DashboardPage() {
                         </p>
                       )}
 
-                      {ticketError && (
+                      {claimError && (
                         <p className="mt-2 text-[11px] text-amber-300">
-                          {ticketError}
+                          {claimError}
                         </p>
                       )}
                     </div>
 
                     <button
                       type="button"
-                      onClick={handleGetTicket}
-                      disabled={!walletConnected || requesting || loadingTickets}
+                      onClick={handleClaimTicket}
+                      disabled={!walletConnected || claiming || loadingTickets}
                       className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
                         !walletConnected
                           ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : requesting
+                          : claiming
                           ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
                           : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
                       }`}
                     >
                       {!walletConnected
-                        ? 'Connect wallet to get ticket'
-                        : requesting
-                        ? 'Getting ticket…'
-                        : 'Get today’s ticket'}
+                        ? 'Connect wallet to continue'
+                        : claiming
+                        ? 'Generating ticket...'
+                        : 'Lock in today’s ticket'}
                     </button>
                   </div>
                 ) : (
@@ -714,147 +755,168 @@ export default function DashboardPage() {
                 </p>
 
                 <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-                  {entries.map(entry => {
-                    const isCurrentWallet =
-                      currentWalletAddress &&
-                      entry.walletAddress === currentWalletAddress;
+  {myTickets.length === 0 ? (
+    <p className="text-xs text-slate-500">
+      No tickets yet for this wallet in today&apos;s draw.
+    </p>
+  ) : (
+    myTickets.map(entry => {
+      const isCurrentWallet =
+        currentWalletAddress &&
+        entry.walletAddress === currentWalletAddress;
 
-                    return (
-                      <article
-                        key={entry.id}
-                        className={`rounded-2xl px-4 pb-4 pt-3 transition border ${
-                          isCurrentWallet
-                            ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
-                            : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
-                        }`}
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-sm text-slate-50">
-                                {entry.code}
-                              </span>
+      return (
+        <article
+          key={entry.id}
+          className={`rounded-2xl px-4 pb-4 pt-3 transition border ${
+            isCurrentWallet
+              ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
+              : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
+          }`}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-sm text-slate-50">
+                  {entry.code}
+                </span>
 
-                              {entry.status === 'in-draw' && (
-                                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
-                                  In draw
-                                </span>
-                              )}
-                              {entry.status === 'won' && (
-                                <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                                  Winner
-                                </span>
-                              )}
-                              {entry.status === 'claimed' && (
-                                <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
-                                  Claimed
-                                </span>
-                              )}
-                              {entry.status === 'expired' && (
-                                <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
-                                  Expired
-                                </span>
-                              )}
+                {entry.status === 'in-draw' && (
+                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+                    In draw
+                  </span>
+                )}
+                {entry.status === 'won' && (
+                  <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                    Winner
+                  </span>
+                )}
+                {entry.status === 'claimed' && (
+                  <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
+                    Claimed
+                  </span>
+                )}
+                {entry.status === 'expired' && (
+                  <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+                    Expired
+                  </span>
+                )}
 
-                              {isCurrentWallet && (
-                                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                                  Current wallet
-                                </span>
-                              )}
-                            </div>
+                {isCurrentWallet && (
+                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                    Current wallet
+                  </span>
+                )}
+              </div>
 
-                            <p className="mt-1 text-xs text-slate-400">
-                              {entry.label}
-                            </p>
-                            <p className="mt-1 text-[11px] text-slate-500">
-                              Created: {formatDateTime(entry.createdAt)}
-                            </p>
-                            <p className="mt-1 text-[11px] text-slate-500">
-                              Wallet:{' '}
-                              <span className="font-mono">
-                                {shortWallet(entry.walletAddress)}
-                              </span>
-                            </p>
-                          </div>
+              <p className="mt-1 text-xs text-slate-400">
+                {entry.label}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500">
+                Created: {formatDateTime(entry.createdAt)}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500">
+                Wallet:{' '}
+                <span className="font-mono">
+                  {shortWallet(entry.walletAddress)}
+                </span>
+              </p>
+            </div>
 
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(entry)}
-                              className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
-                            >
-                              {copiedId === entry.id ? 'Copied' : 'Copy code'}
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
-                              disabled
-                            >
-                              View entry tweet (soon)
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleCopy(entry)}
+                className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
+              >
+                {copiedId === entry.id ? 'Copied' : 'Copy code'}
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
+                disabled
+              >
+                View entry tweet (soon)
+              </button>
+            </div>
+          </div>
+        </article>
+      );
+    })
+  )}
+</div>
+
               </section>
 
               {/* Draw history preview */}
-              <section className="pb-10 px-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-slate-200">
-                    Draw history
-                  </h2>
+<section className="pb-10 px-4">
+  <div className="flex items-center justify-between">
+    <h2 className="text-sm font-semibold text-slate-200">
+      Draw history
+    </h2>
 
-                  <Link
-                    href="/dashboard/history"
-                    className="text-[11px] text-slate-400 hover:text-emerald-300"
-                  >
-                    View full history →
-                  </Link>
-                </div>
+    <Link
+      href="/dashboard/history"
+      className="text-[11px] text-slate-400 hover:text-emerald-300"
+    >
+      View full history →
+    </Link>
+  </div>
 
-                <p className="text-xs text-slate-500">
-                  Your previous tickets from earlier draws.
-                </p>
+  <p className="text-xs text-slate-500">
+    Your previous tickets from earlier draws.
+  </p>
 
-                <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-                  {entries.length === 0 && (
-                    <p className="text-xs text-slate-500">
-                      No previous draws yet.
-                    </p>
-                  )}
+  {!publicKey && (
+    <p className="mt-2 text-xs text-slate-500">
+      Connect your wallet to see your ticket history.
+    </p>
+  )}
 
-                  {entries.slice(0, 5).map(entry => (
-                    <article
-                      key={entry.id}
-                      className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-mono text-sm text-slate-50">
-                            {entry.code}
-                          </span>
-                          <p className="mt-1 text-[11px] text-slate-500">
-                            {formatDate(entry.createdAt)}
-                          </p>
-                        </div>
+  {publicKey && (
+    <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
+      {loadingHistory && (
+        <p className="text-xs text-slate-500">
+          Loading history…
+        </p>
+      )}
 
-                        <span className="text-[11px] text-slate-400">
-                          {entry.status}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+      {!loadingHistory && historyEntries.length === 0 && (
+        <p className="text-xs text-slate-500">
+          No previous draws yet for this wallet.
+        </p>
+      )}
 
-                {ticketsError && (
-                  <p className="mt-2 text-[11px] text-amber-300">
-                    {ticketsError}
-                  </p>
-                )}
-              </section>
+      {historyEntries.slice(0, 5).map(entry => (
+        <article
+          key={entry.id}
+          className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-mono text-sm text-slate-50">
+                {entry.code}
+              </span>
+              <p className="mt-1 text-[11px] text-slate-500">
+                {formatDate(entry.createdAt)}
+              </p>
+            </div>
+
+            <span className="text-[11px] text-slate-400">
+              {entry.status}
+            </span>
+          </div>
+        </article>
+      ))}
+
+      {historyError && (
+        <p className="mt-2 text-[11px] text-amber-300">
+          {historyError}
+        </p>
+      )}
+    </div>
+  )}
+</section>
             </div>
           </section>
 
@@ -865,7 +927,7 @@ export default function DashboardPage() {
               <h3 className="text-sm font-semibold">Wallet</h3>
 
               <p className="mt-1 text-xs text-slate-400">
-                Connect wallet before getting today’s ticket.
+                Connect wallet before claiming today’s ticket.
               </p>
 
               <div className="mt-3">
@@ -890,13 +952,29 @@ export default function DashboardPage() {
                       ? `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                       : '-'}
                   </p>
+
+                  {connected && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await disconnect();
+                          window.location.reload();
+                        } catch (err) {
+                          console.error('Failed to disconnect wallet', err);
+                        }
+                      }}
+                      className="mt-3 w-full rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-500 hover:bg-slate-900"
+                    >
+                      Disconnect wallet
+                    </button>
+                  )}
                 </div>
               )}
 
               {!publicKey && (
                 <p className="mt-2 text-[11px] text-slate-500">
-                  Phantom and other Solana wallets work here. This is live
-                  mainnet SOL.
+                  Phantom and other Solana wallets work here.
                 </p>
               )}
             </div>
@@ -905,17 +983,17 @@ export default function DashboardPage() {
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">How today’s draw works</h3>
               <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                <li>• Get exactly one ticket per wallet.</li>
+                <li>• Claim exactly one ticket per wallet.</li>
                 <li>
-                  • At ticket time, your wallet must hold at least{' '}
+                  • At claim time, your wallet must hold at least{' '}
                   <span className="font-semibold text-emerald-300">
                     {REQUIRED_XPOT.toLocaleString()} XPOT
                   </span>
                   .
                 </li>
-                <li>• Wallet is only checked when you get your ticket.</li>
+                <li>• Wallet is only checked when claiming.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
-                <li>• Winner has 24 hours to collect or jackpot rolls over.</li>
+                <li>• Winner has 24 hours to claim or jackpot rolls over.</li>
               </ul>
             </div>
           </aside>
