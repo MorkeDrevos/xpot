@@ -299,6 +299,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
+      <WalletDebug />
       <div className="mx-auto flex max-w-6xl">
         {/* Left nav */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
