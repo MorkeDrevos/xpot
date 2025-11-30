@@ -1,18 +1,11 @@
+// app/dashboard/history/page.tsx
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import {
-  ConnectionProvider,
-  WalletProvider,
-  useWallet,
-} from '@solana/wallet-adapter-react';
-import {
-  WalletModalProvider,
-  WalletMultiButton,
-} from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
@@ -30,12 +23,12 @@ function formatDateTime(date: string | Date) {
   });
 }
 
-const endpoint = 'https://api.mainnet-beta.solana.com';
+type HistoryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
 type HistoryTicket = {
   id: string;
   code: string;
-  status: 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
+  status: HistoryStatus;
   label: string;
   jackpotUsd: number;
   createdAt: string;
@@ -48,21 +41,21 @@ function shortWallet(addr: string) {
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
-export default function HistoryPage() {
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+// OPTIONAL: debug logger – remove later if you want
+function WalletDebug() {
+  const { connected, publicKey } = useWallet();
 
-  return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          <HistoryInner />
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
-  );
+  useEffect(() => {
+    console.log('History wallet state:', {
+      connected,
+      publicKey: publicKey?.toBase58() ?? null,
+    });
+  }, [connected, publicKey]);
+
+  return null;
 }
 
-function HistoryInner() {
+export default function HistoryPage() {
   const username = 'your_handle';
   const { publicKey, connected } = useWallet();
 
@@ -74,9 +67,7 @@ function HistoryInner() {
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
-  // ─────────────────────────────────────────────
-  // SOL balance (same as dashboard)
-  // ─────────────────────────────────────────────
+  // SOL balance (via API route)
   useEffect(() => {
     if (!publicKey) {
       setSolBalance(null);
@@ -108,47 +99,47 @@ function HistoryInner() {
   }, [publicKey]);
 
   // Load ticket history for this wallet
-useEffect(() => {
-  if (!currentWalletAddress) {
-    setTickets([]);
-    return;
-  }
-
-  let cancelled = false;
-  setLoading(true);
-  setError(null);
-
-  (async () => {
-    try {
-      const res = await fetch(
-        `/api/tickets/history?wallet=${currentWalletAddress}`
-      );
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-
-      const data = await res.json();
-      if (cancelled) return;
-
-      if (Array.isArray(data.tickets)) {
-        setTickets(data.tickets);
-      } else {
-        setTickets([]);
-      }
-    } catch (err) {
-      console.error('Error loading ticket history', err);
-      if (!cancelled) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to load history'
-        );
-      }
-    } finally {
-      if (!cancelled) setLoading(false);
+  useEffect(() => {
+    if (!currentWalletAddress) {
+      setTickets([]);
+      return;
     }
-  })();
 
-  return () => {
-    cancelled = true;
-  };
-}, [currentWalletAddress]);
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/tickets/history?wallet=${currentWalletAddress}`
+        );
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (Array.isArray(data.tickets)) {
+          setTickets(data.tickets);
+        } else {
+          setTickets([]);
+        }
+      } catch (err) {
+        console.error('Error loading ticket history', err);
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to load history'
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentWalletAddress]);
 
   // Group by draw date (YYYY-MM-DD)
   const grouped = tickets.reduce<Record<string, HistoryTicket[]>>(
@@ -167,6 +158,8 @@ useEffect(() => {
 
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
+      <WalletDebug />
+
       <div className="mx-auto flex max-w-6xl">
         {/* Left nav */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
@@ -288,11 +281,11 @@ useEffect(() => {
                   {orderedDates.map(date => (
                     <section key={date} className="premium-card px-4 py-4">
                       <h2 className="text-sm font-semibold text-slate-100">
-  Draw day: {formatDate(date)}
-</h2>
+                        Draw day: {formatDate(date)}
+                      </h2>
                       <p className="mt-1 text-[11px] text-slate-500">
-  Tickets for this day’s jackpot draw.
-</p>
+                        Tickets for this day’s jackpot draw.
+                      </p>
 
                       <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
                         {grouped[date].map(ticket => (
@@ -338,8 +331,8 @@ useEffect(() => {
                                   {ticket.label}
                                 </p>
                                 <p className="mt-1 text-[11px] text-slate-500">
-  Created: {formatDateTime(ticket.createdAt)}
-</p>
+                                  Created: {formatDateTime(ticket.createdAt)}
+                                </p>
                                 <p className="mt-1 text-[11px] text-slate-500">
                                   Wallet:{' '}
                                   <span className="font-mono">
