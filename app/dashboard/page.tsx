@@ -338,22 +338,37 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-black text-slate-50 relative">
       <WalletDebug />
+      {/* Mobile top bar */}
+<header className="flex items-center justify-between px-4 py-3 md:hidden">
+  <Link href="/" className="flex items-center gap-2">
+    <Image
+      src="/img/xpot-logo-light.png"
+      alt="XPOT"
+      width={110}
+      height={30}
+      priority
+    />
+  </Link>
+
+  <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
+</header>
       <div className="mx-auto flex max-w-6xl">
         {/* Left nav */}
-        <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 py-4 md:flex flex-col justify-between">
-          <div className="space-y-6">
-            {/* Logo */}
-            <div className="px-3">
-              <Link href="/" className="inline-flex flex-col gap-1">
-                <Image
-                  src="/img/xpot-logo-light.png"
-                  alt="XPOT"
-                  width={120}
-                  height={32}
-                  priority
-                />
-              </Link>
-            </div>
+<aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-2 pb-4 md:flex flex-col justify-between">
+  <div className="space-y-5">
+    {/* Logo */}
+    <div className="px-1">
+      <Link href="/" className="inline-flex flex-col gap-1">
+        <Image
+          src="/img/xpot-logo-light.png"
+          alt="XPOT"
+          width={120}
+          height={32}
+          priority
+        />
+      </Link>
+    </div>
+    {/* Nav … */}
 
             {/* Nav */}
             <nav className="space-y-1 text-sm">
