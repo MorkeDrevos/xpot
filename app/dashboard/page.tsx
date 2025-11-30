@@ -354,10 +354,10 @@ export default function DashboardPage() {
 </header>
       <div className="mx-auto flex max-w-6xl">
         {/* Left nav */}
-<aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-2 pb-4 md:flex flex-col">
+<aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-0 pb-4 md:flex flex-col">
   <div className="space-y-5">
     {/* Logo */}
-    <div className="px-1">
+    <div className="-mt-6 px-1">
       <Link href="/" className="inline-flex flex-col gap-1">
         <Image
           src="/img/xpot-logo-light.png"
