@@ -51,7 +51,7 @@ type Entry = {
   walletAddress: string;
 };
 
-// Map Prisma TicketStatus (IN_DRAW, WON, etc.) to UI status
+// Map Prisma TicketStatus → EntryStatus
 function mapStatus(status: string | null | undefined): EntryStatus {
   switch (status) {
     case 'WON':
@@ -78,7 +78,7 @@ function toEntry(ticket: any, draw: any): Entry {
   return {
     id: ticket.id,
     code: ticket.code,
-    status: mapStatus(ticket.status ?? 'IN_DRAW'),
+    status: mapStatus(ticket.status),
     label: "Today's main jackpot • $10,000",
     jackpotUsd: `$${JACKPOT_USD.toLocaleString()}`,
     createdAt,
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
 
     if (!body || typeof body.walletAddress !== 'string') {
       return NextResponse.json(
-        { ok: false, error: 'INVALID_BODY' },
+        { ok: false, error: 'Invalid body' },
         { status: 400 }
       );
     }
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
 
     if (!walletAddress) {
       return NextResponse.json(
-        { ok: false, error: 'MISSING_WALLET' },
+        { ok: false, error: 'Empty wallet address' },
         { status: 400 }
       );
     }
@@ -157,10 +157,8 @@ export async function POST(req: Request) {
     });
 
     if (!wallet) {
-      // Create a minimal user + wallet combo so relations are satisfied
       const user = await prisma.user.create({
         data: {
-          // xHandle is unique; use wallet-based slug
           xHandle: `wallet_${walletAddress.slice(0, 8)}_${Date.now().toString(
             36
           )}`,
@@ -177,7 +175,6 @@ export async function POST(req: Request) {
 
     // ─────────────────────────────────────
     // 2) Find or create *today's* Draw row
-    //    (using drawDate, not createdAt)
     // ─────────────────────────────────────
 
     const start = new Date();
@@ -199,7 +196,6 @@ export async function POST(req: Request) {
       draw = await prisma.draw.create({
         data: {
           drawDate: new Date(),
-          // isClosed defaults to false
         },
       });
     }
@@ -225,7 +221,6 @@ export async function POST(req: Request) {
           drawId: draw.id,
           walletId: wallet.id,
           userId: wallet.userId,
-          // status will default to IN_DRAW
         },
         include: {
           wallet: true,
