@@ -7,6 +7,35 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
+import { WalletReadyState } from '@solana/wallet-adapter-base';
+import { useWallet } from '@solana/wallet-adapter-react';
+
+function WalletStatusHint() {
+  const { wallets, connected } = useWallet();
+
+  const anyDetected = wallets.some(
+    w =>
+      w.readyState === WalletReadyState.Installed ||
+      w.readyState === WalletReadyState.Loadable
+  );
+
+  if (connected) return null;
+
+  if (!anyDetected) {
+    return (
+      <p className="mt-2 text-xs text-amber-300">
+        No Solana wallet detected. Install Phantom or Jupiter to continue.
+      </p>
+    );
+  }
+
+  return (
+    <p className="mt-2 text-xs text-slate-500">
+      Click “Select Wallet” and choose Phantom or Jupiter to connect.
+    </p>
+  );
+}
+
 function formatDate(date: string | Date) {
   const d = new Date(date);
   return d.toLocaleDateString('de-DE'); // 30.11.2025
