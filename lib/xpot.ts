@@ -18,7 +18,7 @@ type TokenConfig = {
 
 // true  → use DEV token (for local / staging / testing)
 // false → use PROD token (real XPOT / PANDU live token)
-export const IS_DEV_XPOT = true; // set to false at real launch
+export const IS_DEV_XPOT = false; // set to false at real launch
 
 /* ============================
    TOKENS
