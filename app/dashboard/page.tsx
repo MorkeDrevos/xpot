@@ -18,12 +18,12 @@ import { REQUIRED_XPOT } from '../../lib/xpot';
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
-  return d.toLocaleDateString('en-GB'); // 30/11/2025
+  return d.toLocaleDateString('de-DE'); // 30.11.2025
 }
 
 function formatDateTime(date: string | Date) {
   const d = new Date(date);
-  return d.toLocaleString('en-GB', {
+  return d.toLocaleString('de-DE', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -619,8 +619,8 @@ function DashboardInner() {
                               {entry.label}
                             </p>
                             <p className="mt-1 text-[11px] text-slate-500">
-                              Created: {entry.createdAt}
-                            </p>
+  Created: {formatDateTime(entry.createdAt)}
+</p>
                             <p className="mt-1 text-[11px] text-slate-500">
                               Wallet:{' '}
                               <span className="font-mono">
