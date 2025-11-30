@@ -42,7 +42,7 @@ export default function WhatIsXpotPage() {
 
               <p className="mt-4 text-sm leading-relaxed text-slate-200/90">
                 XPOT is the token the XPOT.bet draw revolves around. Sign in with X, connect your wallet and hold the
-                minimum XPOT balance – then that wallet can get exactly one ticket for the curren draw.
+                minimum XPOT balance – then that wallet can get exactly one ticket for the current draw.
               </p>
 
               {/* Core pillars – no bullets, just short premium lines */}
