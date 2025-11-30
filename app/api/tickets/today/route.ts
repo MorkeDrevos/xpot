@@ -16,7 +16,7 @@ type Entry = {
   walletAddress: string;
 };
 
-// Prisma TicketStatus → UI EntryStatus
+// Map Prisma TicketStatus → EntryStatus
 function mapStatus(status: string | null | undefined): EntryStatus {
   switch (status) {
     case 'WON':
@@ -43,7 +43,7 @@ function toEntry(ticket: any, draw: any): Entry {
   return {
     id: ticket.id,
     code: ticket.code,
-    status: mapStatus(ticket.status ?? 'IN_DRAW'),
+    status: mapStatus(ticket.status),
     label: "Today's main jackpot • $10,000",
     jackpotUsd: `$${JACKPOT_USD.toLocaleString()}`,
     createdAt,
@@ -54,7 +54,6 @@ function toEntry(ticket: any, draw: any): Entry {
 // GET /api/tickets/today
 export async function GET() {
   try {
-    // Get today's draw window
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -71,7 +70,6 @@ export async function GET() {
     });
 
     if (!draw) {
-      // no draw yet today
       return NextResponse.json({ tickets: [] }, { status: 200 });
     }
 
@@ -83,9 +81,7 @@ export async function GET() {
       },
     });
 
-    const entries: Entry[] = ticketsDb.map(t =>
-      toEntry(t, draw)
-    );
+    const entries: Entry[] = ticketsDb.map(t => toEntry(t, draw));
 
     return NextResponse.json(
       {
