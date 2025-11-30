@@ -63,28 +63,10 @@ function shortWallet(addr: string) {
 const initialEntries: Entry[] = [];
 
 // ─────────────────────────────────────────────
-// Root wrapper: Solana connection + wallet
-// ─────────────────────────────────────────────
-
-export default function DashboardPage() {
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
-
-  return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          <DashboardInner />
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
-  );
-}
-
-// ─────────────────────────────────────────────
 // Inner dashboard – uses wallet + SOL balance
 // ─────────────────────────────────────────────
 
-function DashboardInner() {
+function DashboardPage() {
   const username = 'your_handle';
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
