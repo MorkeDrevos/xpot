@@ -127,6 +127,7 @@ export default function DashboardPage() {
 
   const { publicKey, connected } = useWallet();
   const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
+  const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
 
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
@@ -221,6 +222,38 @@ export default function DashboardPage() {
       } catch (err) {
         console.error('Error loading SOL balance (via API)', err);
         if (!cancelled) setSolBalance('error');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [publicKey]);
+
+    // XPOT balance (via API route)
+  useEffect(() => {
+    if (!publicKey) {
+      setXpotBalance(null);
+      return;
+    }
+
+    let cancelled = false;
+    setXpotBalance(null);
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/xpot-balance?address=${publicKey.toBase58()}`
+        );
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+        const data: { balance: number } = await res.json();
+        if (cancelled) return;
+
+        setXpotBalance(data.balance);
+      } catch (err) {
+        console.error('Error loading XPOT balance (via API)', err);
+        if (!cancelled) setXpotBalance('error');
       }
     })();
 
@@ -834,12 +867,28 @@ export default function DashboardPage() {
                 <WalletStatusHint />
               </div>
 
-              {publicKey && (
+                            {publicKey && (
                 <div className="mt-3 text-xs text-slate-300">
                   <p className="break-all">
                     Wallet:{' '}
                     <span className="font-mono">{publicKey.toBase58()}</span>
                   </p>
+
+                  <p className="mt-1">
+                    XPOT balance:{' '}
+                    {xpotBalance === null && publicKey
+                      ? 'Loading...'
+                      : xpotBalance === 'error'
+                      ? 'Unavailable'
+                      : typeof xpotBalance === 'number'
+                      ? `${Math.floor(xpotBalance).toLocaleString()} XPOT`
+                      : '-'}
+                  </p>
+
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    (You still need a little SOL for network fees.)
+                  </p>
+
                   <p className="mt-1">
                     SOL balance:{' '}
                     {solBalance === null && publicKey
