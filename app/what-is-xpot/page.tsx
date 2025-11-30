@@ -35,15 +35,15 @@ export default function WhatIsXpotPage() {
                 What is XPOT
               </p>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-                XPOT is your entry key to a 
+                XPOT is your access key to a
                 <br />
-                crypto jackpot draw
+                daily crypto jackpot draw
               </h1>
 
               <p className="mt-4 text-sm leading-relaxed text-slate-200/90">
                 XPOT is the token the XPOT.bet draw revolves around. Hold the
                 minimum XPOT balance, connect your wallet and sign in with X –
-                then that wallet can claim exactly one ticket for the current
+                then that wallet can get exactly one ticket for the current
                 draw.
               </p>
 
@@ -54,8 +54,9 @@ export default function WhatIsXpotPage() {
                     One ticket per wallet
                   </p>
                   <p className="mt-1 text-sm text-slate-200/90">
-                    Each draw, every wallet can issue one ticket only. Refreshing
-                    or reconnecting with the same wallet doesn&apos;t give you more.
+                    Each draw, every wallet can issue one ticket only.
+                    Refreshing or reconnecting with the same wallet doesn&apos;t
+                    give you more.
                   </p>
                 </div>
                 <div>
@@ -64,16 +65,16 @@ export default function WhatIsXpotPage() {
                   </p>
                   <p className="mt-1 text-sm text-slate-200/90">
                     Your connected wallet must hold at least the minimum XPOT
-                    balance at the moment you enter.
+                    balance at the moment you enter the draw.
                   </p>
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-200/80">
-                    NO SECOND CHANCES
+                    No second chances
                   </p>
                   <p className="mt-1 text-sm text-slate-200/90">
-                    Miss a draw and it’s gone.
-                    Each wallet gets one shot per round.
+                    Miss a draw and it’s gone. Each wallet gets one shot per
+                    round.
                   </p>
                 </div>
               </div>
@@ -84,7 +85,7 @@ export default function WhatIsXpotPage() {
                   href="/"
                   className="inline-flex items-center justify-center rounded-full bg-amber-300 px-5 py-2.5 text-xs font-semibold text-slate-950 shadow-[0_0_30px_rgba(251,191,36,0.45)] transition hover:bg-amber-200"
                 >
-                  Enter today&apos;s draw
+                  Get today&apos;s ticket
                 </Link>
                 <Link
                   href="/dashboard"
@@ -173,8 +174,8 @@ export default function WhatIsXpotPage() {
               a wallet that holds at least the minimum XPOT balance.
             </p>
             <p>
-              <span className="font-medium text-slate-100">3.</span> You claim
-              one ticket for the current draw – one ticket per wallet.
+              <span className="font-medium text-slate-100">3.</span> You get one
+              ticket for the current draw – one ticket per wallet.
             </p>
             <p>
               <span className="font-medium text-slate-100">4.</span> When the
@@ -182,7 +183,7 @@ export default function WhatIsXpotPage() {
             </p>
             <p>
               <span className="font-medium text-slate-100">5.</span> The winner
-              can claim the jackpot within the published claim window.
+              can collect the jackpot within the published payout window.
             </p>
           </div>
         </section>
@@ -287,7 +288,7 @@ export default function WhatIsXpotPage() {
               href="/"
               className="inline-flex items-center justify-center rounded-full bg-amber-300 px-4 py-2 text-xs font-semibold text-slate-950 shadow-[0_0_24px_rgba(251,191,36,0.4)] hover:bg-amber-200"
             >
-              Enter today&apos;s draw
+              Get today&apos;s ticket
             </Link>
             <Link
               href="/dashboard"
