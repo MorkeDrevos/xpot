@@ -14,7 +14,7 @@ export const IS_DEV_XPOT = true; // 🔁 switch to false at real launch
 // 🔴 PRODUCTION TOKEN (real XPOT)
 const PROD = {
   SYMBOL: 'XPOT',
-  MINT: 'PASTE_REAL_XPOT_MINT_HERE',
+  MINT: '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk',
   REQUIRED: 100_000,
 };
 
