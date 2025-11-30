@@ -17,9 +17,19 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 // ─────────────────────────────────────────────
 
 const endpoint = 'https://api.mainnet-beta.solana.com';
-const wallets = [];
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+// Empty array – Phantom and others will be detected natively
+const wallets: any[] = [];
+
+// ─────────────────────────────────────────────
+// Root layout
+// ─────────────────────────────────────────────
+
+export default function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <html lang="en">
       <head>
