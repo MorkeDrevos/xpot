@@ -16,6 +16,23 @@ type Entry = {
   walletAddress: string;
 };
 
+// Prisma TicketStatus → UI EntryStatus
+function mapStatus(status: string | null | undefined): EntryStatus {
+  switch (status) {
+    case 'WON':
+      return 'won';
+    case 'CLAIMED':
+      return 'claimed';
+    case 'NOT_PICKED':
+      return 'not-picked';
+    case 'EXPIRED':
+      return 'expired';
+    case 'IN_DRAW':
+    default:
+      return 'in-draw';
+  }
+}
+
 // Map Prisma Ticket + Draw to dashboard Entry
 function toEntry(ticket: any, draw: any): Entry {
   const createdAt =
@@ -26,8 +43,7 @@ function toEntry(ticket: any, draw: any): Entry {
   return {
     id: ticket.id,
     code: ticket.code,
-    // for now: everything that exists today is “in-draw”
-    status: 'in-draw',
+    status: mapStatus(ticket.status ?? 'IN_DRAW'),
     label: "Today's main jackpot • $10,000",
     jackpotUsd: `$${JACKPOT_USD.toLocaleString()}`,
     createdAt,
@@ -38,7 +54,7 @@ function toEntry(ticket: any, draw: any): Entry {
 // GET /api/tickets/today
 export async function GET() {
   try {
-    // today’s date window
+    // Get today's draw window
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -67,7 +83,9 @@ export async function GET() {
       },
     });
 
-    const entries: Entry[] = ticketsDb.map(t => toEntry(t, draw));
+    const entries: Entry[] = ticketsDb.map(t =>
+      toEntry(t, draw)
+    );
 
     return NextResponse.json(
       {
