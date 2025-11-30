@@ -315,9 +315,6 @@ export default function DashboardPage() {
                   height={32}
                   priority
                 />
-                <span className="text-[11px] text-slate-500">
-                  Daily crypto jackpot
-                </span>
               </Link>
             </div>
 
