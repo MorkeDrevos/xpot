@@ -288,8 +288,8 @@ useEffect(() => {
                   {orderedDates.map(date => (
                     <section key={date} className="premium-card px-4 py-4">
                       <h2 className="text-sm font-semibold text-slate-100">
-                        Draw day: {date}
-                      </h2>
+  Draw day: {formatDate(date)}
+</h2>
                       <p className="mt-1 text-[11px] text-slate-500">
   Tickets for this day’s jackpot draw.
 </p>
@@ -338,9 +338,8 @@ useEffect(() => {
                                   {ticket.label}
                                 </p>
                                 <p className="mt-1 text-[11px] text-slate-500">
-                                  Created:{' '}
-                                  {new Date(ticket.createdAt).toLocaleString()}
-                                </p>
+  Created: {formatDateTime(ticket.createdAt)}
+</p>
                                 <p className="mt-1 text-[11px] text-slate-500">
                                   Wallet:{' '}
                                   <span className="font-mono">
