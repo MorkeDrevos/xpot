@@ -1,10 +1,12 @@
 // app/api/sol-balance/route.ts
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const address = searchParams.get('address');
+    const address = searchParams.get('address')?.trim();
 
     if (!address) {
       return NextResponse.json(
@@ -24,10 +26,17 @@ export async function GET(req: Request) {
       }),
     });
 
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: 'Solana RPC failed' },
+        { status: 500 }
+      );
+    }
+
     const json = await res.json();
     const lamports = json?.result?.value ?? 0;
 
-    return NextResponse.json({ lamports });
+    return NextResponse.json({ lamports }, { status: 200 });
   } catch (err) {
     console.error('SOL balance API error:', err);
     return NextResponse.json(
