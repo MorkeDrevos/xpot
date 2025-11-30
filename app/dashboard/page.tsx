@@ -9,6 +9,8 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 
+import { useSession } from 'next-auth/react';
+
 function formatDate(date: string | Date) {
   const d = new Date(date);
   return d.toLocaleDateString('de-DE'); // 30.11.2025
@@ -74,7 +76,11 @@ const initialEntries: Entry[] = [];
 // ─────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const username = 'your_handle';
+  const username =
+  session?.user?.name ||
+  session?.user?.email?.split('@')[0] ||
+  'XPOT user';
+  const { data: session } = useSession();
 
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -384,7 +390,14 @@ export default function DashboardPage() {
                   <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
                     XPOT user
                   </p>
-                  <p className="text-[11px] text-slate-500">@{username}</p>
+                  <a
+  href={`https://x.com/${username.replace('@', '')}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-xs text-slate-500 hover:text-emerald-300"
+>
+  @{username.replace('@', '')}
+</a>
                 </div>
               </div>
 
@@ -409,7 +422,14 @@ export default function DashboardPage() {
                       <p className="text-xs font-semibold text-slate-50">
                         XPOT user
                       </p>
-                      <p className="text-[11px] text-slate-500">@{username}</p>
+                      <a
+  href={`https://x.com/${username.replace('@', '')}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-xs text-slate-500 hover:text-emerald-300"
+>
+  @{username.replace('@', '')}
+</a>
                     </div>
                   </div>
                 </div>
@@ -464,7 +484,14 @@ export default function DashboardPage() {
                         Mørke Drevos
                       </span>
                     </div>
-                    <span className="text-xs text-slate-500">@{username}</span>
+                    <a
+  href={`https://x.com/${username.replace('@', '')}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-xs text-slate-500 hover:text-emerald-300"
+>
+  @{username.replace('@', '')}
+</a>
                   </div>
                 </div>
 
