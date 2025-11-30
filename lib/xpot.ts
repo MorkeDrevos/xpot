@@ -5,7 +5,7 @@
    Toggle dev token here
 ============================ */
 
-export const IS_DEV_XPOT = true; // 🔁 switch to false at real launch
+export const IS_DEV_XPOT = false; // 🔁 switch to false at real launch
 
 /* ============================
    TOKEN CONFIG
@@ -13,16 +13,16 @@ export const IS_DEV_XPOT = true; // 🔁 switch to false at real launch
 
 // 🔴 PRODUCTION TOKEN (real XPOT)
 const PROD = {
-  SYMBOL: 'XPOT',
+  SYMBOL: 'PANDU',
   MINT: '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk',
   REQUIRED: 100_000,
 };
 
 // 🟡 DEV / TEST TOKEN (any token for testing)
 const DEV = {
-  SYMBOL: 'TEST',
-  MINT: 'PASTE_TEST_TOKEN_MINT_HERE',
-  REQUIRED: 10, // LOW for testing
+  SYMBOL: 'BONK',
+  MINT: 'DezXAZ8z7PnrnRJjz3wXBoHyRnHv7QBB7aLteS7r2N6v',
+  REQUIRED: 1_000_000,
 };
 
 export const TOKEN = IS_DEV_XPOT ? DEV : PROD;
