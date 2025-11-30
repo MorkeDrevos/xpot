@@ -14,14 +14,18 @@ export async function GET(req: Request) {
   }
 
   const tickets = await prisma.ticket.findMany({
-    where: { walletAddress: wallet },
-    include: {
-      draw: true,
+  where: {
+    wallet: {
+      address: wallet,
     },
-    orderBy: {
-      id: 'desc',
-    },
-  });
+  },
+  include: {
+    draw: true,
+    wallet: true,
+  },
+  orderBy: { createdAt: 'desc' },
+  take: 200,
+});
 
   const history = tickets.map(t => ({
     id: t.id,
