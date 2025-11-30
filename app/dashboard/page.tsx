@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
@@ -101,7 +100,7 @@ function WalletStatusHint() {
 const initialEntries: Entry[] = [];
 
 // ─────────────────────────────────────────────
-// Inner dashboard – uses wallet + SOL balance
+// Inner dashboard
 // ─────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -125,8 +124,7 @@ export default function DashboardPage() {
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
-  const { publicKey, connected } = useWallet();
-  const [solBalance, setSolBalance] = useState<number | null | 'error'>(null);
+  const { publicKey, connected, disconnect } = useWallet();
   const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
 
   const walletConnected = !!publicKey && connected;
@@ -196,41 +194,9 @@ export default function DashboardPage() {
   }, [entries, currentWalletAddress]);
 
   // ─────────────────────────────────────────────
-  // SOL balance (via API route)
+  // XPOT balance (via API route)
   // ─────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!publicKey) {
-      setSolBalance(null);
-      return;
-    }
-
-    let cancelled = false;
-    setSolBalance(null);
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/sol-balance?address=${publicKey.toBase58()}`
-        );
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
-
-        const data: { lamports: number } = await res.json();
-        if (cancelled) return;
-
-        setSolBalance(data.lamports / LAMPORTS_PER_SOL);
-      } catch (err) {
-        console.error('Error loading SOL balance (via API)', err);
-        if (!cancelled) setSolBalance('error');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [publicKey]);
-
-    // XPOT balance (via API route)
   useEffect(() => {
     if (!publicKey) {
       setXpotBalance(null);
@@ -428,10 +394,10 @@ export default function DashboardPage() {
               }`}
             >
               {!walletConnected
-                ? 'Connect wallet to claim'
+                ? 'Connect wallet to continue'
                 : claiming
-                ? 'Claiming…'
-                : 'Claim today’s ticket'}
+                ? 'Processing...'
+                : 'Lock in today’s ticket'}
             </button>
           </div>
 
@@ -593,7 +559,7 @@ export default function DashboardPage() {
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-200">
-                        Claim your ticket for today’s jackpot.
+                        Lock in your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         Your ticket will be tied to your connected wallet for
@@ -609,7 +575,7 @@ export default function DashboardPage() {
 
                       {!walletConnected && (
                         <p className="mt-1 text-[11px] text-amber-300">
-                          Connect your wallet on the right to claim today’s
+                          Connect your wallet on the right to get today’s
                           ticket.
                         </p>
                       )}
@@ -634,10 +600,10 @@ export default function DashboardPage() {
                       }`}
                     >
                       {!walletConnected
-                        ? 'Connect wallet to claim'
+                        ? 'Connect wallet to continue'
                         : claiming
                         ? 'Generating ticket...'
-                        : 'Claim today’s ticket'}
+                        : 'Lock in today’s ticket'}
                     </button>
                   </div>
                 ) : (
@@ -867,7 +833,7 @@ export default function DashboardPage() {
                 <WalletStatusHint />
               </div>
 
-                            {publicKey && (
+              {publicKey && (
                 <div className="mt-3 text-xs text-slate-300">
                   <p className="break-all">
                     Wallet:{' '}
@@ -884,13 +850,29 @@ export default function DashboardPage() {
                       ? `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                       : '-'}
                   </p>
+
+                  {connected && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await disconnect();
+                          window.location.reload();
+                        } catch (err) {
+                          console.error('Failed to disconnect wallet', err);
+                        }
+                      }}
+                      className="mt-3 w-full rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-500 hover:bg-slate-900"
+                    >
+                      Disconnect wallet
+                    </button>
+                  )}
                 </div>
-              )}  
+              )}
 
               {!publicKey && (
                 <p className="mt-2 text-[11px] text-slate-500">
-                  Phantom and other Solana wallets work here. This is live
-                  mainnet SOL.
+                  Phantom and other Solana wallets work here.
                 </p>
               )}
             </div>
