@@ -1,35 +1,23 @@
 // app/api/admin/draw/today/tickets/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '/vercel/path0/lib/prisma';
 
-function isAuthorized(req: NextRequest) {
+function isAuthorized(req: NextRequest): boolean {
   const header =
     req.headers.get('x-admin-token') ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
-    return false;
-  }
-
+  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) return false;
   return true;
 }
 
-function mapStatus(status: string): string {
-  switch (status) {
-    case 'IN_DRAW':
-      return 'in-draw';
-    case 'WON':
-      return 'won';
-    case 'CLAIMED':
-      return 'claimed';
-    case 'NOT_PICKED':
-      return 'not-picked';
-    case 'EXPIRED':
-      return 'expired';
-    default:
-      return 'in-draw';
-  }
-}
+const statusMap: Record<string, string> = {
+  IN_DRAW: 'in-draw',
+  WON: 'won',
+  CLAIMED: 'claimed',
+  NOT_PICKED: 'not-picked',
+  EXPIRED: 'expired',
+};
 
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
@@ -39,23 +27,16 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const now = new Date();
-  const startOfDay = new Date(now);
-  startOfDay.setUTCHours(0, 0, 0, 0);
-  const endOfDay = new Date(startOfDay);
-  endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
-
+  // Same “latest draw” logic as /today
   const draw = await prisma.draw.findFirst({
-    where: {
-      drawDate: {
-        gte: startOfDay,
-        lt: endOfDay,
-      },
-    },
+    orderBy: { drawDate: 'desc' },
   });
 
   if (!draw) {
-    return NextResponse.json({ ok: true, tickets: [] });
+    return NextResponse.json({
+      ok: true,
+      tickets: [],
+    });
   }
 
   const tickets = await prisma.ticket.findMany({
@@ -70,8 +51,9 @@ export async function GET(req: NextRequest) {
     id: t.id,
     code: t.code,
     walletAddress: t.wallet?.address ?? 'UNKNOWN',
-    status: mapStatus(t.status),
+    status: statusMap[t.status] ?? 'in-draw',
     createdAt: t.createdAt.toISOString(),
+    jackpotUsd: Number(draw.jackpotUsd ?? 10_000),
   }));
 
   return NextResponse.json({
