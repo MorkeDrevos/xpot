@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const JACKPOT_XPOT = 1_000_000;
-// TEMP: using PANDU/4MC or whatever test mint you want
+// TEMP: test mint; swap to XPOT mint when ready
 const XPOT_MINT = '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
 
 function formatUsd(value: number) {
@@ -32,7 +32,10 @@ export default function JackpotPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [maxJackpotToday, setMaxJackpotToday] = useState<number | null>(null);
   const [justPumped, setJustPumped] = useState(false);
+  const [justHitMilestone, setJustHitMilestone] = useState(false);
+
   const prevJackpot = useRef<number | null>(null);
+  const lastMilestoneRef = useRef<number | null>(null);
 
   const todayKey = (() => {
     const d = new Date();
@@ -42,7 +45,7 @@ export default function JackpotPanel() {
     return `xpot_max_jackpot_${y}${m}${day}`;
   })();
 
-  // Load today max from localStorage
+  // Load today's max from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(todayKey);
@@ -119,7 +122,24 @@ export default function JackpotPanel() {
     }
   }, [jackpotUsd, todayKey]);
 
-  // Find next milestone
+  // Milestone detection (for animation)
+  useEffect(() => {
+    if (jackpotUsd == null) return;
+
+    const milestonesReached = MILESTONES.filter(m => jackpotUsd >= m);
+    const latest =
+      milestonesReached.length > 0
+        ? milestonesReached[milestonesReached.length - 1]
+        : null;
+
+    if (latest !== null && latest !== lastMilestoneRef.current) {
+      lastMilestoneRef.current = latest;
+      setJustHitMilestone(true);
+      setTimeout(() => setJustHitMilestone(false), 1600);
+    }
+  }, [jackpotUsd]);
+
+  // Find next milestone + last reached (for display)
   const nextMilestone =
     jackpotUsd != null
       ? MILESTONES.find(m => jackpotUsd < m) ?? null
@@ -147,12 +167,12 @@ export default function JackpotPanel() {
           </div>
 
           <div className="mt-1 text-sm text-slate-400">
-  {isLoading
-    ? 'Fetching live price…'
-    : jackpotUsd
-    ? `${formatUsd(jackpotUsd)} (live)`
-    : 'Live price not available yet for this token on Jupiter.'}
-</div>
+            {isLoading
+              ? 'Fetching live price…'
+              : jackpotUsd
+              ? `${formatUsd(jackpotUsd)} (live)`
+              : 'Live price not available yet for this token on Jupiter.'}
+          </div>
 
           {priceUsd && (
             <div className="mt-1 text-xs text-slate-500">
@@ -169,7 +189,14 @@ export default function JackpotPanel() {
           )}
 
           {reachedMilestone && (
-            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-300">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-emerald-300 text-[11px] ${
+                justHitMilestone
+                  ? 'bg-emerald-500/20 ring-1 ring-emerald-400 animate-pulse'
+                  : 'bg-emerald-500/10'
+              }`}
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-300" />
               Milestone reached: {formatUsd(reachedMilestone)}
             </span>
           )}
