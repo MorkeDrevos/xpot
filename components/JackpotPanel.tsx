@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 const JACKPOT_XPOT = 1_000_000;
 
 // 🔴 PUT YOUR ACTUAL MINT ADDRESS HERE
-const XPOT_MINT = 'PASTE_YOUR_TOKEN_MINT_ADDRESS';
+const XPOT_MINT = '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
 
 function formatUsd(value: number) {
   if (!Number.isFinite(value)) return '$0';
