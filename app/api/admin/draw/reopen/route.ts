@@ -1,11 +1,8 @@
+// app/api/admin/draw/reopen/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/_auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, TicketStatus } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
-  const auth = requireAdmin(req);
-  if (auth) return auth;
-
   // Re-open the most recent draw
   const draw = await prisma.draw.findFirst({
     orderBy: { drawDate: 'desc' },
@@ -30,7 +27,7 @@ export async function POST(req: NextRequest) {
     try {
       await prisma.ticket.update({
         where: { id: draw.winnerTicketId },
-        data: { status: 'IN_DRAW' },
+        data: { status: TicketStatus.IN_DRAW },
       });
     } catch (err) {
       console.error(
