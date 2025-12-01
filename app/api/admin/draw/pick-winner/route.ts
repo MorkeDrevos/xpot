@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '../../_auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, TicketStatus } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  // Load any draw (schema-agnostic)
+  // Get *some* draw (schema-agnostic, we only care that it has tickets)
   const draw = await prisma.draw.findFirst({
     include: { tickets: true },
   });
@@ -23,10 +23,10 @@ export async function POST(req: NextRequest) {
   const winner =
     draw.tickets[Math.floor(Math.random() * draw.tickets.length)];
 
-  // Update *only* the ticket
+  // Mark ticket as winner
   await prisma.ticket.update({
     where: { id: winner.id },
-    data: { status: 'won' },
+    data: { status: TicketStatus.WON },
   });
 
   return NextResponse.json({
