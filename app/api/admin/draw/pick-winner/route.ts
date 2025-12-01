@@ -1,6 +1,6 @@
 // app/api/admin/draw/pick-winner/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '../../../_auth';
+import { requireAdmin } from '../../../../_auth';
 import { prisma } from '@/lib/prisma';
 import { TicketStatus } from '@prisma/client';
 
@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  // Get *some* draw (schema-agnostic, we only care that it has tickets)
+  // Get *some* draw (we only care that it has tickets)
   const draw = await prisma.draw.findFirst({
     include: { tickets: true },
   });
