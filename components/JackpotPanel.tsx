@@ -147,12 +147,12 @@ export default function JackpotPanel() {
           </div>
 
           <div className="mt-1 text-sm text-slate-400">
-            {isLoading
-              ? 'Fetching live price…'
-              : jackpotUsd
-              ? `${formatUsd(jackpotUsd)} (live)`
-              : 'Live price unavailable'}
-          </div>
+  {isLoading
+    ? 'Fetching live price…'
+    : jackpotUsd
+    ? `${formatUsd(jackpotUsd)} (live)`
+    : 'Live price not available yet for this token on Jupiter.'}
+</div>
 
           {priceUsd && (
             <div className="mt-1 text-xs text-slate-500">
