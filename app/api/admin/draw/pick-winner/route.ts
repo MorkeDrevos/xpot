@@ -6,9 +6,8 @@ export async function POST(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  // Get latest draw (schema-agnostic)
+  // Load any draw (schema-agnostic)
   const draw = await prisma.draw.findFirst({
-    orderBy: { createdAt: 'desc' },
     include: { tickets: true },
   });
 
@@ -16,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'NO_DRAW' });
   }
 
-  if (draw.tickets.length === 0) {
+  if (!draw.tickets || draw.tickets.length === 0) {
     return NextResponse.json({ ok: false, error: 'NO_TICKETS' });
   }
 
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
   const winner =
     draw.tickets[Math.floor(Math.random() * draw.tickets.length)];
 
-  // Save winner ONLY (do NOT touch draw yet)
+  // Update *only* the ticket
   await prisma.ticket.update({
     where: { id: winner.id },
     data: { status: 'won' },
