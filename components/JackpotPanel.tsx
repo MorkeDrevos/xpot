@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 const JACKPOT_XPOT = 1_000_000;
-// you already set this, keep your value:
-const XPOT_MINT = '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk'; // PANDU
+// TEMP: using PANDU/4MC or whatever test mint you want
+const XPOT_MINT = '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
 
 function formatUsd(value: number) {
   if (!Number.isFinite(value)) return '$0';
@@ -42,8 +42,8 @@ export default function JackpotPanel() {
     return `xpot_max_jackpot_${y}${m}${day}`;
   })();
 
+  // Load today max from localStorage
   useEffect(() => {
-    // Load today's max from localStorage
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(todayKey);
     if (stored) {
@@ -52,46 +52,51 @@ export default function JackpotPanel() {
     }
   }, [todayKey]);
 
+  // Fast price polling (5s)
   useEffect(() => {
-  let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let first = true;
 
-  async function fetchPrice() {
-    try {
-      const res = await fetch(
-        `https://lite-api.jup.ag/price/v3?ids=${XPOT_MINT}`
-      );
+    async function fetchPrice() {
+      try {
+        const res = await fetch(
+          `https://lite-api.jup.ag/price/v3?ids=${XPOT_MINT}`
+        );
 
-      if (!res.ok) throw new Error('Jupiter price fetch failed');
+        if (!res.ok) throw new Error('Jupiter price fetch failed');
 
-      const json = await res.json() as Record<
-        string,
-        { usdPrice: number; priceChange24h?: number }
-      >;
+        const json = (await res.json()) as Record<
+          string,
+          { usdPrice: number; priceChange24h?: number }
+        >;
 
-      const token = json[XPOT_MINT];
-      const price = token?.usdPrice;
+        const token = json[XPOT_MINT];
+        const price = token?.usdPrice;
 
-      if (typeof price === 'number') {
-        setPriceUsd(price);
-        // if you want daily % later, you can also read token.priceChange24h
-      } else {
-        console.warn('No usdPrice for token from Jupiter', json);
+        if (typeof price === 'number') {
+          setPriceUsd(price);
+        } else {
+          console.warn('No usdPrice for token from Jupiter', json);
+        }
+      } catch (e) {
+        console.error('Price fetch error', e);
+      } finally {
+        if (first) {
+          setIsLoading(false);
+          first = false;
+        }
       }
-    } catch (e) {
-      console.error('Price fetch error', e);
-    } finally {
-      setIsLoading(false);
     }
-  }
 
-  fetchPrice();
-  timer = setInterval(fetchPrice, 5_000);
+    fetchPrice();
+    timer = setInterval(fetchPrice, 5_000);
 
-  return () => clearInterval(timer);
-}, []);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, []);
 
-  const jackpotUsd =
-    priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
+  const jackpotUsd = priceUsd != null ? JACKPOT_XPOT * priceUsd : null;
 
   // Track pump + max of the day
   useEffect(() => {
@@ -106,7 +111,7 @@ export default function JackpotPanel() {
 
     // update today's max
     if (typeof window !== 'undefined') {
-      setMaxJackpotToday((prev) => {
+      setMaxJackpotToday(prev => {
         const next = prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
         window.localStorage.setItem(todayKey, String(next));
         return next;
@@ -117,12 +122,12 @@ export default function JackpotPanel() {
   // Find next milestone
   const nextMilestone =
     jackpotUsd != null
-      ? MILESTONES.find((m) => jackpotUsd < m) ?? null
+      ? MILESTONES.find(m => jackpotUsd < m) ?? null
       : null;
 
   const reachedMilestone =
     jackpotUsd != null
-      ? MILESTONES.filter((m) => jackpotUsd >= m).slice(-1)[0] ?? null
+      ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null
       : null;
 
   return (
@@ -178,8 +183,8 @@ export default function JackpotPanel() {
       </div>
 
       <p className="mt-3 text-xs text-slate-500">
-        Jackpot is fixed at 1,000,000 XPOT. Its USD value tracks real on-chain price from
-        Jupiter and updates automatically.
+        Jackpot is fixed at 1,000,000 XPOT. Its USD value tracks real on-chain
+        price from Jupiter and updates automatically.
       </p>
     </section>
   );
