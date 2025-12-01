@@ -1,16 +1,13 @@
 // app/api/admin/draw/recent-winners/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '/vercel/path0/lib/prisma';
 
-function isAuthorized(req: NextRequest) {
+function isAuthorized(req: NextRequest): boolean {
   const header =
     req.headers.get('x-admin-token') ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
-    return false;
-  }
-
+  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) return false;
   return true;
 }
 
@@ -25,7 +22,6 @@ export async function GET(req: NextRequest) {
   // Latest completed draws that have a winner
   const draws = await prisma.draw.findMany({
     where: {
-      isClosed: true,
       winnerTicketId: { not: null },
     },
     orderBy: {
@@ -46,8 +42,7 @@ export async function GET(req: NextRequest) {
     date: draw.drawDate.toISOString(),
     ticketCode: draw.winnerTicket?.code ?? 'UNKNOWN',
     walletAddress: draw.winnerTicket?.wallet?.address ?? 'UNKNOWN',
-    jackpotUsd:
-      typeof draw.jackpotUsd === 'number' ? draw.jackpotUsd : 10_000,
+    jackpotUsd: Number(draw.jackpotUsd ?? 10_000),
     paidOut: !!draw.paidAt,
     txUrl: draw.payoutTx || null,
   }));
