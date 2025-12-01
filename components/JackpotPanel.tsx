@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 
 const JACKPOT_XPOT = 1_000_000;
-// TEMP: test mint; swap to XPOT mint when ready
-const XPOT_MINT = '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
+
+// TEMP: you’re using PANDU for now – later swap to real XPOT mint
+const XPOT_MINT =
+  '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
 
 function formatUsd(value: number) {
   if (!Number.isFinite(value)) return '$0';
@@ -27,15 +29,18 @@ const MILESTONES = [
   1_000_000,
 ];
 
-export default function JackpotPanel() {
+type JackpotPanelProps = {
+  /** When true, shows "Draw locked" pill in the header */
+  isLocked?: boolean;
+};
+
+export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [maxJackpotToday, setMaxJackpotToday] = useState<number | null>(null);
+  const [maxJackpotToday, setMaxJackpotToday] =
+    useState<number | null>(null);
   const [justPumped, setJustPumped] = useState(false);
-  const [justHitMilestone, setJustHitMilestone] = useState(false);
-
   const prevJackpot = useRef<number | null>(null);
-  const lastMilestoneRef = useRef<number | null>(null);
 
   const todayKey = (() => {
     const d = new Date();
@@ -45,25 +50,24 @@ export default function JackpotPanel() {
     return `xpot_max_jackpot_${y}${m}${day}`;
   })();
 
-  // Load today's max from localStorage
+  // Load max jackpot for today from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(todayKey);
     if (stored) {
       const num = Number(stored);
-      if (!isNaN(num)) setMaxJackpotToday(num);
+      if (!Number.isNaN(num)) setMaxJackpotToday(num);
     }
   }, [todayKey]);
 
-  // Fast price polling (5s)
+  // Fast-updating Jupiter price (5s interval)
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | null = null;
-    let first = true;
+    let timer: NodeJS.Timeout;
 
     async function fetchPrice() {
       try {
         const res = await fetch(
-          `https://lite-api.jup.ag/price/v3?ids=${XPOT_MINT}`
+          `https://lite-api.jup.ag/price/v3?ids=${XPOT_MINT}`,
         );
 
         if (!res.ok) throw new Error('Jupiter price fetch failed');
@@ -79,67 +83,51 @@ export default function JackpotPanel() {
         if (typeof price === 'number') {
           setPriceUsd(price);
         } else {
-          console.warn('No usdPrice for token from Jupiter', json);
+          console.warn(
+            'No usdPrice for token from Jupiter',
+            json,
+          );
         }
       } catch (e) {
         console.error('Price fetch error', e);
       } finally {
-        if (first) {
-          setIsLoading(false);
-          first = false;
-        }
+        setIsLoading(false);
       }
     }
 
     fetchPrice();
     timer = setInterval(fetchPrice, 5_000);
 
-    return () => {
-      if (timer) clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
-  const jackpotUsd = priceUsd != null ? JACKPOT_XPOT * priceUsd : null;
+  const jackpotUsd =
+    priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
 
   // Track pump + max of the day
   useEffect(() => {
     if (jackpotUsd == null) return;
 
-    // detect pump
-    if (prevJackpot.current !== null && jackpotUsd > prevJackpot.current) {
+    if (
+      prevJackpot.current !== null &&
+      jackpotUsd > prevJackpot.current
+    ) {
       setJustPumped(true);
       setTimeout(() => setJustPumped(false), 1200);
     }
     prevJackpot.current = jackpotUsd;
 
-    // update today's max
     if (typeof window !== 'undefined') {
       setMaxJackpotToday(prev => {
-        const next = prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
+        const next =
+          prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
         window.localStorage.setItem(todayKey, String(next));
         return next;
       });
     }
   }, [jackpotUsd, todayKey]);
 
-  // Milestone detection (for animation)
-  useEffect(() => {
-    if (jackpotUsd == null) return;
-
-    const milestonesReached = MILESTONES.filter(m => jackpotUsd >= m);
-    const latest =
-      milestonesReached.length > 0
-        ? milestonesReached[milestonesReached.length - 1]
-        : null;
-
-    if (latest !== null && latest !== lastMilestoneRef.current) {
-      lastMilestoneRef.current = latest;
-      setJustHitMilestone(true);
-      setTimeout(() => setJustHitMilestone(false), 1600);
-    }
-  }, [jackpotUsd]);
-
-  // Find next milestone + last reached (for display)
+  // Milestones
   const nextMilestone =
     jackpotUsd != null
       ? MILESTONES.find(m => jackpotUsd < m) ?? null
@@ -147,7 +135,8 @@ export default function JackpotPanel() {
 
   const reachedMilestone =
     jackpotUsd != null
-      ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null
+      ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ??
+        null
       : null;
 
   return (
@@ -156,9 +145,17 @@ export default function JackpotPanel() {
         justPumped ? 'ring-2 ring-emerald-400/60 animate-pulse' : ''
       }`}
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">
-        Today&apos;s Jackpot
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">
+          Today&apos;s jackpot
+        </p>
+
+        {isLocked && (
+          <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+            Draw locked
+          </span>
+        )}
+      </div>
 
       <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -189,14 +186,7 @@ export default function JackpotPanel() {
           )}
 
           {reachedMilestone && (
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-emerald-300 text-[11px] ${
-                justHitMilestone
-                  ? 'bg-emerald-500/20 ring-1 ring-emerald-400 animate-pulse'
-                  : 'bg-emerald-500/10'
-              }`}
-            >
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-300" />
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-300">
               Milestone reached: {formatUsd(reachedMilestone)}
             </span>
           )}
@@ -210,8 +200,8 @@ export default function JackpotPanel() {
       </div>
 
       <p className="mt-3 text-xs text-slate-500">
-        Jackpot is fixed at 1,000,000 XPOT. Its USD value tracks real on-chain
-        price from Jupiter and updates automatically.
+        Jackpot is fixed at 1,000,000 XPOT. Its USD value tracks real
+        on-chain price from Jupiter and updates automatically.
       </p>
     </section>
   );
