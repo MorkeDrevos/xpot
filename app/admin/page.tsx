@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import JackpotPanel from '@/components/JackpotPanel';
+import AuditLogCard from '@/components/AuditLogCard';
 
 // ─────────────────────────────────────────────
 // Types
