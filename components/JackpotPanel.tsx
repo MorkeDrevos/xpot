@@ -53,34 +53,42 @@ export default function JackpotPanel() {
   }, [todayKey]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+  let timer: NodeJS.Timeout;
 
-    async function fetchPrice() {
-      try {
-        const res = await fetch(
-          `https://price.jup.ag/v6/price?ids=${XPOT_MINT}`
-        );
-        if (!res.ok) throw new Error('Jupiter price fetch failed');
+  async function fetchPrice() {
+    try {
+      const res = await fetch(
+        `https://lite-api.jup.ag/price/v3?ids=${XPOT_MINT}`
+      );
 
-        const json = await res.json();
-        const token = json?.data?.[XPOT_MINT];
-        const price = token?.price;
+      if (!res.ok) throw new Error('Jupiter price fetch failed');
 
-        if (typeof price === 'number') {
-          setPriceUsd(price);
-        }
-      } catch (e) {
-        console.error('Price fetch error', e);
-      } finally {
-        setIsLoading(false);
+      const json = await res.json() as Record<
+        string,
+        { usdPrice: number; priceChange24h?: number }
+      >;
+
+      const token = json[XPOT_MINT];
+      const price = token?.usdPrice;
+
+      if (typeof price === 'number') {
+        setPriceUsd(price);
+        // if you want daily % later, you can also read token.priceChange24h
+      } else {
+        console.warn('No usdPrice for token from Jupiter', json);
       }
+    } catch (e) {
+      console.error('Price fetch error', e);
+    } finally {
+      setIsLoading(false);
     }
+  }
 
-    fetchPrice();
-    timer = setInterval(fetchPrice, 60_000);
+  fetchPrice();
+  timer = setInterval(fetchPrice, 60_000);
 
-    return () => clearInterval(timer);
-  }, []);
+  return () => clearInterval(timer);
+}, []);
 
   const jackpotUsd =
     priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
