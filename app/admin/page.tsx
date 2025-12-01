@@ -60,7 +60,6 @@ function formatUsd(amount: number | undefined | null) {
 // Page
 // ─────────────────────────────────────────────
 
-export default function AdminPage() {
   const [adminToken, setAdminToken] = useState('');
   const [tokenInput, setTokenInput] = useState('');
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
@@ -128,6 +127,35 @@ export default function AdminPage() {
     }
 
     return res.json();
+  }
+
+    async function handleReopenDraw() {
+    if (!todayDraw) return;
+
+    const ok = window.confirm(
+      "Re-open today’s draw?\n\n" +
+        'This will unlock the draw again so tickets can be issued. ' +
+        'Use only as an emergency switch.',
+    );
+    if (!ok) return;
+
+    try {
+      const data = await adminFetch('/api/admin/draw/reopen', {
+        method: 'POST',
+      });
+
+      if (!data.ok) {
+        alert('Failed to re-open: ' + (data.error ?? 'Unknown error'));
+        return;
+      }
+
+      await loadAll();
+    } catch (err) {
+      console.error('[ADMIN] reopen-draw error:', err);
+      alert(
+        err instanceof Error ? err.message : 'Failed to re-open draw',
+      );
+    }
   }
 
   // Verify token against /api/admin/health
