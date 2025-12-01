@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import JackpotPanel from '@/components/JackpotPanel';
 import AuditLogCard from '@/components/AuditLogCard';
+import Modal from '@/components/Modal';
 
 // ─────────────────────────────────────────────
 // Types
@@ -77,44 +78,18 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [loadingWinners, setLoadingWinners] = useState(false);
 
-  // New: winner + button safety state
+  // Winner state
   const [pickingWinner, setPickingWinner] = useState(false);
-
-  async function handleReopenDraw() {
-    if (!todayDraw) return;
-
-    const ok = window.confirm(
-      "Re-open today’s draw?\n\n" +
-        'This will unlock the draw again so tickets can be issued. ' +
-        'Use only as an emergency switch.',
-    );
-    if (!ok) return;
-
-    try {
-      const data = await adminFetch('/api/admin/draw/reopen', {
-        method: 'POST',
-      });
-
-      if (!data.ok) {
-        alert('Failed to re-open: ' + (data.error ?? 'Unknown error'));
-        return;
-      }
-
-      await loadAll();
-    } catch (err) {
-      console.error('[ADMIN] reopen-draw error:', err);
-      alert(
-        err instanceof Error ? err.message : 'Failed to re-open draw',
-      );
-    }
-  }
-
   const [lastPickedWinner, setLastPickedWinner] = useState<{
     ticketCode: string;
     walletAddress: string;
     jackpotUsd?: number;
   } | null>(null);
   const [winnerJustPicked, setWinnerJustPicked] = useState(false);
+
+  // Modal state for pick-winner
+  const [showPickModal, setShowPickModal] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
 
   // Load stored token on first render (browser only)
   useEffect(() => {
@@ -288,20 +263,58 @@ export default function AdminPage() {
     !loadingToday &&
     !pickingWinner;
 
-    const isDrawLocked =
-    !!todayDraw && todayDraw.status !== 'open';
+  const isDrawLocked = !!todayDraw && todayDraw.status !== 'open';
 
   const todayWinner =
-  recentWinners.find(w => {
-    const d = new Date(w.date);
-    const now = new Date();
+    recentWinners.find(w => {
+      const d = new Date(w.date);
+      const now = new Date();
 
-    return (
-      d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate()
-    );
-  }) ?? null;
+      return (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate()
+      );
+    }) ?? null;
+
+  // Real pick-winner handler (used by modal confirm)
+  async function handlePickWinner() {
+    if (!todayDraw) return;
+
+    try {
+      setPickingWinner(true);
+      setPickError(null);
+
+      const data = await adminFetch('/api/admin/draw/pick-winner', {
+        method: 'POST',
+      });
+
+      if (!data.ok) {
+        throw new Error(data.error ?? 'Unknown error');
+      }
+
+      // Optional: keep local visual highlight
+      setLastPickedWinner({
+        ticketCode: data.winner.code,
+        walletAddress: data.winner.wallet,
+        jackpotUsd: data.winner.jackpotUsd,
+      });
+      setWinnerJustPicked(true);
+      setTimeout(() => setWinnerJustPicked(false), 1800);
+
+      setShowPickModal(false);
+
+      // Reload all panels
+      await loadAll();
+    } catch (err) {
+      console.error('[ADMIN] pick-winner error:', err);
+      setPickError(
+        err instanceof Error ? err.message : 'Failed to pick winner',
+      );
+    } finally {
+      setPickingWinner(false);
+    }
+  }
 
   // ─────────────────────────────────────────────
   // Render
@@ -381,7 +394,7 @@ export default function AdminPage() {
           {/* LEFT COLUMN */}
           <div className="space-y-4">
             {/* Jackpot panel – 1,000,000 XPOT + live USD via Jupiter */}
-<JackpotPanel isLocked={isDrawLocked} />
+            <JackpotPanel isLocked={isDrawLocked} />
 
             {/* Today’s draw */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
@@ -443,7 +456,9 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Today&apos;s jackpot</p>
+                      <p className="text-slate-400">
+                        Today&apos;s jackpot
+                      </p>
                       <p className="mt-1 font-semibold">
                         {formatUsd(todayDraw.jackpotUsd)}
                       </p>
@@ -475,51 +490,11 @@ export default function AdminPage() {
                     todayDraw.ticketsCount > 0 && (
                       <button
                         type="button"
-                        disabled={pickingWinner}
+                        disabled={!canPickWinner}
                         className="mt-4 w-full rounded-full bg-amber-400 py-2 text-xs font-semibold text-black hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-300/60"
-                        onClick={async () => {
-                          if (
-                            !window.confirm(
-                              `Pick winner for today’s draw?\n\nTickets in pool: ${todayDraw.ticketsCount}\nJackpot: ${formatUsd(
-                                todayDraw.jackpotUsd,
-                              )}\n\nThis action is final.`,
-                            )
-                          ) {
-                            return;
-                          }
-
-                          try {
-                            setPickingWinner(true);
-                            const data = await adminFetch(
-                              '/api/admin/draw/pick-winner',
-                              { method: 'POST' },
-                            );
-
-                            if (!data.ok) {
-                              alert(
-                                'Failed: ' +
-                                  (data.error ?? 'Unknown error'),
-                              );
-                              return;
-                            }
-
-                            alert(
-                              `Winner picked:\nTicket: ${data.winner.code}\nWallet: ${data.winner.wallet}`,
-                            );
-                            await loadAll();
-                          } catch (err) {
-                            console.error(
-                              '[ADMIN] pick-winner error:',
-                              err,
-                            );
-                            alert(
-                              err instanceof Error
-                                ? err.message
-                                : 'Failed to pick winner',
-                            );
-                          } finally {
-                            setPickingWinner(false);
-                          }
+                        onClick={() => {
+                          setPickError(null);
+                          setShowPickModal(true);
                         }}
                       >
                         {pickingWinner ? 'Picking winner…' : 'Pick winner now'}
@@ -572,6 +547,65 @@ export default function AdminPage() {
                         </p>
                       )}
                     </div>
+                  )}
+
+                  {/* Pick-winner confirmation modal */}
+                  {todayDraw && (
+                    <Modal
+                      open={showPickModal}
+                      onClose={() => {
+                        if (!pickingWinner) setShowPickModal(false);
+                      }}
+                      title="Confirm today’s winner"
+                    >
+                      <p className="mb-3 text-xs text-slate-300">
+                        XPOT will randomly select one ticket from
+                        today&apos;s pool.
+                        This action can&apos;t be undone.
+                      </p>
+
+                      <div className="mb-3 rounded-lg bg-slate-900 px-3 py-2 text-[11px] text-slate-200">
+                        <p>
+                          Tickets in pool:{' '}
+                          <span className="font-semibold">
+                            {todayDraw.ticketsCount.toLocaleString()}
+                          </span>
+                        </p>
+                        <p>
+                          Jackpot:{' '}
+                          <span className="font-semibold">
+                            {formatUsd(todayDraw.jackpotUsd)}
+                          </span>
+                        </p>
+                      </div>
+
+                      {pickError && (
+                        <div className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                          {pickError}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          disabled={pickingWinner}
+                          onClick={() => setShowPickModal(false)}
+                          className="w-full rounded-full border border-slate-600 px-4 py-2 text-xs text-slate-200 hover:border-slate-300 hover:text-slate-50 sm:w-auto disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pickingWinner}
+                          onClick={handlePickWinner}
+                          className="w-full rounded-full bg-amber-400 px-4 py-2 text-xs font-semibold text-black hover:bg-amber-300 sm:w-auto disabled:cursor-not-allowed disabled:bg-amber-300/60"
+                        >
+                          {pickingWinner
+                            ? 'Picking winner…'
+                            : 'Yes, pick winner'}
+                        </button>
+                      </div>
+                    </Modal>
                   )}
                 </>
               )}
