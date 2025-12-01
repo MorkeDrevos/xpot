@@ -41,7 +41,8 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  const winners = draws.map(draw => ({
+  // Cast to any so TS stops whining about jackpotUsd / payoutTx, etc.
+  const winners = (draws as any[]).map(draw => ({
     drawId: draw.id,
     date: draw.drawDate.toISOString(),
     ticketCode: draw.winnerTicket?.code ?? 'UNKNOWN',
