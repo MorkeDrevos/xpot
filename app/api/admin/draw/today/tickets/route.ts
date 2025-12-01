@@ -1,16 +1,14 @@
 // app/api/admin/draw/today/tickets/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 function isAuthorized(req: NextRequest) {
-  const header =
+  const token =
     req.headers.get('x-admin-token') ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
-    return false;
-  }
-
-  return true;
+  return token === process.env.XPOT_ADMIN_TOKEN;
 }
 
 export async function GET(req: NextRequest) {
@@ -21,17 +19,47 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // v1: static empty list (no tickets yet).
-  // Later: pull real tickets for "today's" draw from Prisma.
-  return NextResponse.json({
-    ok: true,
-    tickets: [] as Array<{
-      id: string;
-      code: string;
-      walletAddress: string;
-      status: 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
-      createdAt: string;
-      jackpotUsd?: number;
-    }>,
-  });
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const draw = await prisma.draw.findFirst({
+      where: {
+        drawDate: {
+          gte: new Date(today),
+          lt: new Date(today + 'T23:59:59.999Z'),
+        },
+      },
+    });
+
+    if (!draw) {
+      return NextResponse.json({ ok: true, tickets: [] });
+    }
+
+    const tickets = await prisma.ticket.findMany({
+      where: { drawId: draw.id },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        wallet: true,
+      },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      tickets: tickets.map(t => ({
+        id: t.id,
+        code: t.code,
+        walletAddress: t.wallet.address,
+        status: t.status,
+        createdAt: t.createdAt,
+      })),
+    });
+
+  } catch (err) {
+    console.error('[ADMIN TODAY TICKETS]', err);
+    return NextResponse.json(
+      { ok: false, error: 'FAILED_TO_LOAD_TICKETS' },
+      { status: 500 }
+    );
+  }
 }
