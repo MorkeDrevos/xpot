@@ -16,7 +16,7 @@ function formatUsd(value: number) {
 }
 
 // Simple milestone ladder for highlights
-const MILESTONES = [10_000, 25_000, 50_000, 100_000, 250_000, 1_000_000];
+const MILESTONES = [500, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 1_000_000];
 
 export default function JackpotPanel() {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
