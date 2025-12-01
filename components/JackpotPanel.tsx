@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 const JACKPOT_XPOT = 1_000_000;
 // you already set this, keep your value:
-const XPOT_MINT = '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
+const XPOT_MINT = 'So11111111111111111111111111111111111111112'; // SOL
 
 function formatUsd(value: number) {
   if (!Number.isFinite(value)) return '$0';
