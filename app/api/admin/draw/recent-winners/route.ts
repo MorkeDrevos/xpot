@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-function isAuthorized(req: NextRequest): boolean {
+function isAuthorized(req: NextRequest) {
   const header =
     req.headers.get('x-admin-token') ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
@@ -35,19 +35,19 @@ export async function GET(req: NextRequest) {
     include: {
       winnerTicket: {
         include: {
-          wallet: true, // <- so we can read wallet.address
+          wallet: true,
         },
       },
     },
   });
 
-  // Cast to any so TS stops whining about jackpotUsd / payoutTx, etc.
-  const winners = (draws as any[]).map(draw => ({
+  const winners = draws.map(draw => ({
     drawId: draw.id,
     date: draw.drawDate.toISOString(),
     ticketCode: draw.winnerTicket?.code ?? 'UNKNOWN',
     walletAddress: draw.winnerTicket?.wallet?.address ?? 'UNKNOWN',
-    jackpotUsd: Number(draw.jackpotUsd),
+    jackpotUsd:
+      typeof draw.jackpotUsd === 'number' ? draw.jackpotUsd : 10_000,
     paidOut: !!draw.paidAt,
     txUrl: draw.payoutTx || null,
   }));
