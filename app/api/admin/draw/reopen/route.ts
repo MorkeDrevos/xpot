@@ -1,46 +1,46 @@
-// app/api/admin/draw/reopen/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, TicketStatus } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/_auth';
 
 export async function POST(req: NextRequest) {
-  // Re-open the most recent draw
+  const auth = requireAdmin(req);
+  if (auth) return auth;
+
+  // Find latest draw
   const draw = await prisma.draw.findFirst({
     orderBy: { drawDate: 'desc' },
+    include: { winnerTicket: true },
   });
 
   if (!draw) {
     return NextResponse.json(
-      { ok: false, error: 'NO_DRAW' },
-      { status: 404 },
+      { ok: false, error: 'NO_DRAW_FOUND' },
+      { status: 404 }
     );
   }
 
   const updates: any = {
     isClosed: false,
     resolvedAt: null,
+    winnerTicketId: null,
   };
 
-  // If there was a winner ticket, reset it back into the pool
-  if (draw.winnerTicketId) {
-    updates.winnerTicketId = null;
-
-    try {
-      await prisma.ticket.update({
-        where: { id: draw.winnerTicketId },
-        data: { status: TicketStatus.IN_DRAW },
-      });
-    } catch (err) {
-      console.error(
-        '[ADMIN] failed to reset winner ticket status:',
-        err,
-      );
-    }
+  // Reset ticket if one existed
+  if (draw.winnerTicket) {
+    await prisma.ticket.update({
+      where: { id: draw.winnerTicket.id },
+      data: { status: 'IN_DRAW' },
+    });
   }
 
-  const updated = await prisma.draw.update({
+  await prisma.draw.update({
     where: { id: draw.id },
     data: updates,
   });
 
-  return NextResponse.json({ ok: true, drawId: updated.id });
+  return NextResponse.json({
+    ok: true,
+    message: 'DRAW_REOPENED',
+    drawId: draw.id,
+  });
 }
