@@ -60,6 +60,7 @@ function formatUsd(amount: number | undefined | null) {
 // Page
 // ─────────────────────────────────────────────
 
+export default function AdminPage() {
   const [adminToken, setAdminToken] = useState('');
   const [tokenInput, setTokenInput] = useState('');
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
