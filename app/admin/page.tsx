@@ -20,6 +20,7 @@ type TodayDraw = {
   jackpotUsd: number;
   rolloverUsd: number;
   ticketsCount: number;
+  closesAt?: string; // ISO string when draw auto-closes
 };
 
 type TicketStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
@@ -78,6 +79,8 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [loadingWinners, setLoadingWinners] = useState(false);
 
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
   // Winner state
   const [pickingWinner, setPickingWinner] = useState(false);
   const [lastPickedWinner, setLastPickedWinner] = useState<{
@@ -87,11 +90,73 @@ export default function AdminPage() {
   } | null>(null);
   const [winnerJustPicked, setWinnerJustPicked] = useState(false);
 
-  // Modal state for pick-winner
+  // Modals
   const [showPickModal, setShowPickModal] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
 
-  // Load stored token on first render (browser only)
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
+  const [reopening, setReopening] = useState(false);
+
+  // NEW: reset draw
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
+
+  // NEW: lock & ship as-is
+  const [showLockModal, setShowLockModal] = useState(false);
+  const [lockError, setLockError] = useState<string | null>(null);
+  const [locking, setLocking] = useState(false);
+
+  // NEW: payouts for winners
+  const [payoutTx, setPayoutTx] = useState<Record<string, string>>({});
+  const [payingOutId, setPayingOutId] = useState<string | null>(null);
+  const [payoutError, setPayoutError] = useState<string | null>(null);
+
+  // ─────────────────────────────────────────────
+  // Live countdown to draw close (admin chip)
+  // ─────────────────────────────────────────────
+
+  useEffect(() => {
+    const closesAt = todayDraw?.closesAt;
+    const status = todayDraw?.status;
+
+    if (!closesAt || status !== 'open') {
+      setTimeLeft(null);
+      return;
+    }
+
+    function updateCountdown() {
+      const target = new Date(closesAt as string).getTime();
+      const now = Date.now();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setTimeLeft('00:00:00');
+        return;
+      }
+
+      const totalSeconds = Math.floor(diff / 1000);
+      const hours = Math.floor(totalSeconds / 3600)
+        .toString()
+        .padStart(2, '0');
+      const minutes = Math.floor((totalSeconds % 3600) / 60)
+        .toString()
+        .padStart(2, '0');
+      const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+
+      setTimeLeft(`${hours}:${minutes}:${seconds}`);
+    }
+
+    updateCountdown();
+    const id = window.setInterval(updateCountdown, 1000);
+    return () => window.clearInterval(id);
+  }, [todayDraw?.closesAt, todayDraw?.status]);
+
+  // ─────────────────────────────────────────────
+  // Init: load stored admin token
+  // ─────────────────────────────────────────────
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -104,15 +169,17 @@ export default function AdminPage() {
 
   // Small helper for admin fetches with header
   async function adminFetch(path: string, options: RequestInit = {}) {
-    if (!adminToken) {
-      throw new Error('NO_ADMIN_TOKEN');
-    }
+    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
 
     const res = await fetch(path, {
       ...options,
       headers: {
         ...(options.headers || {}),
         'x-admin-token': adminToken,
+        'Content-Type':
+          options.body && !(options.headers as any)?.['Content-Type']
+            ? 'application/json'
+            : (options.headers as any)?.['Content-Type'] ?? undefined,
       },
       cache: 'no-store',
     });
@@ -130,32 +197,111 @@ export default function AdminPage() {
     return res.json();
   }
 
-    async function handleReopenDraw() {
+  // ─────────────────────────────────────────────
+  // Admin actions
+  // ─────────────────────────────────────────────
+
+  // Re-open draw
+  async function handleReopenDraw() {
     if (!todayDraw) return;
 
-    const ok = window.confirm(
-      "Re-open today’s draw?\n\n" +
-        'This will unlock the draw again so tickets can be issued. ' +
-        'Use only as an emergency switch.',
-    );
-    if (!ok) return;
-
     try {
+      setReopening(true);
+      setReopenError(null);
+
       const data = await adminFetch('/api/admin/draw/reopen', {
         method: 'POST',
       });
 
-      if (!data.ok) {
-        alert('Failed to re-open: ' + (data.error ?? 'Unknown error'));
-        return;
-      }
+      if (!data.ok) throw new Error(data.error ?? 'Unknown error');
 
+      setShowReopenModal(false);
       await loadAll();
     } catch (err) {
       console.error('[ADMIN] reopen-draw error:', err);
-      alert(
+      setReopenError(
         err instanceof Error ? err.message : 'Failed to re-open draw',
       );
+    } finally {
+      setReopening(false);
+    }
+  }
+
+  // RESET today’s draw – dev emergency
+  async function handleResetDraw() {
+    if (!todayDraw) return;
+
+    try {
+      setResetting(true);
+      setResetError(null);
+
+      const data = await adminFetch('/api/admin/draw/reset-today', {
+        method: 'POST',
+      });
+
+      if (!data.ok) throw new Error(data.error ?? 'Unknown error');
+
+      setShowResetModal(false);
+      await loadAll();
+    } catch (err) {
+      console.error('[ADMIN] reset-draw error:', err);
+      setResetError(
+        err instanceof Error ? err.message : 'Failed to reset draw',
+      );
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  // LOCK & SHIP AS-IS – force-complete draw
+  async function handleLockDrawNow() {
+    if (!todayDraw) return;
+
+    try {
+      setLocking(true);
+      setLockError(null);
+
+      const data = await adminFetch('/api/admin/draw/lock-now', {
+        method: 'POST',
+      });
+
+      if (!data.ok) throw new Error(data.error ?? 'Unknown error');
+
+      setShowLockModal(false);
+      await loadAll();
+    } catch (err) {
+      console.error('[ADMIN] lock-draw error:', err);
+      setLockError(
+        err instanceof Error ? err.message : 'Failed to lock draw',
+      );
+    } finally {
+      setLocking(false);
+    }
+  }
+
+  // Mark payout as paid + optional tx link
+  async function handleMarkPaid(drawId: string) {
+    const tx = payoutTx[drawId]?.trim() || undefined;
+
+    try {
+      setPayingOutId(drawId);
+      setPayoutError(null);
+
+      const data = await adminFetch('/api/admin/winners/mark-paid', {
+        method: 'POST',
+        body: JSON.stringify({ drawId, txUrl: tx }),
+      });
+
+      if (!data.ok) throw new Error(data.error ?? 'Unknown error');
+
+      await loadAll();
+    } catch (err) {
+      console.error('[ADMIN] mark-paid error:', err);
+      setPayoutError(
+        err instanceof Error ? err.message : 'Failed to update payout status',
+      );
+    } finally {
+      setPayingOutId(null);
     }
   }
 
@@ -217,10 +363,7 @@ export default function AdminPage() {
 
       const [drawRes, ticketsRes, winnersRes] = await Promise.all([
         fetch('/api/admin/draw/today', { headers, cache: 'no-store' }),
-        fetch('/api/admin/draw/today/tickets', {
-          headers,
-          cache: 'no-store',
-        }),
+        fetch('/api/admin/draw/today/tickets', { headers, cache: 'no-store' }),
         fetch('/api/admin/draw/recent-winners', {
           headers,
           cache: 'no-store',
@@ -250,7 +393,7 @@ export default function AdminPage() {
         setTodayTickets(ticketsJson.tickets);
       } else if (!ticketsRes.ok) {
         setTicketsError(
-          `Failed to load today’s tickets (${ticketsRes.status})`
+          `Failed to load today’s tickets (${ticketsRes.status})`,
         );
       }
 
@@ -258,7 +401,7 @@ export default function AdminPage() {
         setRecentWinners(winnersJson.winners);
       } else if (!winnersRes.ok) {
         setWinnersError(
-          `Failed to load recent winners (${winnersRes.status})`
+          `Failed to load recent winners (${winnersRes.status})`,
         );
       }
     } catch (err) {
@@ -298,7 +441,6 @@ export default function AdminPage() {
     recentWinners.find(w => {
       const d = new Date(w.date);
       const now = new Date();
-
       return (
         d.getFullYear() === now.getFullYear() &&
         d.getMonth() === now.getMonth() &&
@@ -306,7 +448,7 @@ export default function AdminPage() {
       );
     }) ?? null;
 
-  // Real pick-winner handler (used by modal confirm)
+  // Real pick-winner handler
   async function handlePickWinner() {
     if (!todayDraw) return;
 
@@ -318,11 +460,8 @@ export default function AdminPage() {
         method: 'POST',
       });
 
-      if (!data.ok) {
-        throw new Error(data.error ?? 'Unknown error');
-      }
+      if (!data.ok) throw new Error(data.error ?? 'Unknown error');
 
-      // Optional: keep local visual highlight
       setLastPickedWinner({
         ticketCode: data.winner.code,
         walletAddress: data.winner.wallet,
@@ -332,8 +471,6 @@ export default function AdminPage() {
       setTimeout(() => setWinnerJustPicked(false), 1800);
 
       setShowPickModal(false);
-
-      // Reload all panels
       await loadAll();
     } catch (err) {
       console.error('[ADMIN] pick-winner error:', err);
@@ -427,7 +564,7 @@ export default function AdminPage() {
 
             {/* Today’s draw */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-              <header className="flex items-center justify-between">
+              <header className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-100">
                     Today&apos;s draw
@@ -437,6 +574,21 @@ export default function AdminPage() {
                     and timing.
                   </p>
                 </div>
+
+                {todayDraw?.status === 'open' && timeLeft && (
+                  <div className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">
+                    <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                      Closes in
+                    </span>
+                    <span className="font-mono">{timeLeft}</span>
+                  </div>
+                )}
+
+                {todayDraw?.status !== 'open' && todayDraw && (
+                  <div className="rounded-full border border-slate-700/60 bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300">
+                    Draw locked
+                  </div>
+                )}
               </header>
 
               {!adminToken && (
@@ -485,9 +637,7 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400">
-                        Today&apos;s jackpot
-                      </p>
+                      <p className="text-slate-400">Today&apos;s jackpot</p>
                       <p className="mt-1 font-semibold">
                         {formatUsd(todayDraw.jackpotUsd)}
                       </p>
@@ -517,17 +667,32 @@ export default function AdminPage() {
                   {/* When draw is open and tickets > 0 */}
                   {todayDraw.status === 'open' &&
                     todayDraw.ticketsCount > 0 && (
-                      <button
-                        type="button"
-                        disabled={!canPickWinner}
-                        className="mt-4 w-full rounded-full bg-amber-400 py-2 text-xs font-semibold text-black hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-300/60"
-                        onClick={() => {
-                          setPickError(null);
-                          setShowPickModal(true);
-                        }}
-                      >
-                        {pickingWinner ? 'Picking winner…' : 'Pick winner now'}
-                      </button>
+                      <div className="mt-4 space-y-2">
+                        <button
+                          type="button"
+                          disabled={!canPickWinner}
+                          className="w-full rounded-full bg-amber-400 py-2 text-xs font-semibold text-black hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-300/60"
+                          onClick={() => {
+                            setPickError(null);
+                            setShowPickModal(true);
+                          }}
+                        >
+                          {pickingWinner ? 'Picking winner…' : 'Pick winner now'}
+                        </button>
+
+                        {/* Lock & ship as-is */}
+                        <button
+                          type="button"
+                          disabled={locking}
+                          className="w-full rounded-full border border-slate-700 bg-slate-950 py-2 text-xs font-semibold text-slate-200 hover:border-amber-400 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                          onClick={() => {
+                            setLockError(null);
+                            setShowLockModal(true);
+                          }}
+                        >
+                          Lock draw now (ship as-is)
+                        </button>
+                      </div>
                     )}
 
                   {/* When draw is locked / completed */}
@@ -537,13 +702,28 @@ export default function AdminPage() {
                         Draw is locked. You can review the winner and payout
                         status below.
                       </p>
-                      <button
-                        type="button"
-                        onClick={handleReopenDraw}
-                        className="mt-3 w-full rounded-full border border-slate-700 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500 hover:bg-slate-900"
-                      >
-                        Re-open draw (panic switch)
-                      </button>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReopenError(null);
+                            setShowReopenModal(true);
+                          }}
+                          className="w-full rounded-full border border-slate-700 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500 hover:bg-slate-900"
+                        >
+                          Re-open draw (panic switch)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetError(null);
+                            setShowResetModal(true);
+                          }}
+                          className="w-full rounded-full border border-red-500/70 bg-red-500/5 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/15"
+                        >
+                          Reset today&apos;s draw
+                        </button>
+                      </div>
                     </>
                   )}
 
@@ -589,8 +769,7 @@ export default function AdminPage() {
                     >
                       <p className="mb-3 text-xs text-slate-300">
                         XPOT will randomly select one ticket from
-                        today&apos;s pool.
-                        This action can&apos;t be undone.
+                        today&apos;s pool. This action can&apos;t be undone.
                       </p>
 
                       <div className="mb-3 rounded-lg bg-slate-900 px-3 py-2 text-[11px] text-slate-200">
@@ -632,6 +811,162 @@ export default function AdminPage() {
                           {pickingWinner
                             ? 'Picking winner…'
                             : 'Yes, pick winner'}
+                        </button>
+                      </div>
+                    </Modal>
+                  )}
+
+                  {/* Re-open draw confirmation modal */}
+                  {todayDraw && (
+                    <Modal
+                      open={showReopenModal}
+                      onClose={() => {
+                        if (!reopening) setShowReopenModal(false);
+                      }}
+                      title="Re-open today’s draw?"
+                    >
+                      <p className="mb-3 text-xs text-slate-300">
+                        This will unlock today&apos;s draw so new tickets can
+                        be issued again. Use this only as an emergency switch.
+                      </p>
+
+                      <div className="mb-3 rounded-lg bg-slate-900 px-3 py-2 text-[11px] text-slate-200">
+                        <p>
+                          Tickets in pool:{' '}
+                          <span className="font-semibold">
+                            {todayDraw.ticketsCount.toLocaleString()}
+                          </span>
+                        </p>
+                        <p>
+                          Jackpot:{' '}
+                          <span className="font-semibold">
+                            {formatUsd(todayDraw.jackpotUsd)}
+                          </span>
+                        </p>
+                      </div>
+
+                      {reopenError && (
+                        <div className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                          {reopenError}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          disabled={reopening}
+                          onClick={() => setShowReopenModal(false)}
+                          className="w-full rounded-full border border-slate-600 px-4 py-2 text-xs text-slate-200 hover:border-slate-300 hover:text-slate-50 sm:w-auto disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={reopening}
+                          onClick={handleReopenDraw}
+                          className="w-full rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-200 sm:w-auto disabled:cursor-not-allowed disabled:bg-slate-300/70"
+                        >
+                          {reopening
+                            ? 'Re-opening…'
+                            : 'Yes, re-open draw'}
+                        </button>
+                      </div>
+                    </Modal>
+                  )}
+
+                  {/* Reset today’s draw modal */}
+                  {todayDraw && (
+                    <Modal
+                      open={showResetModal}
+                      onClose={() => {
+                        if (!resetting) setShowResetModal(false);
+                      }}
+                      title="Reset today’s draw?"
+                    >
+                      <p className="mb-3 text-xs text-red-200">
+                        This will wipe today&apos;s draw state in the dev DB
+                        (tickets, status and winner). Use only for testing.
+                      </p>
+
+                      {resetError && (
+                        <div className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                          {resetError}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          disabled={resetting}
+                          onClick={() => setShowResetModal(false)}
+                          className="w-full rounded-full border border-slate-600 px-4 py-2 text-xs text-slate-200 hover:border-slate-300 hover:text-slate-50 sm:w-auto disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={resetting}
+                          onClick={handleResetDraw}
+                          className="w-full rounded-full bg-red-500 px-4 py-2 text-xs font-semibold text-white hover:bg-red-400 sm:w-auto disabled:cursor-not-allowed disabled:bg-red-400/70"
+                        >
+                          {resetting ? 'Resetting…' : 'Yes, reset today'}
+                        </button>
+                      </div>
+                    </Modal>
+                  )}
+
+                  {/* Lock & ship as-is modal */}
+                  {todayDraw && (
+                    <Modal
+                      open={showLockModal}
+                      onClose={() => {
+                        if (!locking) setShowLockModal(false);
+                      }}
+                      title="Lock draw now?"
+                    >
+                      <p className="mb-3 text-xs text-slate-300">
+                        This will mark today&apos;s draw as locked / completed
+                        using the current ticket pool. No more tickets can be
+                        issued after this.
+                      </p>
+
+                      <div className="mb-3 rounded-lg bg-slate-900 px-3 py-2 text-[11px] text-slate-200">
+                        <p>
+                          Tickets in pool:{' '}
+                          <span className="font-semibold">
+                            {todayDraw.ticketsCount.toLocaleString()}
+                          </span>
+                        </p>
+                        <p>
+                          Jackpot:{' '}
+                          <span className="font-semibold">
+                            {formatUsd(todayDraw.jackpotUsd)}
+                          </span>
+                        </p>
+                      </div>
+
+                      {lockError && (
+                        <div className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                          {lockError}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          disabled={locking}
+                          onClick={() => setShowLockModal(false)}
+                          className="w-full rounded-full border border-slate-600 px-4 py-2 text-xs text-slate-200 hover:border-slate-300 hover:text-slate-50 sm:w-auto disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={locking}
+                          onClick={handleLockDrawNow}
+                          className="w-full rounded-full bg-amber-400 px-4 py-2 text-xs font-semibold text-black hover:bg-amber-300 sm:w-auto disabled:cursor-not-allowed disabled:bg-amber-300/70"
+                        >
+                          {locking ? 'Locking…' : 'Yes, lock draw now'}
                         </button>
                       </div>
                     </Modal>
@@ -681,9 +1016,7 @@ export default function AdminPage() {
               )}
 
               {adminToken && ticketsError && !loadingTickets && (
-                <p className="mt-3 text-xs text-amber-300">
-                  {ticketsError}
-                </p>
+                <p className="mt-3 text-xs text-amber-300">{ticketsError}</p>
               )}
 
               {adminToken &&
@@ -719,7 +1052,7 @@ export default function AdminPage() {
                               {
                                 hour: '2-digit',
                                 minute: '2-digit',
-                              }
+                              },
                             )}
                           </p>
                         </div>
@@ -729,7 +1062,7 @@ export default function AdminPage() {
                 )}
             </section>
 
-            {/* Recent winners */}
+            {/* Recent winners + payouts */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -756,9 +1089,7 @@ export default function AdminPage() {
               )}
 
               {adminToken && winnersError && !loadingWinners && (
-                <p className="mt-3 text-xs text-amber-300">
-                  {winnersError}
-                </p>
+                <p className="mt-3 text-xs text-amber-300">{winnersError}</p>
               )}
 
               {adminToken &&
@@ -776,12 +1107,18 @@ export default function AdminPage() {
                 !winnersError &&
                 recentWinners.length > 0 && (
                   <div className="mt-3 space-y-2 text-[11px] text-slate-200">
+                    {payoutError && (
+                      <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                        {payoutError}
+                      </div>
+                    )}
+
                     {recentWinners.map(w => (
                       <div
                         key={w.drawId}
                         className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="font-mono text-xs">
                               {w.ticketCode}
@@ -802,16 +1139,50 @@ export default function AdminPage() {
                             </p>
                           </div>
                         </div>
-                        {w.txUrl && (
-                          <a
-                            href={w.txUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
+
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              placeholder="Payout tx URL (optional)"
+                              className="w-full rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-100 outline-none focus:border-emerald-400"
+                              value={payoutTx[w.drawId] ?? (w.txUrl ?? '')}
+                              onChange={e =>
+                                setPayoutTx(prev => ({
+                                  ...prev,
+                                  [w.drawId]: e.target.value,
+                                }))
+                              }
+                            />
+                            {w.txUrl && (
+                              <a
+                                href={w.txUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
+                              >
+                                View transaction
+                              </a>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={payingOutId === w.drawId}
+                            onClick={() => handleMarkPaid(w.drawId)}
+                            className={`mt-1 w-full rounded-full px-3 py-1.5 text-[11px] font-semibold sm:mt-0 sm:w-auto ${
+                              w.paidOut
+                                ? 'border border-slate-600 text-slate-200 hover:border-slate-400'
+                                : 'bg-emerald-500 text-black hover:bg-emerald-400'
+                            } disabled:cursor-not-allowed disabled:opacity-60`}
                           >
-                            View transaction
-                          </a>
-                        )}
+                            {payingOutId === w.drawId
+                              ? 'Saving…'
+                              : w.paidOut
+                              ? 'Update payout'
+                              : 'Mark paid'}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -858,6 +1229,9 @@ export default function AdminPage() {
                 </li>
               </ul>
             </section>
+
+            {/* Optional: audit log card if you want it here */}
+            <AuditLogCard />
           </div>
         </div>
       </div>
