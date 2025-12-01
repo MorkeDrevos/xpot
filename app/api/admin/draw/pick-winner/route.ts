@@ -6,20 +6,15 @@ export async function POST(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  // Get today’s draw
-  const today = new Date().toISOString().slice(0, 10);
-
+  // Get the latest open draw (this is effectively "today's draw")
   const draw = await prisma.draw.findFirst({
-    where: { date: today },
+    where: { status: 'open' },
+    orderBy: { createdAt: 'desc' },
     include: { tickets: true },
   });
 
   if (!draw) {
-    return NextResponse.json({ ok: false, error: 'NO_DRAW' });
-  }
-
-  if (draw.status !== 'open') {
-    return NextResponse.json({ ok: false, error: 'DRAW_NOT_OPEN' });
+    return NextResponse.json({ ok: false, error: 'NO_OPEN_DRAW' });
   }
 
   if (draw.tickets.length === 0) {
