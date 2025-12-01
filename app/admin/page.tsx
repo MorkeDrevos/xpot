@@ -86,13 +86,15 @@ export default function AdminPage() {
   }, []);
 
   // Small helper for admin fetches with header
-  async function adminFetch(path: string) {
+  async function adminFetch(path: string, options: RequestInit = {}) {
     if (!adminToken) {
       throw new Error('NO_ADMIN_TOKEN');
     }
 
     const res = await fetch(path, {
+      ...options,
       headers: {
+        ...(options.headers || {}),
         'x-admin-token': adminToken,
       },
       cache: 'no-store',
@@ -345,32 +347,82 @@ export default function AdminPage() {
               )}
 
               {adminToken && todayDraw && !loadingToday && !todayError && (
-                <div className="mt-4 grid gap-4 text-xs text-slate-200 sm:grid-cols-2">
-                  <div>
-                    <p className="text-slate-400">Status</p>
-                    <p className="mt-1 font-semibold capitalize">
-                      {todayDraw.status}
-                    </p>
+                <>
+                  <div className="mt-4 grid gap-4 text-xs text-slate-200 sm:grid-cols-2">
+                    <div>
+                      <p className="text-slate-400">Status</p>
+                      <p className="mt-1 font-semibold capitalize">
+                        {todayDraw.status}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Today&apos;s jackpot</p>
+                      <p className="mt-1 font-semibold">
+                        {formatUsd(todayDraw.jackpotUsd)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Rollover amount</p>
+                      <p className="mt-1 font-semibold">
+                        {formatUsd(todayDraw.rolloverUsd)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Tickets in pool</p>
+                      <p className="mt-1 font-semibold">
+                        {todayDraw.ticketsCount.toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-slate-400">Today&apos;s jackpot</p>
-                    <p className="mt-1 font-semibold">
-                      {formatUsd(todayDraw.jackpotUsd)}
+
+                  {todayDraw.status === 'open' && (
+                    <button
+                      type="button"
+                      className="mt-4 w-full rounded-full bg-amber-400 py-2 text-xs font-semibold text-black hover:bg-amber-300"
+                      onClick={async () => {
+                        if (
+                          !window.confirm(
+                            'Pick winner for today’s draw? This cannot be undone.'
+                          )
+                        ) {
+                          return;
+                        }
+
+                        try {
+                          const data = await adminFetch(
+                            '/api/admin/draw/pick-winner',
+                            { method: 'POST' }
+                          );
+
+                          if (!data.ok) {
+                            alert('Failed: ' + (data.error ?? 'Unknown error'));
+                            return;
+                          }
+
+                          alert(`Winner picked: ${data.winner.code}`);
+                          // Reload fresh state
+                          await loadAll();
+                        } catch (err) {
+                          console.error('[ADMIN] pick-winner error:', err);
+                          alert(
+                            err instanceof Error
+                              ? err.message
+                              : 'Failed to pick winner'
+                          );
+                        }
+                      }}
+                    >
+                      Pick winner now
+                    </button>
+                  )}
+
+                  {todayDraw.status !== 'open' && (
+                    <p className="mt-3 text-[11px] text-slate-400">
+                      Draw is no longer open. You can review the winner and
+                      payout status below.
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">Rollover amount</p>
-                    <p className="mt-1 font-semibold">
-                      {formatUsd(todayDraw.rolloverUsd)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">Tickets in pool</p>
-                    <p className="mt-1 font-semibold">
-                      {todayDraw.ticketsCount.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </section>
 
@@ -387,7 +439,9 @@ export default function AdminPage() {
               <ul className="mt-3 space-y-1 text-xs text-slate-300">
                 <li>• XPOT.bet never takes custody of user funds.</li>
                 <li>• Tickets are tied to wallet address and draw date.</li>
-                <li>• Eligibility is checked at entry time, not during the draw.</li>
+                <li>
+                  • Eligibility is checked at entry time, not during the draw.
+                </li>
               </ul>
             </section>
 
@@ -585,7 +639,9 @@ export default function AdminPage() {
                 </li>
                 <li>• Wallet is only checked when you get your ticket.</li>
                 <li>• When the timer hits zero, one ticket wins.</li>
-                <li>• Winner has 24 hours to collect or the jackpot rolls over.</li>
+                <li>
+                  • Winner has 24 hours to collect or the jackpot rolls over.
+                </li>
               </ul>
             </section>
           </div>
