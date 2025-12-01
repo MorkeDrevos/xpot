@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '../../_auth';
 import prisma from '@/lib/prisma';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   const winner =
     draw.tickets[Math.floor(Math.random() * draw.tickets.length)];
 
-  // Save winner
+  // Save winner + close draw
   await prisma.$transaction([
     prisma.ticket.update({
       where: { id: winner.id },
