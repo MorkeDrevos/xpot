@@ -57,6 +57,13 @@ model Draw {
   isClosed       Boolean  @default(false)
   resolvedAt     DateTime?
 
+  // Jackpot size in USD for this draw
+  jackpotUsd     Int?     // or Float? if you want decimals
+
+  // Payout info for the winner
+  paidAt         DateTime?
+  payoutTx       String?
+
   // All tickets in this draw
   tickets        Ticket[] @relation("DrawTickets")
 
