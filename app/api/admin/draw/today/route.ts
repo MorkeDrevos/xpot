@@ -1,19 +1,18 @@
 // app/api/admin/draw/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '/vercel/path0/lib/prisma'; // keep this as in your project
 
-function isAuthorized(req: NextRequest) {
+function isAuthorized(req: NextRequest): boolean {
   const header =
     req.headers.get('x-admin-token') ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
-    return false;
-  }
-
+  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) return false;
   return true;
 }
 
+// For dev: treat "today" as the **latest draw** in DB.
+// (That guarantees we hit your seeded dev-draw-* rows.)
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json(
@@ -22,37 +21,20 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const now = new Date();
-
-  // Normalise to current UTC day
-  const startOfDay = new Date(now);
-  startOfDay.setUTCHours(0, 0, 0, 0);
-
-  const endOfDay = new Date(startOfDay);
-  endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
-
-  // Find today's draw in DB
+  // Latest draw by date
   const draw = await prisma.draw.findFirst({
-    where: {
-      drawDate: {
-        gte: startOfDay,
-        lt: endOfDay,
-      },
-    },
-    include: {
-      tickets: true,
-    },
+    orderBy: { drawDate: 'desc' },
   });
 
-  // If there is no draw row for today, return a sane default
   if (!draw) {
+    // No draws at all yet – return an "empty" snapshot
+    const today = new Date();
     return NextResponse.json({
       ok: true,
       draw: {
-        id: 'no-draw-today',
-        date: now.toISOString().slice(0, 10),
-        drawDate: now.toISOString(),
-        status: 'open' as const,
+        id: 'no-draw',
+        date: today.toISOString().slice(0, 10),
+        status: 'open',
         jackpotUsd: 10_000,
         rolloverUsd: 0,
         ticketsCount: 0,
@@ -60,9 +42,9 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const ticketsCount = draw.tickets.filter(
-    t => t.status !== 'EXPIRED',
-  ).length;
+  const ticketsCount = await prisma.ticket.count({
+    where: { drawId: draw.id },
+  });
 
   const status =
     draw.isClosed && draw.resolvedAt
@@ -76,11 +58,9 @@ export async function GET(req: NextRequest) {
     draw: {
       id: draw.id,
       date: draw.drawDate.toISOString().slice(0, 10),
-      drawDate: draw.drawDate.toISOString(),
-      status,
-      jackpotUsd:
-        typeof draw.jackpotUsd === 'number' ? draw.jackpotUsd : 10_000,
-      rolloverUsd: 0, // we don't have this in schema yet – fixed $0
+      status, // "open" | "closed" | "completed"
+      jackpotUsd: Number(draw.jackpotUsd ?? 10_000),
+      rolloverUsd: 0, // you don't have this column, so always 0 for now
       ticketsCount,
     },
   });
