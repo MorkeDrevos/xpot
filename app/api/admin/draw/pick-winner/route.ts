@@ -1,5 +1,6 @@
+// app/api/admin/draw/pick-winner/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '../../_auth';
+import { requireAdmin } from '../../../_auth';
 import { prisma, TicketStatus } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
