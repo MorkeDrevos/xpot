@@ -313,35 +313,25 @@ export default function AdminPage() {
         </section>
 
         {/* Main layout */}
-<div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)]">
-  {/* LEFT COLUMN */}
-  <div className="space-y-4">
-    {/* Jackpot panel – 1,000,000 XPOT + live USD via Jupiter */}
-    <JackpotPanel />
+        <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)]">
+          {/* LEFT COLUMN */}
+          <div className="space-y-4">
+            {/* Jackpot panel – 1,000,000 XPOT + live USD via Jupiter */}
+            <JackpotPanel />
 
-    {/* Today’s draw */}
-    <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-100">
-            Today&apos;s draw
-          </h2>
-          <p className="mt-1 text-xs text-slate-400">
-            Overview of today&apos;s draw: ticket pool, winner status and timing.
-          </p>
-        </div>
-      </header>
-
-      {/* TODO: your draw stats content goes here */}
-      {/* e.g. total tickets, status chip, winner info, etc. */}
-    </section>
-  </div>
-
-  {/* RIGHT COLUMN */}
-  <div className="space-y-4">
-    {/* whatever you already have on the right side – e.g. eligibility rules, recent winners, etc. */}
-  </div>
-</div>
+            {/* Today’s draw */}
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+              <header className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-100">
+                    Today&apos;s draw
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Overview of today&apos;s draw: ticket pool, winner status
+                    and timing.
+                  </p>
+                </div>
+              </header>
 
               {!adminToken && (
                 <p className="mt-3 text-xs text-slate-500">
@@ -410,7 +400,9 @@ export default function AdminPage() {
                           );
 
                           if (!data.ok) {
-                            alert('Failed: ' + (data.error ?? 'Unknown error'));
+                            alert(
+                              'Failed: ' + (data.error ?? 'Unknown error')
+                            );
                             return;
                           }
 
@@ -418,7 +410,10 @@ export default function AdminPage() {
                           // Reload fresh state
                           await loadAll();
                         } catch (err) {
-                          console.error('[ADMIN] pick-winner error:', err);
+                          console.error(
+                            '[ADMIN] pick-winner error:',
+                            err
+                          );
                           alert(
                             err instanceof Error
                               ? err.message
