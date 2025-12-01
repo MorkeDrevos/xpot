@@ -1,16 +1,14 @@
 // app/api/admin/draw/today/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 function isAuthorized(req: NextRequest) {
-  const header =
+  const token =
     req.headers.get('x-admin-token') ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
-    return false;
-  }
-
-  return true;
+  return token === process.env.XPOT_ADMIN_TOKEN;
 }
 
 export async function GET(req: NextRequest) {
@@ -21,19 +19,55 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // For v1 this is a static snapshot.
-  // Later you’ll replace this with real DB data.
-  const today = new Date();
+  try {
+    // Get today's draw (by date, not ID)
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-  return NextResponse.json({
-    ok: true,
-    draw: {
-      id: today.toISOString().slice(0, 10), // e.g. "2025-12-01"
-      date: today.toISOString(),
-      status: 'open',            // "open" | "closed" | "completed"
-      jackpotUsd: 10_000,       // current jackpot pool
-      rolloverUsd: 0,           // amount carried over from previous draw
-      ticketsCount: 0,          // how many tickets so far
-    },
-  });
+    const draw = await prisma.draw.findFirst({
+      where: {
+        drawDate: {
+          gte: new Date(today),
+          lt: new Date(today + 'T23:59:59.999Z'),
+        },
+      },
+    });
+
+    if (!draw) {
+      return NextResponse.json({
+        ok: true,
+        draw: {
+          id: null,
+          date: today,
+          status: 'open',
+          jackpotUsd: 0,
+          rolloverUsd: 0,
+          ticketsCount: 0,
+        },
+      });
+    }
+
+    // Count tickets for today
+    const ticketsCount = await prisma.ticket.count({
+      where: { drawId: draw.id },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      draw: {
+        id: draw.id,
+        date: draw.drawDate.toISOString(),
+        status: draw.isClosed ? 'closed' : 'open',
+        jackpotUsd: Number(draw.jackpotUsd),
+        rolloverUsd: Number(draw.rolloverUsd),
+        ticketsCount,
+      },
+    });
+
+  } catch (err) {
+    console.error('[ADMIN TODAY DRAW]', err);
+    return NextResponse.json(
+      { ok: false, error: 'FAILED_TO_LOAD_TODAY_DRAW' },
+      { status: 500 }
+    );
+  }
 }
