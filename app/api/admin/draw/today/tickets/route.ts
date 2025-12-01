@@ -1,65 +1,81 @@
 // app/api/admin/draw/today/tickets/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma';
 
 function isAuthorized(req: NextRequest) {
-  const token =
+  const header =
     req.headers.get('x-admin-token') ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-  return token === process.env.XPOT_ADMIN_TOKEN;
+  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
+    return false;
+  }
+
+  return true;
+}
+
+function mapStatus(status: string): string {
+  switch (status) {
+    case 'IN_DRAW':
+      return 'in-draw';
+    case 'WON':
+      return 'won';
+    case 'CLAIMED':
+      return 'claimed';
+    case 'NOT_PICKED':
+      return 'not-picked';
+    case 'EXPIRED':
+      return 'expired';
+    default:
+      return 'in-draw';
+  }
 }
 
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json(
       { ok: false, error: 'UNAUTHORIZED' },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  try {
-    const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
-    const draw = await prisma.draw.findFirst({
-      where: {
-        drawDate: {
-          gte: new Date(today),
-          lt: new Date(today + 'T23:59:59.999Z'),
-        },
+  const draw = await prisma.draw.findFirst({
+    where: {
+      drawDate: {
+        gte: startOfDay,
+        lt: endOfDay,
       },
-    });
+    },
+  });
 
-    if (!draw) {
-      return NextResponse.json({ ok: true, tickets: [] });
-    }
-
-    const tickets = await prisma.ticket.findMany({
-      where: { drawId: draw.id },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-      include: {
-        wallet: true,
-      },
-    });
-
-    return NextResponse.json({
-      ok: true,
-      tickets: tickets.map(t => ({
-        id: t.id,
-        code: t.code,
-        walletAddress: t.wallet.address,
-        status: t.status,
-        createdAt: t.createdAt,
-      })),
-    });
-
-  } catch (err) {
-    console.error('[ADMIN TODAY TICKETS]', err);
-    return NextResponse.json(
-      { ok: false, error: 'FAILED_TO_LOAD_TICKETS' },
-      { status: 500 }
-    );
+  if (!draw) {
+    return NextResponse.json({ ok: true, tickets: [] });
   }
+
+  const tickets = await prisma.ticket.findMany({
+    where: { drawId: draw.id },
+    orderBy: { createdAt: 'asc' },
+    include: {
+      wallet: true,
+    },
+  });
+
+  const mapped = tickets.map(t => ({
+    id: t.id,
+    code: t.code,
+    walletAddress: t.wallet?.address ?? 'UNKNOWN',
+    status: mapStatus(t.status),
+    createdAt: t.createdAt.toISOString(),
+  }));
+
+  return NextResponse.json({
+    ok: true,
+    tickets: mapped,
+  });
 }
