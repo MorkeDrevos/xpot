@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-function isAuthorized(req: NextRequest): boolean {
+function isAuthorized(req: NextRequest) {
   const header =
     req.headers.get('x-admin-token') ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
@@ -22,15 +22,16 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Figure out "today" in UTC
   const now = new Date();
-  const startOfDay = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+
+  // Normalise to current UTC day
+  const startOfDay = new Date(now);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
   const endOfDay = new Date(startOfDay);
   endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
-  // Get today's draw (if any), plus ticket count
+  // Find today's draw in DB
   const draw = await prisma.draw.findFirst({
     where: {
       drawDate: {
@@ -39,47 +40,47 @@ export async function GET(req: NextRequest) {
       },
     },
     include: {
-      _count: {
-        select: {
-          tickets: true,
-        },
-      },
-    },
-    orderBy: {
-      drawDate: 'desc',
+      tickets: true,
     },
   });
 
+  // If there is no draw row for today, return a sane default
   if (!draw) {
-    // No draw created for today yet
     return NextResponse.json({
       ok: true,
-      draw: null,
+      draw: {
+        id: 'no-draw-today',
+        date: now.toISOString().slice(0, 10),
+        drawDate: now.toISOString(),
+        status: 'open' as const,
+        jackpotUsd: 10_000,
+        rolloverUsd: 0,
+        ticketsCount: 0,
+      },
     });
   }
 
-  const ticketsCount = draw._count?.tickets ?? 0;
+  const ticketsCount = draw.tickets.filter(
+    t => t.status !== 'EXPIRED',
+  ).length;
 
-  // Map DB flags -> UI status
-  const status: 'open' | 'closed' | 'completed' =
-    draw.isClosed
-      ? draw.resolvedAt
-        ? 'completed'
-        : 'closed'
+  const status =
+    draw.isClosed && draw.resolvedAt
+      ? 'completed'
+      : draw.isClosed
+      ? 'closed'
       : 'open';
 
   return NextResponse.json({
     ok: true,
     draw: {
       id: draw.id,
-      // short date string, eg "2025-12-01"
       date: draw.drawDate.toISOString().slice(0, 10),
-      // full ISO string if you ever need it
       drawDate: draw.drawDate.toISOString(),
       status,
-      jackpotUsd: Number(draw.jackpotUsd ?? 0),
-      // You don't have this column in Prisma – keep it 0 for now
-      rolloverUsd: 0,
+      jackpotUsd:
+        typeof draw.jackpotUsd === 'number' ? draw.jackpotUsd : 10_000,
+      rolloverUsd: 0, // we don't have this in schema yet – fixed $0
       ticketsCount,
     },
   });
