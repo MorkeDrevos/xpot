@@ -1,7 +1,7 @@
 // app/api/admin/draw/today/tickets/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma'
 
 function isAuthorized(req: NextRequest) {
   const token =
