@@ -1,50 +1,58 @@
 // app/api/admin/draw/recent-winners/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-function isAuthorized(req: NextRequest) {
-  const token =
+function isAuthorized(req: NextRequest): boolean {
+  const header =
     req.headers.get('x-admin-token') ||
-    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
+    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-  return token === process.env.XPOT_ADMIN_TOKEN
+  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
+    return false;
+  }
+
+  return true;
 }
 
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json(
       { ok: false, error: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+      { status: 401 },
+    );
   }
 
+  // Latest completed draws that have a winner
   const draws = await prisma.draw.findMany({
     where: {
-      winnerTicketId: {
-        not: null
-      }
+      isClosed: true,
+      winnerTicketId: { not: null },
     },
     orderBy: {
-      drawDate: 'desc'
+      drawDate: 'desc',
     },
     take: 10,
     include: {
-      winnerTicket: true
-    }
-  })
+      winnerTicket: {
+        include: {
+          wallet: true, // <- so we can read wallet.address
+        },
+      },
+    },
+  });
 
   const winners = draws.map(draw => ({
     drawId: draw.id,
     date: draw.drawDate.toISOString(),
     ticketCode: draw.winnerTicket?.code ?? 'UNKNOWN',
-    walletAddress: draw.winnerTicket?.walletAddress ?? 'UNKNOWN',
+    walletAddress: draw.winnerTicket?.wallet?.address ?? 'UNKNOWN',
     jackpotUsd: Number(draw.jackpotUsd),
     paidOut: !!draw.paidAt,
-    txUrl: draw.payoutTx || null
-  }))
+    txUrl: draw.payoutTx || null,
+  }));
 
   return NextResponse.json({
     ok: true,
-    winners
-  })
+    winners,
+  });
 }
