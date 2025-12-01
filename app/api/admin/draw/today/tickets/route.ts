@@ -1,0 +1,37 @@
+// app/api/admin/draw/today/tickets/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+function isAuthorized(req: NextRequest) {
+  const header =
+    req.headers.get('x-admin-token') ||
+    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+
+  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
+    return false;
+  }
+
+  return true;
+}
+
+export async function GET(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json(
+      { ok: false, error: 'UNAUTHORIZED' },
+      { status: 401 }
+    );
+  }
+
+  // v1: static empty list (no tickets yet).
+  // Later: pull real tickets for "today's" draw from Prisma.
+  return NextResponse.json({
+    ok: true,
+    tickets: [] as Array<{
+      id: string;
+      code: string;
+      walletAddress: string;
+      status: 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
+      createdAt: string;
+      jackpotUsd?: number;
+    }>,
+  });
+}
