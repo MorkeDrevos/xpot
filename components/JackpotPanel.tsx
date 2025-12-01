@@ -85,7 +85,7 @@ export default function JackpotPanel() {
   }
 
   fetchPrice();
-  timer = setInterval(fetchPrice, 60_000);
+  timer = setInterval(fetchPrice, 5_000);
 
   return () => clearInterval(timer);
 }, []);
