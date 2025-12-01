@@ -76,6 +76,15 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [loadingWinners, setLoadingWinners] = useState(false);
 
+  // New: winner + button safety state
+  const [pickingWinner, setPickingWinner] = useState(false);
+  const [lastPickedWinner, setLastPickedWinner] = useState<{
+    ticketCode: string;
+    walletAddress: string;
+    jackpotUsd?: number;
+  } | null>(null);
+  const [winnerJustPicked, setWinnerJustPicked] = useState(false);
+
   // Load stored token on first render (browser only)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -239,6 +248,15 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminToken]);
 
+  // Derived: can we pick winner right now?
+  const canPickWinner =
+    !!todayDraw &&
+    adminToken &&
+    todayDraw.status === 'open' &&
+    todayDraw.ticketsCount > 0 &&
+    !loadingToday &&
+    !pickingWinner;
+
   // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
@@ -380,57 +398,141 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {todayDraw.status === 'open' && (
-                    <button
-                      type="button"
-                      className="mt-4 w-full rounded-full bg-amber-400 py-2 text-xs font-semibold text-black hover:bg-amber-300"
-                      onClick={async () => {
-                        if (
-                          !window.confirm(
-                            'Pick winner for today’s draw? This cannot be undone.'
-                          )
-                        ) {
+                  {/* Pick winner button + safety guards */}
+                  <button
+                    type="button"
+                    disabled={!canPickWinner}
+                    className={`mt-4 w-full rounded-full py-2 text-xs font-semibold ${
+                      canPickWinner
+                        ? 'bg-amber-400 text-black hover:bg-amber-300'
+                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    }`}
+                    onClick={async () => {
+                      if (!canPickWinner || !todayDraw) return;
+
+                      // Strong pre-confirmation BEFORE touching backend
+                      const confirmed = window.confirm(
+                        [
+                          'Pick winner for today’s draw now?',
+                          '',
+                          `Tickets in pool: ${todayDraw.ticketsCount.toLocaleString()}`,
+                          `Today’s jackpot: ${formatUsd(todayDraw.jackpotUsd)}`,
+                          '',
+                          'This will randomly select one wallet, lock today’s draw,',
+                          'and permanently record the winning ticket.',
+                        ].join('\n')
+                      );
+
+                      if (!confirmed) return;
+
+                      try {
+                        setPickingWinner(true);
+
+                        const data = await adminFetch(
+                          '/api/admin/draw/pick-winner',
+                          { method: 'POST' }
+                        );
+
+                        if (!data.ok) {
+                          alert(
+                            'Failed: ' + (data.error ?? 'Unknown error')
+                          );
                           return;
                         }
 
-                        try {
-                          const data = await adminFetch(
-                            '/api/admin/draw/pick-winner',
-                            { method: 'POST' }
-                          );
+                        const winner = data.winner;
 
-                          if (!data.ok) {
-                            alert(
-                              'Failed: ' + (data.error ?? 'Unknown error')
-                            );
-                            return;
-                          }
+                        // Store for reveal card
+                        setLastPickedWinner({
+                          ticketCode: winner.code,
+                          walletAddress: winner.wallet,
+                          jackpotUsd: winner.jackpotUsd,
+                        });
 
-                          alert(`Winner picked: ${data.winner.code}`);
-                          // Reload fresh state
-                          await loadAll();
-                        } catch (err) {
-                          console.error(
-                            '[ADMIN] pick-winner error:',
-                            err
-                          );
-                          alert(
-                            err instanceof Error
-                              ? err.message
-                              : 'Failed to pick winner'
-                          );
-                        }
-                      }}
-                    >
-                      Pick winner now
-                    </button>
-                  )}
+                        // Lock draw status locally
+                        setTodayDraw(prev =>
+                          prev
+                            ? {
+                                ...prev,
+                                status: 'completed',
+                              }
+                            : prev
+                        );
 
+                        setWinnerJustPicked(true);
+                        setTimeout(
+                          () => setWinnerJustPicked(false),
+                          2000
+                        );
+
+                        // Optional toast
+                        alert(
+                          `Winner picked:\n\nTicket: ${winner.code}\nWallet: ${winner.wallet}`
+                        );
+
+                        // Reload fresh state (tickets, winners list, etc.)
+                        await loadAll();
+                      } catch (err) {
+                        console.error(
+                          '[ADMIN] pick-winner error:',
+                          err
+                        );
+                        alert(
+                          err instanceof Error
+                            ? err.message
+                            : 'Failed to pick winner'
+                        );
+                      } finally {
+                        setPickingWinner(false);
+                      }
+                    }}
+                  >
+                    {pickingWinner
+                      ? 'Picking winner…'
+                      : canPickWinner
+                      ? 'Pick winner now'
+                      : todayDraw.ticketsCount === 0
+                      ? 'No tickets in pool'
+                      : 'Draw not ready / already locked'}
+                  </button>
+
+                  {/* Draw locked info + winner reveal */}
                   {todayDraw.status !== 'open' && (
                     <p className="mt-3 text-[11px] text-slate-400">
-                      Draw is no longer open. You can review the winner and
-                      payout status below.
+                      Draw is locked. Review the winning ticket and payout
+                      status below.
                     </p>
+                  )}
+
+                  {lastPickedWinner && (
+                    <div
+                      className={`mt-3 rounded-xl border px-3 py-2 text-[11px] ${
+                        winnerJustPicked
+                          ? 'border-emerald-400 bg-emerald-500/10 ring-1 ring-emerald-400 animate-pulse'
+                          : 'border-emerald-500/40 bg-emerald-500/5'
+                      } text-emerald-100`}
+                    >
+                      <p className="text-xs font-semibold">
+                        Winner locked for today&apos;s draw
+                      </p>
+                      <p className="mt-1">
+                        Ticket:{' '}
+                        <span className="font-mono">
+                          {lastPickedWinner.ticketCode}
+                        </span>
+                      </p>
+                      <p className="mt-0.5 break-all">
+                        Wallet:{' '}
+                        <span className="font-mono">
+                          {lastPickedWinner.walletAddress}
+                        </span>
+                      </p>
+                      {typeof lastPickedWinner.jackpotUsd === 'number' && (
+                        <p className="mt-0.5">
+                          Jackpot: {formatUsd(lastPickedWinner.jackpotUsd)}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </>
               )}
