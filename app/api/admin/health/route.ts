@@ -1,17 +1,30 @@
 // app/api/admin/health/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/admin-auth';
 
-export async function GET(request: NextRequest) {
-  // Gatekeeper: returns a response if not allowed, null if OK
-  const guard = requireAdmin(request);
-  if (guard) return guard;
+function isAuthorized(req: NextRequest) {
+  const header =
+    req.headers.get('x-admin-token') ||
+    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-  // If we get here, token is valid
+  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
+    return false;
+  }
+
+  return true;
+}
+
+export async function GET(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json(
+      { ok: false, error: 'UNAUTHORIZED' },
+      { status: 401 }
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     admin: true,
-    envActive: true,
+    envActive: !!process.env.XPOT_ADMIN_TOKEN,
     now: new Date().toISOString(),
   });
 }
