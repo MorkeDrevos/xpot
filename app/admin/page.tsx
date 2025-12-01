@@ -1,463 +1,594 @@
-// app/admin/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-type DrawStatus = 'scheduled' | 'open' | 'closed' | 'paid';
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
 
-type AdminDraw = {
+type DrawStatus = 'open' | 'closed' | 'completed';
+
+type TodayDraw = {
   id: string;
-  drawDate: string; // ISO
-  jackpotUsd: number;
+  date: string;
   status: DrawStatus;
-  rolloverFromPrev: boolean;
-  rolloverToNext: boolean;
+  jackpotUsd: number;
+  rolloverUsd: number;
   ticketsCount: number;
-  winnerTicketCode?: string | null;
-  winnerWallet?: string | null;
-  claimDeadline?: string | null;
 };
+
+type TicketStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
 type AdminTicket = {
   id: string;
   code: string;
   walletAddress: string;
+  status: TicketStatus;
   createdAt: string;
-  status: 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
+  jackpotUsd?: number;
 };
 
 type AdminWinner = {
-  id: string;
-  drawDate: string;
+  drawId: string;
+  date: string;
   ticketCode: string;
   walletAddress: string;
   jackpotUsd: number;
-  claimed: boolean;
+  paidOut: boolean;
+  txUrl?: string;
 };
 
-function shortWallet(addr: string) {
-  if (!addr || addr.length < 8) return addr;
-  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+const ADMIN_TOKEN_KEY = 'xpot_admin_token';
+
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+
+function formatUsd(amount: number | undefined | null) {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return '$0';
+  return `$${amount.toLocaleString('en-US', {
+    maximumFractionDigits: 0,
+  })}`;
 }
 
-function formatDateTime(date: string | Date) {
-  const d = new Date(date);
-  return d.toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatDate(date: string | Date) {
-  const d = new Date(date);
-  return d.toLocaleDateString('de-DE');
-}
+// ─────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────
 
 export default function AdminPage() {
-  const [draw, setDraw] = useState<AdminDraw | null>(null);
-  const [tickets, setTickets] = useState<AdminTicket[]>([]);
-  const [winners, setWinners] = useState<AdminWinner[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [adminToken, setAdminToken] = useState('');
+  const [tokenInput, setTokenInput] = useState('');
+  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
+  const [checkingToken, setCheckingToken] = useState(false);
 
+  const [todayDraw, setTodayDraw] = useState<TodayDraw | null>(null);
+  const [todayError, setTodayError] = useState<string | null>(null);
+  const [loadingToday, setLoadingToday] = useState(false);
+
+  const [todayTickets, setTodayTickets] = useState<AdminTicket[]>([]);
+  const [ticketsError, setTicketsError] = useState<string | null>(null);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+
+  const [recentWinners, setRecentWinners] = useState<AdminWinner[]>([]);
+  const [winnersError, setWinnersError] = useState<string | null>(null);
+  const [loadingWinners, setLoadingWinners] = useState(false);
+
+  // Load stored token on first render (browser only)
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadAdminData() {
-      setLoading(true);
-      setError(null);
-      try {
-        // Adapt these endpoints to whatever you implement
-        const [drawRes, ticketsRes, winnersRes] = await Promise.all([
-          fetch('/api/admin/draw/today'),
-          fetch('/api/admin/draw/today/tickets'),
-          fetch('/api/admin/draw/recent-winners'),
-        ]);
-
-        if (!drawRes.ok) throw new Error('Failed to load today’s draw');
-        if (!ticketsRes.ok) throw new Error('Failed to load tickets');
-        if (!winnersRes.ok) throw new Error('Failed to load winners');
-
-        const drawData = await drawRes.json();
-        const ticketsData = await ticketsRes.json();
-        const winnersData = await winnersRes.json();
-
-        if (cancelled) return;
-
-        setDraw(drawData.draw ?? null);
-        setTickets(Array.isArray(ticketsData.tickets) ? ticketsData.tickets : []);
-        setWinners(Array.isArray(winnersData.winners) ? winnersData.winners : []);
-      } catch (err) {
-        console.error('[ADMIN] Load error', err);
-        if (!cancelled) {
-          setError((err as Error).message ?? 'Failed to load admin data');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
+    if (stored) {
+      setAdminToken(stored);
+      setTokenInput(stored);
+      setTokenValid(true);
     }
-
-    loadAdminData();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  async function handlePickWinner() {
-    if (!draw) return;
-    setActionBusy(true);
-    setActionMessage(null);
-    setError(null);
+  // Small helper for admin fetches with header
+  async function adminFetch(path: string) {
+    if (!adminToken) {
+      throw new Error('NO_ADMIN_TOKEN');
+    }
+
+    const res = await fetch(path, {
+      headers: {
+        'x-admin-token': adminToken,
+      },
+      cache: 'no-store',
+    });
+
+    if (res.status === 401) {
+      setTokenValid(false);
+      throw new Error('UNAUTHORIZED');
+    }
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Request failed: ${res.status}`);
+    }
+
+    return res.json();
+  }
+
+  // Verify token against /api/admin/health
+  async function verifyToken() {
+    if (!tokenInput) {
+      setTokenValid(false);
+      return;
+    }
+
+    setCheckingToken(true);
+    setTokenValid(null);
 
     try {
-      const res = await fetch('/api/admin/draw/pick-winner', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ drawId: draw.id }),
+      const res = await fetch('/api/admin/health', {
+        headers: { 'x-admin-token': tokenInput },
+        cache: 'no-store',
       });
 
-      const data = await res.json().catch(() => ({} as any));
-
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error ?? 'Failed to pick winner');
+      if (!res.ok) {
+        setTokenValid(false);
+        return;
       }
 
-      setActionMessage('Winner selected for this draw.');
-      // Simple refresh – you can optimise later
-      window.location.reload();
+      const data = await res.json();
+      if (data.ok) {
+        setAdminToken(tokenInput);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput);
+        }
+        setTokenValid(true);
+        await loadAll(tokenInput);
+      } else {
+        setTokenValid(false);
+      }
     } catch (err) {
-      console.error('[ADMIN] Pick winner error', err);
-      setError(
-        (err as Error).message ?? 'Could not pick winner. Try again in a moment.'
-      );
+      console.error('[ADMIN] Health check failed:', err);
+      setTokenValid(false);
     } finally {
-      setActionBusy(false);
+      setCheckingToken(false);
     }
   }
 
-  async function handleMarkPaid() {
-    if (!draw) return;
-    setActionBusy(true);
-    setActionMessage(null);
-    setError(null);
+  // Load all admin data (today + tickets + winners)
+  async function loadAll(optionalToken?: string) {
+    const token = optionalToken ?? adminToken;
+    if (!token) return;
+
+    setTodayError(null);
+    setTicketsError(null);
+    setWinnersError(null);
+
+    setLoadingToday(true);
+    setLoadingTickets(true);
+    setLoadingWinners(true);
 
     try {
-      const res = await fetch('/api/admin/draw/mark-paid', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ drawId: draw.id }),
-      });
+      const headers = { 'x-admin-token': token };
 
-      const data = await res.json().catch(() => ({} as any));
+      const [drawRes, ticketsRes, winnersRes] = await Promise.all([
+        fetch('/api/admin/draw/today', { headers, cache: 'no-store' }),
+        fetch('/api/admin/draw/today/tickets', {
+          headers,
+          cache: 'no-store',
+        }),
+        fetch('/api/admin/draw/recent-winners', {
+          headers,
+          cache: 'no-store',
+        }),
+      ]);
 
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error ?? 'Failed to mark jackpot as paid');
+      if (
+        drawRes.status === 401 ||
+        ticketsRes.status === 401 ||
+        winnersRes.status === 401
+      ) {
+        setTokenValid(false);
+        throw new Error('UNAUTHORIZED');
       }
 
-      setActionMessage('Jackpot marked as paid.');
-      window.location.reload();
+      const drawJson = drawRes.ok ? await drawRes.json() : null;
+      const ticketsJson = ticketsRes.ok ? await ticketsRes.json() : null;
+      const winnersJson = winnersRes.ok ? await winnersRes.json() : null;
+
+      if (drawJson?.ok) {
+        setTodayDraw(drawJson.draw);
+      } else if (!drawRes.ok) {
+        setTodayError(`Failed to load today’s draw (${drawRes.status})`);
+      }
+
+      if (ticketsJson?.ok && Array.isArray(ticketsJson.tickets)) {
+        setTodayTickets(ticketsJson.tickets);
+      } else if (!ticketsRes.ok) {
+        setTicketsError(
+          `Failed to load today’s tickets (${ticketsRes.status})`
+        );
+      }
+
+      if (winnersJson?.ok && Array.isArray(winnersJson.winners)) {
+        setRecentWinners(winnersJson.winners);
+      } else if (!winnersRes.ok) {
+        setWinnersError(
+          `Failed to load recent winners (${winnersRes.status})`
+        );
+      }
     } catch (err) {
-      console.error('[ADMIN] Mark paid error', err);
-      setError(
-        (err as Error).message ??
-          'Could not mark jackpot as paid. Try again in a moment.'
-      );
+      console.error('[ADMIN] loadAll error:', err);
+      const msg =
+        err instanceof Error ? err.message : 'Unexpected admin error';
+      if (!todayError) setTodayError(msg);
+      if (!ticketsError) setTicketsError(msg);
+      if (!winnersError) setWinnersError(msg);
     } finally {
-      setActionBusy(false);
+      setLoadingToday(false);
+      setLoadingTickets(false);
+      setLoadingWinners(false);
     }
   }
+
+  // Whenever a valid token is set, auto-load data
+  useEffect(() => {
+    if (adminToken) {
+      void loadAll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
+
+  // ─────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────
 
   return (
     <main className="min-h-screen bg-black text-slate-50">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-10 pt-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
         {/* Top bar */}
-        <header className="flex items-center justify-between gap-4">
+        <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               XPOT admin
-            </h1>
-            <p className="text-xs text-slate-400">
-              Internal control room for today’s draw, jackpot state and winners.
+            </p>
+            <p className="text-sm text-slate-300">
+              Internal control room for today&apos;s draw, jackpot state and
+              winners.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="rounded-full border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500 hover:bg-slate-900"
-            >
-              Back to user dashboard
-            </Link>
-          </div>
+          <Link
+            href="/dashboard"
+            className="rounded-full border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500 hover:bg-slate-900"
+          >
+            Back to user dashboard
+          </Link>
         </header>
 
-        {error && (
-          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
-            {error}
-          </div>
-        )}
+        {/* Admin token bar */}
+        <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-200">
+                Admin key
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Paste your admin token to unlock live draw data. Stored only in
+                this browser&apos;s local storage.
+              </p>
+            </div>
 
-        {actionMessage && (
-          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">
-            {actionMessage}
+            <div className="flex flex-1 items-center gap-2 md:max-w-md">
+              <input
+                type="password"
+                className="flex-1 rounded-full border border-slate-700 bg-black px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-emerald-400"
+                placeholder="Paste XPOT_ADMIN_TOKEN..."
+                value={tokenInput}
+                onChange={e => setTokenInput(e.target.value.trim())}
+              />
+              <button
+                type="button"
+                onClick={verifyToken}
+                disabled={!tokenInput || checkingToken}
+                className="rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+              >
+                {checkingToken ? 'Checking…' : 'Unlock'}
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* Top row: draw + eligibility + wallet truth */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* Today’s draw */}
-          <section className="premium-card md:col-span-2 p-4">
-            <h2 className="text-sm font-semibold text-slate-100">
-              Today’s draw
-            </h2>
-            <p className="mt-1 text-xs text-slate-400">
-              Snapshot of the current jackpot, rollover state and ticket pool.
+          {tokenValid === false && (
+            <p className="mt-2 text-[11px] text-amber-300">
+              Invalid admin token. Double-check the value from Vercel and try
+              again.
             </p>
+          )}
+          {tokenValid && (
+            <p className="mt-2 text-[11px] text-emerald-300">
+              Admin token accepted. Live draw endpoints are unlocked for this
+              browser.
+            </p>
+          )}
+        </section>
 
-            {loading && !draw && (
-              <p className="mt-3 text-xs text-slate-500">Loading…</p>
-            )}
-
-            {draw && (
-              <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-xs">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                      Draw date
-                    </p>
-                    <p className="text-sm text-slate-100">
-                      {formatDate(draw.drawDate)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                      Today’s jackpot
-                    </p>
-                    <p className="text-sm text-emerald-300">
-                      ${draw.jackpotUsd.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                      Status
-                    </p>
-                    <p className="text-sm capitalize text-slate-100">
-                      {draw.status}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                      Tickets in pool
-                    </p>
-                    <p className="text-sm text-slate-100">
-                      {draw.ticketsCount.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid gap-3 text-[11px] text-slate-400 sm:grid-cols-2">
-                  <p>
-                    ✅ Rollover in: {draw.rolloverFromPrev ? 'Yes' : 'No'} ·
-                    Rollover out: {draw.rolloverToNext ? 'Yes' : 'No'}
+        {/* Main layout */}
+        <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)]">
+          {/* LEFT COLUMN */}
+          <div className="space-y-4">
+            {/* Today’s draw */}
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+              <header className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-100">
+                    Today&apos;s draw
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Snapshot of the current jackpot, rollover state and ticket
+                    pool.
                   </p>
-                  {draw.winnerTicketCode ? (
-                    <p>
-                      🏆 Winner ticket:{' '}
-                      <span className="font-mono text-emerald-300">
-                        {draw.winnerTicketCode}
-                      </span>{' '}
-                      · Wallet:{' '}
-                      <span className="font-mono">
-                        {shortWallet(draw.winnerWallet ?? '')}
-                      </span>
-                    </p>
-                  ) : (
-                    <p>🏆 No winner selected yet.</p>
-                  )}
                 </div>
+              </header>
 
-                {draw.claimDeadline && (
-                  <p className="mt-2 text-[11px] text-slate-400">
-                    Claim window ends:{' '}
-                    <span className="font-mono">
-                      {formatDateTime(draw.claimDeadline)}
-                    </span>
+              {!adminToken && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Paste your admin key above to load today&apos;s draw details.
+                </p>
+              )}
+
+              {adminToken && loadingToday && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Loading today&apos;s draw…
+                </p>
+              )}
+
+              {adminToken && todayError && !loadingToday && (
+                <p className="mt-3 text-xs text-amber-300">
+                  Failed to load today&apos;s draw. {todayError}
+                </p>
+              )}
+
+              {adminToken && todayDraw && !loadingToday && !todayError && (
+                <div className="mt-4 grid gap-4 text-xs text-slate-200 sm:grid-cols-2">
+                  <div>
+                    <p className="text-slate-400">Status</p>
+                    <p className="mt-1 font-semibold capitalize">
+                      {todayDraw.status}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Today&apos;s jackpot</p>
+                    <p className="mt-1 font-semibold">
+                      {formatUsd(todayDraw.jackpotUsd)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Rollover amount</p>
+                    <p className="mt-1 font-semibold">
+                      {formatUsd(todayDraw.rolloverUsd)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Tickets in pool</p>
+                    <p className="mt-1 font-semibold">
+                      {todayDraw.ticketsCount.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Wallet truth line */}
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+              <h2 className="text-sm font-semibold text-slate-100">
+                Wallet truth line
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                What is actually true on-chain, regardless of what the UI is
+                showing.
+              </p>
+
+              <ul className="mt-3 space-y-1 text-xs text-slate-300">
+                <li>• XPOT.bet never takes custody of user funds.</li>
+                <li>• Tickets are tied to wallet address and draw date.</li>
+                <li>• Eligibility is checked at entry time, not during the draw.</li>
+              </ul>
+            </section>
+
+            {/* Today’s tickets */}
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+              <h2 className="text-sm font-semibold text-slate-100">
+                Today&apos;s tickets (admin view)
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                Every ticket that has been issued for the current draw.
+              </p>
+
+              {!adminToken && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Unlock with your admin key to see today&apos;s tickets.
+                </p>
+              )}
+
+              {adminToken && loadingTickets && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Loading tickets…
+                </p>
+              )}
+
+              {adminToken && ticketsError && !loadingTickets && (
+                <p className="mt-3 text-xs text-amber-300">
+                  {ticketsError}
+                </p>
+              )}
+
+              {adminToken &&
+                !loadingTickets &&
+                !ticketsError &&
+                todayTickets.length === 0 && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    No tickets yet for today&apos;s draw.
                   </p>
                 )}
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={actionBusy || !tickets.length}
-                    onClick={handlePickWinner}
-                    className={`rounded-full px-4 py-1.5 text-xs font-semibold ${
-                      actionBusy || !tickets.length
-                        ? 'cursor-not-allowed bg-slate-800 text-slate-500'
-                        : 'bg-emerald-500 text-black hover:bg-emerald-400'
-                    }`}
-                  >
-                    Pick winner from pool
-                  </button>
-                  <button
-                    type="button"
-                    disabled={actionBusy || !draw.winnerTicketCode}
-                    onClick={handleMarkPaid}
-                    className={`rounded-full px-4 py-1.5 text-xs font-semibold ${
-                      actionBusy || !draw.winnerTicketCode
-                        ? 'cursor-not-allowed bg-slate-900 text-slate-600'
-                        : 'border border-slate-700 bg-slate-950 text-slate-200 hover:border-slate-500'
-                    }`}
-                  >
-                    Mark jackpot as paid
-                  </button>
+              {adminToken &&
+                !loadingTickets &&
+                !ticketsError &&
+                todayTickets.length > 0 && (
+                  <div className="mt-3 space-y-1 text-[11px] text-slate-200">
+                    {todayTickets.slice(0, 50).map(t => (
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
+                      >
+                        <div>
+                          <p className="font-mono text-xs">{t.code}</p>
+                          <p className="mt-0.5 text-[10px] text-slate-500">
+                            {t.walletAddress}
+                          </p>
+                        </div>
+                        <div className="text-right text-[10px] text-slate-400">
+                          <p>{t.status}</p>
+                          <p className="mt-0.5">
+                            {new Date(t.createdAt).toLocaleTimeString(
+                              undefined,
+                              {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              }
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </section>
+
+            {/* Recent winners */}
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-100">
+                    Recent winners
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Internal log of the latest winning tickets and payout
+                    status.
+                  </p>
                 </div>
               </div>
-            )}
-          </section>
 
-          {/* Eligibility + wallet truth */}
-          <section className="space-y-4">
-            {/* Eligibility status card */}
-            <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold text-slate-100">
-                Today’s eligibility
-              </h3>
+              {!adminToken && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Unlock with your admin key to see completed draws.
+                </p>
+              )}
+
+              {adminToken && loadingWinners && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Loading recent winners…
+                </p>
+              )}
+
+              {adminToken && winnersError && !loadingWinners && (
+                <p className="mt-3 text-xs text-amber-300">
+                  {winnersError}
+                </p>
+              )}
+
+              {adminToken &&
+                !loadingWinners &&
+                !winnersError &&
+                recentWinners.length === 0 && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    No completed draws yet. Once you pick winners and mark
+                    jackpots as paid, they&apos;ll appear here.
+                  </p>
+                )}
+
+              {adminToken &&
+                !loadingWinners &&
+                !winnersError &&
+                recentWinners.length > 0 && (
+                  <div className="mt-3 space-y-2 text-[11px] text-slate-200">
+                    {recentWinners.map(w => (
+                      <div
+                        key={w.drawId}
+                        className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-mono text-xs">
+                              {w.ticketCode}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-slate-500">
+                              {w.walletAddress}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] text-slate-400">
+                              {new Date(w.date).toLocaleDateString()}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-emerald-300">
+                              {formatUsd(w.jackpotUsd)}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-slate-400">
+                              {w.paidOut ? 'Paid out' : 'Pending'}
+                            </p>
+                          </div>
+                        </div>
+                        {w.txUrl && (
+                          <a
+                            href={w.txUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
+                          >
+                            View transaction
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </section>
+          </div>
+
+          {/* RIGHT COLUMN */}
+          <div className="space-y-4">
+            {/* Today’s eligibility */}
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+              <h2 className="text-sm font-semibold text-slate-100">
+                Today&apos;s eligibility
+              </h2>
               <p className="mt-1 text-xs text-slate-400">
                 What users see as the current entry rules.
               </p>
-              <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-slate-300">
-                <li>Sign in with X.</li>
-                <li>Connect a Solana wallet.</li>
+              <ul className="mt-3 space-y-1 text-xs text-slate-300">
+                <li>• Sign in with X.</li>
+                <li>• Connect a Solana wallet.</li>
                 <li>
-                  Hold the minimum XPOT balance at the moment they get today’s
-                  ticket.
+                  • Hold the minimum XPOT balance at the moment they get
+                  today&apos;s ticket.
                 </li>
-                <li>Exactly one ticket per wallet per draw.</li>
+                <li>• Exactly one ticket per wallet per draw.</li>
               </ul>
-            </div>
+            </section>
 
-            {/* Wallet truth line */}
-            <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold text-slate-100">
-                Wallet truth line
-              </h3>
-              <p className="mt-2 text-xs text-slate-400">
-                What is actually true on-chain, regardless of UI:
-              </p>
-              <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-slate-300">
-                <li>XPOT.bet never takes custody of funds.</li>
-                <li>Tickets are tied to wallet address and draw date.</li>
+            {/* How draw works (user view) */}
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+              <h2 className="text-sm font-semibold text-slate-100">
+                How today&apos;s draw works
+              </h2>
+              <ul className="mt-3 space-y-1 text-xs text-slate-300">
+                <li>• Get exactly one ticket per wallet.</li>
                 <li>
-                  Eligibility is checked at entry time, not during the draw.
+                  • At entry time, wallet must hold at least{' '}
+                  <span className="font-semibold">100,000 XPOT</span>.
                 </li>
+                <li>• Wallet is only checked when you get your ticket.</li>
+                <li>• When the timer hits zero, one ticket wins.</li>
+                <li>• Winner has 24 hours to collect or the jackpot rolls over.</li>
               </ul>
-            </div>
-          </section>
-        </div>
-
-        {/* Lower row: tickets + recent winners */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* Tickets table */}
-          <section className="premium-card md:col-span-2 p-4">
-            <h2 className="text-sm font-semibold text-slate-100">
-              Today’s tickets (admin view)
-            </h2>
-            <p className="mt-1 text-xs text-slate-400">
-              Every ticket that has been issued for the current draw.
-            </p>
-
-            {loading && !tickets.length && (
-              <p className="mt-3 text-xs text-slate-500">Loading…</p>
-            )}
-
-            {!loading && tickets.length === 0 && (
-              <p className="mt-3 text-xs text-slate-500">
-                No tickets yet for today’s draw.
-              </p>
-            )}
-
-            {tickets.length > 0 && (
-              <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-900">
-                <table className="min-w-full text-left text-[11px]">
-                  <thead className="bg-slate-950/80 text-slate-400">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Ticket</th>
-                      <th className="px-3 py-2 font-medium">Wallet</th>
-                      <th className="px-3 py-2 font-medium">Created</th>
-                      <th className="px-3 py-2 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-900 bg-slate-950/40">
-                    {tickets.map(t => (
-                      <tr key={t.id}>
-                        <td className="px-3 py-2 font-mono text-slate-100">
-                          {t.code}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-slate-300">
-                          {shortWallet(t.walletAddress)}
-                        </td>
-                        <td className="px-3 py-2 text-slate-300">
-                          {formatDateTime(t.createdAt)}
-                        </td>
-                        <td className="px-3 py-2 text-slate-300">
-                          {t.status}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-
-          {/* Recent winners */}
-          <section className="premium-card p-4">
-            <h2 className="text-sm font-semibold text-slate-100">
-              Recent winners
-            </h2>
-            <p className="mt-1 text-xs text-slate-400">
-              Internal log of the latest winning tickets and payout status.
-            </p>
-
-            {loading && !winners.length && (
-              <p className="mt-3 text-xs text-slate-500">Loading…</p>
-            )}
-
-            {!loading && winners.length === 0 && (
-              <p className="mt-3 text-xs text-slate-500">
-                No completed draws yet. Once you pick winners and mark jackpots
-                as paid, they’ll appear here.
-              </p>
-            )}
-
-            <div className="mt-3 space-y-2">
-              {winners.map(w => (
-                <article
-                  key={w.id}
-                  className="rounded-2xl border border-slate-900 bg-slate-950/70 px-3 py-2 text-xs"
-                >
-                  <p className="font-mono text-slate-100">{w.ticketCode}</p>
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Draw: {formatDate(w.drawDate)} · Wallet:{' '}
-                    <span className="font-mono">
-                      {shortWallet(w.walletAddress)}
-                    </span>
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Jackpot: ${w.jackpotUsd.toLocaleString()} ·{' '}
-                    {w.claimed ? 'Claimed' : 'Not claimed / rolled over'}
-                  </p>
-                </article>
-              ))}
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
       </div>
     </main>
