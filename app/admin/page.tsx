@@ -61,6 +61,20 @@ function formatUsd(amount: number | null | undefined, decimals = 2) {
   });
 }
 
+async function handleCopyWallet(address: string, idForFeedback: string) {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(address);
+        setCopiedWalletId(idForFeedback);
+        setTimeout(() => {
+          setCopiedWalletId(prev => (prev === idForFeedback ? null : prev));
+        }, 1500);
+      }
+    } catch (err) {
+      console.error('[ADMIN] copy wallet failed:', err);
+    }
+  }
+
 // More precise for tiny per-XPOT prices (if needed elsewhere)
 function formatUsdPrice(amount: number | null | undefined) {
   if (typeof amount !== 'number' || Number.isNaN(amount)) {
@@ -139,6 +153,26 @@ export default function AdminPage() {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
+  // Copy-wallet state
+const [copiedWalletId, setCopiedWalletId] = useState<string | null>(null);
+
+// Show only start + end of wallet
+function shortenWallet(addr: string | null | undefined, visible = 4) {
+  if (!addr) return '';
+  if (addr.length <= visible * 2 + 3) return addr;
+  return `${addr.slice(0, visible)}…${addr.slice(-visible)}`;
+}
+
+async function handleCopyWallet(address: string, id: string) {
+  try {
+    await navigator.clipboard.writeText(address);
+    setCopiedWalletId(id);
+    setTimeout(() => setCopiedWalletId(null), 1500);
+  } catch (err) {
+    console.error('[ADMIN] copy wallet failed', err);
+  }
+}
+
   // Winner state
   const [pickingWinner, setPickingWinner] = useState(false);
   const [lastPickedWinner, setLastPickedWinner] = useState<{
@@ -158,6 +192,7 @@ export default function AdminPage() {
 
   // Payouts
   const [savingPayoutId, setSavingPayoutId] = useState<string | null>(null);
+  const [copiedWalletId, setCopiedWalletId] = useState<string | null>(null);
 
   // ─────────────────────────────────────────────
   // Effects: token, countdown, live jackpot
@@ -654,8 +689,22 @@ export default function AdminPage() {
                     {todayWinner.ticketCode}
                   </p>
                   <p className="mt-0.5 text-[10px] text-slate-400">
-                    {todayWinner.walletAddress}
-                  </p>
+  <button
+    type="button"
+    onClick={() =>
+      handleCopyWallet(
+        todayWinner.walletAddress,
+        `today-${todayWinner.drawId}`
+      )
+    }
+    className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+  >
+    <span>{shortenWallet(todayWinner.walletAddress, 4)}</span>
+    <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+      {copiedWalletId === `today-${todayWinner.drawId}` ? 'Copied' : 'Copy'}
+    </span>
+  </button>
+</p>
                   <p className="mt-1 flex items-center gap-1 text-[10px] text-emerald-300">
   <XpotPill size="sm" />
   <span className="text-slate-500">·</span>
@@ -947,8 +996,19 @@ export default function AdminPage() {
                         <div>
                           <p className="font-mono text-xs">{t.code}</p>
                           <p className="mt-0.5 text-[10px] text-slate-500">
-                            {t.walletAddress}
-                          </p>
+  <button
+    type="button"
+    onClick={() =>
+      handleCopyWallet(t.walletAddress, `ticket-${t.id}`)
+    }
+    className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+  >
+    <span>{shortenWallet(t.walletAddress, 4)}</span>
+    <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+      {copiedWalletId === `ticket-${t.id}` ? 'Copied' : 'Copy'}
+    </span>
+  </button>
+</p>
                         </div>
                         <div className="text-right text-[10px] text-slate-400">
                           <p>{t.status}</p>
@@ -1027,8 +1087,19 @@ export default function AdminPage() {
                               {w.ticketCode}
                             </p>
                             <p className="mt-0.5 text-[10px] text-slate-500">
-                              {w.walletAddress}
-                            </p>
+  <button
+    type="button"
+    onClick={() =>
+      handleCopyWallet(w.walletAddress, `winner-${w.drawId}`)
+    }
+    className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+  >
+    <span>{shortenWallet(w.walletAddress, 4)}</span>
+    <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+      {copiedWalletId === `winner-${w.drawId}` ? 'Copied' : 'Copy'}
+    </span>
+  </button>
+</p>
                           </div>
                           <div className="text-right">
                             <p className="text-[10px] text-slate-400">
