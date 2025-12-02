@@ -34,14 +34,14 @@ type AdminTicket = {
 };
 
 type AdminWinner = {
-  id: string; // winningTicket.id
+  id: string; // winner row id (used for mark-as-paid)
   drawId: string;
   date: string;
   ticketCode: string;
   walletAddress: string;
   jackpotUsd: number;
   paidOut: boolean;
-  txUrl?: string;
+  txUrl?: string | null;
 };
 
 const ADMIN_TOKEN_KEY = 'xpot_admin_token';
@@ -162,7 +162,7 @@ export default function AdminPage() {
         if (!res.ok) return;
 
         const data = await res.json();
-        const pricePerXpot = data.priceUsd;
+        const pricePerXpot = data.priceUsd; // must match your API response
 
         if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
           const jackpot = pricePerXpot * 1_000_000;
@@ -490,7 +490,9 @@ export default function AdminPage() {
         <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-200">Admin key</p>
+              <p className="text-xs font-semibold text-slate-200">
+                Admin key
+              </p>
               <p className="text-[11px] text-slate-500">
                 Paste your admin token to unlock live draw data. Stored only in
                 this browser&apos;s local storage.
