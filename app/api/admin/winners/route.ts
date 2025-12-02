@@ -1,44 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '..//_auth';
+import { requireAdmin } from '../_auth';
 
-// List recent winners  (used by the "Recent winners" card)
-export async function GET(req: NextRequest) {
-  const auth = requireAdmin(req);
-  if (auth) return auth;
-
-  const winners = await prisma.winningTicket.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-    include: {
-      draw: true,
-      ticket: true,
-    },
-  });
-
-  return NextResponse.json({ ok: true, winners });
+// Optional: stub GET so it's obvious this isn't used yet
+export async function GET() {
+  return NextResponse.json(
+    { ok: false, error: 'Not implemented. Admin UI uses /api/admin/draw/recent-winners.' },
+    { status: 404 },
+  );
 }
 
-// Mark a specific winner as paid
+// Mark a specific winner as paid  (stub – no DB yet)
 export async function POST(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  const { winnerId } = await req.json();
-  if (!winnerId) {
-    return NextResponse.json(
-      { ok: false, error: 'Missing winnerId' },
-      { status: 400 },
-    );
-  }
+  const { drawId, txUrl } = await req.json();
 
-  await prisma.winningTicket.update({
-    where: { id: winnerId },
-    data: {
-      paidOut: true,
-      paidOutAt: new Date(),
-    },
-  });
+  // No winners table yet – just log for now so build compiles.
+  console.log('[ADMIN] mark-paid stub', { drawId, txUrl });
 
   return NextResponse.json({ ok: true });
 }
