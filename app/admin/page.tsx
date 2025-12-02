@@ -677,40 +677,49 @@ async function handleCopyWallet(address: string, id: string) {
                 </p>
               )}
 
-              {adminToken && todayWinner && (
-                <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-3 text-[11px] text-slate-100">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                    Today&apos;s winner
-                  </p>
-                  <p className="mt-1 font-mono text-xs">
-                    {todayWinner.ticketCode}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-slate-400">
-  <button
-    type="button"
-    onClick={() =>
-      handleCopyWallet(
-        todayWinner.walletAddress,
-        `today-${todayWinner.drawId}`
-      )
-    }
-    className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
-  >
-    <span>{shortenWallet(todayWinner.walletAddress, 4)}</span>
-    <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
-      {copiedWalletId === `today-${todayWinner.drawId}` ? 'Copied' : 'Copy'}
-    </span>
-  </button>
-</p>
-                  <p className="mt-1 flex items-center gap-1 text-[10px] text-emerald-300">
-  <XpotPill size="sm" />
-  <span className="text-slate-500">·</span>
-  <span>
-    {todayWinner.paidOut ? 'Paid out' : 'Pending payout'}
-  </span>
-</p>
-                </div>
-              )}
+              {adminToken &&
+  !loadingTickets &&
+  !ticketsError &&
+  todayTickets.length > 0 && (
+    <div className="mt-3 space-y-1 text-[11px] text-slate-200">
+      {todayTickets.slice(0, 50).map(t => (
+        <div
+          key={t.id}
+          className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
+        >
+          <div>
+            <p className="font-mono text-xs">{t.code}</p>
+
+            {/* Wallet (short + copy) */}
+            <p className="mt-0.5 text-[10px] text-slate-500">
+              <button
+                type="button"
+                onClick={() =>
+                  handleCopyWallet(t.walletAddress, 'ticket-' + t.id)
+                }
+                className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+              >
+                <span>{shortenWallet(t.walletAddress, 4)}</span>
+                <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+                  {copiedWalletId === 'ticket-' + t.id ? 'Copied' : 'Copy'}
+                </span>
+              </button>
+            </p>
+          </div>
+
+          <div className="text-right text-[10px] text-slate-400">
+            <p>{t.status}</p>
+            <p className="mt-0.5">
+              {new Date(t.createdAt).toLocaleTimeString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
 
               {adminToken && todayDraw && !loadingToday && !todayError && (
                 <>
@@ -1067,77 +1076,83 @@ async function handleCopyWallet(address: string, id: string) {
                     jackpots as paid, they&apos;ll appear here.
                   </p>
                 )}
+{adminToken &&
+  !loadingWinners &&
+  !winnersError &&
+  recentWinners.length > 0 && (
+    <div className="mt-3 space-y-2 text-[11px] text-slate-200">
+      {recentWinners.map(w => (
+        <div
+          key={w.drawId}
+          className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="font-mono text-xs">{w.ticketCode}</p>
 
-              {adminToken &&
-                !loadingWinners &&
-                !winnersError &&
-                recentWinners.length > 0 && (
-                  <div className="mt-3 space-y-2 text-[11px] text-slate-200">
-                    {recentWinners.map(w => (
-                      <div
-                        key={w.drawId}
-                        className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="font-mono text-xs">
-                              {w.ticketCode}
-                            </p>
-                            <p className="mt-0.5 text-[10px] text-slate-500">
-  <button
-    type="button"
-    onClick={() =>
-      handleCopyWallet(w.walletAddress, `winner-${w.drawId}`)
-    }
-    className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
-  >
-    <span>{shortenWallet(w.walletAddress, 4)}</span>
-    <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
-      {copiedWalletId === `winner-${w.drawId}` ? 'Copied' : 'Copy'}
-    </span>
-  </button>
-</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-[10px] text-slate-400">
-                              {new Date(w.date).toLocaleDateString()}
-                            </p>
-                            <p className="mt-0.5">
-  <XpotPill size="sm" />
-</p>
-                            <p className="mt-0.5 text-[10px] text-slate-400">
-                              {w.paidOut ? 'Paid out' : 'Pending'}
-                            </p>
-                          </div>
-                        </div>
+              {/* Wallet (short + copy) */}
+              <p className="mt-0.5 text-[10px] text-slate-500">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCopyWallet(
+                      w.walletAddress,
+                      'winner-' + w.drawId
+                    )
+                  }
+                  className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+                >
+                  <span>{shortenWallet(w.walletAddress, 4)}</span>
+                  <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+                    {copiedWalletId === 'winner-' + w.drawId
+                      ? 'Copied'
+                      : 'Copy'}
+                  </span>
+                </button>
+              </p>
+            </div>
 
-                        {w.txUrl && (
-                          <a
-                            href={w.txUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
-                          >
-                            View transaction
-                          </a>
-                        )}
+            <div className="text-right">
+              <p className="text-[10px] text-slate-400">
+                {new Date(w.date).toLocaleDateString()}
+              </p>
+              <p className="mt-0.5">
+                <UsdPill amount={w.jackpotUsd} size="sm" />
+              </p>
+              <p className="mt-0.5 text-[10px] text-slate-400">
+                {w.paidOut ? 'Paid out' : 'Pending'}
+              </p>
+            </div>
+          </div>
 
-                        {!w.paidOut && (
-                          <button
-                            type="button"
-                            onClick={() => handleMarkPayout(w)}
-                            disabled={savingPayoutId === w.drawId}
-                            className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {savingPayoutId === w.drawId
-                              ? 'Saving payout…'
-                              : 'Mark as paid + tx link'}
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+          {w.txUrl && (
+            <a
+              href={w.txUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
+            >
+              View transaction
+            </a>
+          )}
+
+          {!w.paidOut && (
+            <button
+              type="button"
+              onClick={() => handleMarkPayout(w)}
+              disabled={savingPayoutId === w.drawId}
+              className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingPayoutId === w.drawId
+                ? 'Saving payout…'
+                : 'Mark as paid + tx link'}
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+              
             </section>
           </div>
         </div>
