@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { requireAdmin } from '../_auth';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '..//_auth';
 
 // List recent winners  (used by the "Recent winners" card)
 export async function GET(req: NextRequest) {
