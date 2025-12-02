@@ -1003,7 +1003,103 @@ export default function AdminPage() {
           </div>
 
           {/* RIGHT COLUMN */}
-          <div className="space-y-4">
+<div className="space-y-4">
+  {/* Recent winners (moved here) */}
+  <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-sm font-semibold text-slate-100">
+          Recent winners
+        </h2>
+        <p className="mt-1 text-xs text-slate-400">
+          Internal log of the latest winning tickets and payout status.
+        </p>
+      </div>
+    </div>
+
+    {!adminToken && (
+      <p className="mt-3 text-xs text-slate-500">
+        Unlock with your admin key to see completed draws.
+      </p>
+    )}
+
+    {adminToken && loadingWinners && (
+      <p className="mt-3 text-xs text-slate-500">Loading recent winners…</p>
+    )}
+
+    {adminToken && winnersError && !loadingWinners && (
+      <p className="mt-3 text-xs text-amber-300">{winnersError}</p>
+    )}
+
+    {adminToken &&
+      !loadingWinners &&
+      !winnersError &&
+      recentWinners.length === 0 && (
+        <p className="mt-3 text-xs text-slate-500">
+          No completed draws yet. Once you pick winners and mark jackpots as
+          paid, they&apos;ll appear here.
+        </p>
+      )}
+
+    {adminToken &&
+      !loadingWinners &&
+      !winnersError &&
+      recentWinners.length > 0 && (
+        <div className="mt-3 space-y-2 text-[11px] text-slate-200">
+          {recentWinners.map(w => (
+            <div
+              key={w.drawId}
+              className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="font-mono text-xs">{w.ticketCode}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    {w.walletAddress}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-slate-400">
+                    {new Date(w.date).toLocaleDateString()}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-emerald-300">
+                    {formatUsd(w.jackpotUsd)}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-slate-400">
+                    {w.paidOut ? 'Paid out' : 'Pending'}
+                  </p>
+                </div>
+              </div>
+
+              {w.txUrl && (
+                <a
+                  href={w.txUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
+                >
+                  View transaction
+                </a>
+              )}
+
+              {!w.paidOut && (
+                <button
+                  type="button"
+                  onClick={() => handleMarkPayout(w)}
+                  disabled={savingPayoutId === w.drawId}
+                  className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingPayoutId === w.drawId
+                    ? 'Saving payout…'
+                    : 'Mark as paid + tx link'}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+  </section>
+</div>
 
           </div>
         </div>
