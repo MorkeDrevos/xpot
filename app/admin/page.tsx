@@ -364,37 +364,6 @@ useEffect(() => {
     }
   }
 
-  // DEV helper: reset today's draw completely
-  async function handleResetTodayDraw() {
-    if (!todayDraw) return;
-    if (
-      typeof window !== 'undefined' &&
-      !window.confirm(
-        'Reset today’s draw in the admin DB? This is a DEV helper only.',
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setResetting(true);
-      const data = await adminFetch('/api/admin/draw/reset', {
-        method: 'POST',
-      });
-      if (!data.ok) {
-        throw new Error(data.error ?? 'Unknown error');
-      }
-      await loadAll();
-    } catch (err) {
-      console.error('[ADMIN] reset-draw error:', err);
-      setTodayError(
-        err instanceof Error ? err.message : 'Failed to reset today’s draw',
-      );
-    } finally {
-      setResetting(false);
-    }
-  }
-
   // Real pick-winner handler (used by modal confirm)
   async function handlePickWinner() {
     if (!todayDraw) return;
@@ -603,14 +572,7 @@ useEffect(() => {
                   )}
 
                   {adminToken && todayDraw && (
-                    <button
-                      type="button"
-                      onClick={handleResetTodayDraw}
-                      disabled={resetting}
-                      className="rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1 text-[10px] font-semibold text-red-200 hover:border-red-400 hover:bg-red-500/20 disabled:opacity-60"
-                    >
-                      {resetting ? 'Resetting…' : 'Reset today (dev)'}
-                    </button>
+                    
                   )}
                 </div>
               </header>
