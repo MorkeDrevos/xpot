@@ -830,25 +830,6 @@ export default function AdminPage() {
               )}
             </section>
 
-            {/* Wallet truth line */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-              <h2 className="text-sm font-semibold text-slate-100">
-                Wallet truth line
-              </h2>
-              <p className="mt-1 text-xs text-slate-400">
-                What is actually true on-chain, regardless of what the UI is
-                showing.
-              </p>
-
-              <ul className="mt-3 space-y-1 text-xs text-slate-300">
-                <li>• XPOT.bet never takes custody of user funds.</li>
-                <li>• Tickets are tied to wallet address and draw date.</li>
-                <li>
-                  • Eligibility is checked at entry time, not during the draw.
-                </li>
-              </ul>
-            </section>
-
             {/* Today’s tickets */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
               <h2 className="text-sm font-semibold text-slate-100">
@@ -1023,43 +1004,7 @@ export default function AdminPage() {
 
           {/* RIGHT COLUMN */}
           <div className="space-y-4">
-            {/* Today’s eligibility */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-              <h2 className="text-sm font-semibold text-slate-100">
-                Today&apos;s eligibility
-              </h2>
-              <p className="mt-1 text-xs text-slate-400">
-                What users see as the current entry rules.
-              </p>
-              <ul className="mt-3 space-y-1 text-xs text-slate-300">
-                <li>• Sign in with X.</li>
-                <li>• Connect a Solana wallet.</li>
-                <li>
-                  • Hold the minimum XPOT balance at the moment they get
-                  today&apos;s ticket.
-                </li>
-                <li>• Exactly one ticket per wallet per draw.</li>
-              </ul>
-            </section>
 
-            {/* How draw works (user view) */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-              <h2 className="text-sm font-semibold text-slate-100">
-                How today&apos;s draw works
-              </h2>
-              <ul className="mt-3 space-y-1 text-xs text-slate-300">
-                <li>• Get exactly one ticket per wallet.</li>
-                <li>
-                  • At entry time, wallet must hold at least{' '}
-                  <span className="font-semibold">100,000 XPOT</span>.
-                </li>
-                <li>• Wallet is only checked when you get your ticket.</li>
-                <li>• When the timer hits zero, one ticket wins.</li>
-                <li>
-                  • Winner has 24 hours to collect or the jackpot rolls over.
-                </li>
-              </ul>
-            </section>
           </div>
         </div>
       </div>
