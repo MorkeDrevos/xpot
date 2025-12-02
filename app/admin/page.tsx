@@ -701,12 +701,10 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400">
-                        Today&apos;s XPOT{' '}
-                        <span className="text-[11px] text-slate-500">
-                          (live)
-                        </span>
-                      </p>
+                      <p className="text-[#F5C46C] drop-shadow-[0_0_6px_rgba(245,196,108,0.6)]">
+  Today's XPOT{' '}
+  <span className="text-[11px] text-[#F5C46C]/70">(live)</span>
+</p>
                       <p className="mt-1">
                         <UsdPill
                           amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
