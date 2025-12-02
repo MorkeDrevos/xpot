@@ -597,12 +597,12 @@ export default function DashboardPage() {
                     Dashboard
                   </h1>
                   <p className="text-[13px] text-slate-400">
-                    One jackpot. One winner. Your daily XPOT ticket.
+                    One pool. One winner. Your daily XPOT ticket.
                   </p>
                 </div>
                 <div className="hidden text-right text-[11px] text-slate-500 sm:block">
                   <p className="uppercase tracking-[0.16em] text-slate-400">
-                    Next draw in
+                    Next round in
                   </p>
                   <p className="font-mono text-xs text-slate-200">02:14:09</p>
                 </div>
@@ -662,15 +662,15 @@ export default function DashboardPage() {
                   again later.
                 </p>
 
-                {/* Jackpot state (with rollover) */}
+                {/* XPOT pool state (with rollover) */}
                 <p className="mt-2 text-[11px] text-slate-500">
                   <span className="font-semibold text-amber-300">
-                    Today’s jackpot:
+                    Today’s XPOT:
                   </span>{' '}
                   {todaysTicket?.jackpotUsd || '$10,000'}{' '}
                   <span className="text-slate-500">
-                    · If the winner doesn’t collect in time, the jackpot rolls
-                    into the next draw.
+                    · If the winner doesn’t collect in time, the full XPOT
+                    amount rolls into the next round.
                   </span>
                 </p>
 
@@ -678,7 +678,7 @@ export default function DashboardPage() {
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-200">
-                        Get your ticket for today’s jackpot.
+                        Get your ticket for today’s XPOT allocation.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         Your ticket will be tied to your connected wallet for
@@ -687,7 +687,7 @@ export default function DashboardPage() {
 
                       {claiming && (
                         <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
-                          Verifying wallet → Locking today’s draw → Minting
+                          Verifying wallet → Checking XPOT balance → Issuing
                           ticket…
                         </p>
                       )}
@@ -729,11 +729,11 @@ export default function DashboardPage() {
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-emerald-100">
-                        ✅ Your ticket is in today’s draw.
+                        ✅ Your ticket is in today’s round.
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
                         Come back when the countdown hits zero to see if you
-                        won.
+                        got the allocation.
                       </p>
                       {todaysTicket && (
                         <p className="mt-2 text-xs text-slate-300">
@@ -756,14 +756,14 @@ export default function DashboardPage() {
 
                 {!walletConnected ? (
                   <p className="mt-3 text-sm text-slate-300">
-                    Connect your wallet and get today’s ticket to join the draw.
-                    Once the countdown hits zero, today’s winning ticket will
-                    appear here.
+                    Connect your wallet and get today’s ticket to join the
+                    selection. Once the countdown hits zero, today’s chosen
+                    ticket will appear here.
                   </p>
                 ) : myTickets.length === 0 ? (
                   <p className="mt-3 text-sm text-slate-300">
-                    You haven’t got a ticket for today’s draw yet. Get your
-                    ticket above to enter. The result will appear here when the
+                    You haven’t got a ticket for today’s round yet. Get your
+                    ticket above to join. The result will appear here when the
                     timer hits zero.
                   </p>
                 ) : winner ? (
@@ -774,17 +774,17 @@ export default function DashboardPage() {
                         <span className="font-mono text-emerald-300">
                           {winner.code}
                         </span>{' '}
-                        hit today’s jackpot (preview).
+                        was selected for today’s XPOT allocation (preview).
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
-                        In the real draw, this will show the winning ticket and
-                        wallet once the countdown reaches zero.
+                        In the real system, this will show the winning ticket
+                        and wallet once the countdown reaches zero.
                       </p>
                     </div>
                   </div>
                 ) : (
                   <p className="mt-3 text-sm text-slate-300">
-                    Your ticket is in today’s draw. The result will appear here
+                    Your ticket is in today’s round. The result will appear here
                     when the timer hits zero.
                   </p>
                 )}
@@ -797,9 +797,9 @@ export default function DashboardPage() {
                   <p className="mt-2 text-[11px] text-slate-400">
                     If your ticket is selected, the winning ticket and wallet
                     are highlighted here and in the history view. You’ll have a
-                    fixed claim window to collect the jackpot. If it’s not
-                    collected in time, the full amount rolls into the next
-                    draw.
+                    fixed claim window to collect the full XPOT allocation. If
+                    it isn’t collected in time, the entire amount rolls into the
+                    next round.
                   </p>
                 </div>
               </article>
@@ -810,7 +810,7 @@ export default function DashboardPage() {
                   Your tickets
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Each ticket is tied to a specific daily draw and wallet.
+                  Each ticket is tied to a specific daily round and wallet.
                   Tickets from your{' '}
                   <span className="font-semibold text-emerald-300">
                     currently connected wallet
@@ -821,7 +821,7 @@ export default function DashboardPage() {
                 <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
                   {myTickets.length === 0 ? (
                     <p className="text-xs text-slate-500">
-                      No tickets yet for this wallet in today&apos;s draw.
+                      No tickets yet for this wallet in today&apos;s round.
                     </p>
                   ) : (
                     myTickets.map(entry => {
@@ -847,12 +847,12 @@ export default function DashboardPage() {
 
                                 {entry.status === 'in-draw' && (
                                   <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
-                                    In draw
+                                    In round
                                   </span>
                                 )}
                                 {entry.status === 'won' && (
                                   <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                                    Winner
+                                    Selected
                                   </span>
                                 )}
                                 {entry.status === 'claimed' && (
@@ -927,7 +927,7 @@ export default function DashboardPage() {
                 </div>
 
                 <p className="text-xs text-slate-500">
-                  Your previous tickets from earlier draws.
+                  Your previous tickets from earlier rounds.
                 </p>
 
                 {!publicKey && (
@@ -946,7 +946,7 @@ export default function DashboardPage() {
 
                     {!loadingHistory && historyEntries.length === 0 && (
                       <p className="text-xs text-slate-500">
-                        No previous draws yet for this wallet.
+                        No previous rounds yet for this wallet.
                       </p>
                     )}
 
@@ -986,9 +986,9 @@ export default function DashboardPage() {
                     Recent winners
                   </p>
                   <p className="mt-2 text-[11px] text-slate-400">
-                    Soon you’ll see a short list of the latest winning tickets
+                    Soon you’ll see a short list of the latest selected tickets
                     and wallets here. For now, use the full history view to
-                    browse past draws.
+                    browse past rounds.
                   </p>
                 </div>
               </section>
@@ -1061,8 +1061,8 @@ export default function DashboardPage() {
 
               {/* Wallet truth line */}
               <p className="mt-3 text-[11px] text-slate-500">
-                XPOT.bet never takes custody of your funds. We only read your
-                public wallet balance to check eligibility.
+                XPOT never takes custody of your funds. We only read your public
+                wallet balance to check eligibility.
               </p>
             </div>
 
@@ -1073,7 +1073,7 @@ export default function DashboardPage() {
               {!walletConnected && (
                 <p className="mt-2 text-xs text-slate-500">
                   Connect a wallet to see if you currently qualify for today’s
-                  draw.
+                  XPOT event.
                 </p>
               )}
 
@@ -1100,7 +1100,7 @@ export default function DashboardPage() {
                         }
                       >
                         {hasRequiredXpot
-                          ? 'You currently meet the XPOT requirement for today’s draw.'
+                          ? 'You currently meet the XPOT requirement for today’s selection.'
                           : 'Your XPOT balance is below today’s requirement.'}
                       </p>
                       <p className="mt-1 text-slate-400">
@@ -1123,7 +1123,7 @@ export default function DashboardPage() {
 
             {/* How it works */}
             <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">How today’s draw works</h3>
+              <h3 className="text-sm font-semibold">How today’s XPOT works</h3>
               <ul className="mt-2 text-xs text-slate-400 space-y-1">
                 <li>• Get exactly one ticket per wallet.</li>
                 <li>
@@ -1134,9 +1134,10 @@ export default function DashboardPage() {
                   .
                 </li>
                 <li>• Wallet is only checked when you get your ticket.</li>
-                <li>• When the timer hits zero, one ticket wins.</li>
+                <li>• When the timer hits zero, one ticket is selected.</li>
                 <li>
-                  • Winner has 24 hours to collect or the jackpot rolls over.
+                  • The selected wallet has 24 hours to claim; if not, the full
+                  XPOT amount rolls over into the next round.
                 </li>
               </ul>
             </div>
