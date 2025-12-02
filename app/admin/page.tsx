@@ -49,11 +49,27 @@ const ADMIN_TOKEN_KEY = 'xpot_admin_token';
 // Helpers
 // ─────────────────────────────────────────────
 
-// Just returns the numeric part – no currency symbol
-function formatUsd(amount: number | undefined | null) {
-  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0';
+// Plain numeric USD formatter (no symbol)
+function formatUsd(amount: number | null | undefined, decimals = 2) {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) {
+    return '0.00';
+  }
+
   return amount.toLocaleString('en-US', {
-    maximumFractionDigits: 0,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+// More precise for tiny per-XPOT prices (if needed elsewhere)
+function formatUsdPrice(amount: number | null | undefined) {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) {
+    return '0.00000';
+  }
+
+  return amount.toLocaleString('en-US', {
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
   });
 }
 
@@ -130,6 +146,7 @@ export default function AdminPage() {
   // Effects: token, countdown, live jackpot
   // ─────────────────────────────────────────────
 
+  // Load stored token on first render
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -140,6 +157,7 @@ export default function AdminPage() {
     }
   }, []);
 
+  // Live countdown to draw close (admin view)
   useEffect(() => {
     const closesAt = todayDraw?.closesAt;
     const status = todayDraw?.status;
@@ -200,6 +218,7 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, []);
 
+  // Whenever a valid token is set, auto-load data
   useEffect(() => {
     if (adminToken) {
       void loadAll();
@@ -238,6 +257,7 @@ export default function AdminPage() {
     return res.json();
   }
 
+  // Verify token
   async function verifyToken() {
     if (!tokenInput) {
       setTokenValid(false);
@@ -277,6 +297,7 @@ export default function AdminPage() {
     }
   }
 
+  // Load all admin data (today + tickets + winners)
   async function loadAll(optionalToken?: string) {
     const token = optionalToken ?? adminToken;
     if (!token) return;
@@ -352,6 +373,7 @@ export default function AdminPage() {
     }
   }
 
+  // Re-open draw (called from modal)
   async function handleReopenDraw() {
     if (!todayDraw) return;
 
@@ -379,6 +401,7 @@ export default function AdminPage() {
     }
   }
 
+  // Real pick-winner handler
   async function handlePickWinner() {
     if (!todayDraw) return;
 
@@ -414,6 +437,7 @@ export default function AdminPage() {
     }
   }
 
+  // Payout control
   async function handleMarkPayout(winner: AdminWinner) {
     const txUrl =
       typeof window !== 'undefined'
