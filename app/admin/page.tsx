@@ -408,7 +408,7 @@ export default function AdminPage() {
 
     try {
       setSavingPayoutId(winner.drawId);
-      const data = await adminFetch('/api/admin/winners/mark-paid', {
+      const data = await adminFetch('/api/admin/winners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
