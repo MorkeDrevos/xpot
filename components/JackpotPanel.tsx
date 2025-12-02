@@ -65,8 +65,8 @@ export default function JackpotPanel({ isLocked }: { isLocked: boolean }) {
       <header className="flex items-start justify-between gap-3">
         <div>
           {/* Label */}
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Today&apos;s XPOT
+          <p className="text-[#F5C46C] text-sm font-semibold uppercase tracking-[0.22em] drop-shadow-[0_0_6px_rgba(245,196,108,0.6)]">
+            TODAY&apos;S XPOT
           </p>
 
           {/* MAIN: XPOT amount */}
@@ -77,7 +77,7 @@ export default function JackpotPanel({ isLocked }: { isLocked: boolean }) {
           {/* Live USD value */}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
             <UsdPill amount={jackpotUsd} />
-            <span className="text-[11px] text-slate-500">(live)</span>
+            <span className="text-[11px] text-[#F5C46C]/75">(live)</span>
           </div>
 
           {/* Per-XPOT price in USD */}
