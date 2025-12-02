@@ -487,6 +487,35 @@ export default function AdminPage() {
     }
   }
 
+    async function handleStartDraw(hoursFromNow: number) {
+    if (!adminToken) return;
+
+    const closesAt = new Date(Date.now() + hoursFromNow * 60 * 60 * 1000);
+
+    try {
+      // optional: show some temporary UI later
+      const data = await adminFetch('/api/admin/draw/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          closesAt: closesAt.toISOString(),
+          // you can pass jackpotUsd override here if you want:
+          // jackpotUsd: liveJackpotUsd ?? todayDraw?.jackpotUsd ?? 0,
+        }),
+      });
+
+      if (!data.ok) throw new Error(data.error ?? 'Failed to start draw');
+
+      // Reload today’s draw + tickets + winners
+      await loadAll();
+    } catch (err) {
+      console.error('[ADMIN] start-draw error:', err);
+      setTodayError(
+        err instanceof Error ? err.message : 'Failed to start / reset draw',
+      );
+    }
+  }
+
   // ─────────────────────────────────────────────
   // Derived
   // ─────────────────────────────────────────────
@@ -590,7 +619,7 @@ export default function AdminPage() {
             {/* XPOT allocation panel – 1,000,000 XPOT + live USD */}
             <JackpotPanel isLocked={isDrawLocked} />
 
-            {/* Today’s draw */}
+                        {/* Today’s draw */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
               <header className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -603,7 +632,7 @@ export default function AdminPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
                   {todayDraw?.status === 'open' && timeLeft && (
                     <div className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">
                       <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
@@ -617,6 +646,17 @@ export default function AdminPage() {
                     <div className="rounded-full border border-slate-700/60 bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300">
                       Draw locked
                     </div>
+                  )}
+
+                  {/* Start / reset draw button */}
+                  {adminToken && (
+                    <button
+                      type="button"
+                      onClick={() => handleStartDraw(3)} // 3h timer – tweak later
+                      className="rounded-full border border-sky-500/60 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/20"
+                    >
+                      Start / reset today&apos;s draw (3h)
+                    </button>
                   )}
                 </div>
               </header>
