@@ -1,13 +1,13 @@
 // app/api/draw/today/route.ts
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';   // ✅ FIXED IMPORT
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const today = new Date().toISOString().slice(0, 10);
 
     const draw = await prisma.draw.findFirst({
       where: { date: today },
@@ -34,7 +34,7 @@ export async function GET() {
     console.error('[XPOT] /api/draw/today error:', err);
     return NextResponse.json(
       { ok: false, error: 'SERVER_ERROR' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
