@@ -397,7 +397,7 @@ export default function AdminPage() {
     }
   }
 
-  // Payout control: mark winner paid + optional tx link
+   // Payout control: mark winner paid + optional tx link
   async function handleMarkPayout(winner: AdminWinner) {
     const txUrl =
       typeof window !== 'undefined'
@@ -407,13 +407,17 @@ export default function AdminPage() {
           )
         : winner.txUrl ?? '';
 
+    // If user hit "Cancel" in the prompt, do nothing
+    if (txUrl === null) return;
+
     try {
-      setSavingPayoutId(winner.id);
+      setSavingPayoutId(winner.drawId);
+
       const data = await adminFetch('/api/admin/winners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          winnerId: winner.id,
+          drawId: winner.drawId,
           txUrl: txUrl || null,
         }),
       });
@@ -422,7 +426,18 @@ export default function AdminPage() {
         throw new Error(data.error ?? 'Failed to save payout');
       }
 
-      await loadAll();
+      // Update local state so UI reflects payout immediately
+      setRecentWinners(prev =>
+        prev.map(w =>
+          w.drawId === winner.drawId
+            ? {
+                ...w,
+                paidOut: true,
+                txUrl: txUrl || undefined,
+              }
+            : w,
+        ),
+      );
     } catch (err) {
       console.error('[ADMIN] mark-paid error:', err);
       setWinnersError(
