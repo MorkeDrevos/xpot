@@ -97,6 +97,23 @@ function UsdPill({
   );
 }
 
+// XPOT pill – fixed 1,000,000 XPOT for each jackpot
+function XpotPill({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  const base =
+    'inline-flex items-baseline rounded-full bg-sky-500/10 text-sky-300 font-semibold';
+  const md = 'px-3 py-1 text-xs';
+  const sm = 'px-2 py-0.5 text-[11px]';
+
+  return (
+    <span className={`${base} ${size === 'md' ? md : sm}`}>
+      <span className="font-mono text-sm">1,000,000.00</span>
+      <span className="ml-1 text-[10px] uppercase tracking-[0.16em] text-sky-400">
+        XPOT
+      </span>
+    </span>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────
@@ -888,7 +905,7 @@ export default function AdminPage() {
             {/* Today’s tickets */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
               <h2 className="text-sm font-semibold text-slate-100">
-                Today&apos;s tickets (admin view)
+                Today&apos;s tickets
               </h2>
               <p className="mt-1 text-xs text-slate-400">
                 Every ticket that has been issued for the current draw.
