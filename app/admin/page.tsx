@@ -657,12 +657,12 @@ export default function AdminPage() {
                     {todayWinner.walletAddress}
                   </p>
                   <p className="mt-1 flex items-center gap-1 text-[10px] text-emerald-300">
-                    <UsdPill amount={todayWinner.jackpotUsd} size="sm" />
-                    <span className="text-slate-500">·</span>
-                    <span>
-                      {todayWinner.paidOut ? 'Paid out' : 'Pending payout'}
-                    </span>
-                  </p>
+  <XpotPill size="sm" />
+  <span className="text-slate-500">·</span>
+  <span>
+    {todayWinner.paidOut ? 'Paid out' : 'Pending payout'}
+  </span>
+</p>
                 </div>
               )}
 
@@ -770,13 +770,11 @@ export default function AdminPage() {
                         </span>
                       </p>
                       {typeof lastPickedWinner.jackpotUsd === 'number' && (
-                        <p className="mt-0.5 flex items-center gap-1">
-                          <span>Jackpot:</span>
-                          <UsdPill
-                            amount={lastPickedWinner.jackpotUsd}
-                            size="sm"
-                          />
-                        </p>
+  <p className="mt-0.5 flex items-center gap-1">
+    <span>Jackpot:</span>
+    <XpotPill size="sm" />
+  </p>
+)}
                       )}
                     </div>
                   )}
@@ -1037,8 +1035,8 @@ export default function AdminPage() {
                               {new Date(w.date).toLocaleDateString()}
                             </p>
                             <p className="mt-0.5">
-                              <UsdPill amount={w.jackpotUsd} size="sm" />
-                            </p>
+  <XpotPill size="sm" />
+</p>
                             <p className="mt-0.5 text-[10px] text-slate-400">
                               {w.paidOut ? 'Paid out' : 'Pending'}
                             </p>
