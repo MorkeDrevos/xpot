@@ -153,9 +153,6 @@ export default function AdminPage() {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
-  // Copy-wallet state
-const [copiedWalletId, setCopiedWalletId] = useState<string | null>(null);
-
 // Show only start + end of wallet
 function shortenWallet(addr: string | null | undefined, visible = 4) {
   if (!addr) return '';
