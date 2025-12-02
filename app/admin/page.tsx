@@ -981,8 +981,12 @@ export default function AdminPage() {
                               {new Date(w.date).toLocaleDateString()}
                             </p>
                             <p className="mt-0.5 text-[10px] text-emerald-300">
-                              {formatUsd(w.jackpotUsd)}
-                            </p>
+  {JACKPOT_XPOT.toLocaleString()} XPOT
+</p>
+{/* Optional: keep USD as a small hint */}
+{/* <p className="mt-0.5 text-[10px] text-slate-500">
+  ≈ {formatUsd(w.jackpotUsd)}
+</p> */}
                             <p className="mt-0.5 text-[10px] text-slate-400">
                               {w.paidOut ? 'Paid out' : 'Pending'}
                             </p>
