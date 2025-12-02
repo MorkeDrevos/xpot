@@ -53,21 +53,20 @@ model XpUserBalance {
 
 model Draw {
   id             String   @id @default(cuid())
-  drawDate       DateTime @unique        // one main draw per day
+  drawDate       DateTime @unique
   isClosed       Boolean  @default(false)
   resolvedAt     DateTime?
 
-  // Jackpot size in USD for this draw
-  jackpotUsd     Int?     // or Float? if you want decimals
+  jackpotUsd     Int?
 
-  // Payout info for the winner
   paidAt         DateTime?
   payoutTx       String?
 
-  // All tickets in this draw
+  // NEW – explicit close time (for countdown)
+  closesAt       DateTime?
+
   tickets        Ticket[] @relation("DrawTickets")
 
-  // Winning ticket (when resolved)
   winnerTicketId String?  @unique
   winnerTicket   Ticket?  @relation("DrawWinner", fields: [winnerTicketId], references: [id])
 }
