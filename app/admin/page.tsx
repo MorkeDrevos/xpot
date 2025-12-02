@@ -701,7 +701,7 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400">
+                      <h2 className="text-yellow-400 tracking-widest">
                         Today&apos;s XPOT{' '}
                         <span className="text-[11px] text-slate-500">
                           (live)
