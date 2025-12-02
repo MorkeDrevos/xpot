@@ -155,10 +155,15 @@ export default function Home() {
     }
 
     function updateCountdown() {
-      const target = new Date(todayDraw.closesAt).getTime();
-      const diff = target - Date.now();
-      setCountdownMs(diff);
-    }
+  if (!todayDraw?.closesAt) {
+    setCountdownMs(0);
+    return;
+  }
+
+  const target = new Date(todayDraw.closesAt).getTime();
+  const diff = target - Date.now();
+  setCountdownMs(diff);
+  }
 
     updateCountdown();
     const id = window.setInterval(updateCountdown, 1000);
@@ -322,9 +327,9 @@ export default function Home() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                   {drawOpen ? 'Next draw in' : 'Next draw status'}
                 </p>
-                <p className="mt-1 font-mono text-2xl text-slate-50">
-                  {drawOpen ? formatTime(countdownMs) : '--:--:--'}
-                </p>
+                <p className="mt-1 font-mono text-2xl text-slate-50 sm:text-3xl">
+  {drawOpen ? formatTime(countdownMs) : '--:--:--'}
+</p>
                 <p className="mt-1 text-[11px] text-slate-500">
                   {drawOpen
                     ? 'Countdown uses today’s on-chain draw close time.'
