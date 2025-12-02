@@ -1,3 +1,4 @@
+// app/admin/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -49,50 +50,27 @@ const ADMIN_TOKEN_KEY = 'xpot_admin_token';
 // Helpers
 // ─────────────────────────────────────────────
 
-// Plain numeric USD formatter (no symbol)
 function formatUsd(amount: number | null | undefined, decimals = 2) {
-  if (typeof amount !== 'number' || Number.isNaN(amount)) {
-    return '0.00';
-  }
-
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0.00';
   return amount.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
 }
 
-async function handleCopyWallet(address: string, idForFeedback: string) {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(address);
-        setCopiedWalletId(idForFeedback);
-        setTimeout(() => {
-          setCopiedWalletId(prev => (prev === idForFeedback ? null : prev));
-        }, 1500);
-      }
-    } catch (err) {
-      console.error('[ADMIN] copy wallet failed:', err);
-    }
-  }
-
-// More precise for tiny per-XPOT prices (if needed elsewhere)
 function formatUsdPrice(amount: number | null | undefined) {
-  if (typeof amount !== 'number' || Number.isNaN(amount)) {
-    return '0.00000';
-  }
-
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0.00000';
   return amount.toLocaleString('en-US', {
     minimumFractionDigits: 5,
     maximumFractionDigits: 5,
   });
 }
 
-// Small pill for USD amounts so we have one consistent look
 function UsdPill({
   amount,
   size = 'md',
 }: {
-  amount: number | undefined | null;
+  amount: number | null | undefined;
   size?: 'sm' | 'md';
 }) {
   const value = formatUsd(amount);
@@ -111,7 +89,7 @@ function UsdPill({
   );
 }
 
-// XPOT pill – fixed 1,000,000 XPOT for each jackpot
+// Fixed 1,000,000 XPOT jackpot pill
 function XpotPill({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const base =
     'inline-flex items-baseline rounded-full bg-sky-500/10 text-sky-300 font-semibold';
@@ -126,6 +104,12 @@ function XpotPill({ size = 'md' }: { size?: 'sm' | 'md' }) {
       </span>
     </span>
   );
+}
+
+function shortenWallet(addr: string | null | undefined, visible = 4) {
+  if (!addr) return '';
+  if (addr.length <= visible * 2 + 3) return addr;
+  return `${addr.slice(0, visible)}…${addr.slice(-visible)}`;
 }
 
 // ─────────────────────────────────────────────
@@ -153,24 +137,6 @@ export default function AdminPage() {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
-// Show only start + end of wallet
-function shortenWallet(addr: string | null | undefined, visible = 4) {
-  if (!addr) return '';
-  if (addr.length <= visible * 2 + 3) return addr;
-  return `${addr.slice(0, visible)}…${addr.slice(-visible)}`;
-}
-
-async function handleCopyWallet(address: string, id: string) {
-  try {
-    await navigator.clipboard.writeText(address);
-    setCopiedWalletId(id);
-    setTimeout(() => setCopiedWalletId(null), 1500);
-  } catch (err) {
-    console.error('[ADMIN] copy wallet failed', err);
-  }
-}
-
-  // Winner state
   const [pickingWinner, setPickingWinner] = useState(false);
   const [lastPickedWinner, setLastPickedWinner] = useState<{
     ticketCode: string;
@@ -179,7 +145,6 @@ async function handleCopyWallet(address: string, id: string) {
   } | null>(null);
   const [winnerJustPicked, setWinnerJustPicked] = useState(false);
 
-  // Modals
   const [showPickModal, setShowPickModal] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
 
@@ -187,15 +152,13 @@ async function handleCopyWallet(address: string, id: string) {
   const [reopenError, setReopenError] = useState<string | null>(null);
   const [reopening, setReopening] = useState(false);
 
-  // Payouts
   const [savingPayoutId, setSavingPayoutId] = useState<string | null>(null);
   const [copiedWalletId, setCopiedWalletId] = useState<string | null>(null);
 
   // ─────────────────────────────────────────────
-  // Effects: token, countdown, live jackpot
+  // Effects
   // ─────────────────────────────────────────────
 
-  // Load stored token on first render
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -206,7 +169,6 @@ async function handleCopyWallet(address: string, id: string) {
     }
   }, []);
 
-  // Live countdown to draw close (admin view)
   useEffect(() => {
     const closesAt = todayDraw?.closesAt;
     const status = todayDraw?.status;
@@ -243,16 +205,13 @@ async function handleCopyWallet(address: string, id: string) {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, todayDraw?.status]);
 
-  // Live jackpot from Jupiter = 1,000,000 XPOT
   useEffect(() => {
     async function loadLiveJackpot() {
       try {
         const res = await fetch('/api/xpot/price', { cache: 'no-store' });
         if (!res.ok) return;
-
         const data = await res.json();
         const pricePerXpot = data.priceUsd;
-
         if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
           const jackpot = pricePerXpot * 1_000_000;
           setLiveJackpotUsd(jackpot);
@@ -267,7 +226,6 @@ async function handleCopyWallet(address: string, id: string) {
     return () => window.clearInterval(id);
   }, []);
 
-  // Whenever a valid token is set, auto-load data
   useEffect(() => {
     if (adminToken) {
       void loadAll();
@@ -276,13 +234,29 @@ async function handleCopyWallet(address: string, id: string) {
   }, [adminToken]);
 
   // ─────────────────────────────────────────────
-  // Helpers: admin fetch + handlers
+  // Internal helpers
   // ─────────────────────────────────────────────
 
-  async function adminFetch(path: string, options: RequestInit = {}) {
-    if (!adminToken) {
-      throw new Error('NO_ADMIN_TOKEN');
+  async function handleCopyWallet(address: string, id: string) {
+    try {
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard &&
+        address
+      ) {
+        await navigator.clipboard.writeText(address);
+        setCopiedWalletId(id);
+        setTimeout(() => {
+          setCopiedWalletId(prev => (prev === id ? null : prev));
+        }, 1500);
+      }
+    } catch (err) {
+      console.error('[ADMIN] copy wallet failed', err);
     }
+  }
+
+  async function adminFetch(path: string, options: RequestInit = {}) {
+    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
 
     const res = await fetch(path, {
       ...options,
@@ -306,7 +280,6 @@ async function handleCopyWallet(address: string, id: string) {
     return res.json();
   }
 
-  // Verify token
   async function verifyToken() {
     if (!tokenInput) {
       setTokenValid(false);
@@ -346,7 +319,6 @@ async function handleCopyWallet(address: string, id: string) {
     }
   }
 
-  // Load all admin data (today + tickets + winners)
   async function loadAll(optionalToken?: string) {
     const token = optionalToken ?? adminToken;
     if (!token) return;
@@ -422,7 +394,6 @@ async function handleCopyWallet(address: string, id: string) {
     }
   }
 
-  // Re-open draw (called from modal)
   async function handleReopenDraw() {
     if (!todayDraw) return;
 
@@ -434,9 +405,7 @@ async function handleCopyWallet(address: string, id: string) {
         method: 'POST',
       });
 
-      if (!data.ok) {
-        throw new Error(data.error ?? 'Unknown error');
-      }
+      if (!data.ok) throw new Error(data.error ?? 'Unknown error');
 
       setShowReopenModal(false);
       await loadAll();
@@ -450,7 +419,6 @@ async function handleCopyWallet(address: string, id: string) {
     }
   }
 
-  // Real pick-winner handler
   async function handlePickWinner() {
     if (!todayDraw) return;
 
@@ -462,15 +430,14 @@ async function handleCopyWallet(address: string, id: string) {
         method: 'POST',
       });
 
-      if (!data.ok) {
-        throw new Error(data.error ?? 'Unknown error');
-      }
+      if (!data.ok) throw new Error(data.error ?? 'Unknown error');
 
       setLastPickedWinner({
         ticketCode: data.winner.code,
         walletAddress: data.winner.wallet,
         jackpotUsd: data.winner.jackpotUsd,
       });
+
       setWinnerJustPicked(true);
       setTimeout(() => setWinnerJustPicked(false), 1800);
 
@@ -486,7 +453,6 @@ async function handleCopyWallet(address: string, id: string) {
     }
   }
 
-  // Payout control
   async function handleMarkPayout(winner: AdminWinner) {
     const txUrl =
       typeof window !== 'undefined'
@@ -498,6 +464,7 @@ async function handleCopyWallet(address: string, id: string) {
 
     try {
       setSavingPayoutId(winner.drawId);
+
       const data = await adminFetch('/api/admin/winners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -507,9 +474,7 @@ async function handleCopyWallet(address: string, id: string) {
         }),
       });
 
-      if (!data.ok) {
-        throw new Error(data.error ?? 'Failed to save payout');
-      }
+      if (!data.ok) throw new Error(data.error ?? 'Failed to save payout');
 
       await loadAll();
     } catch (err) {
@@ -523,7 +488,7 @@ async function handleCopyWallet(address: string, id: string) {
   }
 
   // ─────────────────────────────────────────────
-  // Derived values
+  // Derived
   // ─────────────────────────────────────────────
 
   const canPickWinner =
@@ -540,7 +505,6 @@ async function handleCopyWallet(address: string, id: string) {
     recentWinners.find(w => {
       const d = new Date(w.date);
       const now = new Date();
-
       return (
         d.getFullYear() === now.getFullYear() &&
         d.getMonth() === now.getMonth() &&
@@ -579,9 +543,7 @@ async function handleCopyWallet(address: string, id: string) {
         <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-200">
-                Admin key
-              </p>
+              <p className="text-xs font-semibold text-slate-200">Admin key</p>
               <p className="text-[11px] text-slate-500">
                 Paste your admin token to unlock live draw data. Stored only in
                 this browser&apos;s local storage.
@@ -625,7 +587,7 @@ async function handleCopyWallet(address: string, id: string) {
         <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)]">
           {/* LEFT COLUMN */}
           <div className="space-y-4">
-            {/* Jackpot panel – 1,000,000 XPOT + live USD via Jupiter */}
+            {/* Jackpot panel – 1,000,000 XPOT + live USD */}
             <JackpotPanel isLocked={isDrawLocked} />
 
             {/* Today’s draw */}
@@ -677,49 +639,43 @@ async function handleCopyWallet(address: string, id: string) {
                 </p>
               )}
 
-              {adminToken &&
-  !loadingTickets &&
-  !ticketsError &&
-  todayTickets.length > 0 && (
-    <div className="mt-3 space-y-1 text-[11px] text-slate-200">
-      {todayTickets.slice(0, 50).map(t => (
-        <div
-          key={t.id}
-          className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
-        >
-          <div>
-            <p className="font-mono text-xs">{t.code}</p>
-
-            {/* Wallet (short + copy) */}
-            <p className="mt-0.5 text-[10px] text-slate-500">
-              <button
-                type="button"
-                onClick={() =>
-                  handleCopyWallet(t.walletAddress, 'ticket-' + t.id)
-                }
-                className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
-              >
-                <span>{shortenWallet(t.walletAddress, 4)}</span>
-                <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
-                  {copiedWalletId === 'ticket-' + t.id ? 'Copied' : 'Copy'}
-                </span>
-              </button>
-            </p>
-          </div>
-
-          <div className="text-right text-[10px] text-slate-400">
-            <p>{t.status}</p>
-            <p className="mt-0.5">
-              {new Date(t.createdAt).toLocaleTimeString(undefined, {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
+              {/* Today winner badge */}
+              {adminToken && todayWinner && (
+                <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-3 text-[11px] text-slate-100">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                    Today&apos;s winner
+                  </p>
+                  <p className="mt-1 font-mono text-xs">
+                    {todayWinner.ticketCode}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopyWallet(
+                          todayWinner.walletAddress,
+                          `today-${todayWinner.drawId}`,
+                        )
+                      }
+                      className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+                    >
+                      <span>{shortenWallet(todayWinner.walletAddress, 4)}</span>
+                      <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+                        {copiedWalletId === `today-${todayWinner.drawId}`
+                          ? 'Copied'
+                          : 'Copy'}
+                      </span>
+                    </button>
+                  </p>
+                  <p className="mt-1 flex items-center gap-2 text-[10px] text-emerald-300">
+                    <XpotPill size="sm" />
+                    <span className="text-slate-500">·</span>
+                    <span>
+                      {todayWinner.paidOut ? 'Paid out' : 'Pending payout'}
+                    </span>
+                  </p>
+                </div>
+              )}
 
               {adminToken && todayDraw && !loadingToday && !todayError && (
                 <>
@@ -757,7 +713,6 @@ async function handleCopyWallet(address: string, id: string) {
                     </div>
                   </div>
 
-                  {/* When draw is open but no tickets */}
                   {todayDraw.status === 'open' &&
                     todayDraw.ticketsCount === 0 && (
                       <p className="mt-4 w-full rounded-full bg-slate-900 py-2 text-center text-xs text-slate-500">
@@ -765,7 +720,6 @@ async function handleCopyWallet(address: string, id: string) {
                       </p>
                     )}
 
-                  {/* When draw is open and tickets > 0 */}
                   {todayDraw.status === 'open' &&
                     todayDraw.ticketsCount > 0 && (
                       <button
@@ -781,7 +735,6 @@ async function handleCopyWallet(address: string, id: string) {
                       </button>
                     )}
 
-                  {/* When draw is locked / completed */}
                   {todayDraw.status !== 'open' && (
                     <>
                       <p className="mt-3 text-[11px] text-slate-400">
@@ -825,16 +778,15 @@ async function handleCopyWallet(address: string, id: string) {
                         </span>
                       </p>
                       {typeof lastPickedWinner.jackpotUsd === 'number' && (
-  <p className="mt-0.5 flex items-center gap-1">
-    <span>Jackpot:</span>
-    <XpotPill size="sm" />
-  </p>
-)}
+                        <p className="mt-0.5 flex items-center gap-1">
+                          <span>Jackpot:</span>
+                          <XpotPill size="sm" />
+                        </p>
                       )}
                     </div>
                   )}
 
-                  {/* Pick-winner confirmation modal */}
+                  {/* Pick winner modal */}
                   {todayDraw && (
                     <Modal
                       open={showPickModal}
@@ -893,7 +845,7 @@ async function handleCopyWallet(address: string, id: string) {
                     </Modal>
                   )}
 
-                  {/* Re-open draw confirmation modal */}
+                  {/* Re-open draw modal */}
                   {todayDraw && (
                     <Modal
                       open={showReopenModal}
@@ -958,7 +910,7 @@ async function handleCopyWallet(address: string, id: string) {
             {/* Today’s tickets */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
               <h2 className="text-sm font-semibold text-slate-100">
-                Today&apos;s tickets
+                Today&apos;s tickets (admin view)
               </h2>
               <p className="mt-1 text-xs text-slate-400">
                 Every ticket that has been issued for the current draw.
@@ -1002,19 +954,24 @@ async function handleCopyWallet(address: string, id: string) {
                         <div>
                           <p className="font-mono text-xs">{t.code}</p>
                           <p className="mt-0.5 text-[10px] text-slate-500">
-  <button
-    type="button"
-    onClick={() =>
-      handleCopyWallet(t.walletAddress, `ticket-${t.id}`)
-    }
-    className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
-  >
-    <span>{shortenWallet(t.walletAddress, 4)}</span>
-    <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
-      {copiedWalletId === `ticket-${t.id}` ? 'Copied' : 'Copy'}
-    </span>
-  </button>
-</p>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleCopyWallet(
+                                  t.walletAddress,
+                                  `ticket-${t.id}`,
+                                )
+                              }
+                              className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+                            >
+                              <span>{shortenWallet(t.walletAddress, 4)}</span>
+                              <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+                                {copiedWalletId === `ticket-${t.id}`
+                                  ? 'Copied'
+                                  : 'Copy'}
+                              </span>
+                            </button>
+                          </p>
                         </div>
                         <div className="text-right text-[10px] text-slate-400">
                           <p>{t.status}</p>
@@ -1076,83 +1033,86 @@ async function handleCopyWallet(address: string, id: string) {
                     jackpots as paid, they&apos;ll appear here.
                   </p>
                 )}
-{adminToken &&
-  !loadingWinners &&
-  !winnersError &&
-  recentWinners.length > 0 && (
-    <div className="mt-3 space-y-2 text-[11px] text-slate-200">
-      {recentWinners.map(w => (
-        <div
-          key={w.drawId}
-          className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="font-mono text-xs">{w.ticketCode}</p>
 
-              {/* Wallet (short + copy) */}
-              <p className="mt-0.5 text-[10px] text-slate-500">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleCopyWallet(
-                      w.walletAddress,
-                      'winner-' + w.drawId
-                    )
-                  }
-                  className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
-                >
-                  <span>{shortenWallet(w.walletAddress, 4)}</span>
-                  <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
-                    {copiedWalletId === 'winner-' + w.drawId
-                      ? 'Copied'
-                      : 'Copy'}
-                  </span>
-                </button>
-              </p>
-            </div>
+              {adminToken &&
+                !loadingWinners &&
+                !winnersError &&
+                recentWinners.length > 0 && (
+                  <div className="mt-3 space-y-2 text-[11px] text-slate-200">
+                    {recentWinners.map(w => (
+                      <div
+                        key={w.drawId}
+                        className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-mono text-xs">
+                              {w.ticketCode}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-slate-500">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCopyWallet(
+                                    w.walletAddress,
+                                    `winner-${w.drawId}`,
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+                              >
+                                <span>
+                                  {shortenWallet(w.walletAddress, 4)}
+                                </span>
+                                <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+                                  {copiedWalletId === `winner-${w.drawId}`
+                                    ? 'Copied'
+                                    : 'Copy'}
+                                </span>
+                              </button>
+                            </p>
+                          </div>
 
-            <div className="text-right">
-              <p className="text-[10px] text-slate-400">
-                {new Date(w.date).toLocaleDateString()}
-              </p>
-              <p className="mt-0.5">
-                <UsdPill amount={w.jackpotUsd} size="sm" />
-              </p>
-              <p className="mt-0.5 text-[10px] text-slate-400">
-                {w.paidOut ? 'Paid out' : 'Pending'}
-              </p>
-            </div>
-          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] text-slate-400">
+                              {new Date(w.date).toLocaleDateString()}
+                            </p>
+                            <p className="mt-0.5">
+                              {/* XPOT jackpot pill here */}
+                              <XpotPill size="sm" />
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-slate-400">
+                              {w.paidOut ? 'Paid out' : 'Pending'}
+                            </p>
+                          </div>
+                        </div>
 
-          {w.txUrl && (
-            <a
-              href={w.txUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
-            >
-              View transaction
-            </a>
-          )}
+                        {w.txUrl && (
+                          <a
+                            href={w.txUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
+                          >
+                            View transaction
+                          </a>
+                        )}
 
-          {!w.paidOut && (
-            <button
-              type="button"
-              onClick={() => handleMarkPayout(w)}
-              disabled={savingPayoutId === w.drawId}
-              className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {savingPayoutId === w.drawId
-                ? 'Saving payout…'
-                : 'Mark as paid + tx link'}
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
-  )}
-              
+                        {!w.paidOut && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkPayout(w)}
+                            disabled={savingPayoutId === w.drawId}
+                            className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {savingPayoutId === w.drawId
+                              ? 'Saving payout…'
+                              : 'Mark as paid + tx link'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
             </section>
           </div>
         </div>
