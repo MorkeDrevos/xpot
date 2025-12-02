@@ -1,3 +1,4 @@
+// app/admin/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -49,11 +50,66 @@ const ADMIN_TOKEN_KEY = 'xpot_admin_token';
 // Helpers
 // ─────────────────────────────────────────────
 
-function formatUsd(amount: number | undefined | null) {
-  if (typeof amount !== 'number' || Number.isNaN(amount)) return '$0';
-  return `$${amount.toLocaleString('en-US', {
-    maximumFractionDigits: 0,
-  })}`;
+function formatUsd(amount: number | null | undefined, decimals = 2) {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0.00';
+  return amount.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function formatUsdPrice(amount: number | null | undefined) {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0.00000';
+  return amount.toLocaleString('en-US', {
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
+  });
+}
+
+function UsdPill({
+  amount,
+  size = 'md',
+}: {
+  amount: number | null | undefined;
+  size?: 'sm' | 'md';
+}) {
+  const value = formatUsd(amount);
+  const base =
+    'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
+  const md = 'px-3 py-1 text-xs';
+  const sm = 'px-2 py-0.5 text-[11px]';
+
+  return (
+    <span className={`${base} ${size === 'md' ? md : sm}`}>
+      <span className="font-mono text-sm">{value}</span>
+      <span className="ml-1 text-[10px] uppercase tracking-[0.16em] text-emerald-400">
+        USD
+      </span>
+    </span>
+  );
+}
+
+// Fixed 1,000,000 XPOT jackpot pill
+function XpotPill({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  const base =
+    'inline-flex items-baseline rounded-full bg-sky-500/10 text-sky-300 font-semibold';
+  const md = 'px-3 py-1 text-xs';
+  const sm = 'px-2 py-0.5 text-[11px]';
+
+  return (
+    <span className={`${base} ${size === 'md' ? md : sm}`}>
+      <span className="font-mono text-sm">1,000,000.00</span>
+      <span className="ml-1 text-[10px] uppercase tracking-[0.16em] text-sky-400">
+        XPOT
+      </span>
+    </span>
+  );
+}
+
+function shortenWallet(addr: string | null | undefined, visible = 4) {
+  if (!addr) return '';
+  if (addr.length <= visible * 2 + 3) return addr;
+  return `${addr.slice(0, visible)}…${addr.slice(-visible)}`;
 }
 
 // ─────────────────────────────────────────────
@@ -81,7 +137,6 @@ export default function AdminPage() {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
-  // Winner state
   const [pickingWinner, setPickingWinner] = useState(false);
   const [lastPickedWinner, setLastPickedWinner] = useState<{
     ticketCode: string;
@@ -90,7 +145,6 @@ export default function AdminPage() {
   } | null>(null);
   const [winnerJustPicked, setWinnerJustPicked] = useState(false);
 
-  // Modals
   const [showPickModal, setShowPickModal] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
 
@@ -98,14 +152,13 @@ export default function AdminPage() {
   const [reopenError, setReopenError] = useState<string | null>(null);
   const [reopening, setReopening] = useState(false);
 
-  // Payouts
   const [savingPayoutId, setSavingPayoutId] = useState<string | null>(null);
+  const [copiedWalletId, setCopiedWalletId] = useState<string | null>(null);
 
   // ─────────────────────────────────────────────
-  // Effects: token, countdown, live jackpot
+  // Effects
   // ─────────────────────────────────────────────
 
-  // Load stored token on first render (browser only)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -116,7 +169,6 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Live countdown to draw close (admin view)
   useEffect(() => {
     const closesAt = todayDraw?.closesAt;
     const status = todayDraw?.status;
@@ -153,16 +205,13 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, todayDraw?.status]);
 
-  // Live jackpot from Jupiter = 1,000,000 XPOT
   useEffect(() => {
     async function loadLiveJackpot() {
       try {
         const res = await fetch('/api/xpot/price', { cache: 'no-store' });
         if (!res.ok) return;
-
         const data = await res.json();
-        const pricePerXpot = data.priceUsd; // must match your API response
-
+        const pricePerXpot = data.priceUsd;
         if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
           const jackpot = pricePerXpot * 1_000_000;
           setLiveJackpotUsd(jackpot);
@@ -177,7 +226,6 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, []);
 
-  // Whenever a valid token is set, auto-load data
   useEffect(() => {
     if (adminToken) {
       void loadAll();
@@ -186,13 +234,29 @@ export default function AdminPage() {
   }, [adminToken]);
 
   // ─────────────────────────────────────────────
-  // Helpers: admin fetch + handlers
+  // Internal helpers
   // ─────────────────────────────────────────────
 
-  async function adminFetch(path: string, options: RequestInit = {}) {
-    if (!adminToken) {
-      throw new Error('NO_ADMIN_TOKEN');
+  async function handleCopyWallet(address: string, id: string) {
+    try {
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard &&
+        address
+      ) {
+        await navigator.clipboard.writeText(address);
+        setCopiedWalletId(id);
+        setTimeout(() => {
+          setCopiedWalletId(prev => (prev === id ? null : prev));
+        }, 1500);
+      }
+    } catch (err) {
+      console.error('[ADMIN] copy wallet failed', err);
     }
+  }
+
+  async function adminFetch(path: string, options: RequestInit = {}) {
+    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
 
     const res = await fetch(path, {
       ...options,
@@ -216,7 +280,6 @@ export default function AdminPage() {
     return res.json();
   }
 
-  // Verify token against /api/admin/health
   async function verifyToken() {
     if (!tokenInput) {
       setTokenValid(false);
@@ -256,7 +319,6 @@ export default function AdminPage() {
     }
   }
 
-  // Load all admin data (today + tickets + winners)
   async function loadAll(optionalToken?: string) {
     const token = optionalToken ?? adminToken;
     if (!token) return;
@@ -332,7 +394,6 @@ export default function AdminPage() {
     }
   }
 
-  // Re-open draw (called from modal)
   async function handleReopenDraw() {
     if (!todayDraw) return;
 
@@ -344,9 +405,7 @@ export default function AdminPage() {
         method: 'POST',
       });
 
-      if (!data.ok) {
-        throw new Error(data.error ?? 'Unknown error');
-      }
+      if (!data.ok) throw new Error(data.error ?? 'Unknown error');
 
       setShowReopenModal(false);
       await loadAll();
@@ -360,7 +419,6 @@ export default function AdminPage() {
     }
   }
 
-  // Real pick-winner handler (used by modal confirm)
   async function handlePickWinner() {
     if (!todayDraw) return;
 
@@ -372,15 +430,14 @@ export default function AdminPage() {
         method: 'POST',
       });
 
-      if (!data.ok) {
-        throw new Error(data.error ?? 'Unknown error');
-      }
+      if (!data.ok) throw new Error(data.error ?? 'Unknown error');
 
       setLastPickedWinner({
         ticketCode: data.winner.code,
         walletAddress: data.winner.wallet,
         jackpotUsd: data.winner.jackpotUsd,
       });
+
       setWinnerJustPicked(true);
       setTimeout(() => setWinnerJustPicked(false), 1800);
 
@@ -396,7 +453,6 @@ export default function AdminPage() {
     }
   }
 
-  // Payout control: mark winner paid + optional tx link
   async function handleMarkPayout(winner: AdminWinner) {
     const txUrl =
       typeof window !== 'undefined'
@@ -408,7 +464,8 @@ export default function AdminPage() {
 
     try {
       setSavingPayoutId(winner.drawId);
-      const data = await adminFetch('/api/admin/winners/mark-paid', {
+
+      const data = await adminFetch('/api/admin/winners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -417,9 +474,7 @@ export default function AdminPage() {
         }),
       });
 
-      if (!data.ok) {
-        throw new Error(data.error ?? 'Failed to save payout');
-      }
+      if (!data.ok) throw new Error(data.error ?? 'Failed to save payout');
 
       await loadAll();
     } catch (err) {
@@ -433,7 +488,7 @@ export default function AdminPage() {
   }
 
   // ─────────────────────────────────────────────
-  // Derived values
+  // Derived
   // ─────────────────────────────────────────────
 
   const canPickWinner =
@@ -450,7 +505,6 @@ export default function AdminPage() {
     recentWinners.find(w => {
       const d = new Date(w.date);
       const now = new Date();
-
       return (
         d.getFullYear() === now.getFullYear() &&
         d.getMonth() === now.getMonth() &&
@@ -489,9 +543,7 @@ export default function AdminPage() {
         <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-200">
-                Admin key
-              </p>
+              <p className="text-xs font-semibold text-slate-200">Admin key</p>
               <p className="text-[11px] text-slate-500">
                 Paste your admin token to unlock live draw data. Stored only in
                 this browser&apos;s local storage.
@@ -535,7 +587,7 @@ export default function AdminPage() {
         <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)]">
           {/* LEFT COLUMN */}
           <div className="space-y-4">
-            {/* Jackpot panel – 1,000,000 XPOT + live USD via Jupiter */}
+            {/* Jackpot panel – 1,000,000 XPOT + live USD */}
             <JackpotPanel isLocked={isDrawLocked} />
 
             {/* Today’s draw */}
@@ -587,6 +639,7 @@ export default function AdminPage() {
                 </p>
               )}
 
+              {/* Today winner badge */}
               {adminToken && todayWinner && (
                 <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-3 text-[11px] text-slate-100">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
@@ -595,12 +648,31 @@ export default function AdminPage() {
                   <p className="mt-1 font-mono text-xs">
                     {todayWinner.ticketCode}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-slate-400">
-                    {todayWinner.walletAddress}
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopyWallet(
+                          todayWinner.walletAddress,
+                          `today-${todayWinner.drawId}`,
+                        )
+                      }
+                      className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+                    >
+                      <span>{shortenWallet(todayWinner.walletAddress, 4)}</span>
+                      <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+                        {copiedWalletId === `today-${todayWinner.drawId}`
+                          ? 'Copied'
+                          : 'Copy'}
+                      </span>
+                    </button>
                   </p>
-                  <p className="mt-1 text-[10px] text-emerald-300">
-                    {formatUsd(todayWinner.jackpotUsd)} ·{' '}
-                    {todayWinner.paidOut ? 'Paid out' : 'Pending payout'}
+                  <p className="mt-1 flex items-center gap-2 text-[10px] text-emerald-300">
+                    <XpotPill size="sm" />
+                    <span className="text-slate-500">·</span>
+                    <span>
+                      {todayWinner.paidOut ? 'Paid out' : 'Pending payout'}
+                    </span>
                   </p>
                 </div>
               )}
@@ -622,21 +694,25 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <p className="text-slate-400">Rollover amount</p>
-                      <p className="mt-1 font-semibold">
-                        {formatUsd(todayDraw.rolloverUsd)}
+                      <p className="mt-1">
+                        <UsdPill amount={todayDraw.rolloverUsd} size="sm" />
                       </p>
                     </div>
                     <div>
                       <p className="text-slate-400">
-                        Today&apos;s jackpot (live)
+                        Today&apos;s jackpot{' '}
+                        <span className="text-[11px] text-slate-500">
+                          (live)
+                        </span>
                       </p>
-                      <p className="mt-1 font-semibold">
-                        {formatUsd(liveJackpotUsd ?? todayDraw.jackpotUsd)}
+                      <p className="mt-1">
+                        <UsdPill
+                          amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
+                        />
                       </p>
                     </div>
                   </div>
 
-                  {/* When draw is open but no tickets */}
                   {todayDraw.status === 'open' &&
                     todayDraw.ticketsCount === 0 && (
                       <p className="mt-4 w-full rounded-full bg-slate-900 py-2 text-center text-xs text-slate-500">
@@ -644,7 +720,6 @@ export default function AdminPage() {
                       </p>
                     )}
 
-                  {/* When draw is open and tickets > 0 */}
                   {todayDraw.status === 'open' &&
                     todayDraw.ticketsCount > 0 && (
                       <button
@@ -660,7 +735,6 @@ export default function AdminPage() {
                       </button>
                     )}
 
-                  {/* When draw is locked / completed */}
                   {todayDraw.status !== 'open' && (
                     <>
                       <p className="mt-3 text-[11px] text-slate-400">
@@ -704,14 +778,15 @@ export default function AdminPage() {
                         </span>
                       </p>
                       {typeof lastPickedWinner.jackpotUsd === 'number' && (
-                        <p className="mt-0.5">
-                          Jackpot: {formatUsd(lastPickedWinner.jackpotUsd)}
+                        <p className="mt-0.5 flex items-center gap-1">
+                          <span>Jackpot:</span>
+                          <XpotPill size="sm" />
                         </p>
                       )}
                     </div>
                   )}
 
-                  {/* Pick-winner confirmation modal */}
+                  {/* Pick winner modal */}
                   {todayDraw && (
                     <Modal
                       open={showPickModal}
@@ -732,11 +807,12 @@ export default function AdminPage() {
                             {todayDraw.ticketsCount.toLocaleString()}
                           </span>
                         </p>
-                        <p>
-                          Jackpot:{' '}
-                          <span className="font-semibold">
-                            {formatUsd(liveJackpotUsd ?? todayDraw.jackpotUsd)}
-                          </span>
+                        <p className="mt-1 flex items-center gap-1">
+                          <span>Jackpot:</span>
+                          <UsdPill
+                            amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
+                            size="sm"
+                          />
                         </p>
                       </div>
 
@@ -769,7 +845,7 @@ export default function AdminPage() {
                     </Modal>
                   )}
 
-                  {/* Re-open draw confirmation modal */}
+                  {/* Re-open draw modal */}
                   {todayDraw && (
                     <Modal
                       open={showReopenModal}
@@ -790,11 +866,12 @@ export default function AdminPage() {
                             {todayDraw.ticketsCount.toLocaleString()}
                           </span>
                         </p>
-                        <p>
-                          Jackpot:{' '}
-                          <span className="font-semibold">
-                            {formatUsd(liveJackpotUsd ?? todayDraw.jackpotUsd)}
-                          </span>
+                        <p className="mt-1 flex items-center gap-1">
+                          <span>Jackpot:</span>
+                          <UsdPill
+                            amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
+                            size="sm"
+                          />
                         </p>
                       </div>
 
@@ -828,25 +905,6 @@ export default function AdminPage() {
                   )}
                 </>
               )}
-            </section>
-
-            {/* Wallet truth line */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-              <h2 className="text-sm font-semibold text-slate-100">
-                Wallet truth line
-              </h2>
-              <p className="mt-1 text-xs text-slate-400">
-                What is actually true on-chain, regardless of what the UI is
-                showing.
-              </p>
-
-              <ul className="mt-3 space-y-1 text-xs text-slate-300">
-                <li>• XPOT.bet never takes custody of user funds.</li>
-                <li>• Tickets are tied to wallet address and draw date.</li>
-                <li>
-                  • Eligibility is checked at entry time, not during the draw.
-                </li>
-              </ul>
             </section>
 
             {/* Today’s tickets */}
@@ -896,7 +954,23 @@ export default function AdminPage() {
                         <div>
                           <p className="font-mono text-xs">{t.code}</p>
                           <p className="mt-0.5 text-[10px] text-slate-500">
-                            {t.walletAddress}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleCopyWallet(
+                                  t.walletAddress,
+                                  `ticket-${t.id}`,
+                                )
+                              }
+                              className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+                            >
+                              <span>{shortenWallet(t.walletAddress, 4)}</span>
+                              <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+                                {copiedWalletId === `ticket-${t.id}`
+                                  ? 'Copied'
+                                  : 'Copy'}
+                              </span>
+                            </button>
                           </p>
                         </div>
                         <div className="text-right text-[10px] text-slate-400">
@@ -916,7 +990,10 @@ export default function AdminPage() {
                   </div>
                 )}
             </section>
+          </div>
 
+          {/* RIGHT COLUMN */}
+          <div className="space-y-4">
             {/* Recent winners */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
               <div className="flex items-center justify-between">
@@ -944,9 +1021,7 @@ export default function AdminPage() {
               )}
 
               {adminToken && winnersError && !loadingWinners && (
-                <p className="mt-3 text-xs text-amber-300">
-                  {winnersError}
-                </p>
+                <p className="mt-3 text-xs text-amber-300">{winnersError}</p>
               )}
 
               {adminToken &&
@@ -975,15 +1050,35 @@ export default function AdminPage() {
                               {w.ticketCode}
                             </p>
                             <p className="mt-0.5 text-[10px] text-slate-500">
-                              {w.walletAddress}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCopyWallet(
+                                    w.walletAddress,
+                                    `winner-${w.drawId}`,
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400 hover:text-sky-300 focus:outline-none"
+                              >
+                                <span>
+                                  {shortenWallet(w.walletAddress, 4)}
+                                </span>
+                                <span className="rounded-full bg-slate-800 px-2 py-[1px] text-[9px] uppercase tracking-[0.18em]">
+                                  {copiedWalletId === `winner-${w.drawId}`
+                                    ? 'Copied'
+                                    : 'Copy'}
+                                </span>
+                              </button>
                             </p>
                           </div>
+
                           <div className="text-right">
                             <p className="text-[10px] text-slate-400">
                               {new Date(w.date).toLocaleDateString()}
                             </p>
-                            <p className="mt-0.5 text-[10px] text-emerald-300">
-                              {formatUsd(w.jackpotUsd)}
+                            <p className="mt-0.5">
+                              {/* XPOT jackpot pill here */}
+                              <XpotPill size="sm" />
                             </p>
                             <p className="mt-0.5 text-[10px] text-slate-400">
                               {w.paidOut ? 'Paid out' : 'Pending'}
@@ -1018,47 +1113,6 @@ export default function AdminPage() {
                     ))}
                   </div>
                 )}
-            </section>
-          </div>
-
-          {/* RIGHT COLUMN */}
-          <div className="space-y-4">
-            {/* Today’s eligibility */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-              <h2 className="text-sm font-semibold text-slate-100">
-                Today&apos;s eligibility
-              </h2>
-              <p className="mt-1 text-xs text-slate-400">
-                What users see as the current entry rules.
-              </p>
-              <ul className="mt-3 space-y-1 text-xs text-slate-300">
-                <li>• Sign in with X.</li>
-                <li>• Connect a Solana wallet.</li>
-                <li>
-                  • Hold the minimum XPOT balance at the moment they get
-                  today&apos;s ticket.
-                </li>
-                <li>• Exactly one ticket per wallet per draw.</li>
-              </ul>
-            </section>
-
-            {/* How draw works (user view) */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-              <h2 className="text-sm font-semibold text-slate-100">
-                How today&apos;s draw works
-              </h2>
-              <ul className="mt-3 space-y-1 text-xs text-slate-300">
-                <li>• Get exactly one ticket per wallet.</li>
-                <li>
-                  • At entry time, wallet must hold at least{' '}
-                  <span className="font-semibold">100,000 XPOT</span>.
-                </li>
-                <li>• Wallet is only checked when you get your ticket.</li>
-                <li>• When the timer hits zero, one ticket wins.</li>
-                <li>
-                  • Winner has 24 hours to collect or the jackpot rolls over.
-                </li>
-              </ul>
             </section>
           </div>
         </div>
