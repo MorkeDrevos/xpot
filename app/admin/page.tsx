@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import JackpotPanel from '@/components/JackpotPanel';
-import AuditLogCard from '@/components/AuditLogCard';
 import Modal from '@/components/Modal';
 
 // ─────────────────────────────────────────────
@@ -99,8 +98,7 @@ export default function AdminPage() {
   const [reopenError, setReopenError] = useState<string | null>(null);
   const [reopening, setReopening] = useState(false);
 
-  // Reset + payouts
-  const [resetting, setResetting] = useState(false);
+  // Payouts
   const [savingPayoutId, setSavingPayoutId] = useState<string | null>(null);
 
   // ─────────────────────────────────────────────
@@ -119,43 +117,41 @@ export default function AdminPage() {
   }, []);
 
   // Live countdown to draw close (admin view)
-useEffect(() => {
-  const closesAt = todayDraw?.closesAt;
-  const status = todayDraw?.status;
+  useEffect(() => {
+    const closesAt = todayDraw?.closesAt;
+    const status = todayDraw?.status;
 
-  if (!closesAt || status !== 'open') {
-    setTimeLeft(null);
-    return;
-  }
-
-  // Take closesAt as a plain string so TS knows it's not undefined
-  function updateCountdown(iso: string) {
-    const target = new Date(iso).getTime();
-    const now = Date.now();
-    const diff = target - now;
-
-    if (diff <= 0) {
-      setTimeLeft('00:00:00');
+    if (!closesAt || status !== 'open') {
+      setTimeLeft(null);
       return;
     }
 
-    const totalSeconds = Math.floor(diff / 1000);
-    const hours = Math.floor(totalSeconds / 3600)
-      .toString()
-      .padStart(2, '0');
-    const minutes = Math.floor((totalSeconds % 3600) / 60)
-      .toString()
-      .padStart(2, '0');
-    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+    function updateCountdown(iso: string) {
+      const target = new Date(iso).getTime();
+      const now = Date.now();
+      const diff = target - now;
 
-    setTimeLeft(`${hours}:${minutes}:${seconds}`);
-  }
+      if (diff <= 0) {
+        setTimeLeft('00:00:00');
+        return;
+      }
 
-  updateCountdown(closesAt);
+      const totalSeconds = Math.floor(diff / 1000);
+      const hours = Math.floor(totalSeconds / 3600)
+        .toString()
+        .padStart(2, '0');
+      const minutes = Math.floor((totalSeconds % 3600) / 60)
+        .toString()
+        .padStart(2, '0');
+      const seconds = (totalSeconds % 60).toString().padStart(2, '0');
 
-  const id = window.setInterval(() => updateCountdown(closesAt), 1000);
-  return () => window.clearInterval(id);
-}, [todayDraw?.closesAt, todayDraw?.status]);
+      setTimeLeft(`${hours}:${minutes}:${seconds}`);
+    }
+
+    updateCountdown(closesAt);
+    const id = window.setInterval(() => updateCountdown(closesAt), 1000);
+    return () => window.clearInterval(id);
+  }, [todayDraw?.closesAt, todayDraw?.status]);
 
   // Live jackpot from Jupiter = 1,000,000 XPOT
   useEffect(() => {
@@ -569,10 +565,6 @@ useEffect(() => {
                     <div className="rounded-full border border-slate-700/60 bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300">
                       Draw locked
                     </div>
-                  )}
-
-                  {adminToken && todayDraw && (
-                    
                   )}
                 </div>
               </header>
