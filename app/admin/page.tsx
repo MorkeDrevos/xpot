@@ -59,10 +59,10 @@ function formatUsd(amount: number | null | undefined, decimals = 2) {
 }
 
 function formatUsdPrice(amount: number | null | undefined) {
-  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0.00000';
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0.000000';
   return amount.toLocaleString('en-US', {
-    minimumFractionDigits: 5,
-    maximumFractionDigits: 5,
+    minimumFractionDigits: 8,
+    maximumFractionDigits: 8,
   });
 }
 
