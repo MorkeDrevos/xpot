@@ -3,20 +3,17 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const XPOT_MINT = '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
-const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzyiH8ffA9H9n1tFoZT3k';
+// REAL XPOT MINT HERE (PANDU FOR NOW)
+const XPOT_MINT = 'YOUR_XPOT_MINT_ADDRESS_HERE';
 
 export async function GET() {
-  let priceUsd: number | null = null;
-  let source: 'jupiter' | 'none' = 'none';
-
   try {
-    const url = new URL('https://price.jup.ag/v6/price');
-    url.searchParams.set('ids', XPOT_MINT);
-    url.searchParams.set('vsToken', USDC_MINT);
+    // Ask Jupiter for USD price of the mint directly
+    const url = `https://price.jup.ag/v6/price?ids=${XPOT_MINT}&vsToken=USDC`;
 
-    const res = await fetch(url.toString(), {
-      next: { revalidate: 15 },
+    const res = await fetch(url, {
+      // small revalidate window so we don’t hammer Jupiter
+      next: { revalidate: 10 },
     });
 
     if (!res.ok) {
@@ -24,20 +21,39 @@ export async function GET() {
     }
 
     const json = await res.json();
-    const raw = json?.data?.[XPOT_MINT]?.price;
-    const numeric = Number(raw);
 
-    if (Number.isFinite(numeric) && numeric > 0) {
-      priceUsd = numeric;
-      source = 'jupiter';
+    const entry = json?.data?.[XPOT_MINT];
+    const rawPrice = entry?.price;
+
+    const price =
+      typeof rawPrice === 'number'
+        ? rawPrice
+        : rawPrice
+        ? Number(rawPrice)
+        : null;
+
+    if (!price || !Number.isFinite(price)) {
+      // Jupiter answered but without a usable number
+      return NextResponse.json({
+        ok: true,
+        priceUsd: null,
+        source: 'jupiter-invalid',
+      });
     }
-  } catch (err) {
-    console.error('[XPOT] /api/xpot/price Jupiter error:', err);
-  }
 
-  return NextResponse.json({
-    ok: true,
-    priceUsd, // null = price unavailable
-    source,
-  });
+    // This should now match Jupiter UI (0.00003319 etc)
+    return NextResponse.json({
+      ok: true,
+      priceUsd: price,
+      source: 'jupiter',
+    });
+  } catch (err) {
+    console.error('[XPOT] /api/xpot/price error:', err);
+    // No fake price, just “no data”
+    return NextResponse.json({
+      ok: true,
+      priceUsd: null,
+      source: 'error',
+    });
+  }
 }
