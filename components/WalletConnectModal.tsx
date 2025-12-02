@@ -37,20 +37,38 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="relative w-full max-w-xl rounded-2xl border border-cyan-500/40 bg-slate-900/95 text-slate-50 shadow-2xl">
+      <div className="relative w-full max-w-xl rounded-2xl border border-emerald-400/40 bg-slate-950/95 text-slate-50 shadow-[0_0_60px_rgba(16,185,129,0.18)]">
         {/* Top accent line */}
-        <div className="absolute inset-x-0 top-0 h-[3px] rounded-t-2xl bg-gradient-to-r from-cyan-400 via-emerald-400 to-cyan-400" />
+        <div className="absolute inset-x-0 top-0 h-[3px] rounded-t-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400" />
 
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-5 pb-3">
-          <div>
-            <h2 className="text-lg font-semibold">Connect your wallet to XPOT</h2>
-            <p className="mt-1 text-xs text-slate-400">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              {/* XPOT logo */}
+              <div className="flex items-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/img/xpot-logo-light.png"
+                  alt="XPOT"
+                  className="h-6 w-auto drop-shadow-[0_0_16px_rgba(16,185,129,0.75)]"
+                />
+              </div>
+              <div className="flex flex-col">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                  XPOT CONNECT
+                </p>
+                <h2 className="text-lg font-semibold">
+                  Connect wallet to join today&apos;s draw
+                </h2>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400">
               By connecting your wallet, you acknowledge that you understand how XPOT
               draws work and accept the terms in the{' '}
               <a
                 href="/disclaimer"
-                className="underline decoration-cyan-400/70 underline-offset-2 hover:text-cyan-300"
+                className="underline decoration-emerald-400/70 underline-offset-2 hover:text-emerald-300"
               >
                 disclaimer
               </a>
@@ -81,7 +99,7 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
 
         {/* Body */}
         <div className="px-6 pb-4 pt-1">
-          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">
+          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-emerald-300/90">
             Choose wallet
           </p>
 
@@ -93,7 +111,7 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
                 type="button"
                 onClick={() => select(wallet.adapter.name)}
                 disabled={connecting}
-                className="group flex items-center justify-between rounded-xl border border-slate-700/70 bg-slate-900/80 px-4 py-3 text-left transition hover:border-cyan-400/70 hover:bg-slate-900"
+                className="group flex items-center justify-between rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3.5 text-left text-sm transition duration-150 hover:border-emerald-400/80 hover:bg-slate-900/90 hover:shadow-[0_0_24px_rgba(16,185,129,0.28)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <div className="flex items-center gap-3">
                   {wallet.adapter.icon && (
@@ -101,7 +119,7 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
                     <img
                       src={wallet.adapter.icon}
                       alt={wallet.adapter.name}
-                      className="h-8 w-8 rounded-lg bg-slate-800 object-contain p-1"
+                      className="h-8 w-8 rounded-lg bg-slate-900 object-contain p-1.5 shadow-[0_0_10px_rgba(15,23,42,0.9)]"
                     />
                   )}
                   <div className="flex flex-col">
@@ -114,7 +132,13 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
                   </div>
                 </div>
 
-                <div className="rounded-full border border-slate-700/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 group-hover:border-cyan-400/80 group-hover:text-cyan-300">
+                <div
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition ${
+                    wallet.readyState === WalletReadyState.Installed
+                      ? 'border-emerald-400/80 text-emerald-300 group-hover:border-emerald-300 group-hover:text-emerald-200'
+                      : 'border-slate-700/70 text-slate-400 group-hover:border-cyan-400/80 group-hover:text-cyan-300'
+                  }`}
+                >
                   {readyStateLabel(wallet.readyState)}
                 </div>
               </button>
@@ -135,7 +159,7 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
               type="button"
               onClick={() => setShowUninstalled((x) => !x)}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${
-                showUninstalled ? 'bg-cyan-500/80' : 'bg-slate-700'
+                showUninstalled ? 'bg-emerald-500/80' : 'bg-slate-700'
               }`}
             >
               <span
@@ -152,8 +176,8 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
           <div>
             <p className="font-medium text-slate-300">New to Solana wallets?</p>
             <p className="text-[11px] text-slate-400">
-              You keep full control of your funds. XPOT only checks balances and
-              sends rewards you win.
+              You keep full control of your funds. XPOT only checks balances to confirm
+              eligibility and sends rewards you win directly on-chain.
             </p>
           </div>
           <div className="flex flex-col gap-2 text-right sm:items-end">
@@ -161,7 +185,7 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
               href="https://phantom.app/"
               target="_blank"
               rel="noreferrer"
-              className="text-[11px] font-semibold text-cyan-300 hover:text-cyan-200"
+              className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200"
             >
               Get a wallet &rarr;
             </a>
@@ -181,7 +205,7 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
 // Small helper to show a nicer hint under each wallet name
 function walletLabelHint(name: string, ready: WalletReadyState): string {
   if (name.toLowerCase().includes('phantom')) return 'Most popular Solana wallet';
-  if (name.toLowerCase().includes('solflare')) return 'Mobile & browser wallet';
+  if (name.toLowerCase().includes('solflare')) return 'Mobile and browser wallet';
   if (name.toLowerCase().includes('backpack')) return 'Backpack compatible';
   if (name.toLowerCase().includes('ledger')) return 'Hardware wallet';
   if (ready === WalletReadyState.NotDetected) return 'Not installed on this device';
@@ -221,7 +245,7 @@ export function WalletConnectedToast({
   if (!walletName) return null;
 
   return (
-    <div className="pointer-events-auto fixed right-4 top-4 z-50 max-w-sm rounded-2xl border border-cyan-500/60 bg-slate-900/95 px-4 pb-3 pt-3 text-slate-50 shadow-2xl">
+    <div className="pointer-events-auto fixed right-4 top-4 z-50 max-w-sm rounded-2xl border border-emerald-400/60 bg-slate-950/95 px-4 pb-3 pt-3 text-slate-50 shadow-[0_0_40px_rgba(16,185,129,0.28)]">
       <div className="flex items-start">
         <div className="mt-0.5 mr-3 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/90 text-slate-950">
           <svg
