@@ -46,6 +46,8 @@ type AdminWinner = {
 
 const ADMIN_TOKEN_KEY = 'xpot_admin_token';
 
+const JACKPOT_XPOT = 1_000_000; // fixed XPOT jackpot
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
