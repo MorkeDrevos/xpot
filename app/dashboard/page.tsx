@@ -7,11 +7,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useSession } from 'next-auth/react';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
+import {
+  WalletConnectModal,
+  WalletConnectedToast,
+} from '@/components/WalletConnectModal';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -91,7 +94,8 @@ function WalletStatusHint() {
 
   return (
     <p className="mt-2 text-xs text-slate-500">
-      Click “Select Wallet” and choose Phantom or Jupiter to connect.
+      Click “Connect wallet” to choose Phantom, Jupiter or another Solana
+      wallet.
     </p>
   );
 }
@@ -124,7 +128,9 @@ export default function DashboardPage() {
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
-  const { publicKey, connected, disconnect } = useWallet();
+  const { publicKey, connected, disconnect, wallet } = useWallet();
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [showWalletToast, setShowWalletToast] = useState(false);
   const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
 
   const walletConnected = !!publicKey && connected;
@@ -137,6 +143,15 @@ export default function DashboardPage() {
 
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
+
+  // show “wallet connected” toast when a wallet connects
+  useEffect(() => {
+    if (connected && wallet) {
+      setShowWalletToast(true);
+      const t = setTimeout(() => setShowWalletToast(false), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [connected, wallet]);
 
   // ─────────────────────────────────────────────
   // Load today's tickets from DB
@@ -389,7 +404,9 @@ export default function DashboardPage() {
       setClaimError(null);
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
-      setClaimError('Unexpected error while getting your ticket. Please try again.');
+      setClaimError(
+        'Unexpected error while getting your ticket. Please try again.'
+      );
     } finally {
       setClaiming(false);
     }
@@ -419,7 +436,13 @@ export default function DashboardPage() {
           />
         </Link>
 
-        <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
+        <button
+          type="button"
+          onClick={() => setWalletModalOpen(true)}
+          className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 hover:border-emerald-400 hover:text-emerald-300"
+        >
+          {connected ? 'Wallet connected' : 'Connect wallet'}
+        </button>
       </header>
 
       <div className="mx-auto flex max-w-6xl">
@@ -641,7 +664,7 @@ export default function DashboardPage() {
 
                 {/* Jackpot state (with rollover) */}
                 <p className="mt-2 text-[11px] text-slate-500">
-                  <span className="font-semibold text-slate-200">
+                  <span className="font-semibold text-amber-300">
                     Today’s jackpot:
                   </span>{' '}
                   {todaysTicket?.jackpotUsd || '$10,000'}{' '}
@@ -983,7 +1006,13 @@ export default function DashboardPage() {
               </p>
 
               <div className="mt-3">
-                <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
+                <button
+                  type="button"
+                  onClick={() => setWalletModalOpen(true)}
+                  className="w-full rounded-full border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 hover:border-emerald-400 hover:text-emerald-300"
+                >
+                  {connected ? 'Wallet connected' : 'Connect wallet'}
+                </button>
                 <WalletStatusHint />
               </div>
 
@@ -1114,6 +1143,20 @@ export default function DashboardPage() {
           </aside>
         </div>
       </div>
+
+      {/* Raydium-style wallet modal + toast */}
+      <WalletConnectModal
+        isOpen={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+      />
+
+      {showWalletToast && wallet && (
+        <WalletConnectedToast
+          walletName={wallet.adapter.name}
+          address={publicKey?.toBase58()}
+          onClose={() => setShowWalletToast(false)}
+        />
+      )}
     </main>
   );
 }
