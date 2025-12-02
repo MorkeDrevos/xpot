@@ -1,3 +1,4 @@
+// components/JackpotPanel.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -50,7 +51,7 @@ export default function JackpotPanel({ isLocked }: { isLocked: boolean }) {
           setJackpotUsd(price * 1_000_000);
         }
       } catch (err) {
-        console.error('[JackpotPanel] price fetch failed', err);
+        console.error('[XPOTPanel] price fetch failed', err);
       }
     }
 
@@ -63,12 +64,14 @@ export default function JackpotPanel({ isLocked }: { isLocked: boolean }) {
     <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
       <header className="flex items-start justify-between gap-3">
         <div>
+          {/* Label */}
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Today&apos;s jackpot
+            Today&apos;s XPOT
           </p>
+
           {/* MAIN: XPOT amount */}
-          <p className="mt-1 text-2xl font-semibold text-slate-50 sm:text-3xl">
-            1,000,000 XPOT
+          <p className="mt-1 font-mono text-2xl font-semibold text-slate-50 sm:text-3xl">
+            1,000,000.00
           </p>
 
           {/* Live USD value */}
@@ -88,8 +91,8 @@ export default function JackpotPanel({ isLocked }: { isLocked: boolean }) {
 
           {/* Description */}
           <p className="mt-3 text-xs text-slate-400">
-            Jackpot is fixed at 1,000,000 XPOT. Its USD value tracks real
-            on-chain price from Jupiter and updates automatically.
+            Allocation amount is fixed at 1,000,000 XPOT. Its USD value follows
+            live on-chain pricing from Jupiter and updates automatically.
           </p>
         </div>
 
@@ -98,13 +101,15 @@ export default function JackpotPanel({ isLocked }: { isLocked: boolean }) {
           <div className="rounded-full bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300">
             <span className="mr-1 text-slate-500">Highest today:</span>
             <span className="font-mono">
-              {formatUsd(highestUsdToday)} <span className="text-[10px]">USD</span>
+              {formatUsd(highestUsdToday)}{' '}
+              <span className="text-[10px]">USD</span>
             </span>
           </div>
           <div className="rounded-full bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300">
             <span className="mr-1 text-slate-500">Next milestone at</span>
             <span className="font-mono">
-              {formatUsd(nextMilestoneUsd)} <span className="text-[10px]">USD</span>
+              {formatUsd(nextMilestoneUsd)}{' '}
+              <span className="text-[10px]">USD</span>
             </span>
           </div>
           {isLocked && (
