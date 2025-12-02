@@ -34,29 +34,51 @@ type AdminTicket = {
 };
 
 type AdminWinner = {
-  id: string; // winner row id (used for mark-as-paid)
   drawId: string;
   date: string;
   ticketCode: string;
   walletAddress: string;
   jackpotUsd: number;
   paidOut: boolean;
-  txUrl?: string | null;
+  txUrl?: string;
 };
 
 const ADMIN_TOKEN_KEY = 'xpot_admin_token';
-
-const JACKPOT_XPOT = 1_000_000; // fixed XPOT jackpot
 
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
 
+// Just returns the numeric part – no currency symbol
 function formatUsd(amount: number | undefined | null) {
-  if (typeof amount !== 'number' || Number.isNaN(amount)) return '$0';
-  return `$${amount.toLocaleString('en-US', {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0';
+  return amount.toLocaleString('en-US', {
     maximumFractionDigits: 0,
-  })}`;
+  });
+}
+
+// Small pill for USD amounts so we have one consistent look
+function UsdPill({
+  amount,
+  size = 'md',
+}: {
+  amount: number | undefined | null;
+  size?: 'sm' | 'md';
+}) {
+  const value = formatUsd(amount);
+  const base =
+    'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
+  const md = 'px-3 py-1 text-xs';
+  const sm = 'px-2 py-0.5 text-[11px]';
+
+  return (
+    <span className={`${base} ${size === 'md' ? md : sm}`}>
+      <span className="font-mono text-sm">{value}</span>
+      <span className="ml-1 text-[10px] uppercase tracking-[0.16em] text-emerald-400">
+        USD
+      </span>
+    </span>
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -108,7 +130,6 @@ export default function AdminPage() {
   // Effects: token, countdown, live jackpot
   // ─────────────────────────────────────────────
 
-  // Load stored token on first render (browser only)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -119,7 +140,6 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Live countdown to draw close (admin view)
   useEffect(() => {
     const closesAt = todayDraw?.closesAt;
     const status = todayDraw?.status;
@@ -164,7 +184,7 @@ export default function AdminPage() {
         if (!res.ok) return;
 
         const data = await res.json();
-        const pricePerXpot = data.priceUsd; // must match your API response
+        const pricePerXpot = data.priceUsd;
 
         if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
           const jackpot = pricePerXpot * 1_000_000;
@@ -180,7 +200,6 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, []);
 
-  // Whenever a valid token is set, auto-load data
   useEffect(() => {
     if (adminToken) {
       void loadAll();
@@ -219,7 +238,6 @@ export default function AdminPage() {
     return res.json();
   }
 
-  // Verify token against /api/admin/health
   async function verifyToken() {
     if (!tokenInput) {
       setTokenValid(false);
@@ -259,7 +277,6 @@ export default function AdminPage() {
     }
   }
 
-  // Load all admin data (today + tickets + winners)
   async function loadAll(optionalToken?: string) {
     const token = optionalToken ?? adminToken;
     if (!token) return;
@@ -335,7 +352,6 @@ export default function AdminPage() {
     }
   }
 
-  // Re-open draw (called from modal)
   async function handleReopenDraw() {
     if (!todayDraw) return;
 
@@ -363,7 +379,6 @@ export default function AdminPage() {
     }
   }
 
-  // Real pick-winner handler (used by modal confirm)
   async function handlePickWinner() {
     if (!todayDraw) return;
 
@@ -399,7 +414,6 @@ export default function AdminPage() {
     }
   }
 
-   // Payout control: mark winner paid + optional tx link
   async function handleMarkPayout(winner: AdminWinner) {
     const txUrl =
       typeof window !== 'undefined'
@@ -409,12 +423,8 @@ export default function AdminPage() {
           )
         : winner.txUrl ?? '';
 
-    // If user hit "Cancel" in the prompt, do nothing
-    if (txUrl === null) return;
-
     try {
       setSavingPayoutId(winner.drawId);
-
       const data = await adminFetch('/api/admin/winners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -428,18 +438,7 @@ export default function AdminPage() {
         throw new Error(data.error ?? 'Failed to save payout');
       }
 
-      // Update local state so UI reflects payout immediately
-      setRecentWinners(prev =>
-        prev.map(w =>
-          w.drawId === winner.drawId
-            ? {
-                ...w,
-                paidOut: true,
-                txUrl: txUrl || undefined,
-              }
-            : w,
-        ),
-      );
+      await loadAll();
     } catch (err) {
       console.error('[ADMIN] mark-paid error:', err);
       setWinnersError(
@@ -616,9 +615,12 @@ export default function AdminPage() {
                   <p className="mt-0.5 text-[10px] text-slate-400">
                     {todayWinner.walletAddress}
                   </p>
-                  <p className="mt-1 text-[10px] text-emerald-300">
-                    {formatUsd(todayWinner.jackpotUsd)} ·{' '}
-                    {todayWinner.paidOut ? 'Paid out' : 'Pending payout'}
+                  <p className="mt-1 flex items-center gap-1 text-[10px] text-emerald-300">
+                    <UsdPill amount={todayWinner.jackpotUsd} size="sm" />
+                    <span className="text-slate-500">·</span>
+                    <span>
+                      {todayWinner.paidOut ? 'Paid out' : 'Pending payout'}
+                    </span>
                   </p>
                 </div>
               )}
@@ -640,16 +642,21 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <p className="text-slate-400">Rollover amount</p>
-                      <p className="mt-1 font-semibold">
-                        {formatUsd(todayDraw.rolloverUsd)}
+                      <p className="mt-1">
+                        <UsdPill amount={todayDraw.rolloverUsd} size="sm" />
                       </p>
                     </div>
                     <div>
                       <p className="text-slate-400">
-                        Today&apos;s jackpot (live)
+                        Today&apos;s jackpot{' '}
+                        <span className="text-[11px] text-slate-500">
+                          (live)
+                        </span>
                       </p>
-                      <p className="mt-1 font-semibold">
-                        {formatUsd(liveJackpotUsd ?? todayDraw.jackpotUsd)}
+                      <p className="mt-1">
+                        <UsdPill
+                          amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
+                        />
                       </p>
                     </div>
                   </div>
@@ -722,8 +729,12 @@ export default function AdminPage() {
                         </span>
                       </p>
                       {typeof lastPickedWinner.jackpotUsd === 'number' && (
-                        <p className="mt-0.5">
-                          Jackpot: {formatUsd(lastPickedWinner.jackpotUsd)}
+                        <p className="mt-0.5 flex items-center gap-1">
+                          <span>Jackpot:</span>
+                          <UsdPill
+                            amount={lastPickedWinner.jackpotUsd}
+                            size="sm"
+                          />
                         </p>
                       )}
                     </div>
@@ -750,11 +761,12 @@ export default function AdminPage() {
                             {todayDraw.ticketsCount.toLocaleString()}
                           </span>
                         </p>
-                        <p>
-                          Jackpot:{' '}
-                          <span className="font-semibold">
-                            {formatUsd(liveJackpotUsd ?? todayDraw.jackpotUsd)}
-                          </span>
+                        <p className="mt-1 flex items-center gap-1">
+                          <span>Jackpot:</span>
+                          <UsdPill
+                            amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
+                            size="sm"
+                          />
                         </p>
                       </div>
 
@@ -808,11 +820,12 @@ export default function AdminPage() {
                             {todayDraw.ticketsCount.toLocaleString()}
                           </span>
                         </p>
-                        <p>
-                          Jackpot:{' '}
-                          <span className="font-semibold">
-                            {formatUsd(liveJackpotUsd ?? todayDraw.jackpotUsd)}
-                          </span>
+                        <p className="mt-1 flex items-center gap-1">
+                          <span>Jackpot:</span>
+                          <UsdPill
+                            amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
+                            size="sm"
+                          />
                         </p>
                       </div>
 
@@ -966,7 +979,7 @@ export default function AdminPage() {
                   <div className="mt-3 space-y-2 text-[11px] text-slate-200">
                     {recentWinners.map(w => (
                       <div
-                        key={w.id}
+                        key={w.drawId}
                         className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -982,13 +995,9 @@ export default function AdminPage() {
                             <p className="text-[10px] text-slate-400">
                               {new Date(w.date).toLocaleDateString()}
                             </p>
-                            <p className="mt-0.5 text-[10px] text-emerald-300">
-  {JACKPOT_XPOT.toLocaleString()} XPOT
-</p>
-{/* Optional: keep USD as a small hint */}
-{/* <p className="mt-0.5 text-[10px] text-slate-500">
-  ≈ {formatUsd(w.jackpotUsd)}
-</p> */}
+                            <p className="mt-0.5">
+                              <UsdPill amount={w.jackpotUsd} size="sm" />
+                            </p>
                             <p className="mt-0.5 text-[10px] text-slate-400">
                               {w.paidOut ? 'Paid out' : 'Pending'}
                             </p>
@@ -1010,10 +1019,10 @@ export default function AdminPage() {
                           <button
                             type="button"
                             onClick={() => handleMarkPayout(w)}
-                            disabled={savingPayoutId === w.id}
+                            disabled={savingPayoutId === w.drawId}
                             className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {savingPayoutId === w.id
+                            {savingPayoutId === w.drawId
                               ? 'Saving payout…'
                               : 'Mark as paid + tx link'}
                           </button>
