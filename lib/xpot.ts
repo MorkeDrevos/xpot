@@ -29,7 +29,7 @@ const PROD: TokenConfig = {
   SYMBOL: 'PANDU',
   MINT: '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk',
   // Minimum balance to be eligible for the real draw
-  REQUIRED: 10_000,
+  REQUIRED: 100_000,
 };
 
 // 🟡 DEV / TEST TOKEN (use any token for testing the flow)
@@ -37,7 +37,7 @@ const DEV: TokenConfig = {
   SYMBOL: 'BONK',
   MINT: 'DezXAZ8z7PnrnRJjz3wXBoHyRnHv7QBB7aLteS7r2N6v',
   // Lower threshold so it is easy to test
-  REQUIRED: 1_000,
+  REQUIRED: 100_000,
 };
 
 // Active token based on mode
