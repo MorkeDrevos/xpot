@@ -10,7 +10,8 @@ import { REQUIRED_XPOT, TOKEN_SYMBOL } from '@/lib/xpot';
 // Helpers
 // ─────────────────────────────────────────────
 
-function formatTime(ms: number) {
+function formatTime(ms: number | null) {
+  if (ms === null) return '--:--:--';
   if (ms <= 0) return '00:00:00';
   const total = Math.floor(ms / 1000);
   const h = String(Math.floor(total / 3600)).padStart(2, '0');
@@ -39,24 +40,28 @@ const TWEET_FLAG_KEY = 'xpot_tweet_posted';
 const XPOT_SUPPLY_FOR_DRAW = 1_000_000;
 
 // ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+
+type PublicDraw = {
+  id: string;
+  date: string;
+  status: 'open' | 'closed' | 'completed';
+  closesAt: string | null;
+};
+
+// ─────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────
 
 export default function Home() {
-  const [timeLeft, setTimeLeft] = useState(0);
   const [tweetPosted, setTweetPosted] = useState(false);
 
   const [pricePerXpot, setPricePerXpot] = useState<number | null>(null);
   const [xpotPoolUsd, setXpotPoolUsd] = useState<number | null>(null);
 
-  // Simple 24h countdown from first render (placeholder until real closesAt)
-  useEffect(() => {
-    const end = Date.now() + 24 * 60 * 60 * 1000;
-    const tick = () => setTimeLeft(end - Date.now());
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const [todayDraw, setTodayDraw] = useState<PublicDraw | null>(null);
+  const [countdownMs, setCountdownMs] = useState<number | null>(null);
 
   // Load tweet flag from localStorage
   useEffect(() => {
@@ -103,6 +108,63 @@ export default function Home() {
     };
   }, []);
 
+  // Load today’s public draw (closesAt, status, etc.)
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDraw() {
+      try {
+        const res = await fetch('/api/draw/today', { cache: 'no-store' });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!data.ok || !data.draw) return;
+        if (cancelled) return;
+
+        // draw.closesAt is ISO string in UTC
+        setTodayDraw({
+          id: data.draw.id,
+          date: data.draw.date,
+          status: data.draw.status,
+          closesAt: data.draw.closesAt ?? null,
+        });
+      } catch (err) {
+        console.error('[XPOT] Failed to load public draw', err);
+        if (!cancelled) {
+          setTodayDraw(null);
+          setCountdownMs(null);
+        }
+      }
+    }
+
+    loadDraw();
+    // refresh draw metadata every minute
+    const id = window.setInterval(loadDraw, 60_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  // Countdown based on todayDraw.closesAt
+  useEffect(() => {
+    if (!todayDraw?.closesAt || todayDraw.status !== 'open') {
+      setCountdownMs(null);
+      return;
+    }
+
+    function updateCountdown() {
+      const target = new Date(todayDraw.closesAt).getTime();
+      const diff = target - Date.now();
+      setCountdownMs(diff);
+    }
+
+    updateCountdown();
+    const id = window.setInterval(updateCountdown, 1000);
+    return () => window.clearInterval(id);
+  }, [todayDraw?.closesAt, todayDraw?.status]);
+
   function handleTweetClick() {
     const tweetText = `I'm in today's XPOT 1,000,000 on-chain reward draw. #XPOT`;
     const tweetUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(
@@ -116,6 +178,8 @@ export default function Home() {
 
     setTweetPosted(true);
   }
+
+  const drawOpen = todayDraw && todayDraw.status === 'open';
 
   // ─────────────────────────────────────────────
   // Render
@@ -256,14 +320,15 @@ export default function Home() {
               {/* Countdown */}
               <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  Next draw in
+                  {drawOpen ? 'Next draw in' : 'Next draw status'}
                 </p>
                 <p className="mt-1 font-mono text-2xl text-slate-50">
-                  {formatTime(timeLeft)}
+                  {drawOpen ? formatTime(countdownMs) : '--:--:--'}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-500">
-                  Countdown preview. In production this will be wired to today’s
-                  on-chain draw close time.
+                  {drawOpen
+                    ? 'Countdown uses today’s on-chain draw close time.'
+                    : 'Today’s draw is not open yet or has already closed.'}
                 </p>
               </div>
             </div>
