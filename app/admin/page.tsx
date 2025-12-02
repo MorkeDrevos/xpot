@@ -34,6 +34,7 @@ type AdminTicket = {
 };
 
 type AdminWinner = {
+  id: string; // winningTicket.id
   drawId: string;
   date: string;
   ticketCode: string;
@@ -161,7 +162,7 @@ export default function AdminPage() {
         if (!res.ok) return;
 
         const data = await res.json();
-        const pricePerXpot = data.priceUsd; // must match your API response
+        const pricePerXpot = data.priceUsd;
 
         if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
           const jackpot = pricePerXpot * 1_000_000;
@@ -407,12 +408,12 @@ export default function AdminPage() {
         : winner.txUrl ?? '';
 
     try {
-      setSavingPayoutId(winner.drawId);
+      setSavingPayoutId(winner.id);
       const data = await adminFetch('/api/admin/winners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          drawId: winner.drawId,
+          winnerId: winner.id,
           txUrl: txUrl || null,
         }),
       });
@@ -489,9 +490,7 @@ export default function AdminPage() {
         <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-200">
-                Admin key
-              </p>
+              <p className="text-xs font-semibold text-slate-200">Admin key</p>
               <p className="text-[11px] text-slate-500">
                 Paste your admin token to unlock live draw data. Stored only in
                 this browser&apos;s local storage.
@@ -897,107 +896,110 @@ export default function AdminPage() {
                   </div>
                 )}
             </section>
-
           </div>
 
           {/* RIGHT COLUMN */}
-<div className="space-y-4">
-  {/* Recent winners (moved here) */}
-  <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-    <div className="flex items-center justify-between">
-      <div>
-        <h2 className="text-sm font-semibold text-slate-100">
-          Recent winners
-        </h2>
-        <p className="mt-1 text-xs text-slate-400">
-          Internal log of the latest winning tickets and payout status.
-        </p>
-      </div>
-    </div>
-
-    {!adminToken && (
-      <p className="mt-3 text-xs text-slate-500">
-        Unlock with your admin key to see completed draws.
-      </p>
-    )}
-
-    {adminToken && loadingWinners && (
-      <p className="mt-3 text-xs text-slate-500">Loading recent winners…</p>
-    )}
-
-    {adminToken && winnersError && !loadingWinners && (
-      <p className="mt-3 text-xs text-amber-300">{winnersError}</p>
-    )}
-
-    {adminToken &&
-      !loadingWinners &&
-      !winnersError &&
-      recentWinners.length === 0 && (
-        <p className="mt-3 text-xs text-slate-500">
-          No completed draws yet. Once you pick winners and mark jackpots as
-          paid, they&apos;ll appear here.
-        </p>
-      )}
-
-    {adminToken &&
-      !loadingWinners &&
-      !winnersError &&
-      recentWinners.length > 0 && (
-        <div className="mt-3 space-y-2 text-[11px] text-slate-200">
-          {recentWinners.map(w => (
-            <div
-              key={w.drawId}
-              className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
-            >
-              <div className="flex items-center justify-between gap-2">
+          <div className="space-y-4">
+            {/* Recent winners */}
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-mono text-xs">{w.ticketCode}</p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">
-                    {w.walletAddress}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-slate-400">
-                    {new Date(w.date).toLocaleDateString()}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-emerald-300">
-                    {formatUsd(w.jackpotUsd)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-slate-400">
-                    {w.paidOut ? 'Paid out' : 'Pending'}
+                  <h2 className="text-sm font-semibold text-slate-100">
+                    Recent winners
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Internal log of the latest winning tickets and payout
+                    status.
                   </p>
                 </div>
               </div>
 
-              {w.txUrl && (
-                <a
-                  href={w.txUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
-                >
-                  View transaction
-                </a>
+              {!adminToken && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Unlock with your admin key to see completed draws.
+                </p>
               )}
 
-              {!w.paidOut && (
-                <button
-                  type="button"
-                  onClick={() => handleMarkPayout(w)}
-                  disabled={savingPayoutId === w.drawId}
-                  className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {savingPayoutId === w.drawId
-                    ? 'Saving payout…'
-                    : 'Mark as paid + tx link'}
-                </button>
+              {adminToken && loadingWinners && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Loading recent winners…
+                </p>
               )}
-            </div>
-          ))}
-        </div>
-      )}
-  </section>
 
+              {adminToken && winnersError && !loadingWinners && (
+                <p className="mt-3 text-xs text-amber-300">{winnersError}</p>
+              )}
+
+              {adminToken &&
+                !loadingWinners &&
+                !winnersError &&
+                recentWinners.length === 0 && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    No completed draws yet. Once you pick winners and mark
+                    jackpots as paid, they&apos;ll appear here.
+                  </p>
+                )}
+
+              {adminToken &&
+                !loadingWinners &&
+                !winnersError &&
+                recentWinners.length > 0 && (
+                  <div className="mt-3 space-y-2 text-[11px] text-slate-200">
+                    {recentWinners.map(w => (
+                      <div
+                        key={w.id}
+                        className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-mono text-xs">
+                              {w.ticketCode}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-slate-500">
+                              {w.walletAddress}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] text-slate-400">
+                              {new Date(w.date).toLocaleDateString()}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-emerald-300">
+                              {formatUsd(w.jackpotUsd)}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-slate-400">
+                              {w.paidOut ? 'Paid out' : 'Pending'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {w.txUrl && (
+                          <a
+                            href={w.txUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-block text-[10px] text-sky-400 hover:text-sky-300"
+                          >
+                            View transaction
+                          </a>
+                        )}
+
+                        {!w.paidOut && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkPayout(w)}
+                            disabled={savingPayoutId === w.id}
+                            className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {savingPayoutId === w.id
+                              ? 'Saving payout…'
+                              : 'Mark as paid + tx link'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </section>
           </div>
         </div>
       </div>
