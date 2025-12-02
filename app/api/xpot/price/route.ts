@@ -3,57 +3,49 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-// REAL XPOT MINT HERE (PANDU FOR NOW)
-const XPOT_MINT = 'YOUR_XPOT_MINT_ADDRESS_HERE';
+// XPOT is currently using the PANDU mint
+const XPOT_MINT = '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
+
+// Jupiter price endpoint – it will internally route via SOL if needed
+const JUPITER_PRICE_URL = `https://price.jup.ag/v6/price?ids=${XPOT_MINT}&vsToken=USDC`;
 
 export async function GET() {
   try {
-    // Ask Jupiter for USD price of the mint directly
-    const url = `https://price.jup.ag/v6/price?ids=${XPOT_MINT}&vsToken=USDC`;
-
-    const res = await fetch(url, {
-      // small revalidate window so we don’t hammer Jupiter
+    const res = await fetch(JUPITER_PRICE_URL, {
+      // don’t cache aggressively – we want fresh-ish prices
+      cache: 'no-store',
+      // small revalidate hint for edge / ISR if Vercel wants it
+      // @ts-expect-error - next-specific option
       next: { revalidate: 10 },
     });
 
     if (!res.ok) {
-      throw new Error(`Jupiter HTTP ${res.status}`);
+      console.error('[XPOT] Jupiter price HTTP error', res.status);
+      return NextResponse.json({ ok: true, priceUsd: null, source: 'error' });
     }
 
     const json = await res.json();
 
-    const entry = json?.data?.[XPOT_MINT];
-    const rawPrice = entry?.price;
-
-    const price =
-      typeof rawPrice === 'number'
-        ? rawPrice
-        : rawPrice
-        ? Number(rawPrice)
+    // v6 shape: { data: { [mint]: { price: number, ... } }, timeTaken: ... }
+    const info = json?.data?.[XPOT_MINT];
+    const rawPrice =
+      info && typeof info.price === 'number' && Number.isFinite(info.price)
+        ? info.price
         : null;
 
-    if (!price || !Number.isFinite(price)) {
-      // Jupiter answered but without a usable number
-      return NextResponse.json({
-        ok: true,
-        priceUsd: null,
-        source: 'jupiter-invalid',
-      });
+    if (rawPrice == null) {
+      console.error('[XPOT] Jupiter price missing/invalid for mint', XPOT_MINT);
+      return NextResponse.json({ ok: true, priceUsd: null, source: 'error' });
     }
 
-    // This should now match Jupiter UI (0.00003319 etc)
+    // This price is already “per 1 XPOT in USD” – same number you see on Jupiter UI
     return NextResponse.json({
       ok: true,
-      priceUsd: price,
+      priceUsd: rawPrice,
       source: 'jupiter',
     });
   } catch (err) {
-    console.error('[XPOT] /api/xpot/price error:', err);
-    // No fake price, just “no data”
-    return NextResponse.json({
-      ok: true,
-      priceUsd: null,
-      source: 'error',
-    });
+    console.error('[XPOT] Jupiter price fetch failed', err);
+    return NextResponse.json({ ok: true, priceUsd: null, source: 'error' });
   }
 }
