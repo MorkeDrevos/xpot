@@ -119,41 +119,43 @@ export default function AdminPage() {
   }, []);
 
   // Live countdown to draw close (admin view)
-  useEffect(() => {
-    const closesAt = todayDraw?.closesAt;
-    const status = todayDraw?.status;
+useEffect(() => {
+  const closesAt = todayDraw?.closesAt;
+  const status = todayDraw?.status;
 
-    if (!closesAt || status !== 'open') {
-      setTimeLeft(null);
+  if (!closesAt || status !== 'open') {
+    setTimeLeft(null);
+    return;
+  }
+
+  // Take closesAt as a plain string so TS knows it's not undefined
+  function updateCountdown(iso: string) {
+    const target = new Date(iso).getTime();
+    const now = Date.now();
+    const diff = target - now;
+
+    if (diff <= 0) {
+      setTimeLeft('00:00:00');
       return;
     }
 
-    function updateCountdown() {
-      const target = new Date(closesAt).getTime();
-      const now = Date.now();
-      const diff = target - now;
+    const totalSeconds = Math.floor(diff / 1000);
+    const hours = Math.floor(totalSeconds / 3600)
+      .toString()
+      .padStart(2, '0');
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+      .toString()
+      .padStart(2, '0');
+    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
 
-      if (diff <= 0) {
-        setTimeLeft('00:00:00');
-        return;
-      }
+    setTimeLeft(`${hours}:${minutes}:${seconds}`);
+  }
 
-      const totalSeconds = Math.floor(diff / 1000);
-      const hours = Math.floor(totalSeconds / 3600)
-        .toString()
-        .padStart(2, '0');
-      const minutes = Math.floor((totalSeconds % 3600) / 60)
-        .toString()
-        .padStart(2, '0');
-      const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+  updateCountdown(closesAt);
 
-      setTimeLeft(`${hours}:${minutes}:${seconds}`);
-    }
-
-    updateCountdown();
-    const id = window.setInterval(updateCountdown, 1000);
-    return () => window.clearInterval(id);
-  }, [todayDraw?.closesAt, todayDraw?.status]);
+  const id = window.setInterval(() => updateCountdown(closesAt), 1000);
+  return () => window.clearInterval(id);
+}, [todayDraw?.closesAt, todayDraw?.status]);
 
   // Live jackpot from Jupiter = 1,000,000 XPOT
   useEffect(() => {
