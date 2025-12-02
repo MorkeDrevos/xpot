@@ -9,7 +9,7 @@
 type TokenConfig = {
   SYMBOL: string;
   MINT: string;
-  REQUIRED: number; // minimum tokens required to join the draw
+  REQUIRED: number; // minimum tokens required to be eligible
 };
 
 /* ============================
@@ -17,18 +17,18 @@ type TokenConfig = {
 ============================ */
 
 // true  → use DEV token (for local / staging / testing)
-// false → use PROD token (real XPOT / PANDU live token)
+// false → use PROD token (current live token)
 export const IS_DEV_XPOT = false; // set to false at real launch
 
 /* ============================
    TOKENS
 ============================ */
 
-// 🔴 PRODUCTION TOKEN (real XPOT ticket token)
+// 🔴 PRODUCTION TOKEN (current live token used by XPOT)
 const PROD: TokenConfig = {
   SYMBOL: 'PANDU',
   MINT: '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk',
-  // Minimum balance to be eligible for the real draw
+  // Minimum balance to be eligible for the allocation event
   REQUIRED: 100_000,
 };
 
@@ -57,7 +57,7 @@ export const MIN_SOL_FOR_GAS = 0.01;
 
 /* ============================
    SWAP LINK GENERATOR (JUPITER)
-   - Used for "Buy XPOT" / "Get PANDU" button
+   - Used for "Get XPOT" / "Get PANDU" button
 ============================ */
 
 export function getXpotSwapUrl(wallet?: string) {
