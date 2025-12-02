@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import JackpotPanel from '@/components/JackpotPanel';
+import AuditLogCard from '@/components/AuditLogCard';
 import Modal from '@/components/Modal';
 
 // ─────────────────────────────────────────────
@@ -90,17 +91,44 @@ export default function AdminPage() {
   } | null>(null);
   const [winnerJustPicked, setWinnerJustPicked] = useState(false);
 
+  // Modals
+  const [showPickModal, setShowPickModal] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
+
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
+  const [reopening, setReopening] = useState(false);
+
+  // Reset + payouts
+  const [resetting, setResetting] = useState(false);
+  const [savingPayoutId, setSavingPayoutId] = useState<string | null>(null);
+
+  // ─────────────────────────────────────────────
+  // Effects: token, countdown, live jackpot
+  // ─────────────────────────────────────────────
+
+  // Load stored token on first render (browser only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
+    if (stored) {
+      setAdminToken(stored);
+      setTokenInput(stored);
+      setTokenValid(true);
+    }
+  }, []);
+
   // Live countdown to draw close (admin view)
   useEffect(() => {
+    const closesAt = todayDraw?.closesAt;
+    const status = todayDraw?.status;
+
+    if (!closesAt || status !== 'open') {
+      setTimeLeft(null);
+      return;
+    }
+
     function updateCountdown() {
-      const closesAt = todayDraw?.closesAt;
-      const status = todayDraw?.status;
-
-      if (!closesAt || status !== 'open') {
-        setTimeLeft(null);
-        return;
-      }
-
       const target = new Date(closesAt).getTime();
       const now = Date.now();
       const diff = target - now;
@@ -127,27 +155,42 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, todayDraw?.status]);
 
-  // Modal state for pick-winner
-  const [showPickModal, setShowPickModal] = useState(false);
-  const [pickError, setPickError] = useState<string | null>(null);
-
-  // Modal state for reopen-draw
-  const [showReopenModal, setShowReopenModal] = useState(false);
-  const [reopenError, setReopenError] = useState<string | null>(null);
-  const [reopening, setReopening] = useState(false);
-
-  // Load stored token on first render (browser only)
+  // Live jackpot from Jupiter = 1,000,000 XPOT
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
-    if (stored) {
-      setAdminToken(stored);
-      setTokenInput(stored);
-      setTokenValid(true);
+    async function loadLiveJackpot() {
+      try {
+        const res = await fetch('/api/xpot/price', { cache: 'no-store' });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const pricePerXpot = data.priceUsd; // must match your API response
+
+        if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
+          const jackpot = pricePerXpot * 1_000_000;
+          setLiveJackpotUsd(jackpot);
+        }
+      } catch (err) {
+        console.error('[ADMIN] live jackpot fetch failed', err);
+      }
     }
+
+    loadLiveJackpot();
+    const id = window.setInterval(loadLiveJackpot, 15_000);
+    return () => window.clearInterval(id);
   }, []);
 
-  // Small helper for admin fetches with header
+  // Whenever a valid token is set, auto-load data
+  useEffect(() => {
+    if (adminToken) {
+      void loadAll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
+
+  // ─────────────────────────────────────────────
+  // Helpers: admin fetch + handlers
+  // ─────────────────────────────────────────────
+
   async function adminFetch(path: string, options: RequestInit = {}) {
     if (!adminToken) {
       throw new Error('NO_ADMIN_TOKEN');
@@ -173,34 +216,6 @@ export default function AdminPage() {
     }
 
     return res.json();
-  }
-
-  // Re-open draw (called from modal)
-  async function handleReopenDraw() {
-    if (!todayDraw) return;
-
-    try {
-      setReopening(true);
-      setReopenError(null);
-
-      const data = await adminFetch('/api/admin/draw/reopen', {
-        method: 'POST',
-      });
-
-      if (!data.ok) {
-        throw new Error(data.error ?? 'Unknown error');
-      }
-
-      setShowReopenModal(false);
-      await loadAll();
-    } catch (err) {
-      console.error('[ADMIN] reopen-draw error:', err);
-      setReopenError(
-        err instanceof Error ? err.message : 'Failed to re-open draw',
-      );
-    } finally {
-      setReopening(false);
-    }
   }
 
   // Verify token against /api/admin/health
@@ -319,60 +334,64 @@ export default function AdminPage() {
     }
   }
 
-  // Whenever a valid token is set, auto-load data
-  useEffect(() => {
-    if (adminToken) {
-      void loadAll();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken]);
+  // Re-open draw (called from modal)
+  async function handleReopenDraw() {
+    if (!todayDraw) return;
 
-  // Live jackpot from Jupiter = 1,000,000 XPOT
-  useEffect(() => {
-    async function loadLiveJackpot() {
-      try {
-        const res = await fetch('/api/xpot/price', { cache: 'no-store' });
-        if (!res.ok) return;
+    try {
+      setReopening(true);
+      setReopenError(null);
 
-        const data = await res.json();
-        const pricePerXpot = data.priceUsd;
+      const data = await adminFetch('/api/admin/draw/reopen', {
+        method: 'POST',
+      });
 
-        if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
-          const jackpot = pricePerXpot * 1_000_000;
-          setLiveJackpotUsd(jackpot);
-        }
-      } catch (err) {
-        console.error('[ADMIN] live jackpot fetch failed', err);
+      if (!data.ok) {
+        throw new Error(data.error ?? 'Unknown error');
       }
+
+      setShowReopenModal(false);
+      await loadAll();
+    } catch (err) {
+      console.error('[ADMIN] reopen-draw error:', err);
+      setReopenError(
+        err instanceof Error ? err.message : 'Failed to re-open draw',
+      );
+    } finally {
+      setReopening(false);
+    }
+  }
+
+  // DEV helper: reset today's draw completely
+  async function handleResetTodayDraw() {
+    if (!todayDraw) return;
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        'Reset today’s draw in the admin DB? This is a DEV helper only.',
+      )
+    ) {
+      return;
     }
 
-    loadLiveJackpot();
-    const id = window.setInterval(loadLiveJackpot, 15000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  // Derived: can we pick winner right now?
-  const canPickWinner =
-    !!todayDraw &&
-    adminToken &&
-    todayDraw.status === 'open' &&
-    todayDraw.ticketsCount > 0 &&
-    !loadingToday &&
-    !pickingWinner;
-
-  const isDrawLocked = !!todayDraw && todayDraw.status !== 'open';
-
-  const todayWinner =
-    recentWinners.find(w => {
-      const d = new Date(w.date);
-      const now = new Date();
-
-      return (
-        d.getFullYear() === now.getFullYear() &&
-        d.getMonth() === now.getMonth() &&
-        d.getDate() === now.getDate()
+    try {
+      setResetting(true);
+      const data = await adminFetch('/api/admin/draw/reset', {
+        method: 'POST',
+      });
+      if (!data.ok) {
+        throw new Error(data.error ?? 'Unknown error');
+      }
+      await loadAll();
+    } catch (err) {
+      console.error('[ADMIN] reset-draw error:', err);
+      setTodayError(
+        err instanceof Error ? err.message : 'Failed to reset today’s draw',
       );
-    }) ?? null;
+    } finally {
+      setResetting(false);
+    }
+  }
 
   // Real pick-winner handler (used by modal confirm)
   async function handlePickWinner() {
@@ -399,7 +418,6 @@ export default function AdminPage() {
       setTimeout(() => setWinnerJustPicked(false), 1800);
 
       setShowPickModal(false);
-
       await loadAll();
     } catch (err) {
       console.error('[ADMIN] pick-winner error:', err);
@@ -410,6 +428,68 @@ export default function AdminPage() {
       setPickingWinner(false);
     }
   }
+
+  // Payout control: mark winner paid + optional tx link
+  async function handleMarkPayout(winner: AdminWinner) {
+    const txUrl =
+      typeof window !== 'undefined'
+        ? window.prompt(
+            'Paste payout tx URL (optional). Leave blank if not needed.',
+            winner.txUrl ?? '',
+          )
+        : winner.txUrl ?? '';
+
+    try {
+      setSavingPayoutId(winner.drawId);
+      const data = await adminFetch('/api/admin/winners/mark-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          drawId: winner.drawId,
+          txUrl: txUrl || null,
+        }),
+      });
+
+      if (!data.ok) {
+        throw new Error(data.error ?? 'Failed to save payout');
+      }
+
+      await loadAll();
+    } catch (err) {
+      console.error('[ADMIN] mark-paid error:', err);
+      setWinnersError(
+        err instanceof Error ? err.message : 'Failed to save payout',
+      );
+    } finally {
+      setSavingPayoutId(null);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Derived values
+  // ─────────────────────────────────────────────
+
+  const canPickWinner =
+    !!todayDraw &&
+    adminToken &&
+    todayDraw.status === 'open' &&
+    todayDraw.ticketsCount > 0 &&
+    !loadingToday &&
+    !pickingWinner;
+
+  const isDrawLocked = !!todayDraw && todayDraw.status !== 'open';
+
+  const todayWinner =
+    recentWinners.find(w => {
+      const d = new Date(w.date);
+      const now = new Date();
+
+      return (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate()
+      );
+    }) ?? null;
 
   // ─────────────────────────────────────────────
   // Render
@@ -493,7 +573,7 @@ export default function AdminPage() {
 
             {/* Today’s draw */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-              <header className="flex items-center justify-between gap-3">
+              <header className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-100">
                     Today&apos;s draw
@@ -504,20 +584,33 @@ export default function AdminPage() {
                   </p>
                 </div>
 
-                {todayDraw?.status === 'open' && timeLeft && (
-                  <div className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">
-                    <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                      Closes in
-                    </span>
-                    <span className="font-mono">{timeLeft}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {todayDraw?.status === 'open' && timeLeft && (
+                    <div className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">
+                      <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                        Closes in
+                      </span>
+                      <span className="font-mono">{timeLeft}</span>
+                    </div>
+                  )}
 
-                {todayDraw?.status !== 'open' && todayDraw && (
-                  <div className="rounded-full border border-slate-700/60 bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300">
-                    Draw locked
-                  </div>
-                )}
+                  {todayDraw?.status !== 'open' && todayDraw && (
+                    <div className="rounded-full border border-slate-700/60 bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300">
+                      Draw locked
+                    </div>
+                  )}
+
+                  {adminToken && todayDraw && (
+                    <button
+                      type="button"
+                      onClick={handleResetTodayDraw}
+                      disabled={resetting}
+                      className="rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1 text-[10px] font-semibold text-red-200 hover:border-red-400 hover:bg-red-500/20 disabled:opacity-60"
+                    >
+                      {resetting ? 'Resetting…' : 'Reset today (dev)'}
+                    </button>
+                  )}
+                </div>
               </header>
 
               {!adminToken && (
@@ -566,11 +659,9 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400">
-                        Today&apos;s jackpot
-                      </p>
+                      <p className="text-slate-400">Tickets in pool</p>
                       <p className="mt-1 font-semibold">
-                        {formatUsd(liveJackpotUsd ?? todayDraw.jackpotUsd)}
+                        {todayDraw.ticketsCount.toLocaleString()}
                       </p>
                     </div>
                     <div>
@@ -580,9 +671,11 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Tickets in pool</p>
+                      <p className="text-slate-400">
+                        Today&apos;s jackpot (live)
+                      </p>
                       <p className="mt-1 font-semibold">
-                        {todayDraw.ticketsCount.toLocaleString()}
+                        {formatUsd(liveJackpotUsd ?? todayDraw.jackpotUsd)}
                       </p>
                     </div>
                   </div>
@@ -920,7 +1013,7 @@ export default function AdminPage() {
                         key={w.drawId}
                         className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <div>
                             <p className="font-mono text-xs">
                               {w.ticketCode}
@@ -941,6 +1034,7 @@ export default function AdminPage() {
                             </p>
                           </div>
                         </div>
+
                         {w.txUrl && (
                           <a
                             href={w.txUrl}
@@ -950,6 +1044,19 @@ export default function AdminPage() {
                           >
                             View transaction
                           </a>
+                        )}
+
+                        {!w.paidOut && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkPayout(w)}
+                            disabled={savingPayoutId === w.drawId}
+                            className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {savingPayoutId === w.drawId
+                              ? 'Saving payout…'
+                              : 'Mark as paid + tx link'}
+                          </button>
                         )}
                       </div>
                     ))}
