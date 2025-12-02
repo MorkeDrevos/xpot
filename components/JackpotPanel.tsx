@@ -4,11 +4,11 @@
 import { useEffect, useState } from 'react';
 
 // Helpers
-function formatUsd(amount: number | null | undefined) {
-  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0.00';
+function formatUsdPrice(amount: number | null | undefined) {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return '0.000000';
   return amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 8,
+    maximumFractionDigits: 8,
   });
 }
 
