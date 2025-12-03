@@ -10,7 +10,7 @@ type TokenConfig = {
 export const IS_DEV_XPOT = false;
 
 /* POOL SIZE (CHANGE HERE ONLY) */
-export const XPOT_POOL_SIZE = 100_000; // <--- your pool size lives here
+export const XPOT_POOL_SIZE = 1_500_000; // <--- your pool size lives here
 
 /* TOKENS */
 
