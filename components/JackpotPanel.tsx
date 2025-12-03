@@ -7,7 +7,7 @@ const JACKPOT_XPOT = 1_000_000;
 
 // TEMP: you’re using PANDU for now – later swap to real XPOT mint
 const XPOT_MINT =
-  '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
+  'So11111111111111111111111111111111111111112';
 
 function formatUsd(value: number) {
   if (!Number.isFinite(value)) return '$0';
