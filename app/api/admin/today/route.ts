@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Compute a "closing time" for the countdown – here: end of the same UTC day
-    const closesAtDate = new Date(draw.drawDate);
+    const closesAt = new Date(todayStr + 'T23:59:59.999Z');
     closesAtDate.setUTCHours(23, 59, 59, 999);
 
     const today = {
