@@ -169,7 +169,7 @@ async function ensurePastDraw(daysAgo: number, label: string, amountUsd: number)
     });
   }
 
-  await ensurePastDraw(1, 'Main jackpot', 5_000_000);
+    await ensurePastDraw(1, 'Main jackpot', 5_000_000);
   await ensurePastDraw(2, 'Bonus jackpot', 1_000_000);
 
   return NextResponse.json({
