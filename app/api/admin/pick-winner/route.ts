@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
           gte: new Date(`${todayStr}T00:00:00.000Z`),
           lt:  new Date(`${todayStr}T23:59:59.999Z`),
         },
+        isClosed: false,
       },
       include: {
         tickets: true,
@@ -30,79 +31,60 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // If winner already set, don’t re-roll
-    if (draw.winnerTicketId) {
-      return NextResponse.json(
-        { ok: false, error: 'WINNER_ALREADY_PICKED' },
-        { status: 400 },
-      );
-    }
-
-    // Only tickets that are actually in the draw
-    const eligibleTickets = draw.tickets.filter(
-      (t) => t.status === 'IN_DRAW',
-    );
-
-    if (eligibleTickets.length === 0) {
+    if (!draw.tickets.length) {
       return NextResponse.json(
         { ok: false, error: 'NO_TICKETS_TODAY' },
         { status: 400 },
       );
     }
 
-    // Pick random ticket
-    const winnerTicket =
-      eligibleTickets[Math.floor(Math.random() * eligibleTickets.length)];
-
-    // Create reward row for the main jackpot
-    const reward = await prisma.reward.create({
-      data: {
-        // Adjust enum values if needed – this assumes RewardKind { MAIN, BONUS }
-        kind: 'MAIN',
-        label: 'Main jackpot',
-        amountUsd: draw.jackpotUsd ?? 0,
-        draw: { connect: { id: draw.id } },
-        ticket: { connect: { id: winnerTicket.id } },
-        wallet: { connect: { id: winnerTicket.walletId } },
-        // isPaidOut defaults to false
-      },
-      include: {
-        ticket: {
-          include: {
-            wallet: true,
-            draw: true,
-          },
-        },
-      },
-    });
+    // Pick random ticket from today's draw
+    const idx = Math.floor(Math.random() * draw.tickets.length);
+    const ticket = draw.tickets[idx];
 
     // Close draw + store winner ticket
     await prisma.draw.update({
       where: { id: draw.id },
       data: {
         isClosed: true,
-        winnerTicketId: winnerTicket.id,
         resolvedAt: new Date(),
+        winnerTicketId: ticket.id,
       },
     });
 
-    const winnerPayload = {
+    // Create reward record (no kind/label in DB – purely view logic)
+    const reward = await prisma.reward.create({
+      data: {
+        amountUsd: draw.jackpotUsd ?? 0,
+        draw: { connect: { id: draw.id } },
+        ticket: { connect: { id: ticket.id } },
+        wallet: { connect: { id: ticket.walletId } },
+      },
+      include: {
+        ticket: true,
+        wallet: true,
+        draw: true,
+      },
+    });
+
+    const winner = {
       id: reward.id,
-      drawId: reward.ticket.drawId,
-      date: reward.ticket.draw.drawDate.toISOString(),
+      drawId: draw.id,
+      date: draw.drawDate.toISOString(),
       ticketCode: reward.ticket.code,
-      walletAddress: reward.ticket.wallet.address,
-      jackpotUsd: reward.ticket.draw.jackpotUsd ?? 0,
-      payoutUsd: reward.amountUsd ?? reward.ticket.draw.jackpotUsd ?? 0,
+      walletAddress: reward.wallet.address,
+      jackpotUsd: draw.jackpotUsd ?? 0,
+      payoutUsd: reward.amountUsd,
       isPaidOut: reward.isPaidOut,
       txUrl: reward.txUrl ?? null,
-      kind: 'main',
-      label: reward.label ?? 'Main jackpot',
+      // view-only flags for the admin UI
+      kind: 'main' as const,
+      label: 'Main jackpot',
     };
 
     return NextResponse.json({
       ok: true,
-      winner: winnerPayload,
+      winner,
     });
   } catch (err) {
     console.error('[ADMIN] /pick-winner error', err);
