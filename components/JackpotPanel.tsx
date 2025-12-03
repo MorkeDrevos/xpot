@@ -64,44 +64,41 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
 
   // Fast-updating Jupiter price (5s interval)
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+  let timer: ReturnType<typeof setInterval>;
 
-    async function fetchPrice() {
-      try {
-        const res = await fetch(
-          `https://lite-api.jup.ag/price/v3?ids=${XPOT_MINT}`,
-        );
+  async function fetchPrice() {
+    try {
+      const res = await fetch(
+        `https://lite-api.jup.ag/price/v3?ids=${XPOT_MINT}`,
+      );
 
-        if (!res.ok) throw new Error('Jupiter price fetch failed');
+      if (!res.ok) throw new Error('Jupiter price fetch failed');
 
-        const json = (await res.json()) as Record<
-          string,
-          { usdPrice: number; priceChange24h?: number }
-        >;
+      const json = (await res.json()) as Record<
+        string,
+        { usdPrice: number; priceChange24h?: number }
+      >;
 
-        const token = json[XPOT_MINT];
-        const price = token?.usdPrice;
+      const token = json[XPOT_MINT];
+      const price = token?.usdPrice;
 
-        if (typeof price === 'number') {
-          setPriceUsd(price);
-        } else {
-          console.warn(
-            'No usdPrice for token from Jupiter',
-            json,
-          );
-        }
-      } catch (e) {
-        console.error('Price fetch error', e);
-      } finally {
-        setIsLoading(false);
+      if (typeof price === 'number') {
+        setPriceUsd(price);
+      } else {
+        console.warn('No usdPrice for token from Jupiter', json);
       }
+    } catch (e) {
+      console.error('Price fetch error', e);
+    } finally {
+      setIsLoading(false);
     }
+  }
 
-    fetchPrice();
-    timer = setInterval(fetchPrice, 5_000);
+  fetchPrice();
+  timer = setInterval(fetchPrice, 5_000);
 
-    return () => clearInterval(timer);
-  }, []);
+  return () => clearInterval(timer);
+}, []);
 
   const jackpotUsd =
     priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
