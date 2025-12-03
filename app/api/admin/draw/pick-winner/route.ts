@@ -9,22 +9,10 @@ export async function POST(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  // Find today's draw by date
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfDay = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate() + 1,
-  );
-
+  // Use the latest OPEN draw as "Today’s XPOT"
   const draw = await prisma.draw.findFirst({
-    where: {
-      drawDate: {
-        gte: startOfDay,
-        lt: endOfDay,
-      },
-    },
+    where: { isClosed: false },
+    orderBy: { drawDate: 'desc' },
     include: {
       tickets: {
         include: { wallet: true },
@@ -50,15 +38,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Random ticket as winner
+  // Random entry as XPOT selection
   const winnerTicket =
     draw.tickets[Math.floor(Math.random() * draw.tickets.length)];
   const jackpotUsd = draw.jackpotUsd ?? 0;
 
   // Update everything in one transaction:
-  // - mark winner as WON
+  // - mark selected ticket as WON
   // - mark other tickets as NOT_PICKED
-  // - close today's draw & set winnerTicketId
+  // - close draw & set winnerTicketId
   // IMPORTANT: we do NOT touch paidAt / payoutTx here
   await prisma.$transaction([
     prisma.ticket.update({
@@ -79,7 +67,6 @@ export async function POST(req: NextRequest) {
         resolvedAt: new Date(),
         winnerTicketId: winnerTicket.id,
         jackpotUsd,
-        // DO NOT reset paidAt / payoutTx here
       },
     }),
   ]);
