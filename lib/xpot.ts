@@ -9,8 +9,8 @@ type TokenConfig = {
 /* ENV MODE */
 
 // true  → use DEV token (for local / staging / testing)
-// false → use PROD token (real XPOT / PANDU live token)
-export const IS_DEV_XPOT = false; // set to false at real launch
+// false → use PROD token (real XPOT live token)
+export const IS_DEV_XPOT = false;
 
 /* TOKENS */
 
@@ -36,6 +36,9 @@ export const TOKEN: TokenConfig = IS_DEV_XPOT ? DEV : PROD;
 export const REQUIRED_XPOT = TOKEN.REQUIRED;
 export const TOKEN_SYMBOL = TOKEN.SYMBOL;
 export const TOKEN_MINT = TOKEN.MINT;
+
+// XPOT jackpot pool size (how many XPOT are in Today’s XPOT pool)
+export const XPOT_POOL_SIZE = 1_000_000;
 
 // Simple SOL gas safety check
 export const MIN_SOL_FOR_GAS = 0.01;
