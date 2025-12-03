@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
+  // We fetch DRAWS that have a winner ticket set
   const draws = await prisma.draw.findMany({
     where: {
       winnerTicketId: {
@@ -33,7 +34,6 @@ export async function GET(req: NextRequest) {
     ticketCode: d.winnerTicket?.code ?? '',
     walletAddress: d.winnerTicket?.wallet?.address ?? '',
     jackpotUsd: d.jackpotUsd ?? 0,
-    // If you later store a separate payoutUsd, map it here.
     payoutUsd: d.jackpotUsd ?? 0,
     isPaidOut: Boolean(d.paidAt),
     txUrl: d.payoutTx ?? null,
