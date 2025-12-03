@@ -9,13 +9,17 @@ export async function GET(req: NextRequest) {
 
   try {
     // Today as YYYY-MM-DD string
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+
+    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
+    const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
 
     const draw = await prisma.draw.findFirst({
       where: {
         drawDate: {
-          gte: new Date(`${todayStr}T00:00:00.000Z`),
-          lt:  new Date(`${todayStr}T23:59:59.999Z`),
+          gte: startOfDay,
+          lt: endOfDay,
         },
       },
       include: {
@@ -30,28 +34,18 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Europe/Madrid close time at 22:00 local time
-const closesAt = new Date(
-  new Date().toLocaleString("en-US", { timeZone: "Europe/Madrid" })
-);
-
-// Force 22:00 Madrid time today
-closesAt.setHours(22, 0, 0, 0);
-
-// If it's already past 22:00 today, use tomorrow
-if (new Date() > closesAt) {
-  closesAt.setDate(closesAt.getDate() + 1);
-}
-    closesAtDate.setUTCHours(23, 59, 59, 999);
+    // Close time: 22:00 Europe/Madrid (~ 21:00 UTC) on the draw's date
+    const closesAt = new Date(draw.drawDate);
+    closesAt.setUTCHours(21, 0, 0, 0); // 22:00 Madrid in winter (UTC+1)
 
     const today = {
       id: draw.id,
       date: draw.drawDate.toISOString(),
-      status: draw.isClosed ? 'closed' : 'open', // you can later add 'completed'
+      status: draw.isClosed ? 'closed' : 'open', // later you can add 'completed'
       jackpotUsd: draw.jackpotUsd ?? 0,
-      rolloverUsd: 0, // placeholder if you later add a rollover field
+      rolloverUsd: 0, // placeholder for future rollover field
       ticketsCount: draw.tickets.length,
-      closesAt: closesAtDate.toISOString(),
+      closesAt: closesAt.toISOString(),
     };
 
     return NextResponse.json({
