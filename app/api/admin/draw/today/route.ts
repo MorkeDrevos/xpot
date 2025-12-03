@@ -11,8 +11,7 @@ function isAuthorized(req: NextRequest): boolean {
   return true;
 }
 
-// For dev: treat "today" as the **latest draw** in DB.
-// (That guarantees we hit your seeded dev-draw-* rows.)
+// Treat "Today’s XPOT" as the latest draw in DB
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json(
@@ -27,7 +26,6 @@ export async function GET(req: NextRequest) {
   });
 
   if (!draw) {
-    // No draws at all yet – return an "empty" snapshot
     const today = new Date();
     return NextResponse.json({
       ok: true,
@@ -60,7 +58,7 @@ export async function GET(req: NextRequest) {
       date: draw.drawDate.toISOString().slice(0, 10),
       status, // "open" | "closed" | "completed"
       jackpotUsd: Number(draw.jackpotUsd ?? 10_000),
-      rolloverUsd: 0, // you don't have this column, so always 0 for now
+      rolloverUsd: 0,
       ticketsCount,
     },
   });
