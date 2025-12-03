@@ -1,3 +1,5 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -41,6 +43,7 @@ model Wallet {
 
   balances   XpUserBalance[]
   tickets    Ticket[]
+  rewards    Reward[]
 }
 
 model XpUserBalance {
@@ -53,27 +56,26 @@ model XpUserBalance {
 
 model Draw {
   id             String   @id @default(cuid())
-
-  // One main draw per calendar day
-  drawDate       DateTime  @unique
-
-  // Status flags
-  isClosed       Boolean   @default(false)
+  drawDate       DateTime @unique          // one main draw per day
+  isClosed       Boolean  @default(false)
   resolvedAt     DateTime?
 
-  // Jackpot size in USD for this draw
-  jackpotUsd     Int?      // or Float? later if you want decimals
+  // Jackpot size in USD for this draw (main jackpot)
+  jackpotUsd     Int?
 
-  // Payout info for the winner
+  // Payout info for the main winner
   paidAt         DateTime?
   payoutTx       String?
 
   // All tickets in this draw
-  tickets        Ticket[]  @relation("DrawTickets")
+  tickets        Ticket[] @relation("DrawTickets")
 
   // Winning ticket (when resolved)
-  winnerTicketId String?   @unique
-  winnerTicket   Ticket?   @relation("DrawWinner", fields: [winnerTicketId], references: [id])
+  winnerTicketId String?  @unique
+  winnerTicket   Ticket?  @relation("DrawWinner", fields: [winnerTicketId], references: [id])
+
+  // Extra hype / bonus jackpots linked to this draw
+  rewards        Reward[]
 }
 
 model Ticket {
@@ -96,6 +98,30 @@ model Ticket {
   walletId  String
   wallet    Wallet        @relation(fields: [walletId], references: [id])
 
-  // If this ticket is the *winner* of a draw
+  // If this ticket is the main winner of a draw
   winnerOf  Draw?         @relation("DrawWinner")
+
+  // Any bonus jackpots this ticket has won
+  rewards   Reward[]
+}
+
+// Bonus / hype jackpots attached to a daily draw
+model Reward {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  drawId    String
+  draw      Draw     @relation(fields: [drawId], references: [id])
+
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+
+  // e.g. "Bonus jackpot", "Flash pot", "Stream giveaway"
+  label     String
+
+  // Jackpot size in USD for this bonus (store as whole dollars for now)
+  amountUsd Int
+
+  isPaidOut Boolean  @default(false)
+  payoutTx  String?
 }
