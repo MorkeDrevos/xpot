@@ -22,8 +22,8 @@ body {
 }
 
 body {
-  background-color: #000;
-  color: #e5e7eb;
+  background-color: #05060a; /* slightly warmer than pure black */
+  color: #f3f4f6; /* slightly warmer, softer text */
 }
 
 /* ────────────────────────────────────────────────
@@ -67,7 +67,7 @@ body {
   transform: translateY(-0.5px) rotate(-45deg);
 }
 
-/* Hover = tiny lift & glow */
+/* Hover = tiny lift and glow */
 .x-verified-badge:hover {
   transform: translateY(-0.5px);
   filter: brightness(1.04);
@@ -236,6 +236,42 @@ body {
 }
 
 /* ────────────────────────────────────────────────
+   XPOT Admin header
+   ──────────────────────────────────────────────── */
+
+.admin-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #fbbf24; /* warm muted gold */
+  opacity: 0.9;
+}
+
+.admin-title {
+  margin-top: 0.35rem;
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #f5f3ef; /* warm white */
+}
+
+@media (min-width: 1024px) {
+  .admin-title {
+    font-size: 2.25rem;
+  }
+}
+
+.admin-subtitle {
+  margin-top: 0.45rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #9ca3af; /* warm neutral grey */
+  max-width: 40rem;
+}
+
+/* ────────────────────────────────────────────────
    Legal pages (unchanged)
    ──────────────────────────────────────────────── */
 
@@ -343,7 +379,7 @@ body {
   text-decoration-thickness: 2px;
 }
 
-/* XPOT login modal animations & micro-interactions */
+/* XPOT login modal animations and micro-interactions */
 
 @keyframes xpot-fade-in {
   0% {
