@@ -8,12 +8,16 @@ export async function GET(req: NextRequest) {
   if (auth) return auth;
 
   try {
-    // We use Draw as the source of truth for winners
-    const draws = await prisma.draw.findMany({
+    // Main daily draw winners
+    const mainDraws = await prisma.draw.findMany({
       where: {
-        winnerTicketId: { not: null },
+        winnerTicketId: {
+          not: null,
+        },
       },
-      orderBy: { drawDate: 'desc' },
+      orderBy: {
+        drawDate: 'desc',
+      },
       take: 20,
       include: {
         winnerTicket: {
@@ -24,19 +28,54 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const winners = draws
-      .filter(d => d.winnerTicketId && d.winnerTicket)
-      .map(d => ({
-        id: d.id,
-        drawId: d.id,
-        date: d.drawDate.toISOString(),
-        ticketCode: d.winnerTicket!.code,
-        walletAddress: d.winnerTicket!.wallet.address,
-        jackpotUsd: d.jackpotUsd ?? 0,
-        payoutUsd: d.jackpotUsd ?? 0, // if you later store separate payout, adjust here
-        isPaidOut: Boolean(d.paidAt),
-        txUrl: d.payoutTx ?? null,
-      }));
+    // Bonus / hype jackpots
+    const bonusRewards = await prisma.reward.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 40,
+      include: {
+        ticket: {
+          include: {
+            wallet: true,
+          },
+        },
+        draw: true,
+      },
+    });
+
+    const mainWinners = mainDraws.map(draw => ({
+      id: draw.id,
+      kind: 'main' as const,
+      label: 'Main jackpot',
+      drawId: draw.id,
+      date: draw.drawDate.toISOString(),
+      ticketCode: draw.winnerTicket?.code ?? '',
+      walletAddress: draw.winnerTicket?.wallet?.address ?? '',
+      jackpotUsd: draw.jackpotUsd ?? 0,
+      payoutUsd: draw.jackpotUsd ?? 0,
+      isPaidOut: Boolean(draw.paidAt),
+      txUrl: draw.payoutTx ?? null,
+    }));
+
+    const bonusWinners = bonusRewards.map(reward => ({
+      id: reward.id,
+      kind: 'bonus' as const,
+      label: reward.label,
+      drawId: reward.drawId,
+      date: reward.createdAt.toISOString(),
+      ticketCode: reward.ticket.code,
+      walletAddress: reward.ticket.wallet.address,
+      jackpotUsd: reward.amountUsd,
+      payoutUsd: reward.amountUsd,
+      isPaidOut: reward.isPaidOut,
+      txUrl: reward.payoutTx ?? null,
+    }));
+
+    // Merge & sort newest first
+    const winners = [...mainWinners, ...bonusWinners].sort((a, b) =>
+      b.date.localeCompare(a.date),
+    ).slice(0, 30);
 
     return NextResponse.json({
       ok: true,
