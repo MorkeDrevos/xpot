@@ -9,6 +9,8 @@ const JACKPOT_XPOT = XPOT_POOL_SIZE;
 type JackpotPanelProps = {
   /** When true, shows "Draw locked" pill in the header */
   isLocked?: boolean;
+  /** Optional callback so the admin page can reuse the same jackpot USD value */
+  onJackpotUsdChange?: (value: number | null) => void;
 };
 
 function formatUsd(value: number | null) {
@@ -37,7 +39,10 @@ const MILESTONES = [
   10_000_000,
 ];
 
-export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
+export default function JackpotPanel({
+  isLocked,
+  onJackpotUsdChange,
+}: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hadError, setHadError] = useState(false);
@@ -111,9 +116,12 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
   const jackpotUsd =
     priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
 
-  // Track pumps and "highest today"
+  // Track pumps and "highest today" + notify parent
   useEffect(() => {
-    if (jackpotUsd == null) return;
+    if (jackpotUsd == null) {
+      onJackpotUsdChange?.(null);
+      return;
+    }
 
     // Pump flash
     if (
@@ -134,7 +142,10 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
         return next;
       });
     }
-  }, [jackpotUsd, todayKey]);
+
+    // Let admin page reuse the same value
+    onJackpotUsdChange?.(jackpotUsd);
+  }, [jackpotUsd, todayKey, onJackpotUsdChange]);
 
   // Milestones
   const reachedMilestone =
