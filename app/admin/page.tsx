@@ -129,6 +129,9 @@ export default function AdminPage() {
   // Shared live jackpot USD coming from JackpotPanel
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
+  // Countdown timer state
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
   // ── Load admin token from localStorage ────────────────────────
 
   useEffect(() => {
@@ -143,8 +146,7 @@ export default function AdminPage() {
   // ── Fetch helpers with auth header ────────────────────────────
 
   async function authedFetch(input: string, init?: RequestInit) {
-    if (!adminToken) throw new Error('Admin token missing');
-
+    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
     const res = await fetch(input, {
       ...init,
       headers: {
@@ -153,33 +155,14 @@ export default function AdminPage() {
         Authorization: `Bearer ${adminToken}`,
       },
     });
-
-    const contentType = res.headers.get('content-type') ?? '';
-
     if (!res.ok) {
-      // Keep errors short and friendly – no HTML dumps
-      let message = `Request failed (${res.status})`;
-
-      if (contentType.includes('application/json')) {
-        try {
-          const json: any = await res.json();
-          if (json?.error || json?.message) {
-            message = json.error || json.message;
-          }
-        } catch {
-          // ignore JSON parse errors, keep generic message
-        }
-      } else if (res.status === 404) {
-        message = 'No data available yet.';
-      }
-
-      throw new Error(message);
+      const body = await res.text();
+      throw new Error(
+        `Request failed (${res.status}): ${
+          body || res.statusText || 'Unknown error'
+        }`,
+      );
     }
-
-    if (!contentType.includes('application/json')) {
-      throw new Error('Unexpected response from server.');
-    }
-
     return res.json();
   }
 
@@ -202,7 +185,7 @@ export default function AdminPage() {
       } catch (err: any) {
         console.error('[ADMIN] /today error', err);
         if (!cancelled) {
-          setTodayDrawError(err.message || 'Failed to load today.');
+          setTodayDrawError(err.message || 'Failed to load today');
         }
       } finally {
         if (!cancelled) setTodayLoading(false);
@@ -219,7 +202,7 @@ export default function AdminPage() {
       } catch (err: any) {
         console.error('[ADMIN] /tickets error', err);
         if (!cancelled) {
-          setTicketsError(err.message || 'Failed to load entries.');
+          setTicketsError(err.message || 'Failed to load tickets');
         }
       } finally {
         if (!cancelled) setTicketsLoading(false);
@@ -236,7 +219,7 @@ export default function AdminPage() {
       } catch (err: any) {
         console.error('[ADMIN] /winners error', err);
         if (!cancelled) {
-          setWinnersError(err.message || 'Failed to load results.');
+          setWinnersError(err.message || 'Failed to load winners');
         }
       } finally {
         if (!cancelled) setWinnersLoading(false);
@@ -249,6 +232,43 @@ export default function AdminPage() {
       cancelled = true;
     };
   }, [adminToken]);
+
+  // ── Countdown timer based on todayDraw.closesAt ───────────────
+
+  useEffect(() => {
+    if (!todayDraw || !todayDraw.closesAt || todayDraw.status !== 'open') {
+      setTimeLeft(null);
+      return;
+    }
+
+    const target = new Date(todayDraw.closesAt).getTime();
+
+    function update() {
+      const now = Date.now();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setTimeLeft('00:00:00');
+        return;
+      }
+
+      const totalSeconds = Math.floor(diff / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      const h = hours.toString().padStart(2, '0');
+      const m = minutes.toString().padStart(2, '0');
+      const s = seconds.toString().padStart(2, '0');
+
+      setTimeLeft(`${h}:${m}:${s}`);
+    }
+
+    update();
+    const timer = setInterval(update, 1_000);
+
+    return () => clearInterval(timer);
+  }, [todayDraw?.closesAt, todayDraw?.status]);
 
   // ── Admin token handling ──────────────────────────────────────
 
@@ -405,7 +425,10 @@ export default function AdminPage() {
                   Rollover amount
                 </p>
                 <div className="mt-1">
-                  <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
+                  <UsdPill
+                    amount={todayDraw?.rolloverUsd ?? 0}
+                    size="sm"
+                  />
                 </div>
               </div>
 
@@ -421,19 +444,35 @@ export default function AdminPage() {
 
             <div className="mt-4 rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
               {todayDrawError && (
-  <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-amber-300">
-    Draw API not available yet.
-  </p>
-)}
-              {!todayDrawError && !todayLoading && todayDraw && todayDraw.closesAt && (
-                <p>
-                  This round closes at{' '}
-                  <span className="font-mono text-slate-300">
-                    {formatDateTime(todayDraw.closesAt)}
-                  </span>
-                  .
-                </p>
+                <p className="text-amber-300">{todayDrawError}</p>
               )}
+
+              {!todayDrawError &&
+                !todayLoading &&
+                todayDraw &&
+                todayDraw.closesAt &&
+                todayDraw.status === 'open' &&
+                timeLeft && (
+                  <p>
+                    Draw closes in{' '}
+                    <span className="font-mono text-emerald-300">
+                      {timeLeft}
+                    </span>{' '}
+                    at{' '}
+                    <span className="font-mono text-slate-300">
+                      {formatDateTime(todayDraw.closesAt)}
+                    </span>
+                    .
+                  </p>
+                )}
+
+              {!todayDrawError &&
+                !todayLoading &&
+                todayDraw &&
+                todayDraw.status !== 'open' && (
+                  <p>This XPOT round is closed.</p>
+                )}
+
               {!todayDrawError && !todayLoading && !todayDraw && (
                 <p>No XPOT draw scheduled for today yet.</p>
               )}
@@ -455,16 +494,14 @@ export default function AdminPage() {
               )}
 
               {ticketsError && (
-  <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-amber-300">
-    Tickets API not available yet.
-  </p>
-)}
+                <p className="text-xs text-amber-300">{ticketsError}</p>
+              )}
 
               {!ticketsLoading && !ticketsError && tickets.length === 0 && (
-  <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
-    No entries yet for today’s XPOT.
-  </p>
-)}
+                <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
+                  No entries yet for today&apos;s XPOT.
+                </p>
+              )}
 
               {!ticketsLoading && !ticketsError && tickets.length > 0 && (
                 <div className="mt-2 space-y-2">
