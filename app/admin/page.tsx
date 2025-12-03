@@ -527,7 +527,7 @@ export default function AdminPage() {
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              XPOT admin
+              XPOT admin - TESTING
             </p>
             <p className="text-sm text-slate-300">
               Internal control room for today&apos;s draw, jackpot state and
