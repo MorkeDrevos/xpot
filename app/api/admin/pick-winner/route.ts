@@ -60,21 +60,22 @@ const reward = await prisma.reward.create({
 });
 
     return NextResponse.json({
-      ok: true,
-      winner: {
-        id: reward.id,
-        drawId: draw.id,
-        date: draw.drawDate.toISOString(),
-        ticketCode: ticket.code,
-        walletAddress: reward.ticket.wallet.address,
-        jackpotUsd: draw.jackpotUsd ?? 0,
-        payoutUsd: reward.amountUsd,
-        isPaidOut: reward.isPaidOut,
-        txUrl: reward.txUrl ?? null,
-        kind: 'main',           // UI only
-        label: 'Main jackpot',  // UI only
-      },
-    });
+  ok: true,
+  winner: {
+    id: reward.id,
+    drawId: draw.id,
+    date: draw.drawDate.toISOString(),
+    ticketCode: ticket.code,
+    walletAddress: ticket.wallet.address,
+    jackpotUsd: draw.jackpotUsd ?? 0,
+    payoutUsd: reward.amountUsd,
+    isPaidOut: reward.isPaidOut,
+    txUrl: null,
+    kind: 'main',
+    label: 'Main jackpot',
+  },
+});
+    
   } catch (err) {
     console.error('[ADMIN] pick-winner failed:', err);
     return NextResponse.json({ ok: false, error: 'FAILED_TO_PICK_WINNER' }, { status: 500 });
