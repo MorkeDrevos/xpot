@@ -6,16 +6,22 @@ import { TOKEN_MINT } from '@/lib/xpot';
 
 const JACKPOT_XPOT = 1_000_000;
 
-function formatUsd(value: number) {
-  if (!Number.isFinite(value)) return '$0';
+type JackpotPanelProps = {
+  /** When true, shows "Draw locked" pill in the header */
+  isLocked?: boolean;
+};
+
+function formatUsd(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return '$0.00';
   return value.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
-// Simple milestone ladder for highlights
+// Milestone ladder for highlights (USD)
 const MILESTONES = [
   100,
   500,
@@ -28,19 +34,17 @@ const MILESTONES = [
   1_000_000,
 ];
 
-type JackpotPanelProps = {
-  /** When true, shows "Draw locked" pill in the header */
-  isLocked?: boolean;
-};
-
 export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hadError, setHadError] = useState(false);
+
   const [maxJackpotToday, setMaxJackpotToday] =
     useState<number | null>(null);
   const [justPumped, setJustPumped] = useState(false);
   const prevJackpot = useRef<number | null>(null);
 
+  // Per day localStorage key for "highest today"
   const todayKey = (() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -59,16 +63,17 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
     }
   }, [todayKey]);
 
-  // Fast-updating Jupiter price (5s interval)
+  // Live price from Jupiter (direct) every 5s
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
 
     async function fetchPrice() {
       try {
+        setHadError(false);
+
         const res = await fetch(
           `https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`,
         );
-
         if (!res.ok) throw new Error('Jupiter price fetch failed');
 
         const json = (await res.json()) as Record<
@@ -79,13 +84,16 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
         const token = json[TOKEN_MINT];
         const price = token?.usdPrice;
 
-        if (typeof price === 'number') {
+        if (typeof price === 'number' && !Number.isNaN(price)) {
           setPriceUsd(price);
         } else {
-          console.warn('No usdPrice for token from Jupiter', json);
+          setPriceUsd(null);
+          setHadError(true);
         }
-      } catch (e) {
-        console.error('Price fetch error', e);
+      } catch (err) {
+        console.error('[XPOT] Jupiter price error:', err);
+        setPriceUsd(null);
+        setHadError(true);
       } finally {
         setIsLoading(false);
       }
@@ -100,10 +108,11 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
   const jackpotUsd =
     priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
 
-  // Track pump + max of the day
+  // Track pumps and "highest today"
   useEffect(() => {
     if (jackpotUsd == null) return;
 
+    // Pump flash
     if (
       prevJackpot.current !== null &&
       jackpotUsd > prevJackpot.current
@@ -113,6 +122,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
     }
     prevJackpot.current = jackpotUsd;
 
+    // Store highest jackpot of the day
     if (typeof window !== 'undefined') {
       setMaxJackpotToday(prev => {
         const next =
@@ -124,16 +134,19 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
   }, [jackpotUsd, todayKey]);
 
   // Milestones
-  const nextMilestone =
-    jackpotUsd != null
-      ? MILESTONES.find(m => jackpotUsd < m) ?? null
-      : null;
-
   const reachedMilestone =
     jackpotUsd != null
       ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ??
         null
       : null;
+
+  const nextMilestone =
+    jackpotUsd != null
+      ? MILESTONES.find(m => jackpotUsd < m) ?? null
+      : null;
+
+  const showUnavailable =
+    !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
 
   return (
     <section
@@ -144,7 +157,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
         transition-colors duration-300
       `}
     >
-      {/* Soft neon glow layer on price pump */}
+      {/* Soft neon glow on pump */}
       <div
         className={`
           pointer-events-none absolute inset-0 rounded-2xl
@@ -155,37 +168,54 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
         `}
       />
 
-      <div className="relative flex items-start justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">
-          Today&apos;s XPOT
-        </p>
+      {/* HEADER */}
+      <div className="relative flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+            Today&apos;s XPOT
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            XPOT ticket pool is fixed at 1,000,000 XPOT. USD value updates
+            live from on-chain price via Jupiter.
+          </p>
+        </div>
 
-        {isLocked && (
-          <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
-            Draw locked
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1">
+          {isLocked && (
+            <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+              Draw locked
+            </span>
+          )}
+
+          {showUnavailable && (
+            <span className="text-[11px] font-semibold text-amber-300">
+              Live price not available yet.
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="relative mt-2 flex flex-wrap items-end justify-between gap-4">
+      {/* MAIN NUMBERS */}
+      <div className="relative mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="text-3xl font-semibold text-white">
-            {JACKPOT_XPOT.toLocaleString()} XPOT
+          <p className="text-sm font-medium tracking-[0.18em] text-slate-400">
+            1,000,000 XPOT
+          </p>
+
+          <div className="mt-1 text-4xl font-semibold text-white">
+            {formatUsd(jackpotUsd)}
+            <span className="ml-1 align-middle text-sm text-emerald-400">
+              (live)
+            </span>
           </div>
 
-          <div className="mt-1 text-sm text-slate-400">
-            {isLoading
-              ? 'Fetching live price…'
-              : jackpotUsd
-              ? `${formatUsd(jackpotUsd)} (live)`
-              : 'Live price not available yet for this token on Jupiter.'}
-          </div>
-
-          {priceUsd && (
-            <div className="mt-1 text-xs text-slate-500">
-              1 XPOT ≈ ${priceUsd.toFixed(8)} (via Jupiter)
-            </div>
-          )}
+          <p className="mt-1 text-xs text-slate-500">
+            1 XPOT ≈{' '}
+            <span className="font-mono">
+              {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+            </span>{' '}
+            <span className="text-slate-500">(via Jupiter)</span>
+          </p>
         </div>
 
         <div className="flex flex-col items-end gap-1 text-xs">
