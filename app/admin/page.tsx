@@ -6,6 +6,7 @@ import Link from 'next/link';
 
 import JackpotPanel from '@/components/JackpotPanel';
 import Modal from '@/components/Modal';
+import { TOKEN_MINT } from '@/lib/xpot';
 
 // ─────────────────────────────────────────────
 // Types
@@ -183,29 +184,36 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, todayDraw?.status]);
 
-  // Live value of 1,000,000 XPOT in USD – via single source /api/xpot/price
-  useEffect(() => {
-    async function loadLiveJackpot() {
-      try {
-        const res = await fetch('/api/xpot/price', { cache: 'no-store' });
-        if (!res.ok) return;
+  // Live value of 1,000,000 XPOT in USD
+useEffect(() => {
+  async function loadLiveJackpot() {
+    try {
+      const res = await fetch(
+        `https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`,
+      );
+      if (!res.ok) return;
 
-        const data = await res.json();
-        const pricePerXpot = data.priceUsd;
+      const json = (await res.json()) as Record<
+        string,
+        { usdPrice: number }
+      >;
 
-        if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
-          const jackpot = pricePerXpot * 1_000_000;
-          setLiveJackpotUsd(jackpot);
-        }
-      } catch (err) {
-        console.error('[ADMIN] live XPOT value fetch failed', err);
+      const token = json[TOKEN_MINT];
+      const pricePerXpot = token?.usdPrice;
+
+      if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
+        const jackpot = pricePerXpot * 1_000_000;
+        setLiveJackpotUsd(jackpot);
       }
+    } catch (err) {
+      console.error('[ADMIN] live XPOT value fetch failed', err);
     }
+  }
 
-    loadLiveJackpot();
-    const id = window.setInterval(loadLiveJackpot, 15_000);
-    return () => window.clearInterval(id);
-  }, []);
+  loadLiveJackpot();
+  const id = window.setInterval(loadLiveJackpot, 15_000);
+  return () => window.clearInterval(id);
+}, []);
 
   // Whenever a valid token is set, auto-load data
   useEffect(() => {
