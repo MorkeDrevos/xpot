@@ -7,9 +7,9 @@ import { useEffect, useState } from 'react';
 
 import JackpotPanel from '@/components/JackpotPanel';
 
-// ---------------------------------------------
+// ─────────────────────────────────────────────
 // Types
-// ---------------------------------------------
+// ─────────────────────────────────────────────
 
 type DrawStatus = 'open' | 'closed' | 'completed';
 
@@ -50,9 +50,9 @@ type AdminWinner = {
   label?: string | null;
 };
 
-// ---------------------------------------------
+// ─────────────────────────────────────────────
 // Helpers
-// ---------------------------------------------
+// ─────────────────────────────────────────────
 
 const ADMIN_TOKEN_KEY = 'xpot_admin_token';
 
@@ -107,9 +107,9 @@ function UsdPill({
   );
 }
 
-// ---------------------------------------------
+// ─────────────────────────────────────────────
 // Button styles (control room system)
-// ---------------------------------------------
+// ─────────────────────────────────────────────
 
 const BTN_PRIMARY =
   'inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:opacity-40 disabled:cursor-not-allowed';
@@ -120,9 +120,9 @@ const BTN_SECONDARY =
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition';
 
-// ---------------------------------------------
+// ─────────────────────────────────────────────
 // Page
-// ---------------------------------------------
+// ─────────────────────────────────────────────
 
 export default function AdminPage() {
   const [adminToken, setAdminToken] = useState<string | null>(null);
@@ -142,7 +142,7 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [winnersLoading, setWinnersLoading] = useState(true);
 
-  // Live jackpot USD coming from JackpotPanel
+  // Live pool value in USD coming from JackpotPanel
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
   // Countdown for "Draw closes in"
@@ -155,9 +155,9 @@ export default function AdminPage() {
   const isWarningCritical =
     countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
 
-  // Bonus jackpot form
+  // Bonus reward form
   const [bonusAmount, setBonusAmount] = useState('500');
-  const [bonusLabel, setBonusLabel] = useState('Bonus jackpot');
+  const [bonusLabel, setBonusLabel] = useState('Bonus reward');
   const [bonusSubmitting, setBonusSubmitting] = useState(false);
   const [bonusError, setBonusError] = useState<string | null>(null);
   const [bonusSuccess, setBonusSuccess] = useState<string | null>(null);
@@ -167,9 +167,7 @@ export default function AdminPage() {
   const [pickSuccess, setPickSuccess] = useState<string | null>(null);
   const [isPickingWinner, setIsPickingWinner] = useState(false);
 
-  // ---------------------------------------------
-  // Load admin token from localStorage
-  // ---------------------------------------------
+  // ── Load admin token from localStorage ────────────────────────
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -180,9 +178,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  // ---------------------------------------------
-  // Fetch helpers with auth header
-  // ---------------------------------------------
+  // ── Fetch helpers with auth header ────────────────────────────
 
   async function authedFetch(input: string, init?: RequestInit) {
     if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
@@ -205,9 +201,7 @@ export default function AdminPage() {
     return res.json();
   }
 
-  // ---------------------------------------------
-  // Drop bonus jackpot (bonus winner)
-  // ---------------------------------------------
+  // ── Issue bonus reward (bonus recipient) ──────────────────────
 
   async function handleDropBonus(e: React.FormEvent) {
     e.preventDefault();
@@ -231,7 +225,7 @@ export default function AdminPage() {
         method: 'POST',
         body: JSON.stringify({
           amountUsd: amountNumber,
-          label: bonusLabel || 'Bonus jackpot',
+          label: bonusLabel || 'Bonus reward',
         }),
       });
 
@@ -251,15 +245,13 @@ export default function AdminPage() {
         // ignore secondary error
       }
     } catch (err: any) {
-      setBonusError(err.message || 'Failed to drop bonus jackpot');
+      setBonusError(err.message || 'Failed to issue bonus reward');
     } finally {
       setBonusSubmitting(false);
     }
   }
 
-  // ---------------------------------------------
-  // Pick main jackpot winner
-  // ---------------------------------------------
+  // ── Pick main XPOT winner ─────────────────────────────────
 
   async function handlePickMainWinner() {
     setPickError(null);
@@ -282,7 +274,7 @@ export default function AdminPage() {
       }
 
       setPickSuccess(
-        `Main jackpot winner: ${w.ticketCode} (${w.walletAddress.slice(
+        `Main XPOT winner: ${w.ticketCode} (${w.walletAddress.slice(
           0,
           4,
         )}…${w.walletAddress.slice(-4)}).`,
@@ -296,15 +288,13 @@ export default function AdminPage() {
         prev ? { ...prev, status: 'closed' } : prev,
       );
     } catch (err: any) {
-      setPickError(err.message || 'Failed to pick main jackpot winner');
+      setPickError(err.message || 'Failed to pick main XPOT winner');
     } finally {
       setIsPickingWinner(false);
     }
   }
 
-  // ---------------------------------------------
-  // Load today, tickets, winners when token is ready
-  // ---------------------------------------------
+  // ── Load Today, tickets, winners when token is ready ──────────
 
   useEffect(() => {
     if (!adminToken) return;
@@ -371,9 +361,7 @@ export default function AdminPage() {
     };
   }, [adminToken]);
 
-  // ---------------------------------------------
-  // Countdown until todayDraw.closesAt
-  // ---------------------------------------------
+  // ── Countdown until todayDraw.closesAt ────────────────────────
 
   useEffect(() => {
     if (!todayDraw?.closesAt) {
@@ -414,9 +402,7 @@ export default function AdminPage() {
     };
   }, [todayDraw?.closesAt]);
 
-  // ---------------------------------------------
-  // Admin token handling
-  // ---------------------------------------------
+  // ── Admin token handling ──────────────────────────────────────
 
   async function handleUnlock(e: any) {
     e.preventDefault();
@@ -444,19 +430,23 @@ export default function AdminPage() {
 
   const isDrawLocked = todayDraw?.status === 'closed';
 
-  // ---------------------------------------------
+  // ─────────────────────────────────────────────
   // Render
-  // ---------------------------------------------
+  // ─────────────────────────────────────────────
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 text-slate-100">
       {/* Header */}
       <header className="flex flex-col gap-1">
-        <p className="admin-eyebrow">X P O T · A D M I N</p>
-        <h1 className="admin-title">XPOT Operations Center</h1>
-        <p className="admin-subtitle">
-          Live system access to pool state, entries and rewards. Built for
-          accuracy. Protected by design.
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-300">
+          XPOT ADMIN
+        </p>
+        <h1 className="text-xl font-semibold text-white">
+          Control room for today&apos;s XPOT round.
+        </h1>
+        <p className="mt-1 text-xs text-slate-500">
+          Monitor pool state, entries and rewards. All data is live and admin-key
+          gated.
         </p>
       </header>
 
@@ -466,8 +456,8 @@ export default function AdminPage() {
           <div>
             <p className="text-sm font-semibold text-slate-100">Admin key</p>
             <p className="mt-1 text-xs text-slate-400">
-              Store your admin token in this browser to unlock XPOT control
-              actions and admin-only endpoints.
+              Paste your admin token to unlock XPOT admin endpoints in this
+              browser.
             </p>
             {tokenAccepted && (
               <p className="mt-1 text-xs font-semibold text-emerald-400">
@@ -509,7 +499,7 @@ export default function AdminPage() {
         </div>
       </section>
 
-      {/* Main grid: left (Jackpot + summary + entries), right (winners) */}
+      {/* Main grid: left (pool + summary + entries), right (winners) */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)]">
         {/* LEFT COLUMN */}
         <div className="space-y-4">
@@ -519,16 +509,15 @@ export default function AdminPage() {
             onJackpotUsdChange={setLiveJackpotUsd}
           />
 
-          {/* Today XPOT summary card */}
+          {/* Today’s XPOT summary card */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-100">
-                  Today&apos;s draw
+                  Today&apos;s round
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Live status for today&apos;s XPOT round: entries, rollover and
-                  pool size.
+                  Live status of today&apos;s XPOT: entries, rollover and pool.
                 </p>
               </div>
 
@@ -639,7 +628,7 @@ export default function AdminPage() {
                     >
                       {isPickingWinner
                         ? 'Picking winner…'
-                        : 'Pick main jackpot winner'}
+                        : 'Select primary recipient'}
                     </button>
                   </div>
                 )}
@@ -648,7 +637,7 @@ export default function AdminPage() {
                 <p>No XPOT draw scheduled for today yet.</p>
               )}
 
-              {/* Main jackpot winner feedback */}
+              {/* Main XPOT winner feedback */}
               {(pickError || pickSuccess) && (
                 <div className="mt-2 text-xs">
                   {pickError && (
@@ -662,14 +651,14 @@ export default function AdminPage() {
             </div>
           </section>
 
-          {/* Drop bonus jackpot */}
+          {/* Drop bonus XPOT */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
-              Drop bonus jackpot
+              Bonus XPOT reward
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Trigger an instant bonus jackpot using today&apos;s ticket pool. A
-              random ticket from today&apos;s entries is selected as winner.
+              Trigger a manual bonus XPOT reward using today&apos;s ticket pool. A
+              recipient is selected instantly from all tickets in today&apos;s draw.
             </p>
 
             <form onSubmit={handleDropBonus} className="mt-4 space-y-4">
@@ -720,7 +709,7 @@ export default function AdminPage() {
                   className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
                   value={bonusLabel}
                   onChange={(e) => setBonusLabel(e.target.value)}
-                  placeholder="Bonus jackpot"
+                  placeholder="Bonus reward"
                 />
               </div>
 
@@ -740,19 +729,19 @@ export default function AdminPage() {
                   disabled={bonusSubmitting}
                   className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
                 >
-                  {bonusSubmitting ? 'Dropping…' : 'Drop bonus jackpot'}
+                  {bonusSubmitting ? 'Dropping…' : 'Issue bonus reward'}
                 </button>
               </div>
             </form>
           </section>
 
-          {/* Today XPOT entries list */}
+          {/* Today’s XPOT entries list */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
               Today&apos;s XPOT entries
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Every entry that has been issued into today&apos;s XPOT pool.
+              Every entry that has been issued for the current XPOT round.
             </p>
 
             <div className="mt-3">
@@ -805,10 +794,10 @@ export default function AdminPage() {
         <div className="space-y-4">
           <section className="h-full rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
-              Recent XPOT results
+              Recent XPOT winners
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Internal log of the latest selected entries and payout status.
+              Internal log of the latest selected entries and reward status.
             </p>
 
             <div className="mt-3">
@@ -822,8 +811,8 @@ export default function AdminPage() {
 
               {!winnersLoading && !winnersError && winners.length === 0 && (
                 <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
-                  No completed draws yet. Once you pick winners and mark jackpots
-                  as paid, they will appear here.
+                  No completed draws yet. Once you pick winners and mark rewards
+                  as sent, they&apos;ll appear here.
                 </p>
               )}
 
