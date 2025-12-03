@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json(
       { ok: false, error: 'UNAUTHORIZED' },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
