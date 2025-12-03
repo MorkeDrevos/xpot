@@ -143,7 +143,8 @@ export default function AdminPage() {
   // ── Fetch helpers with auth header ────────────────────────────
 
   async function authedFetch(input: string, init?: RequestInit) {
-    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
+    if (!adminToken) throw new Error('Admin token missing');
+
     const res = await fetch(input, {
       ...init,
       headers: {
@@ -152,14 +153,33 @@ export default function AdminPage() {
         Authorization: `Bearer ${adminToken}`,
       },
     });
+
+    const contentType = res.headers.get('content-type') ?? '';
+
     if (!res.ok) {
-      const body = await res.text();
-      throw new Error(
-        `Request failed (${res.status}): ${
-          body || res.statusText || 'Unknown error'
-        }`,
-      );
+      // Keep errors short and friendly – no HTML dumps
+      let message = `Request failed (${res.status})`;
+
+      if (contentType.includes('application/json')) {
+        try {
+          const json: any = await res.json();
+          if (json?.error || json?.message) {
+            message = json.error || json.message;
+          }
+        } catch {
+          // ignore JSON parse errors, keep generic message
+        }
+      } else if (res.status === 404) {
+        message = 'No data available yet.';
+      }
+
+      throw new Error(message);
     }
+
+    if (!contentType.includes('application/json')) {
+      throw new Error('Unexpected response from server.');
+    }
+
     return res.json();
   }
 
@@ -182,7 +202,7 @@ export default function AdminPage() {
       } catch (err: any) {
         console.error('[ADMIN] /today error', err);
         if (!cancelled) {
-          setTodayDrawError(err.message || 'Failed to load today');
+          setTodayDrawError(err.message || 'Failed to load today.');
         }
       } finally {
         if (!cancelled) setTodayLoading(false);
@@ -199,7 +219,7 @@ export default function AdminPage() {
       } catch (err: any) {
         console.error('[ADMIN] /tickets error', err);
         if (!cancelled) {
-          setTicketsError(err.message || 'Failed to load tickets');
+          setTicketsError(err.message || 'Failed to load entries.');
         }
       } finally {
         if (!cancelled) setTicketsLoading(false);
@@ -216,7 +236,7 @@ export default function AdminPage() {
       } catch (err: any) {
         console.error('[ADMIN] /winners error', err);
         if (!cancelled) {
-          setWinnersError(err.message || 'Failed to load winners');
+          setWinnersError(err.message || 'Failed to load results.');
         }
       } finally {
         if (!cancelled) setWinnersLoading(false);
@@ -327,7 +347,10 @@ export default function AdminPage() {
         {/* LEFT COLUMN */}
         <div className="space-y-4">
           {/* Big live XPOT card */}
-          <JackpotPanel isLocked={isDrawLocked} />
+          <JackpotPanel
+            isLocked={isDrawLocked}
+            onJackpotUsdChange={setLiveJackpotUsd}
+          />
 
           {/* Today’s XPOT summary card */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-4 shadow-sm">
@@ -382,10 +405,7 @@ export default function AdminPage() {
                   Rollover amount
                 </p>
                 <div className="mt-1">
-                  <UsdPill
-                    amount={todayDraw?.rolloverUsd ?? 0}
-                    size="sm"
-                  />
+                  <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
                 </div>
               </div>
 
