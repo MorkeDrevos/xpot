@@ -147,7 +147,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">
-          Today&apos;s jackpot
+          Today&apos;s XPOT
         </p>
 
         {isLocked && (
@@ -200,8 +200,9 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
       </div>
 
       <p className="mt-3 text-xs text-slate-500">
-        Jackpot is fixed at 1,000,000 XPOT. Its USD value tracks real
-        on-chain price from Jupiter and updates automatically.
+        Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD
+        value tracks real on-chain price from Jupiter and updates
+        automatically.
       </p>
     </section>
   );
