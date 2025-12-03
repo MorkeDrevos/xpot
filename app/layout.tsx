@@ -33,30 +33,24 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-  <title>XPOT · Tokenized Reward Protocol</title>
-  <meta
-    name="description"
-    content="XPOT is a token-powered reward system for daily distributions and on-chain participation."
-  />
+  <title>XPOT · The X-powered reward protocol</title>
 
-  {/* Prevent search engines from indexing until you're confident */}
-  <meta name="robots" content="index,follow" />
+<meta
+  name="description"
+  content="XPOT is the X-powered reward protocol for daily distribution, access and on-chain participation."
+/>
 
-  {/* Favicon */}
-  <link rel="icon" href="/img/favicon.png" />
-  <link rel="apple-touch-icon" href="/img/favicon.png" />
+<!-- OpenGraph -->
+<meta property="og:title" content="XPOT · The X-powered reward protocol" />
+<meta
+  property="og:description"
+  content="A protocol for controlled daily rewards, identity-based access and transparent distribution."
+/>
+<meta property="og:image" content="/img/xpot-logo-dark.jpg" />
+<meta property="og:type" content="website" />
 
-  {/* OpenGraph / Social preview */}
-  <meta property="og:title" content="XPOT · Tokenized Reward Protocol" />
-  <meta
-    property="og:description"
-    content="A controlled token distribution system with daily participation mechanics."
-  />
-  <meta property="og:image" content="/img/xpot-logo-dark.jpg" />
-  <meta property="og:type" content="website" />
-
-  {/* X / Twitter */}
-  <meta name="twitter:card" content="summary_large_image" />
+<!-- X / Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
 </head>
 
       <body className="bg-black text-slate-50">
