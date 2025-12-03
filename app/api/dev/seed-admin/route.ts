@@ -1,6 +1,7 @@
 // app/api/dev/seed-admin/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { TicketStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,10 +81,9 @@ const ticketPayload = Array.from({ length: 20 }).map((_, i) => {
   const wallet = wallets[i % wallets.length];
   return {
     code: `XPOT-DEV${String(i + 1).padStart(4, '0')}`,
-    // Match your enum name here
-    status: 'IN_DRAW', // or 'in-draw' if that’s your enum
+    status: TicketStatus.IN_DRAW,
     walletId: wallet.id,
-    userId: wallet.userId,   // 👈 add this line
+    userId: wallet.userId,
     drawId: todayDraw.id,
   };
 });
