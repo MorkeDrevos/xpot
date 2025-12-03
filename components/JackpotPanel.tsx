@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { TOKEN_MINT } from '@/lib/xpot';
 
-const JACKPOT_XPOT = 1_000_000;
+const JACKPOT_XPOT = 100_000;
 
 type JackpotPanelProps = {
   /** When true, shows "Draw locked" pill in the header */
