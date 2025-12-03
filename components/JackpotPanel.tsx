@@ -5,10 +5,6 @@ import { useEffect, useRef, useState } from 'react';
 
 const JACKPOT_XPOT = 1_000_000;
 
-// TEMP: you’re using PANDU for now – later swap to real XPOT mint
-const XPOT_MINT =
-  'So11111111111111111111111111111111111111112';
-
 function formatUsd(value: number) {
   if (!Number.isFinite(value)) return '$0';
   return value.toLocaleString('en-US', {
@@ -18,7 +14,6 @@ function formatUsd(value: number) {
   });
 }
 
-// Simple milestone ladder for highlights
 const MILESTONES = [
   100,
   500,
@@ -32,15 +27,13 @@ const MILESTONES = [
 ];
 
 type JackpotPanelProps = {
-  /** When true, shows "Draw locked" pill in the header */
   isLocked?: boolean;
 };
 
 export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [maxJackpotToday, setMaxJackpotToday] =
-    useState<number | null>(null);
+  const [maxJackpotToday, setMaxJackpotToday] = useState<number | null>(null);
   const [justPumped, setJustPumped] = useState(false);
   const prevJackpot = useRef<number | null>(null);
 
@@ -62,72 +55,56 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
     }
   }, [todayKey]);
 
-  // Fast-updating Jupiter price (5s interval)
+  // Fetch live price via our internal API
   useEffect(() => {
-  let timer: ReturnType<typeof setInterval>;
+    let timer: NodeJS.Timeout;
 
-  async function fetchPrice() {
-    try {
-      const res = await fetch(
-        `https://lite-api.jup.ag/price/v3?ids=${XPOT_MINT}`,
-      );
+    async function fetchPrice() {
+      try {
+        const res = await fetch('/api/xpot/price', { cache: 'no-store' });
+        if (!res.ok) throw new Error('XPOT price fetch failed');
 
-      if (!res.ok) throw new Error('Jupiter price fetch failed');
+        const data = await res.json();
+        const price = data?.priceUsd;
 
-      const json = (await res.json()) as Record<
-        string,
-        { usdPrice: number; priceChange24h?: number }
-      >;
-
-      const token = json[XPOT_MINT];
-      const price = token?.usdPrice;
-
-      if (typeof price === 'number') {
-        setPriceUsd(price);
-      } else {
-        console.warn('No usdPrice for token from Jupiter', json);
+        if (typeof price === 'number') {
+          setPriceUsd(price);
+        } else {
+          console.warn('No priceUsd from /api/xpot/price', data);
+        }
+      } catch (e) {
+        console.error('Price fetch error', e);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (e) {
-      console.error('Price fetch error', e);
-    } finally {
-      setIsLoading(false);
     }
-  }
 
-  fetchPrice();
-  timer = setInterval(fetchPrice, 5_000);
+    fetchPrice();
+    timer = setInterval(fetchPrice, 5_000);
+    return () => clearInterval(timer);
+  }, []);
 
-  return () => clearInterval(timer);
-}, []);
-
-  const jackpotUsd =
-    priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
+  const jackpotUsd = priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
 
   // Track pump + max of the day
   useEffect(() => {
     if (jackpotUsd == null) return;
 
-    if (
-      prevJackpot.current !== null &&
-      jackpotUsd > prevJackpot.current
-    ) {
+    if (prevJackpot.current !== null && jackpotUsd > prevJackpot.current) {
       setJustPumped(true);
-      // slightly longer so glow feels smooth
       setTimeout(() => setJustPumped(false), 1600);
     }
     prevJackpot.current = jackpotUsd;
 
     if (typeof window !== 'undefined') {
       setMaxJackpotToday(prev => {
-        const next =
-          prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
+        const next = prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
         window.localStorage.setItem(todayKey, String(next));
         return next;
       });
     }
   }, [jackpotUsd, todayKey]);
 
-  // Milestones
   const nextMilestone =
     jackpotUsd != null
       ? MILESTONES.find(m => jackpotUsd < m) ?? null
@@ -135,8 +112,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
 
   const reachedMilestone =
     jackpotUsd != null
-      ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ??
-        null
+      ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null
       : null;
 
   return (
@@ -182,10 +158,10 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
               ? 'Fetching live price…'
               : jackpotUsd
               ? `${formatUsd(jackpotUsd)} (live)`
-              : 'Live price not available yet for this token on Jupiter.'}
+              : 'Live price not available yet.'}
           </div>
 
-          {priceUsd && (
+          {priceUsd !== null && (
             <div className="mt-1 text-xs text-slate-500">
               1 XPOT ≈ ${priceUsd.toFixed(8)} (via Jupiter)
             </div>
@@ -215,7 +191,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
 
       <p className="relative mt-3 text-xs text-slate-500">
         Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD value
-        tracks real on-chain price from Jupiter and updates automatically.
+        tracks the live on-chain price and updates automatically.
       </p>
     </section>
   );
