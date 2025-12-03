@@ -122,17 +122,6 @@ await prisma.ticket.createMany({
   data: {
     drawDate: date,
     jackpotUsd: amountUsd,
-
-    closesAt: new Date(
-      Date.UTC(
-        date.getUTCFullYear(),
-        date.getUTCMonth(),
-        date.getUTCDate(),
-        22,
-        0,
-        0,
-      ),
-    ),
   },
 });
     }
