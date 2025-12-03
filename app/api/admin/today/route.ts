@@ -3,59 +3,52 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
 
-type DrawStatus = 'open' | 'closed' | 'completed';
-
-function getUtcDayRange(date = new Date()) {
-  const y = date.getUTCFullYear();
-  const m = date.getUTCMonth();
-  const d = date.getUTCDate();
-
-  const start = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(y, m, d + 1, 0, 0, 0, 0));
-  return { start, end };
-}
-
 export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  const { start, end } = getUtcDayRange();
+  try {
+    // Today as YYYY-MM-DD string
+    const todayStr = new Date().toISOString().slice(0, 10);
 
-  const draw = await prisma.draw.findFirst({
-    where: {
-      drawDate: {
-        gte: start,
-        lt: end,
+    const draw = await prisma.draw.findFirst({
+      where: {
+        drawDate: {
+          gte: new Date(`${todayStr}T00:00:00.000Z`),
+          lt:  new Date(`${todayStr}T23:59:59.999Z`),
+        },
       },
-    },
-    include: {
-      tickets: true,
-    },
-  });
+      include: {
+        tickets: true,
+      },
+    });
 
-  if (!draw) {
+    if (!draw) {
+      return NextResponse.json({
+        ok: true,
+        today: null,
+      });
+    }
+
+    const today = {
+      id: draw.id,
+      date: draw.drawDate.toISOString(),
+      status: draw.isClosed ? 'closed' : 'open', // you could add 'completed' later
+      jackpotUsd: draw.jackpotUsd ?? 0,
+      rolloverUsd: 0, // placeholder, if you later add a rollover field
+      ticketsCount: draw.tickets.length,
+      closesAt: null,
+    };
+
     return NextResponse.json({
       ok: true,
-      today: null,
+      today,
     });
+  } catch (err) {
+    console.error('[ADMIN] /today error', err);
+    return NextResponse.json(
+      { ok: false, error: 'FAILED_TO_LOAD_TODAY' },
+      { status: 500 },
+    );
   }
-
-  let status: DrawStatus = 'open';
-  if (draw.resolvedAt) status = 'completed';
-  else if (draw.isClosed) status = 'closed';
-
-  const today = {
-    id: draw.id,
-    date: draw.drawDate.toISOString(),
-    status,
-    jackpotUsd: draw.jackpotUsd ?? 0,
-    rolloverUsd: 0, // placeholder – adjust when you add rollover logic
-    ticketsCount: draw.tickets.length,
-    closesAt: null as string | null, // no explicit "closesAt" field in schema yet
-  };
-
-  return NextResponse.json({
-    ok: true,
-    today,
-  });
 }
