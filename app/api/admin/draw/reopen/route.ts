@@ -1,8 +1,15 @@
+// app/api/admin/draw/reopen/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '../../_auth';
 
-export async function POST(_req: NextRequest) {
-  // Find latest draw
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest) {
+  const auth = requireAdmin(req);
+  if (auth) return auth;
+
+  // Find latest draw (Today’s XPOT round)
   const draw = await prisma.draw.findFirst({
     orderBy: { drawDate: 'desc' },
     include: { winnerTicket: true },
@@ -11,32 +18,25 @@ export async function POST(_req: NextRequest) {
   if (!draw) {
     return NextResponse.json(
       { ok: false, error: 'NO_DRAW_FOUND' },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
-  const updates: any = {
-    isClosed: false,
-    resolvedAt: null,
-    winnerTicketId: null,
-  };
-
-  // If there was a winner ticket, reset it back into the pool
-  if (draw.winnerTicket) {
-    try {
-      await prisma.ticket.update({
-        where: { id: draw.winnerTicket.id },
-        data: { status: 'IN_DRAW' }, // plain string is fine
-      });
-    } catch (err) {
-      console.error('[ADMIN] failed to reset winner ticket status:', err);
-    }
-  }
-
-  await prisma.draw.update({
-    where: { id: draw.id },
-    data: updates,
-  });
+  // Re-open the draw and clear winner info
+  await prisma.$transaction([
+    prisma.draw.update({
+      where: { id: draw.id },
+      data: {
+        isClosed: false,
+        resolvedAt: null,
+        winnerTicketId: null,
+      },
+    }),
+    prisma.ticket.updateMany({
+      where: { drawId: draw.id },
+      data: { status: 'IN_DRAW' as any },
+    }),
+  ]);
 
   return NextResponse.json({
     ok: true,
