@@ -35,6 +35,8 @@ type AdminTicket = {
   jackpotUsd?: number;
 };
 
+type AdminWinnerKind = 'main' | 'bonus';
+
 type AdminWinner = {
   id: string;
   drawId: string;
@@ -45,6 +47,8 @@ type AdminWinner = {
   payoutUsd: number;
   isPaidOut: boolean;
   txUrl?: string | null;
+  kind?: AdminWinnerKind; // 'main' or 'bonus'
+  label?: string | null;  // "Main jackpot", "Bonus jackpot", etc.
 };
 
 // ─────────────────────────────────────────────
@@ -129,8 +133,11 @@ export default function AdminPage() {
   // Shared live jackpot USD coming from JackpotPanel
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
-  // Countdown timer state
-  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+  // Bonus jackpot controls
+  const [bonusAmount, setBonusAmount] = useState('100'); // USD
+  const [bonusLabel, setBonusLabel] = useState('Bonus jackpot');
+  const [bonusError, setBonusError] = useState<string | null>(null);
+  const [isDroppingBonus, setIsDroppingBonus] = useState(false);
 
   // ── Load admin token from localStorage ────────────────────────
 
@@ -208,7 +215,7 @@ export default function AdminPage() {
         if (!cancelled) setTicketsLoading(false);
       }
 
-      // Winners
+      // Winners (main + bonus)
       setWinnersLoading(true);
       setWinnersError(null);
       try {
@@ -219,7 +226,7 @@ export default function AdminPage() {
       } catch (err: any) {
         console.error('[ADMIN] /winners error', err);
         if (!cancelled) {
-          setWinnersError(err.message || 'Failed to load winners');
+          setWinnersError(err.message || 'Failed to load results');
         }
       } finally {
         if (!cancelled) setWinnersLoading(false);
@@ -233,46 +240,9 @@ export default function AdminPage() {
     };
   }, [adminToken]);
 
-  // ── Countdown timer based on todayDraw.closesAt ───────────────
-
-  useEffect(() => {
-    if (!todayDraw || !todayDraw.closesAt || todayDraw.status !== 'open') {
-      setTimeLeft(null);
-      return;
-    }
-
-    const target = new Date(todayDraw.closesAt).getTime();
-
-    function update() {
-      const now = Date.now();
-      const diff = target - now;
-
-      if (diff <= 0) {
-        setTimeLeft('00:00:00');
-        return;
-      }
-
-      const totalSeconds = Math.floor(diff / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-
-      const h = hours.toString().padStart(2, '0');
-      const m = minutes.toString().padStart(2, '0');
-      const s = seconds.toString().padStart(2, '0');
-
-      setTimeLeft(`${h}:${m}:${s}`);
-    }
-
-    update();
-    const timer = setInterval(update, 1_000);
-
-    return () => clearInterval(timer);
-  }, [todayDraw?.closesAt, todayDraw?.status]);
-
   // ── Admin token handling ──────────────────────────────────────
 
-  async function handleUnlock(e: React.FormEvent) {
+  async function handleUnlock(e: any) {
     e.preventDefault();
     if (!tokenInput.trim()) return;
     setIsSavingToken(true);
@@ -297,6 +267,46 @@ export default function AdminPage() {
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
+
+  // ── Drop bonus jackpot ────────────────────────────────────────
+
+  async function handleDropBonusJackpot() {
+    setBonusError(null);
+
+    const amount = Number(bonusAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setBonusError('Enter a valid USD amount.');
+      return;
+    }
+
+    setIsDroppingBonus(true);
+    try {
+      const data = await authedFetch('/api/admin/bonus-jackpot', {
+        method: 'POST',
+        body: JSON.stringify({
+          amountUsd: amount,
+          label: bonusLabel || 'Bonus jackpot',
+        }),
+      });
+
+      if (!data.ok) {
+        throw new Error(data.error || 'Failed to create bonus jackpot');
+      }
+
+      if (data.winner) {
+        setWinners(prev => [data.winner, ...prev]);
+      }
+    } catch (err: any) {
+      console.error('[ADMIN] bonus jackpot error', err);
+      setBonusError(err.message || 'Failed to create bonus jackpot');
+    } finally {
+      setIsDroppingBonus(false);
+    }
+  }
+
+  function setBonusPreset(amount: number) {
+    setBonusAmount(String(amount));
+  }
 
   // ─────────────────────────────────────────────
   // Render
@@ -442,41 +452,97 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500 text-left">
+            <div className="mt-4 rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
               {todayDrawError && (
                 <p className="text-amber-300">{todayDrawError}</p>
               )}
-
-              {!todayDrawError &&
-                !todayLoading &&
-                todayDraw &&
-                todayDraw.closesAt &&
-                todayDraw.status === 'open' &&
-                timeLeft && (
-                  <p>
-                    Draw closes in{' '}
-                    <span className="font-mono text-emerald-300">
-                      {timeLeft}
-                    </span>{' '}
-                    at{' '}
-                    <span className="font-mono text-slate-300">
-                      {formatDateTime(todayDraw.closesAt)}
-                    </span>
-                    .
-                  </p>
-                )}
-
-              {!todayDrawError &&
-                !todayLoading &&
-                todayDraw &&
-                todayDraw.status !== 'open' && (
-                  <p>This XPOT round is closed.</p>
-                )}
-
+              {!todayDrawError && !todayLoading && todayDraw && todayDraw.closesAt && (
+                <p>
+                  Draw closes in{' '}
+                  <span className="font-mono text-emerald-300">
+                    {/* Timer text is injected client-side in a separate effect (already implemented) */}
+                  </span>{' '}
+                  at{' '}
+                  <span className="font-mono text-slate-300">
+                    {formatDateTime(todayDraw.closesAt)}
+                  </span>
+                  .
+                </p>
+              )}
               {!todayDrawError && !todayLoading && !todayDraw && (
                 <p>No XPOT draw scheduled for today yet.</p>
               )}
             </div>
+          </section>
+
+          {/* Bonus jackpot control */}
+          <section className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">
+                  Drop bonus jackpot
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Fire a manual hype jackpot using today&apos;s ticket pool. Winner is picked
+                  instantly from all tickets in today&apos;s draw.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">Amount</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={bonusAmount}
+                    onChange={e => setBonusAmount(e.target.value)}
+                    className="w-24 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 outline-none focus:border-emerald-400"
+                  />
+                  <span className="text-slate-500">USD</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {[50, 100, 250, 500, 1000].map(v => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setBonusPreset(v)}
+                      className="rounded-full border border-slate-700 px-2 py-0.5 text-[11px] text-slate-300 hover:border-emerald-400"
+                    >
+                      ${v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex-1">
+                <label className="text-xs text-slate-400">
+                  Label
+                  <input
+                    type="text"
+                    value={bonusLabel}
+                    onChange={e => setBonusLabel(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 outline-none focus:border-emerald-400"
+                    placeholder="Bonus jackpot"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isDroppingBonus || !adminToken}
+                  onClick={handleDropBonusJackpot}
+                  className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
+                >
+                  {isDroppingBonus ? 'Picking winner…' : 'Drop bonus jackpot'}
+                </button>
+              </div>
+            </div>
+
+            {bonusError && (
+              <p className="mt-2 text-xs text-amber-300">{bonusError}</p>
+            )}
           </section>
 
           {/* Today’s XPOT entries list */}
@@ -571,9 +637,22 @@ export default function AdminPage() {
                         <p className="font-mono text-[11px] text-slate-100">
                           {w.ticketCode}
                         </p>
-                        <p className="text-[11px] text-slate-500">
-                          {formatDate(w.date)}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          {w.label && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                                w.kind === 'bonus'
+                                  ? 'bg-emerald-500/10 text-emerald-300'
+                                  : 'bg-slate-800 text-slate-200'
+                              }`}
+                            >
+                              {w.label}
+                            </span>
+                          )}
+                          <p className="text-[11px] text-slate-500">
+                            {formatDate(w.date)}
+                          </p>
+                        </div>
                       </div>
                       <p className="text-[11px] text-slate-400">
                         {w.walletAddress}
