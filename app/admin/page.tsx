@@ -7,9 +7,9 @@ import { useEffect, useState } from 'react';
 
 import JackpotPanel from '@/components/JackpotPanel';
 
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 // Types
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 
 type DrawStatus = 'open' | 'closed' | 'completed';
 
@@ -50,9 +50,9 @@ type AdminWinner = {
   label?: string | null;
 };
 
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 // Helpers
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 
 const ADMIN_TOKEN_KEY = 'xpot_admin_token';
 
@@ -107,9 +107,9 @@ function UsdPill({
   );
 }
 
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 // Button styles (control room system)
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 
 const BTN_PRIMARY =
   'inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:opacity-40 disabled:cursor-not-allowed';
@@ -120,9 +120,9 @@ const BTN_SECONDARY =
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition';
 
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 // Page
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 
 export default function AdminPage() {
   const [adminToken, setAdminToken] = useState<string | null>(null);
@@ -150,10 +150,10 @@ export default function AdminPage() {
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
   const isWarningSoon =
-  countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
+    countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
 
   const isWarningCritical =
-  countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
+    countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
 
   // Bonus jackpot form
   const [bonusAmount, setBonusAmount] = useState('500');
@@ -167,7 +167,9 @@ export default function AdminPage() {
   const [pickSuccess, setPickSuccess] = useState<string | null>(null);
   const [isPickingWinner, setIsPickingWinner] = useState(false);
 
-  // ── Load admin token from localStorage ────────────────────────
+  // ---------------------------------------------
+  // Load admin token from localStorage
+  // ---------------------------------------------
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -178,7 +180,9 @@ export default function AdminPage() {
     }
   }, []);
 
-  // ── Fetch helpers with auth header ────────────────────────────
+  // ---------------------------------------------
+  // Fetch helpers with auth header
+  // ---------------------------------------------
 
   async function authedFetch(input: string, init?: RequestInit) {
     if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
@@ -201,7 +205,9 @@ export default function AdminPage() {
     return res.json();
   }
 
-  // ── Drop bonus jackpot (bonus winner) ─────────────────────────
+  // ---------------------------------------------
+  // Drop bonus jackpot (bonus winner)
+  // ---------------------------------------------
 
   async function handleDropBonus(e: React.FormEvent) {
     e.preventDefault();
@@ -251,7 +257,9 @@ export default function AdminPage() {
     }
   }
 
-  // ── Pick main jackpot winner ─────────────────────────────────
+  // ---------------------------------------------
+  // Pick main jackpot winner
+  // ---------------------------------------------
 
   async function handlePickMainWinner() {
     setPickError(null);
@@ -294,7 +302,9 @@ export default function AdminPage() {
     }
   }
 
-  // ── Load Today, tickets, winners when token is ready ──────────
+  // ---------------------------------------------
+  // Load today, tickets, winners when token is ready
+  // ---------------------------------------------
 
   useEffect(() => {
     if (!adminToken) return;
@@ -361,48 +371,52 @@ export default function AdminPage() {
     };
   }, [adminToken]);
 
-  // ── Countdown until todayDraw.closesAt ────────────────────────
+  // ---------------------------------------------
+  // Countdown until todayDraw.closesAt
+  // ---------------------------------------------
 
-useEffect(() => {
-  if (!todayDraw?.closesAt) {
-    setCountdownText(null);
-    setCountdownSeconds(null);
-    return;
-  }
-
-  const closesAt = new Date(todayDraw.closesAt);
-
-  function updateCountdown() {
-    const now = new Date();
-    const diff = closesAt.getTime() - now.getTime();
-
-    // Past closing time – snap to zero and stop decreasing
-    if (diff <= 0) {
-      setCountdownText('00:00:00');
-      setCountdownSeconds(0);
+  useEffect(() => {
+    if (!todayDraw?.closesAt) {
+      setCountdownText(null);
+      setCountdownSeconds(null);
       return;
     }
 
-    const totalSeconds = Math.floor(diff / 1000);
-    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-    const minutes = String(
-      Math.floor((totalSeconds % 3600) / 60),
-    ).padStart(2, '0');
-    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    const closesAt = new Date(todayDraw.closesAt);
 
-    setCountdownText(`${hours}:${minutes}:${seconds}`);
-    setCountdownSeconds(totalSeconds);
-  }
+    function updateCountdown() {
+      const now = new Date();
+      const diff = closesAt.getTime() - now.getTime();
 
-  updateCountdown();
-  const id = window.setInterval(updateCountdown, 1000);
+      // Past closing time – snap to zero and stop decreasing
+      if (diff <= 0) {
+        setCountdownText('00:00:00');
+        setCountdownSeconds(0);
+        return;
+      }
 
-  return () => {
-    window.clearInterval(id);
-  };
-}, [todayDraw?.closesAt]);
+      const totalSeconds = Math.floor(diff / 1000);
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const minutes = String(
+        Math.floor((totalSeconds % 3600) / 60),
+      ).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
 
-  // ── Admin token handling ──────────────────────────────────────
+      setCountdownText(`${hours}:${minutes}:${seconds}`);
+      setCountdownSeconds(totalSeconds);
+    }
+
+    updateCountdown();
+    const id = window.setInterval(updateCountdown, 1000);
+
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [todayDraw?.closesAt]);
+
+  // ---------------------------------------------
+  // Admin token handling
+  // ---------------------------------------------
 
   async function handleUnlock(e: any) {
     e.preventDefault();
@@ -430,23 +444,19 @@ useEffect(() => {
 
   const isDrawLocked = todayDraw?.status === 'closed';
 
-  // ─────────────────────────────────────────────
+  // ---------------------------------------------
   // Render
-  // ─────────────────────────────────────────────
+  // ---------------------------------------------
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 text-slate-100">
       {/* Header */}
       <header className="flex flex-col gap-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-300">
-          XPOT ADMIN
-        </p>
-        <h1 className="text-xl font-semibold text-white">
-          Control room for today&apos;s XPOT round.
-        </h1>
-        <p className="mt-1 text-xs text-slate-500">
-          Monitor pool state, entries and rewards. All data is live and admin-key
-          gated.
+        <p className="admin-eyebrow">X P O T · A D M I N</p>
+        <h1 className="admin-title">XPOT Operations Center</h1>
+        <p className="admin-subtitle">
+          Live system access to pool state, entries and rewards. Built for
+          accuracy. Protected by design.
         </p>
       </header>
 
@@ -456,8 +466,8 @@ useEffect(() => {
           <div>
             <p className="text-sm font-semibold text-slate-100">Admin key</p>
             <p className="mt-1 text-xs text-slate-400">
-              Paste your admin token to unlock XPOT admin endpoints in this
-              browser.
+              Store your admin token in this browser to unlock XPOT control
+              actions and admin-only endpoints.
             </p>
             {tokenAccepted && (
               <p className="mt-1 text-xs font-semibold text-emerald-400">
@@ -479,20 +489,20 @@ useEffect(() => {
             />
             <div className="flex gap-2">
               <button
-  type="submit"
-  disabled={isSavingToken || !tokenInput.trim()}
-  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
->
-  {tokenAccepted ? 'Update key' : 'Unlock'}
-</button>
+                type="submit"
+                disabled={isSavingToken || !tokenInput.trim()}
+                className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+              >
+                {tokenAccepted ? 'Update key' : 'Unlock'}
+              </button>
               {tokenAccepted && (
                 <button
-  type="button"
-  onClick={handleClearToken}
-  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
->
-  Clear
-</button>
+                  type="button"
+                  onClick={handleClearToken}
+                  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+                >
+                  Clear
+                </button>
               )}
             </div>
           </form>
@@ -509,15 +519,16 @@ useEffect(() => {
             onJackpotUsdChange={setLiveJackpotUsd}
           />
 
-          {/* Today’s XPOT summary card */}
+          {/* Today XPOT summary card */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-100">
-                  Today&apos;s round
+                  Today&apos;s draw
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Live status of today&apos;s XPOT: entries, rollover and pool.
+                  Live status for today&apos;s XPOT round: entries, rollover and
+                  pool size.
                 </p>
               </div>
 
@@ -532,30 +543,27 @@ useEffect(() => {
             </div>
 
             <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
-              
               <div>
-  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-    Round status
-  </p>
-  <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
-    {!todayLoading && !todayDraw && (
-      <span>Not scheduled</span>
-    )}
-    {todayLoading && <span>Loading…</span>}
+                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  Round status
+                </p>
+                <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
+                  {!todayLoading && !todayDraw && <span>Not scheduled</span>}
+                  {todayLoading && <span>Loading…</span>}
 
-    {todayDraw && (
-      <span
-        className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-          todayDraw.status === 'open'
-            ? 'bg-emerald-500/10 text-emerald-300'
-            : 'bg-slate-800 text-slate-300'
-        }`}
-      >
-        {todayDraw.status.toUpperCase()}
-      </span>
-    )}
-  </p>
-</div>
+                  {todayDraw && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                        todayDraw.status === 'open'
+                          ? 'bg-emerald-500/10 text-emerald-300'
+                          : 'bg-slate-800 text-slate-300'
+                      }`}
+                    >
+                      {todayDraw.status.toUpperCase()}
+                    </span>
+                  )}
+                </p>
+              </div>
 
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
@@ -596,23 +604,24 @@ useEffect(() => {
                 todayDraw.closesAt && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm sm:text-base">
-  <span className="uppercase tracking-wide text-slate-500 text-xs">
-  Closes in
-</span>
-<span
-  className={`
+                      <span className="uppercase tracking-wide text-slate-500 text-xs">
+                        Closes in
+                      </span>
+                      <span
+                        className={`
     font-mono text-2xl font-semibold mt-2 transition-all
-    ${isWarningCritical
-      ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
-      : isWarningSoon
+    ${
+      isWarningCritical
+        ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
+        : isWarningSoon
         ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
         : 'text-emerald-300'
     }
   `}
->
-  {countdownText}
-</span>
-</p>
+                      >
+                        {countdownText}
+                      </span>
+                    </p>
                     <button
                       type="button"
                       disabled={
@@ -659,8 +668,8 @@ useEffect(() => {
               Drop bonus jackpot
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Fire a manual hype jackpot using today&apos;s ticket pool. Winner is
-              picked instantly from all tickets in today&apos;s draw.
+              Trigger an instant bonus jackpot using today&apos;s ticket pool. A
+              random ticket from today&apos;s entries is selected as winner.
             </p>
 
             <form onSubmit={handleDropBonus} className="mt-4 space-y-4">
@@ -684,19 +693,19 @@ useEffect(() => {
 
                   <div className="flex flex-wrap gap-2">
                     {[50, 100, 250, 500, 1000].map((v) => (
-  <button
-    key={v}
-    type="button"
-    onClick={() => setBonusAmount(String(v))}
-    className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
-      Number(bonusAmount) === v
-        ? 'border-amber-400 bg-amber-500/10 text-amber-200'
-        : 'border-slate-700 bg-slate-900 text-slate-300'
-    }`}
-  >
-    ${v}
-  </button>
-))}
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setBonusAmount(String(v))}
+                        className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
+                          Number(bonusAmount) === v
+                            ? 'border-amber-400 bg-amber-500/10 text-amber-200'
+                            : 'border-slate-700 bg-slate-900 text-slate-300'
+                        }`}
+                      >
+                        ${v}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -737,13 +746,13 @@ useEffect(() => {
             </form>
           </section>
 
-          {/* Today’s XPOT entries list */}
+          {/* Today XPOT entries list */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
               Today&apos;s XPOT entries
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Every entry that has been issued for the current XPOT round.
+              Every entry that has been issued into today&apos;s XPOT pool.
             </p>
 
             <div className="mt-3">
@@ -799,7 +808,7 @@ useEffect(() => {
               Recent XPOT results
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Internal log of the latest selected entries and reward status.
+              Internal log of the latest selected entries and payout status.
             </p>
 
             <div className="mt-3">
@@ -814,7 +823,7 @@ useEffect(() => {
               {!winnersLoading && !winnersError && winners.length === 0 && (
                 <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
                   No completed draws yet. Once you pick winners and mark jackpots
-                  as paid, they&apos;ll appear here.
+                  as paid, they will appear here.
                 </p>
               )}
 
