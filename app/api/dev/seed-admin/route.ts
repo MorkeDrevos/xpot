@@ -1,4 +1,4 @@
-// app/api/dev/seed-admin/route.ts
+¡// app/api/dev/seed-admin/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { TicketStatus } from '@prisma/client';
