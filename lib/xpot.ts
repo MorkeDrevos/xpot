@@ -14,11 +14,11 @@ type TokenConfig = {
 
 /* ============================
    ENV MODE
+   true  → use DEV token (for dev / staging / testing)
+   false → use PROD token (real XPOT ticket token)
 ============================ */
 
-// true  → use DEV token (for local / staging / testing)
-// false → use PROD token (real XPOT / PANDU live token)
-export const IS_DEV_XPOT = false; // set to false at real launch
+export const IS_DEV_XPOT = false; // flip to true when you want dev token
 
 /* ============================
    TOKENS
@@ -26,8 +26,8 @@ export const IS_DEV_XPOT = false; // set to false at real launch
 
 // 🔴 PRODUCTION TOKEN (real XPOT ticket token)
 const PROD: TokenConfig = {
-  SYMBOL: 'PANDU',
-  MINT: '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk',
+  SYMBOL: 'SOL',
+  MINT: 'So11111111111111111111111111111111111111112',
   // Minimum balance to be eligible for the real draw
   REQUIRED: 100_000,
 };
@@ -57,12 +57,12 @@ export const MIN_SOL_FOR_GAS = 0.01;
 
 /* ============================
    SWAP LINK GENERATOR (JUPITER)
-   - Used for "Buy XPOT" / "Get PANDU" button
+   - Used for "Buy XPOT" button
 ============================ */
 
 export function getXpotSwapUrl(wallet?: string) {
   // Jupiter shorthand: SOL-<MINT>
   // Example: https://jup.ag/swap/SOL-<TOKEN_MINT>?user=<wallet>
   const userParam = wallet ? `?user=${wallet}` : '';
-  return `https://jup.ag/swap/SOL-${TOKEN.MINT}${userParam}`;
+  return `https://jup.ag/swap/SOL-${TOKEN_MINT}${userParam}`;
 }
