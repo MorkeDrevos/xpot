@@ -17,7 +17,7 @@ export const XPOT_POOL_SIZE = 1_000_000; // <--- your pool size lives here
 // PRODUCTION TOKEN
 const PROD: TokenConfig = {
   SYMBOL: 'SOL',
-  MINT: 'Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk',
+  MINT: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
   REQUIRED: 100_000,
 };
 
