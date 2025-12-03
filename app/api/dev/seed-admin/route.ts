@@ -132,15 +132,16 @@ await prisma.ticket.createMany({
     });
 
     const ticket =
-      existingTicket ||
-      (await prisma.ticket.create({
-        data: {
-          code: `XPOT-PAST-${daysAgo}-0001`,
-          status: 'IN_DRAW',
-          walletId: wallets[0].id,
-          drawId: draw.id,
-        },
-      }));
+  existingTicket ||
+  (await prisma.ticket.create({
+    data: {
+      code: `XPOT-PAST-${daysAgo}-0001`,
+      status: TicketStatus.IN_DRAW,
+      walletId: wallets[0].id,
+      userId: wallets[0].userId,   // ✅ ADD THIS LINE
+      drawId: draw.id,
+    },
+  }));
 
     // Winner linked to that ticket
     await prisma.winner.upsert({
