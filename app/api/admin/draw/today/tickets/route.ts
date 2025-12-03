@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Same “latest draw” logic as /today
+  // Same “latest draw” logic as /today = Today’s XPOT
   const draw = await prisma.draw.findFirst({
     orderBy: { drawDate: 'desc' },
   });
