@@ -68,15 +68,13 @@ export async function GET(req: NextRequest) {
 
   if (!todayDraw) {
     todayDraw = await prisma.draw.create({
-      data: {
-        // ⚠️ If your model uses `date` instead of `drawDate`, rename here.
-        drawDate: new Date(),
-        status: 'open', // if your enum is UPPERCASE, change to 'OPEN'
-        jackpotUsd: 6_050_000,
-        rolloverUsd: 0,
-        closesAt: new Date(Date.now() + 60 * 60 * 1000), // +1h
-      },
-    });
+  data: {
+    drawDate: new Date(),
+    jackpotUsd: 6_050_000,
+    rolloverUsd: 0,
+    closesAt: new Date(Date.now() + 60 * 60 * 1000),
+  },
+});
   }
 
   // 3) Tickets for today’s draw
