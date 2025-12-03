@@ -1,3 +1,4 @@
+// app/components/JackpotPanel.tsx
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -6,7 +7,7 @@ const JACKPOT_XPOT = 1_000_000;
 
 // TEMP: you’re using PANDU for now – later swap to real XPOT mint
 const XPOT_MINT =
-  'So11111111111111111111111111111111111111112';
+  '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk';
 
 function formatUsd(value: number) {
   if (!Number.isFinite(value)) return '$0';
@@ -113,7 +114,8 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
       jackpotUsd > prevJackpot.current
     ) {
       setJustPumped(true);
-      setTimeout(() => setJustPumped(false), 1200);
+      // slightly longer so glow feels smooth
+      setTimeout(() => setJustPumped(false), 1600);
     }
     prevJackpot.current = jackpotUsd;
 
@@ -141,11 +143,25 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
 
   return (
     <section
-      className={`rounded-2xl border border-slate-800 bg-slate-950/70 px-5 py-4 shadow-sm transition ${
-        justPumped ? 'ring-2 ring-emerald-400/60 animate-pulse' : ''
-      }`}
+      className={`
+        relative overflow-hidden
+        rounded-2xl border border-slate-800
+        bg-slate-950/70 px-5 py-4 shadow-sm
+        transition-colors duration-300
+      `}
     >
-      <div className="flex items-start justify-between gap-2">
+      {/* Soft neon glow layer on price pump */}
+      <div
+        className={`
+          pointer-events-none absolute inset-0 rounded-2xl
+          border border-emerald-400/50
+          shadow-[0_0_40px_rgba(52,211,153,0.45)]
+          opacity-0 transition-opacity duration-500
+          ${justPumped ? 'opacity-100' : ''}
+        `}
+      />
+
+      <div className="relative flex items-start justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">
           Today&apos;s XPOT
         </p>
@@ -157,7 +173,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
         )}
       </div>
 
-      <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+      <div className="relative mt-2 flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="text-3xl font-semibold text-white">
             {JACKPOT_XPOT.toLocaleString()} XPOT
@@ -199,10 +215,9 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-slate-500">
-        Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD
-        value tracks real on-chain price from Jupiter and updates
-        automatically.
+      <p className="relative mt-3 text-xs text-slate-500">
+        Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD value
+        tracks real on-chain price from Jupiter and updates automatically.
       </p>
     </section>
   );
