@@ -6,10 +6,12 @@ import { TicketStatus } from '@prisma/client';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  // 🔐 Safety: block on production unless you explicitly allow it
-  if (process.env.NODE_ENV === 'production') {
+  // 🔐 Safety: only run when explicitly allowed via env
+  const allowSeed = process.env.ALLOW_SEED === 'true';
+
+  if (!allowSeed) {
     return NextResponse.json(
-      { ok: false, error: 'DEV_SEED_DISABLED_IN_PROD' },
+      { ok: false, error: 'DEV_SEED_DISABLED' },
       { status: 403 },
     );
   }
@@ -106,10 +108,24 @@ export async function GET(req: NextRequest) {
     date.setDate(date.getDate() - daysAgo);
 
     const start = new Date(
-      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0),
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        0,
+        0,
+        0,
+      ),
     );
     const end = new Date(
-      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59),
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        23,
+        59,
+        59,
+      ),
     );
 
     let draw = await prisma.draw.findFirst({
