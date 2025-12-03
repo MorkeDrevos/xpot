@@ -1,7 +1,7 @@
 // app/api/admin/pick-winner/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
 
 export async function POST(req: NextRequest) {
