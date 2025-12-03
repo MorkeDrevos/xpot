@@ -52,53 +52,50 @@ model XpUserBalance {
 }
 
 model Draw {
-  id         String   @id @default(cuid())
+  id             String   @id @default(cuid())
 
-  /// One main draw per day
-  drawDate   DateTime @unique
+  // One main draw per calendar day
+  drawDate       DateTime  @unique
 
-  /// Whether entries are closed (no new tickets)
-  isClosed   Boolean  @default(false)
+  // Status flags
+  isClosed       Boolean   @default(false)
+  resolvedAt     DateTime?
 
-  /// When the draw was resolved / winner picked
-  resolvedAt DateTime?
+  // Jackpot size in USD for this draw
+  jackpotUsd     Int?      // or Float? later if you want decimals
 
-  /// Jackpot size in USD for this draw
-  /// (keep Int if you’re OK with whole dollars, switch to Decimal/Float if you want cents)
-  jackpotUsd Int?
-
-  /// Payout info for the winner
-  paidAt     DateTime?
-  payoutTx   String?
+  // Payout info for the winner
+  paidAt         DateTime?
+  payoutTx       String?
 
   // All tickets in this draw
-  tickets    Ticket[] @relation("DrawTickets")
+  tickets        Ticket[]  @relation("DrawTickets")
 
   // Winning ticket (when resolved)
-  winnerTicketId String? @unique
-  winnerTicket   Ticket? @relation("DrawWinner", fields: [winnerTicketId], references: [id])
+  winnerTicketId String?   @unique
+  winnerTicket   Ticket?   @relation("DrawWinner", fields: [winnerTicketId], references: [id])
 }
 
 model Ticket {
-  id        String       @id @default(cuid())
-  code      String       @unique
-  createdAt DateTime     @default(now())
+  id        String        @id @default(cuid())
+  code      String        @unique
+  createdAt DateTime      @default(now())
 
   // Status of this ticket in the lifecycle
-  status    TicketStatus @default(IN_DRAW)
+  status    TicketStatus  @default(IN_DRAW)
 
   // Draw this ticket belongs to
   drawId    String
-  draw      Draw         @relation("DrawTickets", fields: [drawId], references: [id])
+  draw      Draw          @relation("DrawTickets", fields: [drawId], references: [id])
 
   // Owning user
   userId    String
-  user      User         @relation(fields: [userId], references: [id])
+  user      User          @relation(fields: [userId], references: [id])
 
   // Wallet that claimed it
   walletId  String
-  wallet    Wallet       @relation(fields: [walletId], references: [id])
+  wallet    Wallet        @relation(fields: [walletId], references: [id])
 
-  // If this ticket is the winner of a draw
-  winnerOf  Draw?        @relation("DrawWinner")
+  // If this ticket is the *winner* of a draw
+  winnerOf  Draw?         @relation("DrawWinner")
 }
