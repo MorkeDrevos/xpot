@@ -64,7 +64,8 @@ export default function JackpotPanel({
 
   // tiny pulse when price updates
   const [justUpdated, setJustUpdated] = useState(false);
-  const updatePulseTimeout = useRef<number | null>(null);
+  const updatePulseTimeout =
+  useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Per-Madrid-day localStorage key for "highest today"
   const todayKey = `xpot_max_jackpot_madrid_${getMadridDayKey()}`;
@@ -109,12 +110,12 @@ export default function JackpotPanel({
 
         // soft “live” pulse when price changes
         setJustUpdated(true);
-        if (updatePulseTimeout.current !== null) {
-          clearTimeout(updatePulseTimeout.current);
-        }
-        updatePulseTimeout.current = setTimeout(() => {
-          setJustUpdated(false);
-        }, 400);
+        return () => {
+  clearInterval(timer);
+  if (updatePulseTimeout.current !== null) {
+    clearTimeout(updatePulseTimeout.current);
+  }
+};
       } else {
         setPriceUsd(null);
         setHadError(true);
