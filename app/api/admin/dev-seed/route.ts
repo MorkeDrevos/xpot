@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '../../_auth';
+// ✅ correct
+import { requireAdmin } from '../_auth';
 import { TicketStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
