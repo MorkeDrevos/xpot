@@ -7,36 +7,40 @@ export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  try {
-    const winners = await prisma.winner.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      include: {
-        draw: true,
+  const draws = await prisma.draw.findMany({
+    where: {
+      winnerTicketId: {
+        not: null,
       },
-    });
+    },
+    orderBy: {
+      drawDate: 'desc',
+    },
+    take: 20,
+    include: {
+      winnerTicket: {
+        include: {
+          wallet: true,
+        },
+      },
+    },
+  });
 
-    const payload = winners.map(w => ({
-      id: w.id,
-      drawId: w.drawId,
-      date:
-        w.createdAt instanceof Date
-          ? w.createdAt.toISOString()
-          : (w.createdAt as any),
-      ticketCode: w.ticketCode,
-      walletAddress: w.walletAddress,
-      jackpotUsd: w.jackpotUsd ?? w.payoutUsd ?? 0,
-      payoutUsd: w.payoutUsd ?? 0,
-      isPaidOut: w.isPaidOut ?? false,
-      txUrl: w.txUrl ?? null,
-    }));
+  const winners = draws.map(d => ({
+    id: d.id,
+    drawId: d.id,
+    date: d.drawDate.toISOString(),
+    ticketCode: d.winnerTicket?.code ?? '',
+    walletAddress: d.winnerTicket?.wallet?.address ?? '',
+    jackpotUsd: d.jackpotUsd ?? 0,
+    // If you later store a separate payoutUsd, map it here.
+    payoutUsd: d.jackpotUsd ?? 0,
+    isPaidOut: Boolean(d.paidAt),
+    txUrl: d.payoutTx ?? null,
+  }));
 
-    return NextResponse.json({ ok: true, winners: payload });
-  } catch (err: any) {
-    console.error('[ADMIN] /winners error', err);
-    return NextResponse.json(
-      { ok: false, error: err?.message || 'Failed to load winners' },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json({
+    ok: true,
+    winners,
+  });
 }
