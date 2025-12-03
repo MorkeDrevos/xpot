@@ -71,7 +71,6 @@ export async function GET(req: NextRequest) {
   data: {
     drawDate: new Date(),
     jackpotUsd: 6_050_000,
-    rolloverUsd: 0,
     closesAt: new Date(Date.now() + 60 * 60 * 1000),
   },
 });
