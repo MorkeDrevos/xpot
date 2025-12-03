@@ -3,56 +3,40 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
 
-export const dynamic = 'force-dynamic';
-
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  let body: any;
   try {
-    body = await req.json();
-  } catch {
+    const winners = await prisma.winner.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: {
+        draw: true,
+      },
+    });
+
+    const payload = winners.map(w => ({
+      id: w.id,
+      drawId: w.drawId,
+      date:
+        w.createdAt instanceof Date
+          ? w.createdAt.toISOString()
+          : (w.createdAt as any),
+      ticketCode: w.ticketCode,
+      walletAddress: w.walletAddress,
+      jackpotUsd: w.jackpotUsd ?? w.payoutUsd ?? 0,
+      payoutUsd: w.payoutUsd ?? 0,
+      isPaidOut: w.isPaidOut ?? false,
+      txUrl: w.txUrl ?? null,
+    }));
+
+    return NextResponse.json({ ok: true, winners: payload });
+  } catch (err: any) {
+    console.error('[ADMIN] /winners error', err);
     return NextResponse.json(
-      { ok: false, error: 'Invalid JSON body' },
-      { status: 400 },
+      { ok: false, error: err?.message || 'Failed to load winners' },
+      { status: 500 },
     );
   }
-
-  const drawId = body?.drawId as string | undefined;
-  const txUrl = (body?.txUrl as string | null | undefined) || null;
-
-  if (!drawId) {
-    return NextResponse.json(
-      { ok: false, error: 'Missing drawId' },
-      { status: 400 },
-    );
-  }
-
-  const existing = await prisma.draw.findUnique({ where: { id: drawId } });
-
-  if (!existing) {
-    return NextResponse.json(
-      { ok: false, error: 'DRAW_NOT_FOUND' },
-      { status: 404 },
-    );
-  }
-
-  await prisma.draw.update({
-    where: { id: drawId },
-    data: {
-      paidAt: new Date(),
-      payoutTx: txUrl,
-    },
-  });
-
-  return NextResponse.json({ ok: true });
-}
-
-// Optional helper GET – just for debugging in browser
-export async function GET() {
-  return NextResponse.json({
-    ok: false,
-    error: 'Listing XPOT results is handled by /api/admin/draw/recent-winners.',
-  });
 }
