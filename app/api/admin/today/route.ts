@@ -30,8 +30,18 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Compute a "closing time" for the countdown – here: end of the same UTC day
-    const closesAt = new Date(todayStr + 'T23:59:59.999Z');
+    // Europe/Madrid close time at 22:00 local time
+const closesAt = new Date(
+  new Date().toLocaleString("en-US", { timeZone: "Europe/Madrid" })
+);
+
+// Force 22:00 Madrid time today
+closesAt.setHours(22, 0, 0, 0);
+
+// If it's already past 22:00 today, use tomorrow
+if (new Date() > closesAt) {
+  closesAt.setDate(closesAt.getDate() + 1);
+}
     closesAtDate.setUTCHours(23, 59, 59, 999);
 
     const today = {
