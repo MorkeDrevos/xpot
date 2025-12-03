@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
-const PRICE_POLL_MS = 7000; // ~7s feels live without hammering Jupiter
+const PRICE_POLL_MS = 5000; // ~5s feels live without hammering Jupiter
 
 type JackpotPanelProps = {
   /** When true, shows "Draw locked" pill in the header */
