@@ -211,51 +211,50 @@ export default function JackpotPanel({
       />
 
       {/* HEADER */}
-      <div className="relative flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-            Today&apos;s XPOT
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            XPOT ticket pool is fixed at {poolLabel}. USD value updates
-            live from on-chain price via Jupiter.
-          </p>
-        </div>
+<div className="relative flex items-start justify-between gap-4">
+  <div>
+    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+      Today&apos;s XPOT
+    </p>
+    {/* Make pool size dominant and move it up */}
+    <p className="mt-2 text-lg font-semibold tracking-[0.18em] text-slate-100">
+      {poolLabel}
+    </p>
+  </div>
 
-        <div className="flex flex-col items-end gap-1">
-          {isLocked && (
-            <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
-              Draw locked
-            </span>
-          )}
+  <div className="flex flex-col items-end gap-1">
+    {isLocked && (
+      <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+        Draw locked
+      </span>
+    )}
 
-          {showUnavailable && (
-            <span className="text-[11px] font-semibold text-amber-300">
-              Live price not available yet.
-            </span>
-          )}
-        </div>
-      </div>
+    {showUnavailable && (
+      <span className="text-[11px] font-semibold text-amber-300">
+        Live price not available yet.
+      </span>
+    )}
+  </div>
+</div>
 
       {/* MAIN NUMBERS */}
-      <div className="relative mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium tracking-[0.18em] text-slate-400">
-            {poolLabel}
-          </p>
+<div className="relative mt-4 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <div className="mt-1 text-4xl font-semibold text-white">
+      {formatUsd(jackpotUsd)}
+      <span className="ml-1 align-middle text-sm text-emerald-400">
+        (live)
+      </span>
+    </div>
 
-          <div
-            className={`
-              mt-1 text-4xl font-semibold text-white
-              transition-transform duration-300
-              ${justUpdated ? 'scale-[1.01]' : ''}
-            `}
-          >
-            {formatUsd(jackpotUsd)}
-            <span className="ml-1 align-middle text-sm text-emerald-400">
-              (live)
-            </span>
-          </div>
+    <p className="mt-1 text-xs text-slate-500">
+      1 XPOT ≈{' '}
+      <span className="font-mono">
+        {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+      </span>{' '}
+      <span className="text-slate-500">(via Jupiter)</span>
+    </p>
+  </div>
 
           <p className="mt-1 text-xs text-slate-500">
             1 XPOT ≈{' '}
@@ -266,23 +265,38 @@ export default function JackpotPanel({
           </p>
         </div>
 
-        <div className="flex flex-col items-end gap-1 text-xs">
+                <div className="flex flex-col items-end gap-1 text-xs">
+          {(maxJackpotToday || reachedMilestone || nextMilestone) && (
+            <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+              Session stats
+            </p>
+          )}
+
           {maxJackpotToday && (
-            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-slate-300">
-              Highest today: {formatUsd(maxJackpotToday)}
-            </span>
+            <p className="text-[11px] text-slate-400">
+              Highest today{' '}
+              <span className="font-mono text-slate-100">
+                {formatUsd(maxJackpotToday)}
+              </span>
+            </p>
           )}
 
           {reachedMilestone && (
-            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-300">
-              Milestone reached: {formatUsd(reachedMilestone)}
-            </span>
+            <p className="text-[11px] text-emerald-300">
+              Milestone{' '}
+              <span className="font-mono">
+                {formatUsd(reachedMilestone)}
+              </span>
+            </p>
           )}
 
           {nextMilestone && (
-            <span className="text-slate-500">
-              Next milestone at {formatUsd(nextMilestone)}
-            </span>
+            <p className="text-[11px] text-slate-500">
+              Next at{' '}
+              <span className="font-mono">
+                {formatUsd(nextMilestone)}
+              </span>
+            </p>
           )}
         </div>
       </div>
