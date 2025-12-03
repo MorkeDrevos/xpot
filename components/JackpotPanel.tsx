@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Modal from './Modal';
 
 const JACKPOT_XPOT = 1_000_000;
 
@@ -41,6 +42,11 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
     useState<number | null>(null);
   const [justPumped, setJustPumped] = useState(false);
   const prevJackpot = useRef<number | null>(null);
+
+  // Modal state for "Pick winner" confirmation
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const todayKey = (() => {
     const d = new Date();
@@ -139,6 +145,29 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
         null
       : null;
 
+  // Confirm pick-winner handler
+  async function handleConfirm() {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch('/api/admin/draw/pick-winner', {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to pick winner');
+      }
+
+      // Reload to show updated winner / tickets
+      window.location.reload();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to pick winner');
+      setLoading(false);
+    }
+  }
+
   return (
     <section
       className={`rounded-2xl border border-slate-800 bg-slate-950/70 px-5 py-4 shadow-sm transition ${
@@ -203,6 +232,61 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
         Jackpot is fixed at 1,000,000 XPOT. Its USD value tracks real
         on-chain price from Jupiter and updates automatically.
       </p>
+
+      {/* Pick winner button + confirmation modal */}
+      <div className="mt-4">
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full rounded-full bg-amber-400 text-slate-900
+                     font-semibold py-3 text-sm md:text-base
+                     hover:bg-amber-300 active:bg-amber-500
+                     transition-colors"
+        >
+          Pick winner now
+        </button>
+
+        <Modal
+          open={open}
+          onClose={() => !loading && setOpen(false)}
+          title="Confirm today’s winner"
+          size="sm"
+        >
+          <p className="text-sm text-slate-300 mb-4">
+            XPOT will randomly select 1 ticket from today’s pool.
+            This action can&rsquo;t be undone.
+          </p>
+
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-500/40
+                            bg-red-500/10 px-3 py-2 text-xs text-red-200">
+              {error}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              disabled={loading}
+              onClick={() => setOpen(false)}
+              className="w-full sm:w-auto rounded-full border border-slate-500/60
+                         px-4 py-2 text-sm text-slate-200
+                         hover:border-slate-300 hover:text-slate-50
+                         transition-colors disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={loading}
+              onClick={handleConfirm}
+              className="w-full sm:w-auto rounded-full bg-amber-400 px-4 py-2
+                         text-sm font-semibold text-slate-900
+                         hover:bg-amber-300 active:bg-amber-500
+                         transition-colors disabled:opacity-60"
+            >
+              {loading ? 'Picking winner…' : 'Yes, pick winner'}
+            </button>
+          </div>
+        </Modal>
+      </div>
     </section>
   );
 }
