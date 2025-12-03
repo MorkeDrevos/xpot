@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Latest completed draws that have a winner
+  // Latest completed XPOT rounds that have a selected ticket
   const draws = await prisma.draw.findMany({
     where: {
       winnerTicketId: { not: null },
