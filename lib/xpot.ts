@@ -9,19 +9,17 @@ type TokenConfig = {
 /* ENV MODE */
 
 // true  → use DEV token (for local / staging / testing)
-// false → use PROD token (real XPOT live token)
+// false → use PROD token (real XPOT / PANDU live token)
 export const IS_DEV_XPOT = false;
 
 /* TOKENS */
 
-// PRODUCTION TOKEN (real XPOT ticket token)
 const PROD: TokenConfig = {
   SYMBOL: 'SOL',
   MINT: 'So11111111111111111111111111111111111111112',
-  REQUIRED: 1_000,
+  REQUIRED: 100_000,
 };
 
-// DEV / TEST TOKEN
 const DEV: TokenConfig = {
   SYMBOL: 'BONK',
   MINT: 'DezXAZ8z7PnrnRJjz3wXBoHyRnHv7QBB7aLteS7r2N6v',
@@ -37,10 +35,9 @@ export const REQUIRED_XPOT = TOKEN.REQUIRED;
 export const TOKEN_SYMBOL = TOKEN.SYMBOL;
 export const TOKEN_MINT = TOKEN.MINT;
 
-// XPOT jackpot pool size (how many XPOT are in Today’s XPOT pool)
-export const XPOT_POOL_SIZE = 1_000_000;
+// 🔹 Single source of truth for pool size
+export const XPOT_POOL_SIZE = 100_000; // <– set your pool here
 
-// Simple SOL gas safety check
 export const MIN_SOL_FOR_GAS = 0.01;
 
 /* SWAP LINK (JUPITER) */
