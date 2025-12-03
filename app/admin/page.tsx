@@ -97,7 +97,7 @@ function UsdPill({
   );
 }
 
-// XPOT pill – fixed 1,000,000 XPOT for each jackpot
+// XPOT pill – fixed 1,000,000 XPOT for each XPOT round
 function XpotPill({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const base =
     'inline-flex items-baseline rounded-full bg-sky-500/10 text-sky-300 font-semibold';
@@ -160,7 +160,7 @@ export default function AdminPage() {
   const [savingPayoutId, setSavingPayoutId] = useState<string | null>(null);
 
   // ─────────────────────────────────────────────
-  // Effects: token, countdown, live jackpot
+  // Effects: token, countdown, live XPOT USD value
   // ─────────────────────────────────────────────
 
   // Load stored token on first render
@@ -174,7 +174,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Live countdown to draw close (admin view)
+  // Live countdown to round close (admin view)
   useEffect(() => {
     const closesAt = todayDraw?.closesAt;
     const status = todayDraw?.status;
@@ -211,7 +211,7 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, todayDraw?.status]);
 
-  // Live jackpot from Jupiter = 1,000,000 XPOT
+  // Live value of 1,000,000 XPOT in USD
   useEffect(() => {
     async function loadLiveJackpot() {
       try {
@@ -226,7 +226,7 @@ export default function AdminPage() {
           setLiveJackpotUsd(jackpot);
         }
       } catch (err) {
-        console.error('[ADMIN] live jackpot fetch failed', err);
+        console.error('[ADMIN] live XPOT value fetch failed', err);
       }
     }
 
@@ -314,7 +314,7 @@ export default function AdminPage() {
     }
   }
 
-  // Load all admin data (today + tickets + winners)
+  // Load all admin data (Today’s XPOT + entries + results)
   async function loadAll(optionalToken?: string) {
     const token = optionalToken ?? adminToken;
     if (!token) return;
@@ -358,14 +358,14 @@ export default function AdminPage() {
       if (drawJson?.ok) {
         setTodayDraw(drawJson.draw);
       } else if (!drawRes.ok) {
-        setTodayError(`Failed to load today’s draw (${drawRes.status})`);
+        setTodayError(`Failed to load Today’s XPOT (${drawRes.status})`);
       }
 
       if (ticketsJson?.ok && Array.isArray(ticketsJson.tickets)) {
         setTodayTickets(ticketsJson.tickets);
       } else if (!ticketsRes.ok) {
         setTicketsError(
-          `Failed to load today’s tickets (${ticketsRes.status})`,
+          `Failed to load Today’s XPOT entries (${ticketsRes.status})`,
         );
       }
 
@@ -373,7 +373,7 @@ export default function AdminPage() {
         setRecentWinners(winnersJson.winners);
       } else if (!winnersRes.ok) {
         setWinnersError(
-          `Failed to load recent winners (${winnersRes.status})`,
+          `Failed to load XPOT results (${winnersRes.status})`,
         );
       }
     } catch (err) {
@@ -390,7 +390,7 @@ export default function AdminPage() {
     }
   }
 
-  // Re-open draw (called from modal)
+  // Re-open Today’s XPOT round (called from modal)
   async function handleReopenDraw() {
     if (!todayDraw) return;
 
@@ -409,16 +409,16 @@ export default function AdminPage() {
       setShowReopenModal(false);
       await loadAll();
     } catch (err) {
-      console.error('[ADMIN] reopen-draw error:', err);
+      console.error('[ADMIN] reopen-xpot error:', err);
       setReopenError(
-        err instanceof Error ? err.message : 'Failed to re-open draw',
+        err instanceof Error ? err.message : 'Failed to re-open Today’s XPOT',
       );
     } finally {
       setReopening(false);
     }
   }
 
-  // Real pick-winner handler
+  // Real selection handler for Today’s XPOT
   async function handlePickWinner() {
     if (!todayDraw) return;
 
@@ -447,19 +447,21 @@ export default function AdminPage() {
     } catch (err) {
       console.error('[ADMIN] pick-winner error:', err);
       setPickError(
-        err instanceof Error ? err.message : 'Failed to pick winner',
+        err instanceof Error
+          ? err.message
+          : 'Failed to run Today’s XPOT selection',
       );
     } finally {
       setPickingWinner(false);
     }
   }
 
-  // Payout control
+  // Reward payout control
   async function handleMarkPayout(winner: AdminWinner) {
     const txUrl =
       typeof window !== 'undefined'
         ? window.prompt(
-            'Paste payout tx URL (optional). Leave blank if not needed.',
+            'Paste reward tx URL (optional). Leave blank if not needed.',
             winner.txUrl ?? '',
           )
         : winner.txUrl ?? '';
@@ -476,14 +478,14 @@ export default function AdminPage() {
       });
 
       if (!data.ok) {
-        throw new Error(data.error ?? 'Failed to save payout');
+        throw new Error(data.error ?? 'Failed to save reward status');
       }
 
       await loadAll();
     } catch (err) {
       console.error('[ADMIN] mark-paid error:', err);
       setWinnersError(
-        err instanceof Error ? err.message : 'Failed to save payout',
+        err instanceof Error ? err.message : 'Failed to save reward status',
       );
     } finally {
       setSavingPayoutId(null);
@@ -530,8 +532,8 @@ export default function AdminPage() {
               XPOT admin - TESTING
             </p>
             <p className="text-sm text-slate-300">
-              Internal control room for today&apos;s draw, jackpot state and
-              winners.
+              Internal control room for Today&apos;s XPOT, pool state and
+              selected wallets.
             </p>
           </div>
 
@@ -551,7 +553,7 @@ export default function AdminPage() {
                 Admin key
               </p>
               <p className="text-[11px] text-slate-500">
-                Paste your admin token to unlock live draw data. Stored only in
+                Paste your admin token to unlock live XPOT data. Stored only in
                 this browser&apos;s local storage.
               </p>
             </div>
@@ -583,7 +585,7 @@ export default function AdminPage() {
           )}
           {tokenValid && (
             <p className="mt-2 text-[11px] text-emerald-300">
-              Admin token accepted. Live draw endpoints are unlocked for this
+              Admin token accepted. XPOT admin endpoints are unlocked for this
               browser.
             </p>
           )}
@@ -593,19 +595,19 @@ export default function AdminPage() {
         <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)]">
           {/* LEFT COLUMN */}
           <div className="space-y-4">
-            {/* Jackpot panel – 1,000,000 XPOT + live USD via Jupiter */}
+            {/* XPOT panel – 1,000,000 XPOT + live USD via Jupiter */}
             <JackpotPanel isLocked={isDrawLocked} />
 
-            {/* Today’s draw */}
+            {/* Today’s XPOT */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
               <header className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-100">
-                    Today&apos;s draw
+                    Today&apos;s XPOT
                   </h2>
                   <p className="mt-1 text-xs text-slate-400">
-                    Overview of today&apos;s draw: ticket pool, winner status
-                    and timing.
+                    Overview of Today&apos;s XPOT round: entries, XPOT pool
+                    state and timing.
                   </p>
                 </div>
 
@@ -621,7 +623,7 @@ export default function AdminPage() {
 
                   {todayDraw?.status !== 'open' && todayDraw && (
                     <div className="rounded-full border border-slate-700/60 bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300">
-                      Draw locked
+                      XPOT locked
                     </div>
                   )}
                 </div>
@@ -629,26 +631,26 @@ export default function AdminPage() {
 
               {!adminToken && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Paste your admin key above to load today&apos;s draw details.
+                  Paste your admin key above to load Today&apos;s XPOT details.
                 </p>
               )}
 
               {adminToken && loadingToday && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Loading today&apos;s draw…
+                  Loading Today&apos;s XPOT…
                 </p>
               )}
 
               {adminToken && todayError && !loadingToday && (
                 <p className="mt-3 text-xs text-amber-300">
-                  Failed to load today&apos;s draw. {todayError}
+                  Failed to load Today&apos;s XPOT. {todayError}
                 </p>
               )}
 
               {adminToken && todayWinner && (
                 <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-3 text-[11px] text-slate-100">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                    Today&apos;s winner
+                    Today&apos;s XPOT result
                   </p>
                   <p className="mt-1 font-mono text-xs">
                     {todayWinner.ticketCode}
@@ -660,7 +662,7 @@ export default function AdminPage() {
                     <UsdPill amount={todayWinner.jackpotUsd} size="sm" />
                     <span className="text-slate-500">·</span>
                     <span>
-                      {todayWinner.paidOut ? 'Paid out' : 'Pending payout'}
+                      {todayWinner.paidOut ? 'Reward sent' : 'Pending reward'}
                     </span>
                   </p>
                 </div>
@@ -670,13 +672,13 @@ export default function AdminPage() {
                 <>
                   <div className="mt-4 grid gap-4 text-xs text-slate-200 sm:grid-cols-2">
                     <div>
-                      <p className="text-slate-400">Status</p>
+                      <p className="text-slate-400">Round status</p>
                       <p className="mt-1 font-semibold capitalize">
                         {todayDraw.status}
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Tickets in pool</p>
+                      <p className="text-slate-400">Entries in pool</p>
                       <p className="mt-1 font-semibold">
                         {todayDraw.ticketsCount.toLocaleString()}
                       </p>
@@ -689,7 +691,7 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <p className="text-slate-400">
-                        Today&apos;s jackpot{' '}
+                        Today&apos;s XPOT{' '}
                         <span className="text-[11px] text-slate-500">
                           (live)
                         </span>
@@ -702,15 +704,15 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* When draw is open but no tickets */}
+                  {/* When round is open but no entries */}
                   {todayDraw.status === 'open' &&
                     todayDraw.ticketsCount === 0 && (
                       <p className="mt-4 w-full rounded-full bg-slate-900 py-2 text-center text-xs text-slate-500">
-                        No tickets in pool yet.
+                        No entries in Today&apos;s XPOT yet.
                       </p>
                     )}
 
-                  {/* When draw is open and tickets > 0 */}
+                  {/* When round is open and entries > 0 */}
                   {todayDraw.status === 'open' &&
                     todayDraw.ticketsCount > 0 && (
                       <button
@@ -722,16 +724,18 @@ export default function AdminPage() {
                           setShowPickModal(true);
                         }}
                       >
-                        {pickingWinner ? 'Picking winner…' : 'Pick winner now'}
+                        {pickingWinner
+                          ? 'Running selection…'
+                          : 'Run selection now'}
                       </button>
                     )}
 
-                  {/* When draw is locked / completed */}
+                  {/* When round is locked / completed */}
                   {todayDraw.status !== 'open' && (
                     <>
                       <p className="mt-3 text-[11px] text-slate-400">
-                        Draw is locked. You can review the winner and payout
-                        status below.
+                        Today&apos;s XPOT is locked. You can review the selected
+                        wallet and reward status below.
                       </p>
                       <button
                         type="button"
@@ -741,7 +745,7 @@ export default function AdminPage() {
                         }}
                         className="mt-3 w-full rounded-full border border-slate-700 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500 hover:bg-slate-900"
                       >
-                        Re-open draw (panic switch)
+                        Re-open Today&apos;s XPOT (panic switch)
                       </button>
                     </>
                   )}
@@ -755,10 +759,10 @@ export default function AdminPage() {
                       } text-emerald-100`}
                     >
                       <p className="text-xs font-semibold">
-                        Winner locked for today&apos;s draw
+                        Selected wallet locked for Today&apos;s XPOT
                       </p>
                       <p className="mt-1">
-                        Ticket:{' '}
+                        Entry:{' '}
                         <span className="font-mono">
                           {lastPickedWinner.ticketCode}
                         </span>
@@ -771,7 +775,7 @@ export default function AdminPage() {
                       </p>
                       {typeof lastPickedWinner.jackpotUsd === 'number' && (
                         <p className="mt-0.5 flex items-center gap-1">
-                          <span>Jackpot:</span>
+                          <span>XPOT value:</span>
                           <UsdPill
                             amount={lastPickedWinner.jackpotUsd}
                             size="sm"
@@ -781,29 +785,29 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  {/* Pick-winner confirmation modal */}
+                  {/* Selection confirmation modal */}
                   {todayDraw && (
                     <Modal
                       open={showPickModal}
                       onClose={() => {
                         if (!pickingWinner) setShowPickModal(false);
                       }}
-                      title="Confirm today’s winner"
+                      title="Confirm Today’s XPOT selection"
                     >
                       <p className="mb-3 text-xs text-slate-300">
-                        XPOT will randomly select one ticket from
-                        today&apos;s pool. This action can&apos;t be undone.
+                        XPOT will randomly select one entry from Today&apos;s
+                        pool. This action can&apos;t be undone.
                       </p>
 
                       <div className="mb-3 rounded-lg bg-slate-900 px-3 py-2 text-[11px] text-slate-200">
                         <p>
-                          Tickets in pool:{' '}
+                          Entries in pool:{' '}
                           <span className="font-semibold">
                             {todayDraw.ticketsCount.toLocaleString()}
                           </span>
                         </p>
                         <p className="mt-1 flex items-center gap-1">
-                          <span>Jackpot:</span>
+                          <span>Today&apos;s XPOT:</span>
                           <UsdPill
                             amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
                             size="sm"
@@ -833,36 +837,37 @@ export default function AdminPage() {
                           className="w-full rounded-full bg-amber-400 px-4 py-2 text-xs font-semibold text-black hover:bg-amber-300 sm:w-auto disabled:cursor-not-allowed disabled:bg-amber-300/60"
                         >
                           {pickingWinner
-                            ? 'Picking winner…'
-                            : 'Yes, pick winner'}
+                            ? 'Running selection…'
+                            : 'Yes, run selection'}
                         </button>
                       </div>
                     </Modal>
                   )}
 
-                  {/* Re-open draw confirmation modal */}
+                  {/* Re-open XPOT confirmation modal */}
                   {todayDraw && (
                     <Modal
                       open={showReopenModal}
                       onClose={() => {
                         if (!reopening) setShowReopenModal(false);
                       }}
-                      title="Re-open today’s draw?"
+                      title="Re-open Today’s XPOT?"
                     >
                       <p className="mb-3 text-xs text-slate-300">
-                        This will unlock today&apos;s draw so new tickets can
-                        be issued again. Use this only as an emergency switch.
+                        This will unlock Today&apos;s XPOT round so new entries
+                        can be added again. Use this only as an emergency
+                        switch.
                       </p>
 
                       <div className="mb-3 rounded-lg bg-slate-900 px-3 py-2 text-[11px] text-slate-200">
                         <p>
-                          Tickets in pool:{' '}
+                          Entries in pool:{' '}
                           <span className="font-semibold">
                             {todayDraw.ticketsCount.toLocaleString()}
                           </span>
                         </p>
                         <p className="mt-1 flex items-center gap-1">
-                          <span>Jackpot:</span>
+                          <span>Today&apos;s XPOT:</span>
                           <UsdPill
                             amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
                             size="sm"
@@ -893,7 +898,7 @@ export default function AdminPage() {
                         >
                           {reopening
                             ? 'Re-opening…'
-                            : 'Yes, re-open draw'}
+                            : 'Yes, re-open Today’s XPOT'}
                         </button>
                       </div>
                     </Modal>
@@ -902,24 +907,24 @@ export default function AdminPage() {
               )}
             </section>
 
-            {/* Today’s tickets */}
+            {/* Today’s XPOT entries */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
               <h2 className="text-sm font-semibold text-slate-100">
-                Today&apos;s tickets
+                Today&apos;s XPOT entries
               </h2>
               <p className="mt-1 text-xs text-slate-400">
-                Every ticket that has been issued for the current draw.
+                Every entry that has been issued for the current XPOT round.
               </p>
 
               {!adminToken && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Unlock with your admin key to see today&apos;s tickets.
+                  Unlock with your admin key to see Today&apos;s XPOT entries.
                 </p>
               )}
 
               {adminToken && loadingTickets && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Loading tickets…
+                  Loading entries…
                 </p>
               )}
 
@@ -932,7 +937,7 @@ export default function AdminPage() {
                 !ticketsError &&
                 todayTickets.length === 0 && (
                   <p className="mt-3 text-xs text-slate-500">
-                    No tickets yet for today&apos;s draw.
+                    No entries yet for Today&apos;s XPOT.
                   </p>
                 )}
 
@@ -973,15 +978,15 @@ export default function AdminPage() {
 
           {/* RIGHT COLUMN */}
           <div className="space-y-4">
-            {/* Recent winners */}
+            {/* Recent XPOT results */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-100">
-                    Recent winners
+                    Recent XPOT results
                   </h2>
                   <p className="mt-1 text-xs text-slate-400">
-                    Internal log of the latest winning tickets and payout
+                    Internal log of the latest selected entries and reward
                     status.
                   </p>
                 </div>
@@ -989,13 +994,13 @@ export default function AdminPage() {
 
               {!adminToken && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Unlock with your admin key to see completed draws.
+                  Unlock with your admin key to see completed XPOT rounds.
                 </p>
               )}
 
               {adminToken && loadingWinners && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Loading recent winners…
+                  Loading XPOT results…
                 </p>
               )}
 
@@ -1008,8 +1013,8 @@ export default function AdminPage() {
                 !winnersError &&
                 recentWinners.length === 0 && (
                   <p className="mt-3 text-xs text-slate-500">
-                    No completed draws yet. Once you pick winners and mark
-                    jackpots as paid, they&apos;ll appear here.
+                    No completed XPOT rounds yet. Once you run selections and
+                    mark rewards as sent, they&apos;ll appear here.
                   </p>
                 )}
 
@@ -1040,7 +1045,7 @@ export default function AdminPage() {
                               <UsdPill amount={w.jackpotUsd} size="sm" />
                             </p>
                             <p className="mt-0.5 text-[10px] text-slate-400">
-                              {w.paidOut ? 'Paid out' : 'Pending'}
+                              {w.paidOut ? 'Reward sent' : 'Pending'}
                             </p>
                           </div>
                         </div>
@@ -1064,8 +1069,8 @@ export default function AdminPage() {
                             className="mt-2 rounded-full border border-emerald-500/60 px-3 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {savingPayoutId === w.drawId
-                              ? 'Saving payout…'
-                              : 'Mark as paid + tx link'}
+                              ? 'Saving reward…'
+                              : 'Mark reward sent + tx link'}
                           </button>
                         )}
                       </div>
