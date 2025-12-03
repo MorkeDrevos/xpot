@@ -142,11 +142,20 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [winnersLoading, setWinnersLoading] = useState(true);
 
+  // seconds remaining until close (for visual state)
+  const countdownSeconds = todayDraw?.closesAt
+  ? Math.max(0, Math.floor((new Date(todayDraw.closesAt).getTime() - Date.now()) / 1000))
+  : null;
+
+  const isWarningSoon = countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
+  const isWarningCritical = countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
+
   // Live jackpot USD coming from JackpotPanel
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
-  // Countdown text for "Draw closes in"
+  // Countdown for "Draw closes in"
   const [countdownText, setCountdownText] = useState<string | null>(null);
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
   // Bonus jackpot form
   const [bonusAmount, setBonusAmount] = useState('500');
@@ -356,40 +365,44 @@ export default function AdminPage() {
 
   // ── Countdown until todayDraw.closesAt ────────────────────────
 
-  useEffect(() => {
-    if (!todayDraw?.closesAt) {
-      setCountdownText(null);
+useEffect(() => {
+  if (!todayDraw?.closesAt) {
+    setCountdownText(null);
+    setCountdownSeconds(null);
+    return;
+  }
+
+  const closesAt = new Date(todayDraw.closesAt);
+
+  function updateCountdown() {
+    const now = new Date();
+    const diff = closesAt.getTime() - now.getTime();
+
+    // Past closing time – snap to zero and stop decreasing
+    if (diff <= 0) {
+      setCountdownText('00:00:00');
+      setCountdownSeconds(0);
       return;
     }
 
-    const closesAt = new Date(todayDraw.closesAt);
+    const totalSeconds = Math.floor(diff / 1000);
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(
+      Math.floor((totalSeconds % 3600) / 60),
+    ).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
 
-    function updateCountdown() {
-      const now = new Date();
-      const diff = closesAt.getTime() - now.getTime();
+    setCountdownText(`${hours}:${minutes}:${seconds}`);
+    setCountdownSeconds(totalSeconds);
+  }
 
-      if (diff <= 0) {
-        setCountdownText('00:00:00');
-        return;
-      }
+  updateCountdown();
+  const id = window.setInterval(updateCountdown, 1000);
 
-      const totalSeconds = Math.floor(diff / 1000);
-      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String(
-        Math.floor((totalSeconds % 3600) / 60),
-      ).padStart(2, '0');
-      const seconds = String(totalSeconds % 60).padStart(2, '0');
-
-      setCountdownText(`${hours}:${minutes}:${seconds}`);
-    }
-
-    updateCountdown();
-    const id = window.setInterval(updateCountdown, 1000);
-
-    return () => {
-      window.clearInterval(id);
-    };
-  }, [todayDraw?.closesAt]);
+  return () => {
+    window.clearInterval(id);
+  };
+}, [todayDraw?.closesAt]);
 
   // ── Admin token handling ──────────────────────────────────────
 
@@ -595,10 +608,22 @@ export default function AdminPage() {
                 todayDraw.closesAt && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm sm:text-base">
-  Draw closes in{' '}
-  <span className="font-mono text-lg sm:text-2xl font-semibold text-emerald-300">
-    {countdownText ?? '00:00:00'}
-  </span>
+  <span className="uppercase tracking-wide text-slate-500 text-xs">
+  Closes in
+</span>
+<span
+  className={`
+    font-mono text-2xl font-semibold mt-2 transition-all
+    ${isWarningCritical
+      ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
+      : isWarningSoon
+        ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
+        : 'text-emerald-300'
+    }
+  `}
+>
+  {countdownText}
+</span>
 </p>
                     <button
                       type="button"
@@ -610,7 +635,10 @@ export default function AdminPage() {
                         todayDraw.status !== 'open'
                       }
                       onClick={handlePickMainWinner}
-                      className={`${BTN_PRIMARY} px-4 py-2 text-sm`}
+                      className={`
+  ${BTN_PRIMARY} px-4 py-2 text-sm transition-all ease-out duration-300
+  ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
+`}
                     >
                       {isPickingWinner
                         ? 'Picking winner…'
