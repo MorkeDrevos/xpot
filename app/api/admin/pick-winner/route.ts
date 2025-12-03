@@ -42,21 +42,22 @@ export async function POST(req: NextRequest) {
     });
 
     // create reward (DB-safe fields only)
-    const reward = await prisma.reward.create({
-      data: {
-        drawId: draw.id,
-        ticketId: ticket.id,
-        amountUsd: draw.jackpotUsd ?? 0,
-        isPaidOut: false,
-      },
+const reward = await prisma.reward.create({
+  data: {
+    drawId: draw.id,
+    ticketId: ticket.id,
+    amountUsd: draw.jackpotUsd ?? 0,
+    isPaidOut: false,
+    label: 'Main jackpot', // ✅ required by Prisma schema
+  },
+  include: {
+    ticket: {
       include: {
-        ticket: {
-          include: {
-            wallet: true,
-          },
-        },
+        wallet: true,
       },
-    });
+    },
+  },
+});
 
     return NextResponse.json({
       ok: true,
