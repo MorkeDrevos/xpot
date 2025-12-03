@@ -32,6 +32,9 @@ const MILESTONES = [
   100_000,
   250_000,
   1_000_000,
+  2_000_000,
+  5_000_000,
+  10_000_000,
 ];
 
 export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
