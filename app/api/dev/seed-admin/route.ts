@@ -52,12 +52,12 @@ export async function GET(req: NextRequest) {
     ),
   );
 
-  // Helper to get today range
+  // Helper to get today range (UTC)
   const todayStr = new Date().toISOString().slice(0, 10);
   const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
   const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
 
-  // 2) Today’s draw (OPEN)
+  // 2) Today’s draw
   let todayDraw = await prisma.draw.findFirst({
     where: {
       drawDate: {
@@ -68,108 +68,92 @@ export async function GET(req: NextRequest) {
   });
 
   if (!todayDraw) {
-  todayDraw = await prisma.draw.create({
-    data: {
-      drawDate: new Date(),
-      jackpotUsd: 6_050_000,
-    },
-  });
-}
+    todayDraw = await prisma.draw.create({
+      data: {
+        drawDate: new Date(),
+        jackpotUsd: 6_050_000,
+      },
+    });
+  }
 
   // 3) Tickets for today's draw
-const ticketPayload = Array.from({ length: 20 }).map((_, i) => {
-  const wallet = wallets[i % wallets.length];
-  return {
-    code: `XPOT-DEV${String(i + 1).padStart(4, '0')}`,
-    status: TicketStatus.IN_DRAW,
-    walletId: wallet.id,
-    userId: wallet.userId,
-    drawId: todayDraw.id,
-  };
-});
-
-// createMany skips duplicates nicely if re-run
-await prisma.ticket.createMany({
-  data: ticketPayload,
-  skipDuplicates: true,
-});
-
-  // 4) Two past draws with winners for the right column
-
-  // Helper to create a past draw + winner bundle
-async function ensurePastDraw(daysAgo: number, label: string, amountUsd: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - daysAgo);
-
-  const start = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0),
-  );
-  const end = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59),
-  );
-
-  let draw = await prisma.draw.findFirst({
-    where: {
-      drawDate: {
-        gte: start,
-        lt: end,
-      },
-    },
+  const ticketPayload = Array.from({ length: 20 }).map((_, i) => {
+    const wallet = wallets[i % wallets.length];
+    return {
+      code: `XPOT-DEV${String(i + 1).padStart(4, '0')}`,
+      status: TicketStatus.IN_DRAW,
+      walletId: wallet.id,
+      userId: wallet.userId,
+      drawId: todayDraw.id,
+    };
   });
 
-  // Create the past draw if it doesn't exist yet
-  if (!draw) {
-    draw = await prisma.draw.create({
-      data: {
-        drawDate: date,
-        jackpotUsd: amountUsd,
-      },
-    });
-  }
-
-  // Make sure there is at least one ticket to attach
-  const existingTicket = await prisma.ticket.findFirst({
-    where: { drawId: draw.id },
+  // createMany skips duplicates nicely if re-run
+  await prisma.ticket.createMany({
+    data: ticketPayload,
+    skipDuplicates: true,
   });
 
-  const ticket =
-    existingTicket ||
-    (await prisma.ticket.create({
-      data: {
-        code: `XPOT-PAST-${daysAgo}-0001`,
-        status: TicketStatus.IN_DRAW,
-        walletId: wallets[0].id,
-        userId: wallets[0].userId,
-        drawId: draw.id,
-      },
-    }));
+  // 4) Two past draws for the right column
 
-  // NOTE: We are *not* seeding winners here anymore because there is no
-  // `winner` model on the Prisma client. Once the schema has a Winner table,
-  // we can re-introduce a prisma.winner.create() here.
-}
+  // Helper to create a past draw
+  async function ensurePastDraw(
+    daysAgo: number,
+    _label: string, // label kept for future if you add Winner model
+    amountUsd: number,
+  ) {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
 
-    // Winner linked to that ticket
-    await prisma.winner.upsert({
+    const start = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0),
+    );
+    const end = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59),
+    );
+
+    let draw = await prisma.draw.findFirst({
       where: {
-        // if you have a unique constraint like `ticketId`, adjust this
-        // otherwise create by `id` using some fixed id
-        ticketId: ticket.id,
-      } as any,
-      update: {},
-      create: {
-        drawId: draw.id,
-        ticketId: ticket.id,
-        jackpotUsd: amountUsd,
-        payoutUsd: amountUsd,
-        isPaidOut: true,
-        label,
-        kind: 'main', // or 'MAIN' depending on your enum
+        drawDate: {
+          gte: start,
+          lt: end,
+        },
       },
     });
+
+    if (!draw) {
+      draw = await prisma.draw.create({
+        data: {
+          drawDate: date,
+          jackpotUsd: amountUsd,
+        },
+      });
+    }
+
+    // Make sure there is at least one ticket to attach
+    const existingTicket = await prisma.ticket.findFirst({
+      where: { drawId: draw.id },
+    });
+
+    const ticket =
+      existingTicket ||
+      (await prisma.ticket.create({
+        data: {
+          code: `XPOT-PAST-${daysAgo}-0001`,
+          status: TicketStatus.IN_DRAW,
+          walletId: wallets[0].id,
+          userId: wallets[0].userId,
+          drawId: draw.id,
+        },
+      }));
+
+    // NOTE: we’re not creating Winner records yet because your schema
+    // doesn’t have a Winner model wired. This keeps the seeder simple
+    // and compile-safe.
+    return { draw, ticket };
   }
 
-    await ensurePastDraw(1, 'Main jackpot', 5_000_000);
+  await ensurePastDraw(1, 'Main jackpot', 5_000_000);
   await ensurePastDraw(2, 'Bonus jackpot', 1_000_000);
 
   return NextResponse.json({
