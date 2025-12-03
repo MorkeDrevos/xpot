@@ -1,6 +1,6 @@
+// app/api/admin/dev-seed/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-// ✅ correct
+import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
 import { TicketStatus } from '@prisma/client';
 
@@ -12,26 +12,39 @@ export async function POST(req: NextRequest) {
 
   try {
     const now = new Date();
-    const today = now.toISOString().slice(0, 10); // e.g. "2025-12-03"
 
-    // 1) Ensure we have a draw for today
+    // Today range (00:00 -> tomorrow 00:00)
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const endOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
+
+    // 1) Ensure we have a draw for today (by drawDate)
     let draw = await prisma.draw.findFirst({
-      where: { date: today },
+      where: {
+        drawDate: {
+          gte: startOfDay,
+          lt: endOfDay,
+        },
+      },
     });
 
     if (!draw) {
       draw = await prisma.draw.create({
         data: {
-          date: today,
-          jackpotUsd: 1000,
-          rolloverUsd: 0,
-          // if your Draw model has required "status" enum, uncomment + adjust:
-          // status: 'OPEN',
+          drawDate: startOfDay,
+          jackpotUsd: 1000, // simple dev default
         },
       });
     }
 
-    // 2) Create a few tickets if none exist yet
+    // 2) If this draw has no tickets yet, seed a few
     const existingTickets = await prisma.ticket.count({
       where: { drawId: draw.id },
     });
@@ -39,34 +52,55 @@ export async function POST(req: NextRequest) {
     let created = 0;
 
     if (existingTickets === 0) {
+      // Dev user + wallet for seeded tickets
+      const devUser = await prisma.user.upsert({
+        where: { xHandle: 'xpot_dev_seed' },
+        update: {},
+        create: {
+          xHandle: 'xpot_dev_seed',
+        },
+      });
+
+      const devWallet = await prisma.wallet.upsert({
+        where: { address: 'DevWallet11111111111111111111111111111111' },
+        update: {
+          userId: devUser.id,
+        },
+        create: {
+          address: 'DevWallet11111111111111111111111111111111',
+          userId: devUser.id,
+        },
+      });
+
       await prisma.ticket.createMany({
         data: [
           {
             code: 'XPOT-DEV-AAAA-BBBB',
-            walletAddress: 'DevWallet11111111111111111111111111111111',
             status: TicketStatus.IN_DRAW,
-            jackpotUsd: 1000,
             createdAt: now,
             drawId: draw.id,
+            userId: devUser.id,
+            walletId: devWallet.id,
           },
           {
             code: 'XPOT-DEV-CCCC-DDDD',
-            walletAddress: 'DevWallet22222222222222222222222222222222',
             status: TicketStatus.IN_DRAW,
-            jackpotUsd: 1000,
             createdAt: new Date(now.getTime() - 5 * 60 * 1000),
             drawId: draw.id,
+            userId: devUser.id,
+            walletId: devWallet.id,
           },
           {
             code: 'XPOT-DEV-EEEE-FFFF',
-            walletAddress: 'DevWallet33333333333333333333333333333333',
             status: TicketStatus.IN_DRAW,
-            jackpotUsd: 1000,
             createdAt: new Date(now.getTime() - 10 * 60 * 1000),
             drawId: draw.id,
+            userId: devUser.id,
+            walletId: devWallet.id,
           },
         ],
       });
+
       created = 3;
     }
 
@@ -83,7 +117,7 @@ export async function POST(req: NextRequest) {
         ok: false,
         error: error?.message || 'UNKNOWN_ERROR',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
