@@ -532,40 +532,30 @@ useEffect(() => {
             </div>
 
             <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
+              
               <div>
-                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Round status
-                </p>
-                <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
-                  <span>
-                    {todayLoading && 'Loading…'}
-                    {!todayLoading &&
-                      todayDraw &&
-                      todayDraw.status === 'open' &&
-                      'Open'}
-                    {!todayLoading &&
-                      todayDraw &&
-                      todayDraw.status === 'closed' &&
-                      'Closed'}
-                    {!todayLoading &&
-                      todayDraw &&
-                      todayDraw.status === 'completed' &&
-                      'Completed'}
-                    {!todayLoading && !todayDraw && 'Not scheduled'}
-                  </span>
-                  {todayDraw && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                        todayDraw.status === 'open'
-                          ? 'bg-emerald-500/10 text-emerald-300'
-                          : 'bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      {todayDraw.status}
-                    </span>
-                  )}
-                </p>
-              </div>
+  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+    Round status
+  </p>
+  <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
+    {!todayLoading && !todayDraw && (
+      <span>Not scheduled</span>
+    )}
+    {todayLoading && <span>Loading…</span>}
+
+    {todayDraw && (
+      <span
+        className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+          todayDraw.status === 'open'
+            ? 'bg-emerald-500/10 text-emerald-300'
+            : 'bg-slate-800 text-slate-300'
+        }`}
+      >
+        {todayDraw.status.toUpperCase()}
+      </span>
+    )}
+  </p>
+</div>
 
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
