@@ -8,53 +8,49 @@ const JUP_PRICE_URL = 'https://price.jup.ag/v6/price';
 
 export async function GET() {
   try {
-    // Ask Jupiter for the USD price of the active XPOT token (PROD or DEV)
     const qs = new URLSearchParams({
-      ids: TOKEN_MINT,  // mint address from lib/xpot (single source of truth)
-      vsToken: 'USDC',  // quote in USDC ~ USD
+      ids: TOKEN_MINT,
+      vsToken: 'USDC',
     });
 
     const res = await fetch(`${JUP_PRICE_URL}?${qs.toString()}`, {
       cache: 'no-store',
-      // @ts-ignore - Next.js "next" is allowed here in app router
+      // @ts-ignore – Next.js app router hint
       next: { revalidate: 0 },
     });
 
     if (!res.ok) {
-      console.error('[xpot/price] Jupiter HTTP error', res.status);
+      const text = await res.text().catch(() => '');
+      console.error('[XPOT] Jupiter price HTTP error', res.status, text);
       return NextResponse.json(
-        { ok: false, error: 'JUPITER_ERROR' },
-        { status: 502 },
-      );
-    }
-
-    const json = await res.json();
-
-    // Jupiter v6 shape: { data: { [mint]: { price: number, ... } } }
-    const tokenData = json?.data?.[TOKEN_MINT];
-
-    const priceField =
-      typeof tokenData?.price === 'number'
-        ? tokenData.price
-        : typeof tokenData?.priceUsd === 'number'
-        ? tokenData.priceUsd
-        : undefined;
-
-    if (typeof priceField !== 'number' || Number.isNaN(priceField)) {
-      console.error('[xpot/price] Missing price in Jupiter response', json);
-      return NextResponse.json(
-        { ok: false, error: 'NO_PRICE' },
+        { ok: false, priceUsd: null, error: 'JUPITER_FETCH_FAILED' },
         { status: 500 },
       );
     }
 
-    const priceUsd = priceField;
+    const json = (await res.json()) as any;
+
+    // v6 format: { data: { [mint]: { price: number, ... } } }
+    const raw =
+      json?.data?.[TOKEN_MINT]?.price ??
+      json?.data?.[TOKEN_MINT]?.priceUsd ??
+      null;
+
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+      console.error('[XPOT] Jupiter price missing for mint', TOKEN_MINT, json);
+      return NextResponse.json(
+        { ok: false, priceUsd: null, error: 'PRICE_NOT_FOUND' },
+        { status: 500 },
+      );
+    }
+
+    const priceUsd = raw;
 
     return NextResponse.json({ ok: true, priceUsd });
   } catch (err) {
-    console.error('[xpot/price] Unexpected error', err);
+    console.error('[XPOT] Jupiter price exception', err);
     return NextResponse.json(
-      { ok: false, error: 'INTERNAL_ERROR' },
+      { ok: false, priceUsd: null, error: 'UNEXPECTED_ERROR' },
       { status: 500 },
     );
   }
