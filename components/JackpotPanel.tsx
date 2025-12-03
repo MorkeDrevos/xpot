@@ -2,9 +2,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { TOKEN_MINT } from '@/lib/xpot';
+import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
-const JACKPOT_XPOT = 100_000;
+// Single source of truth for pool size
+const JACKPOT_XPOT = XPOT_POOL_SIZE;
 
 type JackpotPanelProps = {
   /** When true, shows "Draw locked" pill in the header */
@@ -151,6 +152,8 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
   const showUnavailable =
     !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
 
+  const poolLabel = JACKPOT_XPOT.toLocaleString('en-US');
+
   return (
     <section
       className={`
@@ -178,8 +181,8 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
             Today&apos;s XPOT
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            XPOT ticket pool is fixed at 1,000,000 XPOT. USD value updates
-            live from on-chain price via Jupiter.
+            XPOT ticket pool is fixed at {poolLabel} XPOT. USD value
+            updates live from on-chain price via Jupiter.
           </p>
         </div>
 
@@ -202,7 +205,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
       <div className="relative mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-medium tracking-[0.18em] text-slate-400">
-            1,000,000 XPOT
+            {poolLabel} XPOT
           </p>
 
           <div className="mt-1 text-4xl font-semibold text-white">
@@ -243,7 +246,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
       </div>
 
       <p className="relative mt-3 text-xs text-slate-500">
-        Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD value
+        Today&apos;s XPOT round is fixed at {poolLabel} XPOT. Its USD value
         tracks real on-chain price from Jupiter and updates automatically.
       </p>
     </section>
