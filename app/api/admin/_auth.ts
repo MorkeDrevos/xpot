@@ -1,23 +1,33 @@
 // app/api/admin/_auth.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const ADMIN_HEADER = 'x-admin-token';
+const ADMIN_TOKEN = process.env.XPOT_ADMIN_TOKEN;
 
+/**
+ * Shared admin guard.
+ * - Returns NextResponse (error) if not allowed
+ * - Returns null if request is authorised
+ */
 export function requireAdmin(req: NextRequest) {
-  const expected = process.env.XPOT_ADMIN_TOKEN;
-
-  // Read header from the request
-  const token =
-    req.headers.get(ADMIN_HEADER) ??
-    req.headers.get(ADMIN_HEADER.toLowerCase());
-
-  if (!expected || !token || token !== expected) {
+  if (!ADMIN_TOKEN) {
     return NextResponse.json(
-      { ok: false, error: 'UNAUTHORIZED' },
-      { status: 401 }
+      { ok: false, error: 'ADMIN_TOKEN_NOT_CONFIGURED' },
+      { status: 500 },
     );
   }
 
-  // null means "allowed"
+  const authHeader = req.headers.get('authorization') || '';
+  const token = authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : authHeader;
+
+  if (!token || token !== ADMIN_TOKEN) {
+    return NextResponse.json(
+      { ok: false, error: 'UNAUTHORIZED' },
+      { status: 401 },
+    );
+  }
+
+  // null = allowed
   return null;
 }
