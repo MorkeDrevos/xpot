@@ -1,4 +1,4 @@
-// app/admin/page.tsx
++// app/admin/page.tsx
 'use client';
 
 export const dynamic = 'force-dynamic';
@@ -106,6 +106,19 @@ function UsdPill({
     </span>
   );
 }
+
+// ─────────────────────────────────────────────
+// Button styles (control room system)
+// ─────────────────────────────────────────────
+
+const BTN_PRIMARY =
+  'inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:opacity-40 disabled:cursor-not-allowed';
+
+const BTN_SECONDARY =
+  'inline-flex items-center justify-center rounded-lg bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 transition disabled:opacity-40 disabled:cursor-not-allowed';
+
+const BTN_UTILITY =
+  'inline-flex items-center justify-center rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition';
 
 // ─────────────────────────────────────────────
 // Page
@@ -455,20 +468,20 @@ export default function AdminPage() {
             />
             <div className="flex gap-2">
               <button
-                type="submit"
-                disabled={isSavingToken || !tokenInput.trim()}
-                className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
-              >
-                {tokenAccepted ? 'Update token' : 'Unlock'}
-              </button>
+  type="submit"
+  disabled={isSavingToken || !tokenInput.trim()}
+  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+>
+  {tokenAccepted ? 'Update key' : 'Unlock'}
+</button>
               {tokenAccepted && (
                 <button
-                  type="button"
-                  onClick={handleClearToken}
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800/80"
-                >
-                  Clear
-                </button>
+  type="button"
+  onClick={handleClearToken}
+  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+>
+  Clear
+</button>
               )}
             </div>
           </form>
@@ -581,17 +594,17 @@ export default function AdminPage() {
                 todayDraw &&
                 todayDraw.closesAt && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p>
-                      Draw closes in{' '}
-                      <span className="font-mono text-emerald-300">
-                        {countdownText ?? '00:00:00'}
-                      </span>{' '}
-                      at{' '}
-                      <span className="font-mono text-slate-200">
-                        {formatDateTime(todayDraw.closesAt)}
-                      </span>
-                      .
-                    </p>
+                    <p className="text-sm sm:text-base">
+  Draw closes in{' '}
+  <span className="font-mono text-lg sm:text-2xl font-semibold text-emerald-300">
+    {countdownText ?? '00:00:00'}
+  </span>{' '}
+  <span className="text-xs sm:text-sm text-slate-500 ml-1 mr-1">at</span>
+  <span className="font-mono text-sm sm:text-base text-slate-200">
+    {formatDateTime(todayDraw.closesAt)}
+  </span>
+  .
+</p>
                     <button
                       type="button"
                       disabled={
@@ -602,7 +615,7 @@ export default function AdminPage() {
                         todayDraw.status !== 'open'
                       }
                       onClick={handlePickMainWinner}
-                      className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
+                      className={`${BTN_PRIMARY} px-4 py-2 text-sm`}
                     >
                       {isPickingWinner
                         ? 'Picking winner…'
@@ -660,19 +673,19 @@ export default function AdminPage() {
 
                   <div className="flex flex-wrap gap-2">
                     {[50, 100, 250, 500, 1000].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setBonusAmount(String(v))}
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                          Number(bonusAmount) === v
-                            ? 'border-emerald-400 bg-emerald-500/10 text-emerald-200'
-                            : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-emerald-400/70'
-                        }`}
-                      >
-                        ${v}
-                      </button>
-                    ))}
+  <button
+    key={v}
+    type="button"
+    onClick={() => setBonusAmount(String(v))}
+    className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
+      Number(bonusAmount) === v
+        ? 'border-amber-400 bg-amber-500/10 text-amber-200'
+        : 'border-slate-700 bg-slate-900 text-slate-300'
+    }`}
+  >
+    ${v}
+  </button>
+))}
                   </div>
                 </div>
               </div>
