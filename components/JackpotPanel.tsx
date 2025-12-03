@@ -39,6 +39,14 @@ const MILESTONES = [
   10_000_000,
 ];
 
+// Helper: current date in Europe/Madrid as YYYYMMDD
+function getMadridDayKey() {
+  const madrid = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'Europe/Madrid',
+  }); // e.g. "2025-12-03"
+  return madrid.replace(/-/g, ''); // "20251203"
+}
+
 export default function JackpotPanel({
   isLocked,
   onJackpotUsdChange,
@@ -52,22 +60,19 @@ export default function JackpotPanel({
   const [justPumped, setJustPumped] = useState(false);
   const prevJackpot = useRef<number | null>(null);
 
-  // Per day localStorage key for "highest today"
-  const todayKey = (() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `xpot_max_jackpot_${y}${m}${day}`;
-  })();
+  // Per-Madrid-day localStorage key for "highest today"
+  const todayKey = `xpot_max_jackpot_madrid_${getMadridDayKey()}`;
 
-  // Load max jackpot for today from localStorage
+  // Load max jackpot for *this* Madrid day from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(todayKey);
     if (stored) {
       const num = Number(stored);
       if (!Number.isNaN(num)) setMaxJackpotToday(num);
+    } else {
+      // No value stored for this day yet – start fresh
+      setMaxJackpotToday(null);
     }
   }, [todayKey]);
 
@@ -135,7 +140,7 @@ export default function JackpotPanel({
     }
     prevJackpot.current = jackpotUsd;
 
-    // Store highest jackpot of the day
+    // Store highest jackpot of the Madrid day
     if (typeof window !== 'undefined') {
       setMaxJackpotToday(prev => {
         const next =
@@ -146,7 +151,7 @@ export default function JackpotPanel({
     }
   }, [jackpotUsd, todayKey, onJackpotUsdChange]);
 
-  // Milestones
+  // Milestones (based on current live jackpot)
   const reachedMilestone =
     jackpotUsd != null
       ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ??
