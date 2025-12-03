@@ -30,14 +30,18 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Compute a "closing time" for the countdown – here: end of the same UTC day
+    const closesAtDate = new Date(draw.drawDate);
+    closesAtDate.setUTCHours(23, 59, 59, 999);
+
     const today = {
       id: draw.id,
       date: draw.drawDate.toISOString(),
-      status: draw.isClosed ? 'closed' : 'open', // you could add 'completed' later
+      status: draw.isClosed ? 'closed' : 'open', // you can later add 'completed'
       jackpotUsd: draw.jackpotUsd ?? 0,
-      rolloverUsd: 0, // placeholder, if you later add a rollover field
+      rolloverUsd: 0, // placeholder if you later add a rollover field
       ticketsCount: draw.tickets.length,
-      closesAt: null,
+      closesAt: closesAtDate.toISOString(),
     };
 
     return NextResponse.json({
