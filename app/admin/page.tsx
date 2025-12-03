@@ -442,7 +442,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
+            <div className="mt-4 rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500 text-left">
               {todayDrawError && (
                 <p className="text-amber-300">{todayDrawError}</p>
               )}
