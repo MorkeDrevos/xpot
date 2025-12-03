@@ -1,24 +1,35 @@
 // app/api/xpot/price/route.ts
-
 import { NextResponse } from 'next/server';
+import { TOKEN_MINT } from '@/lib/xpot';
 
 export const dynamic = 'force-dynamic';
 
-// TEMP: hard-coded dev price so the route always works.
-// 1 XPOT = $0.000031  → 1,000,000 XPOT ≈ $31
-const DEV_PRICE_USD = 0.000031;
+const JUP_PRICE_URL = 'https://price.jup.ag/v6/price';
 
 export async function GET() {
   try {
-    // For now just return a fixed price so there are no failures.
-    // When you want real Jupiter price again, we can re-enable it.
-    return NextResponse.json({
-      ok: true,
-      priceUsd: DEV_PRICE_USD,
+    const qs = new URLSearchParams({
+      ids: TOKEN_MINT,
+      vsToken: 'USDC',
     });
+
+    const res = await fetch(`${JUP_PRICE_URL}?${qs.toString()}`, {
+      cache: 'no-store',
+      // @ts-ignore
+      next: { revalidate: 0 },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Jupiter error: ${res.status}`);
+    }
+
+    const json = await res.json();
+    const info = json.data?.[TOKEN_MINT];
+    const priceUsd = typeof info?.price === 'number' ? info.price : null;
+
+    return NextResponse.json({ priceUsd });
   } catch (err) {
-    console.error('[XPOT] /api/xpot/price error:', err);
-    // Still respond 200 so UI doesn’t break
-    return NextResponse.json({ ok: false, priceUsd: 0 });
+    console.error('[XPOT] price API error', err);
+    return NextResponse.json({ priceUsd: null }, { status: 500 });
   }
 }
