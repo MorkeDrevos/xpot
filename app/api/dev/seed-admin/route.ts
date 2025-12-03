@@ -67,14 +67,13 @@ export async function GET(req: NextRequest) {
   });
 
   if (!todayDraw) {
-    todayDraw = await prisma.draw.create({
-  data: {
-    drawDate: new Date(),
-    jackpotUsd: 6_050_000,
-    closesAt: new Date(Date.now() + 60 * 60 * 1000),
-  },
-});
-  }
+  todayDraw = await prisma.draw.create({
+    data: {
+      drawDate: new Date(),
+      jackpotUsd: 6_050_000,
+    },
+  });
+}
 
   // 3) Tickets for today’s draw
   const ticketPayload = Array.from({ length: 20 }).map((_, i) => {
