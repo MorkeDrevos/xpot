@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-  <title>XPOT · The X-powered reward protocol</title>
+  <title>XPOT · The X-Powered Reward Protocol</title>
 
   <meta
     name="description"
@@ -41,7 +41,7 @@ export default function RootLayout({
   />
 
   {/* OpenGraph */}
-  <meta property="og:title" content="XPOT · The X-powered reward protocol" />
+  <meta property="og:title" content="XPOT · The X-Powered Reward Protocol" />
   <meta
     property="og:description"
     content="A protocol for controlled daily rewards, identity-based access and transparent distribution."
