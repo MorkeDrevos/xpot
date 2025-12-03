@@ -84,59 +84,62 @@ export default function JackpotPanel({
 
   // Live price from Jupiter (direct) every ~7s
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
+  // In the browser setInterval returns a number
+  let timer: number | undefined;
 
-    async function fetchPrice() {
-      try {
-        setHadError(false);
+  async function fetchPrice() {
+    try {
+      setHadError(false);
 
-        const res = await fetch(
-          `https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`,
-        );
-        if (!res.ok) throw new Error('Jupiter price fetch failed');
+      const res = await fetch(
+        `https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`,
+      );
+      if (!res.ok) throw new Error('Jupiter price fetch failed');
 
-        const json = (await res.json()) as Record<
-          string,
-          { usdPrice: number; priceChange24h?: number }
-        >;
+      const json = (await res.json()) as Record<
+        string,
+        { usdPrice: number; priceChange24h?: number }
+      >;
 
-        const token = json[TOKEN_MINT];
-        const price = token?.usdPrice;
+      const token = json[TOKEN_MINT];
+      const price = token?.usdPrice;
 
-        if (typeof price === 'number' && !Number.isNaN(price)) {
-          setPriceUsd(price);
+      if (typeof price === 'number' && !Number.isNaN(price)) {
+        setPriceUsd(price);
 
-          // soft “live” pulse when price changes
-          setJustUpdated(true);
-          if (updatePulseTimeout.current !== null) {
-            window.clearTimeout(updatePulseTimeout.current);
-          }
-          updatePulseTimeout.current = window.setTimeout(() => {
-            setJustUpdated(false);
-          }, 400);
-        } else {
-          setPriceUsd(null);
-          setHadError(true);
+        // soft “live” pulse when price changes
+        setJustUpdated(true);
+        if (updatePulseTimeout.current !== null) {
+          window.clearTimeout(updatePulseTimeout.current);
         }
-      } catch (err) {
-        console.error('[XPOT] Jupiter price error:', err);
+        updatePulseTimeout.current = window.setTimeout(() => {
+          setJustUpdated(false);
+        }, 400);
+      } else {
         setPriceUsd(null);
         setHadError(true);
-      } finally {
-        setIsLoading(false);
       }
+    } catch (err) {
+      console.error('[XPOT] Jupiter price error:', err);
+      setPriceUsd(null);
+      setHadError(true);
+    } finally {
+      setIsLoading(false);
     }
+  }
 
-    fetchPrice();
-    timer = window.setInterval(fetchPrice, PRICE_POLL_MS);
+  fetchPrice();
+  timer = window.setInterval(fetchPrice, PRICE_POLL_MS);
 
-    return () => {
+  return () => {
+    if (timer !== undefined) {
       window.clearInterval(timer);
-      if (updatePulseTimeout.current !== null) {
-        window.clearTimeout(updatePulseTimeout.current);
-      }
-    };
-  }, []);
+    }
+    if (updatePulseTimeout.current !== null) {
+      window.clearTimeout(updatePulseTimeout.current);
+    }
+  };
+}, []);
 
   const jackpotUsd =
     priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
