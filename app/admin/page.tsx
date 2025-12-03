@@ -598,12 +598,7 @@ export default function AdminPage() {
   Draw closes in{' '}
   <span className="font-mono text-lg sm:text-2xl font-semibold text-emerald-300">
     {countdownText ?? '00:00:00'}
-  </span>{' '}
-  <span className="text-xs sm:text-sm text-slate-500 ml-1 mr-1">at</span>
-  <span className="font-mono text-sm sm:text-base text-slate-200">
-    {formatDateTime(todayDraw.closesAt)}
   </span>
-  .
 </p>
                     <button
                       type="button"
