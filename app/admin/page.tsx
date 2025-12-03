@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 
 import JackpotPanel from '@/components/JackpotPanel';
-import { XPOT_POOL_SIZE } from '@/lib/xpot';
 
 // ─────────────────────────────────────────────
 // Types
@@ -133,15 +132,6 @@ export default function AdminPage() {
   // Shared live jackpot USD coming from JackpotPanel
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
-  // Bonus jackpot controls
-  const [bonusAmount, setBonusAmount] = useState('100'); // USD
-  const [bonusLabel, setBonusLabel] = useState('Bonus jackpot');
-  const [bonusError, setBonusError] = useState<string | null>(null);
-  const [isDroppingBonus, setIsDroppingBonus] = useState(false);
-
-  // Shared live jackpot USD coming from JackpotPanel
-  const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
-
   // Bonus jackpot form state
   const [bonusAmount, setBonusAmount] = useState('500');
   const [bonusLabel, setBonusLabel] = useState('Bonus jackpot');
@@ -183,50 +173,55 @@ export default function AdminPage() {
     return res.json();
   }
 
-  // ── Drop bonus jackpot ─────────────────────────────
+  // ── Drop bonus jackpot (bonus draw) ───────────────────────────
 
-async function handleDropBonus(e: React.FormEvent) {
-  e.preventDefault();
-  setBonusError(null);
-  setBonusSuccess(null);
+  async function handleDropBonus(e: any) {
+    e.preventDefault();
+    setBonusError(null);
+    setBonusSuccess(null);
 
-  if (!adminToken) {
-    setBonusError('Admin token missing. Unlock admin first.');
-    return;
-  }
+    if (!adminToken) {
+      setBonusError('Admin token missing. Unlock admin first.');
+      return;
+    }
 
-  const amountNumber = Number(bonusAmount);
-  if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
-    setBonusError('Enter a valid USD amount.');
-    return;
-  }
+    const amountNumber = Number(bonusAmount);
+    if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
+      setBonusError('Enter a valid USD amount.');
+      return;
+    }
 
-  setBonusSubmitting(true);
-  try {
-    const res = await authedFetch('/api/admin/bonus', {
-      method: 'POST',
-      body: JSON.stringify({
-        amountUsd: amountNumber,
-        label: bonusLabel || 'Bonus jackpot',
-      }),
-    });
-
-    const r = res.reward;
-    setBonusSuccess(
-      `Bonus ${formatUsd(r.amountUsd)} sent to ${r.ticketCode} (${r.walletAddress.slice(0,4)}…${r.walletAddress.slice(-4)}).`
-    );
-
-    // Refresh winners list
+    setBonusSubmitting(true);
     try {
-      const winnersData = await authedFetch('/api/admin/winners');
-      setWinners(winnersData.winners ?? []);
-    } catch {}
-  } catch (err: any) {
-    setBonusError(err.message || 'Failed to drop bonus jackpot');
-  } finally {
-    setBonusSubmitting(false);
+      const res = await authedFetch('/api/admin/bonus', {
+        method: 'POST',
+        body: JSON.stringify({
+          amountUsd: amountNumber,
+          label: bonusLabel || 'Bonus jackpot',
+        }),
+      });
+
+      const r = res.reward;
+      setBonusSuccess(
+        `Bonus ${formatUsd(r.amountUsd)} sent to ${r.ticketCode} (${r.walletAddress.slice(
+          0,
+          4,
+        )}…${r.walletAddress.slice(-4)}).`,
+      );
+
+      // Refresh winners list (so the bonus winner appears instantly)
+      try {
+        const winnersData = await authedFetch('/api/admin/winners');
+        setWinners(winnersData.winners ?? []);
+      } catch {
+        /* ignore */
+      }
+    } catch (err: any) {
+      setBonusError(err.message || 'Failed to drop bonus jackpot');
+    } finally {
+      setBonusSubmitting(false);
+    }
   }
-}
 
   // ── Load Today, tickets, winners when token is ready ──────────
 
@@ -323,46 +318,6 @@ async function handleDropBonus(e: React.FormEvent) {
 
   const isDrawLocked = todayDraw?.status === 'closed';
 
-  // ── Drop bonus jackpot ────────────────────────────────────────
-
-  async function handleDropBonusJackpot() {
-    setBonusError(null);
-
-    const amount = Number(bonusAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setBonusError('Enter a valid USD amount.');
-      return;
-    }
-
-    setIsDroppingBonus(true);
-    try {
-      const data = await authedFetch('/api/admin/bonus-jackpot', {
-        method: 'POST',
-        body: JSON.stringify({
-          amountUsd: amount,
-          label: bonusLabel || 'Bonus jackpot',
-        }),
-      });
-
-      if (!data.ok) {
-        throw new Error(data.error || 'Failed to create bonus jackpot');
-      }
-
-      if (data.winner) {
-        setWinners(prev => [data.winner, ...prev]);
-      }
-    } catch (err: any) {
-      console.error('[ADMIN] bonus jackpot error', err);
-      setBonusError(err.message || 'Failed to create bonus jackpot');
-    } finally {
-      setIsDroppingBonus(false);
-    }
-  }
-
-  function setBonusPreset(amount: number) {
-    setBonusAmount(String(amount));
-  }
-
   // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
@@ -427,7 +382,7 @@ async function handleDropBonus(e: React.FormEvent) {
         </div>
       </section>
 
-      {/* Main grid: left (Jackpot + summary + entries), right (winners) */}
+      {/* Main grid: left (Jackpot + summary + entries + bonus), right (winners) */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)]">
         {/* LEFT COLUMN */}
         <div className="space-y-4">
@@ -513,11 +468,7 @@ async function handleDropBonus(e: React.FormEvent) {
               )}
               {!todayDrawError && !todayLoading && todayDraw && todayDraw.closesAt && (
                 <p>
-                  Draw closes in{' '}
-                  <span className="font-mono text-emerald-300">
-                    {/* Timer text is injected client-side in a separate effect (already implemented) */}
-                  </span>{' '}
-                  at{' '}
+                  Draw closes at{' '}
                   <span className="font-mono text-slate-300">
                     {formatDateTime(todayDraw.closesAt)}
                   </span>
@@ -530,131 +481,7 @@ async function handleDropBonus(e: React.FormEvent) {
             </div>
           </section>
 
-          {/* Bonus jackpot control */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-100">
-                  Drop bonus jackpot
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Fire a manual hype jackpot using today&apos;s ticket pool. Winner is picked
-                  instantly from all tickets in today&apos;s draw.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center">
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400">Amount</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={bonusAmount}
-                    onChange={e => setBonusAmount(e.target.value)}
-                    className="w-24 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 outline-none focus:border-emerald-400"
-                  />
-                  <span className="text-slate-500">USD</span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {[50, 100, 250, 500, 1000].map(v => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setBonusPreset(v)}
-                      className="rounded-full border border-slate-700 px-2 py-0.5 text-[11px] text-slate-300 hover:border-emerald-400"
-                    >
-                      ${v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex-1">
-                <label className="text-xs text-slate-400">
-                  Label
-                  <input
-                    type="text"
-                    value={bonusLabel}
-                    onChange={e => setBonusLabel(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 outline-none focus:border-emerald-400"
-                    placeholder="Bonus jackpot"
-                  />
-                </label>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={isDroppingBonus || !adminToken}
-                  onClick={handleDropBonusJackpot}
-                  className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
-                >
-                  {isDroppingBonus ? 'Picking winner…' : 'Drop bonus jackpot'}
-                </button>
-              </div>
-            </div>
-
-            {bonusError && (
-              <p className="mt-2 text-xs text-amber-300">{bonusError}</p>
-            )}
-          </section>
-
-          {/* Today’s XPOT entries list */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-100">
-              Today&apos;s XPOT entries
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Every entry that has been issued for the current XPOT round.
-            </p>
-
-            <div className="mt-3">
-              {ticketsLoading && (
-                <p className="text-xs text-slate-500">Loading tickets…</p>
-              )}
-
-              {ticketsError && (
-                <p className="text-xs text-amber-300">{ticketsError}</p>
-              )}
-
-              {!ticketsLoading && !ticketsError && tickets.length === 0 && (
-                <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
-                  No entries yet for today&apos;s XPOT.
-                </p>
-              )}
-
-              {!ticketsLoading && !ticketsError && tickets.length > 0 && (
-                <div className="mt-2 space-y-2">
-                  {tickets.map(t => (
-                    <div
-                      key={t.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs"
-                    >
-                      <div className="space-y-0.5">
-                        <p className="font-mono text-[11px] text-slate-100">
-                          {t.code}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          {t.walletAddress}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-300">
-                          {t.status.replace('-', ' ')}
-                        </span>
-                        <p className="font-mono text-[11px] text-slate-500">
-                          {formatDateTime(t.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-
-                  {/* Drop bonus jackpot */}
+          {/* Drop bonus jackpot */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
               Drop bonus jackpot
@@ -732,7 +559,7 @@ async function handleDropBonus(e: React.FormEvent) {
 
                 <button
                   type="submit"
-                  disabled={bonusSubmitting}
+                  disabled={bonusSubmitting || !adminToken}
                   className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
                 >
                   {bonusSubmitting ? 'Dropping…' : 'Drop bonus jackpot'}
@@ -741,6 +568,59 @@ async function handleDropBonus(e: React.FormEvent) {
             </form>
           </section>
 
+          {/* Today’s XPOT entries list */}
+          <section className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-4 shadow-sm">
+            <p className="text-sm font-semibold text-slate-100">
+              Today&apos;s XPOT entries
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Every entry that has been issued for the current XPOT round.
+            </p>
+
+            <div className="mt-3">
+              {ticketsLoading && (
+                <p className="text-xs text-slate-500">Loading tickets…</p>
+              )}
+
+              {ticketsError && (
+                <p className="text-xs text-amber-300">{ticketsError}</p>
+              )}
+
+              {!ticketsLoading && !ticketsError && tickets.length === 0 && (
+                <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
+                  No entries yet for today&apos;s XPOT.
+                </p>
+              )}
+
+              {!ticketsLoading && !ticketsError && tickets.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  {tickets.map(t => (
+                    <div
+                      key={t.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <p className="font-mono text-[11px] text-slate-100">
+                          {t.code}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {t.walletAddress}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-300">
+                          {t.status.replace('-', ' ')}
+                        </span>
+                        <p className="font-mono text-[11px] text-slate-500">
+                          {formatDateTime(t.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
         </div>
 
         {/* RIGHT COLUMN – recent winners */}
