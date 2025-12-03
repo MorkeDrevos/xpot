@@ -20,6 +20,7 @@ function formatUsd(value: number) {
 
 // Simple milestone ladder for highlights
 const MILESTONES = [
+  100,
   500,
   5_000,
   10_000,
@@ -189,7 +190,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
 
           {priceUsd && (
             <div className="mt-1 text-xs text-slate-500">
-              1 XPOT ≈ ${priceUsd.toFixed(6)} (via Jupiter)
+              1 XPOT ≈ ${priceUsd.toFixed(8)} (via Jupiter)
             </div>
           )}
         </div>
