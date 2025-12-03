@@ -142,20 +142,18 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [winnersLoading, setWinnersLoading] = useState(true);
 
-  // seconds remaining until close (for visual state)
-  const countdownSeconds = todayDraw?.closesAt
-  ? Math.max(0, Math.floor((new Date(todayDraw.closesAt).getTime() - Date.now()) / 1000))
-  : null;
-
-  const isWarningSoon = countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
-  const isWarningCritical = countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
-
   // Live jackpot USD coming from JackpotPanel
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
   // Countdown for "Draw closes in"
   const [countdownText, setCountdownText] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
+
+  const isWarningSoon =
+  countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
+
+  const isWarningCritical =
+  countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
 
   // Bonus jackpot form
   const [bonusAmount, setBonusAmount] = useState('500');
