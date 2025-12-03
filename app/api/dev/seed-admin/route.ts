@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
   const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
   const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
 
-  // 2) Today’s draw
+  // 2) Today’s draw (OPEN)
   let todayDraw = await prisma.draw.findFirst({
     where: {
       drawDate: {
@@ -68,43 +68,36 @@ export async function GET(req: NextRequest) {
   });
 
   if (!todayDraw) {
-    todayDraw = await prisma.draw.create({
-      data: {
-        drawDate: new Date(),
-        jackpotUsd: 6_050_000,
-        // rolloverUsd / closesAt are optional; add here only if they exist in schema
-        // rolloverUsd: 0,
-        // closesAt: new Date(Date.now() + 60 * 60 * 1000),
-      },
-    });
-  }
+  todayDraw = await prisma.draw.create({
+    data: {
+      drawDate: new Date(),
+      jackpotUsd: 6_050_000,
+    },
+  });
+}
 
   // 3) Tickets for today's draw
-  const ticketPayload = Array.from({ length: 20 }).map((_, i) => {
-    const wallet = wallets[i % wallets.length];
-    return {
-      code: `XPOT-DEV${String(i + 1).padStart(4, '0')}`,
-      status: TicketStatus.IN_DRAW,
-      walletId: wallet.id,
-      userId: wallet.userId, // required on Ticket now
-      drawId: todayDraw.id,
-    };
-  });
+const ticketPayload = Array.from({ length: 20 }).map((_, i) => {
+  const wallet = wallets[i % wallets.length];
+  return {
+    code: `XPOT-DEV${String(i + 1).padStart(4, '0')}`,
+    status: TicketStatus.IN_DRAW,
+    walletId: wallet.id,
+    userId: wallet.userId,
+    drawId: todayDraw.id,
+  };
+});
 
-  // createMany skips duplicates nicely if re-run
-  await prisma.ticket.createMany({
-    data: ticketPayload,
-    skipDuplicates: true,
-  });
+// createMany skips duplicates nicely if re-run
+await prisma.ticket.createMany({
+  data: ticketPayload,
+  skipDuplicates: true,
+});
 
   // 4) Two past draws with winners for the right column
 
   // Helper to create a past draw + winner bundle
-  async function ensurePastDraw(
-    daysAgo: number,
-    label: string,
-    amountUsd: number,
-  ) {
+  async function ensurePastDraw(daysAgo: number, label: string, amountUsd: number) {
     const date = new Date();
     date.setDate(date.getDate() - daysAgo);
 
@@ -126,22 +119,22 @@ export async function GET(req: NextRequest) {
 
     if (!draw) {
       draw = await prisma.draw.create({
-        data: {
-          drawDate: date,
-          jackpotUsd: amountUsd,
-          rolloverUsd: 0,
-          closesAt: new Date(
-            Date.UTC(
-              date.getUTCFullYear(),
-              date.getUTCMonth(),
-              date.getUTCDate(),
-              22,
-              0,
-              0,
-            ),
-          ),
-        },
-      });
+  data: {
+    drawDate: date,
+    jackpotUsd: amountUsd,
+
+    closesAt: new Date(
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        22,
+        0,
+        0,
+      ),
+    ),
+  },
+});
     }
 
     // Make sure there is at least one ticket to attach
@@ -154,9 +147,8 @@ export async function GET(req: NextRequest) {
       (await prisma.ticket.create({
         data: {
           code: `XPOT-PAST-${daysAgo}-0001`,
-          status: TicketStatus.IN_DRAW,
+          status: 'IN_DRAW',
           walletId: wallets[0].id,
-          userId: wallets[0].userId,
           drawId: draw.id,
         },
       }));
@@ -164,7 +156,8 @@ export async function GET(req: NextRequest) {
     // Winner linked to that ticket
     await prisma.winner.upsert({
       where: {
-        // assumes you have a unique constraint on ticketId
+        // if you have a unique constraint like `ticketId`, adjust this
+        // otherwise create by `id` using some fixed id
         ticketId: ticket.id,
       } as any,
       update: {},
@@ -175,7 +168,7 @@ export async function GET(req: NextRequest) {
         payoutUsd: amountUsd,
         isPaidOut: true,
         label,
-        kind: 'main', // keep as string unless Winner.kind is an enum
+        kind: 'main', // or 'MAIN' depending on your enum
       },
     });
   }
