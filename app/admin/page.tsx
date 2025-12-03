@@ -184,26 +184,29 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, todayDraw?.status]);
 
-  // Live value of 1,000,000 XPOT in USD
+  // Live value of 1,000,000 XPOT in USD (same as JackpotPanel)
 useEffect(() => {
+  let timer: ReturnType<typeof setInterval>;
+
   async function loadLiveJackpot() {
     try {
       const res = await fetch(
         `https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`,
       );
-      if (!res.ok) return;
+      if (!res.ok) throw new Error('Jupiter price fetch failed');
 
       const json = (await res.json()) as Record<
         string,
-        { usdPrice: number }
+        { usdPrice: number; priceChange24h?: number }
       >;
 
       const token = json[TOKEN_MINT];
-      const pricePerXpot = token?.usdPrice;
+      const price = token?.usdPrice;
 
-      if (typeof pricePerXpot === 'number' && !Number.isNaN(pricePerXpot)) {
-        const jackpot = pricePerXpot * 1_000_000;
-        setLiveJackpotUsd(jackpot);
+      if (typeof price === 'number' && !Number.isNaN(price)) {
+        setLiveJackpotUsd(price * 1_000_000);
+      } else {
+        setLiveJackpotUsd(null);
       }
     } catch (err) {
       console.error('[ADMIN] live XPOT value fetch failed', err);
@@ -211,8 +214,9 @@ useEffect(() => {
   }
 
   loadLiveJackpot();
-  const id = window.setInterval(loadLiveJackpot, 15_000);
-  return () => window.clearInterval(id);
+  timer = setInterval(loadLiveJackpot, 5_000); // same as JackpotPanel
+
+  return () => clearInterval(timer);
 }, []);
 
   // Whenever a valid token is set, auto-load data
