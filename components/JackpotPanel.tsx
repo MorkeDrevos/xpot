@@ -4,11 +4,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
-// Single source of truth for pool size
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 
 type JackpotPanelProps = {
-  /** When true, shows "Draw locked" pill in the header */
   isLocked?: boolean;
 };
 
@@ -22,7 +20,6 @@ function formatUsd(value: number | null) {
   });
 }
 
-// Milestone ladder for highlights (USD)
 const MILESTONES = [
   100,
   500,
@@ -48,7 +45,6 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
   const [justPumped, setJustPumped] = useState(false);
   const prevJackpot = useRef<number | null>(null);
 
-  // Per day localStorage key for "highest today"
   const todayKey = (() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -57,7 +53,9 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
     return `xpot_max_jackpot_${y}${m}${day}`;
   })();
 
-  // Load max jackpot for today from localStorage
+  // pool label for all text
+  const poolLabel = JACKPOT_XPOT.toLocaleString('en-US');
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(todayKey);
@@ -67,7 +65,6 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
     }
   }, [todayKey]);
 
-  // Live price from Jupiter (direct) every 5s
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
 
@@ -82,7 +79,7 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
 
         const json = (await res.json()) as Record<
           string,
-          { usdPrice: number; priceChange24h?: number }
+          { usdPrice: number }
         >;
 
         const token = json[TOKEN_MINT];
@@ -105,18 +102,15 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
 
     fetchPrice();
     timer = setInterval(fetchPrice, 5_000);
-
     return () => clearInterval(timer);
   }, []);
 
   const jackpotUsd =
     priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
 
-  // Track pumps and "highest today"
   useEffect(() => {
     if (jackpotUsd == null) return;
 
-    // Pump flash
     if (
       prevJackpot.current !== null &&
       jackpotUsd > prevJackpot.current
@@ -126,7 +120,6 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
     }
     prevJackpot.current = jackpotUsd;
 
-    // Store highest jackpot of the day
     if (typeof window !== 'undefined') {
       setMaxJackpotToday(prev => {
         const next =
@@ -137,7 +130,6 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
     }
   }, [jackpotUsd, todayKey]);
 
-  // Milestones
   const reachedMilestone =
     jackpotUsd != null
       ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ??
@@ -152,16 +144,14 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
   const showUnavailable =
     !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
 
-  const poolLabel = JACKPOT_XPOT.toLocaleString('en-US');
-
   return (
     <section
-      className={`
+      className="
         relative overflow-hidden
         rounded-2xl border border-slate-800
         bg-slate-950/70 px-5 py-4 shadow-sm
         transition-colors duration-300
-      `}
+      "
     >
       {/* Soft neon glow on pump */}
       <div
@@ -181,8 +171,8 @@ export default function JackpotPanel({ isLocked }: JackpotPanelProps) {
             Today&apos;s XPOT
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            XPOT ticket pool is fixed at {poolLabel} XPOT. USD value
-            updates live from on-chain price via Jupiter.
+            XPOT ticket pool is fixed at {poolLabel} XPOT. USD value updates
+            live from on-chain price via Jupiter.
           </p>
         </div>
 
