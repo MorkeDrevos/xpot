@@ -53,6 +53,6 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     ok: false,
-    error: 'Listing winners is handled by /api/admin/draw/recent-winners.',
+    error: 'Listing XPOT results is handled by /api/admin/draw/recent-winners.',
   });
 }
