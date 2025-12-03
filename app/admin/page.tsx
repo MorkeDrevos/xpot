@@ -421,8 +421,10 @@ export default function AdminPage() {
 
             <div className="mt-4 rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
               {todayDrawError && (
-                <p className="text-amber-300">{todayDrawError}</p>
-              )}
+  <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-amber-300">
+    Draw API not available yet.
+  </p>
+)}
               {!todayDrawError && !todayLoading && todayDraw && todayDraw.closesAt && (
                 <p>
                   This round closes at{' '}
@@ -453,14 +455,16 @@ export default function AdminPage() {
               )}
 
               {ticketsError && (
-                <p className="text-xs text-amber-300">{ticketsError}</p>
-              )}
+  <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-amber-300">
+    Tickets API not available yet.
+  </p>
+)}
 
               {!ticketsLoading && !ticketsError && tickets.length === 0 && (
-                <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
-                  No entries yet for today&apos;s XPOT.
-                </p>
-              )}
+  <p className="rounded-xl bg-slate-950/80 px-3 py-2 text-xs text-slate-500">
+    No entries yet for today’s XPOT.
+  </p>
+)}
 
               {!ticketsLoading && !ticketsError && tickets.length > 0 && (
                 <div className="mt-2 space-y-2">
