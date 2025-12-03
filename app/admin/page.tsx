@@ -327,10 +327,7 @@ export default function AdminPage() {
         {/* LEFT COLUMN */}
         <div className="space-y-4">
           {/* Big live XPOT card */}
-          <JackpotPanel
-            isLocked={isDrawLocked}
-            onJackpotUsdChange={setLiveJackpotUsd}
-          />
+          <JackpotPanel isLocked={isDrawLocked} />
 
           {/* Today’s XPOT summary card */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-4 shadow-sm">
