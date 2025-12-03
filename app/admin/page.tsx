@@ -1,3 +1,4 @@
+// app/admin/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -61,18 +62,6 @@ function formatUsd(amount: number | null | undefined, decimals = 2) {
   });
 }
 
-// More precise for tiny per-XPOT prices (if needed elsewhere)
-function formatUsdPrice(amount: number | null | undefined) {
-  if (typeof amount !== 'number' || Number.isNaN(amount)) {
-    return '0.00000';
-  }
-
-  return amount.toLocaleString('en-US', {
-    minimumFractionDigits: 5,
-    maximumFractionDigits: 5,
-  });
-}
-
 // Small pill for USD amounts so we have one consistent look
 function UsdPill({
   amount,
@@ -92,23 +81,6 @@ function UsdPill({
       <span className="font-mono text-sm">{value}</span>
       <span className="ml-1 text-[10px] uppercase tracking-[0.16em] text-emerald-400">
         USD
-      </span>
-    </span>
-  );
-}
-
-// XPOT pill – fixed 1,000,000 XPOT for each XPOT round
-function XpotPill({ size = 'md' }: { size?: 'sm' | 'md' }) {
-  const base =
-    'inline-flex items-baseline rounded-full bg-sky-500/10 text-sky-300 font-semibold';
-  const md = 'px-3 py-1 text-xs';
-  const sm = 'px-2 py-0.5 text-[11px]';
-
-  return (
-    <span className={`${base} ${size === 'md' ? md : sm}`}>
-      <span className="font-mono text-sm">1,000,000.00</span>
-      <span className="ml-1 text-[10px] uppercase tracking-[0.16em] text-sky-400">
-        XPOT
       </span>
     </span>
   );
@@ -211,7 +183,7 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, todayDraw?.status]);
 
-  // Live value of 1,000,000 XPOT in USD
+  // Live value of 1,000,000 XPOT in USD – via single source /api/xpot/price
   useEffect(() => {
     async function loadLiveJackpot() {
       try {
@@ -595,11 +567,11 @@ export default function AdminPage() {
         <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)]">
           {/* LEFT COLUMN */}
           <div className="space-y-4">
-            {/* XPOT panel – 1,000,000 XPOT + live USD via Jupiter */}
+            {/* XPOT panel – 1,000,000 XPOT + live USD via /api/xpot/price */}
             <JackpotPanel isLocked={isDrawLocked} />
 
-            {/* Today’s XPOT */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
+            {/* Today’s XPOT (summary) */}
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-4">
               <header className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-100">
@@ -629,6 +601,7 @@ export default function AdminPage() {
                 </div>
               </header>
 
+              {/* States: no token / loading / error */}
               {!adminToken && (
                 <p className="mt-3 text-xs text-slate-500">
                   Paste your admin key above to load Today&apos;s XPOT details.
@@ -647,6 +620,7 @@ export default function AdminPage() {
                 </p>
               )}
 
+              {/* Today’s result (if today already completed) */}
               {adminToken && todayWinner && (
                 <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-3 text-[11px] text-slate-100">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
@@ -668,51 +642,57 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {/* Main data grid + actions */}
               {adminToken && todayDraw && !loadingToday && !todayError && (
                 <>
-                  <div className="mt-4 grid gap-4 text-xs text-slate-200 sm:grid-cols-2">
-                    <div>
+                  <div className="mt-4 grid gap-6 text-xs text-slate-200 sm:grid-cols-2">
+                    <div className="space-y-1">
                       <p className="text-slate-400">Round status</p>
-                      <p className="mt-1 font-semibold capitalize">
+                      <p className="text-sm font-semibold capitalize text-white">
                         {todayDraw.status}
                       </p>
                     </div>
-                    <div>
+
+                    <div className="space-y-1">
                       <p className="text-slate-400">Entries in pool</p>
-                      <p className="mt-1 font-semibold">
+                      <p className="text-sm font-semibold text-white">
                         {todayDraw.ticketsCount.toLocaleString()}
                       </p>
                     </div>
-                    <div>
+
+                    <div className="space-y-1">
                       <p className="text-slate-400">Rollover amount</p>
-                      <p className="mt-1">
-                        <UsdPill amount={todayDraw.rolloverUsd} size="sm" />
-                      </p>
+                      <UsdPill amount={todayDraw.rolloverUsd} size="sm" />
                     </div>
-                    <div>
+
+                    <div className="space-y-1">
                       <p className="text-slate-400">
                         Today&apos;s XPOT{' '}
                         <span className="text-[11px] text-slate-500">
                           (live)
                         </span>
                       </p>
-                      <p className="mt-1">
-                        <UsdPill
-                          amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
-                        />
-                      </p>
+                      <UsdPill
+                        amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
+                        size="md"
+                      />
                     </div>
                   </div>
 
-                  {/* When round is open but no entries */}
-                  {todayDraw.status === 'open' &&
-                    todayDraw.ticketsCount === 0 && (
-                      <p className="mt-4 w-full rounded-full bg-slate-900 py-2 text-center text-xs text-slate-500">
-                        No entries in Today&apos;s XPOT yet.
-                      </p>
-                    )}
+                  {/* Footer strip */}
+                  <div className="mt-5 rounded-full bg-slate-900 px-4 py-2.5 text-center text-xs text-slate-400">
+                    {todayDraw.status === 'open' &&
+                    todayDraw.ticketsCount === 0
+                      ? 'No entries in Today’s XPOT yet.'
+                      : todayDraw.status === 'open' &&
+                        todayDraw.ticketsCount > 0
+                      ? `${todayDraw.ticketsCount.toLocaleString()} ${
+                          todayDraw.ticketsCount === 1 ? 'entry' : 'entries'
+                        } in Today’s XPOT.`
+                      : 'Today’s XPOT is locked. You can review the selected wallet and reward status below.'}
+                  </div>
 
-                  {/* When round is open and entries > 0 */}
+                  {/* Action buttons */}
                   {todayDraw.status === 'open' &&
                     todayDraw.ticketsCount > 0 && (
                       <button
@@ -730,29 +710,23 @@ export default function AdminPage() {
                       </button>
                     )}
 
-                  {/* When round is locked / completed */}
                   {todayDraw.status !== 'open' && (
-                    <>
-                      <p className="mt-3 text-[11px] text-slate-400">
-                        Today&apos;s XPOT is locked. You can review the selected
-                        wallet and reward status below.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReopenError(null);
-                          setShowReopenModal(true);
-                        }}
-                        className="mt-3 w-full rounded-full border border-slate-700 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500 hover:bg-slate-900"
-                      >
-                        Re-open Today&apos;s XPOT (panic switch)
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReopenError(null);
+                        setShowReopenModal(true);
+                      }}
+                      className="mt-4 w-full rounded-full border border-slate-700 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500 hover:bg-slate-900"
+                    >
+                      Re-open Today&apos;s XPOT (panic switch)
+                    </button>
                   )}
 
+                  {/* Just-picked highlight */}
                   {lastPickedWinner && (
                     <div
-                      className={`mt-3 rounded-xl border px-3 py-2 text-[11px] ${
+                      className={`mt-4 rounded-xl border px-3 py-2 text-[11px] ${
                         winnerJustPicked
                           ? 'border-emerald-400 bg-emerald-500/10 ring-1 ring-emerald-400 animate-pulse'
                           : 'border-emerald-500/40 bg-emerald-500/5'
@@ -907,173 +881,72 @@ export default function AdminPage() {
               )}
             </section>
 
-                        {/* Today’s XPOT */}
+            {/* Today’s XPOT entries */}
             <section className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-4">
-              <header className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-100">
-                    Today&apos;s XPOT
-                  </h2>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Overview of Today&apos;s XPOT round: entries, XPOT pool
-                    state and timing.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {todayDraw?.status === 'open' && timeLeft && (
-                    <div className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">
-                      <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                        Closes in
-                      </span>
-                      <span className="font-mono">{timeLeft}</span>
-                    </div>
-                  )}
-
-                  {todayDraw?.status !== 'open' && todayDraw && (
-                    <div className="rounded-full border border-slate-700/60 bg-slate-900/80 px-3 py-1 text-[11px] text-slate-300">
-                      XPOT locked
-                    </div>
-                  )}
-                </div>
-              </header>
+              <h2 className="text-sm font-semibold text-slate-100">
+                Today&apos;s XPOT entries
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                Every entry that has been issued for the current XPOT round.
+              </p>
 
               {!adminToken && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Paste your admin key above to load Today&apos;s XPOT details.
+                  Unlock with your admin key to see Today&apos;s XPOT entries.
                 </p>
               )}
 
-              {adminToken && loadingToday && (
+              {adminToken && loadingTickets && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Loading Today&apos;s XPOT…
+                  Loading entries…
                 </p>
               )}
 
-              {adminToken && todayError && !loadingToday && (
-                <p className="mt-3 text-xs text-amber-300">
-                  Failed to load Today&apos;s XPOT. {todayError}
-                </p>
+              {adminToken && ticketsError && !loadingTickets && (
+                <p className="mt-3 text-xs text-amber-300">{ticketsError}</p>
               )}
 
-              {adminToken && todayWinner && (
-                <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-3 text-[11px] text-slate-100">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                    Today&apos;s XPOT result
+              {adminToken &&
+                !loadingTickets &&
+                !ticketsError &&
+                todayTickets.length === 0 && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    No entries yet for Today&apos;s XPOT.
                   </p>
-                  <p className="mt-1 font-mono text-xs">
-                    {todayWinner.ticketCode}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-slate-400">
-                    {todayWinner.walletAddress}
-                  </p>
-                  <p className="mt-1 flex items-center gap-1 text-[10px] text-emerald-300">
-                    <UsdPill amount={todayWinner.jackpotUsd} size="sm" />
-                    <span className="text-slate-500">·</span>
-                    <span>
-                      {todayWinner.paidOut ? 'Reward sent' : 'Pending reward'}
-                    </span>
-                  </p>
-                </div>
-              )}
+                )}
 
-              {adminToken && todayDraw && !loadingToday && !todayError && (
-                <>
-                  <div className="mt-4 grid gap-4 text-xs text-slate-200 sm:grid-cols-2">
-                    <div>
-                      <p className="text-slate-400">Round status</p>
-                      <p className="mt-1 font-semibold capitalize">
-                        {todayDraw.status}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400">Entries in pool</p>
-                      <p className="mt-1 font-semibold">
-                        {todayDraw.ticketsCount.toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400">Rollover amount</p>
-                      <p className="mt-1">
-                        <UsdPill amount={todayDraw.rolloverUsd} size="sm" />
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400">
-                        Today&apos;s XPOT{' '}
-                        <span className="text-[11px] text-slate-500">
-                          (live)
-                        </span>
-                      </p>
-                      <p className="mt-1">
-                        <UsdPill
-                          amount={liveJackpotUsd ?? todayDraw.jackpotUsd}
-                        />
-                      </p>
-                    </div>
+              {adminToken &&
+                !loadingTickets &&
+                !ticketsError &&
+                todayTickets.length > 0 && (
+                  <div className="mt-3 space-y-1 text-[11px] text-slate-200">
+                    {todayTickets.slice(0, 50).map(t => (
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2"
+                      >
+                        <div>
+                          <p className="font-mono text-xs">{t.code}</p>
+                          <p className="mt-0.5 text-[10px] text-slate-500">
+                            {t.walletAddress}
+                          </p>
+                        </div>
+                        <div className="text-right text-[10px] text-slate-400">
+                          <p>{t.status}</p>
+                          <p className="mt-0.5">
+                            {new Date(t.createdAt).toLocaleTimeString(
+                              undefined,
+                              {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              },
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-
-                  {/* When round is open but no entries */}
-                  {todayDraw.status === 'open' &&
-                    todayDraw.ticketsCount === 0 && (
-                      <p className="mt-4 w-full rounded-full bg-slate-900 py-2 text-center text-xs text-slate-500">
-                        No entries in Today&apos;s XPOT yet.
-                      </p>
-                    )}
-
-                  {/* When round is open and entries > 0 */}
-                  {todayDraw.status === 'open' &&
-                    todayDraw.ticketsCount > 0 && (
-                      <button
-                        type="button"
-                        disabled={!canPickWinner}
-                        className="mt-4 w-full rounded-full bg-amber-400 py-2 text-xs font-semibold text-black hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-300/60"
-                        onClick={() => {
-                          setPickError(null);
-                          setShowPickModal(true);
-                        }}
-                      >
-                        {pickingWinner
-                          ? 'Running selection…'
-                          : 'Run selection now'}
-                      </button>
-                    )}
-
-                  {/* When round is locked / completed */}
-                  {todayDraw.status !== 'open' && (
-                    <>
-                      <p className="mt-3 text-[11px] text-slate-400">
-                        Today&apos;s XPOT is locked. You can review the selected
-                        wallet and reward status below.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReopenError(null);
-                          setShowReopenModal(true);
-                        }}
-                        className="mt-3 w-full rounded-full border border-slate-700 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500 hover:bg-slate-900"
-                      >
-                        Re-open Today&apos;s XPOT (panic switch)
-                      </button>
-                    </>
-                  )}
-
-                  {lastPickedWinner && (
-                    <div
-                      className={`mt-3 rounded-xl border px-3 py-2 text-[11px] ${
-                        winnerJustPicked
-                          ? 'border-emerald-400 bg-emerald-500/10 ring-1 ring-emerald-400 animate-pulse'
-                          : 'border-emerald-500/40 bg-emerald-500/5'
-                      } text-emerald-100`}
-                    >
-                      {/* ... */}
-                    </div>
-                  )}
-
-                  {/* Modals ... */}
-                </>
-              )}
+                )}
             </section>
           </div>
 
