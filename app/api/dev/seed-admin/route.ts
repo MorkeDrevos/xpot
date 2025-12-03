@@ -75,25 +75,24 @@ export async function GET(req: NextRequest) {
   });
 }
 
-  // 3) Tickets for today’s draw
-  const ticketPayload = Array.from({ length: 20 }).map((_, i) => {
-    const wallet = wallets[i % wallets.length];
+  // 3) Tickets for today's draw
+const ticketPayload = Array.from({ length: 20 }).map((_, i) => {
+  const wallet = wallets[i % wallets.length];
+  return {
+    code: `XPOT-DEV${String(i + 1).padStart(4, '0')}`,
+    // Match your enum name here
+    status: 'IN_DRAW', // or 'in-draw' if that’s your enum
+    walletId: wallet.id,
+    userId: wallet.userId,   // 👈 add this line
+    drawId: todayDraw.id,
+  };
+});
 
-    return {
-      code: `XPOT-DEV${String(i + 1).padStart(4, '0')}`,
-      // ⚠️ Match your enum name here:
-      // if your Prisma enum is `IN_DRAW` use that, if it's `in-draw` use that.
-      status: 'IN_DRAW',
-      walletId: wallet.id,
-      drawId: todayDraw!.id,
-    };
-  });
-
-  // createMany skips duplicates nicely if re-run
-  await prisma.ticket.createMany({
-    data: ticketPayload,
-    skipDuplicates: true,
-  });
+// createMany skips duplicates nicely if re-run
+await prisma.ticket.createMany({
+  data: ticketPayload,
+  skipDuplicates: true,
+});
 
   // 4) Two past draws with winners for the right column
 
