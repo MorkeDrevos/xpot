@@ -33,27 +33,31 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>XPOT – Daily Crypto Jackpot</title>
-        <meta
-          name="description"
-          content="XPOT is your entry key to a controlled daily crypto jackpot draw."
-        />
+  <title>XPOT · Tokenized Reward Protocol</title>
+  <meta
+    name="description"
+    content="XPOT is a token-powered reward system for daily distributions and on-chain participation."
+  />
 
-        {/* Favicon */}
-        <link rel="icon" href="/img/favicon.png" />
-        <link rel="apple-touch-icon" href="/img/favicon.png" />
+  {/* Prevent search engines from indexing until you're confident */}
+  <meta name="robots" content="index,follow" />
 
-        {/* OpenGraph / X preview */}
-        <meta property="og:title" content="XPOT – Daily Crypto Jackpot" />
-        <meta
-          property="og:description"
-          content="Claim one ticket per wallet. One winner every day."
-        />
-        <meta property="og:image" content="/img/xpot-logo-dark.jpg" />
-        <meta property="og:type" content="website" />
+  {/* Favicon */}
+  <link rel="icon" href="/img/favicon.png" />
+  <link rel="apple-touch-icon" href="/img/favicon.png" />
 
-        <meta name="twitter:card" content="summary_large_image" />
-      </head>
+  {/* OpenGraph / Social preview */}
+  <meta property="og:title" content="XPOT · Tokenized Reward Protocol" />
+  <meta
+    property="og:description"
+    content="A controlled token distribution system with daily participation mechanics."
+  />
+  <meta property="og:image" content="/img/xpot-logo-dark.jpg" />
+  <meta property="og:type" content="website" />
+
+  {/* X / Twitter */}
+  <meta name="twitter:card" content="summary_large_image" />
+</head>
 
       <body className="bg-black text-slate-50">
         <ConnectionProvider endpoint={endpoint}>
