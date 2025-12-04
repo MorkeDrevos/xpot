@@ -948,7 +948,7 @@ export default function AdminPage() {
           </section>
         </div>
 
-        {/* RIGHT COLUMN – recent winners */}
+                {/* RIGHT COLUMN – recent winners */}
         <div className="space-y-4">
           <section className="h-full rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
@@ -1013,22 +1013,72 @@ export default function AdminPage() {
 
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <UsdPill amount={w.payoutUsd} size="sm" />
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                              w.isPaidOut
-                                ? 'bg-emerald-500/10 text-emerald-300'
-                                : 'bg-amber-500/10 text-amber-300'
-                            }`}
-                          >
-                            {w.isPaidOut ? 'Reward sent' : 'Pending payout'}
-                          </span>
+
+                          <div className="flex flex-col items-end gap-1">
+                            {/* Status pill */}
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                                w.isPaidOut
+                                  ? 'bg-emerald-500/10 text-emerald-300'
+                                  : 'bg-amber-500/10 text-amber-300'
+                              }`}
+                            >
+                              {w.isPaidOut ? 'Reward sent' : 'Pending payout'}
+                            </span>
+
+                            {/* TX link + Mark as paid controls */}
+                            {w.isPaidOut ? (
+                              w.txUrl && (
+                                <a
+                                  href={w.txUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[11px] text-emerald-300 underline underline-offset-2 hover:text-emerald-200"
+                                >
+                                  View TX
+                                </a>
+                              )
+                            ) : (
+                              <div className="flex flex-col items-end gap-1">
+                                <input
+                                  type="text"
+                                  placeholder="Paste TX link…"
+                                  className="w-44 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
+                                  value={txInputs[w.id] ?? ''}
+                                  onChange={(e) =>
+                                    setTxInputs((prev) => ({
+                                      ...prev,
+                                      [w.id]: e.target.value,
+                                    }))
+                                  }
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkAsPaid(w.id)}
+                                  disabled={savingPaidId === w.id}
+                                  className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
+                                >
+                                  {savingPaidId === w.id
+                                    ? 'Saving…'
+                                    : 'Mark as paid'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </article>
                     ))}
 
+                    {markPaidError && (
+                      <p className="mt-2 text-xs text-amber-300">
+                        {markPaidError}
+                      </p>
+                    )}
+
                     {winners.length > MAX_RECENT_WINNERS && (
                       <p className="mt-2 text-xs text-slate-400">
-                        Showing latest {MAX_RECENT_WINNERS} of {winners.length} winners
+                        Showing latest {MAX_RECENT_WINNERS} of {winners.length}{' '}
+                        winners
                       </p>
                     )}
                   </div>
