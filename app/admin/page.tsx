@@ -350,10 +350,10 @@ export default function AdminPage() {
     }
 
     const amountNumber = Number(bonusAmount);
-    if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
-      setBonusError('Enter a valid USD amount.');
-      return;
-    }
+    if (!Number.isFinite(amountNumber) || amountNumber < 100000) {
+  setBonusError('Enter a valid XPOT amount (min 100,000).');
+  return;
+}
 
     setBonusSubmitting(true);
     try {
@@ -955,40 +955,40 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
   <form onSubmit={handleDropBonus} className="mt-4 space-y-4">
     {/* Amount row – XPOT, not USD */}
     <div>
-      <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
-        Amount
-      </label>
-      <div className="mt-1 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1">
-          <input
-  type="number"
-  min={100000}
-  step={1000}
-  className="w-32 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-  value={bonusAmount}
-  onChange={(e) => setBonusAmount(e.target.value)}
-/>
-          <span className="text-xs text-slate-400">XPOT</span>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {[100_000, 250_000, 500_000, 1_000_000].map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setBonusAmount(String(v))}
-              className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
-                Number(bonusAmount) === v
-                  ? 'border-amber-400 bg-amber-500/10 text-amber-200'
-                  : 'border-slate-700 bg-slate-900 text-slate-300'
-              }`}
-            >
-              {v.toLocaleString()} XPOT
-            </button>
-          ))}
-        </div>
-      </div>
+  <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
+    Amount
+  </label>
+  <div className="mt-1 flex flex-wrap items-center gap-3">
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        min={100000}
+        step={1000}
+        className="w-32 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
+        value={bonusAmount}
+        onChange={(e) => setBonusAmount(e.target.value)}
+      />
+      <span className="text-xs text-slate-400">XPOT</span>
     </div>
+
+    <div className="flex flex-wrap gap-2">
+      {[100_000, 250_000, 500_000, 1_000_000].map((v) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => setBonusAmount(String(v))}
+          className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
+            Number(bonusAmount) === v
+              ? 'border-amber-400 bg-amber-500/10 text-amber-200'
+              : 'border-slate-700 bg-slate-900 text-slate-300'
+          }`}
+        >
+          {v.toLocaleString()} XPOT
+        </button>
+      ))}
+    </div>
+  </div>
+</div>
 
     {/* Label + button on same row */}
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
