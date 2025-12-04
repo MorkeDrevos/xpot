@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 // Shared handler used by both GET and POST in dev
 async function handleReset(req: NextRequest) {
   // 🔐 Never allow this in production
-  if (process.env.NODE_ENV === 'production') {
+  if (!req.nextUrl.hostname.startsWith('dev.')) {
     return NextResponse.json(
       { ok: false, error: 'RESET_DISABLED_IN_PROD' },
       { status: 403 },
