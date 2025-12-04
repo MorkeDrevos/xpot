@@ -8,8 +8,36 @@ body {
   padding: 0;
 }
 
-/* Global XPOT typography */
+/* ────────────────────────────────────────────────
+   Global XPOT color tokens – Obsidian Emerald
+   ──────────────────────────────────────────────── */
+
 :root {
+  color-scheme: dark;
+
+  /* Core surfaces */
+  --bg: #070a12;           /* main background */
+  --bg-elevated: #0b1220;  /* cards / panels */
+  --border-subtle: #111827;
+  --border-strong: #1e293b;
+
+  /* Text */
+  --text: #e5e7eb;
+  --text-soft: #9ca3af;
+  --text-mute: #6b7280;
+
+  /* Accents */
+  --accent-emerald: #34d399;
+  --accent-emerald-soft: rgba(52, 211, 153, 0.16);
+  --accent-blue: #38bdf8;
+  --accent-blue-soft: rgba(56, 189, 248, 0.18);
+
+  /* Status */
+  --success: #22c55e;
+  --warning: #fbbf24;
+  --danger: #f97373;
+
+  /* Typography */
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
     'SF Pro Display', sans-serif;
   font-size: 15px;
@@ -21,9 +49,29 @@ body {
   }
 }
 
+/* Light theme overrides (applied when <html class="light">) */
+html.light {
+  color-scheme: light;
+
+  --bg: #f9fafb;
+  --bg-elevated: #ffffff;
+  --border-subtle: #e5e7eb;
+  --border-strong: #d1d5db;
+
+  --text: #020617;
+  --text-soft: #4b5563;
+  --text-mute: #6b7280;
+
+  --accent-emerald: #10b981;
+  --accent-emerald-soft: rgba(16, 185, 129, 0.12);
+  --accent-blue: #0ea5e9;
+  --accent-blue-soft: rgba(14, 165, 233, 0.14);
+}
+
+/* Base body styling uses tokens */
 body {
-  background-color: #05060a; /* slightly warmer than pure black */
-  color: #f3f4f6; /* slightly warmer, softer text */
+  background-color: var(--bg);
+  color: var(--text);
 }
 
 /* ────────────────────────────────────────────────
@@ -67,7 +115,7 @@ body {
   transform: translateY(-0.5px) rotate(-45deg);
 }
 
-/* Hover = tiny lift and glow */
+/* Hover = tiny lift & glow */
 .x-verified-badge:hover {
   transform: translateY(-0.5px);
   filter: brightness(1.04);
@@ -236,43 +284,7 @@ body {
 }
 
 /* ────────────────────────────────────────────────
-   XPOT Admin header
-   ──────────────────────────────────────────────── */
-
-.admin-eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #fbbf24; /* warm muted gold */
-  opacity: 0.9;
-}
-
-.admin-title {
-  margin-top: 0.35rem;
-  font-size: 2rem;
-  line-height: 1.1;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #f5f3ef; /* warm white */
-}
-
-@media (min-width: 1024px) {
-  .admin-title {
-    font-size: 2.25rem;
-  }
-}
-
-.admin-subtitle {
-  margin-top: 0.45rem;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: #9ca3af; /* warm neutral grey */
-  max-width: 40rem;
-}
-
-/* ────────────────────────────────────────────────
-   Legal pages (unchanged)
+   Legal pages
    ──────────────────────────────────────────────── */
 
 .legal-page {
@@ -379,7 +391,7 @@ body {
   text-decoration-thickness: 2px;
 }
 
-/* XPOT login modal animations and micro-interactions */
+/* XPOT login modal animations & micro-interactions */
 
 @keyframes xpot-fade-in {
   0% {
