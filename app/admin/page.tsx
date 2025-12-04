@@ -964,7 +964,9 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
   type="number"
   min={100000}
   step={1000}
-  ...
+  className="w-32 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
+  value={bonusAmount}
+  onChange={(e) => setBonusAmount(e.target.value)}
 />
           <span className="text-xs text-slate-400">XPOT</span>
         </div>
