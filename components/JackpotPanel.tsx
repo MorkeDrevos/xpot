@@ -41,68 +41,20 @@ const MILESTONES = [
 ];
 
 /**
- * Helper: "XPOT session key" for Europe/Madrid.
- *
- * We want stats to reset when the daily XPOT round resets at 22:00 Madrid time,
- * not at calendar midnight.
- *
- * So:
- *  - From 22:00 → 23:59:59, we treat this as the *next* session day.
- *  - From 00:00 → 21:59:59, we treat it as the current calendar day.
- *
- * This way, Highest today / Milestone / Next at all belong to a 24h window
- * that rolls at 22:00.
+ * "Session" key that flips at 22:00 Madrid time.
+ * We add 2 hours to Madrid time and then take the calendar date,
+ * so the session rolls over when the daily XPOT resets.
  */
 function getMadridSessionKey() {
   const now = new Date();
-
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    hour12: false,
-  });
-
-  const parts = fmt.formatToParts(now);
-
-  let year = 0;
-  let month = 0;
-  let day = 0;
-  let hour = 0;
-
-  for (const p of parts) {
-    switch (p.type) {
-      case 'year':
-        year = Number(p.value);
-        break;
-      case 'month':
-        month = Number(p.value);
-        break;
-      case 'day':
-        day = Number(p.value);
-        break;
-      case 'hour':
-        hour = Number(p.value);
-        break;
-      default:
-        break;
-    }
-  }
-
-  // Base date in Madrid (UTC container)
-  const baseDate = new Date(Date.UTC(year, month - 1, day));
-
-  // If it's 22:00 or later in Madrid, move to the *next* calendar day for this session
-  if (hour >= 22) {
-    baseDate.setUTCDate(baseDate.getUTCDate() + 1);
-  }
-
-  const y = baseDate.getUTCFullYear();
-  const m = String(baseDate.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(baseDate.getUTCDate()).padStart(2, '0');
-  return `${y}${m}${d}`; // e.g. "20251205"
+  const madridNow = new Date(
+    now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }),
+  );
+  madridNow.setHours(madridNow.getHours() + 2); // shift so date changes at 22:00
+  const year = madridNow.getFullYear();
+  const month = String(madridNow.getMonth() + 1).padStart(2, '0');
+  const day = String(madridNow.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`; // e.g. 20251204
 }
 
 export default function JackpotPanel({
@@ -123,18 +75,13 @@ export default function JackpotPanel({
   const [justUpdated, setJustUpdated] = useState(false);
   const updatePulseTimeout = useRef<number | null>(null);
 
-  // Tooltip for USD estimate
-  const [showTooltip, setShowTooltip] = useState(false);
+  // Session key for "highest this session" (22:00 Madrid cut)
+  const sessionKey = `xpot_max_session_usd_${getMadridSessionKey()}`;
 
-  // Per-session localStorage key (session rolls at 22:00 Madrid)
-  const sessionKey = getMadridSessionKey();
-
-  // Load max XPOT value for *this* XPOT session from localStorage
+  // Load max XPOT USD value for *this* Madrid session from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem(
-      `xpot_max_jackpot_madrid_${sessionKey}`,
-    );
+    const stored = window.localStorage.getItem(sessionKey);
     if (stored) {
       const num = Number(stored);
       if (!Number.isNaN(num)) setMaxJackpotToday(num);
@@ -204,7 +151,7 @@ export default function JackpotPanel({
   const jackpotUsd =
     priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
 
-  // Track pumps and "highest this XPOT session" + notify parent
+  // Track pumps and "highest this session" + notify parent
   useEffect(() => {
     // notify admin/home page about the new value
     if (typeof onJackpotUsdChange === 'function') {
@@ -223,21 +170,18 @@ export default function JackpotPanel({
     }
     prevJackpot.current = jackpotUsd;
 
-    // Store highest XPOT USD value of this session
+    // Store highest XPOT USD value of the current session
     if (typeof window !== 'undefined') {
       setMaxJackpotToday(prev => {
         const next =
           prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
-        window.localStorage.setItem(
-          `xpot_max_jackpot_madrid_${sessionKey}`,
-          String(next),
-        );
+        window.localStorage.setItem(sessionKey, String(next));
         return next;
       });
     }
   }, [jackpotUsd, sessionKey, onJackpotUsdChange]);
 
-  // Milestones (based on current live XPOT value)
+  // Milestones (based on current live XPOT USD value)
   const reachedMilestone =
     jackpotUsd != null
       ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ??
@@ -253,12 +197,13 @@ export default function JackpotPanel({
     !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
 
   const poolLabel = `${JACKPOT_XPOT.toLocaleString()} XPOT`;
-  const usdText = formatUsd(jackpotUsd);
+  const displayUsd =
+    jackpotUsd === null ? '—' : formatUsd(jackpotUsd);
 
   return (
     <section
       className={`
-        relative z-10 overflow-hidden
+        relative
         rounded-2xl border border-slate-800
         bg-slate-950/70 px-5 py-4 shadow-sm
         transition-colors duration-300
@@ -268,7 +213,7 @@ export default function JackpotPanel({
       <div
         className={`
           pointer-events-none absolute inset-0 rounded-2xl
-          border border-emerald-400/50
+          border border-emerald-400/40
           shadow-[0_0_40px_rgba(52,211,153,0.45)]
           opacity-0 transition-opacity duration-500
           ${justPumped ? 'opacity-100' : ''}
@@ -276,18 +221,20 @@ export default function JackpotPanel({
       />
 
       {/* HEADER */}
-      <div className="relative flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+      <div className="relative z-10 flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          {/* Section label */}
+          <span className="inline-flex rounded-full bg-emerald-500/12 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
             Today&apos;s XPOT
-          </p>
-          {/* Pool size */}
-          <p className="mt-2 text-lg font-semibold tracking-[0.18em] text-slate-100">
+          </span>
+
+          {/* Fixed pool size – premium pill */}
+          <span className="inline-flex items-baseline rounded-xl bg-black/40 px-4 py-2 font-mono text-lg tracking-[0.16em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
             {poolLabel}
-          </p>
+          </span>
         </div>
 
-        <div className="flex flex-col.items-end gap-1">
+        <div className="flex flex-col items-end gap-1 text-xs">
           {isLocked && (
             <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
               Draw locked
@@ -296,30 +243,72 @@ export default function JackpotPanel({
 
           {showUnavailable && (
             <span className="text-[11px] font-semibold text-amber-300">
-              Live XPOT price not available yet.
+              Live price not available yet.
             </span>
           )}
         </div>
       </div>
 
       {/* MAIN NUMBERS */}
-      <div className="relative mt-5 flex flex-wrap items-end justify-between gap-4">
-        {/* Left: big USD number + rate */}
-        <div>
-          <div
-            className={`
-              mt-1 inline-flex items-baseline gap-2
-              text-4xl sm:text-5xl lg:text-6xl
-              font-semibold tracking-tight text-white
-              font-mono tabular-nums
-              transition-transform duration-200
-              ${justUpdated ? 'scale-[1.01]' : ''}
-            `}
-          >
-            <span>{usdText}</span>
+      <div className="relative z-10 mt-6 flex flex-wrap items-end justify-between gap-6">
+        {/* Left: live USD value + XPOT price */}
+        <div className="space-y-3">
+          {/* Big USD number with pill + tooltip on the side */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div
+              className={`
+                text-5xl sm:text-6xl font-semibold text-white
+                tabular-nums
+                transition-transform duration-200
+                ${justUpdated ? 'scale-[1.01]' : ''}
+              `}
+            >
+              {displayUsd}
+            </div>
+
+            {/* USD estimate pill + tooltip trigger */}
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-white/25 bg-black/40 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80">
+                USD estimate
+              </span>
+
+              {/* Tooltip */}
+              <div className="relative group">
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-white/25 bg-black/40 text-[11px] font-semibold text-white/70 transition-colors group-hover:text-white"
+                >
+                  i
+                </button>
+                <div
+                  className="
+                    pointer-events-none absolute left-1/2 top-full z-[60]
+                    mt-3 w-80 -translate-x-1/2 rounded-xl border border-slate-700
+                    bg-slate-950/95 px-4 py-3 text-[11px] leading-relaxed
+                    text-slate-200 shadow-xl backdrop-blur
+                    opacity-0 translate-y-0
+                    group-hover:opacity-100 group-hover:translate-y-1
+                    transition-all duration-200
+                  "
+                >
+                  <p className="mb-2">
+                    This is the current USD value of today&apos;s XPOT,
+                    based on the live XPOT price from Jupiter.
+                  </p>
+                  <p className="text-slate-400">
+                    The winner is always paid in{' '}
+                    <span className="font-semibold text-emerald-300">
+                      XPOT
+                    </span>
+                    , not USD.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <p className="mt-2 text-xs text-slate-500">
+          {/* Single-token price */}
+          <p className="mt-1 text-xs text-slate-500">
             1 XPOT ≈{' '}
             <span className="font-mono">
               {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
@@ -328,70 +317,17 @@ export default function JackpotPanel({
           </p>
         </div>
 
-        {/* Right: USD estimate pill + tooltip + session stats */}
-        <div className="flex flex-col items-end gap-3 text-xs">
-          {/* USD estimate + tooltip */}
-          <div className="relative z-40">
-            <div className="inline-flex items-center gap-2">
-              <button
-                type="button"
-                className="
-  rounded-full border border-slate-400/40
-  bg-slate-950/40 px-3 py-1
-  text-[10px] font-medium tracking-[0.14em]
-  text-slate-300
-  backdrop-blur-sm
-"
-              >
-                USD estimate
-              </button>
-
-              <button
-                type="button"
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-                onFocus={() => setShowTooltip(true)}
-                onBlur={() => setShowTooltip(false)}
-                className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-400/80 bg-slate-900 text-[11px] font-semibold text-slate-100 hover:border-slate-100 hover:text-white"
-              >
-                i
-              </button>
-            </div>
-
-            {showTooltip && (
-              <div
-                className="
-                  absolute left-1/2 top-full z-50 mt-3 w-80
-                  -translate-x-1/2 rounded-2xl border border-slate-700
-                  bg-slate-950/95 px-4 py-3 text-[11px] leading-relaxed
-                  text-slate-100 shadow-xl backdrop-blur-sm
-                "
-              >
-                <p className="mb-2">
-                  This is the current USD value of today&apos;s XPOT,
-                  based on the live XPOT price from Jupiter.
-                </p>
-                <p className="text-slate-400">
-                  The winner is always paid in{' '}
-                  <span className="font-semibold text-emerald-300">
-                    XPOT
-                  </span>
-                  , not USD.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Live XPOT stats (session-based) */}
+        {/* Right: price context stats */}
+        <div className="flex flex-col items-end gap-1 text-xs">
           {(maxJackpotToday || reachedMilestone || nextMilestone) && (
-            <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-              Live XPOT stats
+            <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+              XPOT price context
             </p>
           )}
 
           {maxJackpotToday && (
             <p className="text-[11px] text-slate-400">
-              Highest this session{' '}
+              Today&apos;s peak value{' '}
               <span className="font-mono text-slate-100">
                 {formatUsd(maxJackpotToday)}
               </span>
@@ -409,7 +345,7 @@ export default function JackpotPanel({
 
           {nextMilestone && (
             <p className="text-[11px] text-slate-500">
-              Next at{' '}
+              Next milestone{' '}
               <span className="font-mono">
                 {formatUsd(nextMilestone)}
               </span>
@@ -418,7 +354,8 @@ export default function JackpotPanel({
         </div>
       </div>
 
-      <p className="relative mt-4 text-xs text-slate-500">
+      {/* Footer explainer */}
+      <p className="relative z-10 mt-4 text-xs text-slate-500">
         Today&apos;s XPOT round is fixed at {poolLabel}. Its USD value
         tracks the live on-chain XPOT price from Jupiter and updates
         automatically.
