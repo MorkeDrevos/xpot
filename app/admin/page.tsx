@@ -877,56 +877,25 @@ useEffect(() => {
                 todayDraw &&
                 todayDraw.closesAt && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-  <div className="flex flex-col">
-  <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-    Closes in
-  </span>
-
-  <div
-    className={`
-      mt-2 inline-flex items-center gap-2 rounded-2xl border px-4 py-1.5
-      shadow-sm shadow-black/40 bg-slate-950/80
-      ${
-        isWarningCritical
-          ? 'border-amber-400/70 shadow-amber-500/25'
-          : isWarningSoon
-            ? 'border-amber-300/60'
-            : 'border-emerald-400/50 shadow-emerald-500/20'
-      }
-    `}
-  >
-    {/* small glow dot */}
-    <span
-      className={`
-        h-2 w-2 rounded-full
-        ${
-          isWarningCritical
-            ? 'bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.9)]'
-            : isWarningSoon
-              ? 'bg-amber-200 shadow-[0_0_10px_rgba(253,230,138,0.8)]'
-              : 'bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]'
-        }
-      `}
-    />
-
-    {/* the time itself */}
-    <span
-      className={`
-        font-mono tabular-nums text-2xl sm:text-3xl font-semibold
-        tracking-[0.25em] pl-[0.25em]
-        ${
-          isWarningCritical
-            ? 'text-amber-100'
-            : isWarningSoon
-              ? 'text-amber-200'
-              : 'text-emerald-200'
-        }
-      `}
-    >
-      {countdownText}
+  <p className="text-sm sm:text-base">
+    <span className="uppercase tracking-wide text-slate-500 text-xs">
+      Closes in
     </span>
-  </div>
-</div>
+    <span
+  className={`
+    ml-2 font-mono text-2xl font-semibold mt-2 transition-all
+    ${
+      isWarningCritical
+        ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
+        : isWarningSoon
+          ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
+          : 'text-emerald-300'
+    }
+  `}
+>
+  {countdownText}
+</span>
+  </p>
 
   <div className="flex flex-col items-stretch gap-2 sm:items-end">
     {/* Main winner button */}
