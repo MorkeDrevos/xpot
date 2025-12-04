@@ -77,13 +77,12 @@ export async function GET(req: NextRequest) {
       }
 
       return {
-        id: t.id,
-        code: t.code,
-        walletAddress: t.wallet?.address ?? '',
-        status,
-        createdAt: t.createdAt.toISOString(),
-        jackpotUsd: t.jackpotUsd ?? null,
-      };
+  id: t.id,
+  code: t.code,
+  walletAddress: t.wallet?.address ?? '',
+  status,
+  createdAt: t.createdAt.toISOString(),
+};
     });
 
     return NextResponse.json({
