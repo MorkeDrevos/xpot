@@ -268,6 +268,7 @@ export default function AdminPage() {
   const [pickError, setPickError] = useState<string | null>(null);
   const [pickSuccess, setPickSuccess] = useState<string | null>(null);
   const [isPickingWinner, setIsPickingWinner] = useState(false);
+  const [isReopeningDraw, setIsReopeningDraw] = useState(false);
 
   // Flag while we are creating today's draw
   const [creatingDraw, setCreatingDraw] = useState(false);
@@ -428,6 +429,37 @@ export default function AdminPage() {
       setIsPickingWinner(false);
     }
   }
+
+    // ── Panic: reopen today’s draw ──────────────────────────────
+
+  async function handleReopenDraw() {
+  setTodayDrawError(null);
+
+  if (!adminToken) {
+    alert('Admin token missing. Unlock admin first.');
+    return;
+  }
+
+  setIsReopeningDraw(true);
+  try {
+    const data = await authedFetch('/api/admin/reopen-draw', {
+      method: 'POST',
+    });
+
+    if (!data || data.ok === false) {
+      throw new Error(data?.error || 'Failed to reopen draw');
+    }
+
+    setTodayDraw((prev) =>
+      prev ? { ...prev, status: 'open' } : prev,
+    );
+  } catch (err: any) {
+    console.error('[XPOT] reopen draw error:', err);
+    alert(err.message || 'Unexpected error reopening draw');
+  } finally {
+    setIsReopeningDraw(false);
+  }
+}
 
   // ── Mark winner as paid ─────────────────────────────────────
 
@@ -660,7 +692,7 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
         <div className="flex flex-col items-start gap-1 sm:items-end">
           <div className="flex items-center gap-2">
             <h1 className="text-sm sm:text-base font-semibold text-white">
-              Control room for today&apos;s XPOT round.
+              Control room for today&apos;s XPOT.
             </h1>
 
             {isDevHost && (
@@ -682,7 +714,7 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
           <div>
             <p className="text-sm font-semibold text-slate-100">Admin key</p>
             <p className="mt-1 text-xs text-slate-400">
-              Enter your admin token to unlock XPOT operations
+              Enter your admin token to unlock XPOT operations.
             </p>
             {tokenAccepted && (
               <p className="mt-1 text-xs font-semibold text-emerald-400">
@@ -742,7 +774,7 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
                   Today&apos;s round
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Live status of today&apos;s XPOT: entries, rollover and pool.
+                  Live overview of today&apos;s XPOT draw, entries, rollovers and prize pool.
                 </p>
               </div>
 
@@ -837,45 +869,59 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
                 todayDraw &&
                 todayDraw.closesAt && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm sm:text-base">
-                      <span className="uppercase tracking-wide text-slate-500 text-xs">
-                        Closes in
-                      </span>
-                      <span
-                        className={`
-    font-mono text-2xl font-semibold mt-2 transition-all
-    ${
-      isWarningCritical
-        ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg.animate-pulse'
-        : isWarningSoon
-          ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
-          : 'text-emerald-300'
-    }
-  `}
-                      >
-                        {countdownText}
-                      </span>
-                    </p>
-                    <button
-                      type="button"
-                      disabled={
-                        isPickingWinner ||
-                        !adminToken ||
-                        todayLoading ||
-                        !todayDraw ||
-                        todayDraw.status !== 'open'
-                      }
-                      onClick={handlePickMainWinner}
-                      className={`
-  ${BTN_PRIMARY} px-4 py-2 text-sm transition-all.ease-out duration-300
-  ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
-`}
-                    >
-                      {isPickingWinner
-                        ? 'Picking winner…'
-                        : 'Select primary recipient'}
-                    </button>
-                  </div>
+  <p className="text-sm sm:text-base">
+    <span className="uppercase tracking-wide text-slate-500 text-xs">
+      Closes in
+    </span>
+    <span
+      className={`
+        font-mono text-2xl font-semibold mt-2 transition-all
+        ${
+          isWarningCritical
+            ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
+            : isWarningSoon
+              ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
+              : 'text-emerald-300'
+        }
+      `}
+    >
+      {countdownText}
+    </span>
+  </p>
+
+  <div className="flex flex-col items-stretch gap-2 sm:items-end">
+    {/* Main winner button */}
+    <button
+      type="button"
+      disabled={
+        isPickingWinner ||
+        !adminToken ||
+        todayLoading ||
+        !todayDraw ||
+        todayDraw.status !== 'open'
+      }
+      onClick={handlePickMainWinner}
+      className={`
+        ${BTN_PRIMARY} px-4 py-2 text-sm transition-all ease-out duration-300
+        ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
+      `}
+    >
+      {isPickingWinner ? 'Picking winner…' : 'Select primary recipient'}
+    </button>
+
+    {/* 🚨 Panic: reopen draw (only when closed) */}
+    {todayDraw?.status === 'closed' && (
+      <button
+        type="button"
+        onClick={handleReopenDraw}
+        disabled={isReopeningDraw || !adminToken}
+        className="inline-flex items-center justify-center rounded-lg border border-red-500/70 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-red-200 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isReopeningDraw ? 'Reopening…' : '🚨 Reopen draw (panic)'}
+      </button>
+    )}
+  </div>
+</div>
                 )}
 
               {!todayDrawError && !todayLoading && !todayDraw && (
