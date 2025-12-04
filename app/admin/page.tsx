@@ -10,7 +10,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 const MAX_TODAY_TICKETS = 10;   // how many “Today’s XPOT entries” to show
-const MAX_RECENT_WINNERS = 9;  // how many “Recent XPOT winners” to show
+const MAX_RECENT_WINNERS = 9;   // how many “Recent XPOT winners” to show
 
 // ─────────────────────────────────────────────
 // Types
@@ -152,13 +152,16 @@ export default function AdminPage() {
   const [savingPaidId, setSavingPaidId] = useState<string | null>(null);
   const [markPaidError, setMarkPaidError] = useState<string | null>(null);
 
-  // how many tickets to show; grows when you click "Load more"
+  // how many tickets / winners to show; grows when you click "Load more"
   const [visibleTicketCount, setVisibleTicketCount] = useState(
     MAX_TODAY_TICKETS,
   );
+  const [visibleWinnerCount, setVisibleWinnerCount] = useState(
+    MAX_RECENT_WINNERS,
+  );
 
   const visibleTickets = tickets.slice(0, visibleTicketCount);
-  const visibleWinners = winners.slice(0, MAX_RECENT_WINNERS);
+  const visibleWinners = winners.slice(0, visibleWinnerCount);
 
   // Live jackpot USD coming from JackpotPanel
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
@@ -345,7 +348,9 @@ export default function AdminPage() {
     }
   }
 
-    async function handleMarkAsPaid(winnerId: string) {
+  // ── Mark winner as paid ─────────────────────────────────────
+
+  async function handleMarkAsPaid(winnerId: string) {
     setMarkPaidError(null);
 
     if (!adminToken) {
@@ -503,6 +508,19 @@ export default function AdminPage() {
   function handleLoadMoreTickets() {
     setVisibleTicketCount((prev) =>
       Math.min(prev + MAX_TODAY_TICKETS, tickets.length),
+    );
+  }
+
+  // Clamp visibleWinnerCount if winners shrink / first load
+  useEffect(() => {
+    setVisibleWinnerCount((prev) =>
+      Math.min(prev, winners.length || MAX_RECENT_WINNERS),
+    );
+  }, [winners.length]);
+
+  function handleLoadMoreWinners() {
+    setVisibleWinnerCount((prev) =>
+      Math.min(prev + MAX_RECENT_WINNERS, winners.length),
     );
   }
 
@@ -759,7 +777,7 @@ export default function AdminPage() {
                       }
                       onClick={handlePickMainWinner}
                       className={`
-  ${BTN_PRIMARY} px-4 py-2 text-sm transition-all ease-out duration-300
+  ${BTN_PRIMARY} px-4 py-2 text-sm transition-all.ease-out duration-300
   ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
 `}
                     >
@@ -864,7 +882,7 @@ export default function AdminPage() {
                 <button
                   type="submit"
                   disabled={bonusSubmitting}
-                  className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
+                  className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950.shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
                 >
                   {bonusSubmitting ? 'Dropping…' : 'Drop bonus XPOT'}
                 </button>
@@ -905,7 +923,7 @@ export default function AdminPage() {
                     {visibleTickets.map((t) => (
                       <div
                         key={t.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
+                        className="flex flex-wrap.items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
                       >
                         <div className="space-y-0.5">
                           <p className="font-mono text-[11px] text-slate-100">
@@ -948,14 +966,14 @@ export default function AdminPage() {
           </section>
         </div>
 
-                {/* RIGHT COLUMN – recent winners */}
+        {/* RIGHT COLUMN – recent winners */}
         <div className="space-y-4">
           <section className="h-full rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
               Recent XPOT winners
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Internal log of the latest selected entries and reward status.
+              Internal log of the latest.selected entries and reward status.
             </p>
 
             <div className="mt-3">
@@ -1075,12 +1093,22 @@ export default function AdminPage() {
                       </p>
                     )}
 
-                    {winners.length > MAX_RECENT_WINNERS && (
-                      <p className="mt-2 text-xs text-slate-400">
-                        Showing latest {MAX_RECENT_WINNERS} of {winners.length}{' '}
+                    <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                      <p>
+                        Showing latest {visibleWinners.length} of {winners.length}{' '}
                         winners
                       </p>
-                    )}
+
+                      {visibleWinners.length < winners.length && (
+                        <button
+                          type="button"
+                          onClick={handleLoadMoreWinners}
+                          className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
+                        >
+                          Load more
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
             </div>
