@@ -147,6 +147,11 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [winnersLoading, setWinnersLoading] = useState(true);
 
+  // "Mark as paid" helpers
+  const [txInputs, setTxInputs] = useState<Record<string, string>>({});
+  const [savingPaidId, setSavingPaidId] = useState<string | null>(null);
+  const [markPaidError, setMarkPaidError] = useState<string | null>(null);
+
   // how many tickets to show; grows when you click "Load more"
   const [visibleTicketCount, setVisibleTicketCount] = useState(
     MAX_TODAY_TICKETS,
@@ -337,6 +342,46 @@ export default function AdminPage() {
       setPickError(err.message || 'Failed to pick main XPOT winner');
     } finally {
       setIsPickingWinner(false);
+    }
+  }
+
+    async function handleMarkAsPaid(winnerId: string) {
+    setMarkPaidError(null);
+
+    if (!adminToken) {
+      setMarkPaidError('Admin token missing. Unlock admin first.');
+      return;
+    }
+
+    const txUrl = txInputs[winnerId]?.trim() || '';
+    if (!txUrl) {
+      setMarkPaidError('Paste a TX link before marking as paid.');
+      return;
+    }
+
+    setSavingPaidId(winnerId);
+    try {
+      const res = await authedFetch('/api/admin/mark-paid', {
+        method: 'POST',
+        body: JSON.stringify({ winnerId, txUrl }),
+      });
+
+      if (!res.ok) {
+        throw new Error(res.error || 'Failed to mark as paid');
+      }
+
+      // Update local winners list
+      setWinners((prev) =>
+        prev.map((w) =>
+          w.id === winnerId
+            ? { ...w, isPaidOut: true, txUrl }
+            : w,
+        ),
+      );
+    } catch (err: any) {
+      setMarkPaidError(err.message || 'Failed to mark as paid');
+    } finally {
+      setSavingPaidId(null);
     }
   }
 
