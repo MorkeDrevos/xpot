@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+const DISABLED = true; // 🔴 TEMP DISABLE AUTO REFRESH
+
 export default function DeployWatcher() {
   useEffect(() => {
     let currentBuild: string | null = null;
