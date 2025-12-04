@@ -5,15 +5,14 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // 🔒 Never allow reset on *real* production
-  // On Vercel, VERCEL_ENV === 'production' only for the live site.
+  // 🚫 Hard stop on real production
   if (
     process.env.VERCEL_ENV === 'production' ||
     (!process.env.VERCEL_ENV && process.env.NODE_ENV === 'production')
   ) {
     return NextResponse.json(
       { ok: false, error: 'RESET_DISABLED_IN_PROD' },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -24,29 +23,44 @@ export async function POST(req: NextRequest) {
   if (secret !== expected) {
     return NextResponse.json(
       { ok: false, error: 'BAD_SECRET' },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
   try {
-    // 🧹 Clear DB in dependency order: tickets → balances → wallets → draws → users
-    await prisma.$transaction([
-      prisma.ticket.deleteMany(),
-      prisma.xpUserBalance.deleteMany(),
-      prisma.wallet.deleteMany(),
-      prisma.draw.deleteMany(),
-      prisma.user.deleteMany(),
-    ]);
+    console.log('🧹 Reset start…');
+
+    // Child → Parent order
+    console.log('Delete tickets');
+    await prisma.ticket.deleteMany();
+
+    console.log('Delete balances');
+    await prisma.xpUserBalance.deleteMany();
+
+    console.log('Delete wallets');
+    await prisma.wallet.deleteMany();
+
+    console.log('Delete draws');
+    await prisma.draw.deleteMany();
+
+    console.log('Delete users');
+    await prisma.user.deleteMany();
+
+    console.log('✅ Tables cleared');
 
     const todayStr = new Date().toISOString().slice(0, 10);
+
+    console.log('🌱 Creating seed draw');
 
     const draw = await prisma.draw.create({
       data: {
         drawDate: new Date(`${todayStr}T00:00:00.000Z`),
         isClosed: false,
-        jackpotUsd: 1_000_000, // matches Int? in Prisma
+        jackpotUsd: 1_000_000,
       },
     });
+
+    console.log('✅ Seed complete');
 
     return NextResponse.json({
       ok: true,
@@ -54,11 +68,17 @@ export async function POST(req: NextRequest) {
       seeded: true,
       drawId: draw.id,
     });
-  } catch (err) {
-    console.error('DEV_RESET_FAILED', err);
+
+  } catch (err: any) {
+    console.error('🔥 RESET FAILED', err);
+
     return NextResponse.json(
-      { ok: false, error: 'RESET_FAILED' },
-      { status: 500 },
+      {
+        ok: false,
+        error: 'RESET_FAILED',
+        detail: err?.message || 'Unknown error',
+      },
+      { status: 500 }
     );
   }
 }
