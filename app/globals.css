@@ -599,3 +599,15 @@ html.light .text-emerald-300.live-label {
   color: #16a34a !important;
   opacity: 0.9;
 }
+/* ────────────────────────────────────────────────
+   XPOT admin nebula background
+   (deep navy + purple + cyan glow)
+   ──────────────────────────────────────────────── */
+
+.admin-shell-bg {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.30), transparent 55%),
+    radial-gradient(circle at 100% 0%, rgba(78, 163, 227, 0.24), transparent 55%),
+    radial-gradient(circle at 0% 100%, rgba(34, 227, 179, 0.18), transparent 55%),
+    #020618;
+}
