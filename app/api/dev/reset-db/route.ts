@@ -5,11 +5,15 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // 🔒 Never allow reset in production
-  if (process.env.NODE_ENV === 'production') {
+  // 🔒 Never allow reset on *real* production
+  // On Vercel, VERCEL_ENV === 'production' only for the live site.
+  if (
+    process.env.VERCEL_ENV === 'production' ||
+    (!process.env.VERCEL_ENV && process.env.NODE_ENV === 'production')
+  ) {
     return NextResponse.json(
       { ok: false, error: 'RESET_DISABLED_IN_PROD' },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -20,12 +24,12 @@ export async function POST(req: NextRequest) {
   if (secret !== expected) {
     return NextResponse.json(
       { ok: false, error: 'BAD_SECRET' },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
   try {
-    // 🧹 Clear DB in correct dependency order
+    // 🧹 Clear DB in dependency order: tickets → balances → wallets → draws → users
     await prisma.$transaction([
       prisma.ticket.deleteMany(),
       prisma.xpUserBalance.deleteMany(),
@@ -34,13 +38,13 @@ export async function POST(req: NextRequest) {
       prisma.user.deleteMany(),
     ]);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
 
     const draw = await prisma.draw.create({
       data: {
-        drawDate: new Date(`${today}T00:00:00.000Z`),
+        drawDate: new Date(`${todayStr}T00:00:00.000Z`),
         isClosed: false,
-        jackpotUsd: 1_000_000,
+        jackpotUsd: 1_000_000, // matches Int? in Prisma
       },
     });
 
@@ -50,12 +54,11 @@ export async function POST(req: NextRequest) {
       seeded: true,
       drawId: draw.id,
     });
-
   } catch (err) {
-    console.error('DEV RESET FAILED:', err);
+    console.error('DEV_RESET_FAILED', err);
     return NextResponse.json(
       { ok: false, error: 'RESET_FAILED' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
