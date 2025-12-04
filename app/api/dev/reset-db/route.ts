@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
+// Shared handler used by both GET and POST in dev
+async function handleReset(req: NextRequest) {
   // 🔐 Never allow this in production
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json(
@@ -40,14 +41,10 @@ export async function POST(req: NextRequest) {
     const draw = await prisma.draw.create({
       data: {
         drawDate: new Date(`${todayStr}T00:00:00.000Z`),
-
-        // matches your schema:
-        status: 'OPEN',      // DrawStatus enum
+        status: 'OPEN',       // DrawStatus enum
         isClosed: false,
         jackpotUsd: 1_000_000,
-
-        // closesAt optional – set a sample closing time if you like:
-        // closesAt: new Date(`${todayStr}T23:59:59.000Z`),
+        // closesAt: new Date(`${todayStr}T23:59:59.000Z`), // optional
       },
     });
 
@@ -64,4 +61,13 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+// Allow both POST (for tools) and GET (for you in the browser) in dev
+export async function POST(req: NextRequest) {
+  return handleReset(req);
+}
+
+export async function GET(req: NextRequest) {
+  return handleReset(req);
 }
