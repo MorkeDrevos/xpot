@@ -882,19 +882,19 @@ useEffect(() => {
       Closes in
     </span>
     <span
-      className={`
-        font-mono text-2xl font-semibold mt-2 transition-all
-        ${
-          isWarningCritical
-            ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
-            : isWarningSoon
-              ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
-              : 'text-emerald-300'
-        }
-      `}
-    >
-      {countdownText}
-    </span>
+  className={`
+    ml-2 font-mono text-2xl font-semibold mt-2 transition-all
+    ${
+      isWarningCritical
+        ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
+        : isWarningSoon
+          ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
+          : 'text-emerald-300'
+    }
+  `}
+>
+  {countdownText}
+</span>
   </p>
 
   <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -1204,9 +1204,6 @@ useEffect(() => {
       )
     ) : (
       <>
-        {/* subtle “Not paid” text, no badge */}
-        <span className="text-[11px] text-amber-300">Not paid</span>
-
         {/* TX input + Mark as paid */}
         <div className="flex flex-col items-end gap-1">
           <input
