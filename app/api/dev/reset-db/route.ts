@@ -39,14 +39,11 @@ async function handleReset(req: NextRequest) {
     const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     const draw = await prisma.draw.create({
-      data: {
-        drawDate: new Date(`${todayStr}T00:00:00.000Z`),
-        status: 'OPEN',       // DrawStatus enum
-        isClosed: false,
-        jackpotUsd: 1_000_000,
-        // closesAt: new Date(`${todayStr}T23:59:59.000Z`), // optional
-      },
-    });
+  data: {
+    drawDate: new Date(`${todayStr}T00:00:00.000Z`),
+    jackpotUsd: 1_000_000,
+  },
+});
 
     return NextResponse.json({
       ok: true,
