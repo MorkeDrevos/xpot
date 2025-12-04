@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const mainWinners = mainDraws.map(draw => ({
+    const mainWinners = mainDraws.map((draw) => ({
       id: draw.id,
       kind: 'main' as const,
       label: 'Main jackpot',
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       txUrl: draw.payoutTx ?? null,
     }));
 
-    const bonusWinners = bonusRewards.map(reward => ({
+    const bonusWinners = bonusRewards.map((reward) => ({
       id: reward.id,
       kind: 'bonus' as const,
       label: reward.label,
@@ -69,13 +69,13 @@ export async function GET(req: NextRequest) {
       jackpotUsd: reward.amountUsd,
       payoutUsd: reward.amountUsd,
       isPaidOut: reward.isPaidOut,
-      txUrl: reward.payoutTx ?? null,
+      txUrl: reward.txUrl ?? null, // ✅ use Reward.txUrl (mapped to payoutTx)
     }));
 
     // Merge & sort newest first
-    const winners = [...mainWinners, ...bonusWinners].sort((a, b) =>
-      b.date.localeCompare(a.date),
-    ).slice(0, 30);
+    const winners = [...mainWinners, ...bonusWinners]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 30);
 
     return NextResponse.json({
       ok: true,
