@@ -943,88 +943,84 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
           </section>
 
           {/* Drop bonus XPOT */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-100">
-              Drop bonus XPOT
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Fire a manual hype XPOT using today&apos;s ticket pool. Winner is
-              picked instantly from all tickets in today&apos;s draw.
-            </p>
+<section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
+  <p className="text-sm font-semibold text-slate-100">
+    Drop bonus XPOT
+  </p>
+  <p className="mt-1 text-xs text-slate-400">
+    Fire a manual hype XPOT using today&apos;s ticket pool. Winner is
+    picked instantly from all tickets in today&apos;s draw.
+  </p>
 
-            <form onSubmit={handleDropBonus} className="mt-4 space-y-4">
-              {/* Amount row */}
-              <div>
-                <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Amount
-                </label>
-                <div className="mt-1 flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      className="w-28 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-                      value={bonusAmount}
-                      onChange={(e) => setBonusAmount(e.target.value)}
-                    />
-                    <span className="text-xs text-slate-400">USD</span>
-                  </div>
+  <form onSubmit={handleDropBonus} className="mt-4 space-y-4">
+    {/* Amount row – XPOT, not USD */}
+    <div>
+      <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
+        Amount
+      </label>
+      <div className="mt-1 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={1}
+            step={1}
+            className="w-28 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
+            value={bonusAmount}
+            onChange={(e) => setBonusAmount(e.target.value)}
+          />
+          <span className="text-xs text-slate-400">XPOT</span>
+        </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {[50, 100, 250, 500, 1000].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setBonusAmount(String(v))}
-                        className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
-                          Number(bonusAmount) === v
-                            ? 'border-amber-400 bg-amber-500/10 text-amber-200'
-                            : 'border-slate-700 bg-slate-900 text-slate-300'
-                        }`}
-                      >
-                        ${v}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+        <div className="flex flex-wrap gap-2">
+          {[50, 100, 250, 500, 1000].map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setBonusAmount(String(v))}
+              className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
+                Number(bonusAmount) === v
+                  ? 'border-amber-400 bg-amber-500/10 text-amber-200'
+                  : 'border-slate-700 bg-slate-900 text-slate-300'
+              }`}
+            >
+              {v.toLocaleString()} XPOT
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
 
-              {/* Label row */}
-              <div>
-                <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Label
-                </label>
-                <input
-                  type="text"
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-                  value={bonusLabel}
-                  onChange={(e) => setBonusLabel(e.target.value)}
-                  placeholder="Bonus XPOT"
-                />
-              </div>
+    {/* Label + button on same row */}
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+      <div className="flex-1">
+        <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
+          Label
+        </label>
+        <input
+          type="text"
+          className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
+          value={bonusLabel}
+          onChange={(e) => setBonusLabel(e.target.value)}
+          placeholder="Bonus XPOT"
+        />
+      </div>
 
-              {/* Messages + submit */}
-              <div className="flex.flex-col.gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-xs">
-                  {bonusError && (
-                    <p className="text-amber-300">{bonusError}</p>
-                  )}
-                  {bonusSuccess && (
-                    <p className="text-emerald-300">{bonusSuccess}</p>
-                  )}
-                </div>
+      <button
+        type="submit"
+        disabled={bonusSubmitting}
+        className="mt-1 inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40 sm:mt-0"
+      >
+        {bonusSubmitting ? 'Dropping…' : 'Drop bonus XPOT'}
+      </button>
+    </div>
 
-                <button
-                  type="submit"
-                  disabled={bonusSubmitting}
-                  className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950.shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
-                >
-                  {bonusSubmitting ? 'Dropping…' : 'Drop bonus XPOT'}
-                </button>
-              </div>
-            </form>
-          </section>
+    {/* Messages under the row */}
+    <div className="text-xs min-h-[1.25rem]">
+      {bonusError && <p className="text-amber-300">{bonusError}</p>}
+      {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
+    </div>
+  </form>
+</section>
 
           {/* Today’s XPOT entries list */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
