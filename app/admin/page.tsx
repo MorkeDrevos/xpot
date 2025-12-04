@@ -9,8 +9,8 @@ import JackpotPanel from '@/components/JackpotPanel';
 import Image from 'next/image';
 import Link from 'next/link';
 
-const MAX_TODAY_TICKETS = 30;   // how many “Today’s XPOT entries” to show
-const MAX_RECENT_WINNERS = 20;  // how many “Recent XPOT winners” to show
+const MAX_TODAY_TICKETS = 10;   // how many “Today’s XPOT entries” to show
+const MAX_RECENT_WINNERS = 15;  // how many “Recent XPOT winners” to show
 
 // ─────────────────────────────────────────────
 // Types
@@ -170,7 +170,7 @@ export default function AdminPage() {
 
   // Bonus jackpot form
   const [bonusAmount, setBonusAmount] = useState('500');
-  const [bonusLabel, setBonusLabel] = useState('Bonus jackpot');
+  const [bonusLabel, setBonusLabel] = useState('Bonus XPOT');
   const [bonusSubmitting, setBonusSubmitting] = useState(false);
   const [bonusError, setBonusError] = useState<string | null>(null);
   const [bonusSuccess, setBonusSuccess] = useState<string | null>(null);
@@ -247,7 +247,7 @@ export default function AdminPage() {
     }
   }
 
-  // ── Drop bonus jackpot (bonus winner) ─────────────────────────
+  // ── Drop bonus XPOT (bonus winner) ─────────────────────────
 
   async function handleDropBonus(e: React.FormEvent) {
     e.preventDefault();
@@ -271,7 +271,7 @@ export default function AdminPage() {
         method: 'POST',
         body: JSON.stringify({
           amountUsd: amountNumber,
-          label: bonusLabel || 'Bonus jackpot',
+          label: bonusLabel || 'Bonus XPOT',
         }),
       });
 
@@ -291,7 +291,7 @@ export default function AdminPage() {
         // ignore secondary error
       }
     } catch (err: any) {
-      setBonusError(err.message || 'Failed to drop bonus jackpot');
+      setBonusError(err.message || 'Failed to drop bonus XPOT');
     } finally {
       setBonusSubmitting(false);
     }
@@ -571,7 +571,7 @@ export default function AdminPage() {
         </div>
       </section>
 
-      {/* Main grid: left (Jackpot + summary + entries), right (winners) */}
+      {/* Main grid: left (XPOT + summary + entries), right (winners) */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)]">
         {/* LEFT COLUMN */}
         <div className="space-y-4">
@@ -801,7 +801,7 @@ export default function AdminPage() {
                   className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
                   value={bonusLabel}
                   onChange={(e) => setBonusLabel(e.target.value)}
-                  placeholder="Bonus jackpot"
+                  placeholder="Bonus XPOT"
                 />
               </div>
 
@@ -821,7 +821,7 @@ export default function AdminPage() {
                   disabled={bonusSubmitting}
                   className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
                 >
-                  {bonusSubmitting ? 'Dropping…' : 'Drop bonus jackpot'}
+                  {bonusSubmitting ? 'Dropping…' : 'Drop bonus XPOT'}
                 </button>
               </div>
             </form>
@@ -926,7 +926,7 @@ export default function AdminPage() {
                 !winnersError &&
                 winners.length === 0 && (
                   <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
-                    No completed draws yet. Once you pick winners and mark jackpots
+                    No completed draws yet. Once you pick winners and mark XPOT
                     as paid, they&apos;ll appear here.
                   </p>
                 )}
