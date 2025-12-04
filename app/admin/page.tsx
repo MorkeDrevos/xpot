@@ -147,13 +147,13 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [winnersLoading, setWinnersLoading] = useState(true);
 
-// how many tickets to show; grows when you click "Load more"
-const [visibleTicketCount, setVisibleTicketCount] = useState(
-  MAX_TODAY_TICKETS,
-);
+  // how many tickets to show; grows when you click "Load more"
+  const [visibleTicketCount, setVisibleTicketCount] = useState(
+    MAX_TODAY_TICKETS,
+  );
 
-const visibleTickets = tickets.slice(0, visibleTicketCount);
-const visibleWinners = winners.slice(0, MAX_RECENT_WINNERS);
+  const visibleTickets = tickets.slice(0, visibleTicketCount);
+  const visibleWinners = winners.slice(0, MAX_RECENT_WINNERS);
 
   // Live jackpot USD coming from JackpotPanel
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
@@ -448,17 +448,18 @@ const visibleWinners = winners.slice(0, MAX_RECENT_WINNERS);
     };
   }, [todayDraw?.closesAt]);
 
+  // Clamp visibleTicketCount if tickets shrink / first load
   useEffect(() => {
-  setVisibleTicketCount((prev) =>
-    Math.min(prev, tickets.length || MAX_TODAY_TICKETS),
-  );
-}, [tickets.length]);
+    setVisibleTicketCount((prev) =>
+      Math.min(prev, tickets.length || MAX_TODAY_TICKETS),
+    );
+  }, [tickets.length]);
 
-function handleLoadMoreTickets() {
-  setVisibleTicketCount((prev) =>
-    Math.min(prev + MAX_TODAY_TICKETS, tickets.length),
-  );
-}
+  function handleLoadMoreTickets() {
+    setVisibleTicketCount((prev) =>
+      Math.min(prev + MAX_TODAY_TICKETS, tickets.length),
+    );
+  }
 
   // ── Admin token handling ──────────────────────────────────────
 
@@ -495,32 +496,32 @@ function handleLoadMoreTickets() {
   return (
     <main className="mx-auto max-w-7xl flex flex-col gap-6 px-4 py-6 text-slate-100 bg-[color:var(--bg-elevated)] rounded-3xl">
       {/* Header */}
-<header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-  <div className="flex items-center gap-3">
-    {/* Logo + admin label */}
-    <Link href="/" className="inline-flex items-center gap-2">
-      <Image
-        src="/img/xpot-logo-light.png"
-        alt="XPOT"
-        width={112}
-        height={30}
-        priority
-      />
-    </Link>
-    <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-      Admin console
-    </span>
-  </div>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          {/* Logo + admin label */}
+          <Link href="/" className="inline-flex items-center gap-2">
+            <Image
+              src="/img/xpot-logo-light.png"
+              alt="XPOT"
+              width={112}
+              height={30}
+              priority
+            />
+          </Link>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+            Admin console
+          </span>
+        </div>
 
-  <div className="flex flex-col items-start sm:items-end gap-1">
-    <h1 className="text-sm sm:text-base font-semibold text-white">
-      Control room for today&apos;s XPOT round.
-    </h1>
-    <p className="text-[11px] text-slate-500">
-      Monitor pool state, entries and rewards. All data is live and admin-key gated.
-    </p>
-  </div>
-</header>
+        <div className="flex flex-col items-start sm:items-end gap-1">
+          <h1 className="text-sm sm:text-base font-semibold text-white">
+            Control room for today&apos;s XPOT round.
+          </h1>
+          <p className="text-[11px] text-slate-500">
+            Monitor pool state, entries and rewards. All data is live and admin-key gated.
+          </p>
+        </div>
+      </header>
 
       {/* Admin key card */}
       <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
@@ -826,7 +827,7 @@ function handleLoadMoreTickets() {
             </form>
           </section>
 
-                    {/* Today’s XPOT entries list */}
+          {/* Today’s XPOT entries list */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
               Today&apos;s XPOT entries
@@ -900,73 +901,6 @@ function handleLoadMoreTickets() {
                 )}
             </div>
           </section>
-  {ticketsLoading && (
-    <p className="text-xs text-slate-500">Loading tickets…</p>
-  )}
-
-  {ticketsError && (
-    <p className="text-xs text-amber-300">{ticketsError}</p>
-  )}
-
-  {!ticketsLoading &&
-    !ticketsError &&
-    visibleTickets.length === 0 && (
-      <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
-        No entries yet for today&apos;s XPOT.
-      </p>
-    )}
-
-  {!ticketsLoading &&
-    !ticketsError &&
-    visibleTickets.length > 0 && (
-      <div className="mt-2 space-y-2">
-        {visibleTickets.map((t) => (
-          <div
-            key={t.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
-          >
-            <div className="space-y-0.5">
-              <p className="font-mono text-[11px] text-slate-100">
-                {t.code}
-              </p>
-              <p className="font-mono text-[11px] text-slate-500">
-                {t.walletAddress}
-              </p>
-            </div>
-
-            <div className="flex flex-col items-end gap-1">
-              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-200">
-                {t.status.replace('-', ' ').toUpperCase()}
-              </span>
-              <p className="font-mono text-[11px] text-slate-500">
-                {formatDateTime(t.createdAt)}
-              </p>
-            </div>
-          </div>
-        ))}
-
-        <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-          <p>
-            Showing {visibleTickets.length} of {tickets.length} tickets
-          </p>
-
-          {visibleTickets.length < tickets.length && (
-            <button
-              type="button"
-              onClick={handleLoadMoreTickets}
-              className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
-            >
-              Load more
-            </button>
-          )}
-        </div>
-      </div>
-    )}
-</div>
-              
-)
-            </div>
-          </section>
         </div>
 
         {/* RIGHT COLUMN – recent winners */}
@@ -988,68 +922,72 @@ function handleLoadMoreTickets() {
                 <p className="text-xs text-amber-300">{winnersError}</p>
               )}
 
-              {!winnersLoading && !winnersError && winners.length === 0 && (
-                <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
-                  No completed draws yet. Once you pick winners and mark jackpots
-                  as paid, they&apos;ll appear here.
-                </p>
-              )}
+              {!winnersLoading &&
+                !winnersError &&
+                winners.length === 0 && (
+                  <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
+                    No completed draws yet. Once you pick winners and mark jackpots
+                    as paid, they&apos;ll appear here.
+                  </p>
+                )}
 
-              {!winnersLoading && !winnersError && visibleWinners.length > 0 && (
-  <div className="mt-2 space-y-3">
-    {visibleWinners.map((w) => (
-      <article
-        key={w.id}
-        className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
-      >
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-mono text-[11px] text-slate-100">
-            {w.ticketCode}
-          </p>
-          <div className="flex items-center gap-2">
-            {w.label && (
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                  w.kind === 'bonus'
-                    ? 'bg-emerald-500/10 text-emerald-300'
-                    : 'bg-slate-800 text-slate-200'
-                }`}
-              >
-                {w.label}
-              </span>
-            )}
-            <p className="text-[11px] text-slate-500">
-              {formatDate(w.date)}
-            </p>
-          </div>
-        </div>
+              {!winnersLoading &&
+                !winnersError &&
+                visibleWinners.length > 0 && (
+                  <div className="mt-2 space-y-3">
+                    {visibleWinners.map((w) => (
+                      <article
+                        key={w.id}
+                        className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-mono text-[11px] text-slate-100">
+                            {w.ticketCode}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {w.label && (
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                                  w.kind === 'bonus'
+                                    ? 'bg-emerald-500/10 text-emerald-300'
+                                    : 'bg-slate-800 text-slate-200'
+                                }`}
+                              >
+                                {w.label}
+                              </span>
+                            )}
+                            <p className="text-[11px] text-slate-500">
+                              {formatDate(w.date)}
+                            </p>
+                          </div>
+                        </div>
 
-        <p className="text-[11px] text-slate-400">
-          {w.walletAddress}
-        </p>
+                        <p className="text-[11px] text-slate-400">
+                          {w.walletAddress}
+                        </p>
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <UsdPill amount={w.payoutUsd} size="sm" />
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-              w.isPaidOut
-                ? 'bg-emerald-500/10 text-emerald-300'
-                : 'bg-amber-500/10 text-amber-300'
-            }`}
-          >
-            {w.isPaidOut ? 'Reward sent' : 'Pending payout'}
-          </span>
-        </div>
-      </article>
-    ))}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <UsdPill amount={w.payoutUsd} size="sm" />
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                              w.isPaidOut
+                                ? 'bg-emerald-500/10 text-emerald-300'
+                                : 'bg-amber-500/10 text-amber-300'
+                            }`}
+                          >
+                            {w.isPaidOut ? 'Reward sent' : 'Pending payout'}
+                          </span>
+                        </div>
+                      </article>
+                    ))}
 
-    {winners.length > MAX_RECENT_WINNERS && (
-      <p className="mt-2 text-xs text-slate-400">
-        Showing latest {MAX_RECENT_WINNERS} of {winners.length} winners
-      </p>
-    )}
-  </div>
-              )}
+                    {winners.length > MAX_RECENT_WINNERS && (
+                      <p className="mt-2 text-xs text-slate-400">
+                        Showing latest {MAX_RECENT_WINNERS} of {winners.length} winners
+                      </p>
+                    )}
+                  </div>
+                )}
             </div>
           </section>
         </div>
