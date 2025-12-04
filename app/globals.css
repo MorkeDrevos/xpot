@@ -9,16 +9,18 @@ body {
 }
 
 /* ────────────────────────────────────────────────
-   Global XPOT color tokens – Nightfall Palette
+   Global XPOT color tokens – Neon Nebula Palette
+   (deep navy + cyan/teal + subtle purple)
    ──────────────────────────────────────────────── */
 
 :root {
   color-scheme: dark;
 
   /* Core surfaces */
-  --bg: #020818;            /* main background */
-  --bg-elevated: #050b16;   /* cards / panels */
-  --border-subtle: #08101f;
+  /* very dark navy, like the hero image */
+  --bg: #020618;           /* main background */
+  --bg-elevated: #050b1b;  /* cards / panels */
+  --border-subtle: #0b1220;
   --border-strong: #111827;
 
   /* Text */
@@ -26,21 +28,27 @@ body {
   --text-soft: #9ca3af;
   --text-mute: #6b7280;
 
-  /* Brand accents (mapped to old variable names for compatibility) */
-  --accent-emerald: #66d4ff;                         /* XPOT cyan */
-  --accent-emerald-soft: rgba(102, 212, 255, 0.22);  /* soft cyan glow */
+  /* Brand accents (mapped to old names for compatibility) */
+  /* cyan/teal of the X leg */
+  --accent-emerald: #22e3b3;
+  --accent-emerald-soft: rgba(34, 227, 179, 0.18);
 
-  --accent-blue: #4ea3e3;                            /* XPOT blue */
-  --accent-blue-soft: rgba(78, 163, 227, 0.20);      /* soft blue glow */
+  /* XPOT blue arm of the X */
+  --accent-blue: #4ea3e3;
+  --accent-blue-soft: rgba(78, 163, 227, 0.23);
 
-  /* Gold highlight (jackpot, VIP) */
+  /* subtle purple from the background glow */
+  --accent-purple: #6366f1;
+  --accent-purple-soft: rgba(99, 102, 241, 0.20);
+
+  /* Gold highlight – jackpots & winners only */
   --accent-gold: #f5c46c;
-  --accent-gold-soft: rgba(245, 196, 108, 0.24);
+  --accent-gold-soft: rgba(245, 196, 108, 0.35);
 
   /* Status */
-  --success: #3ef3a5;
+  --success: #22c55e;
   --warning: #fbbf24;
-  --danger: #ff4d61;
+  --danger: #fb7185;
 
   /* Typography */
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
@@ -69,15 +77,18 @@ html.light {
   --text-soft: #374151;
   --text-mute: #6b7280;
 
-  /* Accents – keep blue/cyan but softer */
-  --accent-emerald: #0284c7;                        /* cyan-ish */
-  --accent-emerald-soft: rgba(2, 132, 199, 0.12);
+  /* Accents – softer but still XPOT-ish */
+  --accent-emerald: #059669;
+  --accent-emerald-soft: rgba(5, 150, 105, 0.10);
 
   --accent-blue: #2563eb;
   --accent-blue-soft: rgba(37, 99, 235, 0.10);
 
+  --accent-purple: #4f46e5;
+  --accent-purple-soft: rgba(79, 70, 229, 0.12);
+
   --accent-gold: #d97706;
-  --accent-gold-soft: rgba(217, 119, 6, 0.12);
+  --accent-gold-soft: rgba(217, 119, 6, 0.14);
 
   /* Status */
   --success: #16a34a;
@@ -165,21 +176,21 @@ html.light .jackpot-core {
 }
 
 .status-pill {
-  background: rgba(37, 99, 235, 0.22);
-  color: #bfdbfe;
-  border: 1px solid rgba(37, 99, 235, 0.6);
+  background: rgba(37, 99, 235, 0.30);
+  color: #dbeafe;
+  border: 1px solid rgba(59, 130, 246, 0.7);
 }
 
 .status-pill-amber {
-  background: rgba(245, 158, 11, 0.16);
+  background: rgba(245, 196, 108, 0.18);
   color: #fed7aa;
-  border: 1px solid rgba(245, 158, 11, 0.55);
+  border: 1px solid rgba(245, 196, 108, 0.7);
 }
 
 .status-pill-emerald {
-  background: rgba(34, 197, 94, 0.16);
+  background: rgba(34, 227, 179, 0.18);
   color: #bbf7d0;
-  border: 1px solid rgba(34, 197, 94, 0.6);
+  border: 1px solid rgba(34, 227, 179, 0.7);
 }
 
 /* light-mode versions of pills */
@@ -214,7 +225,7 @@ html.light .status-pill-amber {
   margin-left: 6px;
 
   border-radius: 9999px;
-  background: #1d9bf0;
+  background: var(--accent-blue);
 
   color: #fff;
   font-size: 9px;
@@ -245,7 +256,7 @@ html.light .status-pill-amber {
 /* Hover = tiny lift & glow */
 .x-verified-badge:hover {
   transform: translateY(-0.5px);
-  filter: brightness(1.04);
+  filter: brightness(1.05);
   box-shadow:
     0 0 0 1px rgba(15, 23, 42, 0.9),
     0 4px 10px rgba(15, 23, 42, 0.85);
@@ -314,40 +325,45 @@ html.light .status-pill-amber {
   backdrop-filter: blur(20px);
 }
 
-/* base card – use tokens so theme flips cleanly */
+/* base card – uses deep navy + subtle purple/cyan glow */
 .premium-card {
   border-radius: 1.5rem;
-  background: var(--bg-elevated);
+  background:
+    radial-gradient(circle at 0 0, var(--accent-purple-soft), transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.9), transparent 55%),
+    var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   box-shadow:
-    0 18px 40px rgba(15, 23, 42, 0.35),
-    0 0 0 1px rgba(15, 23, 42, 0.10);
+    0 18px 40px rgba(15, 23, 42, 0.55),
+    0 0 0 1px rgba(15, 23, 42, 0.12);
 }
 
-/* hero-style card */
+/* hero-style card (good for main blocks) */
 .card-premium {
   border-radius: 1.5rem;
   background:
     radial-gradient(circle at 0 0, var(--accent-emerald-soft), transparent 55%),
     radial-gradient(circle at 100% 0, var(--accent-blue-soft), transparent 50%),
+    radial-gradient(circle at 100% 100%, var(--accent-purple-soft), transparent 55%),
     var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   box-shadow:
-    0 22px 60px rgba(15, 23, 42, 0.4),
-    0 0 0 1px rgba(15, 23, 42, 0.10);
+    0 22px 60px rgba(15, 23, 42, 0.65),
+    0 0 0 1px rgba(15, 23, 42, 0.14);
 }
 
-/* main XPOT highlight block */
+/* main XPOT highlight block (jackpot card) */
 .premium-highlight.jackpot-core {
   border-radius: 1.25rem;
   background:
     radial-gradient(circle at 0 0, var(--accent-emerald-soft), transparent 55%),
-    radial-gradient(circle at 100% 100%, var(--accent-blue-soft), transparent 50%),
+    radial-gradient(circle at 100% 0, var(--accent-blue-soft), transparent 50%),
+    radial-gradient(circle at 50% 100%, var(--accent-purple-soft), transparent 55%),
     var(--bg-elevated);
-  border: 1px solid rgba(102, 212, 255, 0.45);
+  border: 1px solid rgba(148, 163, 253, 0.5); /* purple/blue border */
   box-shadow:
-    0 20px 45px rgba(15, 23, 42, 0.5),
-    0 0 0 1px rgba(15, 23, 42, 0.10);
+    0 20px 45px rgba(15, 23, 42, 0.7),
+    0 0 0 1px rgba(15, 23, 42, 0.16);
 }
 
 /* buttons */
@@ -363,7 +379,7 @@ html.light .status-pill-amber {
   filter: brightness(1.05);
   box-shadow:
     0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 14px 30px rgba(37, 99, 235, 0.6);
+    0 14px 30px rgba(37, 99, 235, 0.7);
 }
 
 .btn-premium:active {
@@ -373,10 +389,10 @@ html.light .status-pill-amber {
     0 6px 16px rgba(15, 23, 42, 0.95);
 }
 
-/* soft glow for main CTA */
+/* soft glow for main CTA – tuned to cyan */
 .toolbar-glow {
   box-shadow:
-    0 0 40px rgba(102, 212, 255, 0.65),
+    0 0 40px rgba(34, 227, 179, 0.65),
     0 0 0 1px rgba(15, 23, 42, 0.9);
 }
 
@@ -548,7 +564,7 @@ html.light .status-pill-amber {
 }
 
 /* ────────────────────────────────────────────────
-   Light theme polish – greens & pills
+   Light theme polish – soften greens & pills
    ──────────────────────────────────────────────── */
 
 /* All emerald text in light mode → deeper, less neon */
