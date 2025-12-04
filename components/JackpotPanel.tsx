@@ -50,7 +50,9 @@ function getMadridSessionKey() {
   const madridNow = new Date(
     now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }),
   );
-  madridNow.setHours(madridNow.getHours() + 2); // shift so date changes at 22:00
+  // shift so "date" changes at 22:00 local instead of midnight
+  madridNow.setHours(madridNow.getHours() + 2);
+
   const year = madridNow.getFullYear();
   const month = String(madridNow.getMonth() + 1).padStart(2, '0');
   const day = String(madridNow.getDate()).padStart(2, '0');
@@ -253,7 +255,7 @@ export default function JackpotPanel({
       <div className="relative z-10 mt-6 flex flex-wrap items-end justify-between gap-6">
         {/* Left: live USD value + XPOT price */}
         <div className="space-y-3">
-          {/* Big USD number with pill + tooltip on the side */}
+          {/* Big USD number with pill + tooltip on the same line */}
           <div className="flex flex-wrap items-center gap-3">
             <div
               className={`
@@ -282,7 +284,7 @@ export default function JackpotPanel({
                 </button>
                 <div
                   className="
-                    pointer-events-none absolute left-1/2 top-full z-[60]
+                    absolute left-1/2 top-full z-[60]
                     mt-3 w-80 -translate-x-1/2 rounded-xl border border-slate-700
                     bg-slate-950/95 px-4 py-3 text-[11px] leading-relaxed
                     text-slate-200 shadow-xl backdrop-blur
