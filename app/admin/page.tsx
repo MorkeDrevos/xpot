@@ -9,8 +9,8 @@ import Link from 'next/link';
 
 import JackpotPanel from '@/components/JackpotPanel';
 
-const MAX_TODAY_TICKETS = 30;   // how many “Today’s XPOT entries” to show
-const MAX_RECENT_WINNERS = 20;  // how many “Recent XPOT winners” to show
+const MAX_TODAY_TICKETS = 20;   // how many “Today’s XPOT entries” to show
+const MAX_RECENT_WINNERS = 25;  // how many “Recent XPOT winners” to show
 
 // ─────────────────────────────────────────────
 // Types
