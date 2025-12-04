@@ -6,6 +6,8 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 
 import JackpotPanel from '@/components/JackpotPanel';
+import Image from 'next/image';
+import Link from 'next/link';
 
 // ─────────────────────────────────────────────
 // Types
@@ -470,18 +472,33 @@ export default function AdminPage() {
   return (
     <main className="mx-auto max-w-7xl flex flex-col gap-6 px-4 py-6 text-slate-100 bg-[color:var(--bg-elevated)] rounded-3xl">
       {/* Header */}
-      <header className="flex flex-col gap-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-300">
-          XPOT ADMIN
-        </p>
-        <h1 className="text-xl font-semibold text-white">
-          Control room for today&apos;s XPOT round.
-        </h1>
-        <p className="mt-1 text-xs text-slate-500">
-          Monitor Today&apos;s XPOT, pool state, entries and rewards. All data is live and admin-key
-          gated.
-        </p>
-      </header>
+      {/* Header */}
+<header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div className="flex items-center gap-3">
+    {/* Logo + admin label */}
+    <Link href="/" className="inline-flex items-center gap-2">
+      <Image
+        src="/img/xpot-logo-light.png"
+        alt="XPOT"
+        width={112}
+        height={30}
+        priority
+      />
+    </Link>
+    <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+      Admin console
+    </span>
+  </div>
+
+  <div className="flex flex-col items-start sm:items-end gap-1">
+    <h1 className="text-sm sm:text-base font-semibold text-white">
+      Control room for today&apos;s XPOT round.
+    </h1>
+    <p className="text-[11px] text-slate-500">
+      Monitor pool state, entries and rewards. All data is live and admin-key gated.
+    </p>
+  </div>
+</header>
 
       {/* Admin key card */}
       <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
