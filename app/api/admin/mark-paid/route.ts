@@ -19,14 +19,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔴 IMPORTANT: use your real model name here.
-    // If your prisma schema has `model Reward { ... }`,
-    // this should be prisma.reward.update(...)
     const updated = await prisma.reward.update({
       where: { id: winnerId },
       data: {
         isPaidOut: true,
-        txUrl,
+        txUrl,              // store TX link in DB
       },
     });
 
