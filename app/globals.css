@@ -53,28 +53,76 @@ body {
 html.light {
   color-scheme: light;
 
-  /* Shell background + cards */
-  --bg: #e5e7eb;            /* soft grey frame */
-  --bg-elevated: #f9fafb;   /* card background */
-  --border-subtle: #d4d4d8;
-  --border-strong: #c4c4cf;
+  /* Main shell */
+  --bg: #f3f4f6;              /* page background */
+  --bg-elevated: #ffffff;     /* cards */
+  --border-subtle: #e5e7eb;
+  --border-strong: #d1d5db;
 
   /* Text */
-  --text: #020617;
-  --text-soft: #4b5563;
+  --text: #020617;            /* all white text becomes dark */
+  --text-soft: #374151;
   --text-mute: #6b7280;
 
   /* Accents */
   --accent-emerald: #10b981;
   --accent-emerald-soft: rgba(16, 185, 129, 0.10);
-  --accent-blue: #0ea5e9;
-  --accent-blue-soft: rgba(14, 165, 233, 0.12);
+
+  --accent-blue: #2563eb;
+  --accent-blue-soft: rgba(37, 99, 235, 0.10);
+
+  /* Status */
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
 }
 
 /* Base body styling uses tokens */
 body {
   background-color: var(--bg);
   color: var(--text);
+}
+
+html.light body,
+html.light * {
+  color: var(--text);
+}
+
+html.light .admin-card {
+  background: #ffffff !important;
+  border-color: var(--border-subtle) !important;
+}
+
+html.light .premium-card,
+html.light .card-premium,
+html.light .premium-highlight {
+  background: #ffffff !important;
+  box-shadow:
+    0 6px 20px rgba(0,0,0,0.06),
+    0 0 0 1px rgba(0,0,0,0.04);
+}
+
+html.light .status-pill {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1e40af;
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+html.light .status-pill-emerald {
+  background: rgba(16, 185, 129, 0.10);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+html.light .status-pill-amber {
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+html.light .premium-highlight,
+html.light .jackpot-core {
+  background: #ffffff !important;
 }
 
 /* ────────────────────────────────────────────────
