@@ -6,45 +6,59 @@ import { requireAdmin } from '@/app/api/admin/_auth';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // Admin-key protection
+  // Admin auth
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  // Today (00:00–23:59)
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const start = new Date(`${todayStr}T00:00:00.000Z`);
-  const end = new Date(`${todayStr}T23:59:59.999Z`);
+  try {
+    // Today as YYYY-MM-DD
+    const todayStr = new Date().toISOString().slice(0, 10);
 
-  const draw = await prisma.draw.findFirst({
-    where: {
-      drawDate: {
-        gte: start,
-        lte: end,
+    // Find today's draw
+    const draw = await prisma.draw.findFirst({
+      where: {
+        drawDate: {
+          gte: new Date(`${todayStr}T00:00:00.000Z`),
+          lt: new Date(`${todayStr}T23:59:59.999Z`),
+        },
       },
-    },
-  });
+    });
 
-  if (!draw) {
+    if (!draw) {
+      return NextResponse.json(
+        { ok: false, error: 'NO_TODAY_DRAW' },
+        { status: 404 },
+      );
+    }
+
+    // Re-open the draw: clear winner / settlement fields,
+    // mark it as not closed (we rely on isClosed + resolvedAt in the UI).
+    await prisma.draw.update({
+      where: { id: draw.id },
+      data: {
+        // status: 'OPEN',   // ❌ REMOVE – Prisma types don’t have this yet
+        isClosed: false,
+        resolvedAt: null,
+        paidAt: null,
+        payoutTx: null,
+        winnerTicketId: null,
+      },
+    });
+
+    // Reset all tickets in this draw back to IN_DRAW
+    await prisma.ticket.updateMany({
+      where: { drawId: draw.id },
+      data: {
+        status: 'IN_DRAW',
+      },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[XPOT] reopen-draw error', err);
     return NextResponse.json(
-      { ok: false, error: 'NO_TODAY_DRAW' },
-      { status: 404 },
+      { ok: false, error: 'REOPEN_DRAW_FAILED' },
+      { status: 500 },
     );
   }
-
-  const updated = await prisma.draw.update({
-    where: { id: draw.id },
-    data: {
-      status: 'OPEN',
-      isClosed: false,
-      resolvedAt: null,
-      paidAt: null,
-      payoutTx: null,
-      winnerTicketId: null,
-    },
-  });
-
-  return NextResponse.json({
-    ok: true,
-    drawId: updated.id,
-  });
 }
