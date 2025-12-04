@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       jackpotUsd: reward.amountUsd,
       payoutUsd: reward.amountUsd,
       isPaidOut: reward.isPaidOut,
-      txUrl: reward.payoutTx ?? null,
+      txUrl: reward.txUrl ?? null,
     };
 
     return NextResponse.json({
