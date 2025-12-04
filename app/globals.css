@@ -585,3 +585,40 @@ html.light .admin-card {
     0 6px 20px rgba(0, 0, 0, 0.06),
     0 0 0 1px rgba(0, 0, 0, 0.03);
 }
+
+/* ────────────────────────────────────────────────
+   Light theme polish – soften greens & pills
+   ──────────────────────────────────────────────── */
+
+/* All emerald text in light mode → deeper, less neon */
+html.light .text-emerald-300,
+html.light .text-emerald-400,
+html.light .text-emerald-500 {
+  color: #059669 !important; /* slightly darker emerald */
+}
+
+/* Emerald pill backgrounds (like "live", USD pill, etc.) */
+html.light .bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.06) !important;
+}
+
+/* The green USD chips */
+html.light .bg-emerald-500\/10 .font-mono {
+  color: #047857 !important;
+}
+
+/* Yellow/orange “Pending payout” pills – tone down */
+html.light .bg-amber-500\/10 {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+}
+
+html.light .text-amber-300,
+html.light .text-amber-400 {
+  color: #92400e !important;
+}
+
+/* "LIVE" label next to big amount – keep subtle */
+html.light .text-emerald-300.live-label {
+  color: #16a34a !important;
+  opacity: 0.9;
+}
