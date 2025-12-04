@@ -1157,7 +1157,7 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
 
                         <CopyableWallet address={w.walletAddress} />
 
-                        <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center justify-between gap-3">
                           {/* XPOT payout pill */}
                           <XpotPill amount={w.payoutUsd} size="sm" />
 
@@ -1175,21 +1175,21 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
 
                             {/* TX link + Mark as paid controls */}
                             {w.isPaidOut ? (
-                              w.txUrl && (
-                                <a
-                                  href={w.txUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-400/70 transition-colors"
-                                >
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                                  <span>Reward paid</span>
-                                  <span className="text-emerald-200/80 text-[10px]">
-                                    · View TX
-                                  </span>
-                                </a>
-                              )
-                            ) : (
+  w.txUrl && (
+    <div className="flex items-center gap-2 text-[11px] text-emerald-300">
+      <span className="font-semibold">Reward sent</span>
+      <span className="text-emerald-400">·</span>
+      <a
+        href={w.txUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="underline decoration-emerald-400/40 hover:decoration-emerald-300 hover:text-emerald-200 transition-colors"
+      >
+        View TX
+      </a>
+    </div>
+  )
+) : (
                               <div className="flex flex-col items-end gap-1">
                                 <input
                                   type="text"
