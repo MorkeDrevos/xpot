@@ -120,6 +120,21 @@ function UsdPill({
   );
 }
 
+function formatWinnerLabel(w: AdminWinner): string | null {
+  if (!w.label) return null;
+
+  // Normalise for safety
+  const raw = w.label.trim();
+
+  // Main pool – avoid “jackpot”
+  if (w.kind === 'main' || /jackpot/i.test(raw)) {
+    return 'Main XPOT';
+  }
+
+  // Fallback: strip the word jackpot anywhere else, replace with XPOT
+  return raw.replace(/jackpot/gi, 'XPOT');
+}
+
 function XpotPill({
   amount,
   size = 'md',
@@ -1146,17 +1161,22 @@ useEffect(() => {
                             {w.ticketCode}
                           </p>
                           <div className="flex items-center gap-2">
-                            {w.label && (
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                                  w.kind === 'bonus'
-                                    ? 'bg-emerald-500/10 text-emerald-300'
-                                    : 'bg-slate-800 text-slate-200'
-                                }`}
-                              >
-                                {w.label}
-                              </span>
-                            )}
+                            {(() => {
+  const displayLabel = formatWinnerLabel(w);
+  if (!displayLabel) return null;
+
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+        w.kind === 'bonus'
+          ? 'bg-emerald-500/10 text-emerald-300'
+          : 'bg-slate-800 text-slate-200'
+      }`}
+    >
+      {displayLabel}
+    </span>
+  );
+})()}
                             <p className="text-[11px] text-slate-500">
                               {formatDate(w.date)}
                             </p>
