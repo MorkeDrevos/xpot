@@ -995,52 +995,60 @@ function handleLoadMoreTickets() {
                 </p>
               )}
 
-              {!winnersLoading && !winnersError && winners.length > 0 && (
-                <div className="mt-2 space-y-3">
-                  {winners.map((w) => (
-                    <article
-                      key={w.id}
-                      className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-mono text-[11px] text-slate-100">
-                          {w.ticketCode}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          {w.label && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                                w.kind === 'bonus'
-                                  ? 'bg-emerald-500/10 text-emerald-300'
-                                  : 'bg-slate-800 text-slate-200'
-                              }`}
-                            >
-                              {w.label}
-                            </span>
-                          )}
-                          <p className="text-[11px] text-slate-500">
-                            {formatDate(w.date)}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        {w.walletAddress}
-                      </p>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <UsdPill amount={w.payoutUsd} size="sm" />
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                            w.isPaidOut
-                              ? 'bg-emerald-500/10 text-emerald-300'
-                              : 'bg-amber-500/10 text-amber-300'
-                          }`}
-                        >
-                          {w.isPaidOut ? 'Reward sent' : 'Pending payout'}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+              {!winnersLoading && !winnersError && visibleWinners.length > 0 && (
+  <div className="mt-2 space-y-3">
+    {visibleWinners.map((w) => (
+      <article
+        key={w.id}
+        className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-mono text-[11px] text-slate-100">
+            {w.ticketCode}
+          </p>
+          <div className="flex items-center gap-2">
+            {w.label && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                  w.kind === 'bonus'
+                    ? 'bg-emerald-500/10 text-emerald-300'
+                    : 'bg-slate-800 text-slate-200'
+                }`}
+              >
+                {w.label}
+              </span>
+            )}
+            <p className="text-[11px] text-slate-500">
+              {formatDate(w.date)}
+            </p>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-slate-400">
+          {w.walletAddress}
+        </p>
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <UsdPill amount={w.payoutUsd} size="sm" />
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+              w.isPaidOut
+                ? 'bg-emerald-500/10 text-emerald-300'
+                : 'bg-amber-500/10 text-amber-300'
+            }`}
+          >
+            {w.isPaidOut ? 'Reward sent' : 'Pending payout'}
+          </span>
+        </div>
+      </article>
+    ))}
+
+    {winners.length > MAX_RECENT_WINNERS && (
+      <p className="mt-2 text-xs text-slate-400">
+        Showing latest {MAX_RECENT_WINNERS} of {winners.length} winners
+      </p>
+    )}
+  </div>
               )}
             </div>
           </section>
