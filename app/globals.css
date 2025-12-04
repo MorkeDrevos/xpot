@@ -532,3 +532,56 @@ html.light .status-pill-amber {
 .xpot-link:hover::after {
   opacity: 1;
 }
+/* ────────────────────────────────────────────────
+   Light mode hard reset for leftover dark classes
+   ──────────────────────────────────────────────── */
+
+html.light {
+  /* overall page background */
+  background-color: #f3f4f6;
+}
+
+html.light body {
+  background-color: #f3f4f6;
+  color: var(--text);
+}
+
+/* Any slate-8/9 background in light mode becomes a white card */
+html.light [class*="bg-slate-9"],
+html.light [class*="bg-slate-8"],
+html.light [class*="bg-slate-7"],
+html.light .bg-black {
+  background-color: #ffffff !important;
+}
+
+/* Dark header bars in admin shell */
+html.light .premium-shell,
+html.light .admin-shell {
+  background-color: #f3f4f6 !important;
+}
+
+/* All “white-ish” text becomes dark in light mode */
+html.light .text-slate-50,
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-slate-300,
+html.light .text-white,
+html.light [class*="text-slate-1"],
+html.light [class*="text-slate-2"],
+html.light [class*="text-slate-3"] {
+  color: #020617 !important;
+}
+
+/* Buttons keep their emerald look but with light-mode text */
+html.light .btn-premium {
+  color: #020617;
+}
+
+/* Admin cards – explicit white, light borders */
+html.light .admin-card {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+}
