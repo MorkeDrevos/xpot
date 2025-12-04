@@ -130,6 +130,35 @@ export default function AdminPage() {
   const [tokenAccepted, setTokenAccepted] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
 
+  // Flag while we are creating today's draw
+  const [creatingDraw, setCreatingDraw] = useState(false);
+
+  async function handleCreateTodayDraw() {
+  try {
+    setCreatingDraw(true);
+
+    const res = await fetch('/api/admin/create-today-draw', {
+      method: 'POST',
+    });
+
+    const json = await res.json();
+
+    if (!res.ok || !json.ok) {
+      console.error('[XPOT] Create today draw failed:', json);
+      alert(json.error || 'Could not start todays round');
+      return;
+    }
+
+    // simplest: reload admin so it pulls fresh data
+    window.location.reload();
+  } catch (err) {
+    console.error('[XPOT] create today draw error:', err);
+    alert('Unexpected error while creating today round');
+  } finally {
+    setCreatingDraw(false);
+  }
+}
+
   const [todayDraw, setTodayDraw] = useState<TodayDraw | null>(null);
   const [todayDrawError, setTodayDrawError] = useState<string | null>(null);
   const [todayLoading, setTodayLoading] = useState(true);
@@ -177,6 +206,34 @@ export default function AdminPage() {
       setTokenAccepted(true);
     }
   }, []);
+
+  const [creatingDraw, setCreatingDraw] = useState(false);
+
+  async function handleCreateTodayDraw() {
+  try {
+    setCreatingDraw(true);
+
+    const res = await fetch('/api/admin/create-today-draw', {
+      method: 'POST',
+    });
+
+    const json = await res.json();
+
+    if (!res.ok || !json.ok) {
+      console.error('Create draw failed:', json);
+      alert('Could not start today’s round.');
+      return;
+    }
+
+    // Refresh page to reload today’s draw data
+    window.location.reload();
+  } catch (err) {
+    console.error(err);
+    alert('Unexpected error creating today’s draw');
+  } finally {
+    setCreatingDraw(false);
+  }
+}
 
   // ── Fetch helpers with auth header ────────────────────────────
 
@@ -537,23 +594,39 @@ useEffect(() => {
     Round status
   </p>
   <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
-    {!todayLoading && !todayDraw && (
-      <span>Not scheduled</span>
-    )}
-    {todayLoading && <span>Loading…</span>}
+  {/* Loading state */}
+  {todayLoading && <span>Loading...</span>}
 
-    {todayDraw && (
-      <span
-        className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-          todayDraw.status === 'open'
-            ? 'bg-emerald-500/10 text-emerald-300'
-            : 'bg-slate-800 text-slate-300'
-        }`}
-      >
-        {todayDraw.status.toUpperCase()}
+  {/* Active draw badge */}
+  {todayDraw && (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+        todayDraw.status === 'open'
+          ? 'bg-emerald-500/10 text-emerald-300'
+          : 'bg-slate-800 text-slate-300'
+      }`}
+    >
+      {todayDraw.status.toUpperCase()}
+    </span>
+  )}
+
+  {/* No draw scheduled + action button */}
+  {!todayLoading && !todayDraw && (
+    <span className="flex flex-col items-start gap-2 text-xs font-normal text-slate-300">
+      <span className="text-sm font-semibold text-slate-100">
+        Not scheduled
       </span>
-    )}
-  </p>
+      <button
+        type="button"
+        onClick={handleCreateTodayDraw}
+        disabled={creatingDraw}
+        className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {creatingDraw ? 'Creating today round...' : 'Start todays round'}
+      </button>
+    </span>
+  )}
+</p>
 </div>
 
               <div>
