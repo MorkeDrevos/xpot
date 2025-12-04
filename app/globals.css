@@ -53,19 +53,20 @@ body {
 html.light {
   color-scheme: light;
 
-  --bg: #f9fafb;
+  /* Softer grey app background instead of pure white */
+  --bg: #e5e7eb;           /* was #f9fafb */
   --bg-elevated: #ffffff;
-  --border-subtle: #e5e7eb;
-  --border-strong: #d1d5db;
+  --border-subtle: #d4d4d8;
+  --border-strong: #c4c4cf;
 
   --text: #020617;
   --text-soft: #4b5563;
   --text-mute: #6b7280;
 
   --accent-emerald: #10b981;
-  --accent-emerald-soft: rgba(16, 185, 129, 0.12);
+  --accent-emerald-soft: rgba(16, 185, 129, 0.10);
   --accent-blue: #0ea5e9;
-  --accent-blue-soft: rgba(14, 165, 233, 0.14);
+  --accent-blue-soft: rgba(14, 165, 233, 0.12);
 }
 
 /* Base body styling uses tokens */
@@ -179,7 +180,9 @@ body {
   transform: translateY(-0.5px);
 }
 
-/* Premium shell + cards */
+/* ────────────────────────────────────────────────
+   Premium shell + cards
+   ──────────────────────────────────────────────── */
 
 .premium-shell {
   backdrop-filter: blur(20px);
@@ -447,42 +450,4 @@ body {
 
 .xpot-link:hover::after {
   opacity: 1;
-}
-
-:root {
-  --bg: #070A12;
-  --panel: #0B1220;
-  --border: #1E293B;
-  --text: #E5E7EB;
-  --primary: #34D399;
-}
-
-.light {
-  --bg: #F9FAFB;
-  --panel: #FFFFFF;
-  --border: #E5E7EB;
-  --text: #020617;
-  --primary: #10B981;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-}
-html.light {
-  color-scheme: light;
-
-  --bg: #e5e7eb;           /* was #f9fafb – this gives softer grey */
-  --bg-elevated: #ffffff;
-  --border-subtle: #d4d4d8;
-  --border-strong: #c4c4cf;
-
-  --text: #020617;
-  --text-soft: #4b5563;
-  --text-mute: #6b7280;
-
-  --accent-emerald: #10b981;
-  --accent-emerald-soft: rgba(16, 185, 129, 0.10);
-  --accent-blue: #0ea5e9;
-  --accent-blue-soft: rgba(14, 165, 233, 0.12);
 }
