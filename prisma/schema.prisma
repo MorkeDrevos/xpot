@@ -122,5 +122,7 @@ model Reward {
   amountUsd Int
 
   isPaidOut Boolean  @default(false)
-  payoutTx  String?
+
+  // Store transaction link for this reward payout
+  txUrl     String?  @map("payoutTx")
 }
