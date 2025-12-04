@@ -220,6 +220,14 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [winnersLoading, setWinnersLoading] = useState(true);
 
+  const [isDevHost, setIsDevHost] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsDevHost(window.location.hostname.startsWith('dev.'));
+    }
+  }, []);
+
   // "Mark as paid" helpers
   const [txInputs, setTxInputs] = useState<Record<string, string>>({});
   const [savingPaidId, setSavingPaidId] = useState<string | null>(null);
@@ -632,7 +640,7 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
   return (
     <main className="mx-auto max-w-7xl flex flex-col gap-6 px-4 py-6 text-slate-100 bg-[color:var(--bg-elevated)] rounded-3xl">
       {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {/* Logo + admin label */}
           <Link href="/" className="inline-flex items-center gap-2">
@@ -649,10 +657,19 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
           </span>
         </div>
 
-        <div className="flex flex-col items-start sm:items-end gap-1">
-          <h1 className="text-sm sm:text-base font-semibold text-white">
-            Control room for today&apos;s XPOT round.
-          </h1>
+        <div className="flex flex-col items-start gap-1 sm:items-end">
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm sm:text-base font-semibold text-white">
+              Control room for today&apos;s XPOT round.
+            </h1>
+
+            {isDevHost && (
+              <span className="rounded-full border border-amber-400/60 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+                Dev environment
+              </span>
+            )}
+          </div>
+
           <p className="text-[11px] text-slate-500">
             Monitor pool state, entries and rewards. All data is live and admin-key gated.
           </p>
