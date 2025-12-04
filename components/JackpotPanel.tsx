@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
-const PRICE_POLL_MS = 2000; // 2s – feels live without hammering Jupiter
+const PRICE_POLL_MS = 3000; // 3s – feels live without hammering Jupiter
 
 type JackpotPanelProps = {
   /** When true, shows "Draw locked" pill in the header */
@@ -27,13 +27,17 @@ function formatUsd(value: number | null) {
 // Milestone ladder for highlights (USD)
 const MILESTONES = [
   100,
+  250,
   500,
+  1_000,
+  2_500,
   5_000,
   10_000,
   25_000,
   50_000,
   100_000,
   250_000,
+  500_000,
   1_000_000,
   2_000_000,
   5_000_000,
