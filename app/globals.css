@@ -53,16 +53,18 @@ body {
 html.light {
   color-scheme: light;
 
-  /* Softer grey app background instead of pure white */
-  --bg: #e5e7eb;           /* was #f9fafb */
-  --bg-elevated: #ffffff;
+  /* Shell background + cards */
+  --bg: #e5e7eb;            /* soft grey frame */
+  --bg-elevated: #f9fafb;   /* card background */
   --border-subtle: #d4d4d8;
   --border-strong: #c4c4cf;
 
+  /* Text */
   --text: #020617;
   --text-soft: #4b5563;
   --text-mute: #6b7280;
 
+  /* Accents */
   --accent-emerald: #10b981;
   --accent-emerald-soft: rgba(16, 185, 129, 0.10);
   --accent-blue: #0ea5e9;
