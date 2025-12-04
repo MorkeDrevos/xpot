@@ -48,7 +48,7 @@ type AdminWinner = {
   ticketCode: string;
   walletAddress: string;
   jackpotUsd: number;
-  payoutUsd: number;
+  payoutUsd: number; // used as XPOT amount in UI
   isPaidOut: boolean;
   txUrl?: string | null;
   kind?: AdminWinnerKind;
@@ -87,6 +87,14 @@ function formatUsd(amount: number | null | undefined, decimals = 2) {
   });
 }
 
+function formatXpot(amount: number | null | undefined, decimals = 2) {
+  if (amount == null || !Number.isFinite(amount)) return '0 XPOT';
+  return `${amount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals,
+  })} XPOT`;
+}
+
 function UsdPill({
   amount,
   size = 'md',
@@ -109,6 +117,71 @@ function UsdPill({
         USD
       </span>
     </span>
+  );
+}
+
+function XpotPill({
+  amount,
+  size = 'md',
+}: {
+  amount: number | null | undefined;
+  size?: 'sm' | 'md';
+}) {
+  const value = formatXpot(amount);
+  const base =
+    'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
+  const cls =
+    size === 'sm'
+      ? `${base} px-2 py-0.5 text-xs`
+      : `${base} px-3 py-1 text-sm`;
+
+  return (
+    <span className={cls}>
+      <span className="font-mono text-[0.92em]">{value}</span>
+    </span>
+  );
+}
+
+function truncateAddress(addr: string, visible: number = 6) {
+  if (!addr) return '(unknown wallet)';
+  if (addr.length <= visible * 2) return addr;
+  return `${addr.slice(0, visible)}…${addr.slice(-visible)}`;
+}
+
+function CopyableWallet({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+
+  if (!address) {
+    return (
+      <span className="text-xs text-slate-500 font-mono">
+        (unknown wallet)
+      </span>
+    );
+  }
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch (err) {
+      console.error('Failed to copy wallet address', err);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="group inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-emerald-300 transition-colors"
+    >
+      <span className="font-mono">
+        {truncateAddress(address, 6)}
+      </span>
+      <span className="rounded-md border border-slate-600/60 px-1 py-[1px] text-[10px] uppercase tracking-wide group-hover:border-emerald-400/60">
+        {copied ? 'Copied' : 'Copy'}
+      </span>
+    </button>
   );
 }
 
@@ -484,7 +557,7 @@ export default function AdminPage() {
       const minutes = String(
         Math.floor((totalSeconds % 3600) / 60),
       ).padStart(2, '0');
-      const seconds = String(totalSeconds % 60).padStart(2, '0');
+      const seconds = String(totalSeconds % 60, 10).padStart(2, '0');
 
       setCountdownText(`${hours}:${minutes}:${seconds}`);
       setCountdownSeconds(totalSeconds);
@@ -756,7 +829,7 @@ export default function AdminPage() {
     font-mono text-2xl font-semibold mt-2 transition-all
     ${
       isWarningCritical
-        ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
+        ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg.animate-pulse'
         : isWarningSoon
           ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
           : 'text-emerald-300'
@@ -869,7 +942,7 @@ export default function AdminPage() {
               </div>
 
               {/* Messages + submit */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex.flex-col.gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-xs">
                   {bonusError && (
                     <p className="text-amber-300">{bonusError}</p>
@@ -929,9 +1002,7 @@ export default function AdminPage() {
                           <p className="font-mono text-[11px] text-slate-100">
                             {t.code}
                           </p>
-                          <p className="font-mono text-[11px] text-slate-500">
-                            {t.walletAddress}
-                          </p>
+                          <CopyableWallet address={t.walletAddress} />
                         </div>
 
                         <div className="flex flex-col items-end gap-1">
@@ -973,7 +1044,7 @@ export default function AdminPage() {
               Recent XPOT winners
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Internal log of the latest.selected entries and reward status.
+              Internal log of the latest selected entries and reward status.
             </p>
 
             <div className="mt-3">
@@ -1025,12 +1096,11 @@ export default function AdminPage() {
                           </div>
                         </div>
 
-                        <p className="text-[11px] text-slate-400">
-                          {w.walletAddress}
-                        </p>
+                        <CopyableWallet address={w.walletAddress} />
 
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <UsdPill amount={w.payoutUsd} size="sm" />
+                          {/* XPOT payout pill */}
+                          <XpotPill amount={w.payoutUsd} size="sm" />
 
                           <div className="flex flex-col items-end gap-1">
                             {/* Status pill */}
@@ -1051,9 +1121,13 @@ export default function AdminPage() {
                                   href={w.txUrl}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-[11px] text-emerald-300 underline underline-offset-2 hover:text-emerald-200"
+                                  className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-400/70 transition-colors"
                                 >
-                                  View TX
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                                  <span>Reward paid</span>
+                                  <span className="text-emerald-200/80 text-[10px]">
+                                    · View TX
+                                  </span>
                                 </a>
                               )
                             ) : (
