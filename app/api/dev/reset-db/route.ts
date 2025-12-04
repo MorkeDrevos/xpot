@@ -5,14 +5,11 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // 🚫 Hard stop on real production
-  if (
-    process.env.VERCEL_ENV === 'production' ||
-    (!process.env.VERCEL_ENV && process.env.NODE_ENV === 'production')
-  ) {
+  // 🔐 Never allow this in production
+  if (process.env.NODE_ENV === 'production') {
     return NextResponse.json(
       { ok: false, error: 'RESET_DISABLED_IN_PROD' },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -23,44 +20,36 @@ export async function POST(req: NextRequest) {
   if (secret !== expected) {
     return NextResponse.json(
       { ok: false, error: 'BAD_SECRET' },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
   try {
-    console.log('🧹 Reset start…');
+    // 🧹 1) Clear everything – children first, then parents
+    await prisma.$transaction([
+      prisma.xpUserBalance.deleteMany(), // depends on Wallet
+      prisma.ticket.deleteMany(),        // depends on Draw, User, Wallet
+      prisma.wallet.deleteMany(),        // depends on User
+      prisma.draw.deleteMany(),
+      prisma.user.deleteMany(),
+    ]);
 
-    // Child → Parent order
-    console.log('Delete tickets');
-    await prisma.ticket.deleteMany();
-
-    console.log('Delete balances');
-    await prisma.xpUserBalance.deleteMany();
-
-    console.log('Delete wallets');
-    await prisma.wallet.deleteMany();
-
-    console.log('Delete draws');
-    await prisma.draw.deleteMany();
-
-    console.log('Delete users');
-    await prisma.user.deleteMany();
-
-    console.log('✅ Tables cleared');
-
-    const todayStr = new Date().toISOString().slice(0, 10);
-
-    console.log('🌱 Creating seed draw');
+    // 🧪 2) Seed a fresh minimal Draw for today
+    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     const draw = await prisma.draw.create({
       data: {
         drawDate: new Date(`${todayStr}T00:00:00.000Z`),
+
+        // matches your schema:
+        status: 'OPEN',      // DrawStatus enum
         isClosed: false,
         jackpotUsd: 1_000_000,
+
+        // closesAt optional – set a sample closing time if you like:
+        // closesAt: new Date(`${todayStr}T23:59:59.000Z`),
       },
     });
-
-    console.log('✅ Seed complete');
 
     return NextResponse.json({
       ok: true,
@@ -68,17 +57,11 @@ export async function POST(req: NextRequest) {
       seeded: true,
       drawId: draw.id,
     });
-
-  } catch (err: any) {
-    console.error('🔥 RESET FAILED', err);
-
+  } catch (err) {
+    console.error('DEV_RESET_ERROR', err);
     return NextResponse.json(
-      {
-        ok: false,
-        error: 'RESET_FAILED',
-        detail: err?.message || 'Unknown error',
-      },
-      { status: 500 }
+      { ok: false, error: 'RESET_FAILED' },
+      { status: 500 },
     );
   }
 }
