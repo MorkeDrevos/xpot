@@ -2,6 +2,8 @@
 'use client';
 
 import './globals.css';
+import DeployWatcher from '@/components/DeployWatcher';
+import ThemeToggle from '@/components/ThemeToggle';
 
 import type { ReactNode } from 'react';
 import {
@@ -9,7 +11,6 @@ import {
   WalletProvider,
 } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import ThemeToggle from '@/components/ThemeToggle';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -79,6 +80,9 @@ export default function RootLayout({
         <ConnectionProvider endpoint={endpoint}>
           <WalletProvider wallets={wallets} autoConnect>
             <WalletModalProvider>
+              {/* Auto-refresh on new deploy */}
+              <DeployWatcher />
+              {/* Dark / light toggle */}
               <ThemeToggle />
               {children}
             </WalletModalProvider>
