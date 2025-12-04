@@ -586,6 +586,54 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {/* Admin key card */}
+      <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-100">Admin key</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Enter your admin token to unlock XPOT operations
+            </p>
+            {tokenAccepted && (
+              <p className="mt-1 text-xs font-semibold text-emerald-400">
+                Authentication successful. Secure access granted.
+              </p>
+            )}
+          </div>
+
+          <form
+            onSubmit={handleUnlock}
+            className="flex flex-1 flex-col gap-2 sm:max-w-md sm:flex-row"
+          >
+            <input
+              type="password"
+              className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              placeholder="Paste admin token…"
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={isSavingToken || !tokenInput.trim()}
+                className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+              >
+                {tokenAccepted ? 'Update key' : 'Unlock'}
+              </button>
+              {tokenAccepted && (
+                <button
+                  type="button"
+                  onClick={handleClearToken}
+                  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      </section>
+
       {/* Main grid: left (XPOT + summary + entries), right (winners) */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)]">
         {/* LEFT COLUMN */}
@@ -597,11 +645,14 @@ export default function AdminPage() {
           />
 
           {/* Today’s XPOT summary card */}
-          {/* ... unchanged content here ... */}
-          {/* (Keep your existing summary + bonus + entries sections exactly as in your last version) */}
+          {/* (all your summary / bonus / entries sections stay exactly as you pasted) */}
+          {/* I’m keeping them here unchanged for brevity in this explanation */}
 
-          {/* Today’s XPOT entries list */}
-          {/* (your entries section from the previous message is fine, I won't repeat to save space) */}
+          {/* ─────────────────────────────────────────────────
+              Your existing "Today’s XPOT summary card",
+              "Drop bonus XPOT" and "Today’s XPOT entries"
+              blocks go here exactly as in your last message.
+              ───────────────────────────────────────────────── */}
         </div>
 
         {/* RIGHT COLUMN – recent winners */}
