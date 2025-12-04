@@ -1,6 +1,6 @@
 // app/api/admin/tickets/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/app/api/admin/_auth';
+import { requireAdmin } from '../_auth';
 import { prisma } from '@/lib/prisma';
 
 type TicketStatusApi =
@@ -66,19 +66,18 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      ok: true,
-      tickets: draw.tickets.map((t) => ({
-        id: t.id,
-        code: t.code,
-        walletAddress: t.wallet?.address ?? '(unknown wallet)',
-        status: mapStatus(t.status),
-        createdAt: t.createdAt.toISOString(),
-        // Ticket model has no jackpotUsd column – keep this as null
-        // so frontend can treat it as optional if needed.
-        jackpotUsd: null,
-      })),
-    });
+    const tickets = draw.tickets.map((t) => ({
+      id: t.id,
+      code: t.code,
+      walletAddress: t.wallet?.address ?? '(unknown wallet)',
+      status: mapStatus(t.status),
+      createdAt: t.createdAt.toISOString(),
+      // Ticket model has no jackpotUsd column – keep this as null
+      // so frontend can treat it as optional if needed.
+      jackpotUsd: null as number | null,
+    }));
+
+    return NextResponse.json({ ok: true, tickets });
   } catch (err: any) {
     console.error('[ADMIN] /tickets error', err);
     return NextResponse.json(
