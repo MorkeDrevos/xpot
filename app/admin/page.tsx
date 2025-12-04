@@ -571,46 +571,48 @@ export default function AdminPage() {
     };
   }, [adminToken]);
 
-  // ── Countdown until todayDraw.closesAt ────────────────────────
+  // ── Countdown until todayDraw.closesAt (daily loop) ───────────
+useEffect(() => {
+  if (!todayDraw?.closesAt) {
+    setCountdownText(null);
+    setCountdownSeconds(null);
+    return;
+  }
 
-  useEffect(() => {
-    if (!todayDraw?.closesAt) {
-      setCountdownText(null);
-      setCountdownSeconds(null);
-      return;
+  const closesAt = new Date(todayDraw.closesAt);
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  function updateCountdown() {
+    const now = new Date();
+
+    // target is today’s close by default
+    let target = closesAt;
+    let diff = target.getTime() - now.getTime();
+
+    // if we’re past today’s close, jump to the next 24h cycle
+    if (diff <= 0) {
+      target = new Date(closesAt.getTime() + DAY_MS);
+      diff = target.getTime() - now.getTime();
     }
 
-    const closesAt = new Date(todayDraw.closesAt);
+    const totalSeconds = Math.max(0, Math.floor(diff / 1000));
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(
+      Math.floor((totalSeconds % 3600) / 60),
+    ).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
 
-    function updateCountdown() {
-      const now = new Date();
-      const diff = closesAt.getTime() - now.getTime();
+    setCountdownText(`${hours}:${minutes}:${seconds}`);
+    setCountdownSeconds(totalSeconds);
+  }
 
-      // Past closing time – snap to zero and stop decreasing
-      if (diff <= 0) {
-        setCountdownText('00:00:00');
-        setCountdownSeconds(0);
-        return;
-      }
+  updateCountdown();
+  const id = window.setInterval(updateCountdown, 1000);
 
-      const totalSeconds = Math.floor(diff / 1000);
-const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-const minutes = String(
-  Math.floor((totalSeconds % 3600) / 60),
-).padStart(2, '0');
-const seconds = String(totalSeconds % 60).padStart(2, '0');
-
-      setCountdownText(`${hours}:${minutes}:${seconds}`);
-      setCountdownSeconds(totalSeconds);
-    }
-
-    updateCountdown();
-    const id = window.setInterval(updateCountdown, 1000);
-
-    return () => {
-      window.clearInterval(id);
-    };
-  }, [todayDraw?.closesAt]);
+  return () => {
+    window.clearInterval(id);
+  };
+}, [todayDraw?.closesAt]);
 
   // Clamp visibleTicketCount if tickets shrink / first load
   useEffect(() => {
@@ -665,6 +667,23 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
+
+  // Draw date / next draw date helper
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const closesAtDate = todayDraw?.closesAt
+    ? new Date(todayDraw.closesAt)
+    : null;
+  const now = new Date();
+
+  let drawDateLabel = 'Draw date';
+  let drawDateValue: Date | string | null = todayDraw?.date ?? null;
+
+  // If we are already past today's close, show tomorrow as "Next draw date"
+  if (closesAtDate && now >= closesAtDate) {
+    drawDateLabel = 'Next draw date';
+    const next = new Date(closesAtDate.getTime() + DAY_MS);
+    drawDateValue = next;
+  }
 
   // ─────────────────────────────────────────────
   // Render
@@ -780,13 +799,13 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
               </div>
 
               {todayDraw && (
-                <div className="flex flex-col items-end gap-1 text-xs">
-                  <span className="text-slate-500">Draw date</span>
-                  <span className="font-mono text-slate-200">
-                    {formatDate(todayDraw.date)}
-                  </span>
-                </div>
-              )}
+  <div className="flex flex-col items-end gap-1 text-xs">
+    <span className="text-slate-500">{drawDateLabel}</span>
+    <span className="font-mono text-slate-200">
+      {drawDateValue ? formatDate(drawDateValue) : '–'}
+    </span>
+  </div>
+)}
             </div>
 
             <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
@@ -1056,7 +1075,7 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
                     {visibleTickets.map((t) => (
                       <div
                         key={t.id}
-                        className="flex flex-wrap.items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
                       >
                         <div className="space-y-0.5">
                           <p className="font-mono text-[11px] text-slate-100">
@@ -1227,7 +1246,7 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
     )}
   </div>
 </div>  
-                        
+
                       </article>
                     ))}
 
