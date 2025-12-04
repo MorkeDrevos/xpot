@@ -83,10 +83,39 @@ body {
   color: var(--text);
 }
 
-html.light body,
-html.light * {
+/* Light theme – fix Tailwind dark utilities without killing accents */
+
+html.light body {
   color: var(--text);
 }
+
+/* any explicit dark backgrounds -> light tokens */
+html.light .bg-black {
+  background-color: var(--bg) !important;
+}
+
+html.light .bg-slate-900,
+html.light .bg-slate-950 {
+  background-color: var(--bg-elevated) !important;
+}
+
+/* dark borders -> light borders */
+html.light .border-slate-900,
+html.light .border-slate-800,
+html.light .border-slate-700 {
+  border-color: var(--border-subtle) !important;
+}
+
+/* very light text colors should become main text in light mode */
+html.light .text-slate-50,
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-slate-300,
+html.light .text-white {
+  color: var(--text) !important;
+}
+
+/* Admin + premium cards */
 
 html.light .admin-card {
   background: #ffffff !important;
@@ -102,6 +131,45 @@ html.light .premium-highlight {
     0 0 0 1px rgba(0,0,0,0.04);
 }
 
+html.light .premium-highlight,
+html.light .jackpot-core {
+  background: #ffffff !important;
+}
+
+/* status pills in header */
+
+.status-pill,
+.status-pill-amber,
+.status-pill-emerald {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.status-pill {
+  background: rgba(30, 64, 175, 0.22);
+  color: #bfdbfe;
+  border: 1px solid rgba(30, 64, 175, 0.6);
+}
+
+.status-pill-amber {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fed7aa;
+  border: 1px solid rgba(245, 158, 11, 0.55);
+}
+
+.status-pill-emerald {
+  background: rgba(16, 185, 129, 0.16);
+  color: #a7f3d0;
+  border: 1px solid rgba(16, 185, 129, 0.6);
+}
+
+/* light-mode versions of pills */
 html.light .status-pill {
   background: rgba(37, 99, 235, 0.08);
   color: #1e40af;
@@ -118,11 +186,6 @@ html.light .status-pill-amber {
   background: rgba(245, 158, 11, 0.12);
   color: #92400e;
   border-color: rgba(245, 158, 11, 0.25);
-}
-
-html.light .premium-highlight,
-html.light .jackpot-core {
-  background: #ffffff !important;
 }
 
 /* ────────────────────────────────────────────────
@@ -302,38 +365,6 @@ html.light .jackpot-core {
   box-shadow:
     0 0 40px rgba(52, 211, 153, 0.55),
     0 0 0 1px rgba(15, 23, 42, 0.9);
-}
-
-/* status pills in header */
-.status-pill,
-.status-pill-amber,
-.status-pill-emerald {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 9999px;
-  padding: 2px 10px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.status-pill {
-  background: rgba(30, 64, 175, 0.22);
-  color: #bfdbfe;
-  border: 1px solid rgba(30, 64, 175, 0.6);
-}
-
-.status-pill-amber {
-  background: rgba(245, 158, 11, 0.16);
-  color: #fed7aa;
-  border: 1px solid rgba(245, 158, 11, 0.55);
-}
-
-.status-pill-emerald {
-  background: rgba(16, 185, 129, 0.16);
-  color: #a7f3d0;
-  border: 1px solid rgba(16, 185, 129, 0.6);
 }
 
 /* ────────────────────────────────────────────────
