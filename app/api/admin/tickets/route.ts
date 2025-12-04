@@ -1,7 +1,7 @@
 // app/api/admin/tickets/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '../_auth';
-import { prisma } from '@/lib/prisma';
+import { getTodayDrawWithTickets } from '@/lib/draws';
 
 type TicketStatusApi =
   | 'in-draw'
@@ -32,32 +32,9 @@ export async function GET(req: NextRequest) {
   if (auth) return auth;
 
   try {
-    // Today as UTC day range
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
-    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-    const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
-
-    // Find the *latest* draw for today and include its tickets
-    const draw = await prisma.draw.findFirst({
-      where: {
-        drawDate: {
-          gte: startOfDay,
-          lt: endOfDay,
-        },
-      },
-      orderBy: {
-        drawDate: 'desc',
-      },
-      include: {
-        tickets: {
-          orderBy: { createdAt: 'desc' },
-          include: {
-            wallet: true, // Wallet relation for wallet.address
-          },
-        },
-      },
-    });
+    // Use shared helper – always returns the same "today" draw,
+    // and logs if multiple draws exist for today.
+    const draw = await getTodayDrawWithTickets();
 
     if (!draw) {
       return NextResponse.json({
@@ -72,8 +49,7 @@ export async function GET(req: NextRequest) {
       walletAddress: t.wallet?.address ?? '(unknown wallet)',
       status: mapStatus(t.status),
       createdAt: t.createdAt.toISOString(),
-      // Ticket model has no jackpotUsd column – keep this as null
-      // so frontend can treat it as optional if needed.
+      // Ticket model has no jackpotUsd – keep null so frontend can treat optional.
       jackpotUsd: null as number | null,
     }));
 
