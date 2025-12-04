@@ -130,35 +130,6 @@ export default function AdminPage() {
   const [tokenAccepted, setTokenAccepted] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
 
-  // Flag while we are creating today's draw
-  const [creatingDraw, setCreatingDraw] = useState(false);
-
-  async function handleCreateTodayDraw() {
-  try {
-    setCreatingDraw(true);
-
-    const res = await fetch('/api/admin/create-today-draw', {
-      method: 'POST',
-    });
-
-    const json = await res.json();
-
-    if (!res.ok || !json.ok) {
-      console.error('[XPOT] Create today draw failed:', json);
-      alert(json.error || 'Could not start todays round');
-      return;
-    }
-
-    // simplest: reload admin so it pulls fresh data
-    window.location.reload();
-  } catch (err) {
-    console.error('[XPOT] create today draw error:', err);
-    alert('Unexpected error while creating today round');
-  } finally {
-    setCreatingDraw(false);
-  }
-}
-
   const [todayDraw, setTodayDraw] = useState<TodayDraw | null>(null);
   const [todayDrawError, setTodayDrawError] = useState<string | null>(null);
   const [todayLoading, setTodayLoading] = useState(true);
@@ -179,10 +150,10 @@ export default function AdminPage() {
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
   const isWarningSoon =
-  countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
+    countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
 
   const isWarningCritical =
-  countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
+    countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
 
   // Bonus jackpot form
   const [bonusAmount, setBonusAmount] = useState('500');
@@ -196,6 +167,9 @@ export default function AdminPage() {
   const [pickSuccess, setPickSuccess] = useState<string | null>(null);
   const [isPickingWinner, setIsPickingWinner] = useState(false);
 
+  // Flag while we are creating today's draw
+  const [creatingDraw, setCreatingDraw] = useState(false);
+
   // ── Load admin token from localStorage ────────────────────────
 
   useEffect(() => {
@@ -206,34 +180,6 @@ export default function AdminPage() {
       setTokenAccepted(true);
     }
   }, []);
-
-  const [creatingDraw, setCreatingDraw] = useState(false);
-
-  async function handleCreateTodayDraw() {
-  try {
-    setCreatingDraw(true);
-
-    const res = await fetch('/api/admin/create-today-draw', {
-      method: 'POST',
-    });
-
-    const json = await res.json();
-
-    if (!res.ok || !json.ok) {
-      console.error('Create draw failed:', json);
-      alert('Could not start today’s round.');
-      return;
-    }
-
-    // Refresh page to reload today’s draw data
-    window.location.reload();
-  } catch (err) {
-    console.error(err);
-    alert('Unexpected error creating today’s draw');
-  } finally {
-    setCreatingDraw(false);
-  }
-}
 
   // ── Fetch helpers with auth header ────────────────────────────
 
@@ -256,6 +202,36 @@ export default function AdminPage() {
       );
     }
     return res.json();
+  }
+
+  // ── Manually create today's draw from admin button ────────────
+
+  async function handleCreateTodayDraw() {
+    setTodayDrawError(null);
+
+    if (!adminToken) {
+      alert('Admin token missing. Unlock admin first.');
+      return;
+    }
+
+    setCreatingDraw(true);
+    try {
+      const data = await authedFetch('/api/admin/create-today-draw', {
+        method: 'POST',
+      });
+
+      if (!data || data.ok === false) {
+        throw new Error(data?.error || 'Failed to create today’s draw');
+      }
+
+      // Reload admin so the Today card + tickets refresh
+      window.location.reload();
+    } catch (err: any) {
+      console.error('[XPOT] create today draw error:', err);
+      alert(err.message || 'Unexpected error creating today’s round');
+    } finally {
+      setCreatingDraw(false);
+    }
   }
 
   // ── Drop bonus jackpot (bonus winner) ─────────────────────────
@@ -420,44 +396,44 @@ export default function AdminPage() {
 
   // ── Countdown until todayDraw.closesAt ────────────────────────
 
-useEffect(() => {
-  if (!todayDraw?.closesAt) {
-    setCountdownText(null);
-    setCountdownSeconds(null);
-    return;
-  }
-
-  const closesAt = new Date(todayDraw.closesAt);
-
-  function updateCountdown() {
-    const now = new Date();
-    const diff = closesAt.getTime() - now.getTime();
-
-    // Past closing time – snap to zero and stop decreasing
-    if (diff <= 0) {
-      setCountdownText('00:00:00');
-      setCountdownSeconds(0);
+  useEffect(() => {
+    if (!todayDraw?.closesAt) {
+      setCountdownText(null);
+      setCountdownSeconds(null);
       return;
     }
 
-    const totalSeconds = Math.floor(diff / 1000);
-    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-    const minutes = String(
-      Math.floor((totalSeconds % 3600) / 60),
-    ).padStart(2, '0');
-    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    const closesAt = new Date(todayDraw.closesAt);
 
-    setCountdownText(`${hours}:${minutes}:${seconds}`);
-    setCountdownSeconds(totalSeconds);
-  }
+    function updateCountdown() {
+      const now = new Date();
+      const diff = closesAt.getTime() - now.getTime();
 
-  updateCountdown();
-  const id = window.setInterval(updateCountdown, 1000);
+      // Past closing time – snap to zero and stop decreasing
+      if (diff <= 0) {
+        setCountdownText('00:00:00');
+        setCountdownSeconds(0);
+        return;
+      }
 
-  return () => {
-    window.clearInterval(id);
-  };
-}, [todayDraw?.closesAt]);
+      const totalSeconds = Math.floor(diff / 1000);
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const minutes = String(
+        Math.floor((totalSeconds % 3600) / 60),
+      ).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
+
+      setCountdownText(`${hours}:${minutes}:${seconds}`);
+      setCountdownSeconds(totalSeconds);
+    }
+
+    updateCountdown();
+    const id = window.setInterval(updateCountdown, 1000);
+
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [todayDraw?.closesAt]);
 
   // ── Admin token handling ──────────────────────────────────────
 
@@ -535,20 +511,20 @@ useEffect(() => {
             />
             <div className="flex gap-2">
               <button
-  type="submit"
-  disabled={isSavingToken || !tokenInput.trim()}
-  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
->
-  {tokenAccepted ? 'Update key' : 'Unlock'}
-</button>
+                type="submit"
+                disabled={isSavingToken || !tokenInput.trim()}
+                className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+              >
+                {tokenAccepted ? 'Update key' : 'Unlock'}
+              </button>
               {tokenAccepted && (
                 <button
-  type="button"
-  onClick={handleClearToken}
-  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
->
-  Clear
-</button>
+                  type="button"
+                  onClick={handleClearToken}
+                  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+                >
+                  Clear
+                </button>
               )}
             </div>
           </form>
@@ -588,46 +564,47 @@ useEffect(() => {
             </div>
 
             <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
-              
               <div>
-  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-    Round status
-  </p>
-  <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
-  {/* Loading state */}
-  {todayLoading && <span>Loading...</span>}
+                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  Round status
+                </p>
+                <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
+                  {/* Loading state */}
+                  {todayLoading && <span>Loading...</span>}
 
-  {/* Active draw badge */}
-  {todayDraw && (
-    <span
-      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-        todayDraw.status === 'open'
-          ? 'bg-emerald-500/10 text-emerald-300'
-          : 'bg-slate-800 text-slate-300'
-      }`}
-    >
-      {todayDraw.status.toUpperCase()}
-    </span>
-  )}
+                  {/* Active draw badge */}
+                  {todayDraw && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                        todayDraw.status === 'open'
+                          ? 'bg-emerald-500/10 text-emerald-300'
+                          : 'bg-slate-800 text-slate-300'
+                      }`}
+                    >
+                      {todayDraw.status.toUpperCase()}
+                    </span>
+                  )}
 
-  {/* No draw scheduled + action button */}
-  {!todayLoading && !todayDraw && (
-    <span className="flex flex-col items-start gap-2 text-xs font-normal text-slate-300">
-      <span className="text-sm font-semibold text-slate-100">
-        Not scheduled
-      </span>
-      <button
-        type="button"
-        onClick={handleCreateTodayDraw}
-        disabled={creatingDraw}
-        className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {creatingDraw ? 'Creating today round...' : 'Start todays round'}
-      </button>
-    </span>
-  )}
-</p>
-</div>
+                  {/* No draw scheduled + action button */}
+                  {!todayLoading && !todayDraw && (
+                    <span className="flex flex-col items-start gap-2 text-xs font-normal text-slate-300">
+                      <span className="text-sm font-semibold text-slate-100">
+                        Not scheduled
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCreateTodayDraw}
+                        disabled={creatingDraw}
+                        className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {creatingDraw
+                          ? 'Creating today round...'
+                          : 'Start todays round'}
+                      </button>
+                    </span>
+                  )}
+                </p>
+              </div>
 
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
@@ -668,23 +645,24 @@ useEffect(() => {
                 todayDraw.closesAt && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm sm:text-base">
-  <span className="uppercase tracking-wide text-slate-500 text-xs">
-  Closes in
-</span>
-<span
-  className={`
+                      <span className="uppercase tracking-wide text-slate-500 text-xs">
+                        Closes in
+                      </span>
+                      <span
+                        className={`
     font-mono text-2xl font-semibold mt-2 transition-all
-    ${isWarningCritical
-      ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
-      : isWarningSoon
-        ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
-        : 'text-emerald-300'
+    ${
+      isWarningCritical
+        ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
+        : isWarningSoon
+          ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
+          : 'text-emerald-300'
     }
   `}
->
-  {countdownText}
-</span>
-</p>
+                      >
+                        {countdownText}
+                      </span>
+                    </p>
                     <button
                       type="button"
                       disabled={
@@ -756,19 +734,19 @@ useEffect(() => {
 
                   <div className="flex flex-wrap gap-2">
                     {[50, 100, 250, 500, 1000].map((v) => (
-  <button
-    key={v}
-    type="button"
-    onClick={() => setBonusAmount(String(v))}
-    className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
-      Number(bonusAmount) === v
-        ? 'border-amber-400 bg-amber-500/10 text-amber-200'
-        : 'border-slate-700 bg-slate-900 text-slate-300'
-    }`}
-  >
-    ${v}
-  </button>
-))}
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setBonusAmount(String(v))}
+                        className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
+                          Number(bonusAmount) === v
+                            ? 'border-amber-400 bg-amber-500/10 text-amber-200'
+                            : 'border-slate-700 bg-slate-900 text-slate-300'
+                        }`}
+                      >
+                        ${v}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
