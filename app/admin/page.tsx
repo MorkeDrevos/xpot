@@ -142,7 +142,7 @@ export default function AdminPage() {
   const [winnersError, setWinnersError] = useState<string | null>(null);
   const [winnersLoading, setWinnersLoading] = useState(true);
 
-  // Live pool value in USD coming from JackpotPanel
+  // Live jackpot USD coming from JackpotPanel
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
   // Countdown for "Draw closes in"
@@ -150,14 +150,14 @@ export default function AdminPage() {
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
   const isWarningSoon =
-    countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
+  countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
 
   const isWarningCritical =
-    countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
+  countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
 
-  // Bonus reward form
+  // Bonus jackpot form
   const [bonusAmount, setBonusAmount] = useState('500');
-  const [bonusLabel, setBonusLabel] = useState('Bonus reward');
+  const [bonusLabel, setBonusLabel] = useState('Bonus jackpot');
   const [bonusSubmitting, setBonusSubmitting] = useState(false);
   const [bonusError, setBonusError] = useState<string | null>(null);
   const [bonusSuccess, setBonusSuccess] = useState<string | null>(null);
@@ -201,7 +201,7 @@ export default function AdminPage() {
     return res.json();
   }
 
-  // ── Issue bonus reward (bonus recipient) ──────────────────────
+  // ── Drop bonus jackpot (bonus winner) ─────────────────────────
 
   async function handleDropBonus(e: React.FormEvent) {
     e.preventDefault();
@@ -225,7 +225,7 @@ export default function AdminPage() {
         method: 'POST',
         body: JSON.stringify({
           amountUsd: amountNumber,
-          label: bonusLabel || 'Bonus reward',
+          label: bonusLabel || 'Bonus jackpot',
         }),
       });
 
@@ -245,7 +245,7 @@ export default function AdminPage() {
         // ignore secondary error
       }
     } catch (err: any) {
-      setBonusError(err.message || 'Failed to issue bonus reward');
+      setBonusError(err.message || 'Failed to drop bonus jackpot');
     } finally {
       setBonusSubmitting(false);
     }
@@ -363,44 +363,44 @@ export default function AdminPage() {
 
   // ── Countdown until todayDraw.closesAt ────────────────────────
 
-  useEffect(() => {
-    if (!todayDraw?.closesAt) {
-      setCountdownText(null);
-      setCountdownSeconds(null);
+useEffect(() => {
+  if (!todayDraw?.closesAt) {
+    setCountdownText(null);
+    setCountdownSeconds(null);
+    return;
+  }
+
+  const closesAt = new Date(todayDraw.closesAt);
+
+  function updateCountdown() {
+    const now = new Date();
+    const diff = closesAt.getTime() - now.getTime();
+
+    // Past closing time – snap to zero and stop decreasing
+    if (diff <= 0) {
+      setCountdownText('00:00:00');
+      setCountdownSeconds(0);
       return;
     }
 
-    const closesAt = new Date(todayDraw.closesAt);
+    const totalSeconds = Math.floor(diff / 1000);
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(
+      Math.floor((totalSeconds % 3600) / 60),
+    ).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
 
-    function updateCountdown() {
-      const now = new Date();
-      const diff = closesAt.getTime() - now.getTime();
+    setCountdownText(`${hours}:${minutes}:${seconds}`);
+    setCountdownSeconds(totalSeconds);
+  }
 
-      // Past closing time – snap to zero and stop decreasing
-      if (diff <= 0) {
-        setCountdownText('00:00:00');
-        setCountdownSeconds(0);
-        return;
-      }
+  updateCountdown();
+  const id = window.setInterval(updateCountdown, 1000);
 
-      const totalSeconds = Math.floor(diff / 1000);
-      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String(
-        Math.floor((totalSeconds % 3600) / 60),
-      ).padStart(2, '0');
-      const seconds = String(totalSeconds % 60).padStart(2, '0');
-
-      setCountdownText(`${hours}:${minutes}:${seconds}`);
-      setCountdownSeconds(totalSeconds);
-    }
-
-    updateCountdown();
-    const id = window.setInterval(updateCountdown, 1000);
-
-    return () => {
-      window.clearInterval(id);
-    };
-  }, [todayDraw?.closesAt]);
+  return () => {
+    window.clearInterval(id);
+  };
+}, [todayDraw?.closesAt]);
 
   // ── Admin token handling ──────────────────────────────────────
 
@@ -435,7 +435,7 @@ export default function AdminPage() {
   // ─────────────────────────────────────────────
 
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 text-slate-100">
+    <main className="mx-auto max-w-7xl flex flex-col gap-6 px-4 py-6 text-slate-100 bg-[color:var(--bg-elevated)] rounded-3xl">
       {/* Header */}
       <header className="flex flex-col gap-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-300">
@@ -445,7 +445,7 @@ export default function AdminPage() {
           Control room for today&apos;s XPOT round.
         </h1>
         <p className="mt-1 text-xs text-slate-500">
-          Monitor pool state, entries and rewards. All data is live and admin-key
+          Monitor Today&apos;s XPOT, pool state, entries and rewards. All data is live and admin-key
           gated.
         </p>
       </header>
@@ -456,12 +456,11 @@ export default function AdminPage() {
           <div>
             <p className="text-sm font-semibold text-slate-100">Admin key</p>
             <p className="mt-1 text-xs text-slate-400">
-              Paste your admin token to unlock XPOT admin endpoints in this
-              browser.
+              Enter your admin token to unlock XPOT operations
             </p>
             {tokenAccepted && (
               <p className="mt-1 text-xs font-semibold text-emerald-400">
-                Admin token accepted. Secure endpoints unlocked.
+                Authentication successful. Secure access granted.
               </p>
             )}
           </div>
@@ -479,27 +478,27 @@ export default function AdminPage() {
             />
             <div className="flex gap-2">
               <button
-                type="submit"
-                disabled={isSavingToken || !tokenInput.trim()}
-                className={`${BTN_UTILITY} px-3 py-2 text-xs`}
-              >
-                {tokenAccepted ? 'Update key' : 'Unlock'}
-              </button>
+  type="submit"
+  disabled={isSavingToken || !tokenInput.trim()}
+  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+>
+  {tokenAccepted ? 'Update key' : 'Unlock'}
+</button>
               {tokenAccepted && (
                 <button
-                  type="button"
-                  onClick={handleClearToken}
-                  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
-                >
-                  Clear
-                </button>
+  type="button"
+  onClick={handleClearToken}
+  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+>
+  Clear
+</button>
               )}
             </div>
           </form>
         </div>
       </section>
 
-      {/* Main grid: left (pool + summary + entries), right (winners) */}
+      {/* Main grid: left (Jackpot + summary + entries), right (winners) */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)]">
         {/* LEFT COLUMN */}
         <div className="space-y-4">
@@ -532,27 +531,30 @@ export default function AdminPage() {
             </div>
 
             <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
+              
               <div>
-                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Round status
-                </p>
-                <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
-                  {!todayLoading && !todayDraw && <span>Not scheduled</span>}
-                  {todayLoading && <span>Loading…</span>}
+  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+    Round status
+  </p>
+  <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
+    {!todayLoading && !todayDraw && (
+      <span>Not scheduled</span>
+    )}
+    {todayLoading && <span>Loading…</span>}
 
-                  {todayDraw && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                        todayDraw.status === 'open'
-                          ? 'bg-emerald-500/10 text-emerald-300'
-                          : 'bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      {todayDraw.status.toUpperCase()}
-                    </span>
-                  )}
-                </p>
-              </div>
+    {todayDraw && (
+      <span
+        className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+          todayDraw.status === 'open'
+            ? 'bg-emerald-500/10 text-emerald-300'
+            : 'bg-slate-800 text-slate-300'
+        }`}
+      >
+        {todayDraw.status.toUpperCase()}
+      </span>
+    )}
+  </p>
+</div>
 
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
@@ -593,24 +595,23 @@ export default function AdminPage() {
                 todayDraw.closesAt && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm sm:text-base">
-                      <span className="uppercase tracking-wide text-slate-500 text-xs">
-                        Closes in
-                      </span>
-                      <span
-                        className={`
+  <span className="uppercase tracking-wide text-slate-500 text-xs">
+  Closes in
+</span>
+<span
+  className={`
     font-mono text-2xl font-semibold mt-2 transition-all
-    ${
-      isWarningCritical
-        ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
-        : isWarningSoon
+    ${isWarningCritical
+      ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
+      : isWarningSoon
         ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
         : 'text-emerald-300'
     }
   `}
-                      >
-                        {countdownText}
-                      </span>
-                    </p>
+>
+  {countdownText}
+</span>
+</p>
                     <button
                       type="button"
                       disabled={
@@ -654,11 +655,11 @@ export default function AdminPage() {
           {/* Drop bonus XPOT */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
-              Bonus XPOT reward
+              Drop bonus XPOT
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Trigger a manual bonus XPOT reward using today&apos;s ticket pool. A
-              recipient is selected instantly from all tickets in today&apos;s draw.
+              Fire a manual hype XPOT using today&apos;s ticket pool. Winner is
+              picked instantly from all tickets in today&apos;s draw.
             </p>
 
             <form onSubmit={handleDropBonus} className="mt-4 space-y-4">
@@ -682,19 +683,19 @@ export default function AdminPage() {
 
                   <div className="flex flex-wrap gap-2">
                     {[50, 100, 250, 500, 1000].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setBonusAmount(String(v))}
-                        className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
-                          Number(bonusAmount) === v
-                            ? 'border-amber-400 bg-amber-500/10 text-amber-200'
-                            : 'border-slate-700 bg-slate-900 text-slate-300'
-                        }`}
-                      >
-                        ${v}
-                      </button>
-                    ))}
+  <button
+    key={v}
+    type="button"
+    onClick={() => setBonusAmount(String(v))}
+    className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
+      Number(bonusAmount) === v
+        ? 'border-amber-400 bg-amber-500/10 text-amber-200'
+        : 'border-slate-700 bg-slate-900 text-slate-300'
+    }`}
+  >
+    ${v}
+  </button>
+))}
                   </div>
                 </div>
               </div>
@@ -709,7 +710,7 @@ export default function AdminPage() {
                   className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
                   value={bonusLabel}
                   onChange={(e) => setBonusLabel(e.target.value)}
-                  placeholder="Bonus reward"
+                  placeholder="Bonus jackpot"
                 />
               </div>
 
@@ -729,7 +730,7 @@ export default function AdminPage() {
                   disabled={bonusSubmitting}
                   className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40"
                 >
-                  {bonusSubmitting ? 'Dropping…' : 'Issue bonus reward'}
+                  {bonusSubmitting ? 'Dropping…' : 'Drop bonus jackpot'}
                 </button>
               </div>
             </form>
@@ -811,8 +812,8 @@ export default function AdminPage() {
 
               {!winnersLoading && !winnersError && winners.length === 0 && (
                 <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
-                  No completed draws yet. Once you pick winners and mark rewards
-                  as sent, they&apos;ll appear here.
+                  No completed draws yet. Once you pick winners and mark jackpots
+                  as paid, they&apos;ll appear here.
                 </p>
               )}
 
