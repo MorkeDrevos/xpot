@@ -75,6 +75,9 @@ html.light {
   --success: #16a34a;
   --warning: #f59e0b;
   --danger: #dc2626;
+
+  /* overall page background */
+  background-color: #f3f4f6;
 }
 
 /* Base body styling uses tokens */
@@ -86,6 +89,7 @@ body {
 /* Light theme – fix Tailwind dark utilities without killing accents */
 
 html.light body {
+  background-color: #f3f4f6;
   color: var(--text);
 }
 
@@ -97,6 +101,13 @@ html.light .bg-black {
 html.light .bg-slate-900,
 html.light .bg-slate-950 {
   background-color: var(--bg-elevated) !important;
+}
+
+/* broader catch for slate backgrounds from Tailwind */
+html.light [class*="bg-slate-9"],
+html.light [class*="bg-slate-8"],
+html.light [class*="bg-slate-7"] {
+  background-color: #ffffff !important;
 }
 
 /* dark borders -> light borders */
@@ -111,29 +122,31 @@ html.light .text-slate-50,
 html.light .text-slate-100,
 html.light .text-slate-200,
 html.light .text-slate-300,
-html.light .text-white {
-  color: var(--text) !important;
+html.light .text-white,
+html.light [class*="text-slate-1"],
+html.light [class*="text-slate-2"],
+html.light [class*="text-slate-3"] {
+  color: #020617 !important;
 }
 
 /* Admin + premium cards */
 
 html.light .admin-card {
-  background: #ffffff !important;
-  border-color: var(--border-subtle) !important;
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
 }
 
 html.light .premium-card,
 html.light .card-premium,
-html.light .premium-highlight {
+html.light .premium-highlight,
+html.light .jackpot-core {
   background: #ffffff !important;
   box-shadow:
     0 6px 20px rgba(0,0,0,0.06),
     0 0 0 1px rgba(0,0,0,0.04);
-}
-
-html.light .premium-highlight,
-html.light .jackpot-core {
-  background: #ffffff !important;
 }
 
 /* status pills in header */
@@ -532,59 +545,6 @@ html.light .status-pill-amber {
 .xpot-link:hover::after {
   opacity: 1;
 }
-/* ────────────────────────────────────────────────
-   Light mode hard reset for leftover dark classes
-   ──────────────────────────────────────────────── */
-
-html.light {
-  /* overall page background */
-  background-color: #f3f4f6;
-}
-
-html.light body {
-  background-color: #f3f4f6;
-  color: var(--text);
-}
-
-/* Any slate-8/9 background in light mode becomes a white card */
-html.light [class*="bg-slate-9"],
-html.light [class*="bg-slate-8"],
-html.light [class*="bg-slate-7"],
-html.light .bg-black {
-  background-color: #ffffff !important;
-}
-
-/* Dark header bars in admin shell */
-html.light .premium-shell,
-html.light .admin-shell {
-  background-color: #f3f4f6 !important;
-}
-
-/* All “white-ish” text becomes dark in light mode */
-html.light .text-slate-50,
-html.light .text-slate-100,
-html.light .text-slate-200,
-html.light .text-slate-300,
-html.light .text-white,
-html.light [class*="text-slate-1"],
-html.light [class*="text-slate-2"],
-html.light [class*="text-slate-3"] {
-  color: #020617 !important;
-}
-
-/* Buttons keep their emerald look but with light-mode text */
-html.light .btn-premium {
-  color: #020617;
-}
-
-/* Admin cards – explicit white, light borders */
-html.light .admin-card {
-  background-color: #ffffff !important;
-  border-color: #e5e7eb !important;
-  box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(0, 0, 0, 0.03);
-}
 
 /* ────────────────────────────────────────────────
    Light theme polish – soften greens & pills
@@ -621,4 +581,16 @@ html.light .text-amber-400 {
 html.light .text-emerald-300.live-label {
   color: #16a34a !important;
   opacity: 0.9;
+}
+
+/* Recent winners column – calmer in light mode */
+html.light .recent-winners-row p,
+html.light .recent-winners-row span {
+  color: #111827 !important;
+}
+
+html.light .recent-winners-row .status-pill,
+html.light .recent-winners-row .status-pill-amber,
+html.light .recent-winners-row .status-pill-emerald {
+  font-weight: 600;
 }
