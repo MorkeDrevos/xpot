@@ -890,7 +890,7 @@ export default function AdminPage() {
                   {winners.map((w) => (
                     <article
                       key={w.id}
-                      className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
+                      className="recent-winners-row flex flex-col gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-mono text-[11px] text-slate-100">
