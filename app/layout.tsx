@@ -19,7 +19,7 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 
 const endpoint = 'https://api.mainnet-beta.solana.com';
 
-// Empty array – Phantom and others will be detected natively
+// Empty array – Phantom and others are detected natively
 const wallets: any[] = [];
 
 // ─────────────────────────────────────────────
@@ -32,7 +32,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <title>XPOT · The X-Powered Reward Protocol</title>
 
@@ -56,13 +56,26 @@ export default function RootLayout({
         {/* X / Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
 
-        {/* Favicon */}
+        {/* Icons */}
         <link rel="icon" href="/img/favicon.png" />
         <link rel="apple-touch-icon" href="/img/favicon.png" />
+
+        {/* Pre-theme preload to avoid flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const theme = localStorage.getItem('xpot-theme');
+                if (theme === 'light') {
+                  document.documentElement.classList.add('light');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
       </head>
 
-      {/* let globals.css control background via CSS variables */}
-      <body className="min-h-screen">
+      <body className="min-h-screen transition-colors duration-300">
         <ConnectionProvider endpoint={endpoint}>
           <WalletProvider wallets={wallets} autoConnect>
             <WalletModalProvider>
