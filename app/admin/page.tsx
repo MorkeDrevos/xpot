@@ -450,9 +450,15 @@ const visibleWinners = winners.slice(0, MAX_RECENT_WINNERS);
 
   useEffect(() => {
   setVisibleTicketCount((prev) =>
-    Math.min(prev, Math.max(tickets.length, MAX_TODAY_TICKETS)),
+    Math.min(prev, tickets.length || MAX_TODAY_TICKETS),
   );
 }, [tickets.length]);
+
+function handleLoadMoreTickets() {
+  setVisibleTicketCount((prev) =>
+    Math.min(prev + MAX_TODAY_TICKETS, tickets.length),
+  );
+}
 
   // ── Admin token handling ──────────────────────────────────────
 
@@ -820,7 +826,7 @@ const visibleWinners = winners.slice(0, MAX_RECENT_WINNERS);
             </form>
           </section>
 
-          {/* Today’s XPOT entries list */}
+                    {/* Today’s XPOT entries list */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-100">
               Today&apos;s XPOT entries
@@ -830,6 +836,70 @@ const visibleWinners = winners.slice(0, MAX_RECENT_WINNERS);
             </p>
 
             <div className="mt-3">
+              {ticketsLoading && (
+                <p className="text-xs text-slate-500">Loading tickets…</p>
+              )}
+
+              {ticketsError && (
+                <p className="text-xs text-amber-300">{ticketsError}</p>
+              )}
+
+              {!ticketsLoading &&
+                !ticketsError &&
+                visibleTickets.length === 0 && (
+                  <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
+                    No entries yet for today&apos;s XPOT.
+                  </p>
+                )}
+
+              {!ticketsLoading &&
+                !ticketsError &&
+                visibleTickets.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {visibleTickets.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <p className="font-mono text-[11px] text-slate-100">
+                            {t.code}
+                          </p>
+                          <p className="font-mono text-[11px] text-slate-500">
+                            {t.walletAddress}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-200">
+                            {t.status.replace('-', ' ').toUpperCase()}
+                          </span>
+                          <p className="font-mono text-[11px] text-slate-500">
+                            {formatDateTime(t.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                      <p>
+                        Showing {visibleTickets.length} of {tickets.length} tickets
+                      </p>
+
+                      {visibleTickets.length < tickets.length && (
+                        <button
+                          type="button"
+                          onClick={handleLoadMoreTickets}
+                          className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
+                        >
+                          Load more
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+            </div>
+          </section>
   {ticketsLoading && (
     <p className="text-xs text-slate-500">Loading tickets…</p>
   )}
