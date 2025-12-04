@@ -40,12 +40,69 @@ const MILESTONES = [
   10_000_000,
 ];
 
-// Helper: current date in Europe/Madrid as YYYYMMDD
-function getMadridDayKey() {
-  const madrid = new Date().toLocaleDateString('en-CA', {
+/**
+ * Helper: "XPOT session key" for Europe/Madrid.
+ *
+ * We want stats to reset when the daily XPOT round resets at 22:00 Madrid time,
+ * not at calendar midnight.
+ *
+ * So:
+ *  - From 22:00 → 23:59:59, we treat this as the *next* session day.
+ *  - From 00:00 → 21:59:59, we treat it as the current calendar day.
+ *
+ * This way, Highest today / Milestone / Next at all belong to a 24h window
+ * that rolls at 22:00.
+ */
+function getMadridSessionKey() {
+  const now = new Date();
+
+  const fmt = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Madrid',
-  }); // e.g. "2025-12-03"
-  return madrid.replace(/-/g, ''); // "20251203"
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  });
+
+  const parts = fmt.formatToParts(now);
+
+  let year = 0;
+  let month = 0;
+  let day = 0;
+  let hour = 0;
+
+  for (const p of parts) {
+    switch (p.type) {
+      case 'year':
+        year = Number(p.value);
+        break;
+      case 'month':
+        month = Number(p.value);
+        break;
+      case 'day':
+        day = Number(p.value);
+        break;
+      case 'hour':
+        hour = Number(p.value);
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Base date in Madrid (UTC container)
+  const baseDate = new Date(Date.UTC(year, month - 1, day));
+
+  // If it's 22:00 or later in Madrid, move to the *next* calendar day for this session
+  if (hour >= 22) {
+    baseDate.setUTCDate(baseDate.getUTCDate() + 1);
+  }
+
+  const y = baseDate.getUTCFullYear();
+  const m = String(baseDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(baseDate.getUTCDate()).padStart(2, '0');
+  return `${y}${m}${d}`; // e.g. "20251205"
 }
 
 export default function JackpotPanel({
@@ -69,21 +126,22 @@ export default function JackpotPanel({
   // Tooltip for USD estimate
   const [showTooltip, setShowTooltip] = useState(false);
 
-  // Per-Madrid-day localStorage key for "highest today"
-  const todayKey = `xpot_max_jackpot_madrid_${getMadridDayKey()}`;
+  // Per-session localStorage key (session rolls at 22:00 Madrid)
+  const sessionKey = getMadridSessionKey();
 
-  // Load max XPOT value for *this* Madrid day from localStorage
+  // Load max XPOT value for *this* XPOT session from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem(todayKey);
+    const stored = window.localStorage.getItem(
+      `xpot_max_jackpot_madrid_${sessionKey}`,
+    );
     if (stored) {
       const num = Number(stored);
       if (!Number.isNaN(num)) setMaxJackpotToday(num);
     } else {
-      // No value stored for this day yet – start fresh
       setMaxJackpotToday(null);
     }
-  }, [todayKey]);
+  }, [sessionKey]);
 
   // Live price from Jupiter (direct)
   useEffect(() => {
@@ -146,7 +204,7 @@ export default function JackpotPanel({
   const jackpotUsd =
     priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
 
-  // Track pumps and "highest today" + notify parent
+  // Track pumps and "highest this XPOT session" + notify parent
   useEffect(() => {
     // notify admin/home page about the new value
     if (typeof onJackpotUsdChange === 'function') {
@@ -165,16 +223,19 @@ export default function JackpotPanel({
     }
     prevJackpot.current = jackpotUsd;
 
-    // Store highest XPOT USD value of the Madrid day
+    // Store highest XPOT USD value of this session
     if (typeof window !== 'undefined') {
       setMaxJackpotToday(prev => {
         const next =
           prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
-        window.localStorage.setItem(todayKey, String(next));
+        window.localStorage.setItem(
+          `xpot_max_jackpot_madrid_${sessionKey}`,
+          String(next),
+        );
         return next;
       });
     }
-  }, [jackpotUsd, todayKey, onJackpotUsdChange]);
+  }, [jackpotUsd, sessionKey, onJackpotUsdChange]);
 
   // Milestones (based on current live XPOT value)
   const reachedMilestone =
@@ -226,7 +287,7 @@ export default function JackpotPanel({
           </p>
         </div>
 
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col.items-end gap-1">
           {isLocked && (
             <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
               Draw locked
@@ -321,16 +382,16 @@ export default function JackpotPanel({
             )}
           </div>
 
-          {/* Session stats */}
+          {/* Live XPOT stats (session-based) */}
           {(maxJackpotToday || reachedMilestone || nextMilestone) && (
             <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-              Session stats
+              Live XPOT stats
             </p>
           )}
 
           {maxJackpotToday && (
             <p className="text-[11px] text-slate-400">
-              Highest today{' '}
+              Highest this session{' '}
               <span className="font-mono text-slate-100">
                 {formatUsd(maxJackpotToday)}
               </span>
