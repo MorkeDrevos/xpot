@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
         tickets: {
           orderBy: { createdAt: 'desc' },
           include: {
-            wallet: true, // to get wallet.address
+            wallet: true, // Wallet relation for wallet.address
           },
         },
       },
@@ -71,11 +71,12 @@ export async function GET(req: NextRequest) {
       tickets: draw.tickets.map((t) => ({
         id: t.id,
         code: t.code,
-        // adjust if your relation name is different
         walletAddress: t.wallet?.address ?? '(unknown wallet)',
         status: mapStatus(t.status),
         createdAt: t.createdAt.toISOString(),
-        jackpotUsd: t.jackpotUsd ?? null,
+        // Ticket model has no jackpotUsd column – keep this as null
+        // so frontend can treat it as optional if needed.
+        jackpotUsd: null,
       })),
     });
   } catch (err: any) {
