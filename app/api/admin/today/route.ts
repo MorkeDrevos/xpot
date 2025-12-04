@@ -1,22 +1,21 @@
-// app/api/admin/tickets/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
 
-type TicketStatusUi = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
+type DrawStatus = 'open' | 'closed';
 
 export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
   try {
-    // Today as UTC day range
+    // Today (UTC)
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
     const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
     const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
 
-    // 🔍 Find the *latest* draw for today (same as /admin/today)
+    // ✅ Pick the LATEST draw today (in case multiple exist)
     const draw = await prisma.draw.findFirst({
       where: {
         drawDate: { gte: startOfDay, lt: endOfDay },
@@ -30,48 +29,33 @@ export async function GET(req: NextRequest) {
     });
 
     if (!draw) {
-      return NextResponse.json({
-        ok: true,
-        tickets: [],
-      });
+      return NextResponse.json({ ok: true, today: null });
     }
 
-    // Map DB enum -> UI status strings
-    function mapStatus(dbStatus: string): TicketStatusUi {
-      switch (dbStatus) {
-        case 'IN_DRAW':
-          return 'in-draw';
-        case 'EXPIRED':
-          return 'expired';
-        case 'NOT_PICKED':
-          return 'not-picked';
-        case 'WON':
-          return 'won';
-        case 'CLAIMED':
-          return 'claimed';
-        default:
-          return 'in-draw';
-      }
-    }
+    // ✅ No closesAt column exists → calculate it
+    const c = new Date(draw.drawDate);
+    c.setUTCHours(21, 0, 0, 0); // 22:00 Madrid winter
+    const closesAt = c.toISOString();
 
-    const tickets = draw.tickets.map((t) => ({
-      id: t.id,
-      code: t.code,
-      walletAddress: t.walletId ?? '', // or t.walletAddress if you store it
-      status: mapStatus(t.status),
-      createdAt: t.createdAt.toISOString(),
-      jackpotUsd: null as number | null, // reserved for later if you want
-    }));
+    const status: DrawStatus = draw.isClosed ? 'closed' : 'open';
 
-    return NextResponse.json({
-      ok: true,
-      tickets,
-    });
+    const today = {
+      id: draw.id,
+      date: draw.drawDate.toISOString(),
+      status,
+      jackpotUsd: draw.jackpotUsd ?? 0,
+      rolloverUsd: 0, // safe placeholder for future schema
+      ticketsCount: draw.tickets.length,
+      closesAt,
+    };
+
+    return NextResponse.json({ ok: true, today });
+
   } catch (err) {
-    console.error('[ADMIN] /tickets error', err);
+    console.error('[ADMIN] /today error', err);
     return NextResponse.json(
-      { ok: false, error: 'FAILED_TO_LOAD_TICKETS' },
-      { status: 500 },
+      { ok: false, error: 'FAILED_TO_LOAD_TODAY' },
+      { status: 500 }
     );
   }
 }
