@@ -6,14 +6,23 @@ import { TicketStatus } from '@prisma/client';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  // 🔐 Safety: never allow this on true production,
-  // and only run when ALLOW_SEED === 'true'
-  const isProd = process.env.NODE_ENV === 'production';
-  const allowSeed = !isProd && process.env.ALLOW_SEED === 'true';
+  // ✅ Only allow on:
+  // - Vercel preview deployments   (VERCEL_ENV === 'preview')
+  // - OR anywhere you explicitly set ALLOW_SEED=true
+  const allowSeed =
+    process.env.VERCEL_ENV === 'preview' ||
+    process.env.ALLOW_SEED === 'true';
 
   if (!allowSeed) {
     return NextResponse.json(
-      { ok: false, error: 'DEV_SEED_DISABLED' },
+      {
+        ok: false,
+        error: 'DEV_SEED_DISABLED',
+        meta: {
+          vercelEnv: process.env.VERCEL_ENV ?? null,
+          allowSeedEnv: process.env.ALLOW_SEED ?? null,
+        },
+      },
       { status: 403 },
     );
   }
@@ -104,7 +113,7 @@ export async function GET(req: NextRequest) {
     // Helper to create a past draw
     async function ensurePastDraw(
       daysAgo: number,
-      _label: string, // reserved for future Winner model
+      _label: string, // label kept for future if you add Winner model
       amountUsd: number,
     ) {
       const date = new Date();
@@ -166,7 +175,7 @@ export async function GET(req: NextRequest) {
           },
         }));
 
-      // No Winner records yet – keeps seeder simple & compile-safe
+      // No Winner records yet – keeps seeder simple
       return { draw, ticket };
     }
 
@@ -178,7 +187,7 @@ export async function GET(req: NextRequest) {
       message: 'Dev admin data seeded.',
     });
   } catch (err) {
-    console.error('[XPOT] dev seed error:', err);
+    console.error('[XPOT] dev seed error', err);
     return NextResponse.json(
       { ok: false, error: 'SEED_FAILED' },
       { status: 500 },
