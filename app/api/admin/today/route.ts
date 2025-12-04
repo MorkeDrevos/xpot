@@ -1,62 +1,63 @@
 // app/api/admin/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/api/admin/_auth';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '../_auth';
+
+export const dynamic = 'force-dynamic';
+
+type DrawStatus = 'open' | 'closed' | 'completed';
 
 export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  try {
-    // Today as YYYY-MM-DD string
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+  // Today as YYYY-MM-DD (UTC)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const start = new Date(`${todayStr}T00:00:00.000Z`);
+  const end = new Date(`${todayStr}T23:59:59.999Z`);
 
-    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-    const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
-
-    const draw = await prisma.draw.findFirst({
-      where: {
-        drawDate: {
-          gte: startOfDay,
-          lt: endOfDay,
-        },
+  // 1) Find today’s latest draw (by drawDate)
+  const draw = await prisma.draw.findFirst({
+    where: {
+      drawDate: {
+        gte: start,
+        lt: end,
       },
-      include: {
-        tickets: true,
-      },
-    });
+    },
+    orderBy: {
+      drawDate: 'desc',
+    },
+  });
 
-    if (!draw) {
-      return NextResponse.json({
-        ok: true,
-        today: null,
-      });
-    }
-
-    // Close time: 22:00 Europe/Madrid (~ 21:00 UTC) on the draw's date
-    const closesAt = new Date(draw.drawDate);
-    closesAt.setUTCHours(21, 0, 0, 0); // 22:00 Madrid in winter (UTC+1)
-
-    const today = {
-      id: draw.id,
-      date: draw.drawDate.toISOString(),
-      status: draw.isClosed ? 'closed' : 'open', // later you can add 'completed'
-      jackpotUsd: draw.jackpotUsd ?? 0,
-      rolloverUsd: 0, // placeholder for future rollover field
-      ticketsCount: draw.tickets.length,
-      closesAt: closesAt.toISOString(),
-    };
-
+  // No draw today
+  if (!draw) {
     return NextResponse.json({
       ok: true,
-      today,
+      today: null,
     });
-  } catch (err) {
-    console.error('[ADMIN] /today error', err);
-    return NextResponse.json(
-      { ok: false, error: 'FAILED_TO_LOAD_TODAY' },
-      { status: 500 },
-    );
   }
+
+  // 2) Count active tickets in the pool (IN_DRAW)
+  const ticketsCount = await prisma.ticket.count({
+    where: {
+      drawId: draw.id,
+      status: 'IN_DRAW',
+    },
+  });
+
+  // 3) Map DB → API shape the admin page expects
+  const status: DrawStatus = draw.isClosed ? 'closed' : 'open';
+
+  return NextResponse.json({
+    ok: true,
+    today: {
+      id: draw.id,
+      date: draw.drawDate,
+      status,
+      jackpotUsd: draw.jackpotUsd ?? 0,
+      rolloverUsd: draw.rolloverUsd ?? 0,
+      ticketsCount,
+      closesAt: draw.closesAt,
+    },
+  });
 }
