@@ -25,11 +25,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 🧹 1) Clear everything – adjust model names to your schema
+    // 🧹 1) Clear everything – child tables first, then parents
     await prisma.$transaction([
+      prisma.reward.deleteMany(),        // if Reward model exists
       prisma.ticket.deleteMany(),
       prisma.wallet.deleteMany(),
-      prisma.xpUserBalance?.deleteMany?.() ?? prisma.$executeRaw`SELECT 1`,
+      prisma.xpUserBalance.deleteMany(),
       prisma.draw.deleteMany(),
       prisma.user.deleteMany(),
     ]);
@@ -39,10 +40,11 @@ export async function POST(req: NextRequest) {
 
     const draw = await prisma.draw.create({
       data: {
-        // adjust fields to your Draw model
+        // Adjust fields to your Draw model
         drawDate: new Date(`${todayStr}T00:00:00.000Z`),
-        jackpotXp: 1_000_000,    // rename if you use another field
-        rolloverXp: 0,
+        isClosed: false,        // matches the bool column you have in Studio
+        jackpotUsd: 1_000_000,  // was jackpotXp – use the real field
+        rolloverUsd: 0,         // was rolloverXp – use the real field
       },
     });
 
