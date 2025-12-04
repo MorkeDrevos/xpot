@@ -336,12 +336,12 @@ export default function JackpotPanel({
               <button
                 type="button"
                 className="
-                  rounded-full border border-slate-100/80
-                  bg-slate-50/5 px-4 py-1
-                  text-[11px] font-semibold uppercase tracking-[0.18em]
-                  text-slate-50
-                  shadow-[0_0_18px_rgba(148,163,184,0.7)]
-                "
+  rounded-full border border-slate-400/40
+  bg-slate-950/40 px-3 py-1
+  text-[10px] font-medium tracking-[0.14em]
+  text-slate-300
+  backdrop-blur-sm
+"
               >
                 USD estimate
               </button>
