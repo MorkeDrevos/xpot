@@ -232,6 +232,7 @@ export default function AdminPage() {
   const [txInputs, setTxInputs] = useState<Record<string, string>>({});
   const [savingPaidId, setSavingPaidId] = useState<string | null>(null);
   const [markPaidError, setMarkPaidError] = useState<string | null>(null);
+  const [copiedTxWinnerId, setCopiedTxWinnerId] = useState<string | null>(null);
 
   // how many tickets / winners to show; grows when you click "Load more"
   const [visibleTicketCount, setVisibleTicketCount] = useState(
@@ -1157,66 +1158,76 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
 
                         <CopyableWallet address={w.walletAddress} />
 
-                        <div className="flex items-center justify-between gap-3">
-                          {/* XPOT payout pill */}
-                          <XpotPill amount={w.payoutUsd} size="sm" />
+                      <div className="flex items-center justify-between gap-3">
+  {/* XPOT payout pill */}
+  <XpotPill amount={w.payoutUsd} size="sm" />
 
-                          <div className="flex flex-col items-end gap-1">
-                            {/* Status pill */}
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                                w.isPaidOut
-                                  ? 'bg-emerald-500/10 text-emerald-300'
-                                  : 'bg-amber-500/10 text-amber-300'
-                              }`}
-                            >
-                              {w.isPaidOut ? 'Reward sent' : 'Pending payout'}
-                            </span>
+  <div className="flex flex-col items-end gap-1">
+    {w.isPaidOut ? (
+      w.txUrl && (
+        <div className="flex items-center gap-2 text-[11px] text-emerald-300">
+          <span className="font-semibold">Reward sent</span>
+          <span className="text-emerald-400">·</span>
 
-                            {/* TX link + Mark as paid controls */}
-                            {w.isPaidOut ? (
-  w.txUrl && (
-    <div className="flex items-center gap-2 text-[11px] text-emerald-300">
-      <span className="font-semibold">Reward sent</span>
-      <span className="text-emerald-400">·</span>
-      <a
-        href={w.txUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="underline decoration-emerald-400/40 hover:decoration-emerald-300 hover:text-emerald-200 transition-colors"
-      >
-        View TX
-      </a>
-    </div>
-  )
-) : (
-                              <div className="flex flex-col items-end gap-1">
-                                <input
-                                  type="text"
-                                  placeholder="Paste TX link…"
-                                  className="w-44 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
-                                  value={txInputs[w.id] ?? ''}
-                                  onChange={(e) =>
-                                    setTxInputs((prev) => ({
-                                      ...prev,
-                                      [w.id]: e.target.value,
-                                    }))
-                                  }
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleMarkAsPaid(w.id)}
-                                  disabled={savingPaidId === w.id}
-                                  className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
-                                >
-                                  {savingPaidId === w.id
-                                    ? 'Saving…'
-                                    : 'Mark as paid'}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+          <a
+            href={w.txUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline decoration-emerald-400/40 hover:decoration-emerald-300 hover:text-emerald-200 transition-colors"
+          >
+            View TX
+          </a>
+
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(w.txUrl!); // copies full TX link/hash
+                setCopiedTxWinnerId(w.id);
+                setTimeout(() => setCopiedTxWinnerId(null), 1200);
+              } catch (err) {
+                console.error('Failed to copy TX link', err);
+              }
+            }}
+            className="rounded-md border border-emerald-500/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-emerald-200 hover:bg-emerald-500/10"
+          >
+            {copiedTxWinnerId === w.id ? 'Copied' : 'Copy TX'}
+          </button>
+        </div>
+      )
+    ) : (
+      <>
+        {/* subtle “Not paid” text, no badge */}
+        <span className="text-[11px] text-amber-300">Not paid</span>
+
+        {/* TX input + Mark as paid */}
+        <div className="flex flex-col items-end gap-1">
+          <input
+            type="text"
+            placeholder="Paste TX link…"
+            className="w-44 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
+            value={txInputs[w.id] ?? ''}
+            onChange={(e) =>
+              setTxInputs((prev) => ({
+                ...prev,
+                [w.id]: e.target.value,
+              }))
+            }
+          />
+          <button
+            type="button"
+            onClick={() => handleMarkAsPaid(w.id)}
+            disabled={savingPaidId === w.id}
+            className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
+          >
+            {savingPaidId === w.id ? 'Saving…' : 'Mark as paid'}
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+</div>  
+                        
                       </article>
                     ))}
 
