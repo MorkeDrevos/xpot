@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
-const PRICE_POLL_MS = 3000; // 3s – feels live without hammering Jupiter
+const PRICE_POLL_MS = 2000; // 2s – feels live without hammering Jupiter
 
 type JackpotPanelProps = {
   /** When true, shows "Draw locked" pill in the header */
@@ -145,7 +145,7 @@ export default function JackpotPanel({
 
   // Track pumps and "highest today" + notify parent
   useEffect(() => {
-    // notify admin page about the new value
+    // notify admin / homepage about the new value
     if (typeof onJackpotUsdChange === 'function') {
       onJackpotUsdChange(jackpotUsd);
     }
@@ -239,20 +239,46 @@ export default function JackpotPanel({
 
       {/* MAIN NUMBERS */}
       <div className="relative mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div
-            className={`
-              mt-1 text-4xl font-semibold text-white
-              transition-transform duration-200
-              ${justUpdated ? 'scale-[1.01]' : ''}
-            `}
-          >
-            {formatUsd(jackpotUsd)}
-            <span className="ml-1 align-middle text-sm text-emerald-400">
-              (live)
+        <div className="space-y-1">
+          {/* Big USD number + pill + tooltip */}
+          <div className="relative inline-flex items-baseline gap-3 group">
+            <span
+              className={`
+                mt-1 font-mono text-4xl font-semibold text-white sm:text-5xl
+                transition-transform duration-200
+                ${justUpdated ? 'scale-[1.01]' : ''}
+              `}
+            >
+              {formatUsd(jackpotUsd)}
             </span>
+
+            {/* Small pill explaining this is an estimate */}
+            <span className="inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
+              USD estimate
+            </span>
+
+            {/* Info dot + tooltip */}
+            <div className="relative">
+              <button
+                type="button"
+                className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-600/80 bg-slate-900/80 text-[11px] text-slate-300 hover:border-emerald-400 hover:text-emerald-200"
+              >
+                i
+              </button>
+
+              <div className="pointer-events-none absolute left-1/2 top-7 z-20 w-64 -translate-x-1/2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 opacity-0 shadow-xl shadow-black/60 transition group-hover:pointer-events-auto group-hover:opacity-100">
+                <p>
+                  This is the current USD value of today&apos;s XPOT jackpot,
+                  based on the live XPOT price from Jupiter.
+                </p>
+                <p className="mt-1 text-[10px] text-slate-400">
+                  The winner is always paid in <strong>XPOT</strong>, not USD.
+                </p>
+              </div>
+            </div>
           </div>
 
+          {/* Per-token price line */}
           <p className="mt-1 text-xs text-slate-500">
             1 XPOT ≈{' '}
             <span className="font-mono">
@@ -262,6 +288,7 @@ export default function JackpotPanel({
           </p>
         </div>
 
+        {/* Session stats on the right */}
         <div className="flex flex-col items-end gap-1 text-xs">
           {(maxJackpotToday || reachedMilestone || nextMilestone) && (
             <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
