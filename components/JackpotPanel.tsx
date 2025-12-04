@@ -26,16 +26,52 @@ function formatUsd(value: number | null) {
 
 // Milestone ladder for highlights (USD)
 const MILESTONES = [
+  // Micro engagement
+  25,
+  50,
+  75,
   100,
+
+  // Early activation
+  150,
+  200,
+  300,
+  400,
   500,
+
+  // Momentum zone
+  750,
+  1_000,
+  1_500,
+  2_000,
+  3_000,
+  4_000,
   5_000,
+
+  // Growth phase
+  7_500,
   10_000,
-  25_000,
+  15_000,
+  20_000,
+  30_000,
+  40_000,
   50_000,
+
+  // Serious money
+  75_000,
   100_000,
-  250_000,
+  150_000,
+  200_000,
+  300_000,
+  400_000,
+  500_000,
+
+  // Prestige tier
+  750_000,
   1_000_000,
+  1_500_000,
   2_000_000,
+  3_000_000,
   5_000_000,
   10_000_000,
 ];
