@@ -4,12 +4,18 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-// Shared handler used by both GET and POST in dev
+// Shared handler used by both GET and POST
 async function handleReset(req: NextRequest) {
-  // 🔐 Never allow this in production
-  if (!req.nextUrl.hostname.startsWith('dev.')) {
+  // Only allow on dev.xpot.bet (or localhost)
+  const host = req.nextUrl.hostname;
+  const isDevHost =
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host.startsWith('dev.');
+
+  if (!isDevHost) {
     return NextResponse.json(
-      { ok: false, error: 'RESET_DISABLED_IN_PROD' },
+      { ok: false, error: 'RESET_DISABLED_ON_THIS_HOST' },
       { status: 403 },
     );
   }
@@ -26,11 +32,15 @@ async function handleReset(req: NextRequest) {
   }
 
   try {
-    // 🧹 1) Clear everything – children first, then parents
+    // 🧹 1) Clear everything – include legacy Reward table first
     await prisma.$transaction([
-      prisma.xpUserBalance.deleteMany(), // depends on Wallet
-      prisma.ticket.deleteMany(),        // depends on Draw, User, Wallet
-      prisma.wallet.deleteMany(),        // depends on User
+      // Legacy table that still has FK to Ticket; ignore if empty
+      prisma.$executeRawUnsafe(`DELETE FROM "Reward";`),
+
+      // Your current models, children first → parents last
+      prisma.xpUserBalance.deleteMany(),
+      prisma.ticket.deleteMany(),
+      prisma.wallet.deleteMany(),
       prisma.draw.deleteMany(),
       prisma.user.deleteMany(),
     ]);
@@ -39,11 +49,12 @@ async function handleReset(req: NextRequest) {
     const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     const draw = await prisma.draw.create({
-  data: {
-    drawDate: new Date(`${todayStr}T00:00:00.000Z`),
-    jackpotUsd: 1_000_000,
-  },
-});
+      data: {
+        drawDate: new Date(`${todayStr}T00:00:00.000Z`),
+        // status + isClosed come from Prisma defaults
+        jackpotUsd: 1_000_000,
+      },
+    });
 
     return NextResponse.json({
       ok: true,
@@ -51,20 +62,24 @@ async function handleReset(req: NextRequest) {
       seeded: true,
       drawId: draw.id,
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('DEV_RESET_ERROR', err);
     return NextResponse.json(
-      { ok: false, error: 'RESET_FAILED' },
+      {
+        ok: false,
+        // Show the actual DB / Prisma error so you can see it in the browser
+        error: err?.message || 'RESET_FAILED',
+      },
       { status: 500 },
     );
   }
 }
 
-// Allow both POST (for tools) and GET (for you in the browser) in dev
-export async function POST(req: NextRequest) {
+// Allow both GET (for browser) and POST (for curl/tools)
+export async function GET(req: NextRequest) {
   return handleReset(req);
 }
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   return handleReset(req);
 }
