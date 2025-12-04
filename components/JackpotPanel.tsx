@@ -197,7 +197,7 @@ export default function JackpotPanel({
   return (
     <section
       className={`
-        relative overflow-hidden
+        relative z-10 overflow-hidden
         rounded-2xl border border-slate-800
         bg-slate-950/70 px-5 py-4 shadow-sm
         transition-colors duration-300
@@ -270,11 +270,17 @@ export default function JackpotPanel({
         {/* Right: USD estimate pill + tooltip + session stats */}
         <div className="flex flex-col items-end gap-3 text-xs">
           {/* USD estimate + tooltip */}
-          <div className="relative z-30">
+          <div className="relative z-40">
             <div className="inline-flex items-center gap-2">
               <button
                 type="button"
-                className="rounded-full border border-emerald-400/60 bg-emerald-500/10 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200"
+                className="
+                  rounded-full border border-slate-100/80
+                  bg-slate-50/5 px-4 py-1
+                  text-[11px] font-semibold uppercase tracking-[0.18em]
+                  text-slate-50
+                  shadow-[0_0_18px_rgba(148,163,184,0.7)]
+                "
               >
                 USD estimate
               </button>
@@ -285,7 +291,7 @@ export default function JackpotPanel({
                 onMouseLeave={() => setShowTooltip(false)}
                 onFocus={() => setShowTooltip(true)}
                 onBlur={() => setShowTooltip(false)}
-                className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-600 bg-slate-900 text-[11px] font-semibold text-slate-300 hover:border-emerald-400 hover:text-emerald-200"
+                className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-400/80 bg-slate-900 text-[11px] font-semibold text-slate-100 hover:border-slate-100 hover:text-white"
               >
                 i
               </button>
@@ -294,7 +300,7 @@ export default function JackpotPanel({
             {showTooltip && (
               <div
                 className="
-                  pointer-events-none absolute left-1/2 top-full mt-3 w-80
+                  absolute left-1/2 top-full z-50 mt-3 w-80
                   -translate-x-1/2 rounded-2xl border border-slate-700
                   bg-slate-950/95 px-4 py-3 text-[11px] leading-relaxed
                   text-slate-100 shadow-xl backdrop-blur-sm
