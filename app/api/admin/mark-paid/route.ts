@@ -8,23 +8,21 @@ export async function POST(req: NextRequest) {
   if (auth) return auth;
 
   try {
-    const { winnerId, txUrl } = await req.json();
+    const body = await req.json();
+    const winnerId = body?.winnerId as string | undefined;
+    const txUrl = (body?.txUrl as string | undefined) || null;
 
-    if (!winnerId || typeof winnerId !== 'string') {
+    if (!winnerId) {
       return NextResponse.json(
-        { ok: false, error: 'INVALID_WINNER_ID' },
+        { ok: false, error: 'MISSING_WINNER_ID' },
         { status: 400 },
       );
     }
 
-    if (!txUrl || typeof txUrl !== 'string') {
-      return NextResponse.json(
-        { ok: false, error: 'INVALID_TX_URL' },
-        { status: 400 },
-      );
-    }
-
-    const winner = await prisma.winner.update({
+    // 🔴 IMPORTANT: use your real model name here.
+    // If your prisma schema has `model Reward { ... }`,
+    // this should be prisma.reward.update(...)
+    const updated = await prisma.reward.update({
       where: { id: winnerId },
       data: {
         isPaidOut: true,
@@ -32,11 +30,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ ok: true, winner });
+    return NextResponse.json({
+      ok: true,
+      winner: {
+        id: updated.id,
+        isPaidOut: updated.isPaidOut,
+        txUrl: updated.txUrl,
+      },
+    });
   } catch (err: any) {
     console.error('[ADMIN] /mark-paid error', err);
     return NextResponse.json(
-      { ok: false, error: err.message || 'FAILED_TO_MARK_PAID' },
+      {
+        ok: false,
+        error: err.message || 'FAILED_TO_MARK_PAID',
+      },
       { status: 500 },
     );
   }
