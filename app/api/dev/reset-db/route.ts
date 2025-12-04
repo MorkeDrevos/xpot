@@ -5,11 +5,11 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // 🔐 Never allow this in production
+  // 🔒 Never allow reset in production
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json(
       { ok: false, error: 'RESET_DISABLED_IN_PROD' },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -20,31 +20,27 @@ export async function POST(req: NextRequest) {
   if (secret !== expected) {
     return NextResponse.json(
       { ok: false, error: 'BAD_SECRET' },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
   try {
-    // 🧹 1) Clear everything – child tables first, then parents
+    // 🧹 Clear DB in correct dependency order
     await prisma.$transaction([
-      // Order matters: balances -> tickets -> wallets -> draws -> users
-      prisma.xpUserBalance.deleteMany(), // model XpUserBalance
       prisma.ticket.deleteMany(),
+      prisma.xpUserBalance.deleteMany(),
       prisma.wallet.deleteMany(),
       prisma.draw.deleteMany(),
       prisma.user.deleteMany(),
     ]);
 
-    // 🧪 2) Seed a fresh minimal state
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
 
     const draw = await prisma.draw.create({
       data: {
-        drawDate: new Date(`${todayStr}T00:00:00.000Z`),
-        isClosed: false,       // matches your Draw model
-        jackpotUsd: 1_000_000, // simple fixed jackpot for dev
-        // closesAt: you can add this if you want a countdown:
-        // closesAt: new Date(`${todayStr}T23:59:59.000Z`),
+        drawDate: new Date(`${today}T00:00:00.000Z`),
+        isClosed: false,
+        jackpotUsd: 1_000_000,
       },
     });
 
@@ -54,11 +50,12 @@ export async function POST(req: NextRequest) {
       seeded: true,
       drawId: draw.id,
     });
+
   } catch (err) {
-    console.error('DEV_RESET_ERROR', err);
+    console.error('DEV RESET FAILED:', err);
     return NextResponse.json(
       { ok: false, error: 'RESET_FAILED' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
