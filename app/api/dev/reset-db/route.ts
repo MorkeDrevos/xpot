@@ -43,16 +43,15 @@ async function handleReset(req: NextRequest) {
     const todayStr = today.toISOString().slice(0, 10)
 
     const draw = await prisma.draw.create({
-      data: {
-        drawDate: new Date(`${todayStr}T00:00:00.000Z`),
-        jackpotUsd: 1_000_000,
-        status: 'COMPLETED',
-        isClosed: true,
-        resolvedAt: new Date(),
-        paidAt: new Date(),
-        payoutTx: 'https://solscan.io/tx/FAKE_DEV_TX_HASH'
-      }
-    })
+  data: {
+    drawDate: new Date(`${todayStr}T00:00:00.000Z`),
+    jackpotUsd: 1_000_000,
+    isClosed: true,
+    resolvedAt: new Date(),
+    paidAt: new Date(),
+    payoutTx: 'https://solscan.io/tx/FAKE_DEV_TX_HASH'
+  }
+})
 
     // ─────────────────────────────────────
     // 3) CREATE USERS
