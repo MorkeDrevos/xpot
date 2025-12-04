@@ -117,7 +117,7 @@ async function handleReset(req: NextRequest) {
         resolvedAt: now,
         paidAt: now,
         payoutTx: 'https://solscan.io/tx/DEV_COMPLETED_DRAW',
-        closesAt: yesterdayClosesAt,
+        closesAt: todayClosesAt,
       },
     });
 
