@@ -10,7 +10,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 const MAX_TODAY_TICKETS = 12;   // how many “Today’s XPOT entries” to show
-const MAX_RECENT_WINNERS = 10;  // how many “Recent XPOT winners” to show
+const MAX_RECENT_WINNERS = 8;  // how many “Recent XPOT winners” to show
 
 // ─────────────────────────────────────────────
 // Types
