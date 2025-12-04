@@ -258,7 +258,7 @@ export default function AdminPage() {
     countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
 
   // Bonus jackpot form
-  const [bonusAmount, setBonusAmount] = useState('500');
+  const [bonusAmount, setBonusAmount] = useState('100000');
   const [bonusLabel, setBonusLabel] = useState('Bonus XPOT');
   const [bonusSubmitting, setBonusSubmitting] = useState(false);
   const [bonusError, setBonusError] = useState<string | null>(null);
@@ -961,18 +961,16 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
       <div className="mt-1 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1">
           <input
-            type="number"
-            min={1}
-            step={1}
-            className="w-28 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-            value={bonusAmount}
-            onChange={(e) => setBonusAmount(e.target.value)}
-          />
+  type="number"
+  min={100000}
+  step={1000}
+  ...
+/>
           <span className="text-xs text-slate-400">XPOT</span>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {[50, 100, 250, 500, 1000].map((v) => (
+          {[100_000, 250_000, 500_000, 1_000_000].map((v) => (
             <button
               key={v}
               type="button"
@@ -991,7 +989,7 @@ const seconds = String(totalSeconds % 60).padStart(2, '0');
     </div>
 
     {/* Label + button on same row */}
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
       <div className="flex-1">
         <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
           Label
