@@ -448,3 +448,24 @@ body {
 .xpot-link:hover::after {
   opacity: 1;
 }
+
+:root {
+  --bg: #070A12;
+  --panel: #0B1220;
+  --border: #1E293B;
+  --text: #E5E7EB;
+  --primary: #34D399;
+}
+
+.light {
+  --bg: #F9FAFB;
+  --panel: #FFFFFF;
+  --border: #E5E7EB;
+  --text: #020617;
+  --primary: #10B981;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
