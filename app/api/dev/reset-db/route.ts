@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
       data: {
         // adjust fields to your Draw model
         drawDate: new Date(`${todayStr}T00:00:00.000Z`),
-        status: 'OPEN',          // or 'open' if your enum is lowercase
         jackpotXp: 1_000_000,    // rename if you use another field
         rolloverXp: 0,
       },
