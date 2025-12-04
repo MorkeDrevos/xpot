@@ -830,24 +830,12 @@ useEffect(() => {
                     </span>
                   )}
 
-                  {/* No draw scheduled + action button */}
-                  {!todayLoading && !todayDraw && (
-                    <span className="flex flex-col items-start gap-2 text-xs font-normal text-slate-300">
-                      <span className="text-sm font-semibold text-slate-100">
-                        Not scheduled
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCreateTodayDraw}
-                        disabled={creatingDraw}
-                        className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {creatingDraw
-                          ? 'Creating today round...'
-                          : 'Start todays round'}
-                      </button>
-                    </span>
-                  )}
+                  {/* No draw scheduled – should be auto-created by backend */}
+{!todayLoading && !todayDraw && (
+  <span className="text-xs font-normal text-amber-300">
+    No XPOT round detected for today – backend should create this automatically.
+  </span>
+)}
                 </p>
               </div>
 
