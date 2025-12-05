@@ -642,12 +642,28 @@ useEffect(() => {
     );
   }
 
-  // Clamp visibleWinnerCount if winners shrink / first load
-  useEffect(() => {
-    setVisibleWinnerCount((prev) =>
-      Math.min(prev, winners.length || MAX_RECENT_WINNERS),
-    );
-  }, [winners.length]);
+  // Clamp visibleWinnerCount when winners list changes
+useEffect(() => {
+  setVisibleWinnerCount((prev) => {
+    // No winners
+    if (winners.length === 0) return 0;
+
+    // If total winners is within the first page size (<= 9),
+    // always show all of them – no "Load more" yet.
+    if (winners.length <= MAX_RECENT_WINNERS) {
+      return winners.length;
+    }
+
+    // Once we have more than 9 winners:
+    // - if we already had a visible count, keep it but don't exceed total
+    // - if it's the first time crossing the threshold, show the first 9
+    if (prev && prev > 0) {
+      return Math.min(prev, winners.length);
+    }
+
+    return MAX_RECENT_WINNERS;
+  });
+}, [winners.length]);
 
   function handleLoadMoreWinners() {
     setVisibleWinnerCount((prev) =>
