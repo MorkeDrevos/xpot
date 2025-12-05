@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
     todaySummary = {
       id: todayDraw.id,
       date: todayDraw.drawDate,
-      status: todayDraw.status,
+      status: todayDraw.resolvedAt
+  ? 'completed'
+  : todayDraw.isClosed
+    ? 'closed'
+    : 'open',
       jackpotUsd: todayDraw.jackpotUsd,
       rolloverUsd: todayDraw.rolloverUsd,
       ticketsCount,
