@@ -1,26 +1,30 @@
-import NextAuth from "next-auth";
-import TwitterProvider from "next-auth/providers/twitter";
-import { prisma } from "@/lib/prisma";
+// app/api/auth/[...nextauth]/route.ts
+import NextAuth from 'next-auth';
+import TwitterProvider from 'next-auth/providers/twitter';
 
-export const authOptions = {
+import { prisma } from '@/lib/prisma';
+
+const handler = NextAuth({
+  // Keep simple JWT sessions – no NextAuth DB needed
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
   },
 
   providers: [
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
-      version: "2.0",
+      version: '2.0',
     }),
   ],
 
   callbacks: {
-    // 1) Upsert User in Prisma on X login
-    async signIn({ user, account, profile }: any) {
-      if (account?.provider === "twitter" && profile) {
+    // 1) On sign-in, upsert into our Prisma User table
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'twitter' && profile) {
         try {
           const p = profile as any;
+
           const xId = account.providerAccountId ?? null;
 
           let handle =
@@ -31,7 +35,7 @@ export const authOptions = {
             null;
 
           if (!handle && user?.email) {
-            handle = user.email.split("@")[0];
+            handle = user.email.split('@')[0];
           }
 
           if (!handle && xId) {
@@ -44,78 +48,85 @@ export const authOptions = {
             p?.avatar_url ??
             null;
 
+          const name =
+            p?.data?.name ??
+            p?.name ??
+            user?.name ??
+            null;
+
+          console.log('X LOGIN PROFILE', JSON.stringify(p, null, 2));
+          console.log('FINAL HANDLE', handle);
+          console.log('PROVIDER ACCOUNT ID (xId)', xId);
+
           if (handle) {
-            await prisma.user.upsert({
+            const dbUser = await prisma.user.upsert({
+              // We keep using xHandle as the unique key so we don’t clash
+              // with existing rows that were created before xId existed.
               where: { xHandle: handle },
               update: {
                 xId: xId ?? undefined,
+                xHandle: handle,
+                xName: name ?? undefined,
                 xAvatarUrl: avatarUrl ?? undefined,
-                xName: p?.data?.name ?? p?.name ?? user?.name ?? null,
               },
               create: {
                 xId: xId ?? undefined,
                 xHandle: handle,
-                xName: p?.data?.name ?? p?.name ?? user?.name ?? null,
+                xName: name ?? undefined,
                 xAvatarUrl: avatarUrl,
               },
             });
+
+            // Attach DB user id so jwt() can see it
+            (user as any).id = dbUser.id;
           }
         } catch (err) {
-          console.error("XPOT upsert user failed:", err);
+          console.error('XPOT upsert user failed:', err);
+          // don’t block login if DB write explodes
         }
       }
 
       return true;
     },
 
-    // 2) Attach DB userId to JWT
-    async jwt({ token, account, profile }: any) {
-      if (account?.provider === "twitter") {
-        const p = profile as any | undefined;
+    // 2) Put userId + handle + avatar into the JWT
+    async jwt({ token, user, account, profile }) {
+      // carry over DB user id from signIn
+      if (user && (user as any).id) {
+        (token as any).userId = (user as any).id;
+      }
+
+      if (account?.provider === 'twitter' && profile) {
+        const p = profile as any;
 
         const handle =
           p?.data?.username ??
           p?.username ??
           p?.screen_name ??
-          token.xHandle;
+          (token as any).xHandle;
 
         const avatarUrl =
           p?.data?.profile_image_url ??
           p?.profile_image_url ??
-          token.xAvatarUrl;
+          (token as any).xAvatarUrl;
 
-        token.xHandle = handle;
-        token.xAvatarUrl = avatarUrl;
-
-        if (handle) {
-          try {
-            const dbUser = await prisma.user.findUnique({
-              where: { xHandle: handle },
-              select: { id: true },
-            });
-
-            if (dbUser) token.userId = dbUser.id;
-          } catch (err) {
-            console.error("JWT DB lookup failed:", err);
-          }
-        }
+        (token as any).xHandle = handle;
+        (token as any).xAvatarUrl = avatarUrl;
       }
 
       return token;
     },
 
-    // 3) Expose on session.user
-    async session({ session, token }: any) {
+    // 3) Expose userId + handle + avatar on session
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.userId;
-        session.user.xHandle = token.xHandle;
-        session.user.xAvatarUrl = token.xAvatarUrl;
+        (session as any).userId = (token as any).userId;
+        (session.user as any).xHandle = (token as any).xHandle;
+        (session.user as any).xAvatarUrl = (token as any).xAvatarUrl;
       }
       return session;
     },
   },
-};
-
-const handler = NextAuth(authOptions);
+});
 
 export { handler as GET, handler as POST };
