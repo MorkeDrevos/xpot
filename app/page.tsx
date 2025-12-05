@@ -32,7 +32,7 @@ export default function Home() {
         {/* Top label */}
         <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-xs font-medium text-emerald-300">
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          Daily on-chain jackpot • Solana
+          XPOT • The X-Powered Reward Protocol • Solana
         </div>
 
         {/* Hero copy */}
@@ -46,14 +46,10 @@ export default function Home() {
             </Link>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            <span className="text-slate-300">💎 XPOT</span>{' '}
-            <span className="text-slate-50">
-              - The X-powered crypto jackpot.
-            </span>
-          </h1>
+  XPOT · The X-Powered Reward Protocol
+</h1>
           <p className="max-w-2xl text-sm text-slate-300 md:text-base">
-            Hold <span className="font-semibold text-emerald-300">$XPOT</span>, sign in
-            with X, and watch the daily draw. One winner. One jackpot.
+            One protocol. One identity. One daily <span className="font-semibold text-emerald-300">$XPOT</span> draw. One main XPOT daily. Occasional bonus drops.
           </p>
         </header>
 
