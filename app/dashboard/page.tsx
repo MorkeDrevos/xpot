@@ -9,7 +9,10 @@ import { useEffect, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
+
+import clsx from 'clsx';
 import { useSession } from 'next-auth/react';
+import XLoginOverlay from '@/components/XLoginOverlay';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 import XpotAccessGate from '@/components/XpotAccessGate';
@@ -105,9 +108,9 @@ const initialEntries: Entry[] = [];
 // ─────────────────────────────────────────────
 
 export default function DashboardPage() {
-  // useSession may return undefined during prerender, so be defensive
-  const sessionResult = useSession();
-  const session = sessionResult?.data ?? null;
+  // X login session
+  const { data: session, status } = useSession();
+  const showLogin = status !== 'loading' && !session?.user;
 
   const username =
     session?.user?.name ||
@@ -135,6 +138,9 @@ export default function DashboardPage() {
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const { data: session, status } = useSession();
+  const showLogin = status !== 'loading' && !session?.user;
 
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
@@ -400,17 +406,28 @@ export default function DashboardPage() {
     }
   }
 
-  const myTickets: Entry[] = currentWalletAddress
-    ? entries.filter((e) => e.walletAddress === currentWalletAddress)
-    : [];
+  // Normalize wallet + compute my tickets
+const normalizedWallet = currentWalletAddress?.toLowerCase() ?? null;
 
-  // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
+const myTickets: Entry[] = normalizedWallet
+  ? entries.filter((e) => e.walletAddress?.toLowerCase() === normalizedWallet)
+  : [];
 
-  return (
-    <XpotAccessGate>
-      <main className="min-h-screen bg-black text-slate-50 relative">
+// ─────────────────────────────────────────────
+// Render
+// ─────────────────────────────────────────────
+
+return (
+  <XpotAccessGate>
+    <div className="relative min-h-screen bg-black text-slate-50">
+      {/* Blurred dashboard behind login */}
+      <main
+        className={clsx(
+          'min-h-screen',
+          'transition-all duration-300',
+          showLogin && 'pointer-events-none blur-sm brightness-50'
+        )}
+      >
         <WalletDebug />
 
         {/* Mobile top bar */}
