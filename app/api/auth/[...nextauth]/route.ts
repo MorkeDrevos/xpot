@@ -25,23 +25,22 @@ const handler = NextAuth({
         try {
           const p = profile as any;
 
+          const xId = account.providerAccountId ?? null;
+
           let handle =
-  p?.data?.username ??
-  p?.username ??
-  p?.screen_name ??
-  user?.name ??
-  null;
+            p?.data?.username ??
+            p?.username ??
+            p?.screen_name ??
+            user?.name ??
+            null;
 
-if (!handle && user?.email) {
-  handle = user.email.split('@')[0];
-}
+          if (!handle && user?.email) {
+            handle = user.email.split('@')[0];
+          }
 
-if (!handle && account?.providerAccountId) {
-  handle = `x_${account.providerAccountId}`;
-}
-
-console.log("X LOGIN PROFILE", JSON.stringify(p, null, 2));
-console.log("FINAL HANDLE", handle);
+          if (!handle && xId) {
+            handle = `x_${xId}`;
+          }
 
           const avatarUrl =
             p?.data?.profile_image_url ??
@@ -49,17 +48,37 @@ console.log("FINAL HANDLE", handle);
             p?.avatar_url ??
             null;
 
+          const name =
+            p?.data?.name ??
+            p?.name ??
+            user?.name ??
+            null;
+
+          console.log('X LOGIN PROFILE', JSON.stringify(p, null, 2));
+          console.log('FINAL HANDLE', handle);
+          console.log('PROVIDER ACCOUNT ID (xId)', xId);
+
           if (handle) {
-            await prisma.user.upsert({
+            const dbUser = await prisma.user.upsert({
+              // We keep using xHandle as the unique key so we don’t clash
+              // with existing rows that were created before xId existed.
               where: { xHandle: handle },
               update: {
+                xId: xId ?? undefined,
+                xHandle: handle,
+                xName: name ?? undefined,
                 xAvatarUrl: avatarUrl ?? undefined,
               },
               create: {
+                xId: xId ?? undefined,
                 xHandle: handle,
+                xName: name ?? undefined,
                 xAvatarUrl: avatarUrl,
               },
             });
+
+            // Attach DB user id so jwt() can see it
+            (user as any).id = dbUser.id;
           }
         } catch (err) {
           console.error('XPOT upsert user failed:', err);
@@ -70,8 +89,13 @@ console.log("FINAL HANDLE", handle);
       return true;
     },
 
-    // 2) Put handle + avatar into the JWT
-    async jwt({ token, account, profile }) {
+    // 2) Put userId + handle + avatar into the JWT
+    async jwt({ token, user, account, profile }) {
+      // carry over DB user id from signIn
+      if (user && (user as any).id) {
+        (token as any).userId = (user as any).id;
+      }
+
       if (account?.provider === 'twitter' && profile) {
         const p = profile as any;
 
@@ -93,9 +117,10 @@ console.log("FINAL HANDLE", handle);
       return token;
     },
 
-    // 3) Expose handle + avatar on session.user
+    // 3) Expose userId + handle + avatar on session
     async session({ session, token }) {
       if (session.user) {
+        (session as any).userId = (token as any).userId;
         (session.user as any).xHandle = (token as any).xHandle;
         (session.user as any).xAvatarUrl = (token as any).xAvatarUrl;
       }
