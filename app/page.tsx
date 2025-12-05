@@ -75,6 +75,55 @@ export default function Home() {
           </p>
         </header>
 
+        // app/dashboard/page.tsx
+'use client';
+
+export const dynamic = 'force-dynamic';
+
+import Link from 'next/link';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { WalletReadyState } from '@solana/wallet-adapter-base';
+import { useSession } from 'next-auth/react';
+
+import { REQUIRED_XPOT } from '../../lib/xpot';
+import XpotAccessGate from '@/components/XpotAccessGate';   // 👈 NEW
+
+// … all your helpers / types / components stay exactly the same …
+
+// ─────────────────────────────────────────────
+// Inner dashboard
+// ─────────────────────────────────────────────
+
+export default function DashboardPage() {
+  // useSession may return undefined during prerender, so be defensive
+  const sessionResult = useSession();
+  const session = sessionResult?.data ?? null;
+
+  const username =
+    session?.user?.name ||
+    session?.user?.email?.split('@')[0] ||
+    'XPOT user';
+
+  // … all your existing hooks / state / effects …
+
+  // ─────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────
+
+  return (
+    <XpotAccessGate>   {/* 👈 Gate the whole dashboard behind X login */}
+      <main className="min-h-screen bg-black text-slate-50 relative">
+        {/* everything that was previously inside <main> stays the same */}
+        {/* WalletDebug, headers, layout, etc… */}
+        {/* ... your existing JSX unchanged ... */}
+      </main>
+    </XpotAccessGate>
+  );
+}
+
         {/* Main area */}
         <section className="grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           {/* Jackpot card */}
