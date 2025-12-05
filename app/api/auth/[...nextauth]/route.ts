@@ -1,14 +1,11 @@
 // app/api/auth/[...nextauth]/route.ts
 import NextAuth from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
-import { PrismaAdapter } from '@next-auth/prisma-adapter';
+
 import { prisma } from '@/lib/prisma';
 
 const handler = NextAuth({
-  // Use Prisma so X logins are stored in the DB
-  adapter: PrismaAdapter(prisma),
-
-  // Keep JWT sessions (DB is for users/accounts, not sessions)
+  // Keep simple JWT sessions – no NextAuth DB needed
   session: {
     strategy: 'jwt',
   },
@@ -22,52 +19,75 @@ const handler = NextAuth({
   ],
 
   callbacks: {
-    // Runs whenever a JWT is created/updated
+    // 1) On sign-in, upsert into our Prisma User table
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'twitter' && profile) {
+        try {
+          const p = profile as any;
+
+          const handle =
+            p?.data?.username ??
+            p?.username ??
+            p?.screen_name ??
+            user?.name ??
+            null;
+
+          const avatarUrl =
+            p?.data?.profile_image_url ??
+            p?.profile_image_url ??
+            p?.avatar_url ??
+            null;
+
+          if (handle) {
+            await prisma.user.upsert({
+              where: { xHandle: handle },
+              update: {
+                xAvatarUrl: avatarUrl ?? undefined,
+              },
+              create: {
+                xHandle: handle,
+                xAvatarUrl: avatarUrl,
+              },
+            });
+          }
+        } catch (err) {
+          console.error('XPOT upsert user failed:', err);
+          // don’t block login if DB write explodes
+        }
+      }
+
+      return true;
+    },
+
+    // 2) Put handle + avatar into the JWT
     async jwt({ token, account, profile }) {
-      // On first login / account link we get account+profile
-      if (account && profile) {
-        // Basic identity info from X
+      if (account?.provider === 'twitter' && profile) {
         const p = profile as any;
 
-        token.name = p.name ?? token.name;
-        token.picture =
-          p.profile_image_url_https ??
-          p.profile_image_url ??
-          token.picture;
+        const handle =
+          p?.data?.username ??
+          p?.username ??
+          p?.screen_name ??
+          (token as any).xHandle;
 
-        // X handle (e.g. @MorkeDrevos)
-        token.username =
-          p.screen_name ??
-          p.username ??
-          (token as any).username;
+        const avatarUrl =
+          p?.data?.profile_image_url ??
+          p?.profile_image_url ??
+          (token as any).xAvatarUrl;
+
+        (token as any).xHandle = handle;
+        (token as any).xAvatarUrl = avatarUrl;
       }
 
       return token;
     },
 
-    // What your React app receives as `session`
+    // 3) Expose handle + avatar on session.user
     async session({ session, token }) {
       if (session.user) {
-        const u = session.user as any;
-
-        // NextAuth user id (from Prisma)
-        if (token.sub) {
-          u.id = token.sub;
-        }
-
-        // X handle
-        if ((token as any).username) {
-          u.username = (token as any).username;
-        }
-
-        if (token.name) {
-          u.name = token.name;
-        }
-        if (token.picture) {
-          u.image = token.picture as string;
-        }
+        (session.user as any).xHandle = (token as any).xHandle;
+        (session.user as any).xAvatarUrl = (token as any).xAvatarUrl;
       }
-
       return session;
     },
   },
