@@ -1,15 +1,14 @@
-// app/api/auth/[...nextauth]/route.ts
 import NextAuth from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
+import type { NextAuthOptions } from 'next-auth';
 
 import { prisma } from '@/lib/prisma';
 
-const handler = NextAuth({
-  // Keep simple JWT sessions – no NextAuth DB needed
+// ✅ Export this so other routes can use it
+export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
   },
-
   providers: [
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
@@ -17,14 +16,12 @@ const handler = NextAuth({
       version: '2.0',
     }),
   ],
-
   callbacks: {
-    // 1) On sign-in, upsert into our Prisma User table
+
     async signIn({ user, account, profile }) {
       if (account?.provider === 'twitter' && profile) {
         try {
           const p = profile as any;
-
           const xId = account.providerAccountId ?? null;
 
           let handle =
@@ -34,90 +31,65 @@ const handler = NextAuth({
             user?.name ??
             null;
 
-          if (!handle && user?.email) {
-            handle = user.email.split('@')[0];
-          }
+          if (!handle && user?.email) handle = user.email.split('@')[0];
+          if (!handle && xId) handle = `x_${xId}`;
 
-          if (!handle && xId) {
-            handle = `x_${xId}`;
-          }
-
-          const avatarUrl =
+          const avatar =
             p?.data?.profile_image_url ??
             p?.profile_image_url ??
-            p?.avatar_url ??
             null;
 
           const name =
             p?.data?.name ??
-            p?.name ??
             user?.name ??
             null;
 
-          console.log('X LOGIN PROFILE', JSON.stringify(p, null, 2));
-          console.log('FINAL HANDLE', handle);
-          console.log('PROVIDER ACCOUNT ID (xId)', xId);
+          const dbUser = await prisma.user.upsert({
+            where: { xHandle: handle },
+            update: {
+              xId: xId ?? undefined,
+              xName: name ?? undefined,
+              xAvatarUrl: avatar ?? undefined,
+            },
+            create: {
+              xId: xId ?? undefined,
+              xHandle: handle,
+              xName: name ?? undefined,
+              xAvatarUrl: avatar,
+            },
+          });
 
-          if (handle) {
-            const dbUser = await prisma.user.upsert({
-              // We keep using xHandle as the unique key so we don’t clash
-              // with existing rows that were created before xId existed.
-              where: { xHandle: handle },
-              update: {
-                xId: xId ?? undefined,
-                xHandle: handle,
-                xName: name ?? undefined,
-                xAvatarUrl: avatarUrl ?? undefined,
-              },
-              create: {
-                xId: xId ?? undefined,
-                xHandle: handle,
-                xName: name ?? undefined,
-                xAvatarUrl: avatarUrl,
-              },
-            });
+          (user as any).id = dbUser.id;
 
-            // Attach DB user id so jwt() can see it
-            (user as any).id = dbUser.id;
-          }
         } catch (err) {
-          console.error('XPOT upsert user failed:', err);
-          // don’t block login if DB write explodes
+          console.error('X login DB error', err);
         }
       }
-
       return true;
     },
 
-    // 2) Put userId + handle + avatar into the JWT
     async jwt({ token, user, account, profile }) {
-      // carry over DB user id from signIn
       if (user && (user as any).id) {
         (token as any).userId = (user as any).id;
       }
 
-      if (account?.provider === 'twitter' && profile) {
+      if (profile) {
         const p = profile as any;
-
-        const handle =
+        (token as any).xHandle =
           p?.data?.username ??
           p?.username ??
           p?.screen_name ??
           (token as any).xHandle;
 
-        const avatarUrl =
+        (token as any).xAvatarUrl =
           p?.data?.profile_image_url ??
           p?.profile_image_url ??
           (token as any).xAvatarUrl;
-
-        (token as any).xHandle = handle;
-        (token as any).xAvatarUrl = avatarUrl;
       }
 
       return token;
     },
 
-    // 3) Expose userId + handle + avatar on session
     async session({ session, token }) {
       if (session.user) {
         (session as any).userId = (token as any).userId;
@@ -127,6 +99,8 @@ const handler = NextAuth({
       return session;
     },
   },
-});
+};
 
+// ✅ NextAuth handler
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
