@@ -9,11 +9,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const amountUsdRaw = body?.amountUsd; // still named amountUsd in the request body
+
+    // Treat input as XPOT amount (not USD)
+    const payoutXpotRaw = body?.amountUsd; // UI still sends "amountUsd" for now
     const labelRaw = body?.label ?? '';
 
-    // Treat this as an XPOT amount (token amount), even if the param name says "amountUsd"
-    const payoutXpot = Math.round(Number(amountUsdRaw || 0));
+    const payoutXpot = Math.round(Number(payoutXpotRaw || 0));
     const label = String(labelRaw).trim() || 'Bonus jackpot';
 
     if (!Number.isFinite(payoutXpot) || payoutXpot <= 0) {
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Today as YYYY-MM-DD string (same logic as /admin/today)
+    // Today as YYYY-MM-DD string
     const todayStr = new Date().toISOString().slice(0, 10);
 
     const draw = await prisma.draw.findFirst({
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
         tickets: {
           include: {
             wallet: true,
-            user: true, // X identity if present
+            user: true,
           },
         },
       },
@@ -57,17 +58,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Pick a random ticket from today’s pool
+    // Pick a random ticket
     const winnerTicket =
       draw.tickets[Math.floor(Math.random() * draw.tickets.length)];
 
+    // ✅ Store XPOT amount (mapped to DB column "amountUsd")
     const reward = await prisma.reward.create({
       data: {
         drawId: draw.id,
         ticketId: winnerTicket.id,
         label,
-        // XPOT amount, stored in Reward.payoutXpot (DB column "amountUsd")
         payoutXpot,
+        isPaidOut: false,
       },
       include: {
         ticket: {
@@ -84,14 +86,12 @@ export async function POST(req: NextRequest) {
       reward: {
         id: reward.id,
         label: reward.label,
-        // still called amountUsd in the response so existing admin UI keeps working,
-        // but value is actually XPOT amount
-        amountUsd: reward.payoutXpot,
+        payoutXpot: reward.payoutXpot,
         ticketCode: reward.ticket.code,
         walletAddress: reward.ticket.wallet.address,
-        createdAt: reward.createdAt.toISOString(),
         xHandle: reward.ticket.user?.xHandle ?? null,
         xAvatarUrl: reward.ticket.user?.xAvatarUrl ?? null,
+        createdAt: reward.createdAt.toISOString(),
       },
     });
   } catch (err) {
