@@ -9,13 +9,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const amountUsdRaw = body?.amountUsd;
+    const amountUsdRaw = body?.amountUsd; // still named amountUsd in the request body
     const labelRaw = body?.label ?? '';
 
-    const amountUsd = Math.round(Number(amountUsdRaw || 0));
+    // Treat this as an XPOT amount (token amount), even if the param name says "amountUsd"
+    const payoutXpot = Math.round(Number(amountUsdRaw || 0));
     const label = String(labelRaw).trim() || 'Bonus jackpot';
 
-    if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
+    if (!Number.isFinite(payoutXpot) || payoutXpot <= 0) {
       return NextResponse.json(
         { ok: false, error: 'INVALID_AMOUNT' },
         { status: 400 },
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
         tickets: {
           include: {
             wallet: true,
+            user: true, // X identity if present
           },
         },
       },
@@ -64,12 +66,14 @@ export async function POST(req: NextRequest) {
         drawId: draw.id,
         ticketId: winnerTicket.id,
         label,
-        amountUsd,
+        // XPOT amount, stored in Reward.payoutXpot (DB column "amountUsd")
+        payoutXpot,
       },
       include: {
         ticket: {
           include: {
             wallet: true,
+            user: true,
           },
         },
       },
@@ -80,10 +84,14 @@ export async function POST(req: NextRequest) {
       reward: {
         id: reward.id,
         label: reward.label,
-        amountUsd: reward.amountUsd,
+        // still called amountUsd in the response so existing admin UI keeps working,
+        // but value is actually XPOT amount
+        amountUsd: reward.payoutXpot,
         ticketCode: reward.ticket.code,
         walletAddress: reward.ticket.wallet.address,
         createdAt: reward.createdAt.toISOString(),
+        xHandle: reward.ticket.user?.xHandle ?? null,
+        xAvatarUrl: reward.ticket.user?.xAvatarUrl ?? null,
       },
     });
   } catch (err) {
