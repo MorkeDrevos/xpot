@@ -108,8 +108,8 @@ model Ticket {
   // Any bonus jackpots this ticket has won
   rewards   Reward[]
 
-  // 🔐 HARD LOCK: one ticket per X user per draw
-  @@unique([drawId, userId], name: "OneTicketPerUserPerDraw")
+  // 🔐 HARD LOCK: one ticket per wallet per draw
+  @@unique([drawId, walletId], name: "OneTicketPerWalletPerDraw")
 }
 
 // Bonus / hype jackpots attached to a daily draw
