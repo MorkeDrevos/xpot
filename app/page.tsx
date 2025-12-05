@@ -17,6 +17,7 @@ function formatTime(ms: number) {
 export default function Home() {
   const [timeLeft, setTimeLeft] = useState(0);
 
+  // simple 24h countdown from first render (placeholder)
   useEffect(() => {
     const end = Date.now() + 24 * 60 * 60 * 1000;
     const timer = setInterval(() => {
@@ -27,7 +28,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4">
-<div className="w-full max-w-4xl space-y-8 rounded-3xl border border-slate-800 bg-slate-950/60 px-6 py-8 shadow-[0_0_80px_rgba(15,23,42,0.9)] backdrop-blur-xl md:px-10 md:py-10">
+      <div className="w-full max-w-4xl space-y-8 rounded-3xl border border-slate-800 bg-slate-950/60 px-6 py-8 shadow-[0_0_80px_rgba(15,23,42,0.9)] backdrop-blur-xl md:px-10 md:py-10">
         {/* Top label */}
         <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-xs font-medium text-emerald-300">
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -45,10 +46,12 @@ export default function Home() {
             </Link>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-  XPOT · The X-Powered Reward Protocol
-</h1>
+            XPOT · The X-Powered Reward Protocol
+          </h1>
           <p className="max-w-2xl text-sm text-slate-300 md:text-base">
-            One protocol. One identity. One daily <span className="font-semibold text-emerald-300">$XPOT</span> draw. One main XPOT daily. Occasional bonus drops.
+            One protocol. One identity. One daily{' '}
+            <span className="font-semibold text-emerald-300">$XPOT</span> draw. One main
+            XPOT daily. Occasional bonus drops.
           </p>
         </header>
 
@@ -84,15 +87,11 @@ export default function Home() {
                 {formatTime(timeLeft)}
               </p>
               <p className="text-xs text-slate-400">
-                Live, provably fair draws. The winner X account is picked from
-                verified XPOT holders and paid directly on Solana.
+                Live, provably fair draws. The winner X account is picked from verified
+                XPOT holders and paid directly on Solana.
               </p>
             </div>
           </div>
-
- {/* Right: X login */}
-  <XpotAccessGate className="h-full" />
-</section>
 
           {/* Right column – X login gate */}
           <XpotAccessGate className="h-full" />
