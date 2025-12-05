@@ -54,7 +54,7 @@ export default function XpotAccessGate({
             </p>
             <p className="text-xs text-slate-400">
               XPOT links each wallet to a verified X account so every draw is
-              tied to a real handle.
+              tied to a real identity.
             </p>
           </div>
         </header>
@@ -64,9 +64,9 @@ export default function XpotAccessGate({
             Why X login?
           </p>
           <ul className="space-y-1">
-            <li>• One XPOT identity per X handle.</li>
-            <li>• Entries and winners are shown by handle, not only wallet.</li>
-            <li>• Lets sponsors verify you without ever touching your funds.</li>
+            <li>• One XPOT identity per X account.</li>
+            <li>• Winners revealed by handle, never wallet.</li>
+            <li>• Your wallet always remains self-custodied.</li>
           </ul>
         </div>
 
