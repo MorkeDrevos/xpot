@@ -44,13 +44,10 @@ export async function POST(req: NextRequest) {
 
     // 👤 One fake user with X handle + wallet
     const user = await prisma.user.create({
-      data: {
-        xId: '1234567890',
-        xHandle: 'fake_xpot_whale',
-        xName: 'XPOT Test Whale',
-        xAvatarUrl: 'https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png',
-      },
-    });
+  data: {
+    // no xId / xHandle / xName / xAvatarUrl here for now
+  },
+});
 
     const wallet = await prisma.wallet.create({
       data: {
