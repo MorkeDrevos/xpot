@@ -109,7 +109,7 @@ model Ticket {
   // Any bonus jackpots this ticket has won
   rewards   Reward[]
 
-  // 🔐 HARD LOCK: one ticket per wallet per draw (only applies once walletId is set)
+  // 🔐 HARD LOCK: one ticket per wallet per draw
   @@unique([drawId, walletId], name: "OneTicketPerWalletPerDraw")
 }
 
