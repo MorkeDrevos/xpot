@@ -1,87 +1,137 @@
 // app/api/tickets/today/route.ts
-import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-const JACKPOT_USD = 10_000;
+export async function POST(req: NextRequest) {
+  // 1) Require X login
+  const session = await getServerSession(authOptions);
 
-type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
+  const user = session?.user as any;
 
-type Entry = {
-  id: string;
-  code: string;
-  status: EntryStatus;
-  label: string;
-  jackpotUsd: string;
-  createdAt: string;
-  walletAddress: string;
-};
+  if (!user?.id) {
+    return NextResponse.json(
+      { ok: false, error: 'NOT_LOGGED_IN' },
+      { status: 401 }
+    );
+  }
 
-// Map Prisma Ticket + Draw to dashboard Entry
-function toEntry(ticket: any, draw: any): Entry {
-  const createdAt =
-    ticket.createdAt instanceof Date
-      ? ticket.createdAt.toISOString()
-      : new Date(ticket.createdAt).toISOString();
+  const userId = user.id as string;
 
-  return {
-    id: ticket.id,
-    code: ticket.code,
-    // for now: everything that exists today is “in-draw”
-    status: 'in-draw',
-    label: "Today's main jackpot • $10,000",
-    jackpotUsd: `$${JACKPOT_USD.toLocaleString()}`,
-    createdAt,
-    walletAddress: ticket.wallet?.address ?? 'unknown',
-  };
-}
-
-// GET /api/tickets/today
-export async function GET() {
+  // 2) Read wallet address from body
+  let body: { walletAddress?: string } = {};
   try {
-    // today’s date window
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    body = await req.json();
+  } catch {
+    // body stays {}
+  }
 
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
+  const walletAddress = body.walletAddress?.trim();
+
+  if (!walletAddress) {
+    return NextResponse.json(
+      { ok: false, error: 'NO_WALLET_ADDRESS' },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // 3) Find today’s draw
+    const todayStr = new Date().toISOString().slice(0, 10);
 
     const draw = await prisma.draw.findFirst({
       where: {
         drawDate: {
-          gte: start,
-          lte: end,
+          gte: new Date(`${todayStr}T00:00:00.000Z`),
+          lt:  new Date(`${todayStr}T23:59:59.999Z`),
         },
       },
     });
 
     if (!draw) {
-      // no draw yet today
-      return NextResponse.json({ tickets: [] }, { status: 200 });
+      return NextResponse.json(
+        { ok: false, error: 'NO_DRAW_TODAY' },
+        { status: 400 }
+      );
     }
 
-    const ticketsDb = await prisma.ticket.findMany({
-      where: { drawId: draw.id },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        wallet: true,
+    // 4) Find or create wallet for this user
+    let wallet = await prisma.wallet.findUnique({
+      where: { address: walletAddress },
+    });
+
+    // If wallet exists but belongs to another user, block it
+    if (wallet && wallet.userId !== userId) {
+      return NextResponse.json(
+        { ok: false, error: 'WALLET_OWNED_BY_OTHER_USER' },
+        { status: 403 }
+      );
+    }
+
+    if (!wallet) {
+      wallet = await prisma.wallet.create({
+        data: {
+          address: walletAddress,
+          userId,
+        },
+      });
+    }
+
+    // 5) Enforce ONE ticket per WALLET per draw
+    const existing = await prisma.ticket.findFirst({
+      where: {
+        drawId: draw.id,
+        walletId: wallet.id,
       },
     });
 
-    const entries: Entry[] = ticketsDb.map(t => toEntry(t, draw));
+    if (existing) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'ALREADY_HAS_TICKET',
+          ticket: {
+            id: existing.id,
+            code: existing.code,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    // 6) Create new ticket
+    const ticket = await prisma.ticket.create({
+      data: {
+        drawId: draw.id,
+        userId,
+        walletId: wallet.id,
+        code: generateTicketCode(),
+      },
+    });
 
     return NextResponse.json(
       {
-        tickets: entries,
+        ok: true,
+        ticket: {
+          id: ticket.id,
+          code: ticket.code,
+        },
       },
-      { status: 200 }
+      { status: 201 }
     );
   } catch (err) {
-    console.error('Error in /api/tickets/today', err);
+    console.error('Create today ticket error', err);
     return NextResponse.json(
-      { tickets: [], error: 'Internal error' },
+      { ok: false, error: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
+}
+
+// Simple helper – or reuse your existing one
+function generateTicketCode() {
+  return 'XP-' + Math.random().toString(36).slice(2, 10).toUpperCase();
 }
