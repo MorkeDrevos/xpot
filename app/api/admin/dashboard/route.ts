@@ -1,45 +1,90 @@
 // app/api/admin/dashboard/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/app/api/admin/_auth';
 import { prisma } from '@/lib/prisma';
-import { ensureTodayDraw } from '@/lib/ensureTodayDraw';
+import { requireAdmin } from '@/app/api/admin/_auth';
 
 export const dynamic = 'force-dynamic';
 
+// Get the current "today" window in Europe/Madrid
+function getMadridDayRange(base: Date = new Date()) {
+  const madridNow = new Date(
+    base.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }),
+  );
+
+  const start = new Date(madridNow);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  return { start, end };
+}
+
+// 22:00 Madrid close time for a given day
+function getMadridCloseTime(startOfDay: Date) {
+  const close = new Date(startOfDay);
+  close.setHours(22, 0, 0, 0);
+  return close;
+}
+
 export async function GET(req: NextRequest) {
+  // Admin auth
   const auth = requireAdmin(req);
   if (auth) return auth;
 
-  // 🔑 Make sure today’s draw exists (if it’s allowed to auto-create)
-  const todayDraw = await ensureTodayDraw();
+  const { start, end } = getMadridDayRange();
 
-  let todaySummary: any = null;
+  // Find today’s draw (by drawDate in Madrid day window)
+  const todayDraw = await prisma.draw.findFirst({
+    where: {
+      drawDate: {
+        gte: start,
+        lt: end,
+      },
+    },
+    include: {
+      tickets: true,
+      rewards: true,
+    },
+  });
+
+  let todaySummary: {
+    id: string;
+    date: string;
+    status: 'open' | 'closed' | 'completed';
+    jackpotUsd: number | null;
+    rolloverUsd: number; // placeholder for future rollover logic
+    ticketsCount: number;
+    closesAt: string | null;
+  } | null = null;
 
   if (todayDraw) {
-    const ticketsCount = await prisma.ticket.count({
-      where: { drawId: todayDraw.id },
-    });
+    const status: 'open' | 'closed' | 'completed' = todayDraw.resolvedAt
+      ? 'completed'
+      : todayDraw.isClosed
+      ? 'closed'
+      : 'open';
 
-    // Derive status from fields we actually have
-    const status =
-      todayDraw.resolvedAt
-        ? 'completed'
-        : todayDraw.isClosed
-          ? 'closed'
-          : 'open';
-
-    // Compute closesAt from drawDate (end of that UTC day)
-    const todayStr = todayDraw.drawDate.toISOString().slice(0, 10); // YYYY-MM-DD
-    const closesAt = new Date(`${todayStr}T23:59:59.000Z`);
+    const madridStartOfDay = new Date(
+      todayDraw.drawDate.toLocaleString('en-US', {
+        timeZone: 'Europe/Madrid',
+      }),
+    );
+    madridStartOfDay.setHours(0, 0, 0, 0);
+    const closesAt = getMadridCloseTime(madridStartOfDay);
 
     todaySummary = {
       id: todayDraw.id,
-      date: todayDraw.drawDate,          // you can .toISOString() if you prefer string
+      date: todayDraw.drawDate.toISOString(),
       status,
-      jackpotUsd: todayDraw.jackpotUsd ?? 0,
+      jackpotUsd:
+        typeof todayDraw.jackpotUsd === 'number'
+          ? todayDraw.jackpotUsd
+          : null,
+      // We don’t have real rollover logic yet – keep 0 for now.
       rolloverUsd: 0,
-      ticketsCount,
-      closesAt: closesAt.toISOString(), // matches what admin page expects
+      ticketsCount: todayDraw.tickets.length,
+      closesAt: closesAt.toISOString(),
     };
   }
 
