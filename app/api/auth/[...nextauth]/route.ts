@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 // ENV NAMES (set these in Vercel):
 // X_CLIENT_ID, X_CLIENT_SECRET, NEXTAUTH_SECRET, NEXTAUTH_URL
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   providers: [
     TwitterProvider({
       clientId: process.env.X_CLIENT_ID!,
