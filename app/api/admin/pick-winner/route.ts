@@ -68,24 +68,23 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Here we just mirror the existing jackpot as XPOT amount for UI
-      const pseudoReward = {
-        id: `draw-${draw.id}`,
+      // Mirror existing jackpot as XPOT amount for UI
+      const winnerPayload = {
+        id: `draw-${draw.id}`, // no Reward row in this path
         drawId: draw.id,
         date: draw.drawDate.toISOString(),
         ticketCode: winnerTicket.code,
         walletAddress: winnerTicket.wallet?.address ?? '',
-        jackpotUsd: draw.jackpotUsd ?? 0,
-        payoutUsd: draw.jackpotUsd ?? 0, // treated as XPOT amount in UI
-        isPaidOut: false,
-        txUrl: null,
+        payoutXpot: draw.jackpotUsd ?? 0,
+        isPaidOut: Boolean(draw.paidAt),
+        txUrl: draw.payoutTx ?? null,
         kind: 'main' as const,
         label: "Today's XPOT",
         xHandle: winnerTicket.user?.xHandle ?? null,
         xAvatarUrl: winnerTicket.user?.xAvatarUrl ?? null,
       };
 
-      return NextResponse.json({ ok: true, winner: pseudoReward });
+      return NextResponse.json({ ok: true, winner: winnerPayload });
     }
 
     // 4) Pick a random ticket
@@ -130,9 +129,7 @@ export async function POST(req: NextRequest) {
       date: updatedDraw.drawDate.toISOString(),
       ticketCode: updatedTicket.code,
       walletAddress: winningTicket.wallet?.address ?? '',
-      jackpotUsd: updatedDraw.jackpotUsd ?? 0,
-      // still called payoutUsd in the UI type, but holds an XPOT amount
-      payoutUsd: reward.payoutXpot,
+      payoutXpot: reward.payoutXpot,
       isPaidOut: reward.isPaidOut,
       txUrl: reward.txUrl ?? null,
       kind: 'main' as const,
