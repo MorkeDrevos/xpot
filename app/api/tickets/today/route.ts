@@ -1,7 +1,7 @@
 // app/api/tickets/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+const session = await getServerSession();
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
