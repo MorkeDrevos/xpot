@@ -3,10 +3,10 @@ import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 import { prisma } from '@/lib/prisma';
 
-// ENV VARS (on Vercel):
-// X_CLIENT_ID, X_CLIENT_SECRET, NEXTAUTH_URL, NEXTAUTH_SECRET
+// ENV VARS you’ll set in Vercel:
+// X_CLIENT_ID, X_CLIENT_SECRET, NEXTAUTH_SECRET, NEXTAUTH_URL
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   providers: [
     TwitterProvider({
       clientId: process.env.X_CLIENT_ID!,
@@ -20,22 +20,20 @@ export const authOptions: NextAuthOptions = {
   },
 
   pages: {
-    // you can change this later if you want a custom sign-in page
+    // Where to send people when they click “Sign in with X”
     signIn: '/what-is-xpot',
   },
 
   callbacks: {
-    // Runs on sign-in and whenever the token is refreshed
+    // Runs on sign-in & token refresh
     async jwt({ token, account, profile }) {
-      // Only run user sync when we have fresh X data
       if (account && profile) {
-        const anyProfile: any = profile;
-        const core = anyProfile?.data ?? anyProfile;
+        const p: any = profile;
+        const core = p?.data ?? p;
 
         const xId: string | undefined = core?.id?.toString();
         const username: string | undefined = core?.username;
         const name: string | undefined = core?.name;
-
         const avatar: string | undefined =
           core?.profile_image_url ||
           core?.profile_image_url_https ||
@@ -62,26 +60,32 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          token.userId = user.id;
-          token.xId = user.xId;
-          token.xHandle = user.xHandle;
-          token.xName = user.xName;
-          token.xAvatarUrl = user.xAvatarUrl;
+          // Attach to JWT
+          (token as any).userId = user.id;
+          (token as any).xId = user.xId;
+          (token as any).xHandle = user.xHandle;
+          (token as any).xName = user.xName;
+          (token as any).xAvatarUrl = user.xAvatarUrl;
         }
       }
 
       return token;
     },
 
-    // What your React app sees in useSession()
+    // What the frontend sees in useSession()
     async session({ session, token }) {
       (session as any).userId = (token as any).userId;
 
       session.user = {
         ...(session.user ?? {}),
-        name: (token as any).xName ?? session.user?.name ?? undefined,
+        name:
+          (token as any).xName ??
+          session.user?.name ??
+          undefined,
         image:
-          (token as any).xAvatarUrl ?? session.user?.image ?? undefined,
+          (token as any).xAvatarUrl ??
+          session.user?.image ??
+          undefined,
         handle: (token as any).xHandle ?? null,
       } as any;
 
