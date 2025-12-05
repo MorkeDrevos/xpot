@@ -111,23 +111,23 @@ model Ticket {
 
 // Bonus / hype jackpots attached to a daily draw
 model Reward {
-  id         String   @id @default(cuid())
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  drawId     String
-  draw       Draw     @relation(fields: [drawId], references: [id])
+  drawId    String
+  draw      Draw     @relation(fields: [drawId], references: [id])
 
-  ticketId   String
-  ticket     Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
 
   // e.g. "Bonus jackpot", "Flash pot", "Stream giveaway"
-  label      String
+  label     String
 
   // XPOT amount for this reward (token amount, not USD)
-payoutXpot Int
+  payoutXpot Int
 
-isPaidOut Boolean  @default(false)
+  isPaidOut Boolean  @default(false)
 
-// Store transaction link for this reward payout
-txUrl     String?  @map("payoutTx")
+  // Store transaction link for this reward payout
+  txUrl     String?  @map("payoutTx")
 }
