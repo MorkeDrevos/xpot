@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
         label: reward.label,
         payoutXpot: reward.payoutXpot,
         ticketCode: reward.ticket.code,
-        walletAddress: reward.ticket.wallet.address,
+        walletAddress: reward.ticket.wallet?.address ?? null,
         xHandle: reward.ticket.user?.xHandle ?? null,
         xAvatarUrl: reward.ticket.user?.xAvatarUrl ?? null,
         createdAt: reward.createdAt.toISOString(),

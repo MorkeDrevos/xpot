@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     const { start, end } = getTodayRange();
 
-    // 1) Find today's draw that is still open / not resolved
+    // 1) Find today's open draw
     const draw = await prisma.draw.findFirst({
       where: {
         drawDate: { gte: start, lt: end },
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2) Load all in-draw tickets for this draw (small n per day, fine)
+    // 2) Load in-draw tickets
     const tickets = await prisma.ticket.findMany({
       where: {
         drawId: draw.id,
@@ -53,9 +53,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3) If draw already has a winnerTicketId, don't pick again
+    // 3) Guard if already resolved
     if (draw.winnerTicketId) {
-      // Load the winner ticket & wallet/user so UI still gets a proper object
       const winnerTicket = await prisma.ticket.findUnique({
         where: { id: draw.winnerTicketId },
         include: { wallet: true, user: true },
@@ -68,9 +67,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Mirror existing jackpot as XPOT amount for UI
       const winnerPayload = {
-        id: `draw-${draw.id}`, // no Reward row in this path
+        id: `draw-${draw.id}`,
         drawId: draw.id,
         date: draw.drawDate.toISOString(),
         ticketCode: winnerTicket.code,
@@ -87,16 +85,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, winner: winnerPayload });
     }
 
-    // 4) Pick a random ticket
-    const randomIndex = Math.floor(Math.random() * tickets.length);
-    const winningTicket = tickets[randomIndex];
-
+    // 4) Pick random ticket
+    const winningTicket = tickets[Math.floor(Math.random() * tickets.length)];
     const now = new Date();
 
-    // 5) Persist everything in a transaction:
-    //    - mark ticket as WON
-    //    - mark draw as resolved & closed with winnerTicketId
-    //    - create a Reward row for the main XPOT payout
+    // 5) Persist everything
     const [updatedTicket, updatedDraw, reward] = await prisma.$transaction([
       prisma.ticket.update({
         where: { id: winningTicket.id },
@@ -115,16 +108,15 @@ export async function POST(req: NextRequest) {
           drawId: draw.id,
           ticketId: winningTicket.id,
           label: "Today's XPOT",
-          // XPOT amount we pay out; maps to DB column "amountUsd"
           payoutXpot: draw.jackpotUsd ?? 0,
           isPaidOut: false,
         },
       }),
     ]);
 
-    // 6) Build AdminWinner payload for the frontend
+    // 6) Final API payload
     const winnerPayload = {
-      id: reward.id, // used by "mark as paid"
+      id: reward.id,
       drawId: updatedDraw.id,
       date: updatedDraw.drawDate.toISOString(),
       ticketCode: updatedTicket.code,
@@ -138,10 +130,7 @@ export async function POST(req: NextRequest) {
       xAvatarUrl: winningTicket.user?.xAvatarUrl ?? null,
     };
 
-    return NextResponse.json({
-      ok: true,
-      winner: winnerPayload,
-    });
+    return NextResponse.json({ ok: true, winner: winnerPayload });
   } catch (err: any) {
     console.error('[XPOT] pick-winner error:', err);
     return NextResponse.json(
