@@ -23,12 +23,13 @@ export async function GET(req: NextRequest) {
         winnerTicket: {
           include: {
             wallet: true,
+            user: true, // X identity
           },
         },
       },
     });
 
-    // Bonus / hype jackpots
+    // Bonus / hype jackpots (Reward is canonical source)
     const bonusRewards = await prisma.reward.findMany({
       orderBy: {
         createdAt: 'desc',
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
         ticket: {
           include: {
             wallet: true,
+            user: true, // X identity
           },
         },
         draw: true,
@@ -53,9 +55,12 @@ export async function GET(req: NextRequest) {
       ticketCode: draw.winnerTicket?.code ?? '',
       walletAddress: draw.winnerTicket?.wallet?.address ?? '',
       jackpotUsd: draw.jackpotUsd ?? 0,
+      // treated as XPOT amount in the UI
       payoutUsd: draw.jackpotUsd ?? 0,
       isPaidOut: Boolean(draw.paidAt),
       txUrl: draw.payoutTx ?? null,
+      xHandle: draw.winnerTicket?.user?.xHandle ?? null,
+      xAvatarUrl: draw.winnerTicket?.user?.xAvatarUrl ?? null,
     }));
 
     const bonusWinners = bonusRewards.map((reward) => ({
@@ -66,10 +71,13 @@ export async function GET(req: NextRequest) {
       date: reward.createdAt.toISOString(),
       ticketCode: reward.ticket.code,
       walletAddress: reward.ticket.wallet.address,
-      jackpotUsd: reward.amountUsd,
-      payoutUsd: reward.amountUsd,
+      // XPOT amount from Reward.payoutXpot (DB column "amountUsd")
+      jackpotUsd: reward.payoutXpot,
+      payoutUsd: reward.payoutXpot,
       isPaidOut: reward.isPaidOut,
-      txUrl: reward.txUrl ?? null, // ✅ use Reward.txUrl (mapped to payoutTx)
+      txUrl: reward.txUrl ?? null,
+      xHandle: reward.ticket.user?.xHandle ?? null,
+      xAvatarUrl: reward.ticket.user?.xAvatarUrl ?? null,
     }));
 
     // Merge & sort newest first
