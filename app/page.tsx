@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import XpotAccessGate from '@/components/XpotAccessGate';   // 👈 NEW
+import XpotAccessGate from '@/components/XpotAccessGate';
 
 function formatTime(ms: number) {
   if (ms <= 0) return '00:00:00';
@@ -89,8 +89,8 @@ export default function Home() {
                 {formatTime(timeLeft)}
               </p>
               <p className="text-xs text-slate-400">
-                Live, provably fair draws. The winner X account is picked from verified
-                XPOT holders and paid directly on Solana.
+                Live, provably fair draws. The winner X account is picked from
+                verified XPOT holders and paid directly on Solana.
               </p>
             </div>
           </div>
