@@ -11,6 +11,7 @@ import {
   WalletProvider,
 } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { SessionProvider } from 'next-auth/react';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -77,17 +78,19 @@ export default function RootLayout({
       </head>
 
       <body className="min-h-screen transition-colors duration-300">
-        <ConnectionProvider endpoint={endpoint}>
-          <WalletProvider wallets={wallets} autoConnect>
-            <WalletModalProvider>
-              {/* Auto-refresh on new deploy */}
-              <DeployWatcher />
-              {/* Dark / light toggle */}
-              <ThemeToggle />
-              {children}
-            </WalletModalProvider>
-          </WalletProvider>
-        </ConnectionProvider>
+        <SessionProvider>
+          <ConnectionProvider endpoint={endpoint}>
+            <WalletProvider wallets={wallets} autoConnect>
+              <WalletModalProvider>
+                {/* Auto-refresh on new deploy */}
+                <DeployWatcher />
+                {/* Dark / light toggle */}
+                <ThemeToggle />
+                {children}
+              </WalletModalProvider>
+            </WalletProvider>
+          </ConnectionProvider>
+        </SessionProvider>
       </body>
     </html>
   );
