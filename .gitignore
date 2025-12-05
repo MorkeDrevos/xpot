@@ -1,0 +1,5 @@
+# Mac junk
+.DS_Store
+
+# Temp SQL / experiments
+*.sql
