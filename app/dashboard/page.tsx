@@ -509,7 +509,7 @@ export default function DashboardPage() {
                       Dashboard
                     </h1>
                     <p className="text-[13px] text-slate-400">
-                      One jackpot. One winner. Your daily XPOT ticket.
+                      One protocol. One identity. One daily XPOT draw.
                     </p>
                   </div>
                   <div className="hidden text-right text-[11px] text-slate-500 sm:block">
@@ -707,17 +707,16 @@ export default function DashboardPage() {
 
                   {/* What happens if I win? */}
                   <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                      What happens if I win?
-                    </p>
-                    <p className="mt-2 text-[11px] text-slate-400">
-                      If your ticket is selected, the winning ticket and wallet
-                      are highlighted here and in the history view. You’ll have
-                      a fixed claim window to collect the jackpot. If it’s not
-                      collected in time, the full amount rolls into the next
-                      draw.
-                    </p>
-                  </div>
+  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+    XPOT identity system
+  </p>
+
+  <ul className="mt-2 text-[11px] text-slate-400 space-y-1">
+    <li>• One XPOT identity per X account</li>
+    <li>• Winners revealed by handle, never wallet</li>
+    <li>• Your wallet always remains self-custodied</li>
+  </ul>
+</div>
                 </article>
 
                 {/* Your tickets */}
@@ -981,7 +980,7 @@ export default function DashboardPage() {
 
                 {/* Wallet truth line */}
                 <p className="mt-3 text-[11px] text-slate-500">
-                  XPOT.bet never takes custody of your funds. We only read your
+                  XPOT uses X as the identity layer. We only read your
                   public wallet balance to check eligibility.
                 </p>
               </div>
@@ -1065,7 +1064,7 @@ export default function DashboardPage() {
                   <li>• Wallet is only checked when you get your ticket.</li>
                   <li>• When the timer hits zero, one ticket wins.</li>
                   <li>
-                    • Winner has 24 hours to collect or the jackpot rolls
+                    • Winner has 24 hours to collect or the XPOT rolls
                     over.
                   </li>
                 </ul>
