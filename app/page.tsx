@@ -50,8 +50,8 @@ export default function Home() {
           </h1>
           <p className="max-w-2xl text-sm text-slate-300 md:text-base">
             One protocol. One identity. One daily{' '}
-            <span className="font-semibold text-emerald-300">$XPOT</span> draw. One main
-            XPOT daily. Occasional bonus drops.
+            <span className="font-semibold text-emerald-300">$XPOT</span> draw.
+            One main XPOT each day, with occasional bonus drops.
           </p>
         </header>
 
@@ -87,13 +87,13 @@ export default function Home() {
                 {formatTime(timeLeft)}
               </p>
               <p className="text-xs text-slate-400">
-                Live, provably fair draws. The winner X account is picked from verified
-                XPOT holders and paid directly on Solana.
+                Live, provably fair draws. The winner X account is picked from
+                verified XPOT holders and paid directly on Solana.
               </p>
             </div>
           </div>
 
-          {/* Right column – X login gate */}
+          {/* Right: X login */}
           <XpotAccessGate className="h-full" />
         </section>
       </div>
