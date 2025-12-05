@@ -99,8 +99,9 @@ model Ticket {
   user      User          @relation(fields: [userId], references: [id])
 
   // Wallet that claimed it
-  walletId  String
-  wallet    Wallet        @relation(fields: [walletId], references: [id])
+  // ❗ optional, because X gets ticket before wallet connect
+  walletId  String?
+  wallet    Wallet?       @relation(fields: [walletId], references: [id])
 
   // If this ticket is the main winner of a draw
   winnerOf  Draw?         @relation("DrawWinner")
@@ -108,7 +109,7 @@ model Ticket {
   // Any bonus jackpots this ticket has won
   rewards   Reward[]
 
-  // 🔐 HARD LOCK: one ticket per wallet per draw
+  // 🔐 HARD LOCK: one ticket per wallet per draw (only applies once walletId is set)
   @@unique([drawId, walletId], name: "OneTicketPerWalletPerDraw")
 }
 
