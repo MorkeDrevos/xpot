@@ -123,8 +123,8 @@ model Reward {
   // e.g. "Bonus jackpot", "Flash pot", "Stream giveaway"
   label     String
 
-  // Jackpot size in USD for this bonus (store as whole dollars for now)
-  amountUsd Int
+  // XPOT amount for this reward (token amount, not USD)
+  payoutXpot Int     @map("amountUsd")
 
   isPaidOut Boolean  @default(false)
 
