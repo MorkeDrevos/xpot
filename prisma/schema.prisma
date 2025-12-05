@@ -124,7 +124,8 @@ model Reward {
   label      String
 
   // XPOT amount for this reward (token amount, not USD)
-  payoutXpot Int      @map("amountUsd")
+  // ✅ new – no @map, real column name is payoutXpot
+payoutXpot Int
 
   isPaidOut  Boolean  @default(false)
 
