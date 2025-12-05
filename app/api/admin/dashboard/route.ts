@@ -13,35 +13,38 @@ export async function GET(req: NextRequest) {
   // 🔑 Make sure today’s draw exists (if it’s allowed to auto-create)
   const todayDraw = await ensureTodayDraw();
 
-  // you probably already had some logic here – keep it,
-  // just swap where you were doing prisma.draw.findFirst for today
-  // and use `todayDraw` instead.
-  // Example:
-  let todaySummary = null;
+  let todaySummary: any = null;
 
   if (todayDraw) {
     const ticketsCount = await prisma.ticket.count({
       where: { drawId: todayDraw.id },
     });
 
+    // Derive status from fields we actually have
+    const status =
+      todayDraw.resolvedAt
+        ? 'completed'
+        : todayDraw.isClosed
+          ? 'closed'
+          : 'open';
+
+    // Compute closesAt from drawDate (end of that UTC day)
+    const todayStr = todayDraw.drawDate.toISOString().slice(0, 10); // YYYY-MM-DD
+    const closesAt = new Date(`${todayStr}T23:59:59.000Z`);
+
     todaySummary = {
       id: todayDraw.id,
-      date: todayDraw.drawDate,
-      status: todayDraw.resolvedAt
-  ? 'completed'
-  : todayDraw.isClosed
-    ? 'closed'
-    : 'open',
-      jackpotUsd: todayDraw.jackpotUsd,
+      date: todayDraw.drawDate,          // you can .toISOString() if you prefer string
+      status,
+      jackpotUsd: todayDraw.jackpotUsd ?? 0,
       rolloverUsd: 0,
       ticketsCount,
-      closesAt: todayDraw.closesAt,
+      closesAt: closesAt.toISOString(), // matches what admin page expects
     };
   }
 
   return NextResponse.json({
     ok: true,
     today: todaySummary,
-    // ...whatever else you return
   });
 }
