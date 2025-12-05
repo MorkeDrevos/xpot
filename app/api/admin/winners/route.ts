@@ -8,86 +8,56 @@ export async function GET(req: NextRequest) {
   if (auth) return auth;
 
   try {
-    // Main daily draw winners
-    const mainDraws = await prisma.draw.findMany({
-      where: {
-        winnerTicketId: {
-          not: null,
-        },
-      },
-      orderBy: {
-        drawDate: 'desc',
-      },
-      take: 20,
-      include: {
-        winnerTicket: {
-          include: {
-            wallet: true,
-            user: true, // X identity
-          },
-        },
-      },
-    });
-
-    // Bonus / hype jackpots (Reward is canonical source)
-    const bonusRewards = await prisma.reward.findMany({
+    // Reward is the canonical source of winners (main + bonus)
+    const rewards = await prisma.reward.findMany({
       orderBy: {
         createdAt: 'desc',
       },
-      take: 40,
+      take: 50,
       include: {
+        draw: true,
         ticket: {
           include: {
             wallet: true,
             user: true, // X identity
           },
         },
-        draw: true,
       },
     });
 
-    const mainWinners = mainDraws.map((draw) => ({
-      id: draw.id,
-      kind: 'main' as const,
-      label: 'Main jackpot',
-      drawId: draw.id,
-      date: draw.drawDate.toISOString(),
-      ticketCode: draw.winnerTicket?.code ?? '',
-      walletAddress: draw.winnerTicket?.wallet?.address ?? '',
-      jackpotUsd: draw.jackpotUsd ?? 0,
-      // treated as XPOT amount in the UI
-      payoutUsd: draw.jackpotUsd ?? 0,
-      isPaidOut: Boolean(draw.paidAt),
-      txUrl: draw.payoutTx ?? null,
-      xHandle: draw.winnerTicket?.user?.xHandle ?? null,
-      xAvatarUrl: draw.winnerTicket?.user?.xAvatarUrl ?? null,
-    }));
+    const winners = rewards.map((reward) => {
+      const draw = reward.draw;
+      const ticket = reward.ticket;
 
-    const bonusWinners = bonusRewards.map((reward) => ({
-      id: reward.id,
-      kind: 'bonus' as const,
-      label: reward.label,
-      drawId: reward.drawId,
-      date: reward.createdAt.toISOString(),
-      ticketCode: reward.ticket.code,
-      walletAddress: reward.ticket.wallet.address,
-      // XPOT amount from Reward.payoutXpot (DB column "amountUsd")
-      jackpotUsd: reward.payoutXpot,
-      payoutUsd: reward.payoutXpot,
-      isPaidOut: reward.isPaidOut,
-      txUrl: reward.txUrl ?? null,
-      xHandle: reward.ticket.user?.xHandle ?? null,
-      xAvatarUrl: reward.ticket.user?.xAvatarUrl ?? null,
-    }));
+      // Decide if this is the main daily XPOT or a bonus pot
+      const isMain =
+        reward.label === "Today's XPOT" ||
+        reward.label === 'Today’s XPOT' ||
+        reward.label === 'Main jackpot';
 
-    // Merge & sort newest first
-    const winners = [...mainWinners, ...bonusWinners]
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 30);
+      return {
+        id: reward.id,
+        kind: (isMain ? 'main' : 'bonus') as const,
+        label: reward.label,
+        drawId: reward.drawId,
+        date: draw.drawDate.toISOString(),
+        ticketCode: ticket.code,
+        walletAddress: ticket.wallet?.address ?? '',
+        // "Jackpot size" – use draw.jackpotUsd if we have it,
+        // otherwise fall back to XPOT amount for safety.
+        jackpotUsd: draw.jackpotUsd ?? reward.payoutXpot,
+        // XPOT amount actually paid out
+        payoutUsd: reward.payoutXpot, // still named payoutUsd in UI type, but it’s XPOT
+        isPaidOut: reward.isPaidOut,
+        txUrl: reward.txUrl ?? null,
+        xHandle: ticket.user?.xHandle ?? null,
+        xAvatarUrl: ticket.user?.xAvatarUrl ?? null,
+      };
+    });
 
     return NextResponse.json({
       ok: true,
-      winners,
+      winners: winners.slice(0, 30),
     });
   } catch (err) {
     console.error('[ADMIN] /winners error', err);
