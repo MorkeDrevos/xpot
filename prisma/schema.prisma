@@ -64,7 +64,7 @@ model Draw {
   isClosed       Boolean  @default(false)
   resolvedAt     DateTime?
 
-  // Jackpot size in USD for this draw (main jackpot)
+  // Main jackpot size for this draw (XPOT amount, stored in jackpotUsd column)
   jackpotUsd     Int?
 
   // Payout info for the main winner
@@ -111,23 +111,23 @@ model Ticket {
 
 // Bonus / hype jackpots attached to a daily draw
 model Reward {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
 
-  drawId    String
-  draw      Draw     @relation(fields: [drawId], references: [id])
+  drawId     String
+  draw       Draw     @relation(fields: [drawId], references: [id])
 
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id])
 
   // e.g. "Bonus jackpot", "Flash pot", "Stream giveaway"
-  label     String
+  label      String
 
   // XPOT amount for this reward (token amount, not USD)
-  payoutXpot Int     @map("amountUsd")
+  payoutXpot Int      @map("amountUsd")
 
-  isPaidOut Boolean  @default(false)
+  isPaidOut  Boolean  @default(false)
 
   // Store transaction link for this reward payout
-  txUrl     String?  @map("payoutTx")
+  txUrl      String?  @map("payoutTx")
 }
