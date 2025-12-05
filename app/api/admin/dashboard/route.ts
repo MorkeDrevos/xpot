@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     ? 'closed'
     : 'open',
       jackpotUsd: todayDraw.jackpotUsd,
-      rolloverUsd: todayDraw.rolloverUsd,
+      rolloverUsd: 0,
       ticketsCount,
       closesAt: todayDraw.closesAt,
     };
