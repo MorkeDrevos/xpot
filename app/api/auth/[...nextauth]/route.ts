@@ -25,12 +25,23 @@ const handler = NextAuth({
         try {
           const p = profile as any;
 
-          const handle =
-            p?.data?.username ??
-            p?.username ??
-            p?.screen_name ??
-            user?.name ??
-            null;
+          let handle =
+  p?.data?.username ??
+  p?.username ??
+  p?.screen_name ??
+  user?.name ??
+  null;
+
+if (!handle && user?.email) {
+  handle = user.email.split('@')[0];
+}
+
+if (!handle && account?.providerAccountId) {
+  handle = `x_${account.providerAccountId}`;
+}
+
+console.log("X LOGIN PROFILE", JSON.stringify(p, null, 2));
+console.log("FINAL HANDLE", handle);
 
           const avatarUrl =
             p?.data?.profile_image_url ??
