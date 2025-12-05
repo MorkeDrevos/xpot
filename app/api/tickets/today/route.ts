@@ -1,15 +1,13 @@
 // app/api/tickets/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-const session = await getServerSession();
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   // 1) Require X login
-  const session = await getServerSession(authOptions);
-
+  const session = await getServerSession();
   const user = session?.user as any;
 
   if (!user?.id) {
@@ -46,7 +44,7 @@ export async function POST(req: NextRequest) {
       where: {
         drawDate: {
           gte: new Date(`${todayStr}T00:00:00.000Z`),
-          lt:  new Date(`${todayStr}T23:59:59.999Z`),
+          lt: new Date(`${todayStr}T23:59:59.999Z`),
         },
       },
     });
