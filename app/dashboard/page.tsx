@@ -492,82 +492,9 @@ export default function DashboardPage() {
             </div>
 
             {/* Mini account chip */}
-            <div className="relative mt-auto">
-              <div
-                className="mb-2 flex items-center justify-between rounded-2xl bg-slate-900/70 px-3 py-2 cursor-pointer hover:bg-slate-800/80"
-                onClick={() =>
-                  setAccountMenuOpen((open) => !open)
-                }
-              >
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700">
-                    <Image
-                      src="/img/xpot-mark.png"
-                      alt="XPOT icon"
-                      width={20}
-                      height={20}
-                    />
-                  </div>
-
-                  <div className="leading-tight">
-                    <p className="flex items-center gap-1 text-xs font-semibold text-slate-50">
-                      XPOT user
-                    </p>
-                    <a
-                      href={`https://x.com/${username.replace('@', '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-slate-500 hover:text-emerald-300"
-                    >
-                      @{(username || 'xpot').replace('@', '')}
-                    </a>
-                  </div>
-                </div>
-
-                <span className="flex h-6 w-6 items-center justify-center rounded-full text-slate-500">
-                  ⋯
-                </span>
-              </div>
-
-              {accountMenuOpen && (
-                <div className="x-account-menu absolute bottom-14 left-0 w-72 rounded-3xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/60 overflow-hidden">
-                  <div className="flex w-full items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700">
-                        <Image
-                          src="/img/xpot-mark.png"
-                          alt="XPOT icon"
-                          width={22}
-                          height={22}
-                        />
-                      </div>
-                      <div className="leading-tight">
-                        <p className="text-xs font-semibold text-slate-50">
-                          XPOT user
-                        </p>
-                        <a
-                          href={`https://x.com/${username.replace('@', '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-slate-500 hover:text-emerald-300"
-                        >
-                          @{(username || 'xpot').replace('@', '')}
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-
-                  <hr className="border-t border-slate-900" />
-
-                  <button
-                    type="button"
-                    className="block w-full px-4 py-3 text-left text-[13px] text-slate-400 hover:bg-slate-900 cursor-default"
-                  >
-                    Login with X coming soon
-                  </button>
-                </div>
-              )}
-            </div>
+            <XpotAccessGate className="mt-auto">
+  {/* Optional children if you want later (stats, level, badges etc) */}
+</XpotAccessGate>
           </aside>
 
           {/* Main shell */}
