@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Here we just mirror the existing jackpot as XPOT amount for UI
       const pseudoReward = {
         id: `draw-${draw.id}`,
         drawId: draw.id,
@@ -75,10 +76,10 @@ export async function POST(req: NextRequest) {
         ticketCode: winnerTicket.code,
         walletAddress: winnerTicket.wallet?.address ?? '',
         jackpotUsd: draw.jackpotUsd ?? 0,
-        payoutUsd: draw.jackpotUsd ?? 0,
+        payoutUsd: draw.jackpotUsd ?? 0, // treated as XPOT amount in UI
         isPaidOut: false,
         txUrl: null,
-        kind: 'main',
+        kind: 'main' as const,
         label: "Today's XPOT",
         xHandle: winnerTicket.user?.xHandle ?? null,
         xAvatarUrl: winnerTicket.user?.xAvatarUrl ?? null,
@@ -115,7 +116,8 @@ export async function POST(req: NextRequest) {
           drawId: draw.id,
           ticketId: winningTicket.id,
           label: "Today's XPOT",
-          amountUsd: draw.jackpotUsd ?? 0,
+          // XPOT amount we pay out; maps to DB column "amountUsd"
+          payoutXpot: draw.jackpotUsd ?? 0,
           isPaidOut: false,
         },
       }),
@@ -129,7 +131,8 @@ export async function POST(req: NextRequest) {
       ticketCode: updatedTicket.code,
       walletAddress: winningTicket.wallet?.address ?? '',
       jackpotUsd: updatedDraw.jackpotUsd ?? 0,
-      payoutUsd: reward.amountUsd,
+      // still called payoutUsd in the UI type, but holds an XPOT amount
+      payoutUsd: reward.payoutXpot,
       isPaidOut: reward.isPaidOut,
       txUrl: reward.txUrl ?? null,
       kind: 'main' as const,
