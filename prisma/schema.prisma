@@ -94,7 +94,7 @@ model Ticket {
   drawId    String
   draw      Draw          @relation("DrawTickets", fields: [drawId], references: [id])
 
-  // Owning user
+  // Owning user (X identity)
   userId    String
   user      User          @relation(fields: [userId], references: [id])
 
@@ -107,27 +107,30 @@ model Ticket {
 
   // Any bonus jackpots this ticket has won
   rewards   Reward[]
+
+  // 🔐 HARD LOCK: one ticket per wallet per draw
+  @@unique([drawId, walletId], name: "OneTicketPerWalletPerDraw")
 }
 
 // Bonus / hype jackpots attached to a daily draw
 model Reward {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
 
-  drawId    String
-  draw      Draw     @relation(fields: [drawId], references: [id])
+  drawId     String
+  draw       Draw     @relation(fields: [drawId], references: [id])
 
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id])
 
   // e.g. "Bonus jackpot", "Flash pot", "Stream giveaway"
-  label     String
+  label      String
 
   // XPOT amount for this reward (token amount, not USD)
   payoutXpot Int
 
-  isPaidOut Boolean  @default(false)
+  isPaidOut  Boolean  @default(false)
 
   // Store transaction link for this reward payout
-  txUrl     String?  @map("payoutTx")
+  txUrl      String?  @map("payoutTx")
 }
