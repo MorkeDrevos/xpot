@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     id: string;
     date: string;
     status: 'open' | 'closed' | 'completed';
-    jackpotUsd: number | null;
+    jackpotUsd: number;
     rolloverUsd: number; // placeholder for future rollover logic
     ticketsCount: number;
     closesAt: string | null;
@@ -77,10 +77,8 @@ export async function GET(req: NextRequest) {
       id: todayDraw.id,
       date: todayDraw.drawDate.toISOString(),
       status,
-      jackpotUsd:
-        typeof todayDraw.jackpotUsd === 'number'
-          ? todayDraw.jackpotUsd
-          : null,
+      // Always a number, safe for the admin UI
+      jackpotUsd: todayDraw.jackpotUsd ?? 0,
       // We don’t have real rollover logic yet – keep 0 for now.
       rolloverUsd: 0,
       ticketsCount: todayDraw.tickets.length,
