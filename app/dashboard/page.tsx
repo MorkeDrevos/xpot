@@ -138,9 +138,6 @@ export default function DashboardPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const { data: session, status } = useSession();
-  const showLogin = status !== 'loading' && !session?.user;
-
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
@@ -419,12 +416,13 @@ const myTickets: Entry[] = normalizedWallet
 return (
   <XpotAccessGate>
     <div className="relative min-h-screen bg-black text-slate-50">
+
       {/* Blurred dashboard behind login */}
-<main
-  className={`min-h-screen transition-all duration-300 ${
-    showLogin ? 'pointer-events-none blur-sm brightness-50' : ''
-  }`}
->
+      <main
+        className={`min-h-screen transition-all duration-300 ${
+          showLogin ? 'pointer-events-none blur-sm brightness-50' : ''
+        }`}
+      >
         <WalletDebug />
 
         {/* Mobile top bar */}
