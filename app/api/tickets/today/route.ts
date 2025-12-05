@@ -1,26 +1,45 @@
 // app/api/tickets/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-export { handler as GET, handler as POST };
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   // 1) Require X login
-  const session = await getServerSession(authOptions as any);
+  const session = await getServerSession(authOptions);
 
-  if (!session || !(session as any).userId) {
+  const user = session?.user as any;
+
+  if (!user?.id) {
     return NextResponse.json(
       { ok: false, error: 'NOT_LOGGED_IN' },
       { status: 401 }
     );
   }
 
-  const userId = (session as any).userId as string;
+  const userId = user.id as string;
+
+  // 2) Read wallet address from body
+  let body: { walletAddress?: string } = {};
+  try {
+    body = await req.json();
+  } catch {
+    // body stays {}
+  }
+
+  const walletAddress = body.walletAddress?.trim();
+
+  if (!walletAddress) {
+    return NextResponse.json(
+      { ok: false, error: 'NO_WALLET_ADDRESS' },
+      { status: 400 }
+    );
+  }
 
   try {
-    // 2) Find today’s draw
+    // 3) Find today’s draw
     const todayStr = new Date().toISOString().slice(0, 10);
 
     const draw = await prisma.draw.findFirst({
@@ -39,11 +58,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3) Check if this X user already has a ticket for this draw
+    // 4) Find or create wallet for this user
+    let wallet = await prisma.wallet.findUnique({
+      where: { address: walletAddress },
+    });
+
+    // If wallet exists but belongs to another user, block it
+    if (wallet && wallet.userId !== userId) {
+      return NextResponse.json(
+        { ok: false, error: 'WALLET_OWNED_BY_OTHER_USER' },
+        { status: 403 }
+      );
+    }
+
+    if (!wallet) {
+      wallet = await prisma.wallet.create({
+        data: {
+          address: walletAddress,
+          userId,
+        },
+      });
+    }
+
+    // 5) Enforce ONE ticket per WALLET per draw
     const existing = await prisma.ticket.findFirst({
       where: {
         drawId: draw.id,
-        userId,
+        walletId: wallet.id,
       },
     });
 
@@ -61,13 +102,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4) Create new ticket (1st time only)
+    // 6) Create new ticket
     const ticket = await prisma.ticket.create({
       data: {
         drawId: draw.id,
         userId,
-        // if you link wallet too, set walletId here
-        // walletId,
+        walletId: wallet.id,
         code: generateTicketCode(),
       },
     });
