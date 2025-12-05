@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
       return {
         id: reward.id,
-        kind: (isMain ? 'main' : 'bonus') as const,
+        kind: isMain ? 'main' : 'bonus',
         label: reward.label,
         drawId: reward.drawId,
         date: draw.drawDate.toISOString(),
