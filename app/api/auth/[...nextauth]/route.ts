@@ -1,38 +1,47 @@
 // app/api/auth/[...nextauth]/route.ts
 import NextAuth from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
-import { PrismaAdapter } from '@next-auth/prisma-adapter';
-import { prisma } from '@/lib/prisma';
-
-if (!process.env.TWITTER_CLIENT_ID || !process.env.TWITTER_CLIENT_SECRET) {
-  throw new Error('Missing Twitter OAuth env vars');
-}
-if (!process.env.NEXTAUTH_SECRET) {
-  throw new Error('Missing NEXTAUTH_SECRET env var');
-}
 
 const handler = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  // We’ll just use signed JWT sessions for now – no DB adapter.
   session: {
-    // you can change to 'jwt' later if you prefer,
-    // but 'database' makes it very clear in Prisma
-    strategy: 'database',
+    strategy: 'jwt',
   },
+
   providers: [
     TwitterProvider({
-      clientId: process.env.TWITTER_CLIENT_ID,
-      clientSecret: process.env.TWITTER_CLIENT_SECRET,
-      // we only need basic read permissions
+      clientId: process.env.TWITTER_CLIENT_ID!,
+      clientSecret: process.env.TWITTER_CLIENT_SECRET!,
+      // New X API uses OAuth 2.0
       version: '2.0',
     }),
   ],
+
   callbacks: {
-    async session({ session, user }) {
-      // Expose user id + handle so the app can use it easily
+    // Put useful data into the JWT when we first log in
+    async jwt({ token, account, profile }) {
+      // When the user just signed in
+      if (account && profile) {
+        // X user id
+        token.sub = account.providerAccountId;
+
+        // X handle / username (e.g. @MorkeDrevos)
+        const p = profile as any;
+        if (p && p.username) {
+          token.username = p.username;
+        }
+      }
+
+      return token;
+    },
+
+    // Expose those fields to the client
+    async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = user.id;
-        // if you later store handle on the User model, you can map it here too
-        // (session.user as any).handle = (user as any).handle ?? null;
+        (session.user as any).id = token.sub;
+        if (token.username) {
+          (session.user as any).handle = token.username;
+        }
       }
       return session;
     },
