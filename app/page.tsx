@@ -3,7 +3,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import XpotAccessGate from '@/components/XpotAccessGate';
+// ⬇️ use relative path instead of "@/..."
+import XpotAccessGate from '../components/XpotAccessGate';
 
 function formatTime(ms: number) {
   if (ms <= 0) return '00:00:00';
@@ -17,7 +18,6 @@ function formatTime(ms: number) {
 export default function Home() {
   const [timeLeft, setTimeLeft] = useState(0);
 
-  // simple 24h countdown from first render (placeholder)
   useEffect(() => {
     const end = Date.now() + 24 * 60 * 60 * 1000;
     const timer = setInterval(() => {
@@ -51,7 +51,7 @@ export default function Home() {
           <p className="max-w-2xl text-sm text-slate-300 md:text-base">
             One protocol. One identity. One daily{' '}
             <span className="font-semibold text-emerald-300">$XPOT</span> draw.
-            One main XPOT each day, with occasional bonus drops.
+            One main XPOT daily. Occasional bonus drops.
           </p>
         </header>
 
