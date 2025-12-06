@@ -4,7 +4,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import XpotAccessGate from '../components/XpotAccessGate';
-import XpotLogo from '@/components/XpotLogo';
+import XpotLogo from '../components/XpotLogo';
+
+import DeployWatcher from '../components/DeployWatcher';
+import ThemeToggle from '../components/ThemeToggle';
 
 function formatTime(ms: number) {
   if (ms <= 0) return '00:00:00';
