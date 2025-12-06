@@ -11,7 +11,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useSession } from 'next-auth/react';
 
-import { REQUIRED_XPOT } from '@/lib/xpot';
+import { REQUIRED_XPOT } from '../../lib/xpot';
 import { XLoginOverlay } from '@/components/XLoginOverlay';
 import XpotAccessGate from '@/components/XpotAccessGate';
 
