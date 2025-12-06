@@ -3,14 +3,8 @@ import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 import { prisma } from '@/lib/prisma';
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
-
-  // 👇 This kills the ugly NextAuth UI (including that red bar)
-  pages: {
-    signIn: '/dashboard',   // where your “Sign in with X” button lives
-    error: '/dashboard',    // send errors to the same place
-  },
 
   providers: [
     TwitterProvider({
