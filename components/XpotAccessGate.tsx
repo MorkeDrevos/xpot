@@ -53,7 +53,7 @@ function XpotXLoginOverlay() {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       {/* Blur + dim layer */}
-      <div className="absolute inset-0 bg-black/65 backdrop-blur-[26px]" />
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-[20px]" />
 
       {/* Atmosphere glows */}
       <div className="pointer-events-none absolute inset-0">
@@ -61,8 +61,10 @@ function XpotXLoginOverlay() {
         <div className="absolute bottom-[-6rem] right-[-4rem] h-[420px] w-[420px] rounded-full bg-cyan-500/14 blur-[160px]" />
       </div>
 
-      {/* Card */}
-      <div className="relative z-[70] w-full max-w-md rounded-3xl border border-white/10 bg-[#020617]/80 p-6 shadow-[0_60px_180px_rgba(0,0,0,0.95)] backdrop-blur-[22px]">
+      {/* CARD */}
+<div className="relative z-50 translate-y-[-6vh]">
+  <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#020617]/80 p-6
+                  shadow-[0_60px_180px_rgba(0,0,0,0.95)] backdrop-blur-[22px] ring-1 ring-white/5">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <Image
@@ -72,9 +74,10 @@ function XpotXLoginOverlay() {
             height={32}
             priority
           />
-          <span className="rounded-full border border-emerald-400/30 bg-emerald-500/5 px-2 py-0.5 text-[10px] font-semibold tracking-[0.16em] text-emerald-300 uppercase">
-            X identity
-          </span>
+          <span className="rounded-full border border-emerald-400/40 bg-emerald-400/8 px-2.5 py-0.5
+                 text-[10px] font-semibold tracking-[0.16em] uppercase text-emerald-200">
+  X identity
+</span>
         </div>
 
         {/* Copy */}
@@ -96,12 +99,6 @@ function XpotXLoginOverlay() {
           </span>
           <span>Continue with X / Twitter</span>
         </button>
-
-        {/* Footer */}
-        <p className="mt-3 text-[11px] text-slate-500">
-          One XPOT identity per X account. Winners are revealed by handle,
-          not wallet.
-        </p>
       </div>
     </div>
   );
