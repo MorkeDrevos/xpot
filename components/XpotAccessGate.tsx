@@ -115,7 +115,7 @@ function XpotXLoginOverlay() {
           />
 
           <span className="rounded-full border border-emerald-400/30 bg-emerald-400/5 px-2 py-0.5 text-[10px] font-semibold tracking-[0.16em] text-emerald-300">
-            X IDENTITY
+            XPOT IDENTITY
           </span>
         </div>
 
