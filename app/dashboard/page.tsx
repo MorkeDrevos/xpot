@@ -12,6 +12,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 import XpotAccessGate from '@/components/XpotAccessGate';
+import { useUser } from '@clerk/nextjs';
 import { SignOutButton } from '@clerk/nextjs';
 
 // ─────────────────────────────────────────────
@@ -131,6 +132,16 @@ export default function DashboardPage() {
 
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
+
+  const { user } = useUser();
+
+  const xAccount = user?.externalAccounts?.find(
+  (acc) => acc.provider === 'oauth_twitter'
+);
+
+  const handle = xAccount?.username;
+  const avatar = xAccount?.imageUrl;
+  const name = user?.fullName || handle || 'XPOT user';
 
   // ─────────────────────────────────────────────
   // Load today's tickets from DB
@@ -442,6 +453,12 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
+              <SignOutButton>
+  <button className="text-xs text-slate-400 hover:text-white">
+    Log out
+  </button>
+</SignOutButton>
+
               {/* Nav */}
               <nav className="space-y-1 text-sm">
                 <Link
@@ -525,31 +542,33 @@ export default function DashboardPage() {
                 {/* Profile header */}
                 <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
-                      <Image
-                        src="/img/xpot-mark.png"
-                        alt="XPOT icon"
-                        width={28}
-                        height={28}
-                      />
-                    </div>
+  <div className="h-10 w-10 overflow-hidden rounded-full bg-slate-800">
+    {avatar && (
+      <img
+        src={avatar}
+        alt={handle || 'X avatar'}
+        className="h-full w-full object-cover"
+      />
+    )}
+  </div>
 
-                    <div className="flex flex-col leading-tight">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-semibold text-slate-50">
-                          Mørke Drevos
-                        </span>
-                      </div>
-                      <a
-                        href="https://x.com/xpot"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-slate-500 hover:text-emerald-300"
-                      >
-                        @xpot
-                      </a>
-                    </div>
-                  </div>
+  <div className="flex flex-col leading-tight">
+    <span className="text-sm font-semibold text-slate-50">
+      {name}
+    </span>
+
+    {handle && (
+      <a
+        href={`https://x.com/${handle}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-slate-500 hover:text-emerald-300"
+      >
+        @{handle}
+      </a>
+    )}
+  </div>
+</div>
 
                   <button
                     type="button"
@@ -909,12 +928,6 @@ export default function DashboardPage() {
                 </section>
               </div>
             </section>
-
-<SignOutButton>
-  <button className="text-xs text-slate-400 hover:text-white transition">
-    Log out
-  </button>
-</SignOutButton>
 
             {/* Right sidebar */}
             <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
