@@ -41,7 +41,7 @@ function XpotXLoginOverlay() {
 
     try {
       await signIn.authenticateWithRedirect({
-        strategy: 'oauth_twitter',          // X / Twitter via Clerk
+        strategy: 'oauth_x',            // ✅ use oauth_x here
         redirectUrl: '/dashboard',
         redirectUrlComplete: '/dashboard',
       });
