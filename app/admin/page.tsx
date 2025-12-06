@@ -9,8 +9,8 @@ import JackpotPanel from '@/components/JackpotPanel';
 import Image from 'next/image';
 import Link from 'next/link';
 
-const MAX_TODAY_TICKETS = 10;   // how many “Today’s XPOT entries” to show
-const MAX_RECENT_WINNERS = 9;   // how many “Recent XPOT winners” to show
+const MAX_TODAY_TICKETS = 10; // how many “Today’s XPOT entries” to show
+const MAX_RECENT_WINNERS = 9; // how many “Recent XPOT winners” to show
 
 // ─────────────────────────────────────────────
 // Types
@@ -190,9 +190,7 @@ function CopyableWallet({ address }: { address: string }) {
       onClick={handleCopy}
       className="group inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-emerald-300 transition-colors"
     >
-      <span className="font-mono">
-        {truncateAddress(address, 6)}
-      </span>
+      <span className="font-mono">{truncateAddress(address, 6)}</span>
       <span className="rounded-md border border-slate-600/60 px-1 py-[1px] text-[10px] uppercase tracking-wide group-hover:border-emerald-400/60">
         {copied ? 'Copied' : 'Copy'}
       </span>
@@ -436,9 +434,7 @@ export default function AdminPage() {
       setWinners((prev) => [w, ...prev]);
 
       // Mark draw as closed in UI
-      setTodayDraw((prev) =>
-        prev ? { ...prev, status: 'closed' } : prev,
-      );
+      setTodayDraw((prev) => (prev ? { ...prev, status: 'closed' } : prev));
     } catch (err: any) {
       setPickError(err.message || 'Failed to pick main XPOT winner');
     } finally {
@@ -465,9 +461,7 @@ export default function AdminPage() {
         throw new Error(data?.error || 'Failed to reopen draw');
       }
 
-      setTodayDraw((prev) =>
-        prev ? { ...prev, status: 'open' } : prev,
-      );
+      setTodayDraw((prev) => (prev ? { ...prev, status: 'open' } : prev));
     } catch (err: any) {
       console.error('[XPOT] reopen draw error:', err);
       alert(err.message || 'Unexpected error reopening draw');
@@ -494,21 +488,20 @@ export default function AdminPage() {
 
     setSavingPaidId(winnerId);
     try {
-      const res = await authedFetch('/api/admin/mark-paid', {
+      const data = await authedFetch('/api/admin/mark-paid', {
         method: 'POST',
         body: JSON.stringify({ winnerId, txUrl }),
       });
 
-      if (!res.ok) {
-        throw new Error(res.error || 'Failed to mark as paid');
+      // data is already JSON; check its ok flag if present
+      if (data && data.ok === false) {
+        throw new Error(data.error || 'Failed to mark as paid');
       }
 
       // Update local winners list
       setWinners((prev) =>
         prev.map((w) =>
-          w.id === winnerId
-            ? { ...w, isPaidOut: true, txUrl }
-            : w,
+          w.id === winnerId ? { ...w, isPaidOut: true, txUrl } : w,
         ),
       );
     } catch (err: any) {
@@ -753,7 +746,8 @@ export default function AdminPage() {
           </div>
 
           <p className="text-[11px] text-slate-500">
-            Monitor pool state, entries and rewards. All data is live and admin-key gated.
+            Monitor pool state, entries and rewards. All data is live and
+            admin-key gated.
           </p>
         </div>
       </header>
@@ -811,14 +805,14 @@ export default function AdminPage() {
         {/* LEFT COLUMN */}
         <div className="space-y-4">
           {/* Big live XPOT card */}
-<div className="rounded-3xl bg-gradient-to-br from-purple-500/10 via-transparent to-cyan-400/10 p-[1px]">
-  <div className="rounded-3xl bg-[#050b1b]/70 backdrop-blur-xl">
-    <JackpotPanel
-      isLocked={isDrawLocked}
-      onJackpotUsdChange={setLiveJackpotUsd}
-    />
-  </div>
-</div>
+          <div className="rounded-3xl bg-gradient-to-br from-purple-500/10 via-transparent to-cyan-400/10 p-[1px]">
+            <div className="rounded-3xl bg-[#050b1b]/70 backdrop-blur-xl">
+              <JackpotPanel
+                isLocked={isDrawLocked}
+                onJackpotUsdChange={setLiveJackpotUsd}
+              />
+            </div>
+          </div>
 
           {/* Today’s XPOT summary card */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
@@ -828,7 +822,8 @@ export default function AdminPage() {
                   Today&apos;s round
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Live overview of today&apos;s XPOT draw, entries, rollovers and prize pool.
+                  Live overview of today&apos;s XPOT draw, entries, rollovers
+                  and prize pool.
                 </p>
               </div>
 
@@ -867,7 +862,8 @@ export default function AdminPage() {
                   {/* No draw scheduled – should be auto-created by backend */}
                   {!todayLoading && !todayDraw && (
                     <span className="text-xs font-normal text-amber-300">
-                      No XPOT round detected for today – backend should create this automatically.
+                      No XPOT round detected for today – backend should create
+                      this automatically.
                     </span>
                   )}
                 </p>
@@ -922,8 +918,8 @@ export default function AdminPage() {
                             isWarningCritical
                               ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
                               : isWarningSoon
-                                ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
-                                : 'text-emerald-300'
+                              ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
+                              : 'text-emerald-300'
                           }
                         `}
                       >
@@ -952,7 +948,9 @@ export default function AdminPage() {
                           }
                         `}
                       >
-                        {isPickingWinner ? 'Picking winner…' : 'Select primary recipient'}
+                        {isPickingWinner
+                          ? 'Picking winner…'
+                          : 'Select primary recipient'}
                       </button>
 
                       {/* 🚨 Panic: reopen draw (only when closed) */}
@@ -1062,7 +1060,9 @@ export default function AdminPage() {
 
               {/* Messages under the row */}
               <div className="text-xs min-h-[1.25rem]">
-                {bonusError && <p className="text-amber-300">{bonusError}</p>}
+                {bonusError && (
+                  <p className="text-amber-300">{bonusError}</p>
+                )}
                 {bonusSuccess && (
                   <p className="text-emerald-300">{bonusSuccess}</p>
                 )}
@@ -1125,7 +1125,8 @@ export default function AdminPage() {
 
                     <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
                       <p>
-                        Showing {visibleTickets.length} of {tickets.length} tickets
+                        Showing {visibleTickets.length} of {tickets.length}{' '}
+                        tickets
                       </p>
 
                       {visibleTickets.length < tickets.length && (
@@ -1301,8 +1302,8 @@ export default function AdminPage() {
 
                     <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
                       <p>
-                        Showing latest {visibleWinners.length} of {winners.length}{' '}
-                        winners
+                        Showing latest {visibleWinners.length} of{' '}
+                        {winners.length} winners
                       </p>
 
                       {visibleWinners.length < winners.length && (
