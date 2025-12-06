@@ -6,10 +6,6 @@ import { prisma } from '@/lib/prisma';
 const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
-  pages: {
-    error: '/auth-error',
-  },
-
   providers: [
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
