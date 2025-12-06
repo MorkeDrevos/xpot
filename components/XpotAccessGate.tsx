@@ -1,178 +1,120 @@
 // components/XpotAccessGate.tsx
 'use client';
 
-import { ReactNode, useMemo } from 'react';
+import { ReactNode } from 'react';
+import { SignedIn, SignedOut, useSignIn } from '@clerk/nextjs';
 import Image from 'next/image';
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  useUser,
-  useClerk,
-} from '@clerk/nextjs';
 
 type XpotAccessGateProps = {
-  children?: ReactNode;
-  className?: string;
+  children: ReactNode;
 };
 
-export default function XpotAccessGate({
-  children,
-  className,
-}: XpotAccessGateProps) {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
+export default function XpotAccessGate({ children }: XpotAccessGateProps) {
+  return (
+    <>
+      <SignedOut>
+        <XpotXLoginScreen />
+      </SignedOut>
 
-  const containerClass =
-    'rounded-3xl border border-slate-800 bg-slate-950/60 p-6 flex flex-col justify-between' +
-    (className ? ` ${className}` : '');
+      <SignedIn>{children}</SignedIn>
+    </>
+  );
+}
 
-  // Derive X handle from Clerk user
-  const handle = useMemo(() => {
-    if (!user) return null;
+// ─────────────────────────────────────────────
+// Ultra-premium XPOT X-login screen
+// ─────────────────────────────────────────────
 
-    // Try external X / Twitter account first
-    const accounts = (user as any).externalAccounts as
-      | Array<{ provider?: string; username?: string }>
-      | undefined;
+function XpotXLoginScreen() {
+  const { signIn, isLoaded } = useSignIn();
 
-    const xAccount = accounts?.find(
-      (a) =>
-        a.provider === 'oauth_x' ||
-        a.provider === 'oauth_twitter' ||
-        a.provider === 'twitter',
-    );
+  async function handleXLogin() {
+    if (!isLoaded || !signIn) return;
 
-    const fromExternal = xAccount?.username;
-    if (fromExternal) return fromExternal.replace('@', '');
-
-    if (user.username) return user.username.replace('@', '');
-
-    const email = user.primaryEmailAddress?.emailAddress;
-    if (email) return email.split('@')[0] || null;
-
-    return null;
-  }, [user]);
-
-  const displayName =
-    user?.fullName || user?.username || handle || 'XPOT user';
-
-  // While Clerk is still loading
-  if (!isLoaded) {
-    return (
-      <aside className={containerClass}>
-        <p className="text-sm text-slate-300">
-          Checking your XPOT identity…
-        </p>
-      </aside>
-    );
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy: 'oauth_x', // X / Twitter SSO in Clerk
+        redirectUrl: '/dashboard',
+        redirectUrlComplete: '/dashboard',
+      });
+    } catch (err) {
+      console.error('[XPOT] X login failed', err);
+    }
   }
 
   return (
-    <>
-      {/* NOT signed in → show X login gate */}
-      <SignedOut>
-        <aside className={containerClass}>
-          <header className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800">
-              <Image
-                src="/img/xpot-mark.png"
-                alt="XPOT"
-                width={24}
-                height={24}
-              />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-100">
-                Sign in with X to continue
-              </p>
-              <p className="text-xs text-slate-400">
-                XPOT links each wallet to a verified X account so every
-                draw is tied to a real handle.
-              </p>
-            </div>
-          </header>
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-950 to-black text-slate-50">
+      {/* Subtle XPOT backdrop */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
+        <div className="absolute bottom-[-6rem] right-[-4rem] h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.08)_0,_transparent_55%)]" />
+      </div>
 
-          <div className="mt-4 space-y-3 text-xs text-slate-400">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
-              Why X login?
-            </p>
-            <ul className="space-y-1">
-              <li>• One XPOT identity per X account.</li>
-              <li>• Winners revealed by X handle.</li>
-              <li>• Your wallet always remains self-custodied.</li>
-            </ul>
+      {/* Card */}
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-slate-800/80 bg-slate-950/95 px-6 pb-6 pt-5 shadow-[0_24px_80px_rgba(0,0,0,0.85)] backdrop-blur">
+        {/* Logo + tagline */}
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/img/xpot-logo-light.png"
+              alt="XPOT"
+              width={120}
+              height={32}
+              priority
+            />
           </div>
 
-          <div className="mt-6">
-            <SignInButton mode="modal">
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-white transition"
-              >
-                <span>Continue with X (Twitter)</span>
-              </button>
-            </SignInButton>
-          </div>
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+            X identity only
+          </span>
+        </div>
 
-          <p className="mt-3 text-[11px] text-slate-500">
-            We never post for you. XPOT only reads your public profile
-            (handle, name, avatar) and links it to your XPOT wallet.
+        {/* Heading */}
+        <div className="mb-4 space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Sign in with X to continue
           </p>
-        </aside>
-      </SignedOut>
+          <h1 className="text-lg font-semibold text-slate-50">
+            Your X handle is your XPOT identity.
+          </h1>
+          <p className="text-[13px] text-slate-400">
+            Connect once with X, link your wallet, and you&apos;re ready for
+            daily XPOT draws. No passwords, no emails, just your verified X
+            account.
+          </p>
+        </div>
 
-      {/* Signed in → show profile + children */}
-      <SignedIn>
-        <section className={containerClass}>
-          <header className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800">
-                {user?.imageUrl ? (
-                  <Image
-                    src={user.imageUrl}
-                    alt={displayName}
-                    width={40}
-                    height={40}
-                  />
-                ) : (
-                  <Image
-                    src="/img/xpot-mark.png"
-                    alt="XPOT"
-                    width={24}
-                    height={24}
-                  />
-                )}
-              </div>
-              <div className="leading-tight">
-                <p className="text-sm font-semibold text-slate-50">
-                  {displayName}
-                </p>
-                {handle && (
-                  <a
-                    href={`https://x.com/${handle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-slate-500 hover:text-emerald-300"
-                  >
-                    @{handle}
-                  </a>
-                )}
-              </div>
-            </div>
+        {/* Why X login */}
+        <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Why X login?
+          </p>
+          <ul className="mt-2 space-y-1 text-[12px] text-slate-300">
+            <li>• One XPOT identity per X account.</li>
+            <li>• Winners revealed by X handle, never by wallet.</li>
+            <li>• Your wallet always remains fully self-custodied.</li>
+          </ul>
+        </div>
 
-            <button
-              type="button"
-              onClick={() => signOut()}
-              className="rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
-            >
-              Sign out
-            </button>
-          </header>
+        {/* X button */}
+        <button
+          type="button"
+          onClick={handleXLogin}
+          className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_14px_40px_rgba(15,23,42,0.65)] transition hover:-translate-y-[1px] hover:bg-white hover:shadow-[0_18px_60px_rgba(15,23,42,0.9)]"
+        >
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[13px] text-slate-50">
+            X
+          </span>
+          <span>Continue with X / Twitter</span>
+        </button>
 
-          {children && <div className="mt-5">{children}</div>}
-        </section>
-      </SignedIn>
-    </>
+        {/* Micro-copy */}
+        <p className="mt-3 text-[11px] leading-snug text-slate-500">
+          XPOT never posts on your behalf. We only read your public profile
+          (handle, name, avatar) and link it to your XPOT wallet.
+        </p>
+      </div>
+    </div>
   );
 }
