@@ -1,10 +1,10 @@
 // app/api/auth/[...nextauth]/route.ts
-import NextAuth from 'next-auth';
+import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 
 import { prisma } from '@/lib/prisma';
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   // Keep simple JWT sessions – no NextAuth DB needed
   session: {
     strategy: 'jwt',
@@ -12,8 +12,15 @@ const handler = NextAuth({
 
   providers: [
     TwitterProvider({
-      clientId: process.env.TWITTER_CLIENT_ID!,
-      clientSecret: process.env.TWITTER_CLIENT_SECRET!,
+      // Support both naming styles – use whichever you actually set in Vercel
+      clientId:
+        process.env.TWITTER_CLIENT_ID ??
+        process.env.X_CLIENT_ID ??
+        '',
+      clientSecret:
+        process.env.TWITTER_CLIENT_SECRET ??
+        process.env.X_CLIENT_SECRET ??
+        '',
       version: '2.0',
     }),
   ],
@@ -126,7 +133,28 @@ const handler = NextAuth({
       }
       return session;
     },
+
+    // 4) Always land on dashboard after login
+    async redirect({ url, baseUrl }) {
+      // Allow relative URLs like /dashboard
+      if (url.startsWith('/')) return baseUrl + url;
+
+      try {
+        const u = new URL(url);
+        if (u.origin === baseUrl) return url;
+      } catch {
+        // ignore malformed URLs
+      }
+
+      // Fallback: go to dashboard
+      return `${baseUrl}/dashboard`;
+    },
   },
-});
+
+  // Helpful while we debug OAuthCallback issues
+  debug: process.env.NODE_ENV !== 'production',
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
