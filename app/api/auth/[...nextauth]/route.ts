@@ -6,6 +6,12 @@ import { prisma } from '@/lib/prisma';
 const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
+  // ✅ Always use your own page, never the built-in ugly one
+  pages: {
+    signIn: '/dashboard', // where your "Sign in with X" button lives
+    error: '/dashboard',  // on any auth error, go back here too
+  },
+
   providers: [
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
