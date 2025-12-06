@@ -1,10 +1,11 @@
 // app/api/auth/[...nextauth]/route.ts
+'use server';
+
 import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 import { prisma } from '@/lib/prisma';
 
-// ❗ Important: DO NOT export authOptions from this file.
-// Route files in App Router may only export HTTP handlers (GET, POST, etc.)
+// IMPORTANT: do NOT export this from the route file
 const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
@@ -62,7 +63,7 @@ const authOptions: NextAuthOptions = {
                 xId: xId ?? undefined,
                 xHandle: handle,
                 xName: name ?? undefined,
-                xAvatarUrl: avatarUrl,
+                xAvatarUrl: avatarUrl ?? undefined,
               },
             });
 
@@ -76,10 +77,12 @@ const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, account, profile }) {
+      // Attach DB user id on first login
       if (user && (user as any).id) {
         (token as any).userId = (user as any).id;
       }
 
+      // Keep X handle + avatar on the token
       if (account?.provider === 'twitter' && profile) {
         const p = profile as any;
         const handle =
@@ -110,28 +113,26 @@ const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
+      // allow relative URLs
       if (url.startsWith('/')) return baseUrl + url;
+
+      // allow same-origin absolute URLs
       try {
         const u = new URL(url);
         if (u.origin === baseUrl) return url;
       } catch {
-        // ignore invalid URL
+        // ignore parse errors
       }
+
+      // default: go to dashboard after login
       return `${baseUrl}/dashboard`;
     },
   },
 
   debug: process.env.NODE_ENV !== 'production',
-
-  events: {
-    error(message) {
-      console.error('[NextAuth error event]', message);
-    },
-  },
 };
 
-// Create the handler used by the App Router
+// Create handler – the only valid exports in App Router are GET / POST
 const handler = NextAuth(authOptions);
 
-// ✅ Only exports allowed in an App Router route file
 export { handler as GET, handler as POST };
