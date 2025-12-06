@@ -1,12 +1,9 @@
 // app/api/auth/[...nextauth]/route.ts
-'use server';
-
 import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 import { prisma } from '@/lib/prisma';
 
-// IMPORTANT: do NOT export this from the route file
-const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
   providers: [
@@ -63,7 +60,7 @@ const authOptions: NextAuthOptions = {
                 xId: xId ?? undefined,
                 xHandle: handle,
                 xName: name ?? undefined,
-                xAvatarUrl: avatarUrl ?? undefined,
+                xAvatarUrl: avatarUrl,
               },
             });
 
@@ -77,14 +74,13 @@ const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, account, profile }) {
-      // Attach DB user id on first login
       if (user && (user as any).id) {
         (token as any).userId = (user as any).id;
       }
 
-      // Keep X handle + avatar on the token
       if (account?.provider === 'twitter' && profile) {
         const p = profile as any;
+
         const handle =
           p?.data?.username ??
           p?.username ??
@@ -113,26 +109,22 @@ const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      // allow relative URLs
       if (url.startsWith('/')) return baseUrl + url;
-
-      // allow same-origin absolute URLs
       try {
         const u = new URL(url);
         if (u.origin === baseUrl) return url;
-      } catch {
-        // ignore parse errors
-      }
-
-      // default: go to dashboard after login
+      } catch {}
       return `${baseUrl}/dashboard`;
     },
   },
 
   debug: process.env.NODE_ENV !== 'production',
+  events: {
+    error(message) {
+      console.error('[NextAuth error event]', message);
+    },
+  },
 };
 
-// Create handler – the only valid exports in App Router are GET / POST
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };
