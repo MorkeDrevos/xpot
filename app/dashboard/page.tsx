@@ -400,13 +400,20 @@ export default function DashboardPage() {
     }
   }
 
-  // Normalize wallet + compute my tickets
-  const normalizedWallet = currentWalletAddress?.toLowerCase() ?? null;
-  const myTickets: Entry[] = normalizedWallet
-    ? entries.filter(
-        (e) => e.walletAddress?.toLowerCase() === normalizedWallet,
-      )
-    : [];
+    // Normalize wallet + compute my tickets
+  const normalizedWallet =
+    currentWalletAddress && typeof currentWalletAddress === 'string'
+      ? currentWalletAddress.toLowerCase()
+      : null;
+
+  const myTickets: Entry[] =
+    normalizedWallet && Array.isArray(entries)
+      ? entries.filter(
+          (e) =>
+            e.walletAddress &&
+            e.walletAddress.toLowerCase() === normalizedWallet,
+        )
+      : [];
 
   // ─────────────────────────────────────────────
   // Render
