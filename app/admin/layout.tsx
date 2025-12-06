@@ -17,7 +17,7 @@ export default function AdminLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="admin-shell-bg min-h-screen px-3 py-6 lg:px-6">
+    <div className="cinematic-bg min-h-screen px-3 py-6 lg:px-6">
       {children}
     </div>
   );

@@ -1,14 +1,10 @@
 // app/api/auth/[...nextauth]/route.ts
-import NextAuth from 'next-auth';
+import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
-
 import { prisma } from '@/lib/prisma';
 
-const handler = NextAuth({
-  // Keep simple JWT sessions – no NextAuth DB needed
-  session: {
-    strategy: 'jwt',
-  },
+const authOptions: NextAuthOptions = {
+  session: { strategy: 'jwt' },
 
   providers: [
     TwitterProvider({
@@ -19,12 +15,10 @@ const handler = NextAuth({
   ],
 
   callbacks: {
-    // 1) On sign-in, upsert into our Prisma User table
     async signIn({ user, account, profile }) {
       if (account?.provider === 'twitter' && profile) {
         try {
           const p = profile as any;
-
           const xId = account.providerAccountId ?? null;
 
           let handle =
@@ -34,13 +28,8 @@ const handler = NextAuth({
             user?.name ??
             null;
 
-          if (!handle && user?.email) {
-            handle = user.email.split('@')[0];
-          }
-
-          if (!handle && xId) {
-            handle = `x_${xId}`;
-          }
+          if (!handle && user?.email) handle = user.email.split('@')[0];
+          if (!handle && xId) handle = `x_${xId}`;
 
           const avatarUrl =
             p?.data?.profile_image_url ??
@@ -60,8 +49,6 @@ const handler = NextAuth({
 
           if (handle) {
             const dbUser = await prisma.user.upsert({
-              // We keep using xHandle as the unique key so we don’t clash
-              // with existing rows that were created before xId existed.
               where: { xHandle: handle },
               update: {
                 xId: xId ?? undefined,
@@ -77,21 +64,16 @@ const handler = NextAuth({
               },
             });
 
-            // Attach DB user id so jwt() can see it
             (user as any).id = dbUser.id;
           }
         } catch (err) {
           console.error('XPOT upsert user failed:', err);
-          // don’t block login if DB write explodes
         }
       }
-
       return true;
     },
 
-    // 2) Put userId + handle + avatar into the JWT
     async jwt({ token, user, account, profile }) {
-      // carry over DB user id from signIn
       if (user && (user as any).id) {
         (token as any).userId = (user as any).id;
       }
@@ -117,7 +99,6 @@ const handler = NextAuth({
       return token;
     },
 
-    // 3) Expose userId + handle + avatar on session
     async session({ session, token }) {
       if (session.user) {
         (session as any).userId = (token as any).userId;
@@ -126,7 +107,19 @@ const handler = NextAuth({
       }
       return session;
     },
-  },
-});
 
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) return baseUrl + url;
+      try {
+        const u = new URL(url);
+        if (u.origin === baseUrl) return url;
+      } catch {}
+      return `${baseUrl}/dashboard`;
+    },
+  },
+
+  debug: process.env.NODE_ENV !== 'production',
+};
+
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };

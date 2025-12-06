@@ -290,58 +290,67 @@ export default function JackpotPanel({
         {/* Left: live USD value + XPOT price */}
         <div className="space-y-3">
           {/* Big USD number with pill + tooltip on the side */}
-          {/* Big USD number with pill + tooltip on the side */}
-<div className="flex flex-wrap items-end gap-3">
-  <div
-    className={`
-      text-5xl sm:text-6xl font-semibold text-white
-      tabular-nums
-      transition-transform duration-200
-      ${justUpdated ? 'scale-[1.01]' : ''}
-    `}
-  >
-    {displayUsd}
-  </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <div
+              className={`
+                text-5xl sm:text-6xl font-semibold text-white
+                tabular-nums
+                transition-transform duration-200
+                ${justUpdated ? 'scale-[1.01]' : ''}
+              `}
+            >
+              {displayUsd}
+            </div>
 
-  {/* USD estimate pill + tooltip trigger */}
-  <div className="mt-2 flex items-center gap-2">
-    <span className="inline-flex items-center rounded-full border border-white/25 bg-black/40 px-2.5 py-[5px] text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">
-      USD estimate
-    </span>
+            {/* USD estimate pill + tooltip trigger */}
+            <div className="mt-2 flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-white/25 bg-black/40 px-2.5 py-[5px] text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">
+                USD estimate
+              </span>
 
-    <div className="relative group">
-      <button
-        type="button"
-        className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-black/40 text-[10px] font-semibold text-white/70 transition-colors group-hover:text-white"
-      >
-        i
-      </button>
-      <div
-        className="
-          pointer-events-none absolute left-1/2 top-full z-[60]
-          mt-3 w-80 -translate-x-1/2 rounded-xl border border-slate-700
-          bg-slate-950/95 px-4 py-3 text-[11px] leading-relaxed
-          text-slate-200 shadow-xl backdrop-blur
-          opacity-0 translate-y-0
-          group-hover:opacity-100 group-hover:translate-y-1
-          transition-all duration-200
-        "
-      >
-        <p className="mb-2">
-          This is the current USD value of today&apos;s XPOT,
-          based on the live XPOT price from Jupiter.
-        </p>
-        <p className="text-slate-400">
-          The winner is always paid in{' '}
-          <span className="font-semibold text-emerald-300">
-            XPOT
-          </span>
-          , not USD.
-        </p>
-      </div>
-    </div>
-  </div>
-</div>
+              <div className="relative group">
+                <button
+                  type="button"
+                  className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-black/40 text-[10px] font-semibold text-white/70 transition-colors group-hover:text-white"
+                >
+                  i
+                </button>
+
+                {/* Tooltip */}
+                <div
+                  className="
+                    absolute left-1/2 top-full z-[70] mt-3 w-80 -translate-x-1/2
+                    rounded-2xl border border-slate-700/80
+                    bg-slate-950
+                    px-4 py-3
+                    text-xs text-slate-100
+                    shadow-[0_18px_40px_rgba(15,23,42,0.95)]
+                    backdrop-blur-xl
+                    opacity-0 translate-y-0
+                    group-hover:opacity-100 group-hover:translate-y-1
+                    transition-all duration-200
+                  "
+                >
+                  {/* Arrow pointer */}
+                  <div
+                    className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]"
+                  />
+
+                  <p className="mb-2">
+                    This is the current USD value of today&apos;s XPOT,
+                    based on the live XPOT price from Jupiter.
+                  </p>
+                  <p className="text-slate-400">
+                    The winner is always paid in{' '}
+                    <span className="font-semibold text-emerald-300">
+                      XPOT
+                    </span>
+                    , not USD.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Single-token price */}
           <p className="mt-1 text-xs text-slate-500">

@@ -8,6 +8,173 @@ body {
   color: var(--text);
   text-shadow: 0 0 1px rgba(255,255,255,0.03);
 }
+.cinematic-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Moving light blobs */
+.cinematic-bg::before {
+  content: "";
+  position: fixed;
+  inset: -40%;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(216,180,254,0.5), transparent 55%),
+    radial-gradient(circle at 80% 10%, rgba(56,189,248,0.45), transparent 55%),
+    radial-gradient(circle at 50% 110%, rgba(129,140,248,0.45), transparent 55%);
+  opacity: 0.7;
+  mix-blend-mode: screen;
+  animation: xpot-orbit 28s linear infinite;
+  pointer-events: none;
+  z-index: -2;
+}
+
+/* Subtle vignette + film grain */
+.cinematic-bg::after {
+  content: "";
+  position: fixed;
+  inset: -1px;
+  background:
+    radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.55) 75%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='noStitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Orbit animation */
+@keyframes xpot-orbit {
+  0% {
+    transform: translate3d(-6%, 4%, 0) scale(1);
+    opacity: 0.75;
+  }
+  25% {
+    transform: translate3d(4%, -2%, 0) scale(1.05);
+  }
+  50% {
+    transform: translate3d(6%, 4%, 0) scale(1.08);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translate3d(-4%, 0%, 0) scale(1.03);
+  }
+  100% {
+    transform: translate3d(-6%, 4%, 0) scale(1);
+    opacity: 0.75;
+  }
+}
+
+.jackpot-shell {
+  position: relative;
+  border-radius: 32px;
+  padding: 2px;
+  background: conic-gradient(
+    from 210deg,
+    rgba(168,85,247,0.7),
+    rgba(56,189,248,0.5),
+    rgba(59,130,246,0.5),
+    rgba(168,85,247,0.7)
+  );
+  box-shadow: 0 0 80px rgba(88,28,135,0.45);
+  overflow: hidden;
+  animation: jackpotPulse 5.5s ease-in-out infinite;
+}
+
+/* Thin orbiting halo around the card */
+.jackpot-shell::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(168,85,247,0.45), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(56,189,248,0.45), transparent 55%);
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  filter: blur(10px);
+  animation: jackpotOrbit 18s linear infinite;
+}
+
+/* Glass core */
+.jackpot-shell-inner {
+  position: relative;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(59,130,246,0.32), transparent 60%),
+    radial-gradient(circle at 80% 100%, rgba(147,51,234,0.35), transparent 60%),
+    rgba(2,6,23,0.96);
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 24px 60px rgba(15,23,42,0.95),
+    0 0 0 1px rgba(15,23,42,0.75);
+}
+
+/* Breathing motion */
+@keyframes jackpotPulse {
+  0% {
+    transform: scale(1);
+    box-shadow:
+      0 0 50px rgba(88, 28, 135, 0.45),
+      0 0 80px rgba(56, 189, 248, 0.12);
+  }
+
+  40% {
+    transform: scale(1.01);
+    box-shadow:
+      0 0 90px rgba(129, 140, 248, 0.55),
+      0 0 120px rgba(56, 189, 248, 0.25);
+  }
+
+  70% {
+    transform: scale(1.015);
+    box-shadow:
+      0 0 120px rgba(147, 51, 234, 0.6),
+      0 0 160px rgba(34, 227, 179, 0.35);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 50px rgba(88, 28, 135, 0.45),
+      0 0 80px rgba(56, 189, 248, 0.12);
+  }
+}
+
+/* Slow orbit of the halo */
+@keyframes jackpotOrbit {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.03);
+    opacity: 0.8;
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    opacity: 0.55;
+  }
+}
+
+.primary-cta {
+  position: relative;
+  overflow: hidden;
+}
+
+.primary-cta::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(120deg, rgba(250,250,250,0.65), transparent 60%);
+  opacity: 0;
+  transform: translateX(-60%);
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+}
+
+.primary-cta:hover::before {
+  opacity: 1;
+  transform: translateX(40%);
+}
 
 /* ────────────────────────────────────────────────
    Global XPOT color tokens – Neon Nebula Palette
@@ -618,8 +785,7 @@ html.light .text-emerald-300.live-label {
 .admin-card,
 .premium-card,
 .card-premium,
-.jackpot-core,
-section {
+.jackpot-core {
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,0.02),
     0 25px 80px rgba(0,0,0,0.65),
