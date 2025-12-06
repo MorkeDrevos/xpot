@@ -6,17 +6,20 @@ import { prisma } from '@/lib/prisma';
 const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
-  // Use your own page; ignore the ugly built-in one
+  // Always use your own page, never the built-in ugly one
   pages: {
-    signIn: '/dashboard',
-    error: '/dashboard',
+    signIn: '/dashboard',   // where your "Continue with X" button lives
+    error: '/dashboard',    // on any auth error, go back here too
   },
 
   providers: [
     TwitterProvider({
+      // ⚠️ IMPORTANT:
+      // These should come from "API Key and Secret" (Consumer Keys),
+      // NOT from "OAuth 2.0 Client ID and Client Secret".
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
-      version: '2.0',
+      // ❌ NO "version: '2.0'" here -> this uses OAuth 1.0a
     }),
   ],
 
@@ -28,9 +31,9 @@ const authOptions: NextAuthOptions = {
           const xId = account.providerAccountId ?? null;
 
           let handle =
-            p?.data?.username ??
-            p?.username ??
             p?.screen_name ??
+            p?.username ??
+            p?.data?.username ??
             user?.name ??
             null;
 
@@ -38,14 +41,14 @@ const authOptions: NextAuthOptions = {
           if (!handle && xId) handle = `x_${xId}`;
 
           const avatarUrl =
-            p?.data?.profile_image_url ??
             p?.profile_image_url ??
+            p?.data?.profile_image_url ??
             p?.avatar_url ??
             null;
 
           const name =
-            p?.data?.name ??
             p?.name ??
+            p?.data?.name ??
             user?.name ??
             null;
 
@@ -66,7 +69,7 @@ const authOptions: NextAuthOptions = {
                 xId: xId ?? undefined,
                 xHandle: handle,
                 xName: name ?? undefined,
-                xAvatarUrl: avatarUrl,
+                xAvatarUrl: avatarUrl ?? undefined,
               },
             });
 
@@ -88,14 +91,14 @@ const authOptions: NextAuthOptions = {
         const p = profile as any;
 
         const handle =
-          p?.data?.username ??
-          p?.username ??
           p?.screen_name ??
+          p?.username ??
+          p?.data?.username ??
           (token as any).xHandle;
 
         const avatarUrl =
-          p?.data?.profile_image_url ??
           p?.profile_image_url ??
+          p?.data?.profile_image_url ??
           (token as any).xAvatarUrl;
 
         (token as any).xHandle = handle;
