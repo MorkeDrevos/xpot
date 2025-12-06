@@ -397,39 +397,60 @@ export default function AdminPage() {
 
   // ── Pick main XPOT winner ─────────────────────────────────
 
-  async function handlePickMainWinner() {
-    setPickError(null);
-    setPickSuccess(null);
+async function handlePickMainWinner() {
+  setPickError(null);
+  setPickSuccess(null);
 
-    if (!adminToken) {
-      setPickError('Admin token missing. Unlock admin first.');
-      return;
-    }
-
-    setIsPickingWinner(true);
-    try {
-      const data = await authedFetch('/api/admin/pick-winner', {
-        method: 'POST',
-      });
-
-      const w = data.winner as AdminWinner | undefined;
-      if (!w) throw new Error('No winner returned from API');
-
-      setPickSuccess(
-        `Main XPOT winner: ${w.ticketCode} (${w.walletAddress.slice(
-          0,
-          4,
-        )}…${w.walletAddress.slice(-4)}).`,
-      );
-
-      setWinners((prev) => [w, ...prev]);
-      setTodayDraw((prev) => (prev ? { ...prev, status: 'closed' } : prev));
-    } catch (err: any) {
-      setPickError(err.message || 'Failed to pick main XPOT winner');
-    } finally {
-      setIsPickingWinner(false);
-    }
+  if (!adminToken) {
+    setPickError('Admin token missing. Unlock admin first.');
+    return;
   }
+
+  setIsPickingWinner(true);
+  try {
+    const data = await authedFetch('/api/admin/pick-winner', {
+      method: 'POST',
+    });
+
+    const raw = data.winner as any;
+    if (!raw) throw new Error('No winner returned from API');
+
+    // 🔧 Normalise shape so payoutUsd is always present
+    const winner: AdminWinner = {
+      ...raw,
+      payoutUsd:
+        raw.payoutUsd ??
+        raw.payoutXpot ?? // common backend name
+        raw.amountUsd ??
+        raw.amountXpot ??
+        0,
+    };
+
+    setPickSuccess(
+      `Main XPOT winner: ${winner.ticketCode} (${winner.walletAddress.slice(
+        0,
+        4,
+      )}…${winner.walletAddress.slice(-4)}).`,
+    );
+
+    // 🔄 Refresh winners from canonical endpoint so UI matches after reload
+    try {
+      const winnersData = await authedFetch('/api/admin/winners');
+      setWinners(winnersData.winners ?? []);
+    } catch (err) {
+      console.error('[ADMIN] refresh winners after pick error', err);
+      // fallback: at least show the locally picked winner
+      setWinners((prev) => [winner, ...prev]);
+    }
+
+    // Close today’s draw in local state
+    setTodayDraw((prev) => (prev ? { ...prev, status: 'closed' } : prev));
+  } catch (err: any) {
+    setPickError(err.message || 'Failed to pick main XPOT winner');
+  } finally {
+    setIsPickingWinner(false);
+  }
+}
 
   // ── Panic: reopen today’s draw ──────────────────────────────
   async function handleReopenDraw() {
