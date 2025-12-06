@@ -400,7 +400,7 @@ export default function DashboardPage() {
     }
   }
 
-    // Normalize wallet + compute my tickets
+      // Normalize wallet + compute my tickets
   const normalizedWallet =
     currentWalletAddress && typeof currentWalletAddress === 'string'
       ? currentWalletAddress.toLowerCase()
