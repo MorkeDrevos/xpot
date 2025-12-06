@@ -1,1322 +1,627 @@
-// app/admin/page.tsx
-'use client';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-export const dynamic = 'force-dynamic';
-
-import { useEffect, useState, FormEvent } from 'react';
-
-import JackpotPanel from '@/components/JackpotPanel';
-import Image from 'next/image';
-import Link from 'next/link';
-
-const MAX_TODAY_TICKETS = 10;   // how many “Today’s XPOT entries” to show
-const MAX_RECENT_WINNERS = 9;   // how many “Recent XPOT winners” to show
-
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
-
-type DrawStatus = 'open' | 'closed' | 'completed';
-
-type TodayDraw = {
-  id: string;
-  date: string;
-  status: DrawStatus;
-  jackpotUsd: number;
-  rolloverUsd: number;
-  ticketsCount: number;
-  closesAt?: string | null;
-};
-
-type TicketStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
-
-type AdminTicket = {
-  id: string;
-  code: string;
-  walletAddress: string;
-  status: TicketStatus;
-  createdAt: string;
-  jackpotUsd?: number;
-};
-
-type AdminWinnerKind = 'main' | 'bonus';
-
-type AdminWinner = {
-  id: string;
-  drawId: string;
-  date: string;
-  ticketCode: string;
-  walletAddress: string;
-  jackpotUsd: number;
-  payoutUsd: number; // used as XPOT amount in UI
-  isPaidOut: boolean;
-  txUrl?: string | null;
-  kind?: AdminWinnerKind;
-  label?: string | null;
-};
-
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-
-const ADMIN_TOKEN_KEY = 'xpot_admin_token';
-
-function formatDate(date: string | Date) {
-  const d = new Date(date);
-  return d.toLocaleDateString('en-GB'); // 03/12/2025
+html,
+body {
+  margin: 0;
+  padding: 0;
 }
 
-function formatDateTime(date: string | Date) {
-  const d = new Date(date);
-  return d.toLocaleString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+/* ────────────────────────────────────────────────
+   Global XPOT color tokens – Neon Nebula Palette
+   (deep navy + cyan/teal + subtle purple)
+   ──────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* Core surfaces */
+  /* very dark navy, like the hero image */
+  --bg: #020618;           /* main background */
+  --bg-elevated: #050b1b;  /* cards / panels */
+  --border-subtle: #0b1220;
+  --border-strong: #111827;
+
+  /* Text */
+  --text: #e5e7eb;
+  --text-soft: #9ca3af;
+  --text-mute: #6b7280;
+
+  /* Brand accents (mapped to old names for compatibility) */
+  /* cyan/teal of the X leg */
+  --accent-emerald: #22e3b3;
+  --accent-emerald-soft: rgba(34, 227, 179, 0.18);
+
+  /* XPOT blue arm of the X */
+  --accent-blue: #4ea3e3;
+  --accent-blue-soft: rgba(78, 163, 227, 0.23);
+
+  /* subtle purple from the background glow */
+  --accent-purple: #6366f1;
+  --accent-purple-soft: rgba(99, 102, 241, 0.20);
+
+  /* Gold highlight – jackpots & winners only */
+  --accent-gold: #f5c46c;
+  --accent-gold-soft: rgba(245, 196, 108, 0.35);
+
+  /* Status */
+  --success: #22c55e;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+
+  /* Typography */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'SF Pro Display', sans-serif;
+  font-size: 15px;
 }
 
-function formatUsd(amount: number | null | undefined, decimals = 2) {
-  if (amount == null || !Number.isFinite(amount)) return '$0.00';
-  return amount.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+@media (min-width: 1024px) {
+  :root {
+    font-size: 16px;
+  }
 }
 
-function formatXpot(amount: number | null | undefined, decimals = 2) {
-  if (amount == null || !Number.isFinite(amount)) return '0 XPOT';
-  return `${amount.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: decimals,
-  })} XPOT`;
+/* Light theme overrides (applied when <html class="light">) */
+html.light {
+  color-scheme: light;
+
+  /* Main shell */
+  --bg: #f3f4f6;              /* page background */
+  --bg-elevated: #ffffff;     /* cards */
+  --border-subtle: #e5e7eb;
+  --border-strong: #d1d5db;
+
+  /* Text */
+  --text: #020617;            /* all white text becomes dark */
+  --text-soft: #374151;
+  --text-mute: #6b7280;
+
+  /* Accents – softer but still XPOT-ish */
+  --accent-emerald: #059669;
+  --accent-emerald-soft: rgba(5, 150, 105, 0.10);
+
+  --accent-blue: #2563eb;
+  --accent-blue-soft: rgba(37, 99, 235, 0.10);
+
+  --accent-purple: #4f46e5;
+  --accent-purple-soft: rgba(79, 70, 229, 0.12);
+
+  --accent-gold: #d97706;
+  --accent-gold-soft: rgba(217, 119, 6, 0.14);
+
+  /* Status */
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
 }
 
-function UsdPill({
-  amount,
-  size = 'md',
-}: {
-  amount: number | null | undefined;
-  size?: 'sm' | 'md';
-}) {
-  const value = formatUsd(amount);
-  const base =
-    'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
-  const cls =
-    size === 'sm'
-      ? `${base} px-2 py-0.5 text-xs`
-      : `${base} px-3 py-1 text-sm`;
-
-  return (
-    <span className={cls}>
-      <span className="font-mono text-[0.92em]">{value}</span>
-      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">
-        USD
-      </span>
-    </span>
-  );
+/* Base body styling uses tokens */
+body {
+  background-color: var(--bg);
+  color: var(--text);
 }
 
-function formatWinnerLabel(w: AdminWinner): string | null {
-  if (!w.label) return null;
+/* Light theme – keep Tailwind utilities from looking “dark” */
 
-  // Normalise for safety
-  const raw = w.label.trim();
-
-  // Main pool – avoid “jackpot”
-  if (w.kind === 'main' || /jackpot/i.test(raw)) {
-    return 'Main XPOT';
-  }
-
-  // Fallback: strip the word jackpot anywhere else, replace with XPOT
-  return raw.replace(/jackpot/gi, 'XPOT');
+html.light body {
+  color: var(--text);
 }
 
-function XpotPill({
-  amount,
-  size = 'md',
-}: {
-  amount: number | null | undefined;
-  size?: 'sm' | 'md';
-}) {
-  const value = formatXpot(amount);
-  const base =
-    'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
-  const cls =
-    size === 'sm'
-      ? `${base} px-2 py-0.5 text-xs`
-      : `${base} px-3 py-1 text-sm`;
-
-  return (
-    <span className={cls}>
-      <span className="font-mono text-[0.92em]">{value}</span>
-    </span>
-  );
+/* any explicit dark backgrounds -> light tokens */
+html.light .bg-black {
+  background-color: var(--bg) !important;
 }
 
-function truncateAddress(addr: string, visible: number = 6) {
-  if (!addr) return '(unknown wallet)';
-  if (addr.length <= visible * 2) return addr;
-  return `${addr.slice(0, visible)}…${addr.slice(-visible)}`;
+html.light .bg-slate-900,
+html.light .bg-slate-950 {
+  background-color: var(--bg-elevated) !important;
 }
 
-function CopyableWallet({ address }: { address: string }) {
-  const [copied, setCopied] = useState(false);
-
-  if (!address) {
-    return (
-      <span className="text-xs text-slate-500 font-mono">
-        (unknown wallet)
-      </span>
-    );
-  }
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    } catch (err) {
-      console.error('Failed to copy wallet address', err);
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="group inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-emerald-300 transition-colors"
-    >
-      <span className="font-mono">
-        {truncateAddress(address, 6)}
-      </span>
-      <span className="rounded-md border border-slate-600/60 px-1 py-[1px] text-[10px] uppercase tracking-wide group-hover:border-emerald-400/60">
-        {copied ? 'Copied' : 'Copy'}
-      </span>
-    </button>
-  );
+/* dark borders -> light borders */
+html.light .border-slate-900,
+html.light .border-slate-800,
+html.light .border-slate-700 {
+  border-color: var(--border-subtle) !important;
 }
 
-// ─────────────────────────────────────────────
-// Button styles (control room system)
-// ─────────────────────────────────────────────
+/* very light text colors should become main text in light mode */
+html.light .text-slate-50,
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-slate-300,
+html.light .text-white {
+  color: var(--text) !important;
+}
 
-const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:opacity-40 disabled:cursor-not-allowed';
+/* Admin + premium cards */
 
-const BTN_SECONDARY =
-  'inline-flex items-center justify-center rounded-lg bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 transition disabled:opacity-40 disabled:cursor-not-allowed';
+html.light .admin-card {
+  background: #ffffff !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow:
+    0 6px 20px rgba(0,0,0,0.06),
+    0 0 0 1px rgba(0,0,0,0.04);
+}
 
-const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition';
+html.light .premium-card,
+html.light .card-premium,
+html.light .premium-highlight {
+  background: #ffffff !important;
+  box-shadow:
+    0 6px 20px rgba(0,0,0,0.06),
+    0 0 0 1px rgba(0,0,0,0.04);
+}
 
-// ─────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────
+html.light .premium-highlight,
+html.light .jackpot-core {
+  background: #ffffff !important;
+}
 
-export default function AdminPage() {
-  const [adminToken, setAdminToken] = useState<string | null>(null);
-  const [tokenInput, setTokenInput] = useState('');
-  const [tokenAccepted, setTokenAccepted] = useState(false);
-  const [isSavingToken, setIsSavingToken] = useState(false);
+/* ────────────────────────────────────────────────
+   Status pills
+   ──────────────────────────────────────────────── */
 
-  const [todayDraw, setTodayDraw] = useState<TodayDraw | null>(null);
-  const [todayDrawError, setTodayDrawError] = useState<string | null>(null);
-  const [todayLoading, setTodayLoading] = useState(true);
+.status-pill,
+.status-pill-amber,
+.status-pill-emerald {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
 
-  const [tickets, setTickets] = useState<AdminTicket[]>([]);
-  const [ticketsError, setTicketsError] = useState<string | null>(null);
-  const [ticketsLoading, setTicketsLoading] = useState(true);
+.status-pill {
+  background: rgba(37, 99, 235, 0.30);
+  color: #dbeafe;
+  border: 1px solid rgba(59, 130, 246, 0.7);
+}
 
-  const [winners, setWinners] = useState<AdminWinner[]>([]);
-  const [winnersError, setWinnersError] = useState<string | null>(null);
-  const [winnersLoading, setWinnersLoading] = useState(true);
+.status-pill-amber {
+  background: rgba(245, 196, 108, 0.18);
+  color: #fed7aa;
+  border: 1px solid rgba(245, 196, 108, 0.7);
+}
 
-  const [isDevHost, setIsDevHost] = useState(false);
+.status-pill-emerald {
+  background: rgba(34, 227, 179, 0.18);
+  color: #bbf7d0;
+  border: 1px solid rgba(34, 227, 179, 0.7);
+}
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsDevHost(window.location.hostname.startsWith('dev.'));
-    }
-  }, []);
+/* light-mode versions of pills */
+html.light .status-pill {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1e40af;
+  border-color: rgba(37, 99, 235, 0.18);
+}
 
-  // "Mark as paid" helpers
-  const [txInputs, setTxInputs] = useState<Record<string, string>>({});
-  const [savingPaidId, setSavingPaidId] = useState<string | null>(null);
-  const [markPaidError, setMarkPaidError] = useState<string | null>(null);
-  const [copiedTxWinnerId, setCopiedTxWinnerId] = useState<string | null>(null);
+html.light .status-pill-emerald {
+  background: rgba(34, 197, 94, 0.10);
+  color: #047857;
+  border-color: rgba(34, 197, 94, 0.25);
+}
 
-  // how many tickets / winners to show; grows when you click "Load more"
-  const [visibleTicketCount, setVisibleTicketCount] = useState(
-    MAX_TODAY_TICKETS,
-  );
-  const [visibleWinnerCount, setVisibleWinnerCount] = useState(
-    MAX_RECENT_WINNERS,
-  );
+html.light .status-pill-amber {
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.25);
+}
 
-  const visibleTickets = tickets.slice(0, visibleTicketCount);
-  const visibleWinners = winners.slice(0, visibleWinnerCount);
+/* ────────────────────────────────────────────────
+   XPOT verified badge (custom, non-copyrighted)
+   ──────────────────────────────────────────────── */
 
-  // Live jackpot USD coming from JackpotPanel
-  const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
+.x-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
 
-  // Countdown for "Draw closes in"
-  const [countdownText, setCountdownText] = useState<string | null>(null);
-  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
+  border-radius: 9999px;
+  background: var(--accent-blue);
 
-  const isWarningSoon =
-    countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
 
-  const isWarningCritical =
-    countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset,
+    0 0 0 0 rgba(29, 155, 240, 0);
 
-  // Bonus jackpot form
-  const [bonusAmount, setBonusAmount] = useState('100000');
-  const [bonusLabel, setBonusLabel] = useState('Bonus XPOT');
-  const [bonusSubmitting, setBonusSubmitting] = useState(false);
-  const [bonusError, setBonusError] = useState<string | null>(null);
-  const [bonusSuccess, setBonusSuccess] = useState<string | null>(null);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+}
 
-  // Pick main winner state
-  const [pickError, setPickError] = useState<string | null>(null);
-  const [pickSuccess, setPickSuccess] = useState<string | null>(null);
-  const [isPickingWinner, setIsPickingWinner] = useState(false);
-  const [isReopeningDraw, setIsReopeningDraw] = useState(false);
+/* Draw the check mark as pure CSS */
+.x-verified-badge::before {
+  content: '';
+  width: 0.35rem;
+  height: 0.22rem;
+  border-style: solid;
+  border-width: 0 0 2px 2px;
+  border-color: #ffffff;
+  border-radius: 0.5px;
+  transform: translateY(-0.5px) rotate(-45deg);
+}
 
-  // Flag while we are creating today's draw
-  const [creatingDraw, setCreatingDraw] = useState(false);
+/* Hover = tiny lift & glow */
+.x-verified-badge:hover {
+  transform: translateY(-0.5px);
+  filter: brightness(1.05);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 4px 10px rgba(15, 23, 42, 0.85);
+}
 
-  // ── Load admin token from localStorage ────────────────────────
+/* Pressed = scale down */
+.x-verified-badge:active {
+  transform: scale(0.9);
+  filter: brightness(0.97);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 1px 4px rgba(15, 23, 42, 0.9);
+}
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
-    if (stored) {
-      setAdminToken(stored);
-      setTokenAccepted(true);
-    }
-  }, []);
+/* ────────────────────────────────────────────────
+   Account dropdown animation
+   ──────────────────────────────────────────────── */
 
-  // ── Fetch helpers with auth header ────────────────────────────
+.x-account-menu {
+  opacity: 0;
+  transform: translateY(4px) scale(0.97);
+  transform-origin: bottom left;
+  animation: account-menu-in 130ms ease-out forwards;
+}
 
-  async function authedFetch(input: string, init?: RequestInit) {
-    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
-    const res = await fetch(input, {
-      ...init,
-      headers: {
-        ...(init?.headers || {}),
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${adminToken}`,
-      },
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(
-        `Request failed (${res.status}): ${
-          body || res.statusText || 'Unknown error'
-        }`,
-      );
-    }
-    return res.json();
+@keyframes account-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Avatar lock badge (identity locked to draw) */
+
+.x-avatar-lock {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 30% 20%, #bbf7d0 0, #22c55e 40%, #0f172a 100%);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 6px 14px rgba(15, 23, 42, 0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.x-avatar-lock-glyph {
+  font-size: 10px;
+  transform: translateY(-0.5px);
+}
+
+/* ────────────────────────────────────────────────
+   Premium shell + cards
+   ──────────────────────────────────────────────── */
+
+.premium-shell {
+  backdrop-filter: blur(20px);
+}
+
+/* base card – uses deep navy + subtle purple/cyan glow */
+.premium-card {
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 0 0, var(--accent-purple-soft), transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.9), transparent 55%),
+    var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.55),
+    0 0 0 1px rgba(15, 23, 42, 0.12);
+}
+
+/* hero-style card (good for main blocks) */
+.card-premium {
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 0 0, var(--accent-emerald-soft), transparent 55%),
+    radial-gradient(circle at 100% 0, var(--accent-blue-soft), transparent 50%),
+    radial-gradient(circle at 100% 100%, var(--accent-purple-soft), transparent 55%),
+    var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow:
+    0 22px 60px rgba(15, 23, 42, 0.65),
+    0 0 0 1px rgba(15, 23, 42, 0.14);
+}
+
+/* main XPOT highlight block (jackpot card) */
+.premium-highlight.jackpot-core {
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at 0 0, var(--accent-emerald-soft), transparent 55%),
+    radial-gradient(circle at 100% 0, var(--accent-blue-soft), transparent 50%),
+    radial-gradient(circle at 50% 100%, var(--accent-purple-soft), transparent 55%),
+    var(--bg-elevated);
+  border: 1px solid rgba(148, 163, 253, 0.5); /* purple/blue border */
+  box-shadow:
+    0 20px 45px rgba(15, 23, 42, 0.7),
+    0 0 0 1px rgba(15, 23, 42, 0.16);
+}
+
+/* buttons */
+.btn-premium {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
+}
+
+.btn-premium:hover {
+  transform: translateY(-0.5px);
+  filter: brightness(1.05);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 14px 30px rgba(37, 99, 235, 0.7);
+}
+
+.btn-premium:active {
+  transform: translateY(0.5px) scale(0.98);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.95),
+    0 6px 16px rgba(15, 23, 42, 0.95);
+}
+
+/* soft glow for main CTA – tuned to cyan */
+.toolbar-glow {
+  box-shadow:
+    0 0 40px rgba(34, 227, 179, 0.65),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
+}
+
+/* ────────────────────────────────────────────────
+   Legal pages
+   ──────────────────────────────────────────────── */
+
+.legal-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, #020617 0, #020617 40%, #000 100%);
+  padding: 4rem 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.legal-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 1.25rem;
+  padding: 2.5rem 2rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    sans-serif;
+}
+
+@media (max-width: 640px) {
+  .legal-page {
+    padding: 3rem 1.25rem;
   }
 
-  // ── Manually create today's draw from admin button ────────────
-
-  async function handleCreateTodayDraw() {
-    setTodayDrawError(null);
-
-    if (!adminToken) {
-      alert('Admin token missing. Unlock admin first.');
-      return;
-    }
-
-    setCreatingDraw(true);
-    try {
-      const data = await authedFetch('/api/admin/create-today-draw', {
-        method: 'POST',
-      });
-
-      if (!data || data.ok === false) {
-        throw new Error(data?.error || 'Failed to create today’s draw');
-      }
-
-      // Reload admin so the Today card + tickets refresh
-      window.location.reload();
-    } catch (err: any) {
-      console.error('[XPOT] create today draw error:', err);
-      alert(err.message || 'Unexpected error creating today’s round');
-    } finally {
-      setCreatingDraw(false);
-    }
+  .legal-container {
+    padding: 2rem 1.5rem;
   }
+}
 
-  // ── Drop bonus XPOT (bonus winner) ─────────────────────────
+.legal-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: #a5b4fc;
+  margin-bottom: 0.25rem;
+}
 
-  async function handleDropBonus(e: FormEvent) {
-    e.preventDefault();
-    setBonusError(null);
-    setBonusSuccess(null);
+.legal-title {
+  font-size: 2rem;
+  line-height: 1.2;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
 
-    if (!adminToken) {
-      setBonusError('Admin token missing. Unlock admin first.');
-      return;
-    }
+.legal-updated {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+}
 
-    const amountNumber = Number(bonusAmount);
-    if (!Number.isFinite(amountNumber) || amountNumber < 100000) {
-      setBonusError('Enter a valid XPOT amount (min 100,000).');
-      return;
-    }
+.legal-intro {
+  margin-bottom: 1rem;
+}
 
-    setBonusSubmitting(true);
-    try {
-      const res = await authedFetch('/api/admin/bonus', {
-        method: 'POST',
-        body: JSON.stringify({
-          amountUsd: amountNumber,
-          label: bonusLabel || 'Bonus XPOT',
-        }),
-      });
+.legal-container h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+  color: #e5e7eb;
+}
 
-      const r = res.reward;
-      setBonusSuccess(
-        `Bonus ${formatUsd(r.amountUsd)} sent to ${r.ticketCode} (${r.walletAddress.slice(
-          0,
-          4,
-        )}…${r.walletAddress.slice(-4)}).`,
-      );
+.legal-container h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+  color: #e5e7eb;
+}
 
-      // Refresh winners list
-      try {
-        const winnersData = await authedFetch('/api/admin/winners');
-        setWinners(winnersData.winners ?? []);
-      } catch {
-        // ignore secondary error
-      }
-    } catch (err: any) {
-      setBonusError(err.message || 'Failed to drop bonus XPOT');
-    } finally {
-      setBonusSubmitting(false);
-    }
+.legal-container p {
+  font-size: 0.94rem;
+  line-height: 1.7;
+  margin-bottom: 0.6rem;
+  color: #d1d5db;
+}
+
+.legal-container ul {
+  padding-left: 1.25rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.legal-container li {
+  font-size: 0.94rem;
+  line-height: 1.7;
+  color: #d1d5db;
+  margin-bottom: 0.25rem;
+}
+
+.legal-container a {
+  color: #a5b4fc;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.legal-container a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* XPOT login modal animations & micro-interactions */
+
+@keyframes xpot-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
   }
-
-  // ── Pick main XPOT winner ─────────────────────────────────
-
-  async function handlePickMainWinner() {
-    setPickError(null);
-    setPickSuccess(null);
-
-    if (!adminToken) {
-      setPickError('Admin token missing. Unlock admin first.');
-      return;
-    }
-
-    setIsPickingWinner(true);
-    try {
-      const data = await authedFetch('/api/admin/pick-winner', {
-        method: 'POST',
-      });
-
-      const w = data.winner as AdminWinner | undefined;
-      if (!w) {
-        throw new Error('No winner returned from API');
-      }
-
-      setPickSuccess(
-        `Main XPOT winner: ${w.ticketCode} (${w.walletAddress.slice(
-          0,
-          4,
-        )}…${w.walletAddress.slice(-4)}).`,
-      );
-
-      // Prepend to winners list
-      setWinners((prev) => [w, ...prev]);
-
-      // Mark draw as closed in UI
-      setTodayDraw((prev) =>
-        prev ? { ...prev, status: 'closed' } : prev,
-      );
-    } catch (err: any) {
-      setPickError(err.message || 'Failed to pick main XPOT winner');
-    } finally {
-      setIsPickingWinner(false);
-    }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
+}
 
-  // ── Panic: reopen today’s draw ──────────────────────────────
-  async function handleReopenDraw() {
-    setTodayDrawError(null);
-
-    if (!adminToken) {
-      alert('Admin token missing. Unlock admin first.');
-      return;
-    }
-
-    setIsReopeningDraw(true);
-    try {
-      const data = await authedFetch('/api/admin/reopen-draw', {
-        method: 'POST',
-      });
-
-      if (!data || data.ok === false) {
-        throw new Error(data?.error || 'Failed to reopen draw');
-      }
-
-      setTodayDraw((prev) =>
-        prev ? { ...prev, status: 'open' } : prev,
-      );
-    } catch (err: any) {
-      console.error('[XPOT] reopen draw error:', err);
-      alert(err.message || 'Unexpected error reopening draw');
-    } finally {
-      setIsReopeningDraw(false);
-    }
+@keyframes xpot-cta-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55);
   }
-
-  // ── Mark winner as paid ─────────────────────────────────────
-
-  async function handleMarkAsPaid(winnerId: string) {
-    setMarkPaidError(null);
-
-    if (!adminToken) {
-      setMarkPaidError('Admin token missing. Unlock admin first.');
-      return;
-    }
-
-    const txUrl = txInputs[winnerId]?.trim() || '';
-    if (!txUrl) {
-      setMarkPaidError('Paste a TX link before marking as paid.');
-      return;
-    }
-
-    setSavingPaidId(winnerId);
-    try {
-      const res = await authedFetch('/api/admin/mark-paid', {
-        method: 'POST',
-        body: JSON.stringify({ winnerId, txUrl }),
-      });
-
-      if (!res.ok) {
-        throw new Error(res.error || 'Failed to mark as paid');
-      }
-
-      // Update local winners list
-      setWinners((prev) =>
-        prev.map((w) =>
-          w.id === winnerId
-            ? { ...w, isPaidOut: true, txUrl }
-            : w,
-        ),
-      );
-    } catch (err: any) {
-      setMarkPaidError(err.message || 'Failed to mark as paid');
-    } finally {
-      setSavingPaidId(null);
-    }
+  70% {
+    box-shadow: 0 0 0 22px rgba(56, 189, 248, 0);
   }
-
-  // ── Load Today, tickets, winners when token is ready ──────────
-
-  useEffect(() => {
-    if (!adminToken) return;
-
-    let cancelled = false;
-
-    async function loadAll() {
-      // Today
-      setTodayLoading(true);
-      setTodayDrawError(null);
-      try {
-        const data = await authedFetch('/api/admin/today');
-        if (!cancelled) {
-          setTodayDraw(data.today ?? null);
-        }
-      } catch (err: any) {
-        console.error('[ADMIN] /today error', err);
-        if (!cancelled) {
-          setTodayDrawError(err.message || 'Failed to load today');
-        }
-      } finally {
-        if (!cancelled) setTodayLoading(false);
-      }
-
-      // Tickets
-      setTicketsLoading(true);
-      setTicketsError(null);
-      try {
-        const data = await authedFetch('/api/admin/tickets');
-        if (!cancelled) {
-          setTickets(data.tickets ?? []);
-        }
-      } catch (err: any) {
-        console.error('[ADMIN] /tickets error', err);
-        if (!cancelled) {
-          setTicketsError(err.message || 'Failed to load tickets');
-        }
-      } finally {
-        if (!cancelled) setTicketsLoading(false);
-      }
-
-      // Winners (main + bonus)
-      setWinnersLoading(true);
-      setWinnersError(null);
-      try {
-        const data = await authedFetch('/api/admin/winners');
-        if (!cancelled) {
-          setWinners(data.winners ?? []);
-        }
-      } catch (err: any) {
-        console.error('[ADMIN] /winners error', err);
-        if (!cancelled) {
-          setWinnersError(err.message || 'Failed to load results');
-        }
-      } finally {
-        if (!cancelled) setWinnersLoading(false);
-      }
-    }
-
-    loadAll();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [adminToken]);
-
-  // ── Countdown until todayDraw.closesAt (daily loop) ───────────
-  useEffect(() => {
-    if (!todayDraw?.closesAt) {
-      setCountdownText(null);
-      setCountdownSeconds(null);
-      return;
-    }
-
-    const closesAt = new Date(todayDraw.closesAt);
-    const DAY_MS = 24 * 60 * 60 * 1000;
-
-    function updateCountdown() {
-      const now = new Date();
-
-      // target is today’s close by default
-      let target = closesAt;
-      let diff = target.getTime() - now.getTime();
-
-      // if we’re past today’s close, jump to the next 24h cycle
-      if (diff <= 0) {
-        target = new Date(closesAt.getTime() + DAY_MS);
-        diff = target.getTime() - now.getTime();
-      }
-
-      const totalSeconds = Math.max(0, Math.floor(diff / 1000));
-      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String(
-        Math.floor((totalSeconds % 3600) / 60),
-      ).padStart(2, '0');
-      const seconds = String(totalSeconds % 60).padStart(2, '0');
-
-      setCountdownText(`${hours}:${minutes}:${seconds}`);
-      setCountdownSeconds(totalSeconds);
-    }
-
-    updateCountdown();
-    const id = window.setInterval(updateCountdown, 1000);
-
-    return () => {
-      window.clearInterval(id);
-    };
-  }, [todayDraw?.closesAt]);
-
-  // Clamp visibleTicketCount if tickets shrink / first load
-  useEffect(() => {
-    setVisibleTicketCount((prev) =>
-      Math.min(prev, tickets.length || MAX_TODAY_TICKETS),
-    );
-  }, [tickets.length]);
-
-  function handleLoadMoreTickets() {
-    setVisibleTicketCount((prev) =>
-      Math.min(prev + MAX_TODAY_TICKETS, tickets.length),
-    );
+  100% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
   }
+}
 
-  // Clamp visibleWinnerCount when winners list changes
-  useEffect(() => {
-    setVisibleWinnerCount((prev) => {
-      // No winners
-      if (winners.length === 0) return 0;
+.xpot-modal-enter {
+  animation: xpot-fade-in 260ms ease-out forwards;
+}
 
-      // If total winners is within the first page size (<= 9),
-      // always show all of them – no "Load more" yet.
-      if (winners.length <= MAX_RECENT_WINNERS) {
-        return winners.length;
-      }
+.xpot-cta-pulse {
+  animation: xpot-cta-pulse 1.8s ease-out infinite;
+}
 
-      // Once we have more than 9 winners:
-      // - if we already had a visible count, keep it but don't exceed total
-      // - if it's the first time crossing the threshold, show the first 9
-      if (prev && prev > 0) {
-        return Math.min(prev, winners.length);
-      }
+.xpot-cta-pulse:hover {
+  animation-play-state: paused; /* let hover state be crisp */
+}
 
-      return MAX_RECENT_WINNERS;
-    });
-  }, [winners.length]);
+/* Subtle XPOT link hover effect */
+.xpot-link {
+  position: relative;
+}
 
-  function handleLoadMoreWinners() {
-    setVisibleWinnerCount((prev) =>
-      Math.min(prev + MAX_RECENT_WINNERS, winners.length),
-    );
-  }
+.xpot-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.9), transparent 70%);
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+}
 
-  // ── Admin token handling ──────────────────────────────────────
+.xpot-link:hover::after {
+  opacity: 1;
+}
 
-  async function handleUnlock(e: any) {
-    e.preventDefault();
-    if (!tokenInput.trim()) return;
-    setIsSavingToken(true);
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
-      }
-      setAdminToken(tokenInput.trim());
-      setTokenAccepted(true);
-    } finally {
-      setIsSavingToken(false);
-    }
-  }
+/* ────────────────────────────────────────────────
+   Light theme polish – soften greens & pills
+   ──────────────────────────────────────────────── */
 
-  function handleClearToken() {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-    }
-    setAdminToken(null);
-    setTokenAccepted(false);
-    setTokenInput('');
-  }
+/* All emerald text in light mode → deeper, less neon */
+html.light .text-emerald-300,
+html.light .text-emerald-400,
+html.light .text-emerald-500 {
+  color: #059669 !important;
+}
 
-  const isDrawLocked = todayDraw?.status === 'closed';
+/* Emerald pill backgrounds (like "live", USD pill, etc.) */
+html.light .bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.06) !important;
+}
 
-  // Draw date / next draw date helper
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const closesAtDate = todayDraw?.closesAt
-    ? new Date(todayDraw.closesAt)
-    : null;
-  const now = new Date();
+/* The green USD chips */
+html.light .bg-emerald-500\/10 .font-mono {
+  color: #047857 !important;
+}
 
-  let drawDateLabel = 'Draw date';
-  let drawDateValue: Date | string | null = todayDraw?.date ?? null;
+/* Yellow/orange “Pending payout” pills – tone down */
+html.light .bg-amber-500\/10 {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+}
 
-  // If we are already past today's close, show tomorrow as "Next draw date"
-  if (closesAtDate && now >= closesAtDate) {
-    drawDateLabel = 'Next draw date';
-    const next = new Date(closesAtDate.getTime() + DAY_MS);
-    drawDateValue = next;
-  }
+html.light .text-amber-300,
+html.light .text-amber-400 {
+  color: #92400e !important;
+}
 
-  // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
+/* "LIVE" label next to big amount – keep subtle */
+html.light .text-emerald-300.live-label {
+  color: #16a34a !important;
+  opacity: 0.9;
+}
 
-  return (
-    <main className="mx-auto max-w-7xl flex flex-col gap-6 px-4 py-6 text-slate-100">
-      {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          {/* Logo + admin label */}
-          <Link href="/" className="inline-flex items-center gap-2">
-            <Image
-              src="/img/xpot-logo-light.png"
-              alt="XPOT"
-              width={112}
-              height={30}
-              priority
-            />
-          </Link>
-          <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-            Admin console
-          </span>
-        </div>
+/* ────────────────────────────────────────────────
+   XPOT admin nebula background
+   (deep navy + purple + cyan glow)
+   ──────────────────────────────────────────────── */
 
-        <div className="flex flex-col items-start gap-1 sm:items-end">
-          <div className="flex items-center gap-2">
-            <h1 className="text-sm sm:text-base font-semibold text-white">
-              Control room for today&apos;s XPOT.
-            </h1>
+.admin-shell-bg {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.45), transparent 55%),
+    radial-gradient(circle at 85% 5%, rgba(78, 163, 227, 0.35), transparent 55%),
+    radial-gradient(circle at 15% 85%, rgba(34, 227, 179, 0.25), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.20), transparent 55%),
+    #020618;
+}
 
-            {isDevHost && (
-              <span className="rounded-full border border-amber-400/60 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-                Dev environment
-              </span>
-            )}
-          </div>
-
-          <p className="text-[11px] text-slate-500">
-            Monitor pool state, entries and rewards. All data is live and admin-key gated.
-          </p>
-        </div>
-      </header>
-
-      {/* Admin key card */}
-      <section className="rounded-2xl border border-slate-800 bg-[#050b1b]/70 backdrop-blur-xl px-4 py-4 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-100">Admin key</p>
-            <p className="mt-1 text-xs text-slate-400">
-              Enter your admin token to unlock XPOT operations.
-            </p>
-            {tokenAccepted && (
-              <p className="mt-1 text-xs font-semibold text-emerald-400">
-                Authentication successful. Secure access granted.
-              </p>
-            )}
-          </div>
-
-          <form
-            onSubmit={handleUnlock}
-            className="flex flex-1 flex-col gap-2 sm:max-w-md sm:flex-row"
-          >
-            <input
-              type="password"
-              className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              placeholder="Paste admin token…"
-            />
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={isSavingToken || !tokenInput.trim()}
-                className={`${BTN_UTILITY} px-3 py-2 text-xs`}
-              >
-                {tokenAccepted ? 'Update key' : 'Unlock'}
-              </button>
-              {tokenAccepted && (
-                <button
-                  type="button"
-                  onClick={handleClearToken}
-                  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
-      </section>
-
-      {/* Main grid: left (XPOT + summary + entries), right (winners) */}
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)]">
-        {/* LEFT COLUMN */}
-        <div className="space-y-4">
-          {/* Big live XPOT card */}
-          <JackpotPanel
-            isLocked={isDrawLocked}
-            onJackpotUsdChange={setLiveJackpotUsd}
-          />
-
-          {/* Today’s XPOT summary card */}
-          <section className="rounded-2xl border border-slate-800 bg-[#050b1b]/70 backdrop-blur-xl px-4 py-4 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-100">
-                  Today&apos;s round
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Live overview of today&apos;s XPOT draw, entries, rollovers and prize pool.
-                </p>
-              </div>
-
-              {todayDraw && (
-                <div className="flex flex-col items-end gap-1 text-xs">
-                  <span className="text-slate-500">{drawDateLabel}</span>
-                  <span className="font-mono text-slate-200">
-                    {drawDateValue ? formatDate(drawDateValue) : '–'}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Round status
-                </p>
-                <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
-                  {/* Loading state */}
-                  {todayLoading && <span>Loading...</span>}
-
-                  {/* Active draw badge */}
-                  {todayDraw && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                        todayDraw.status === 'open'
-                          ? 'bg-emerald-500/10 text-emerald-300'
-                          : 'bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      {todayDraw.status.toUpperCase()}
-                    </span>
-                  )}
-
-                  {/* No draw scheduled – should be auto-created by backend */}
-                  {!todayLoading && !todayDraw && (
-                    <span className="text-xs font-normal text-amber-300">
-                      No XPOT round detected for today – backend should create this automatically.
-                    </span>
-                  )}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Entries in pool
-                </p>
-                <p className="mt-1 font-mono text-slate-100">
-                  {todayLoading ? '–' : todayDraw?.ticketsCount ?? 0}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Rollover amount
-                </p>
-                <div className="mt-1">
-                  <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Today&apos;s XPOT (live)
-                </p>
-                <div className="mt-1">
-                  <UsdPill amount={liveJackpotUsd} size="sm" />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-xl bg-slate-950/90 px-3 py-3 text-xs text-slate-500">
-              {todayDrawError && (
-                <p className="text-amber-300">{todayDrawError}</p>
-              )}
-
-              {!todayDrawError &&
-                !todayLoading &&
-                todayDraw &&
-                todayDraw.closesAt && (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm sm:text-base">
-                      <span className="uppercase tracking-wide text-slate-500 text-xs">
-                        Closes in
-                      </span>
-                      <span
-                        className={`
-                          ml-2 font-mono text-2xl font-semibold mt-2 transition-all
-                          ${
-                            isWarningCritical
-                              ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
-                              : isWarningSoon
-                                ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
-                                : 'text-emerald-300'
-                          }
-                        `}
-                      >
-                        {countdownText}
-                      </span>
-                    </p>
-
-                    <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                      {/* Main winner button */}
-                      <button
-                        type="button"
-                        disabled={
-                          isPickingWinner ||
-                          !adminToken ||
-                          todayLoading ||
-                          !todayDraw ||
-                          todayDraw.status !== 'open'
-                        }
-                        onClick={handlePickMainWinner}
-                        className={`
-                          ${BTN_PRIMARY} px-4 py-2 text-sm transition-all ease-out duration-300
-                          ${
-                            isWarningCritical
-                              ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]'
-                              : ''
-                          }
-                        `}
-                      >
-                        {isPickingWinner ? 'Picking winner…' : 'Select primary recipient'}
-                      </button>
-
-                      {/* 🚨 Panic: reopen draw (only when closed) */}
-                      {todayDraw?.status === 'closed' && (
-                        <button
-                          type="button"
-                          onClick={handleReopenDraw}
-                          disabled={isReopeningDraw || !adminToken}
-                          className="inline-flex items-center justify-center rounded-lg border border-red-500/70 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-red-200 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isReopeningDraw ? 'Reopening…' : '🚨 Reopen draw (panic)'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              {!todayDrawError && !todayLoading && !todayDraw && (
-                <p>No XPOT draw scheduled for today yet.</p>
-              )}
-
-              {/* Main XPOT winner feedback */}
-              {(pickError || pickSuccess) && (
-                <div className="mt-2 text-xs">
-                  {pickError && (
-                    <p className="text-amber-300">{pickError}</p>
-                  )}
-                  {pickSuccess && (
-                    <p className="text-emerald-300">{pickSuccess}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Drop bonus XPOT */}
-          <section className="rounded-2xl border border-slate-800 bg-[#050b1b]/70 backdrop-blur-xl px-4 py-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-100">
-              Drop bonus XPOT
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Fire a manual hype XPOT using today&apos;s ticket pool. Winner is
-              picked instantly from all tickets in today&apos;s draw.
-            </p>
-
-            <form onSubmit={handleDropBonus} className="mt-4 space-y-4">
-              {/* Amount row – XPOT, not USD */}
-              <div>
-                <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Amount
-                </label>
-                <div className="mt-1 flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min={100000}
-                      step={1000}
-                      className="w-32 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-                      value={bonusAmount}
-                      onChange={(e) => setBonusAmount(e.target.value)}
-                    />
-                    <span className="text-xs text-slate-400">XPOT</span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {[100_000, 250_000, 500_000, 1_000_000].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setBonusAmount(String(v))}
-                        className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
-                          Number(bonusAmount) === v
-                            ? 'border-amber-400 bg-amber-500/10 text-amber-200'
-                            : 'border-slate-700 bg-slate-900 text-slate-300'
-                        }`}
-                      >
-                        {v.toLocaleString()} XPOT
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Label + button on same row */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <div className="flex-1">
-                  <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Label
-                  </label>
-                  <input
-                    type="text"
-                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-                    value={bonusLabel}
-                    onChange={(e) => setBonusLabel(e.target.value)}
-                    placeholder="Bonus XPOT"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={bonusSubmitting}
-                  className="mt-1 inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40 sm:mt-0"
-                >
-                  {bonusSubmitting ? 'Dropping…' : 'Drop bonus XPOT'}
-                </button>
-              </div>
-
-              {/* Messages under the row */}
-              <div className="text-xs min-h-[1.25rem]">
-                {bonusError && <p className="text-amber-300">{bonusError}</p>}
-                {bonusSuccess && (
-                  <p className="text-emerald-300">{bonusSuccess}</p>
-                )}
-              </div>
-            </form>
-          </section>
-
-          {/* Today’s XPOT entries list */}
-          <section className="rounded-2xl border border-slate-800 bg-[#050b1b]/70 backdrop-blur-xl px-4 py-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-100">
-              Today&apos;s XPOT entries
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Every entry that has been issued for the current XPOT round.
-            </p>
-
-            <div className="mt-3">
-              {ticketsLoading && (
-                <p className="text-xs text-slate-500">Loading tickets…</p>
-              )}
-
-              {ticketsError && (
-                <p className="text-xs text-amber-300">{ticketsError}</p>
-              )}
-
-              {!ticketsLoading &&
-                !ticketsError &&
-                visibleTickets.length === 0 && (
-                  <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
-                    No entries yet for today&apos;s XPOT.
-                  </p>
-                )}
-
-              {!ticketsLoading &&
-                !ticketsError &&
-                visibleTickets.length > 0 && (
-                  <div className="mt-2 space-y-2">
-                    {visibleTickets.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
-                      >
-                        <div className="space-y-0.5">
-                          <p className="font-mono text-[11px] text-slate-100">
-                            {t.code}
-                          </p>
-                          <CopyableWallet address={t.walletAddress} />
-                        </div>
-
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-200">
-                            {t.status.replace('-', ' ').toUpperCase()}
-                          </span>
-                          <p className="font-mono text-[11px] text-slate-500">
-                            {formatDateTime(t.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-
-                    <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-                      <p>
-                        Showing {visibleTickets.length} of {tickets.length} tickets
-                      </p>
-
-                      {visibleTickets.length < tickets.length && (
-                        <button
-                          type="button"
-                          onClick={handleLoadMoreTickets}
-                          className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
-                        >
-                          Load more
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
-          </section>
-        </div>
-
-        {/* RIGHT COLUMN – recent winners */}
-        <div className="space-y-4">
-          <section className="h-full rounded-2xl border border-slate-800 bg-[#050b1b]/70 backdrop-blur-xl px-4 py-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-100">
-              Recent XPOT winners
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Internal log of the latest selected entries and reward status.
-            </p>
-
-            <div className="mt-3">
-              {winnersLoading && (
-                <p className="text-xs text-slate-500">Loading results…</p>
-              )}
-
-              {winnersError && (
-                <p className="text-xs text-amber-300">{winnersError}</p>
-              )}
-
-              {!winnersLoading &&
-                !winnersError &&
-                winners.length === 0 && (
-                  <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
-                    No completed draws yet. Once you pick winners and mark XPOT
-                    as paid, they&apos;ll appear here.
-                  </p>
-                )}
-
-              {!winnersLoading &&
-                !winnersError &&
-                visibleWinners.length > 0 && (
-                  <div className="mt-2 space-y-3">
-                    {visibleWinners.map((w) => (
-                      <article
-                        key={w.id}
-                        className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-mono text-[11px] text-slate-100">
-                            {w.ticketCode}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            {(() => {
-                              const displayLabel = formatWinnerLabel(w);
-                              if (!displayLabel) return null;
-
-                              return (
-                                <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                                    w.kind === 'bonus'
-                                      ? 'bg-emerald-500/10 text-emerald-300'
-                                      : 'bg-slate-800 text-slate-200'
-                                  }`}
-                                >
-                                  {displayLabel}
-                                </span>
-                              );
-                            })()}
-                            <p className="text-[11px] text-slate-500">
-                              {formatDate(w.date)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <CopyableWallet address={w.walletAddress} />
-
-                        <div className="flex items-center justify-between gap-3">
-                          {/* XPOT payout pill */}
-                          <XpotPill amount={w.payoutUsd} size="sm" />
-
-                          <div className="flex flex-col items-end gap-1">
-                            {w.isPaidOut ? (
-                              w.txUrl && (
-                                <div className="flex items-center gap-2 text-[11px] text-emerald-300">
-                                  <span className="font-semibold">
-                                    Reward sent
-                                  </span>
-                                  <span className="text-emerald-400">·</span>
-
-                                  <a
-                                    href={w.txUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="underline decoration-emerald-400/40 hover:decoration-emerald-300 hover:text-emerald-200 transition-colors"
-                                  >
-                                    View TX
-                                  </a>
-
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      try {
-                                        await navigator.clipboard.writeText(
-                                          w.txUrl!,
-                                        ); // copies full TX link/hash
-                                        setCopiedTxWinnerId(w.id);
-                                        setTimeout(
-                                          () => setCopiedTxWinnerId(null),
-                                          1200,
-                                        );
-                                      } catch (err) {
-                                        console.error(
-                                          'Failed to copy TX link',
-                                          err,
-                                        );
-                                      }
-                                    }}
-                                    className="rounded-md border border-emerald-500/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-emerald-200 hover:bg-emerald-500/10"
-                                  >
-                                    {copiedTxWinnerId === w.id
-                                      ? 'Copied'
-                                      : 'Copy TX'}
-                                  </button>
-                                </div>
-                              )
-                            ) : (
-                              <>
-                                {/* TX input + Mark as paid */}
-                                <div className="flex flex-col items-end gap-1">
-                                  <input
-                                    type="text"
-                                    placeholder="Paste TX link…"
-                                    className="w-44 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
-                                    value={txInputs[w.id] ?? ''}
-                                    onChange={(e) =>
-                                      setTxInputs((prev) => ({
-                                        ...prev,
-                                        [w.id]: e.target.value,
-                                      }))
-                                    }
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMarkAsPaid(w.id)}
-                                    disabled={savingPaidId === w.id}
-                                    className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
-                                  >
-                                    {savingPaidId === w.id
-                                      ? 'Saving…'
-                                      : 'Mark as paid'}
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </article>
-                    ))}
-
-                    {markPaidError && (
-                      <p className="mt-2 text-xs text-amber-300">
-                        {markPaidError}
-                      </p>
-                    )}
-
-                    <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-                      <p>
-                        Showing latest {visibleWinners.length} of {winners.length}{' '}
-                        winners
-                      </p>
-
-                      {visibleWinners.length < winners.length && (
-                        <button
-                          type="button"
-                          onClick={handleLoadMoreWinners}
-                          className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
-                        >
-                          Load more
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
-          </section>
-        </div>
-      </section>
-    </main>
-  );
+.admin-card,
+.premium-card,
+.card-premium,
+.jackpot-core,
+section {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.02),
+    0 25px 80px rgba(0,0,0,0.65),
+    0 0 120px rgba(99,102,241,0.12),
+    0 0 140px rgba(34,227,179,0.10);
 }
