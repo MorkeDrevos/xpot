@@ -11,20 +11,24 @@ type XpotAccessGateProps = {
 export default function XpotAccessGate({ children }: XpotAccessGateProps) {
   return (
     <>
-      <SignedOut>
-        <XpotXLoginScreen />
-      </SignedOut>
-
       <SignedIn>{children}</SignedIn>
+
+      <SignedOut>
+        <>
+          {/* Render dashboard underneath */}
+          <div className="pointer-events-none opacity-100">{children}</div>
+          <XpotXLoginOverlay />
+        </>
+      </SignedOut>
     </>
   );
 }
 
 // ─────────────────────────────────────────────
-// Ultra-premium XPOT X-login screen
+// XPOT FROSTED LOGIN OVERLAY (true blur)
 // ─────────────────────────────────────────────
 
-function XpotXLoginScreen() {
+function XpotXLoginOverlay() {
   const { signIn, isLoaded } = useSignIn();
 
   async function handleXLogin() {
@@ -32,7 +36,6 @@ function XpotXLoginScreen() {
 
     try {
       await signIn.authenticateWithRedirect({
-        // ✅ Correct Clerk provider for X / Twitter
         strategy: 'oauth_twitter',
         redirectUrl: '/dashboard',
         redirectUrlComplete: '/dashboard',
@@ -43,108 +46,72 @@ function XpotXLoginScreen() {
   }
 
   return (
-    <div
-      className="
-        relative flex min-h-screen items-center justify-center
-        bg-gradient-to-br from-slate-950 via-slate-950 to-black
-        text-slate-50
-      "
-    >
-      {/* Full-screen cinematic blur layer */}
-      <div className="pointer-events-none absolute inset-0 bg-black/40 backdrop-blur-[14px]" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      
+      {/* REAL BLUR LAYER */}
+      <div className="absolute inset-0 backdrop-blur-[18px] bg-black/55" />
 
-      {/* XPOT ambient glow */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-emerald-500/10 blur-[120px]" />
-        <div className="absolute bottom-[-6rem] right-[-4rem] h-[420px] w-[420px] rounded-full bg-cyan-500/10 blur-[140px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.06)_0,_transparent_55%)]" />
+      {/* ATMOSPHERE */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-emerald-500/15 blur-[140px]" />
+        <div className="absolute bottom-[-6rem] right-[-4rem] h-[420px] w-[420px] rounded-full bg-cyan-500/10 blur-[160px]" />
       </div>
 
-      {/* Login card */}
-      <div
-        className="
-          relative z-10
-          w-full max-w-md
-          rounded-3xl
-          border border-slate-800/80
-          bg-slate-950/70
-          px-6 pb-6 pt-5
-          backdrop-blur-2xl
-          shadow-[0_30px_120px_rgba(0,0,0,0.9)]
-        "
-      >
-        {/* Logo + identity badge */}
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Image
-              src="/img/xpot-logo-light.png"
-              alt="XPOT"
-              width={120}
-              height={32}
-              priority
-            />
-          </div>
-
+      {/* CARD */}
+      <div className="relative z-50 w-full max-w-md rounded-3xl border border-slate-800/70 bg-[#020617]/85 p-6 shadow-[0_40px_140px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+        
+        {/* Header */}
+        <div className="mb-4 flex items-center justify-between">
+          <Image
+            src="/img/xpot-logo-light.png"
+            alt="XPOT"
+            width={120}
+            height={32}
+            priority
+          />
           <span className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
             X identity only
           </span>
         </div>
 
-        {/* Heading */}
-        <div className="mb-4 space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Sign in with X to continue
-          </p>
-          <h1 className="text-lg font-semibold text-slate-50">
-            Your X handle is your XPOT identity.
-          </h1>
-          <p className="text-[13px] text-slate-400">
-            Connect once with X, link your wallet and you&apos;re ready for
-            daily XPOT draws.
-            No passwords. No emails. Just your verified X account.
-          </p>
-        </div>
+        {/* Content */}
+        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+          Sign in with X to continue
+        </p>
+        <h1 className="mt-1 text-lg font-semibold">
+          Your X handle is your XPOT identity
+        </h1>
+        <p className="mt-1 text-[13px] text-slate-400">
+          No email. No passwords. Just your verified X account.
+        </p>
 
-        {/* Why X login */}
-        <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+        {/* Why */}
+        <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+          <p className="text-[11px] uppercase tracking-[0.15em] text-slate-400">
             Why X login?
           </p>
-          <ul className="mt-2 space-y-1 text-[12px] text-slate-300">
-            <li>• One XPOT identity per X account</li>
-            <li>• Winners revealed by handle, never wallet</li>
-            <li>• Self-custodial wallet always</li>
+          <ul className="mt-2 text-[12px] text-slate-300 space-y-1">
+            <li>• One identity per X account</li>
+            <li>• Winners shown by handle</li>
+            <li>• Wallet stays self-custody</li>
           </ul>
         </div>
 
-        {/* X button */}
+        {/* Button */}
         <button
-          type="button"
           onClick={handleXLogin}
-          className="
-            group inline-flex w-full items-center justify-center gap-2
-            rounded-full
-            bg-white
-            px-4 py-2.5
-            text-sm font-semibold text-black
-            shadow-[0_14px_40px_rgba(15,23,42,0.65)]
-            transition
-            hover:-translate-y-[1px]
-            hover:bg-white
-            hover:shadow-[0_18px_60px_rgba(15,23,42,0.9)]
-          "
+          className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 font-semibold text-black shadow-[0_16px_40px_rgba(15,23,42,0.6)] transition hover:-translate-y-[1px] hover:shadow-[0_24px_60px_rgba(15,23,42,0.9)]"
         >
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black text-[13px] text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-white text-xs">
             X
           </span>
-          <span>Continue with X / Twitter</span>
+          Continue with X / Twitter
         </button>
 
-        {/* Micro copy */}
-        <p className="mt-3 text-[11px] leading-snug text-slate-500">
+        {/* Footer */}
+        <p className="mt-3 text-[11px] text-slate-500">
           XPOT never posts on your behalf.  
-          We only read your public profile (handle, avatar) and securely bind it
-          to your XPOT identity.
+          We only access your public handle + avatar.
         </p>
       </div>
     </div>
