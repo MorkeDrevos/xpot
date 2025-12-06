@@ -773,7 +773,7 @@ export default function AdminPage() {
         {/* LEFT COLUMN */}
         <div className="space-y-4">
           {/* Big live XPOT card */}
-          <div className="jackpot-shell">
+          <div className={`jackpot-shell ${isWarningCritical ? 'animate-[jackpotPulse_1.5s_ease-in-out_infinite]' : ''}`}>
             <div className="jackpot-shell-inner">
               <JackpotPanel
                 isLocked={isDrawLocked}
