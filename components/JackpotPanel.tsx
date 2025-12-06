@@ -318,19 +318,17 @@ export default function JackpotPanel({
       </button>
       <div
   className="
-    pointer-events-none absolute left-1/2 top-full z-[70]
-    mt-3 w-80 -translate-x-1/2
-    rounded-2xl border border-slate-700/80
-    bg-slate-950/95
-    px-4 py-3
-    text-slate-100
-    shadow-[0_18px_45px_rgba(15,23,42,0.9)]
-    backdrop-blur
-    opacity-0 translate-y-0
-    group-hover:opacity-100 group-hover:translate-y-1
-    transition-all duration-200
-  "
->
+  absolute left-1/2 top-full z-[70] mt-3 w-80 -translate-x-1/2
+  rounded-2xl border border-slate-700/80
+  bg-slate-950
+  px-4 py-3
+  text-xs text-slate-100
+  shadow-[0_18px_40px_rgba(15,23,42,0.95)]
+  backdrop-blur-xl
+  opacity-0 translate-y-0
+  group-hover:opacity-100 group-hover:translate-y-1
+  transition-all duration-200
+"
         <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950/95 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]"></div>
         <p className="mb-2">
           This is the current USD value of today&apos;s XPOT,
