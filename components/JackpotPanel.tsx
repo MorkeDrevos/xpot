@@ -331,6 +331,7 @@ export default function JackpotPanel({
     transition-all duration-200
   "
 >
+        <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950/95 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]"></div>
         <p className="mb-2">
           This is the current USD value of today&apos;s XPOT,
           based on the live XPOT price from Jupiter.
