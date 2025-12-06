@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState, FormEvent } from 'react';
 
-import JackpotPanel from '@/components/JackpotPanel';
+import JackpotPanel from '../../components/JackpotPanel';
 import Image from 'next/image';
 import Link from 'next/link';
 
