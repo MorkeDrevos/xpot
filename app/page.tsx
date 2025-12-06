@@ -3,8 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-
-import XpotAccessGate from '@/components/XpotAccessGate';
+import XpotAccessGate from '../components/XpotAccessGate';
 import XpotLogo from '@/components/XpotLogo';
 
 function formatTime(ms: number) {
