@@ -64,6 +64,39 @@ body {
   }
 }
 
+.jackpot-shell {
+  border-radius: 32px;
+  padding: 2px;
+  background: conic-gradient(
+    from 210deg,
+    rgba(168,85,247,0.7),
+    rgba(56,189,248,0.5),
+    rgba(59,130,246,0.5),
+    rgba(168,85,247,0.7)
+  );
+  box-shadow: 0 0 80px rgba(88,28,135,0.45);
+  animation: jackpotPulse 5.5s ease-in-out infinite;
+}
+
+.jackpot-shell-inner {
+  border-radius: 28px;
+  background: radial-gradient(circle at 20% 0%, rgba(59,130,246,0.32), transparent 60%),
+              radial-gradient(circle at 80% 100%, rgba(147,51,234,0.35), transparent 60%),
+              rgba(2,6,23,0.96);
+  backdrop-filter: blur(20px);
+}
+
+@keyframes jackpotPulse {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 80px rgba(88,28,135,0.45);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 0 120px rgba(129,140,248,0.6);
+  }
+}
+
 /* ────────────────────────────────────────────────
    Global XPOT color tokens – Neon Nebula Palette
    (deep navy + cyan/teal + subtle purple)
