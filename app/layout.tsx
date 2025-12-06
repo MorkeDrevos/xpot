@@ -43,15 +43,19 @@ export default function RootLayout({
           content="XPOT is the X-powered reward protocol for daily distribution, access and on-chain participation."
         />
 
-        {/* OpenGraph */}
-        <meta
-          property="og:title"
-          content="XPOT · The X-Powered Reward Protocol"
-        />
-        <meta
-          property="og:description"
-          content="A protocol for controlled daily rewards, identity-based access and transparent distribution."
-        />
+        // OpenGraph
+<meta
+  property="og:image"
+  content="/img/xpot-square-blue.jpg"   // square hero logo
+/>
+<meta property="og:type" content="website" />
+
+// X / Twitter
+<meta name="twitter:card" content="summary_large_image" />
+<meta
+  name="twitter:image"
+  content="/img/xpot-square-blue.jpg"
+/>
         <meta property="og:image" content="/img/xpot-logo-dark.jpg" />
         <meta property="og:type" content="website" />
 
