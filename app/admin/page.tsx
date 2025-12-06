@@ -123,15 +123,12 @@ function UsdPill({
 function formatWinnerLabel(w: AdminWinner): string | null {
   if (!w.label) return null;
 
-  // Normalise for safety
   const raw = w.label.trim();
 
-  // Main pool – avoid “jackpot”
   if (w.kind === 'main' || /jackpot/i.test(raw)) {
     return 'Main XPOT';
   }
 
-  // Fallback: strip the word jackpot anywhere else, replace with XPOT
   return raw.replace(/jackpot/gi, 'XPOT');
 }
 
@@ -247,7 +244,7 @@ export default function AdminPage() {
   const [markPaidError, setMarkPaidError] = useState<string | null>(null);
   const [copiedTxWinnerId, setCopiedTxWinnerId] = useState<string | null>(null);
 
-  // how many tickets / winners to show; grows when you click "Load more"
+  // pagination
   const [visibleTicketCount, setVisibleTicketCount] = useState(
     MAX_TODAY_TICKETS,
   );
@@ -267,7 +264,6 @@ export default function AdminPage() {
 
   const isWarningSoon =
     countdownSeconds !== null && countdownSeconds <= 15 * 60; // < 15 min
-
   const isWarningCritical =
     countdownSeconds !== null && countdownSeconds <= 5 * 60; // < 5 min
 
@@ -341,7 +337,6 @@ export default function AdminPage() {
         throw new Error(data?.error || 'Failed to create today’s draw');
       }
 
-      // Reload admin so the Today card + tickets refresh
       window.location.reload();
     } catch (err: any) {
       console.error('[XPOT] create today draw error:', err);
@@ -387,12 +382,11 @@ export default function AdminPage() {
         )}…${r.walletAddress.slice(-4)}).`,
       );
 
-      // Refresh winners list
       try {
         const winnersData = await authedFetch('/api/admin/winners');
         setWinners(winnersData.winners ?? []);
       } catch {
-        // ignore secondary error
+        // ignore
       }
     } catch (err: any) {
       setBonusError(err.message || 'Failed to drop bonus XPOT');
@@ -419,9 +413,7 @@ export default function AdminPage() {
       });
 
       const w = data.winner as AdminWinner | undefined;
-      if (!w) {
-        throw new Error('No winner returned from API');
-      }
+      if (!w) throw new Error('No winner returned from API');
 
       setPickSuccess(
         `Main XPOT winner: ${w.ticketCode} (${w.walletAddress.slice(
@@ -430,10 +422,7 @@ export default function AdminPage() {
         )}…${w.walletAddress.slice(-4)}).`,
       );
 
-      // Prepend to winners list
       setWinners((prev) => [w, ...prev]);
-
-      // Mark draw as closed in UI
       setTodayDraw((prev) => (prev ? { ...prev, status: 'closed' } : prev));
     } catch (err: any) {
       setPickError(err.message || 'Failed to pick main XPOT winner');
@@ -493,12 +482,10 @@ export default function AdminPage() {
         body: JSON.stringify({ winnerId, txUrl }),
       });
 
-      // data is already JSON; check its ok flag if present
       if (data && data.ok === false) {
         throw new Error(data.error || 'Failed to mark as paid');
       }
 
-      // Update local winners list
       setWinners((prev) =>
         prev.map((w) =>
           w.id === winnerId ? { ...w, isPaidOut: true, txUrl } : w,
@@ -524,9 +511,7 @@ export default function AdminPage() {
       setTodayDrawError(null);
       try {
         const data = await authedFetch('/api/admin/today');
-        if (!cancelled) {
-          setTodayDraw(data.today ?? null);
-        }
+        if (!cancelled) setTodayDraw(data.today ?? null);
       } catch (err: any) {
         console.error('[ADMIN] /today error', err);
         if (!cancelled) {
@@ -541,9 +526,7 @@ export default function AdminPage() {
       setTicketsError(null);
       try {
         const data = await authedFetch('/api/admin/tickets');
-        if (!cancelled) {
-          setTickets(data.tickets ?? []);
-        }
+        if (!cancelled) setTickets(data.tickets ?? []);
       } catch (err: any) {
         console.error('[ADMIN] /tickets error', err);
         if (!cancelled) {
@@ -553,14 +536,12 @@ export default function AdminPage() {
         if (!cancelled) setTicketsLoading(false);
       }
 
-      // Winners (main + bonus)
+      // Winners
       setWinnersLoading(true);
       setWinnersError(null);
       try {
         const data = await authedFetch('/api/admin/winners');
-        if (!cancelled) {
-          setWinners(data.winners ?? []);
-        }
+        if (!cancelled) setWinners(data.winners ?? []);
       } catch (err: any) {
         console.error('[ADMIN] /winners error', err);
         if (!cancelled) {
@@ -572,7 +553,6 @@ export default function AdminPage() {
     }
 
     loadAll();
-
     return () => {
       cancelled = true;
     };
@@ -592,11 +572,9 @@ export default function AdminPage() {
     function updateCountdown() {
       const now = new Date();
 
-      // target is today’s close by default
       let target = closesAt;
       let diff = target.getTime() - now.getTime();
 
-      // if we’re past today’s close, jump to the next 24h cycle
       if (diff <= 0) {
         target = new Date(closesAt.getTime() + DAY_MS);
         diff = target.getTime() - now.getTime();
@@ -615,10 +593,7 @@ export default function AdminPage() {
 
     updateCountdown();
     const id = window.setInterval(updateCountdown, 1000);
-
-    return () => {
-      window.clearInterval(id);
-    };
+    return () => window.clearInterval(id);
   }, [todayDraw?.closesAt]);
 
   // Clamp visibleTicketCount if tickets shrink / first load
@@ -637,22 +612,9 @@ export default function AdminPage() {
   // Clamp visibleWinnerCount when winners list changes
   useEffect(() => {
     setVisibleWinnerCount((prev) => {
-      // No winners
       if (winners.length === 0) return 0;
-
-      // If total winners is within the first page size (<= 9),
-      // always show all of them – no "Load more" yet.
-      if (winners.length <= MAX_RECENT_WINNERS) {
-        return winners.length;
-      }
-
-      // Once we have more than 9 winners:
-      // - if we already had a visible count, keep it but don't exceed total
-      // - if it's the first time crossing the threshold, show the first 9
-      if (prev && prev > 0) {
-        return Math.min(prev, winners.length);
-      }
-
+      if (winners.length <= MAX_RECENT_WINNERS) return winners.length;
+      if (prev && prev > 0) return Math.min(prev, winners.length);
       return MAX_RECENT_WINNERS;
     });
   }, [winners.length]);
@@ -701,7 +663,6 @@ export default function AdminPage() {
   let drawDateLabel = 'Draw date';
   let drawDateValue: Date | string | null = todayDraw?.date ?? null;
 
-  // If we are already past today's close, show tomorrow as "Next draw date"
   if (closesAtDate && now >= closesAtDate) {
     drawDateLabel = 'Next draw date';
     const next = new Date(closesAtDate.getTime() + DAY_MS);
@@ -717,7 +678,6 @@ export default function AdminPage() {
       {/* Header */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          {/* Logo + admin label */}
           <Link href="/" className="inline-flex items-center gap-2">
             <Image
               src="/img/xpot-logo-light.png"
@@ -752,9 +712,9 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Admin key card */}
+      {/* Admin key card – cinematic glass */}
       <section className="relative rounded-3xl bg-transparent">
-        {/* Soft glow behind the card */}
+        {/* Glow behind card */}
         <div className="pointer-events-none absolute -inset-8 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.25),transparent_45%),radial-gradient(circle_at_80%_100%,rgba(56,189,248,0.25),transparent_45%)] opacity-70 blur-2xl" />
 
         {/* Glass card */}
@@ -808,6 +768,20 @@ export default function AdminPage() {
         </div>
       </section>
 
+      {/* Main grid: left (XPOT + summary + entries), right (winners) */}
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)]">
+        {/* LEFT COLUMN */}
+        <div className="space-y-4">
+          {/* Big live XPOT card */}
+          <div className="jackpot-shell">
+            <div className="jackpot-shell-inner">
+              <JackpotPanel
+                isLocked={isDrawLocked}
+                onJackpotUsdChange={setLiveJackpotUsd}
+              />
+            </div>
+          </div>
+
           {/* Today’s XPOT summary card */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -837,10 +811,7 @@ export default function AdminPage() {
                   Round status
                 </p>
                 <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
-                  {/* Loading state */}
                   {todayLoading && <span>Loading...</span>}
-
-                  {/* Active draw badge */}
                   {todayDraw && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
@@ -852,8 +823,6 @@ export default function AdminPage() {
                       {todayDraw.status.toUpperCase()}
                     </span>
                   )}
-
-                  {/* No draw scheduled – should be auto-created by backend */}
                   {!todayLoading && !todayDraw && (
                     <span className="text-xs font-normal text-amber-300">
                       No XPOT round detected for today – backend should create
@@ -922,7 +891,6 @@ export default function AdminPage() {
                     </p>
 
                     <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                      {/* Main winner button */}
                       <button
                         type="button"
                         disabled={
@@ -933,7 +901,7 @@ export default function AdminPage() {
                           todayDraw.status !== 'open'
                         }
                         onClick={handlePickMainWinner}
-className={`
+                        className={`
   ${BTN_PRIMARY} primary-cta px-4 py-2 text-sm transition-all ease-out duration-300
   ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
 `}
@@ -943,7 +911,6 @@ className={`
                           : 'Select primary recipient'}
                       </button>
 
-                      {/* 🚨 Panic: reopen draw (only when closed) */}
                       {todayDraw?.status === 'closed' && (
                         <button
                           type="button"
@@ -962,7 +929,6 @@ className={`
                 <p>No XPOT draw scheduled for today yet.</p>
               )}
 
-              {/* Main XPOT winner feedback */}
               {(pickError || pickSuccess) && (
                 <div className="mt-2 text-xs">
                   {pickError && (
@@ -987,7 +953,6 @@ className={`
             </p>
 
             <form onSubmit={handleDropBonus} className="mt-4 space-y-4">
-              {/* Amount row – XPOT, not USD */}
               <div>
                 <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
                   Amount
@@ -1024,7 +989,6 @@ className={`
                 </div>
               </div>
 
-              {/* Label + button on same row */}
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="flex-1">
                   <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
@@ -1048,7 +1012,6 @@ className={`
                 </button>
               </div>
 
-              {/* Messages under the row */}
               <div className="text-xs min-h-[1.25rem]">
                 {bonusError && (
                   <p className="text-amber-300">{bonusError}</p>
@@ -1202,7 +1165,6 @@ className={`
                         <CopyableWallet address={w.walletAddress} />
 
                         <div className="flex items-center justify-between gap-3">
-                          {/* XPOT payout pill */}
                           <XpotPill amount={w.payoutUsd} size="sm" />
 
                           <div className="flex flex-col items-end gap-1">
@@ -1229,7 +1191,7 @@ className={`
                                       try {
                                         await navigator.clipboard.writeText(
                                           w.txUrl!,
-                                        ); // copies full TX link/hash
+                                        );
                                         setCopiedTxWinnerId(w.id);
                                         setTimeout(
                                           () => setCopiedTxWinnerId(null),
@@ -1251,33 +1213,30 @@ className={`
                                 </div>
                               )
                             ) : (
-                              <>
-                                {/* TX input + Mark as paid */}
-                                <div className="flex flex-col items-end gap-1">
-                                  <input
-                                    type="text"
-                                    placeholder="Paste TX link…"
-                                    className="w-44 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
-                                    value={txInputs[w.id] ?? ''}
-                                    onChange={(e) =>
-                                      setTxInputs((prev) => ({
-                                        ...prev,
-                                        [w.id]: e.target.value,
-                                      }))
-                                    }
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMarkAsPaid(w.id)}
-                                    disabled={savingPaidId === w.id}
-                                    className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
-                                  >
-                                    {savingPaidId === w.id
-                                      ? 'Saving…'
-                                      : 'Mark as paid'}
-                                  </button>
-                                </div>
-                              </>
+                              <div className="flex flex-col items-end gap-1">
+                                <input
+                                  type="text"
+                                  placeholder="Paste TX link…"
+                                  className="w-44 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
+                                  value={txInputs[w.id] ?? ''}
+                                  onChange={(e) =>
+                                    setTxInputs((prev) => ({
+                                      ...prev,
+                                      [w.id]: e.target.value,
+                                    }))
+                                  }
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkAsPaid(w.id)}
+                                  disabled={savingPaidId === w.id}
+                                  className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
+                                >
+                                  {savingPaidId === w.id
+                                    ? 'Saving…'
+                                    : 'Mark as paid'}
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
