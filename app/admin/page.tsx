@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState, FormEvent } from 'react';
 
-import JackpotPanel from '../../components/JackpotPanel';
+import JackpotPanel from '@/components/JackpotPanel';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -753,19 +753,29 @@ export default function AdminPage() {
       </header>
 
       {/* Admin key card */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-100">Admin key</p>
-            <p className="mt-1 text-xs text-slate-400">
-              Enter your admin token to unlock XPOT operations.
-            </p>
-            {tokenAccepted && (
-              <p className="mt-1 text-xs font-semibold text-emerald-400">
-                Authentication successful. Secure access granted.
-              </p>
-            )}
-          </div>
+<section className="relative rounded-3xl bg-transparent">
+  <div className="rounded-3xl bg-black/30 backdrop-blur-xl border border-white/10 px-5 py-4">
+
+    {/* Soft glow layer */}
+    <div className="pointer-events-none absolute -inset-6 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.25),transparent_45%),radial-gradient(circle_at_80%_100%,rgba(56,189,248,0.25),transparent_45%)] opacity-70 blur-2xl" />
+
+    <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+      <div>
+        <p className="text-sm font-semibold text-white tracking-wide">
+          Admin key
+        </p>
+
+        <p className="mt-1 text-xs text-slate-400">
+          Enter your admin token to unlock XPOT operations.
+        </p>
+
+        {tokenAccepted && (
+          <p className="mt-1 text-xs font-semibold text-emerald-400">
+            Authentication successful. Secure access granted.
+          </p>
+        )}
+      </div>
 
           <form
             onSubmit={handleUnlock}
