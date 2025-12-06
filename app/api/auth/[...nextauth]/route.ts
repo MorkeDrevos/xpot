@@ -6,10 +6,10 @@ import { prisma } from '@/lib/prisma';
 const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
-  // Always use your own page, never the default ugly one
+  // Use your own page; ignore the ugly built-in one
   pages: {
-    signIn: '/dashboard',   // where your “Sign in with X” button lives
-    error: '/dashboard',    // on any auth error, go back here too
+    signIn: '/dashboard',
+    error: '/dashboard',
   },
 
   providers: [
@@ -115,7 +115,6 @@ const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      // Always end up back on dashboard
       if (url.startsWith('/')) return baseUrl + url;
       try {
         const u = new URL(url);
