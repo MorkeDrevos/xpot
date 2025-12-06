@@ -12,15 +12,12 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+
+    "baseUrl": ".",                        
     "paths": {
-      "@/*": ["./*"]
-    }
+  "@/*": ["./*"]
+}
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "include": ["next-env.d.ts", "app/**/*.ts", "app/**/*.tsx"],
   "exclude": ["node_modules"]
 }

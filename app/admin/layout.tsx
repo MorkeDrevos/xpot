@@ -1,3 +1,6 @@
+// app/admin/layout.tsx
+import type { ReactNode } from 'react';
+
 export const metadata = {
   title: 'XPOT Admin · Operations Center',
   description:
@@ -11,7 +14,11 @@ export const metadata = {
 export default function AdminLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
-  return children;
+  return (
+    <div className="admin-shell-bg min-h-screen px-3 py-6 lg:px-6">
+      {children}
+    </div>
+  );
 }

@@ -4,8 +4,9 @@
 
 html,
 body {
-  margin: 0;
-  padding: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  text-shadow: 0 0 1px rgba(255,255,255,0.03);
 }
 
 /* ────────────────────────────────────────────────
@@ -599,6 +600,7 @@ html.light .text-emerald-300.live-label {
   color: #16a34a !important;
   opacity: 0.9;
 }
+
 /* ────────────────────────────────────────────────
    XPOT admin nebula background
    (deep navy + purple + cyan glow)
@@ -606,8 +608,21 @@ html.light .text-emerald-300.live-label {
 
 .admin-shell-bg {
   background:
-    radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.30), transparent 55%),
-    radial-gradient(circle at 100% 0%, rgba(78, 163, 227, 0.24), transparent 55%),
-    radial-gradient(circle at 0% 100%, rgba(34, 227, 179, 0.18), transparent 55%),
+    radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.45), transparent 55%),
+    radial-gradient(circle at 85% 5%, rgba(78, 163, 227, 0.35), transparent 55%),
+    radial-gradient(circle at 15% 85%, rgba(34, 227, 179, 0.25), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.20), transparent 55%),
     #020618;
+}
+
+.admin-card,
+.premium-card,
+.card-premium,
+.jackpot-core,
+section {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.02),
+    0 25px 80px rgba(0,0,0,0.65),
+    0 0 120px rgba(99,102,241,0.12),
+    0 0 140px rgba(34,227,179,0.10);
 }
