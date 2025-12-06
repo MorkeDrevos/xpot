@@ -6,7 +6,6 @@ import { prisma } from '@/lib/prisma';
 const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
-  // Send users to a custom error page like /auth-error?error=OAuthCallback
   pages: {
     error: '/auth-error',
   },
