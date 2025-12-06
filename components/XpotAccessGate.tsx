@@ -1,7 +1,8 @@
+// components/XpotAccessGate.tsx
 'use client';
 
 import { ReactNode } from 'react';
-import { SignedIn, SignedOut, useSignIn } from '@clerk/nextjs';
+import { SignedOut, useSignIn } from '@clerk/nextjs';
 import Image from 'next/image';
 
 type XpotAccessGateProps = {
@@ -10,22 +11,20 @@ type XpotAccessGateProps = {
 
 export default function XpotAccessGate({ children }: XpotAccessGateProps) {
   return (
-    <>
-      <SignedIn>{children}</SignedIn>
+    <div className="relative min-h-screen">
+      {/* Dashboard always renders */}
+      <div className="relative z-0">{children}</div>
 
+      {/* Frosted X login overlay only when logged out */}
       <SignedOut>
-        <>
-          {/* Render dashboard underneath */}
-          <div className="pointer-events-none opacity-100">{children}</div>
-          <XpotXLoginOverlay />
-        </>
+        <XpotXLoginOverlay />
       </SignedOut>
-    </>
+    </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// XPOT FROSTED LOGIN OVERLAY (true blur)
+// XPOT frosted X-login overlay
 // ─────────────────────────────────────────────
 
 function XpotXLoginOverlay() {
@@ -36,7 +35,7 @@ function XpotXLoginOverlay() {
 
     try {
       await signIn.authenticateWithRedirect({
-        strategy: 'oauth_twitter',
+        strategy: 'oauth_twitter', // X / Twitter in Clerk
         redirectUrl: '/dashboard',
         redirectUrlComplete: '/dashboard',
       });
@@ -46,20 +45,15 @@ function XpotXLoginOverlay() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center before:absolute before:inset-0 before:bg-white/[0.04] before:backdrop-blur-[60px]">
-      
-      {/* REAL BLUR LAYER */}
-      <div className="absolute inset-0 backdrop-blur-[26px] bg-black/65" />
-
-      {/* ATMOSPHERE */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[26px] relative">
+      {/* Atmosphere glows */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-emerald-500/15 blur-[140px]" />
-        <div className="absolute bottom-[-6rem] right-[-4rem] h-[420px] w-[420px] rounded-full bg-cyan-500/10 blur-[160px]" />
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-emerald-500/18 blur-[140px]" />
+        <div className="absolute bottom-[-6rem] right-[-4rem] h-[420px] w-[420px] rounded-full bg-cyan-500/14 blur-[160px]" />
       </div>
 
-      {/* CARD */}
-      <div className="relative z-50 w-full max-w-md rounded-3xl border border-white/10 bg-[#020617]/80 p-6 shadow-[0_60px_180px_rgba(0,0,0,0.95)] backdrop-blur-[22px] ring-1 ring-white/5">
-        
+      {/* Card */}
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#020617]/82 p-6 shadow-[0_60px_180px_rgba(0,0,0,0.95)] backdrop-blur-[22px] ring-1 ring-white/5">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <Image
@@ -69,17 +63,14 @@ function XpotXLoginOverlay() {
             height={32}
             priority
           />
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-            X identity only
+          <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+            X identity
           </span>
         </div>
 
-        {/* Content */}
-        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-          Sign in with X to continue
-        </p>
-        <h1 className="mt-1 text-lg font-semibold">
-          Your X handle is your XPOT identity
+        {/* Copy */}
+        <h1 className="text-base font-medium text-slate-100">
+          Your X handle is your XPOT identity.
         </h1>
         <p className="mt-1 text-[13px] text-slate-400">
           No email. No passwords. Just your verified X account.
@@ -87,19 +78,20 @@ function XpotXLoginOverlay() {
 
         {/* Button */}
         <button
+          type="button"
           onClick={handleXLogin}
-          className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 font-semibold text-black shadow-[0_16px_40px_rgba(15,23,42,0.6)] transition hover:-translate-y-[1px] hover:shadow-[0_24px_60px_rgba(15,23,42,0.9)]"
+          className="mt-4 group inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_0_40px_rgba(255,255,255,0.14)] transition hover:shadow-[0_0_80px_rgba(255,255,255,0.3)]"
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-white text-xs">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs text-white">
             X
           </span>
-          Continue with X / Twitter
+          <span>Continue with X / Twitter</span>
         </button>
 
         {/* Footer */}
         <p className="mt-3 text-[11px] text-slate-500">
-          One XPOT identity per X account. 
-          Winners revealed by X handle.
+          One XPOT identity per X account. Winners are revealed by handle, not
+          wallet.
         </p>
       </div>
     </div>
