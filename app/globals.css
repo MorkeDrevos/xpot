@@ -726,8 +726,7 @@ html.light .text-emerald-300.live-label {
 .admin-card,
 .premium-card,
 .card-premium,
-.jackpot-core,
-section {
+.jackpot-core {
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,0.02),
     0 25px 80px rgba(0,0,0,0.65),
