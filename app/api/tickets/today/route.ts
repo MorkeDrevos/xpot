@@ -37,12 +37,15 @@ export async function GET() {
       });
     }
 
+    // Map Prisma tickets to the shape your dashboard expects
     const tickets = draw.tickets.map((t) => ({
       id: t.id,
       code: t.code,
-      status: t.status,          // assumes enum/string on the model
-      label: t.label ?? '',
-      jackpotUsd: t.jackpotUsd ?? draw.jackpotUsd ?? 10000,
+      status: t.status, // your enum/string on the Ticket model
+      // Ticket model has no "label" column – we just provide a default text
+      label: 'Ticket for today’s draw',
+      // Ticket model also has no "jackpotUsd" – use draw jackpot or default
+      jackpotUsd: draw.jackpotUsd ?? 10_000,
       createdAt: t.createdAt,
       walletAddress: t.walletAddress,
     }));
