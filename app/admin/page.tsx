@@ -939,14 +939,10 @@ export default function AdminPage() {
                           todayDraw.status !== 'open'
                         }
                         onClick={handlePickMainWinner}
-                        className={`
-                          ${BTN_PRIMARY} px-4 py-2 text-sm transition-all ease-out duration-300
-                          ${
-                            isWarningCritical
-                              ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]'
-                              : ''
-                          }
-                        `}
+className={`
+  ${BTN_PRIMARY} primary-cta px-4 py-2 text-sm transition-all ease-out duration-300
+  ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
+`}
                       >
                         {isPickingWinner
                           ? 'Picking winner…'
