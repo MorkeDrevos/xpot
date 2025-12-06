@@ -46,10 +46,10 @@ function XpotXLoginOverlay() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center before:absolute before:inset-0 before:bg-white/[0.04] before:backdrop-blur-[60px]">
       
       {/* REAL BLUR LAYER */}
-      <div className="absolute inset-0 backdrop-blur-[18px] bg-black/55" />
+      <div className="absolute inset-0 backdrop-blur-[26px] bg-black/65" />
 
       {/* ATMOSPHERE */}
       <div className="pointer-events-none absolute inset-0">
@@ -58,7 +58,7 @@ function XpotXLoginOverlay() {
       </div>
 
       {/* CARD */}
-      <div className="relative z-50 w-full max-w-md rounded-3xl border border-slate-800/70 bg-[#020617]/85 p-6 shadow-[0_40px_140px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+      <div className="relative z-50 w-full max-w-md rounded-3xl border border-white/10 bg-[#020617]/80 p-6 shadow-[0_60px_180px_rgba(0,0,0,0.95)] backdrop-blur-[22px] ring-1 ring-white/5">
         
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
@@ -85,18 +85,6 @@ function XpotXLoginOverlay() {
           No email. No passwords. Just your verified X account.
         </p>
 
-        {/* Why */}
-        <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-          <p className="text-[11px] uppercase tracking-[0.15em] text-slate-400">
-            Why X login?
-          </p>
-          <ul className="mt-2 text-[12px] text-slate-300 space-y-1">
-            <li>• One identity per X account</li>
-            <li>• Winners shown by handle</li>
-            <li>• Wallet stays self-custody</li>
-          </ul>
-        </div>
-
         {/* Button */}
         <button
           onClick={handleXLogin}
@@ -110,8 +98,8 @@ function XpotXLoginOverlay() {
 
         {/* Footer */}
         <p className="mt-3 text-[11px] text-slate-500">
-          XPOT never posts on your behalf.  
-          We only access your public handle + avatar.
+          One XPOT identity per X account. 
+          Winners revealed by X handle.
         </p>
       </div>
     </div>
