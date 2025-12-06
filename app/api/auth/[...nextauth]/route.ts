@@ -119,11 +119,6 @@ const authOptions: NextAuthOptions = {
   },
 
   debug: process.env.NODE_ENV !== 'production',
-  events: {
-    error(message) {
-      console.error('[NextAuth error event]', message);
-    },
-  },
 };
 
 const handler = NextAuth(authOptions);
