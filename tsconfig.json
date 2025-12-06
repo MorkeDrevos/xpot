@@ -15,8 +15,8 @@
 
     "baseUrl": ".",                        
     "paths": {
-      "@/*": ["./app/*"]
-    }
+  "@/*": ["./*"]
+}
   },
   "include": ["next-env.d.ts", "app/**/*.ts", "app/**/*.tsx"],
   "exclude": ["node_modules"]
