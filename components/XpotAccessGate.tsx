@@ -124,7 +124,7 @@ function XpotXLoginOverlay() {
           Your X handle is your XPOT identity.
         </h1>
         <p className="mt-1 text-[13px] text-slate-400">
-          No email. No passwords. Just your verified X account.
+          One XPOT identity per X account. Winners are revealed by handle.
         </p>
 
         {/* Button + glow pulse */}
@@ -165,6 +165,11 @@ function XpotXLoginOverlay() {
             </span>
           </button>
         </div>
+
+        {/* Footer microcopy */}
+        <p className="mt-3 text-[11px] text-slate-500">
+         No email. No passwords. Just your verified X account.
+        </p>
       </div>
     </div>
   );
