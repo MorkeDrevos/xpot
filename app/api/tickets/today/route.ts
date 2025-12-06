@@ -1,136 +1,68 @@
 // app/api/tickets/today/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
-  // 1) Require X login
-  const session = await getServerSession();
-  const user = session?.user as any;
-
-  if (!user?.id) {
-    return NextResponse.json(
-      { ok: false, error: 'NOT_LOGGED_IN' },
-      { status: 401 }
-    );
-  }
-
-  const userId = user.id as string;
-
-  // 2) Read wallet address from body
-  let body: { walletAddress?: string } = {};
+export async function GET() {
   try {
-    body = await req.json();
-  } catch {
-    // body stays {}
-  }
+    // Today in UTC
+    const now = new Date();
+    const yyyy = now.getUTCFullYear();
+    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(now.getUTCDate()).padStart(2, '0');
 
-  const walletAddress = body.walletAddress?.trim();
+    const start = new Date(`${yyyy}-${mm}-${dd}T00:00:00.000Z`);
+    const end = new Date(`${yyyy}-${mm}-${dd}T23:59:59.999Z`);
 
-  if (!walletAddress) {
-    return NextResponse.json(
-      { ok: false, error: 'NO_WALLET_ADDRESS' },
-      { status: 400 }
-    );
-  }
-
-  try {
-    // 3) Find today’s draw
-    const todayStr = new Date().toISOString().slice(0, 10);
-
+    // Find today's draw and include tickets
     const draw = await prisma.draw.findFirst({
       where: {
         drawDate: {
-          gte: new Date(`${todayStr}T00:00:00.000Z`),
-          lt: new Date(`${todayStr}T23:59:59.999Z`),
+          gte: start,
+          lte: end,
         },
+      },
+      orderBy: { drawDate: 'asc' },
+      include: {
+        tickets: true,
       },
     });
 
     if (!draw) {
-      return NextResponse.json(
-        { ok: false, error: 'NO_DRAW_TODAY' },
-        { status: 400 }
-      );
-    }
-
-    // 4) Find or create wallet for this user
-    let wallet = await prisma.wallet.findUnique({
-      where: { address: walletAddress },
-    });
-
-    // If wallet exists but belongs to another user, block it
-    if (wallet && wallet.userId !== userId) {
-      return NextResponse.json(
-        { ok: false, error: 'WALLET_OWNED_BY_OTHER_USER' },
-        { status: 403 }
-      );
-    }
-
-    if (!wallet) {
-      wallet = await prisma.wallet.create({
-        data: {
-          address: walletAddress,
-          userId,
-        },
+      return NextResponse.json({
+        ok: true,
+        draw: null,
+        tickets: [],
       });
     }
 
-    // 5) Enforce ONE ticket per WALLET per draw
-    const existing = await prisma.ticket.findFirst({
-      where: {
-        drawId: draw.id,
-        walletId: wallet.id,
+    const tickets = draw.tickets.map((t) => ({
+      id: t.id,
+      code: t.code,
+      status: t.status,          // assumes enum/string on the model
+      label: t.label ?? '',
+      jackpotUsd: t.jackpotUsd ?? draw.jackpotUsd ?? 10000,
+      createdAt: t.createdAt,
+      walletAddress: t.walletAddress,
+    }));
+
+    return NextResponse.json({
+      ok: true,
+      draw: {
+        id: draw.id,
+        drawDate: draw.drawDate,
+        status: draw.status,
+        jackpotUsd: draw.jackpotUsd,
+        rolloverUsd: draw.rolloverUsd,
       },
+      tickets,
     });
-
-    if (existing) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'ALREADY_HAS_TICKET',
-          ticket: {
-            id: existing.id,
-            code: existing.code,
-          },
-        },
-        { status: 409 }
-      );
-    }
-
-    // 6) Create new ticket
-    const ticket = await prisma.ticket.create({
-      data: {
-        drawId: draw.id,
-        userId,
-        walletId: wallet.id,
-        code: generateTicketCode(),
-      },
-    });
-
-    return NextResponse.json(
-      {
-        ok: true,
-        ticket: {
-          id: ticket.id,
-          code: ticket.code,
-        },
-      },
-      { status: 201 }
-    );
   } catch (err) {
-    console.error('Create today ticket error', err);
+    console.error('GET /api/tickets/today error', err);
     return NextResponse.json(
       { ok: false, error: 'INTERNAL_ERROR' },
-      { status: 500 }
+      { status: 500 },
     );
   }
-}
-
-// Simple helper – or reuse your existing one
-function generateTicketCode() {
-  return 'XP-' + Math.random().toString(36).slice(2, 10).toUpperCase();
 }
