@@ -718,7 +718,7 @@ export default function AdminPage() {
   <div className="pointer-events-none absolute -inset-8 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.25),transparent_45%),radial-gradient(circle_at_80%_100%,rgba(56,189,248,0.25),transparent_45%)] opacity-70 blur-2xl" />
 
   {/* Glass card */}
-  <div className="relative rounded-3xl bg-black/30 backdrop-blur-xl border border-white/10 px-5 py-4">
+  <div className="relative rounded-3xl bg-black/35 backdrop-blur-xl border border-white/5 shadow-[0_0_60px_rgba(99,102,241,0.12)]">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p className="text-sm font-semibold text-white tracking-wide">
