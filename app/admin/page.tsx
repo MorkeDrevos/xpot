@@ -712,61 +712,61 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Admin key card – cinematic glass */}
-      <section className="relative rounded-3xl bg-transparent">
-        {/* Glow behind card */}
-        <div className="pointer-events-none absolute -inset-8 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.25),transparent_45%),radial-gradient(circle_at_80%_100%,rgba(56,189,248,0.25),transparent_45%)] opacity-70 blur-2xl" />
+{/* Admin key card */}
+<section className="relative rounded-3xl bg-transparent">
+  {/* Glow background */}
+  <div className="pointer-events-none absolute -inset-8 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.25),transparent_45%),radial-gradient(circle_at_80%_100%,rgba(56,189,248,0.25),transparent_45%)] opacity-70 blur-2xl" />
 
-        {/* Glass card */}
-        <div className="relative rounded-3xl bg-black/30 backdrop-blur-xl border border-white/10 px-5 py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-white tracking-wide">
-                Admin key
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                Enter your admin token to unlock XPOT operations.
-              </p>
-              {tokenAccepted && (
-                <p className="mt-1 text-xs font-semibold text-emerald-400">
-                  Authentication successful. Secure access granted.
-                </p>
-              )}
-            </div>
+  {/* Glass card */}
+  <div className="relative rounded-3xl bg-black/30 backdrop-blur-xl border border-white/10 px-5 py-4">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-semibold text-white tracking-wide">
+          Admin key
+        </p>
+        <p className="mt-1 text-xs text-slate-400">
+          Enter your admin token to unlock XPOT operations.
+        </p>
+        {tokenAccepted && (
+          <p className="mt-1 text-xs font-semibold text-emerald-400">
+            Authentication successful. Secure access granted.
+          </p>
+        )}
+      </div>
 
-            <form
-              onSubmit={handleUnlock}
-              className="flex flex-1 flex-col gap-2 sm:max-w-md sm:flex-row"
+      <form
+        onSubmit={handleUnlock}
+        className="flex flex-1 flex-col gap-2 sm:max-w-md sm:flex-row"
+      >
+        <input
+          type="password"
+          className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
+          value={tokenInput}
+          onChange={(e) => setTokenInput(e.target.value)}
+          placeholder="Paste admin token…"
+        />
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={isSavingToken || !tokenInput.trim()}
+            className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+          >
+            {tokenAccepted ? 'Update key' : 'Unlock'}
+          </button>
+          {tokenAccepted && (
+            <button
+              type="button"
+              onClick={handleClearToken}
+              className={`${BTN_UTILITY} px-3 py-2 text-xs`}
             >
-              <input
-                type="password"
-                className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                placeholder="Paste admin token…"
-              />
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={isSavingToken || !tokenInput.trim()}
-                  className={`${BTN_UTILITY} px-3 py-2 text-xs`}
-                >
-                  {tokenAccepted ? 'Update key' : 'Unlock'}
-                </button>
-                {tokenAccepted && (
-                  <button
-                    type="button"
-                    onClick={handleClearToken}
-                    className={`${BTN_UTILITY} px-3 py-2 text-xs`}
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
+              Clear
+            </button>
+          )}
         </div>
-      </section>
+      </form>
+    </div>
+  </div>
+</section>
 
       {/* Main grid: left (XPOT + summary + entries), right (winners) */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)]">
