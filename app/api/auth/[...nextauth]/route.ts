@@ -3,7 +3,7 @@ import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 import { prisma } from '@/lib/prisma';
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
   providers: [
