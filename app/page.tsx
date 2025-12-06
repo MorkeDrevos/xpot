@@ -115,9 +115,6 @@ export default function Home() {
                 </p>
               </div>
             </div>
-
-            {/* Right: X login */}
-            <XpotAccessGate className="h-full" />
           </section>
         </div>
       </div>
