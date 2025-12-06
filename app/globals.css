@@ -97,6 +97,26 @@ body {
   }
 }
 
+.primary-cta {
+  position: relative;
+  overflow: hidden;
+}
+
+.primary-cta::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(120deg, rgba(250,250,250,0.65), transparent 60%);
+  opacity: 0;
+  transform: translateX(-60%);
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+}
+
+.primary-cta:hover::before {
+  opacity: 1;
+  transform: translateX(40%);
+}
+
 /* ────────────────────────────────────────────────
    Global XPOT color tokens – Neon Nebula Palette
    (deep navy + cyan/teal + subtle purple)
