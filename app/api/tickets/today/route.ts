@@ -15,7 +15,7 @@ export async function GET() {
     const start = new Date(`${yyyy}-${mm}-${dd}T00:00:00.000Z`);
     const end = new Date(`${yyyy}-${mm}-${dd}T23:59:59.999Z`);
 
-    // Find today's draw and include tickets
+    // Find today's draw and include tickets (no custom select to avoid TS complaints)
     const draw = await prisma.draw.findFirst({
       where: {
         drawDate: {
@@ -25,15 +25,7 @@ export async function GET() {
       },
       orderBy: { drawDate: 'asc' },
       include: {
-        tickets: {
-          select: {
-            id: true,
-            code: true,
-            status: true,
-            createdAt: true,
-            walletAddress: true, // <- add this so TS knows it exists
-          },
-        },
+        tickets: true,
       },
     });
 
@@ -46,17 +38,26 @@ export async function GET() {
     }
 
     // Map Prisma tickets to the shape your dashboard expects
-    const tickets = draw.tickets.map((t) => ({
-      id: t.id,
-      code: t.code,
-      status: t.status,
-      // Ticket model has no "label" column – we just provide a default text
-      label: 'Ticket for today’s draw',
-      // Ticket model also has no "jackpotUsd" – use draw jackpot or default
-      jackpotUsd: draw.jackpotUsd ?? 10_000,
-      createdAt: t.createdAt,
-      walletAddress: t.walletAddress,
-    }));
+    const tickets = draw.tickets.map((rawTicket) => {
+      const t: any = rawTicket; // relax typing so we can read walletAddress if present
+
+      return {
+        id: t.id,
+        code: t.code,
+        status: t.status,
+        // Ticket model has no "label" column – we just provide a default text
+        label: 'Ticket for today’s draw',
+        // Ticket model also has no "jackpotUsd" – use draw jackpot or default
+        jackpotUsd: draw.jackpotUsd ?? 10_000,
+        createdAt: t.createdAt,
+        // Try common field names, otherwise empty string
+        walletAddress:
+          t.walletAddress ??
+          t.wallet_address ??
+          t.wallet?.address ??
+          '',
+      };
+    });
 
     return NextResponse.json({
       ok: true,
