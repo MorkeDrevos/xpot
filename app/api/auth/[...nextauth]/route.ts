@@ -6,6 +6,11 @@ import { prisma } from '@/lib/prisma';
 const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
+  // Send users to a custom error page like /auth-error?error=OAuthCallback
+  pages: {
+    error: '/auth-error',
+  },
+
   providers: [
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
@@ -115,6 +120,13 @@ const authOptions: NextAuthOptions = {
         if (u.origin === baseUrl) return url;
       } catch {}
       return `${baseUrl}/dashboard`;
+    },
+  },
+
+  // Log detailed auth errors to Vercel logs
+  logger: {
+    error(code, metadata) {
+      console.error('NEXTAUTH ERROR', code, metadata);
     },
   },
 
