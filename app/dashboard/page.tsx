@@ -452,11 +452,11 @@ export default function DashboardPage() {
               </div>
 
               {/* Log out (Clerk) */}
-              <SignOutButton>
-                <button className="text-xs text-slate-400 hover:text-white">
-                  Log out
-                </button>
-              </SignOutButton>
+              <SignOutButton redirectUrl="/dashboard">
+  <button className="text-xs text-slate-400 hover:text-white">
+    Log out
+  </button>
+</SignOutButton>
 
               {/* Nav */}
               <nav className="space-y-1 text-sm">
