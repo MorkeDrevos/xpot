@@ -6,10 +6,10 @@ import { prisma } from '@/lib/prisma';
 const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
-  // ✅ Always use your own page, never the built-in ugly one
+  // Always use your own page, never the built-in ugly one
   pages: {
-    signIn: '/dashboard', // where your "Sign in with X" button lives
-    error: '/dashboard',  // on any auth error, go back here too
+    signIn: '/dashboard',  // "Sign in with X" lives here
+    error: '/dashboard',   // on any auth error, go back here too
   },
 
   providers: [
@@ -125,6 +125,18 @@ const authOptions: NextAuthOptions = {
   },
 
   debug: process.env.NODE_ENV !== 'production',
+
+  logger: {
+    error(code, metadata) {
+      console.error('⚠️ NEXTAUTH ERROR', code, metadata);
+    },
+    warn(code) {
+      console.warn('⚠️ NEXTAUTH WARN', code);
+    },
+    debug(code, metadata) {
+      console.log('🧠 NEXTAUTH DEBUG', code, metadata);
+    },
+  },
 };
 
 const handler = NextAuth(authOptions);
