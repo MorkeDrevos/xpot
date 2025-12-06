@@ -2,8 +2,8 @@
 'use client';
 
 import './globals.css';
-import DeployWatcher from '/components/DeployWatcher';
-import ThemeToggle from '/components/ThemeToggle';
+import DeployWatcher from '../components/DeployWatcher';
+import ThemeToggle from '../components/ThemeToggle';
 
 import type { ReactNode } from 'react';
 import {
