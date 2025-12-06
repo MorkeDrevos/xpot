@@ -2,6 +2,12 @@
   "compilerOptions": {
     "target": "ESNext",
     "lib": ["dom", "dom.iterable", "esnext"],
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
+
     "allowJs": false,
     "skipLibCheck": true,
     "strict": true,
@@ -13,14 +19,10 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["app/*"]      // 👈 change this line
-    }
+      { "name": "next" }
+    ]
   },
+
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
 }
