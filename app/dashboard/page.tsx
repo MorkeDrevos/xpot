@@ -420,31 +420,34 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
 
   return (
-    <XpotAccessGate>
-      <div className="relative min-h-screen bg-black text-slate-50">
-        {/* Blurred dashboard behind login */}
-        <main
-          className={
-            'min-h-screen transition-all duration-300 ' +
-            (showLogin ? 'pointer-events-none blur-sm brightness-50' : '')
-          }
-        >
-          <WalletDebug />
+  <XpotAccessGate>
+    <div className="relative min-h-screen bg-black text-slate-50">
+      
+      {/* DASHBOARD (BLURRED WHEN LOGGED OUT) */}
+      <main
+        className={
+          'min-h-screen transition-all duration-300 ' +
+          (showLogin ? 'pointer-events-none blur-sm brightness-50' : '')
+        }
+      >
+        <WalletDebug />
 
-          {/* Mobile top bar */}
-          <header className="flex items-center justify-between px-4 py-3 md:hidden">
-            <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/img/xpot-logo-light.png"
-                alt="XPOT"
-                width={110}
-                height={30}
-                priority
-              />
-            </Link>
+        {/* Mobile top bar */}
+        <header className="flex items-center justify-between px-4 py-3 md:hidden">
+          <Link href="/" className="flex items-center gap-2">
+            <Image
+              src="/img/xpot-logo-light.png"
+              alt="XPOT"
+              width={110}
+              height={30}
+              priority
+            />
+          </Link>
 
-            <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
-          </header>
+          <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
+        </header>
+
+        {/* REST OF YOUR DASHBOARD CONTINUES BELOW */}
 
           <div className="mx-auto flex max-w-6xl">
             {/* Left nav */}
