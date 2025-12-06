@@ -69,15 +69,18 @@ function XpotXLoginOverlay() {
             height={32}
             priority
           />
-          <span className="rounded-full border border-white/10 bg-white/5 text-[10px] font-medium tracking-wide text-slate-400">
-            X identity
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+            X identity only
           </span>
         </div>
 
         {/* Content */}
-        <h1 className="text-base font-medium text-slate-200">
-  Your X handle is your XPOT identity.
-</h1>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+          Sign in with X to continue
+        </p>
+        <h1 className="mt-1 text-lg font-semibold">
+          Your X handle is your XPOT identity
+        </h1>
         <p className="mt-1 text-[13px] text-slate-400">
           No email. No passwords. Just your verified X account.
         </p>
@@ -85,7 +88,7 @@ function XpotXLoginOverlay() {
         {/* Button */}
         <button
           onClick={handleXLogin}
-          className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-white shadow-[0_0_40px_rgba(255,255,255,0.12)] hover:shadow-[0_0_80px_rgba(255,255,255,0.3)] ..."
+          className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 font-semibold text-black shadow-[0_16px_40px_rgba(15,23,42,0.6)] transition hover:-translate-y-[1px] hover:shadow-[0_24px_60px_rgba(15,23,42,0.9)]"
         >
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-white text-xs">
             X
