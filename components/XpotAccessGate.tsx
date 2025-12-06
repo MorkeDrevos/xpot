@@ -165,12 +165,6 @@ function XpotXLoginOverlay() {
             </span>
           </button>
         </div>
-
-        {/* Footer microcopy */}
-        <p className="mt-3 text-[11px] text-slate-500">
-          One XPOT identity per X account. Winners are revealed by handle, not
-          wallet.
-        </p>
       </div>
     </div>
   );
