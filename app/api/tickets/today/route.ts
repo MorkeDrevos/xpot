@@ -25,7 +25,15 @@ export async function GET() {
       },
       orderBy: { drawDate: 'asc' },
       include: {
-        tickets: true,
+        tickets: {
+          select: {
+            id: true,
+            code: true,
+            status: true,
+            createdAt: true,
+            walletAddress: true, // <- add this so TS knows it exists
+          },
+        },
       },
     });
 
@@ -41,7 +49,7 @@ export async function GET() {
     const tickets = draw.tickets.map((t) => ({
       id: t.id,
       code: t.code,
-      status: t.status, // your enum/string on the Ticket model
+      status: t.status,
       // Ticket model has no "label" column – we just provide a default text
       label: 'Ticket for today’s draw',
       // Ticket model also has no "jackpotUsd" – use draw jackpot or default
