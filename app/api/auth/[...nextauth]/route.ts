@@ -6,6 +6,12 @@ import { prisma } from '@/lib/prisma';
 const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
+  // 👇 NEW: always use your own UI instead of NextAuth's built-in pages
+  pages: {
+    signIn: '/dashboard', // or '/admin' or '/login' – wherever your "Sign in with X" button lives
+    error: '/dashboard',  // same thing for errors – no more /api/auth/signin?error screen
+  },
+
   providers: [
     TwitterProvider({
       clientId: process.env.TWITTER_CLIENT_ID!,
@@ -115,13 +121,6 @@ const authOptions: NextAuthOptions = {
         if (u.origin === baseUrl) return url;
       } catch {}
       return `${baseUrl}/dashboard`;
-    },
-  },
-
-  // Log detailed auth errors to Vercel logs
-  logger: {
-    error(code, metadata) {
-      console.error('NEXTAUTH ERROR', code, metadata);
     },
   },
 
