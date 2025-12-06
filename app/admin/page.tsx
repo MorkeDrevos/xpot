@@ -764,11 +764,9 @@ export default function AdminPage() {
               <p className="text-sm font-semibold text-white tracking-wide">
                 Admin key
               </p>
-
               <p className="mt-1 text-xs text-slate-400">
                 Enter your admin token to unlock XPOT operations.
               </p>
-
               {tokenAccepted && (
                 <p className="mt-1 text-xs font-semibold text-emerald-400">
                   Authentication successful. Secure access granted.
@@ -809,7 +807,6 @@ export default function AdminPage() {
           </div>
         </div>
       </section>
-</div>
 
           {/* Today’s XPOT summary card */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
