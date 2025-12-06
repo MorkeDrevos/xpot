@@ -132,10 +132,9 @@ export default function DashboardPage() {
   const { user } = useUser();
 
   // 👇 Make provider comparison type-safe
-  const xAccount = user?.externalAccounts?.find((acc) => {
-    const provider = (acc as any).provider as string | undefined;
-    return provider === 'oauth_twitter' || provider === 'twitter';
-  });
+ const xAccount = user?.externalAccounts?.find((acc: any) => {
+  return acc.provider === 'oauth_x';
+});
 
   const handle = xAccount?.username;
   const avatar = xAccount?.imageUrl;
