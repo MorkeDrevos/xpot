@@ -12,6 +12,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 import XpotAccessGate from '@/components/XpotAccessGate';
+import { SignOutButton } from '@clerk/nextjs';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -908,6 +909,12 @@ export default function DashboardPage() {
                 </section>
               </div>
             </section>
+
+<SignOutButton>
+  <button className="text-xs text-slate-400 hover:text-white transition">
+    Log out
+  </button>
+</SignOutButton>
 
             {/* Right sidebar */}
             <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
