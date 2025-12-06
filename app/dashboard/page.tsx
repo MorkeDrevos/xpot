@@ -129,11 +129,14 @@ export default function DashboardPage() {
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
-  // Clerk user (X identity)
   const { user } = useUser();
-  const xAccount = user?.externalAccounts?.find(
-    (acc) => acc.provider === 'oauth_twitter',
-  );
+
+  // 👇 Make provider comparison type-safe
+  const xAccount = user?.externalAccounts?.find((acc) => {
+    const provider = (acc as any).provider as string | undefined;
+    return provider === 'oauth_twitter' || provider === 'twitter';
+  });
+
   const handle = xAccount?.username;
   const avatar = xAccount?.imageUrl;
   const name = user?.fullName || handle || 'XPOT user';
