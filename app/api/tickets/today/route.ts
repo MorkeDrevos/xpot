@@ -15,8 +15,8 @@ export async function GET() {
     const start = new Date(`${yyyy}-${mm}-${dd}T00:00:00.000Z`);
     const end = new Date(`${yyyy}-${mm}-${dd}T23:59:59.999Z`);
 
-    // Find today's draw and include tickets (no custom select to avoid TS complaints)
-    const draw = await prisma.draw.findFirst({
+    // Draw + tickets – cast to any to avoid Prisma TS complaints
+    const drawRecord = (await prisma.draw.findFirst({
       where: {
         drawDate: {
           gte: start,
@@ -27,9 +27,10 @@ export async function GET() {
       include: {
         tickets: true,
       },
-    });
+    })) as any;
 
-    if (!draw) {
+    // No draw today
+    if (!drawRecord) {
       return NextResponse.json({
         ok: true,
         draw: null,
@@ -37,36 +38,29 @@ export async function GET() {
       });
     }
 
-    // Map Prisma tickets to the shape your dashboard expects
-    const tickets = draw.tickets.map((rawTicket) => {
-      const t: any = rawTicket; // relax typing so we can read walletAddress if present
-
-      return {
-        id: t.id,
-        code: t.code,
-        status: t.status,
-        // Ticket model has no "label" column – we just provide a default text
-        label: 'Ticket for today’s draw',
-        // Ticket model also has no "jackpotUsd" – use draw jackpot or default
-        jackpotUsd: draw.jackpotUsd ?? 10_000,
-        createdAt: t.createdAt,
-        // Try common field names, otherwise empty string
-        walletAddress:
-          t.walletAddress ??
-          t.wallet_address ??
-          t.wallet?.address ??
-          '',
-      };
-    });
+    // Map tickets into the shape the dashboard expects
+    const tickets = (drawRecord.tickets ?? []).map((t: any) => ({
+      id: t.id,
+      code: t.code,
+      status: t.status ?? 'in-draw', // fallback if model has no status
+      label: 'Ticket for today’s draw',
+      jackpotUsd: drawRecord.jackpotUsd ?? 10_000,
+      createdAt: t.createdAt,
+      walletAddress:
+        t.walletAddress ??
+        t.wallet_address ??
+        t.wallet?.address ??
+        '',
+    }));
 
     return NextResponse.json({
       ok: true,
       draw: {
-        id: draw.id,
-        drawDate: draw.drawDate,
-        status: draw.status,
-        jackpotUsd: draw.jackpotUsd,
-        rolloverUsd: draw.rolloverUsd,
+        id: drawRecord.id,
+        drawDate: drawRecord.drawDate,
+        status: drawRecord.status ?? 'open',
+        jackpotUsd: drawRecord.jackpotUsd ?? 10_000,
+        rolloverUsd: drawRecord.rolloverUsd ?? 0,
       },
       tickets,
     });
