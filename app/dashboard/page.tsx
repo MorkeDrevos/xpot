@@ -12,7 +12,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useSession } from 'next-auth/react';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
-import { XLoginOverlay } from '@/components/XLoginOverlay';
+import XLoginOverlay from '@/components/XLoginOverlay';
 import XpotAccessGate from '@/components/XpotAccessGate';
 
 // ─────────────────────────────────────────────
