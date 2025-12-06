@@ -805,14 +805,14 @@ export default function AdminPage() {
         {/* LEFT COLUMN */}
         <div className="space-y-4">
           {/* Big live XPOT card */}
-          <div className="rounded-3xl bg-gradient-to-br from-purple-500/10 via-transparent to-cyan-400/10 p-[1px]">
-            <div className="rounded-3xl bg-[#050b1b]/70 backdrop-blur-xl">
-              <JackpotPanel
-                isLocked={isDrawLocked}
-                onJackpotUsdChange={setLiveJackpotUsd}
-              />
-            </div>
-          </div>
+          <div className="jackpot-shell">
+  <div className="jackpot-shell-inner">
+    <JackpotPanel
+      isLocked={isDrawLocked}
+      onJackpotUsdChange={setLiveJackpotUsd}
+    />
+  </div>
+</div>
 
           {/* Today’s XPOT summary card */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
