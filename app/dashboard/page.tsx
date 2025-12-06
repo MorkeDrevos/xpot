@@ -12,7 +12,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useSession } from 'next-auth/react';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
-import XLoginOverlay from '@/components/XLoginOverlay';
+import { XLoginOverlay } from '@/components/XLoginOverlay';
 import XpotAccessGate from '@/components/XpotAccessGate';
 
 // ─────────────────────────────────────────────
@@ -400,49 +400,47 @@ export default function DashboardPage() {
     }
   }
 
-      // Normalize wallet + compute my tickets
-const normalizedWallet = currentWalletAddress?.toLowerCase();
+  // Normalize wallet + compute my tickets
+  const normalizedWallet = currentWalletAddress?.toLowerCase() ?? null;
 
-const myTickets: Entry[] = normalizedWallet
-  ? entries.filter(
-      (e) => e.walletAddress?.toLowerCase() === normalizedWallet
-    )
-  : [];
+  const myTickets: Entry[] = normalizedWallet
+    ? entries.filter(
+        (e) => e.walletAddress?.toLowerCase() === normalizedWallet,
+      )
+    : [];
 
   // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
 
   return (
-  <XpotAccessGate>
-    <div className="relative min-h-screen bg-black text-slate-50">
-      
-      {/* DASHBOARD (BLURRED WHEN LOGGED OUT) */}
-      <main
-        className={
-          'min-h-screen transition-all duration-300 ' +
-          (showLogin ? 'pointer-events-none blur-sm brightness-50' : '')
-        }
-      >
-        <WalletDebug />
+    <XpotAccessGate>
+      <div className="relative min-h-screen bg-black text-slate-50">
+        {/* DASHBOARD (BLURRED WHEN LOGGED OUT) */}
+        <main
+          className={
+            'min-h-screen transition-all duration-300 ' +
+            (showLogin ? 'pointer-events-none blur-sm brightness-50' : '')
+          }
+        >
+          <WalletDebug />
 
-        {/* Mobile top bar */}
-        <header className="flex items-center justify-between px-4 py-3 md:hidden">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/img/xpot-logo-light.png"
-              alt="XPOT"
-              width={110}
-              height={30}
-              priority
-            />
-          </Link>
+          {/* Mobile top bar */}
+          <header className="flex items-center justify-between px-4 py-3 md:hidden">
+            <Link href="/" className="flex items-center gap-2">
+              <Image
+                src="/img/xpot-logo-light.png"
+                alt="XPOT"
+                width={110}
+                height={30}
+                priority
+              />
+            </Link>
 
-          <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
-        </header>
+            <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
+          </header>
 
-        {/* REST OF YOUR DASHBOARD CONTINUES BELOW */}
-
+          {/* REST OF YOUR DASHBOARD CONTINUES BELOW */}
           <div className="mx-auto flex max-w-6xl">
             {/* Left nav */}
             <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-0 pb-4 md:flex flex-col">
