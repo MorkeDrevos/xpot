@@ -3,7 +3,9 @@ import NextAuth, { type NextAuthOptions } from 'next-auth';
 import TwitterProvider from 'next-auth/providers/twitter';
 import { prisma } from '@/lib/prisma';
 
-export const authOptions: NextAuthOptions = {
+// ❗ Important: DO NOT export authOptions from this file.
+// Route files in App Router may only export HTTP handlers (GET, POST, etc.)
+const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
 
   providers: [
@@ -112,7 +114,9 @@ export const authOptions: NextAuthOptions = {
       try {
         const u = new URL(url);
         if (u.origin === baseUrl) return url;
-      } catch {}
+      } catch {
+        // ignore invalid URL
+      }
       return `${baseUrl}/dashboard`;
     },
   },
@@ -126,5 +130,8 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
+// Create the handler used by the App Router
 const handler = NextAuth(authOptions);
+
+// ✅ Only exports allowed in an App Router route file
 export { handler as GET, handler as POST };
