@@ -38,7 +38,7 @@ function XpotXLoginOverlay() {
   async function handleXLogin() {
     if (!isLoaded || !signIn || authInProgress) return;
 
-    try {
+  try {
       setAuthInProgress(true); // just switch button to "Connecting…"
       await signIn.authenticateWithRedirect({
         strategy: 'oauth_x', // X / Twitter SSO in Clerk
@@ -74,22 +74,23 @@ function XpotXLoginOverlay() {
             height={32}
             priority
           />
-          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/5 px-2 py-0.5 text-[10px] font-semibold tracking-[0.16em] text-emerald-300 uppercase">
+          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
             XPOT identity
           </span>
         </div>
 
+        {/* Top label */}
         <p className="mt-2 text-[11px] tracking-[0.25em] uppercase text-slate-500">
-  SIGN IN WITH X TO CONTINUE
-</p>
+          SIGN IN WITH X TO CONTINUE
+        </p>
 
         {/* Copy */}
-        <h1 className="text-base font-medium text-slate-100">
+        <h1 className="mt-2 text-base font-medium text-slate-100">
           Your X handle is your XPOT identity.
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Connect once with X, link your wallet and you're ready for daily XPOT draws.
-  No passwords, no emails, just your X account.
+          Connect once with X, link your wallet, and you&apos;re ready for
+          daily XPOT draws. No passwords, no emails, just your X account.
         </p>
 
         {/* Button */}
@@ -97,9 +98,11 @@ function XpotXLoginOverlay() {
           type="button"
           onClick={handleXLogin}
           disabled={!isLoaded || authInProgress}
-          className={`group mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-[0_0_40px_rgba(255,255,255,0.16)] transition 
-            ${authInProgress ? 'cursor-wait opacity-90' : 'hover:shadow-[0_0_80px_rgba(255,255,255,0.32)]'}
-          `}
+          className={`group mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-[0_0_40px_rgba(255,255,255,0.16)] transition ${
+            authInProgress
+              ? 'cursor-wait opacity-90'
+              : 'hover:shadow-[0_0_80px_rgba(255,255,255,0.32)]'
+          }`}
         >
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-[11px] text-white">
             X
@@ -111,11 +114,10 @@ function XpotXLoginOverlay() {
 
         {/* Footer line */}
         <p className="mt-4 text-center text-[11px] text-slate-500">
-  XPOT never posts on your behalf.
-  We only read your public profile (handle & avatar) and link it to your XPOT identity.
-</p>
+          XPOT never posts on your behalf. We only read your public profile
+          (handle &amp; avatar) and link it to your XPOT identity.
+        </p>
       </div>
     </div>
   );
-}
 }
