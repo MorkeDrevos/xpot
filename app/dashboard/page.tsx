@@ -12,7 +12,8 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 import XpotAccessGate from '@/components/XpotAccessGate';
-import { useUser, SignOutButton } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
+import { SignOutButton } from '@clerk/nextjs';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -129,16 +130,65 @@ export default function DashboardPage() {
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
-  const { user } = useUser();
+  // ─────────────────────────────────────────────
+  // Clerk user (for avatar + handle)
+  // ─────────────────────────────────────────────
 
-  // 👇 Make provider comparison type-safe
- const xAccount = user?.externalAccounts?.find((acc: any) => {
-  return acc.provider === 'oauth_x';
-});
+  const { user, isLoaded: isUserLoaded } = useUser();
 
-  const handle = xAccount?.username;
-  const avatar = xAccount?.imageUrl;
+  const xAccount = user?.externalAccounts?.find((acc: any) => {
+    const provider = acc.provider as string | undefined;
+    return (
+      provider === 'oauth_x' ||
+      provider === 'oauth_twitter' ||
+      provider === 'twitter'
+    );
+  });
+
+  const handle = xAccount?.username || null;
+  const avatar = xAccount?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
+
+  // ─────────────────────────────────────────────
+  // Sync X identity into DB whenever user is loaded
+  // ─────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!isUserLoaded || !user) return;
+
+    (async () => {
+      try {
+        await fetch('/api/me/sync-x', {
+          method: 'POST',
+        });
+      } catch (e) {
+        console.error('[XPOT] Failed to sync X identity', e);
+      }
+    })();
+  }, [isUserLoaded, user]);
+
+  // ─────────────────────────────────────────────
+  // Wire wallet → DB whenever it connects
+  // ─────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!isUserLoaded || !user) return;
+    if (!publicKey || !connected) return;
+
+    const address = publicKey.toBase58();
+
+    (async () => {
+      try {
+        await fetch('/api/me/wallet-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address }),
+        });
+      } catch (e) {
+        console.error('[XPOT] Failed to sync wallet', e);
+      }
+    })();
+  }, [isUserLoaded, user, publicKey, connected]);
 
   // ─────────────────────────────────────────────
   // Load today's tickets from DB
@@ -206,7 +256,7 @@ export default function DashboardPage() {
 
   // ─────────────────────────────────────────────
   // XPOT balance (via API route)
-// ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!publicKey) {
@@ -450,12 +500,11 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              {/* Log out (Clerk) */}
               <SignOutButton redirectUrl="/dashboard">
-  <button className="text-xs text-slate-400 hover:text-white">
-    Log out
-  </button>
-</SignOutButton>
+                <button className="text-xs text-slate-400 hover:text-white">
+                  Log out
+                </button>
+              </SignOutButton>
 
               {/* Nav */}
               <nav className="space-y-1 text-sm">
@@ -576,7 +625,7 @@ export default function DashboardPage() {
                   </button>
                 </section>
 
-                {/* Today's ticket */}
+                {/* Today’s ticket */}
                 <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
                   <h2 className="text-sm font-semibold text-emerald-100">
                     Today’s ticket
@@ -678,7 +727,7 @@ export default function DashboardPage() {
                   )}
                 </article>
 
-                {/* Today's result + “What happens if I win?” */}
+                {/* Today’s result + identity explainer */}
                 <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
                   <h2 className="text-sm font-semibold text-slate-200">
                     Today’s result
@@ -719,7 +768,7 @@ export default function DashboardPage() {
                     </p>
                   )}
 
-                  {/* What happens if I win? */}
+                  {/* X identity explainer */}
                   <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       XPOT identity system
