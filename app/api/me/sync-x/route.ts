@@ -4,8 +4,8 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
 export async function POST() {
-  // Clerk auth – no need to await
-  const { userId } = auth();
+  // ✅ auth() is async in your setup – we must await it
+  const { userId } = await auth();
 
   if (!userId) {
     return NextResponse.json(
@@ -14,23 +14,14 @@ export async function POST() {
     );
   }
 
-  // Load Clerk user
+  // ✅ clerkClient is an object, not a function
   const user = await clerkClient.users.getUser(userId);
 
-  // Be forgiving when detecting the X account
-  const externalAccounts = (user.externalAccounts || []) as any[];
-
-  const xAccount =
-    externalAccounts.find((acc) => {
-      const provider = (acc.provider ?? '') as string;
-      return (
-        provider === 'oauth_x' ||
-        provider === 'oauth_twitter' ||
-        provider === 'twitter' ||
-        provider.toLowerCase().includes('twitter') ||
-        provider.toLowerCase().includes('x')
-      );
-    }) || externalAccounts[0];
+  // Find the linked X / Twitter account
+  const xAccount = user.externalAccounts?.find((acc) => {
+    const provider = acc.provider as unknown as string;
+    return provider === 'oauth_x' || provider === 'oauth_twitter';
+  });
 
   if (!xAccount) {
     return NextResponse.json(
@@ -39,27 +30,26 @@ export async function POST() {
     );
   }
 
-  const handle =
-    xAccount.username ||
-    xAccount.screenName ||
-    null;
-
-  const avatar = xAccount.imageUrl || user.imageUrl || null;
+  const handle = xAccount.username || null;
+  const avatar = xAccount.imageUrl || null;
   const name = user.fullName || handle || null;
+  const xId = xAccount.id || null;
 
-  // Use xId (unique in your Prisma schema) as the upsert key
+  // Make sure your Prisma User model has: clerkId, xId, xHandle, xAvatarUrl, xName
   const dbUser = await prisma.user.upsert({
-    where: { xId: xAccount.id },
+    where: { clerkId: userId },
     create: {
-      xId: xAccount.id,
-      xHandle: handle ?? undefined,
-      xAvatarUrl: avatar ?? undefined,
-      xName: name ?? undefined,
+      clerkId: userId,
+      xId,
+      xHandle: handle,
+      xAvatarUrl: avatar,
+      xName: name,
     },
     update: {
-      xHandle: handle ?? undefined,
-      xAvatarUrl: avatar ?? undefined,
-      xName: name ?? undefined,
+      xId,
+      xHandle: handle,
+      xAvatarUrl: avatar,
+      xName: name,
     },
   });
 
