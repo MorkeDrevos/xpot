@@ -9,10 +9,10 @@ import { useEffect, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
-
-import { REQUIRED_XPOT } from '../../lib/xpot';
-import XpotAccessGate from '@/components/XpotAccessGate';
 import { useUser, SignOutButton } from '@clerk/nextjs';
+
+import { REQUIRED_XPOT } from '@/lib/xpot';
+import XpotAccessGate from '@/components/XpotAccessGate';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -20,7 +20,7 @@ import { useUser, SignOutButton } from '@clerk/nextjs';
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
-  return d.toLocaleDateString('de-DE');
+  return d.toLocaleDateString('de-DE'); // 30.11.2025
 }
 
 function formatDateTime(date: string | Date) {
@@ -48,15 +48,6 @@ type Entry = {
   jackpotUsd: string;
   createdAt: string;
   walletAddress: string;
-};
-
-type RecentWinner = {
-  id: string;
-  drawDate: string;
-  ticketCode: string;
-  jackpotUsd: number;
-  walletAddress: string;
-  handle?: string | null;
 };
 
 function shortWallet(addr: string) {
@@ -134,10 +125,6 @@ export default function DashboardPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
-  const [loadingWinners, setLoadingWinners] = useState(false);
-  const [winnersError, setWinnersError] = useState<string | null>(null);
-
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
@@ -147,6 +134,7 @@ export default function DashboardPage() {
 
   const { user, isLoaded: isUserLoaded } = useUser();
 
+  // Be very forgiving: we only use X login, so the first external account is fine
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
   const xAccount =
@@ -168,6 +156,17 @@ export default function DashboardPage() {
 
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
+
+  // Winner (if any) from today’s entries
+  const winner = entries.find((e) => e.status === 'won');
+
+  // Normalize wallet + compute my tickets
+  const normalizedWallet = currentWalletAddress?.toLowerCase();
+  const myTickets: Entry[] = normalizedWallet
+    ? entries.filter(
+        (e) => e.walletAddress?.toLowerCase() === normalizedWallet,
+      )
+    : [];
 
   // ─────────────────────────────────────────────
   // Sync X identity into DB whenever user is loaded
@@ -310,7 +309,7 @@ export default function DashboardPage() {
   }, [publicKey]);
 
   // ─────────────────────────────────────────────
-  // Load wallet-specific draw history (preview)
+  // Load wallet-specific draw history
   // ─────────────────────────────────────────────
 
   useEffect(() => {
@@ -367,54 +366,6 @@ export default function DashboardPage() {
   }, [publicKey]);
 
   // ─────────────────────────────────────────────
-  // Load recent winners (global)
-  // ─────────────────────────────────────────────
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingWinners(true);
-    setWinnersError(null);
-
-    (async () => {
-      try {
-        const res = await fetch('/api/winners/recent?limit=5');
-        if (!res.ok) throw new Error('Failed to load recent winners');
-
-        const data = await res.json();
-        if (cancelled) return;
-
-        if (Array.isArray(data.winners)) {
-          setRecentWinners(
-            data.winners.map((w: any) => ({
-              id: w.id,
-              drawDate: w.drawDate,
-              ticketCode: w.ticketCode,
-              jackpotUsd: w.jackpotUsd ?? 0,
-              walletAddress: w.walletAddress,
-              handle: w.handle ?? null,
-            })),
-          );
-        } else {
-          setRecentWinners([]);
-        }
-      } catch (err) {
-        console.error('Failed to load recent winners', err);
-        if (!cancelled) {
-          setWinnersError(
-            (err as Error).message ?? 'Failed to load recent winners',
-          );
-        }
-      } finally {
-        if (!cancelled) setLoadingWinners(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // ─────────────────────────────────────────────
   // Ticket helpers
   // ─────────────────────────────────────────────
 
@@ -430,7 +381,7 @@ export default function DashboardPage() {
 
   async function handleClaimTicket() {
     if (!walletConnected || !publicKey) return;
-    if (loadingTickets || claiming) return;
+    if (loadingTickets || claiming) return; // avoid double clicks
 
     setClaimError(null);
     setClaiming(true);
@@ -468,7 +419,7 @@ export default function DashboardPage() {
 
           case 'NOT_ENOUGH_SOL':
             setClaimError(
-              'Your wallet needs some SOL for network fees before you can get today’s ticket.',
+              `Your wallet needs some SOL for network fees before you can get today’s ticket.`,
             );
             break;
 
@@ -493,6 +444,7 @@ export default function DashboardPage() {
         return;
       }
 
+      // Success path
       const ticket: Entry = data.ticket;
       const tickets: Entry[] | undefined = data.tickets;
 
@@ -517,20 +469,6 @@ export default function DashboardPage() {
       setClaiming(false);
     }
   }
-
-  // Normalize wallet + compute my tickets + winning state
-  const normalizedWallet = currentWalletAddress?.toLowerCase();
-  const myTickets: Entry[] = normalizedWallet
-    ? entries.filter(
-        (e) => e.walletAddress?.toLowerCase() === normalizedWallet,
-      )
-    : [];
-
-  const winner = entries.find((e) => e.status === 'won') || null;
-  const iWonToday =
-    !!winner &&
-    !!normalizedWallet &&
-    winner.walletAddress?.toLowerCase() === normalizedWallet;
 
   // ─────────────────────────────────────────────
   // Render
@@ -600,6 +538,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   className="flex w-full items-center gap-3 rounded-full px-3 py-2 text-slate-300 hover:bg-slate-900/70"
+                  disabled
                 >
                   <span className="text-lg">⚙️</span>
                   <span>Settings</span>
@@ -625,7 +564,10 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div className="mt-auto text-xs text-slate-500" />
+            {/* Mini account chip placeholder */}
+            <div className="mt-auto text-xs text-slate-500">
+              {/* Later: level, badges, etc. */}
+            </div>
           </aside>
 
           {/* Main shell */}
@@ -663,11 +605,9 @@ export default function DashboardPage() {
                     {/* Avatar */}
                     <div className="h-9 w-9 overflow-hidden rounded-full bg-slate-800">
                       {avatar ? (
-                        <Image
+                        <img
                           src={avatar}
                           alt={handle || 'X avatar'}
-                          width={36}
-                          height={36}
                           className="h-full w-full object-cover"
                         />
                       ) : (
@@ -684,6 +624,7 @@ export default function DashboardPage() {
                           {name || 'XPOT user'}
                         </span>
 
+                        {/* X green dot */}
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                           X identity
@@ -739,6 +680,7 @@ export default function DashboardPage() {
                     sell again later.
                   </p>
 
+                  {/* Jackpot state (with rollover) */}
                   <p className="mt-2 text-[11px] text-slate-500">
                     <span className="font-semibold text-slate-200">
                       Today’s jackpot:
@@ -845,42 +787,25 @@ export default function DashboardPage() {
                       the timer hits zero.
                     </p>
                   ) : winner ? (
-                    iWonToday ? (
-                      <div className="mt-3 rounded-2xl border border-emerald-500/60 bg-emerald-500/10 px-4 py-3 shadow-[0_0_30px_rgba(16,185,129,0.35)]">
-                        <p className="text-sm font-semibold text-emerald-100">
-                          🎉 You hit today’s XPOT.
-                        </p>
-                        <p className="mt-1 text-xs text-emerald-50">
-                          Winning ticket:{' '}
-                          <span className="font-mono text-emerald-200">
-                            {winner.code}
-                          </span>
-                        </p>
-                        <p className="mt-1 text-[11px] text-emerald-100/90">
-                          The admin view will show your handle and unlock the
-                          claim flow here.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="mt-3 flex flex-col gap-2">
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
                         <p className="text-sm text-slate-200">
-                          Today’s winning ticket is{' '}
+                          One ticket{' '}
                           <span className="font-mono text-emerald-300">
                             {winner.code}
-                          </span>
-                          .
+                          </span>{' '}
+                          hit today’s jackpot (preview).
                         </p>
-                        <p className="text-xs text-slate-400">
-                          In the full version, this panel will also show the
-                          winner’s X handle and claim status.
+                        <p className="mt-1 text-xs text-slate-400">
+                          In the real draw, this will show the winning ticket
+                          and wallet once the countdown reaches zero.
                         </p>
                       </div>
-                    )
+                    </div>
                   ) : (
                     <p className="mt-3 text-sm text-slate-300">
-                      Your ticket is in today’s draw. As soon as the draw
-                      completes, the winning ticket and handle will appear
-                      here.
+                      Your ticket is in today’s draw. The result will appear
+                      here when the timer hits zero.
                     </p>
                   )}
 
@@ -895,6 +820,11 @@ export default function DashboardPage() {
                       <li>• Winners revealed by handle, never wallet</li>
                       <li>• Your wallet always remains self-custodied</li>
                     </ul>
+
+                    <p className="mt-2 text-[10px] text-slate-500">
+                      This section is wired to live draws. Once the engine is
+                      running, real winning tickets will show here.
+                    </p>
                   </div>
                 </article>
 
@@ -1007,7 +937,7 @@ export default function DashboardPage() {
                   </div>
                 </section>
 
-                {/* Draw history preview + recent winners */}
+                {/* Draw history preview + recent winners placeholder */}
                 <section className="pb-10 px-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-200">
@@ -1082,78 +1012,11 @@ export default function DashboardPage() {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Recent winners
                     </p>
-
-                    {loadingWinners && (
-                      <p className="mt-2 text-[11px] text-slate-500">
-                        Loading recent winners…
-                      </p>
-                    )}
-
-                    {winnersError && (
-                      <p className="mt-2 text-[11px] text-amber-300">
-                        {winnersError}
-                      </p>
-                    )}
-
-                    {!loadingWinners &&
-                      !winnersError &&
-                      recentWinners.length === 0 && (
-                        <p className="mt-2 text-[11px] text-slate-500">
-                          No completed draws yet. As soon as XPOT starts,
-                          you’ll see the latest winning tickets here.
-                        </p>
-                      )}
-
-                    {!loadingWinners && recentWinners.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {recentWinners.map((w) => (
-                          <article
-                            key={w.id}
-                            className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
-                          >
-                            <div>
-                              <p className="text-[11px] text-slate-400">
-                                {formatDate(w.drawDate)}
-                              </p>
-                              <p className="mt-0.5 text-sm font-mono text-slate-50">
-                                {w.ticketCode}
-                              </p>
-                              <p className="mt-0.5 text-[11px] text-slate-500">
-                                Jackpot:{' '}
-                                <span className="font-semibold text-emerald-300">
-                                  $
-                                  {Number(
-                                    w.jackpotUsd ?? 0,
-                                  ).toLocaleString()}
-                                </span>
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              {w.handle ? (
-                                <a
-                                  href={`https://x.com/${w.handle}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[11px] text-emerald-300 hover:text-emerald-200"
-                                >
-                                  @{w.handle}
-                                </a>
-                              ) : (
-                                <p className="text-[11px] text-slate-500">
-                                  X handle soon
-                                </p>
-                              )}
-                              <p className="mt-0.5 text-[10px] text-slate-600">
-                                Wallet:{' '}
-                                <span className="font-mono">
-                                  {shortWallet(w.walletAddress)}
-                                </span>
-                              </p>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    )}
+                    <p className="mt-2 text-[11px] text-slate-400">
+                      Soon you’ll see a short list of the latest winning
+                      tickets and wallets here. For now, use the full history
+                      view to browse past draws.
+                    </p>
                   </div>
                 </section>
               </div>
@@ -1224,6 +1087,7 @@ export default function DashboardPage() {
                   </p>
                 )}
 
+                {/* Wallet truth line */}
                 <p className="mt-3 text-[11px] text-slate-500">
                   XPOT uses X as the identity layer. We only read your public
                   wallet balance to check eligibility.
