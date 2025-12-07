@@ -1,3 +1,4 @@
+// app/api/dev/seed-demo/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -32,8 +33,6 @@ export async function POST(req: NextRequest) {
     const todayDraw = await prisma.draw.create({
       data: {
         drawDate: today,
-        jackpotUsd: 10_000,
-        rolloverUsd: 0,
       },
     })
 
@@ -41,57 +40,53 @@ export async function POST(req: NextRequest) {
     const yesterdayDraw = await prisma.draw.create({
       data: {
         drawDate: yesterday,
-        jackpotUsd: 10_000,
-        rolloverUsd: 0,
       },
     })
 
     const wallet1 = '9uuq6Uch7nEXAMPLEWALLET11111111111111111'
     const wallet2 = '9uuq6Uch7nEXAMPLEWALLET22222222222222222'
 
+    // Winner ticket for yesterday
     const winner = await prisma.ticket.create({
       data: {
         drawId: yesterdayDraw.id,
         code: 'XPOT-ABC-123',
         walletAddress: wallet1,
-        label: 'Yesterday’s draw',
-        jackpotUsd: 10_000,
+        label: "Yesterday's draw",
         status: 'won',
       },
     })
 
+    // Extra tickets for yesterday
     await prisma.ticket.createMany({
       data: [
         {
           drawId: yesterdayDraw.id,
           code: 'XPOT-DEF-456',
           walletAddress: wallet2,
-          label: 'Yesterday’s draw',
-          jackpotUsd: 10_000,
+          label: "Yesterday's draw",
           status: 'not-picked',
         },
         {
           drawId: yesterdayDraw.id,
           code: 'XPOT-GHI-789',
           walletAddress: wallet2,
-          label: 'Yesterday’s draw',
-          jackpotUsd: 10_000,
+          label: "Yesterday's draw",
           status: 'expired',
         },
       ],
     })
 
+    // Mark winner on the draw (only if winningTicketId exists in your schema)
     await prisma.draw.update({
       where: { id: yesterdayDraw.id },
       data: { winningTicketId: winner.id },
     })
 
-    // ───────── TWO DAYS AGO (ROLLOVER) ─────────
+    // ───────── TWO DAYS AGO (ROLLOVER-STYLE HISTORY) ─────────
     const oldDraw = await prisma.draw.create({
       data: {
         drawDate: twoDaysAgo,
-        jackpotUsd: 5_000,
-        rolloverUsd: 5_000,
       },
     })
 
@@ -102,7 +97,6 @@ export async function POST(req: NextRequest) {
           code: 'XPOT-JKL-111',
           walletAddress: wallet1,
           label: 'Early XPOT draw',
-          jackpotUsd: 5_000,
           status: 'claimed',
         },
         {
@@ -110,20 +104,22 @@ export async function POST(req: NextRequest) {
           code: 'XPOT-MNO-222',
           walletAddress: wallet2,
           label: 'Early XPOT draw',
-          jackpotUsd: 5_000,
           status: 'not-picked',
         },
       ],
     })
 
-    return NextResponse.json({
-      ok: true,
-      draws: {
-        today: todayDraw.id,
-        yesterday: yesterdayDraw.id,
-        twoDaysAgo: oldDraw.id,
+    return NextResponse.json(
+      {
+        ok: true,
+        draws: {
+          today: todayDraw.id,
+          yesterday: yesterdayDraw.id,
+          twoDaysAgo: oldDraw.id,
+        },
       },
-    })
+      { status: 200 },
+    )
   } catch (err) {
     console.error('[XPOT] Seed failed:', err)
     return NextResponse.json({ ok: false, error: 'SEED_FAILED' }, { status: 500 })
