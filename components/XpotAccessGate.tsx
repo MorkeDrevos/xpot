@@ -89,7 +89,7 @@ function XpotXLoginOverlay() {
           Your X account is your XPOT identity.
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Connect once with X, link your wallet, and access daily XPOT draws.
+          Log in with X. Link your wallet. Access daily XPOT draws.
 No passwords. No emails. Just X.
         </p>
 
