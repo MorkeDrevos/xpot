@@ -4,29 +4,27 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
 export async function POST() {
-  // ✅ auth() is async in your setup – we must await it
+  // In your project auth() is async -> await it
   const { userId } = await auth();
 
   if (!userId) {
-    return NextResponse.json(
-      { ok: false, error: 'UNAUTH' },
-      { status: 401 },
-    );
+    return NextResponse.json({ ok: false, error: 'UNAUTH' }, { status: 401 });
   }
 
-  // ✅ clerkClient is an object, not a function
-  const user = await clerkClient.users.getUser(userId);
+  // ✅ clerkClient is a function in your setup, call it to get the real client
+  const clerk = await clerkClient();
+  const user = await clerk.users.getUser(userId);
 
-  // Find the linked X / Twitter account
+  // Find linked X / Twitter account
   const xAccount = user.externalAccounts?.find((acc) => {
-    const provider = acc.provider as unknown as string;
-    return provider === 'oauth_x' || provider === 'oauth_twitter';
+    const provider = (acc.provider as string | undefined) ?? '';
+    return provider === 'oauth_x' || provider === 'twitter' || provider === 'oauth_twitter';
   });
 
   if (!xAccount) {
     return NextResponse.json(
       { ok: false, error: 'NO_X_ACCOUNT' },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -35,7 +33,7 @@ export async function POST() {
   const name = user.fullName || handle || null;
   const xId = xAccount.id || null;
 
-  // Make sure your Prisma User model has: clerkId, xId, xHandle, xAvatarUrl, xName
+  // Upsert into your Prisma User table
   const dbUser = await prisma.user.upsert({
     where: { clerkId: userId },
     create: {
