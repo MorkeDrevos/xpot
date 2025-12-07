@@ -149,11 +149,7 @@ export default function DashboardPage() {
       );
     }) || externalAccounts[0];
 
-  const handle =
-    xAccount?.username ||
-    xAccount?.screenName ||
-    null;
-
+  const handle = xAccount?.username || xAccount?.screenName || null;
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
 
@@ -511,7 +507,7 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              <SignOutButton redirectUrl="/dashboard">
+              <SignOutButton redirectUrl="/">
                 <button className="text-xs text-slate-400 hover:text-white">
                   Log out
                 </button>
@@ -562,6 +558,10 @@ export default function DashboardPage() {
                   ? 'Processing...'
                   : 'Get today’s ticket'}
               </button>
+
+              {ticketsError && (
+                <p className="text-[11px] text-amber-300">{ticketsError}</p>
+              )}
             </div>
 
             {/* Mini account chip placeholder */}
@@ -655,7 +655,7 @@ export default function DashboardPage() {
                       ⋯
                     </button>
 
-                    <SignOutButton redirectUrl="/dashboard">
+                    <SignOutButton redirectUrl="/">
                       <button
                         type="button"
                         className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
