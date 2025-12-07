@@ -476,9 +476,15 @@ export default function DashboardPage() {
         <WalletDebug />
 
         {/* TEMP BUILD MARKER – REMOVE WHEN DONE */}
-        <div className="w-full bg-fuchsia-900/60 px-4 py-2 text-center text-[11px] font-semibold tracking-[0.16em] text-emerald-300 uppercase">
-          XPOT dashboard build marker – v3
-        </div>
+        <div
+  className="text-center text-xs py-2 uppercase tracking-widest font-semibold"
+  style={{
+    background: 'linear-gradient(90deg, #6b21a8, #be185d)',
+    color: '#ffffff',
+  }}
+>
+  PRE-LAUNCH MODE · XPOT TOKEN NOT DEPLOYED · BUILD v0.9.3
+</div>
 
         {/* Mobile top bar */}
         <header className="flex items-center justify-between px-4 py-3 md:hidden">
