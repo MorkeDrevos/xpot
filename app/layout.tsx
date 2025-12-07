@@ -24,6 +24,15 @@ const endpoint = 'https://api.mainnet-beta.solana.com';
 // Empty array – Phantom and others are detected natively
 const wallets: any[] = [];
 
+// Clerk publishable key – must be set in env vars
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+if (!publishableKey) {
+  throw new Error(
+    'Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY. Set it in your Vercel env vars.'
+  );
+}
+
 // ─────────────────────────────────────────────
 // Root layout
 // ─────────────────────────────────────────────
@@ -34,7 +43,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={publishableKey}>
       <html lang="en" suppressHydrationWarning>
         <head>
           <title>XPOT · The X-Powered Reward Protocol</title>
@@ -45,18 +54,12 @@ export default function RootLayout({
           />
 
           {/* OpenGraph */}
-          <meta
-            property="og:image"
-            content="/img/xpot-square-blue.jpg"
-          />
+          <meta property="og:image" content="/img/xpot-square-blue.jpg" />
           <meta property="og:type" content="website" />
 
           {/* X / Twitter */}
           <meta name="twitter:card" content="summary_large_image" />
-          <meta
-            name="twitter:image"
-            content="/img/xpot-square-blue.jpg"
-          />
+          <meta name="twitter:image" content="/img/xpot-square-blue.jpg" />
 
           {/* Icons */}
           <link rel="icon" href="/img/favicon.png" />
