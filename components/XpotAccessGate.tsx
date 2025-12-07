@@ -11,37 +11,35 @@ type Props = {
 
 export default function XpotAccessGate({ children }: Props) {
   const { isLoaded, user } = useUser();
-  const [fallbackReady, setFallbackReady] = useState(false);
+  const [timeoutReached, setTimeoutReached] = useState(false);
 
-  // Soft timeout: if Clerk never finishes loading, we still show the dashboard
+  // Hard fallback after 2s
   useEffect(() => {
-    const t = setTimeout(() => setFallbackReady(true), 2500);
+    const t = setTimeout(() => setTimeoutReached(true), 2000);
     return () => clearTimeout(t);
   }, []);
 
-  // 1) Normal loading state
-  if (!isLoaded && !fallbackReady) {
+  // Loader for up to 2s while Clerk bootstraps
+  if (!isLoaded && !timeoutReached) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-slate-50">
-        <p className="text-sm text-slate-400">
-          Preparing your XPOT dashboard…
-        </p>
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <p className="text-sm text-slate-400">Loading your XPOT session...</p>
       </div>
     );
   }
 
-  // 2) Clerk loaded correctly and user is signed in → show real dashboard
+  // Clerk active + signed in
   if (isLoaded && user) {
     return <>{children}</>;
   }
 
-  // 3) Clerk loaded, but no user → show X login overlay
+  // Clerk active + NOT signed in → show X login
   if (isLoaded && !user) {
     return <XLoginOverlay visible={true} />;
   }
 
-  // 4) Clerk never loads (js.clerk.com / DNS issues) → soft-fallback, show dashboard anyway
-  if (!isLoaded && fallbackReady) {
+  // Clerk never loaded (network / DNS) + timeout → just show app
+  if (!isLoaded && timeoutReached) {
     return <>{children}</>;
   }
 
