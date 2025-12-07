@@ -15,10 +15,10 @@ export default function XLoginOverlay({ visible, onClose }: XLoginOverlayProps) 
   if (!visible) return null;
 
   const handleClose = () => {
-    if (onClose) onClose();
+    onClose?.();
   };
 
-  // While Clerk is loading, just show a loader card
+  // While Clerk is loading, simple loader card
   if (!isLoaded) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -31,22 +31,16 @@ export default function XLoginOverlay({ visible, onClose }: XLoginOverlayProps) 
     );
   }
 
-  // If already signed in, just close the overlay (or show a small note)
+  // Already signed in → close overlay
   if (user) {
-    if (onClose) {
-      // let parent hide it
-      handleClose();
-      return null;
-    }
-
+    if (onClose) handleClose();
     return null;
   }
 
-  // Not signed in → show X sign-in CTA
+  // Not signed in → X login CTA
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="relative w-full max-w-md rounded-3xl border border-slate-800 bg-slate-950 px-6 py-6 shadow-2xl">
-        {/* Close button */}
         {onClose && (
           <button
             type="button"
