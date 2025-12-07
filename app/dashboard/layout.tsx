@@ -1,31 +1,11 @@
-// app/layout.tsx
-import type { Metadata } from 'next';
-import { ClerkProvider } from '@clerk/nextjs';
-import './globals.css';
+// app/dashboard/layout.tsx
+import type { ReactNode } from 'react';
 
-import PreLaunchBanner from '@/components/PreLaunchBanner';
-
-export const metadata: Metadata = {
-  title: 'XPOT',
-  description: 'One protocol. One identity. One daily XPOT draw.',
-};
-
-export default function RootLayout({
+export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className="bg-black text-slate-50 antialiased">
-          <PreLaunchBanner />
-          {/* Padding so content isn't hidden behind the fixed banner */}
-          <div className="pt-9">
-            {children}
-          </div>
-        </body>
-      </html>
-    </ClerkProvider>
-  );
+  // no globals import, no Clerk, just pass-through
+  return <>{children}</>;
 }
