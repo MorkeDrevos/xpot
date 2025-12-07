@@ -676,16 +676,6 @@ function DashboardInner() {
 // ─────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { isLoaded, isSignedIn } = useUser();
-
-  if (!isLoaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-slate-200">
-        <p className="text-sm text-slate-400">Loading your XPOT session…</p>
-      </div>
-    );
-  }
-
   return (
     <>
       <SignedIn>
