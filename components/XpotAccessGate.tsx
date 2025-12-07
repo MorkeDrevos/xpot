@@ -86,11 +86,11 @@ function XpotXLoginOverlay() {
 
         {/* Copy */}
         <h1 className="mt-2 text-base font-medium text-slate-100">
-          Your X handle is your XPOT identity.
+          Your X account is your XPOT identity.
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Connect once with X, link your wallet, and you&apos;re ready for
-          daily XPOT draws. No passwords, no emails, just your X account.
+          Connect once with X, link your wallet, and access daily XPOT draws.
+No passwords. No emails. Just X.
         </p>
 
         {/* Button */}
