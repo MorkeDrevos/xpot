@@ -1,11 +1,18 @@
 // app/page.tsx
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import JackpotPanel from '@/components/JackpotPanel';
 
 export default function HomePage() {
+  const [jackpotUsd, setJackpotUsd] = useState<number | null>(null);
+
+  // Placeholder until we wire real API:
+  const todaysEntries = 'Live soon';
+  const timeLeft = 'Closes once per day';
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       {/* Cinematic background */}
@@ -91,16 +98,12 @@ export default function HomePage() {
                   1,000,000 XPOT
                 </span>
                 . You never buy tickets here. If you hold the minimum XPOT in
-                your wallet, you can grab a{' '}
-                <span className="font-semibold text-slate-100">
-                  free on-chain entry
-                </span>{' '}
-                into today&apos;s draw and one XPOT holder is selected by their
-                X handle.
+                your wallet, you can grab a free on-chain entry into today&apos;s
+                draw and one XPOT holder is selected by their X handle.
               </p>
             </div>
 
-            {/* Steps row – cleaner, more premium */}
+            {/* Steps row */}
             <div className="mt-2 grid gap-4 text-sm sm:grid-cols-3">
               <div className="rounded-2xl border border-slate-800/90 bg-slate-950/85 px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.9)]">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
@@ -110,8 +113,8 @@ export default function HomePage() {
                   Hold the minimum XPOT
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Keep the threshold amount of XPOT in a self-custody wallet.
-                  No lockups, no staking UI, just your keys.
+                  Keep the threshold amount of XPOT in a self-custody wallet. No
+                  lockups or staking UI, just your keys.
                 </p>
               </div>
 
@@ -124,7 +127,7 @@ export default function HomePage() {
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
                   Log in with your X account on the dashboard, verify holdings
-                  and claim today&apos;s XPOT entry – it takes seconds.
+                  and claim today&apos;s XPOT entry.
                 </p>
               </div>
 
@@ -136,13 +139,13 @@ export default function HomePage() {
                   One XPOT holder is picked
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Draw runs once per day. Winner is revealed by X handle –
-                  never by wallet – and paid directly in XPOT.
+                  Draw runs once per day. Winner is revealed by X handle and
+                  paid directly in XPOT.
                 </p>
               </div>
             </div>
 
-            {/* CTA + tiny reassurance */}
+            {/* CTA + reassurance */}
             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
               <Link
                 href="/dashboard"
@@ -163,7 +166,7 @@ export default function HomePage() {
               <div className="jackpot-shell pointer-events-none absolute -inset-6 -z-10 rounded-[34px] bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.32),transparent_55%),radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.28),transparent_55%),radial-gradient(circle_at_50%_120%,rgba(129,140,248,0.45),transparent_60%)] opacity-90 blur-2xl" />
 
               <div className="jackpot-shell-inner rounded-[26px] border border-slate-800/80 bg-slate-950/95 shadow-[0_40px_110px_rgba(15,23,42,0.95)]">
-                <JackpotPanel />
+                <JackpotPanel onJackpotUsdChange={setJackpotUsd} />
               </div>
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
@@ -180,9 +183,66 @@ export default function HomePage() {
           </section>
         </div>
 
-        {/* Bottom trust strip */}
-        <section className="mt-12 grid gap-6 border-t border-slate-800/80 pt-6 text-xs text-slate-400 sm:grid-cols-3">
-          <div>
+        {/* TODAY STATS STRIP */}
+        <section className="mt-10 rounded-2xl border border-slate-800/90 bg-slate-950/90 px-4 py-4 shadow-[0_24px_80px_rgba(15,23,42,0.95)] sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                Today&apos;s XPOT status
+              </p>
+              <p className="text-xs text-slate-400">
+                One shared pool. One entry per eligible XPOT holder. One daily
+                winner.
+              </p>
+            </div>
+
+            <div className="grid w-full gap-4 text-xs sm:w-auto sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                  Today&apos;s XPOT pool
+                </p>
+                <p className="mt-1 font-mono text-sm text-slate-100">
+                  {jackpotUsd !== null ? (
+                    <>
+                      <span className="text-slate-400 mr-1 align-middle text-[11px]">
+                        ≈
+                      </span>
+                      {jackpotUsd.toLocaleString('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                        maximumFractionDigits: 2,
+                      })}
+                    </>
+                  ) : (
+                    'Syncing…'
+                  )}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                  Entries in today&apos;s pool
+                </p>
+                <p className="mt-1 font-mono text-sm text-emerald-300">
+                  {todaysEntries}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                  Draw timing
+                </p>
+                <p className="mt-1 font-mono text-sm text-slate-100">
+                  {timeLeft}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* DIFFERENTIATORS */}
+        <section className="mt-10 grid gap-6 text-xs text-slate-400 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-800/90 bg-slate-950/90 px-4 py-4">
             <p className="mb-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
               Transparent by design
             </p>
@@ -191,23 +251,52 @@ export default function HomePage() {
               payouts. Every winner can point to a transaction hash.
             </p>
           </div>
-          <div>
+          <div className="rounded-2xl border border-slate-800/90 bg-slate-950/90 px-4 py-4">
             <p className="mb-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
               No ticket sales
             </p>
             <p>
               There are no ticket purchases on this site. Holding XPOT over the
-              minimum is the only requirement to enter the daily pool.
+              minimum is what qualifies you for the pool.
             </p>
           </div>
-          <div>
+          <div className="rounded-2xl border border-slate-800/90 bg-slate-950/90 px-4 py-4">
             <p className="mb-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
               Built for X-native holders
             </p>
             <p>
-              Your X handle is your public identity; your wallet stays private.
-              Rewards are paid directly to you, under your own custody.
+              Your X handle is your public identity, your wallet stays private.
+              Rewards are paid directly to you in XPOT.
             </p>
+          </div>
+        </section>
+
+        {/* RECENT ENTRANTS STRIP (stub – ready to wire later) */}
+        <section className="mt-8 rounded-2xl border border-slate-900/90 bg-slate-950/95 px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Live entrant feed
+              </p>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Soon you&apos;ll see X handles sliding in here as they grab
+              today&apos;s entry.
+            </p>
+          </div>
+
+          <div className="mt-2 flex gap-2 overflow-hidden text-[11px] text-slate-300 opacity-60">
+            <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              @x_handle_01 · entry locked
+            </span>
+            <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              @x_handle_02 · entry locked
+            </span>
+            <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              @x_handle_03 · entry locked
+            </span>
+            {/* Replace with real scrolling ticker once API exists */}
           </div>
         </section>
       </div>
