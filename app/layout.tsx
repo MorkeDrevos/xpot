@@ -1,11 +1,12 @@
 // app/layout.tsx
 import type { Metadata } from 'next';
 import './globals.css';
+
 import PreLaunchBanner from '@/components/PreLaunchBanner';
 
 export const metadata: Metadata = {
   title: 'XPOT',
-  description: 'One protocol. One identity. One daily XPOT draw.',
+  description: 'Daily XPOT draws for X users',
 };
 
 export default function RootLayout({
