@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser } from '@clerk/nextjs';
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
@@ -45,11 +44,6 @@ const initialEntries: Entry[] = [
 ];
 
 export default function ClaimTicketSection() {
-  // 🔐 Clerk instead of NextAuth
-  const { isSignedIn, isLoaded } = useUser();
-  const isAuthed = !!isSignedIn;
-  const loading = !isLoaded;
-
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
@@ -58,12 +52,6 @@ export default function ClaimTicketSection() {
   const winner = entries.find(e => e.status === 'won');
 
   function handleClaimTicket() {
-    if (!isAuthed) {
-      // Send them to Clerk sign-in, then back to dashboard
-      window.location.href = '/sign-in?redirect_url=/dashboard';
-      return;
-    }
-
     if (ticketClaimed) return;
 
     const newEntry: Entry = {
@@ -101,8 +89,8 @@ export default function ClaimTicketSection() {
           Today’s ticket
         </h2>
         <p className="mt-1 text-xs text-slate-400">
-          One ticket per X account per draw. Hold the minimum XPOT when you
-          claim. You can always buy or sell again later.
+          One ticket per holder per draw. Hold the minimum XPOT when you claim.
+          You can always buy or sell again later.
         </p>
 
         {!ticketClaimed ? (
@@ -112,27 +100,17 @@ export default function ClaimTicketSection() {
                 Claim your ticket for today’s jackpot.
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Your ticket will be tied to this X account for today’s draw.
+                In the live version your ticket will be tied to your X account
+                and wallet. This is a preview.
               </p>
-
-              {!isAuthed && (
-                <p className="mt-2 text-[11px] text-amber-300">
-                  Sign in with X first. No posting is required.
-                </p>
-              )}
             </div>
 
             <button
               type="button"
               onClick={handleClaimTicket}
-              disabled={loading}
               className="btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow sm:mt-0"
             >
-              {loading
-                ? 'Checking session…'
-                : isAuthed
-                ? 'Claim today’s ticket'
-                : 'Sign in with X'}
+              Claim today’s ticket
             </button>
           </div>
         ) : (
@@ -171,8 +149,8 @@ export default function ClaimTicketSection() {
               hit today’s jackpot (preview).
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              In the real draw, this will show the winning ticket and X handle
-              once the countdown reaches zero.
+              In the real draw, this will show the winning ticket, X handle and
+              wallet once the countdown reaches zero.
             </p>
           </div>
         ) : (
@@ -189,7 +167,8 @@ export default function ClaimTicketSection() {
           Your tickets
         </h2>
         <p className="px-4 text-xs text-slate-500">
-          Each ticket is tied to a specific daily draw and this X account.
+          Each ticket is tied to a specific daily draw. In the live version this
+          will be linked to your X handle and wallet.
         </p>
 
         <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
