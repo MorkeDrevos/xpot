@@ -110,9 +110,10 @@ function XpotXLoginOverlay() {
         </button>
 
         {/* Footer line */}
-        <p className="mt-4 text-[11px] text-center text-slate-500">
-          Identity secured through your public X profile.
-        </p>
+        <p className="mt-4 text-center text-[11px] text-slate-500">
+  XPOT never posts on your behalf.
+  We only read your public profile (handle & avatar) and link it to your XPOT identity.
+</p>
       </div>
     </div>
   );
