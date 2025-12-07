@@ -22,7 +22,6 @@ function makeCode(): string {
   return `XPOT-${block()}-${block()}`;
 }
 
-// Seed a couple of preview tickets
 const now = new Date();
 const initialEntries: Entry[] = [
   {
@@ -44,6 +43,10 @@ const initialEntries: Entry[] = [
 ];
 
 export default function ClaimTicketSection() {
+  // 🔒 Auth temporarily disabled – treat everyone as anonymous
+  const isAuthed = false;
+  const loading = false;
+
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
@@ -52,6 +55,11 @@ export default function ClaimTicketSection() {
   const winner = entries.find(e => e.status === 'won');
 
   function handleClaimTicket() {
+    if (!isAuthed) {
+      // For now, just block and show message via UI text
+      return;
+    }
+
     if (ticketClaimed) return;
 
     const newEntry: Entry = {
@@ -80,159 +88,3 @@ export default function ClaimTicketSection() {
       // ignore
     }
   }
-
-  return (
-    <section className="space-y-4">
-      {/* TODAY'S TICKET */}
-      <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
-        <h2 className="text-sm font-semibold text-emerald-100">
-          Today’s ticket
-        </h2>
-        <p className="mt-1 text-xs text-slate-400">
-          One ticket per holder per draw. Hold the minimum XPOT when you claim.
-          You can always buy or sell again later.
-        </p>
-
-        {!ticketClaimed ? (
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-slate-200">
-                Claim your ticket for today’s jackpot.
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                In the live version your ticket will be tied to your X account
-                and wallet. This is a preview.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleClaimTicket}
-              className="btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow sm:mt-0"
-            >
-              Claim today’s ticket
-            </button>
-          </div>
-        ) : (
-          <div className="mt-4">
-            <p className="text-sm text-emerald-100">
-              ✅ Your ticket is in today’s draw.
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Come back when the countdown hits zero to see if you won.
-            </p>
-            {todaysTicket && (
-              <p className="mt-2 text-xs text-slate-300">
-                Ticket code:{' '}
-                <span className="font-mono text-emerald-300">
-                  {todaysTicket.code}
-                </span>
-              </p>
-            )}
-          </div>
-        )}
-      </article>
-
-      {/* TODAY'S RESULT */}
-      <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
-        <h2 className="text-sm font-semibold text-slate-200">
-          Today’s result
-        </h2>
-
-        {winner ? (
-          <div className="mt-3">
-            <p className="text-sm text-slate-200">
-              One ticket{' '}
-              <span className="font-mono text-emerald-300">
-                {winner.code}
-              </span>{' '}
-              hit today’s jackpot (preview).
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              In the real draw, this will show the winning ticket, X handle and
-              wallet once the countdown reaches zero.
-            </p>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-slate-300">
-            Your tickets are in the draw. The result will appear here when the
-            timer hits zero.
-          </p>
-        )}
-      </article>
-
-      {/* YOUR TICKETS */}
-      <section className="pb-2 px-0">
-        <h2 className="px-4 pt-3 text-sm font-semibold text-slate-200">
-          Your tickets
-        </h2>
-        <p className="px-4 text-xs text-slate-500">
-          Each ticket is tied to a specific daily draw. In the live version this
-          will be linked to your X handle and wallet.
-        </p>
-
-        <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-          {entries.map(entry => (
-            <article
-              key={entry.id}
-              className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-4 pt-3 hover:border-slate-700 hover:bg-slate-950 transition"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm text-slate-50">
-                      {entry.code}
-                    </span>
-
-                    {entry.status === 'in-draw' && (
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
-                        In draw
-                      </span>
-                    )}
-                    {entry.status === 'won' && (
-                      <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                        Winner
-                      </span>
-                    )}
-                    {entry.status === 'claimed' && (
-                      <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
-                        Claimed
-                      </span>
-                    )}
-                    {entry.status === 'expired' && (
-                      <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
-                        Expired
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-slate-400">
-                    {entry.label}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    Created: {entry.createdAt}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(entry)}
-                    className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
-                  >
-                    {copiedId === entry.id ? 'Copied' : 'Copy code'}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
-                  >
-                    View entry tweet ↗
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-    </section>
-  );
-}
