@@ -12,8 +12,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 import XpotAccessGate from '@/components/XpotAccessGate';
-import { useUser } from '@clerk/nextjs';
-import { SignOutButton } from '@clerk/nextjs';
+import { useUser, SignOutButton } from '@clerk/nextjs';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -102,7 +101,7 @@ function WalletStatusHint() {
 const initialEntries: Entry[] = [];
 
 // ─────────────────────────────────────────────
-// Inner dashboard
+// Dashboard
 // ─────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -129,34 +128,42 @@ export default function DashboardPage() {
 
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
+  const isXpotTooLow =
+    typeof xpotBalance === 'number' && !hasRequiredXpot;
 
   // ─────────────────────────────────────────────
   // Clerk user (for avatar + handle)
   // ─────────────────────────────────────────────
 
-    const { user, isLoaded: isUserLoaded } = useUser();
+  const { user, isLoaded: isUserLoaded } = useUser();
 
-  // Be very forgiving: we only use X login, so the first external account is fine
-  const externalAccounts = (user?.externalAccounts || []) as any[];
+  const externalAccounts = ((user?.externalAccounts as any[]) || []).filter(
+    Boolean,
+  );
 
   const xAccount =
     externalAccounts.find((acc) => {
       const provider = (acc.provider ?? '') as string;
+      const p = provider.toLowerCase();
       return (
         provider === 'oauth_x' ||
         provider === 'oauth_twitter' ||
         provider === 'twitter' ||
-        provider.toLowerCase().includes('twitter') ||
-        provider.toLowerCase().includes('x')
+        p.includes('twitter') ||
+        p.includes('x')
       );
     }) || externalAccounts[0];
 
   const handle =
-    xAccount?.username ||
-    xAccount?.screenName ||
+    (xAccount?.username as string | undefined) ||
+    (xAccount?.screenName as string | undefined) ||
     null;
 
-  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
+  const avatar =
+    (xAccount?.imageUrl as string | undefined) ||
+    (user?.imageUrl as string | undefined) ||
+    null;
+
   const name = user?.fullName || handle || 'XPOT user';
 
   // ─────────────────────────────────────────────
@@ -266,7 +273,7 @@ export default function DashboardPage() {
 
   // ─────────────────────────────────────────────
   // XPOT balance (via API route)
-  // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!publicKey) {
@@ -372,7 +379,7 @@ export default function DashboardPage() {
 
   async function handleClaimTicket() {
     if (!walletConnected || !publicKey) return;
-    if (loadingTickets || claiming) return; // avoid double clicks
+    if (loadingTickets || claiming) return;
 
     setClaimError(null);
     setClaiming(true);
@@ -435,7 +442,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // Success path
       const ticket: Entry = data.ticket;
       const tickets: Entry[] | undefined = data.tickets;
 
@@ -461,7 +467,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Normalize wallet + compute my tickets
   const normalizedWallet = currentWalletAddress?.toLowerCase();
   const myTickets: Entry[] = normalizedWallet
     ? entries.filter(
@@ -547,9 +552,17 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={handleClaimTicket}
-                disabled={!walletConnected || claiming || loadingTickets}
+                disabled={
+                  !walletConnected ||
+                  claiming ||
+                  loadingTickets ||
+                  isXpotTooLow
+                }
                 className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-                  !walletConnected || claiming || loadingTickets
+                  !walletConnected ||
+                  claiming ||
+                  loadingTickets ||
+                  isXpotTooLow
                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
                 }`}
@@ -558,14 +571,13 @@ export default function DashboardPage() {
                   ? 'Connect wallet to get ticket'
                   : claiming
                   ? 'Processing...'
+                  : isXpotTooLow
+                  ? 'XPOT balance too low'
                   : 'Get today’s ticket'}
               </button>
             </div>
 
-            {/* Mini account chip placeholder */}
-            <div className="mt-auto text-xs text-slate-500">
-              {/* Later: level, badges, etc. */}
-            </div>
+            <div className="mt-auto text-xs text-slate-500" />
           </aside>
 
           {/* Main shell */}
@@ -597,73 +609,67 @@ export default function DashboardPage() {
               {/* Scroll content */}
               <div className="space-y-4 px-0">
                 {/* Profile header */}
-{/* Profile header */}
-<section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
-  {/* Left: identity pill */}
-  <div className="inline-flex items-center gap-3 rounded-full bg-slate-950/80 px-3 py-2">
-    {/* Avatar */}
-    <div className="h-9 w-9 overflow-hidden rounded-full bg-slate-800">
-      {avatar ? (
-        <img
-          src={avatar}
-          alt={handle || 'X avatar'}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
-          @
-        </div>
-      )}
-    </div>
+                <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
+                  <div className="inline-flex items-center gap-3 rounded-full bg-slate-950/80 px-3 py-2">
+                    <div className="h-9 w-9 overflow-hidden rounded-full bg-slate-800">
+                      {avatar ? (
+                        <img
+                          src={avatar}
+                          alt={handle ? `@${handle}` : 'X avatar'}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                          @
+                        </div>
+                      )}
+                    </div>
 
-    {/* Name + handle */}
-    <div className="flex flex-col leading-tight">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-slate-50">
-          {name || 'XPOT user'}
-        </span>
+                    <div className="flex flex-col leading-tight">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-50">
+                          {name || 'XPOT user'}
+                        </span>
 
-        {/* X green dot */}
-        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          X identity
-        </span>
-      </div>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          X identity
+                        </span>
+                      </div>
 
-      <div className="flex items-center gap-2 text-[11px] text-slate-500">
-        {handle && (
-          <a
-            href={`https://x.com/${handle}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-emerald-300"
-          >
-            @{handle}
-          </a>
-        )}
-      </div>
-    </div>
-  </div>
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        {handle && (
+                          <a
+                            href={`https://x.com/${handle}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-emerald-300"
+                          >
+                            @{handle}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-  {/* Right: more + logout */}
-  <div className="flex items-center gap-2">
-    <button
-      type="button"
-      className="hidden h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100 sm:flex"
-    >
-      ⋯
-    </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="hidden h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100 sm:flex"
+                    >
+                      ⋯
+                    </button>
 
-    <SignOutButton redirectUrl="/dashboard">
-      <button
-        type="button"
-        className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
-      >
-        Log out
-      </button>
-    </SignOutButton>
-  </div>
-</section>
+                    <SignOutButton redirectUrl="/dashboard">
+                      <button
+                        type="button"
+                        className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
+                      >
+                        Log out
+                      </button>
+                    </SignOutButton>
+                  </div>
+                </section>
 
                 {/* Today’s ticket */}
                 <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
@@ -679,7 +685,6 @@ export default function DashboardPage() {
                     sell again later.
                   </p>
 
-                  {/* Jackpot state (with rollover) */}
                   <p className="mt-2 text-[11px] text-slate-500">
                     <span className="font-semibold text-slate-200">
                       Today’s jackpot:
@@ -690,6 +695,12 @@ export default function DashboardPage() {
                       rolls into the next draw.
                     </span>
                   </p>
+
+                  {ticketsError && (
+                    <p className="mt-2 text-[11px] text-amber-300">
+                      {ticketsError}
+                    </p>
+                  )}
 
                   {!ticketClaimed ? (
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -716,6 +727,13 @@ export default function DashboardPage() {
                           </p>
                         )}
 
+                        {walletConnected && !claiming && isXpotTooLow && (
+                          <p className="mt-1 text-[11px] text-amber-300">
+                            Your XPOT balance is below today’s requirement of{' '}
+                            {REQUIRED_XPOT.toLocaleString()} XPOT.
+                          </p>
+                        )}
+
                         {claimError && (
                           <p className="mt-2 text-[11px] text-amber-300">
                             {claimError}
@@ -727,13 +745,17 @@ export default function DashboardPage() {
                         type="button"
                         onClick={handleClaimTicket}
                         disabled={
-                          !walletConnected || claiming || loadingTickets
+                          !walletConnected ||
+                          claiming ||
+                          loadingTickets ||
+                          isXpotTooLow
                         }
                         className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
-                          !walletConnected
+                          !walletConnected ||
+                          claiming ||
+                          loadingTickets ||
+                          isXpotTooLow
                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                            : claiming
-                            ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
                             : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
                         }`}
                       >
@@ -741,6 +763,8 @@ export default function DashboardPage() {
                           ? 'Connect wallet to get ticket'
                           : claiming
                           ? 'Generating ticket...'
+                          : isXpotTooLow
+                          ? 'XPOT balance too low'
                           : 'Get today’s ticket'}
                       </button>
                     </div>
@@ -808,7 +832,6 @@ export default function DashboardPage() {
                     </p>
                   )}
 
-                  {/* X identity explainer */}
                   <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       XPOT identity system
@@ -931,7 +954,7 @@ export default function DashboardPage() {
                   </div>
                 </section>
 
-                {/* Draw history preview + recent winners placeholder */}
+                {/* Draw history preview + winners placeholder */}
                 <section className="pb-10 px-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-200">
@@ -1001,7 +1024,6 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* Recent winners (structure ready for real data later) */}
                   <div className="mt-6 rounded-2xl border border-slate-900 bg-slate-950/60 px-4 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Recent winners
@@ -1081,7 +1103,6 @@ export default function DashboardPage() {
                   </p>
                 )}
 
-                {/* Wallet truth line */}
                 <p className="mt-3 text-[11px] text-slate-500">
                   XPOT uses X as the identity layer. We only read your public
                   wallet balance to check eligibility.
