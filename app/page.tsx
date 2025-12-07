@@ -1,4 +1,5 @@
 // app/page.tsx
+'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -66,7 +67,7 @@ export default function HomePage() {
           </nav>
         </header>
 
-        {/* Hero + Jackpot */}
+        {/* Hero + XPOT panel */}
         <section className="grid flex-1 gap-8 pb-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1.1fr)] lg:items-center">
           {/* Left: story */}
           <div className="space-y-7">
@@ -158,7 +159,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: live jackpot panel */}
+          {/* Right: live XPOT panel */}
           <div className="relative">
             <div className="pointer-events-none absolute -inset-10 -z-10 rounded-[2.5rem] bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.50),_transparent_55%),radial-gradient(circle_at_80%_100%,_rgba(52,211,153,0.35),_transparent_52%)] opacity-70 blur-3xl" />
             <div className="jackpot-shell">
@@ -174,59 +175,59 @@ export default function HomePage() {
         </section>
 
         {/* LIVE: X handles entering today’s XPOT */}
-<section className="mt-10 border-t border-slate-800/70 pt-6">
-  <div className="mb-3 flex items-center gap-2 text-xs">
-    <span className="relative flex h-2 w-2">
-      <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-80 animate-ping" />
-      <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-    </span>
-    <span className="font-medium uppercase tracking-[0.18em] text-emerald-300">
-      Live: X handles entering today&apos;s XPOT
-    </span>
-  </div>
+        <section className="mt-10 border-t border-slate-800/70 pt-6">
+          <div className="mb-3 flex items-center gap-2 text-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-80 animate-ping" />
+              <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+            </span>
+            <span className="font-medium uppercase tracking-[0.18em] text-emerald-300">
+              Live: X handles entering today&apos;s XPOT
+            </span>
+          </div>
 
-  <div className="relative overflow-hidden">
-    {/* edge fades */}
-    <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent" />
-    <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-950 via-slate-950/80 to-transparent" />
+          <div className="relative overflow-hidden">
+            {/* edge fades */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-950 via-slate-950/80 to-transparent" />
 
-    <motion.div
-      className="flex gap-3 pr-10"
-      animate={{ x: ['0%', '-50%'] }}
-      transition={{ duration: 40, ease: 'linear', repeat: Infinity }}
-    >
-      {[0, 1].map(loop => (
-        <div key={loop} className="flex gap-3">
-          {SAMPLE_HANDLES.map(handle => {
-            const clean = handle.replace(/^@/, '');
-            const initial = clean.charAt(0).toUpperCase();
+            <motion.div
+              className="flex gap-3 pr-10"
+              animate={{ x: ['0%', '-50%'] }}
+              transition={{ duration: 40, ease: 'linear', repeat: Infinity }}
+            >
+              {[0, 1].map(loop => (
+                <div key={loop} className="flex gap-3">
+                  {SAMPLE_HANDLES.map(handle => {
+                    const clean = handle.replace(/^@/, '');
+                    const initial = clean.charAt(0).toUpperCase();
 
-            return (
-              <button
-                key={`${loop}-${handle}`}
-                type="button"
-                className="group inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3.5 py-1.5 text-xs text-slate-100/90 shadow-[0_0_0_1px_rgba(15,23,42,0.9)] hover:border-emerald-400/80 hover:bg-slate-900/95 hover:text-slate-50 transition-colors"
-              >
-                {/* tiny avatar bubble */}
-                <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-slate-100">
-                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
-                  {initial}
-                </span>
-                <span className="font-mono text-[11px] opacity-80 group-hover:opacity-100">
-                  @{clean}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </motion.div>
-  </div>
+                    return (
+                      <button
+                        key={`${loop}-${handle}`}
+                        type="button"
+                        className="group inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3.5 py-1.5 text-xs text-slate-100/90 shadow-[0_0_0_1px_rgba(15,23,42,0.9)] hover:border-emerald-400/80 hover:bg-slate-900/95 hover:text-slate-50 transition-colors"
+                      >
+                        {/* tiny avatar bubble */}
+                        <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-slate-100">
+                          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+                          {initial}
+                        </span>
+                        <span className="font-mono text-[11px] opacity-80 group-hover:opacity-100">
+                          @{clean}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </motion.div>
+          </div>
 
-  <p className="mt-2 text-[11px] text-slate-500">
-    Handles are shown, wallets stay in self-custody.
-  </p>
-</section>
+          <p className="mt-2 text-[11px] text-slate-500">
+            Handles are shown, wallets stay in self-custody.
+          </p>
+        </section>
 
         {/* Winner Control Room section */}
         <section className="grid gap-6 rounded-3xl border border-slate-800 bg-slate-950/90 px-5 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
@@ -256,47 +257,53 @@ export default function HomePage() {
                   Who gets access?
                 </p>
                 <ul className="mt-4 space-y-3 text-sm text-slate-300">
-  <li className="flex gap-3">
-    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-    <span>
-      <span className="font-medium text-slate-100">Daily XPOT winners</span>
-      <br />
-      <span className="text-xs text-slate-400">
-        Each daily pool winner gets limited Control Room access.
-      </span>
-    </span>
-  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+                    <span>
+                      <span className="font-medium text-slate-100">
+                        Daily XPOT winners
+                      </span>
+                      <br />
+                      <span className="text-xs text-slate-400">
+                        Each daily pool winner gets limited Control Room
+                        access.
+                      </span>
+                    </span>
+                  </li>
 
-  <li className="flex gap-3">
-    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-    <span>
-      <span className="font-medium text-slate-100">
-        Big milestone winners
-      </span>
-      <br />
-      <span className="text-xs text-slate-400">
-        Weekly / monthly specials when XPOT crosses key levels.
-      </span>
-    </span>
-  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                    <span>
+                      <span className="font-medium text-slate-100">
+                        Big milestone winners
+                      </span>
+                      <br />
+                      <span className="text-xs text-slate-400">
+                        Weekly / monthly specials when XPOT crosses key
+                        levels.
+                      </span>
+                    </span>
+                  </li>
 
-  <li className="flex gap-3">
-    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-cyan-400/80" />
-    <span>
-      <span className="font-medium text-slate-100">
-        Special guests & sponsors
-      </span>
-      <br />
-      <span className="text-xs text-slate-400">
-        Partners, creators and protocol sponsors invited behind the glass.
-      </span>
-    </span>
-  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-cyan-400/80" />
+                    <span>
+                      <span className="font-medium text-slate-100">
+                        Special guests &amp; sponsors
+                      </span>
+                      <br />
+                      <span className="text-xs text-slate-400">
+                        Partners, creators and protocol sponsors invited
+                        behind the glass.
+                      </span>
+                    </span>
+                  </li>
 
-  <li className="mt-2 text-xs text-slate-500">
-    No winners → no room. Access is always earned, never sold.
-  </li>
-</ul>
+                  <li className="mt-2 text-xs text-slate-500">
+                    No winners → no room. Access is always earned, never
+                    sold.
+                  </li>
+                </ul>
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-slate-950 px-3.5 py-3">
@@ -305,71 +312,72 @@ export default function HomePage() {
                   What can they see?
                 </p>
                 <ul className="mt-4 space-y-3 text-sm text-slate-300">
-  <li className="flex gap-3">
-    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
-    <span>
-      <span className="font-medium text-slate-100">
-        Live XPOT pool balance (on-chain)
-      </span>
-      <br />
-      <span className="text-xs text-slate-400">
-        Real-time view of today&apos;s XPOT pool value.
-      </span>
-    </span>
-  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
+                    <span>
+                      <span className="font-medium text-slate-100">
+                        Live XPOT pool balance (on-chain)
+                      </span>
+                      <br />
+                      <span className="text-xs text-slate-400">
+                        Real-time view of today&apos;s XPOT pool value.
+                      </span>
+                    </span>
+                  </li>
 
-  <li className="flex gap-3">
-    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
-    <span>
-      <span className="font-medium text-slate-100">
-        Draw counter & time to next draw
-      </span>
-      <br />
-      <span className="text-xs text-slate-400">
-        Watch the engine countdown in real time.
-      </span>
-    </span>
-  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
+                    <span>
+                      <span className="font-medium text-slate-100">
+                        Draw counter &amp; time to next draw
+                      </span>
+                      <br />
+                      <span className="text-xs text-slate-400">
+                        Watch the engine countdown in real time.
+                      </span>
+                    </span>
+                  </li>
 
-  <li className="flex gap-3">
-    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
-    <span>
-      <span className="font-medium text-slate-100">
-        XPOT distributed & rollovers
-      </span>
-      <br />
-      <span className="text-xs text-slate-400">
-        History of pools, payouts and XPOT emissions.
-      </span>
-    </span>
-  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
+                    <span>
+                      <span className="font-medium text-slate-100">
+                        XPOT distributed &amp; rollovers
+                      </span>
+                      <br />
+                      <span className="text-xs text-slate-400">
+                        History of pools, payouts and XPOT emissions.
+                      </span>
+                    </span>
+                  </li>
 
-  <li className="flex gap-3">
-    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
-    <span>
-      <span className="font-medium text-slate-100">
-        Internal winner queue
-      </span>
-      <br />
-      <span className="text-xs text-slate-400">
-        View selected winners before they&apos;re published.
-      </span>
-    </span>
-  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
+                    <span>
+                      <span className="font-medium text-slate-100">
+                        Internal winner queue
+                      </span>
+                      <br />
+                      <span className="text-xs text-slate-400">
+                        View selected winners before they&apos;re
+                        published.
+                      </span>
+                    </span>
+                  </li>
 
-  <li className="flex gap-3">
-    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
-    <span>
-      <span className="font-medium text-slate-100">
-        System feed (read-only)
-      </span>
-      <br />
-      <span className="text-xs text-slate-400">
-        Watch what the engine does behind the scenes.
-      </span>
-    </span>
-  </li>
-</ul>
+                  <li className="flex gap-3">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-500" />
+                    <span>
+                      <span className="font-medium text-slate-100">
+                        System feed (read-only)
+                      </span>
+                      <br />
+                      <span className="text-xs text-slate-400">
+                        Watch what the engine does behind the scenes.
+                      </span>
+                    </span>
+                  </li>
+                </ul>
               </div>
             </div>
 
@@ -394,7 +402,7 @@ export default function HomePage() {
               </div>
 
               <pre className="mt-1 max-h-40 overflow-hidden font-mono text-[10px] leading-relaxed text-emerald-100/90">
-{`> JACKPOT_STATUS
+{`> XPOT_POOL_STATUS
   pool_today:      1,000,000 XPOT
   pool_value_usd:  live via Jupiter
   entries_today:   2,184
