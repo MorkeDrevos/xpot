@@ -12,6 +12,8 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 import XpotAccessGate from '@/components/XpotAccessGate';
+import { useUser } from '@clerk/nextjs';
+import { SignOutButton } from '@clerk/nextjs';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -129,12 +131,74 @@ export default function DashboardPage() {
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
   // ─────────────────────────────────────────────
-  // Temporary static "identity" (no Clerk)
+  // Clerk user (for avatar + handle)
   // ─────────────────────────────────────────────
 
-  const handle: string | null = null;
-  const avatar: string | null = null;
-  const name = 'XPOT user';
+    const { user, isLoaded: isUserLoaded } = useUser();
+
+  // Be very forgiving: we only use X login, so the first external account is fine
+  const externalAccounts = (user?.externalAccounts || []) as any[];
+
+  const xAccount =
+    externalAccounts.find((acc) => {
+      const provider = (acc.provider ?? '') as string;
+      return (
+        provider === 'oauth_x' ||
+        provider === 'oauth_twitter' ||
+        provider === 'twitter' ||
+        provider.toLowerCase().includes('twitter') ||
+        provider.toLowerCase().includes('x')
+      );
+    }) || externalAccounts[0];
+
+  const handle =
+    xAccount?.username ||
+    xAccount?.screenName ||
+    null;
+
+  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
+  const name = user?.fullName || handle || 'XPOT user';
+
+  // ─────────────────────────────────────────────
+  // Sync X identity into DB whenever user is loaded
+  // ─────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!isUserLoaded || !user) return;
+
+    (async () => {
+      try {
+        await fetch('/api/me/sync-x', {
+          method: 'POST',
+        });
+      } catch (e) {
+        console.error('[XPOT] Failed to sync X identity', e);
+      }
+    })();
+  }, [isUserLoaded, user]);
+
+  // ─────────────────────────────────────────────
+  // Wire wallet → DB whenever it connects
+  // ─────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!isUserLoaded || !user) return;
+    if (!publicKey || !connected) return;
+
+    const address = publicKey.toBase58();
+
+    (async () => {
+      try {
+        await fetch('/api/me/wallet-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address }),
+        });
+      } catch (e) {
+        console.error('[XPOT] Failed to sync wallet', e);
+      }
+    })();
+  }, [isUserLoaded, user, publicKey, connected]);
 
   // ─────────────────────────────────────────────
   // Load today's tickets from DB
@@ -446,14 +510,11 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              {/* Temporary dummy logout (no auth yet) */}
-              <button
-                type="button"
-                onClick={() => window.location.assign('/')}
-                className="text-xs text-slate-400 hover:text-white"
-              >
-                Back to homepage
-              </button>
+              <SignOutButton redirectUrl="/dashboard">
+                <button className="text-xs text-slate-400 hover:text-white">
+                  Log out
+                </button>
+              </SignOutButton>
 
               {/* Nav */}
               <nav className="space-y-1 text-sm">
@@ -536,71 +597,73 @@ export default function DashboardPage() {
               {/* Scroll content */}
               <div className="space-y-4 px-0">
                 {/* Profile header */}
-                <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
-                  {/* Left: identity pill */}
-                  <div className="inline-flex items-center gap-3 rounded-full bg-slate-950/80 px-3 py-2">
-                    {/* Avatar */}
-                    <div className="h-9 w-9 overflow-hidden rounded-full bg-slate-800">
-                      {avatar ? (
-                        <img
-                          src={avatar}
-                          alt={handle || 'X avatar'}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
-                          @
-                        </div>
-                      )}
-                    </div>
+{/* Profile header */}
+<section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
+  {/* Left: identity pill */}
+  <div className="inline-flex items-center gap-3 rounded-full bg-slate-950/80 px-3 py-2">
+    {/* Avatar */}
+    <div className="h-9 w-9 overflow-hidden rounded-full bg-slate-800">
+      {avatar ? (
+        <img
+          src={avatar}
+          alt={handle || 'X avatar'}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+          @
+        </div>
+      )}
+    </div>
 
-                    {/* Name + handle */}
-                    <div className="flex flex-col leading-tight">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-50">
-                          {name || 'XPOT user'}
-                        </span>
+    {/* Name + handle */}
+    <div className="flex flex-col leading-tight">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold text-slate-50">
+          {name || 'XPOT user'}
+        </span>
 
-                        {/* X green dot */}
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                          X identity (offline)
-                        </span>
-                      </div>
+        {/* X green dot */}
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          X identity
+        </span>
+      </div>
 
-                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                        {handle && (
-                          <a
-                            href={`https://x.com/${handle}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:text-emerald-300"
-                          >
-                            @{handle}
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+        {handle && (
+          <a
+            href={`https://x.com/${handle}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-emerald-300"
+          >
+            @{handle}
+          </a>
+        )}
+      </div>
+    </div>
+  </div>
 
-                  {/* Right: more + placeholder logout */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="hidden h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100 sm:flex"
-                    >
-                      ⋯
-                    </button>
+  {/* Right: more + logout */}
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      className="hidden h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100 sm:flex"
+    >
+      ⋯
+    </button>
 
-                    <button
-                      type="button"
-                      onClick={() => window.location.assign('/')}
-                      className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
-                    >
-                      Back to homepage
-                    </button>
-                  </div>
-                </section>
+    <SignOutButton redirectUrl="/dashboard">
+      <button
+        type="button"
+        className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
+      >
+        Log out
+      </button>
+    </SignOutButton>
+  </div>
+</section>
 
                 {/* Today’s ticket */}
                 <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
@@ -752,7 +815,7 @@ export default function DashboardPage() {
                     </p>
 
                     <ul className="mt-2 text-[11px] text-slate-400 space-y-1">
-                      <li>• One XPOT identity per X account (coming back soon)</li>
+                      <li>• One XPOT identity per X account</li>
                       <li>• Winners revealed by handle, never wallet</li>
                       <li>• Your wallet always remains self-custodied</li>
                     </ul>
