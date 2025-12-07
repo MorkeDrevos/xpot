@@ -1,29 +1,13 @@
-'use client'
+// components/XpotAccessGate.tsx
+'use client';
 
-import { ReactNode, useEffect } from 'react'
-import { useUser } from '@clerk/nextjs'
+import type { ReactNode } from 'react';
 
-export default function XpotAccessGate({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn } = useUser()
+type XpotAccessGateProps = {
+  children: ReactNode;
+};
 
-  useEffect(() => {
-    if (!isLoaded) return
-
-    if (!isSignedIn) {
-      const params = new URLSearchParams({ redirect_url: '/dashboard' })
-      window.location.href = `/sign-in?${params.toString()}`
-    }
-  }, [isLoaded, isSignedIn])
-
-  if (!isLoaded || !isSignedIn) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-slate-100">
-        <div className="rounded-3xl border border-slate-800 bg-slate-950 px-6 py-5 text-center">
-          <p className="text-sm font-semibold">Redirecting to X login…</p>
-        </div>
-      </div>
-    )
-  }
-
-  return <>{children}</>
+export default function XpotAccessGate({ children }: XpotAccessGateProps) {
+  // Clerk removed – gate is now a simple pass-through
+  return <>{children}</>;
 }
