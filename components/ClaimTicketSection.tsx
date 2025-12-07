@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@clerk/nextjs';
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
@@ -45,8 +45,10 @@ const initialEntries: Entry[] = [
 ];
 
 export default function ClaimTicketSection() {
-  const { data: session, status } = useSession();
-  const isAuthed = !!session;
+  // 🔐 Clerk instead of NextAuth
+  const { isSignedIn, isLoaded } = useUser();
+  const isAuthed = !!isSignedIn;
+  const loading = !isLoaded;
 
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
@@ -57,8 +59,8 @@ export default function ClaimTicketSection() {
 
   function handleClaimTicket() {
     if (!isAuthed) {
-      // For now just bounce them to X login page or home.
-      window.location.href = '/x-login';
+      // Send them to Clerk sign-in, then back to dashboard
+      window.location.href = '/sign-in?redirect_url=/dashboard';
       return;
     }
 
@@ -123,10 +125,10 @@ export default function ClaimTicketSection() {
             <button
               type="button"
               onClick={handleClaimTicket}
-              disabled={status === 'loading'}
+              disabled={loading}
               className="btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow sm:mt-0"
             >
-              {status === 'loading'
+              {loading
                 ? 'Checking session…'
                 : isAuthed
                 ? 'Claim today’s ticket'
