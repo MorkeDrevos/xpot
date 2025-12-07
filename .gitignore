@@ -3,3 +3,5 @@
 
 # Temp SQL / experiments
 *.sql
+
+.next
