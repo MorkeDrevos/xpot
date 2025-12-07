@@ -20,7 +20,7 @@ import { useUser, SignOutButton } from '@clerk/nextjs';
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
-  return d.toLocaleDateString('de-DE'); // 30.11.2025
+  return d.toLocaleDateString('de-DE');
 }
 
 function formatDateTime(date: string | Date) {
@@ -48,6 +48,15 @@ type Entry = {
   jackpotUsd: string;
   createdAt: string;
   walletAddress: string;
+};
+
+type RecentWinner = {
+  id: string;
+  drawDate: string;
+  ticketCode: string;
+  jackpotUsd: number;
+  walletAddress: string;
+  handle?: string | null;
 };
 
 function shortWallet(addr: string) {
@@ -124,6 +133,10 @@ export default function DashboardPage() {
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
+  const [loadingWinners, setLoadingWinners] = useState(false);
+  const [winnersError, setWinnersError] = useState<string | null>(null);
 
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
@@ -354,6 +367,54 @@ export default function DashboardPage() {
   }, [publicKey]);
 
   // ─────────────────────────────────────────────
+  // Load recent winners (global)
+  // ─────────────────────────────────────────────
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingWinners(true);
+    setWinnersError(null);
+
+    (async () => {
+      try {
+        const res = await fetch('/api/winners/recent?limit=5');
+        if (!res.ok) throw new Error('Failed to load recent winners');
+
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (Array.isArray(data.winners)) {
+          setRecentWinners(
+            data.winners.map((w: any) => ({
+              id: w.id,
+              drawDate: w.drawDate,
+              ticketCode: w.ticketCode,
+              jackpotUsd: w.jackpotUsd ?? 0,
+              walletAddress: w.walletAddress,
+              handle: w.handle ?? null,
+            })),
+          );
+        } else {
+          setRecentWinners([]);
+        }
+      } catch (err) {
+        console.error('Failed to load recent winners', err);
+        if (!cancelled) {
+          setWinnersError(
+            (err as Error).message ?? 'Failed to load recent winners',
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingWinners(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ─────────────────────────────────────────────
   // Ticket helpers
   // ─────────────────────────────────────────────
 
@@ -407,7 +468,7 @@ export default function DashboardPage() {
 
           case 'NOT_ENOUGH_SOL':
             setClaimError(
-              `Your wallet needs some SOL for network fees before you can get today’s ticket.`,
+              'Your wallet needs some SOL for network fees before you can get today’s ticket.',
             );
             break;
 
@@ -946,7 +1007,7 @@ export default function DashboardPage() {
                   </div>
                 </section>
 
-                {/* Draw history preview + recent winners placeholder */}
+                {/* Draw history preview + recent winners */}
                 <section className="pb-10 px-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-200">
@@ -1016,16 +1077,83 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* Recent winners placeholder */}
+                  {/* Recent winners */}
                   <div className="mt-6 rounded-2xl border border-slate-900 bg-slate-950/60 px-4 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Recent winners
                     </p>
-                    <p className="mt-2 text-[11px] text-slate-400">
-                      Soon you’ll see a short list of the latest winning
-                      tickets and wallets here. For now, use the full history
-                      view to browse past draws.
-                    </p>
+
+                    {loadingWinners && (
+                      <p className="mt-2 text-[11px] text-slate-500">
+                        Loading recent winners…
+                      </p>
+                    )}
+
+                    {winnersError && (
+                      <p className="mt-2 text-[11px] text-amber-300">
+                        {winnersError}
+                      </p>
+                    )}
+
+                    {!loadingWinners &&
+                      !winnersError &&
+                      recentWinners.length === 0 && (
+                        <p className="mt-2 text-[11px] text-slate-500">
+                          No completed draws yet. As soon as XPOT starts,
+                          you’ll see the latest winning tickets here.
+                        </p>
+                      )}
+
+                    {!loadingWinners && recentWinners.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {recentWinners.map((w) => (
+                          <article
+                            key={w.id}
+                            className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
+                          >
+                            <div>
+                              <p className="text-[11px] text-slate-400">
+                                {formatDate(w.drawDate)}
+                              </p>
+                              <p className="mt-0.5 text-sm font-mono text-slate-50">
+                                {w.ticketCode}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-slate-500">
+                                Jackpot:{' '}
+                                <span className="font-semibold text-emerald-300">
+                                  $
+                                  {Number(
+                                    w.jackpotUsd ?? 0,
+                                  ).toLocaleString()}
+                                </span>
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              {w.handle ? (
+                                <a
+                                  href={`https://x.com/${w.handle}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[11px] text-emerald-300 hover:text-emerald-200"
+                                >
+                                  @{w.handle}
+                                </a>
+                              ) : (
+                                <p className="text-[11px] text-slate-500">
+                                  X handle soon
+                                </p>
+                              )}
+                              <p className="mt-0.5 text-[10px] text-slate-600">
+                                Wallet:{' '}
+                                <span className="font-mono">
+                                  {shortWallet(w.walletAddress)}
+                                </span>
+                              </p>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </section>
               </div>
