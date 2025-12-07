@@ -11,7 +11,7 @@ import {
   WalletProvider,
 } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { SessionProvider } from 'next-auth/react';
+import { ClerkProvider } from '@clerk/nextjs';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -34,55 +34,50 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <title>XPOT · The X-Powered Reward Protocol</title>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <head>
+          <title>XPOT · The X-Powered Reward Protocol</title>
 
-        <meta
-          name="description"
-          content="XPOT is the X-powered reward protocol for daily distribution, access and on-chain participation."
-        />
+          <meta
+            name="description"
+            content="XPOT is the X-powered reward protocol for daily distribution, access and on-chain participation."
+          />
 
-        // OpenGraph
-<meta
-  property="og:image"
-  content="/img/xpot-square-blue.jpg"   // square hero logo
-/>
-<meta property="og:type" content="website" />
+          {/* OpenGraph */}
+          <meta
+            property="og:image"
+            content="/img/xpot-square-blue.jpg"
+          />
+          <meta property="og:type" content="website" />
 
-// X / Twitter
-<meta name="twitter:card" content="summary_large_image" />
-<meta
-  name="twitter:image"
-  content="/img/xpot-square-blue.jpg"
-/>
-        <meta property="og:image" content="/img/xpot-logo-dark.jpg" />
-        <meta property="og:type" content="website" />
+          {/* X / Twitter */}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta
+            name="twitter:image"
+            content="/img/xpot-square-blue.jpg"
+          />
 
-        {/* X / Twitter */}
-        <meta name="twitter:card" content="summary_large_image" />
+          {/* Icons */}
+          <link rel="icon" href="/img/favicon.png" />
+          <link rel="apple-touch-icon" href="/img/favicon.png" />
 
-        {/* Icons */}
-        <link rel="icon" href="/img/favicon.png" />
-        <link rel="apple-touch-icon" href="/img/favicon.png" />
+          {/* Pre-theme preload to avoid flash */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                try {
+                  const theme = localStorage.getItem('xpot-theme');
+                  if (theme === 'light') {
+                    document.documentElement.classList.add('light');
+                  }
+                } catch (_) {}
+              `,
+            }}
+          />
+        </head>
 
-        {/* Pre-theme preload to avoid flash */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                const theme = localStorage.getItem('xpot-theme');
-                if (theme === 'light') {
-                  document.documentElement.classList.add('light');
-                }
-              } catch (_) {}
-            `,
-          }}
-        />
-      </head>
-
-      <body className="min-h-screen transition-colors duration-300">
-        <SessionProvider>
+        <body className="min-h-screen transition-colors duration-300">
           <ConnectionProvider endpoint={endpoint}>
             <WalletProvider wallets={wallets} autoConnect>
               <WalletModalProvider>
@@ -94,8 +89,8 @@ export default function RootLayout({
               </WalletModalProvider>
             </WalletProvider>
           </ConnectionProvider>
-        </SessionProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

@@ -29,22 +29,25 @@ model User {
   id         String   @id @default(cuid())
   createdAt  DateTime @default(now())
 
-  // X identity – all optional so we can still have system users / test users
-  xId        String?  @unique
-  xHandle    String?  @unique
-  xName      String?
-  xAvatarUrl String?
+  // Optional Clerk user id (for auth)
+  clerkId    String?  @unique
+
+  // X identity – all optional so we can still have system / test users
+  xId        String?  @unique     // X account id
+  xHandle    String?  @unique     // @handle
+  xName      String?              // display name
+  xAvatarUrl String?              // avatar URL
 
   wallets    Wallet[]
   tickets    Ticket[]
 }
 
 model Wallet {
-  id         String   @id @default(cuid())
-  address    String   @unique
+  id         String          @id @default(cuid())
+  address    String          @unique
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
-  createdAt  DateTime @default(now())
+  user       User            @relation(fields: [userId], references: [id])
+  createdAt  DateTime        @default(now())
 
   balances   XpUserBalance[]
   tickets    Ticket[]
@@ -83,28 +86,28 @@ model Draw {
 }
 
 model Ticket {
-  id        String        @id @default(cuid())
-  code      String        @unique
-  createdAt DateTime      @default(now())
+  id        String       @id @default(cuid())
+  code      String       @unique
+  createdAt DateTime     @default(now())
 
   // Status of this ticket in the lifecycle
-  status    TicketStatus  @default(IN_DRAW)
+  status    TicketStatus @default(IN_DRAW)
 
   // Draw this ticket belongs to
   drawId    String
-  draw      Draw          @relation("DrawTickets", fields: [drawId], references: [id])
+  draw      Draw         @relation("DrawTickets", fields: [drawId], references: [id])
 
   // Owning user (X identity)
   userId    String
-  user      User          @relation(fields: [userId], references: [id])
+  user      User         @relation(fields: [userId], references: [id])
 
   // Wallet that claimed it
-  // ❗ optional, because X gets ticket before wallet connect
+  // ❗ optional, because X can exist before wallet connect
   walletId  String?
-  wallet    Wallet?       @relation(fields: [walletId], references: [id])
+  wallet    Wallet?      @relation(fields: [walletId], references: [id])
 
   // If this ticket is the main winner of a draw
-  winnerOf  Draw?         @relation("DrawWinner")
+  winnerOf  Draw?        @relation("DrawWinner")
 
   // Any bonus jackpots this ticket has won
   rewards   Reward[]
