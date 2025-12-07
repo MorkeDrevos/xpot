@@ -597,7 +597,7 @@ export default function DashboardPage() {
               {/* Scroll content */}
               <div className="space-y-4 px-0">
                 {/* Profile header */}
-                {/* Profile header */}
+{/* Profile header */}
 <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
   {/* Left: identity pill */}
   <div className="inline-flex items-center gap-3 rounded-full bg-slate-950/80 px-3 py-2">
