@@ -3,11 +3,9 @@ import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
-import PreLaunchBanner from '@/components/PreLaunchBanner';
-
 export const metadata: Metadata = {
   title: 'XPOT',
-  description: 'One protocol. One identity. One daily XPOT draw.',
+  description: 'Daily XPOT draws for X users',
 };
 
 export default function RootLayout({
@@ -18,12 +16,8 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className="bg-black text-slate-50 antialiased">
-          <PreLaunchBanner />
-          {/* Padding so content isn't hidden behind the fixed banner */}
-          <div className="pt-9">
-            {children}
-          </div>
+        <body className="bg-black text-slate-50">
+          {children}
         </body>
       </html>
     </ClerkProvider>
