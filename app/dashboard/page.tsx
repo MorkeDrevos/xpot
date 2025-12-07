@@ -587,43 +587,73 @@ export default function DashboardPage() {
               {/* Scroll content */}
               <div className="space-y-4 px-0">
                 {/* Profile header */}
-                <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 overflow-hidden rounded-full bg-slate-800">
-                      {avatar && (
-                        <img
-                          src={avatar}
-                          alt={handle || 'X avatar'}
-                          className="h-full w-full object-cover"
-                        />
-                      )}
-                    </div>
+                {/* Profile header */}
+<section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
+  {/* Left: identity pill */}
+  <div className="inline-flex items-center gap-3 rounded-full bg-slate-950/80 px-3 py-2">
+    {/* Avatar */}
+    <div className="h-9 w-9 overflow-hidden rounded-full bg-slate-800">
+      {avatar ? (
+        <img
+          src={avatar}
+          alt={handle || 'X avatar'}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+          @
+        </div>
+      )}
+    </div>
 
-                    <div className="flex flex-col leading-tight">
-                      <span className="text-sm font-semibold text-slate-50">
-                        {name}
-                      </span>
+    {/* Name + handle */}
+    <div className="flex flex-col leading-tight">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold text-slate-50">
+          {name || 'XPOT user'}
+        </span>
 
-                      {handle && (
-                        <a
-                          href={`https://x.com/${handle}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-slate-500 hover:text-emerald-300"
-                        >
-                          @{handle}
-                        </a>
-                      )}
-                    </div>
-                  </div>
+        {/* X green dot */}
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          X identity
+        </span>
+      </div>
 
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                  >
-                    ⋯
-                  </button>
-                </section>
+      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+        {handle && (
+          <a
+            href={`https://x.com/${handle}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-emerald-300"
+          >
+            @{handle}
+          </a>
+        )}
+      </div>
+    </div>
+  </div>
+
+  {/* Right: more + logout */}
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      className="hidden h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900 hover:text-slate-100 sm:flex"
+    >
+      ⋯
+    </button>
+
+    <SignOutButton redirectUrl="/dashboard">
+      <button
+        type="button"
+        className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
+      >
+        Log out
+      </button>
+    </SignOutButton>
+  </div>
+</section>
 
                 {/* Today’s ticket */}
                 <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
