@@ -17,7 +17,7 @@ export default function XLoginOverlay({ open, onClose }: XLoginOverlayProps) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onClose) onClose();
+      if (e.key === 'Escape') onClose?.();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -28,14 +28,12 @@ export default function XLoginOverlay({ open, onClose }: XLoginOverlayProps) {
 
     try {
       await signIn.authenticateWithRedirect({
-        strategy: 'oauth_twitter',
-        // Where Clerk should send the browser *inside your app*
-        // after it finishes the X ↔ Clerk handshake:
-        redirectUrl: '/dashboard',          // intermediate route if you want one
-        redirectUrlComplete: '/dashboard',  // final place user lands
+        strategy: 'oauth_twitter',      // keep this if Clerk shows “oauth_twitter”
+        redirectUrl: '/dashboard',      // where Clerk sends user *during* sign-in
+        redirectUrlComplete: '/dashboard', // where user lands when done
       });
     } catch (error) {
-      console.error('XPOT X login failed', error);
+      console.error('[XPOT] X login failed', error);
     }
   }, [isLoaded, signIn]);
 
@@ -55,7 +53,7 @@ export default function XLoginOverlay({ open, onClose }: XLoginOverlayProps) {
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-4 top-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/60 bg-slate-900/80 text-slate-400 text-xs hover:bg-slate-800 hover:text-slate-100"
+            className="absolute right-4 top-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/60 bg-slate-900/80 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-100"
             aria-label="Close"
           >
             ✕
@@ -96,7 +94,7 @@ export default function XLoginOverlay({ open, onClose }: XLoginOverlayProps) {
               <ul className="space-y-1">
                 <li>• One XPOT identity per X account.</li>
                 <li>• Winners revealed by verified X handle.</li>
-                <li>• Wallet always stays self-custodied on Solana.</li>
+                <li>• Wallet stays self-custodied on Solana.</li>
               </ul>
             </div>
 
