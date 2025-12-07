@@ -134,19 +134,29 @@ export default function DashboardPage() {
   // Clerk user (for avatar + handle)
   // ─────────────────────────────────────────────
 
-  const { user, isLoaded: isUserLoaded } = useUser();
+    const { user, isLoaded: isUserLoaded } = useUser();
 
-  const xAccount = user?.externalAccounts?.find((acc: any) => {
-    const provider = acc.provider as string | undefined;
-    return (
-      provider === 'oauth_x' ||
-      provider === 'oauth_twitter' ||
-      provider === 'twitter'
-    );
-  });
+  // Be very forgiving: we only use X login, so the first external account is fine
+  const externalAccounts = (user?.externalAccounts || []) as any[];
 
-  const handle = xAccount?.username || null;
-  const avatar = xAccount?.imageUrl || null;
+  const xAccount =
+    externalAccounts.find((acc) => {
+      const provider = (acc.provider ?? '') as string;
+      return (
+        provider === 'oauth_x' ||
+        provider === 'oauth_twitter' ||
+        provider === 'twitter' ||
+        provider.toLowerCase().includes('twitter') ||
+        provider.toLowerCase().includes('x')
+      );
+    }) || externalAccounts[0];
+
+  const handle =
+    xAccount?.username ||
+    xAccount?.screenName ||
+    null;
+
+  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
 
   // ─────────────────────────────────────────────
