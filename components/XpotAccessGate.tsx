@@ -79,12 +79,17 @@ function XpotXLoginOverlay() {
           </span>
         </div>
 
+        <p className="mt-2 text-[11px] tracking-[0.25em] uppercase text-slate-500">
+  SIGN IN WITH X TO CONTINUE
+</p>
+
         {/* Copy */}
         <h1 className="text-base font-medium text-slate-100">
-          Sign in to enter today’s draw.
+          Your X handle is your XPOT identity.
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          XPOT begins with your name. Not an account. An identity.
+          Connect once with X, link your wallet and you're ready for daily XPOT draws.
+  No passwords, no emails, just your X account.
         </p>
 
         {/* Button */}
@@ -111,4 +116,5 @@ function XpotXLoginOverlay() {
       </div>
     </div>
   );
+}
 }
