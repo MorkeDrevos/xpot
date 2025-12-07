@@ -2,7 +2,6 @@
 'use client';
 
 import Image from 'next/image';
-import { useUser, SignInButton } from '@clerk/nextjs';
 
 type XLoginOverlayProps = {
   visible: boolean;
