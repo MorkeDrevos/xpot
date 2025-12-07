@@ -1,140 +1,99 @@
-// app/api/dev/seed-demo/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
-  const url = new URL(req.url);
-  const secret = url.searchParams.get('secret');
-  const expected = process.env.DEV_RESET_SECRET || 'xpot-dev-reset';
+  const url = new URL(req.url)
+  const secret = url.searchParams.get('secret')
+  const expected = process.env.DEV_RESET_SECRET || 'xpot-dev-reset'
 
-  // Same secret as reset route
   if (secret !== expected) {
-    return NextResponse.json(
-      { ok: false, error: 'BAD_SECRET' },
-      { status: 401 }
-    );
+    return NextResponse.json({ ok: false, error: 'BAD_SECRET' }, { status: 401 })
   }
 
-  // Optional safety: only allow if flag is on in prod
-  if (
-    process.env.NODE_ENV === 'production' &&
-    process.env.ALLOW_PROD_RESET !== '1'
-  ) {
-    return NextResponse.json(
-      { ok: false, error: 'SEED_DISABLED_IN_PROD' },
-      { status: 403 }
-    );
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PROD_RESET !== '1') {
+    return NextResponse.json({ ok: false, error: 'SEED_DISABLED_IN_PROD' }, { status: 403 })
   }
 
   try {
-    // Today and yesterday helpers
-    const now = new Date();
-    const today = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      12,
-      0,
-      0
-    );
-    const yesterday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() - 1,
-      12,
-      0,
-      0
-    );
-    const twoDaysAgo = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() - 2,
-      12,
-      0,
-      0
-    );
+    const now = new Date()
 
-    // ─────────────────────────────────────────
-    // 1) Today: OPEN draw with no tickets yet
-    // ─────────────────────────────────────────
+    const today = new Date(now)
+    today.setHours(12, 0, 0, 0)
+
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+
+    const twoDaysAgo = new Date(today)
+    twoDaysAgo.setDate(today.getDate() - 2)
+
+    // ───────── TODAY DRAW (EMPTY) ─────────
     const todayDraw = await prisma.draw.create({
       data: {
         drawDate: today,
-        status: 'open',
         jackpotUsd: 10_000,
         rolloverUsd: 0,
       },
-    });
+    })
 
-    // ─────────────────────────────────────────
-    // 2) Yesterday: COMPLETED draw with a winner
-    // ─────────────────────────────────────────
-    const yDraw = await prisma.draw.create({
+    // ───────── YESTERDAY (WINNER) ─────────
+    const yesterdayDraw = await prisma.draw.create({
       data: {
         drawDate: yesterday,
-        status: 'completed',
         jackpotUsd: 10_000,
         rolloverUsd: 0,
       },
-    });
+    })
 
-    const wallet1 =
-      '9uuq6Uch7nEXAMPLEWALLET1111111111111111111111111';
-    const wallet2 =
-      '9uuq6Uch7nEXAMPLEWALLET2222222222222222222222222';
+    const wallet1 = '9uuq6Uch7nEXAMPLEWALLET11111111111111111'
+    const wallet2 = '9uuq6Uch7nEXAMPLEWALLET22222222222222222'
 
-    const winnerTicket = await prisma.ticket.create({
+    const winner = await prisma.ticket.create({
       data: {
-        drawId: yDraw.id,
+        drawId: yesterdayDraw.id,
         code: 'XPOT-ABC-123',
         walletAddress: wallet1,
-        status: 'won',
-        label: 'Yesterday’s XPOT draw',
+        label: 'Yesterday’s draw',
         jackpotUsd: 10_000,
+        status: 'won',
       },
-    });
+    })
 
     await prisma.ticket.createMany({
       data: [
         {
-          drawId: yDraw.id,
+          drawId: yesterdayDraw.id,
           code: 'XPOT-DEF-456',
           walletAddress: wallet2,
-          status: 'not-picked',
-          label: 'Yesterday’s XPOT draw',
+          label: 'Yesterday’s draw',
           jackpotUsd: 10_000,
+          status: 'not-picked',
         },
         {
-          drawId: yDraw.id,
+          drawId: yesterdayDraw.id,
           code: 'XPOT-GHI-789',
           walletAddress: wallet2,
-          status: 'expired',
-          label: 'Yesterday’s XPOT draw',
+          label: 'Yesterday’s draw',
           jackpotUsd: 10_000,
+          status: 'expired',
         },
       ],
-    });
+    })
 
     await prisma.draw.update({
-      where: { id: yDraw.id },
-      data: {
-        winningTicketId: winnerTicket.id,
-      },
-    });
+      where: { id: yesterdayDraw.id },
+      data: { winningTicketId: winner.id },
+    })
 
-    // ─────────────────────────────────────────
-    // 3) Two days ago: COMPLETED draw, rollover
-    // ─────────────────────────────────────────
+    // ───────── TWO DAYS AGO (ROLLOVER) ─────────
     const oldDraw = await prisma.draw.create({
       data: {
         drawDate: twoDaysAgo,
-        status: 'completed',
         jackpotUsd: 5_000,
         rolloverUsd: 5_000,
       },
-    });
+    })
 
     await prisma.ticket.createMany({
       data: [
@@ -142,30 +101,31 @@ export async function POST(req: NextRequest) {
           drawId: oldDraw.id,
           code: 'XPOT-JKL-111',
           walletAddress: wallet1,
-          status: 'claimed',
-          label: 'Two days ago – early XPOT test draw',
+          label: 'Early XPOT draw',
           jackpotUsd: 5_000,
+          status: 'claimed',
         },
         {
           drawId: oldDraw.id,
           code: 'XPOT-MNO-222',
           walletAddress: wallet2,
-          status: 'not-picked',
-          label: 'Two days ago – early XPOT test draw',
+          label: 'Early XPOT draw',
           jackpotUsd: 5_000,
+          status: 'not-picked',
         },
       ],
-    });
+    })
 
     return NextResponse.json({
       ok: true,
-      drawsSeeded: [todayDraw.id, yDraw.id, oldDraw.id],
-    });
+      draws: {
+        today: todayDraw.id,
+        yesterday: yesterdayDraw.id,
+        twoDaysAgo: oldDraw.id,
+      },
+    })
   } catch (err) {
-    console.error('[XPOT] Seed demo failed', err);
-    return NextResponse.json(
-      { ok: false, error: 'SEED_FAILED' },
-      { status: 500 }
-    );
+    console.error('[XPOT] Seed failed:', err)
+    return NextResponse.json({ ok: false, error: 'SEED_FAILED' }, { status: 500 })
   }
 }
