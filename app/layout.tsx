@@ -15,27 +15,18 @@ import { ClerkProvider } from '@clerk/nextjs';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
 
-// ─────────────────────────────────────────────
-// Solana config
-// ─────────────────────────────────────────────
-
 const endpoint = 'https://api.mainnet-beta.solana.com';
-
-// Empty array – Phantom and others are detected natively
 const wallets: any[] = [];
 
-// Clerk publishable key – must be set in env vars
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const publishableKey =
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 if (!publishableKey) {
+  // Fail fast so we don’t get a weird blank page
   throw new Error(
-    'Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY. Set it in your Vercel env vars.'
+    'Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY in env vars'
   );
 }
-
-// ─────────────────────────────────────────────
-// Root layout
-// ─────────────────────────────────────────────
 
 export default function RootLayout({
   children,
@@ -84,9 +75,7 @@ export default function RootLayout({
           <ConnectionProvider endpoint={endpoint}>
             <WalletProvider wallets={wallets} autoConnect>
               <WalletModalProvider>
-                {/* Auto-refresh on new deploy */}
                 <DeployWatcher />
-                {/* Dark / light toggle */}
                 <ThemeToggle />
                 {children}
               </WalletModalProvider>
