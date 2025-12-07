@@ -101,7 +101,7 @@ function WalletStatusHint() {
 const initialEntries: Entry[] = [];
 
 // ─────────────────────────────────────────────
-// Dashboard
+// Inner dashboard
 // ─────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -120,7 +120,6 @@ export default function DashboardPage() {
 
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
-  const winner = entries.find((e) => e.status === 'won');
 
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -128,8 +127,6 @@ export default function DashboardPage() {
 
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
-  const isXpotTooLow =
-    typeof xpotBalance === 'number' && !hasRequiredXpot;
 
   // ─────────────────────────────────────────────
   // Clerk user (for avatar + handle)
@@ -137,33 +134,26 @@ export default function DashboardPage() {
 
   const { user, isLoaded: isUserLoaded } = useUser();
 
-  const externalAccounts = ((user?.externalAccounts as any[]) || []).filter(
-    Boolean,
-  );
+  const externalAccounts = (user?.externalAccounts || []) as any[];
 
   const xAccount =
     externalAccounts.find((acc) => {
       const provider = (acc.provider ?? '') as string;
-      const p = provider.toLowerCase();
       return (
         provider === 'oauth_x' ||
         provider === 'oauth_twitter' ||
         provider === 'twitter' ||
-        p.includes('twitter') ||
-        p.includes('x')
+        provider.toLowerCase().includes('twitter') ||
+        provider.toLowerCase().includes('x')
       );
     }) || externalAccounts[0];
 
   const handle =
-    (xAccount?.username as string | undefined) ||
-    (xAccount?.screenName as string | undefined) ||
+    xAccount?.username ||
+    xAccount?.screenName ||
     null;
 
-  const avatar =
-    (xAccount?.imageUrl as string | undefined) ||
-    (user?.imageUrl as string | undefined) ||
-    null;
-
+  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
 
   // ─────────────────────────────────────────────
@@ -273,7 +263,7 @@ export default function DashboardPage() {
 
   // ─────────────────────────────────────────────
   // XPOT balance (via API route)
-// ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!publicKey) {
@@ -307,7 +297,7 @@ export default function DashboardPage() {
   }, [publicKey]);
 
   // ─────────────────────────────────────────────
-  // Load wallet-specific draw history
+  // Load wallet-specific draw history (preview)
   // ─────────────────────────────────────────────
 
   useEffect(() => {
@@ -467,12 +457,19 @@ export default function DashboardPage() {
     }
   }
 
+  // Normalize wallet + compute my tickets + winning state
   const normalizedWallet = currentWalletAddress?.toLowerCase();
   const myTickets: Entry[] = normalizedWallet
     ? entries.filter(
         (e) => e.walletAddress?.toLowerCase() === normalizedWallet,
       )
     : [];
+
+  const winner = entries.find((e) => e.status === 'won') || null;
+  const iWonToday =
+    !!winner &&
+    !!normalizedWallet &&
+    winner.walletAddress?.toLowerCase() === normalizedWallet;
 
   // ─────────────────────────────────────────────
   // Render
@@ -552,17 +549,9 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={handleClaimTicket}
-                disabled={
-                  !walletConnected ||
-                  claiming ||
-                  loadingTickets ||
-                  isXpotTooLow
-                }
+                disabled={!walletConnected || claiming || loadingTickets}
                 className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
-                  !walletConnected ||
-                  claiming ||
-                  loadingTickets ||
-                  isXpotTooLow
+                  !walletConnected || claiming || loadingTickets
                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
                 }`}
@@ -571,8 +560,6 @@ export default function DashboardPage() {
                   ? 'Connect wallet to get ticket'
                   : claiming
                   ? 'Processing...'
-                  : isXpotTooLow
-                  ? 'XPOT balance too low'
                   : 'Get today’s ticket'}
               </button>
             </div>
@@ -610,12 +597,16 @@ export default function DashboardPage() {
               <div className="space-y-4 px-0">
                 {/* Profile header */}
                 <section className="flex items-center justify-between border-b border-slate-900 bg-gradient-to-r from-slate-950 via-slate-900/40 to-slate-950 px-4 pt-3 pb-2">
+                  {/* Left: identity pill */}
                   <div className="inline-flex items-center gap-3 rounded-full bg-slate-950/80 px-3 py-2">
+                    {/* Avatar */}
                     <div className="h-9 w-9 overflow-hidden rounded-full bg-slate-800">
                       {avatar ? (
-                        <img
+                        <Image
                           src={avatar}
-                          alt={handle ? `@${handle}` : 'X avatar'}
+                          alt={handle || 'X avatar'}
+                          width={36}
+                          height={36}
                           className="h-full w-full object-cover"
                         />
                       ) : (
@@ -625,6 +616,7 @@ export default function DashboardPage() {
                       )}
                     </div>
 
+                    {/* Name + handle */}
                     <div className="flex flex-col leading-tight">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-slate-50">
@@ -652,6 +644,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
+                  {/* Right: more + logout */}
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -696,12 +689,6 @@ export default function DashboardPage() {
                     </span>
                   </p>
 
-                  {ticketsError && (
-                    <p className="mt-2 text-[11px] text-amber-300">
-                      {ticketsError}
-                    </p>
-                  )}
-
                   {!ticketClaimed ? (
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
@@ -727,13 +714,6 @@ export default function DashboardPage() {
                           </p>
                         )}
 
-                        {walletConnected && !claiming && isXpotTooLow && (
-                          <p className="mt-1 text-[11px] text-amber-300">
-                            Your XPOT balance is below today’s requirement of{' '}
-                            {REQUIRED_XPOT.toLocaleString()} XPOT.
-                          </p>
-                        )}
-
                         {claimError && (
                           <p className="mt-2 text-[11px] text-amber-300">
                             {claimError}
@@ -745,17 +725,13 @@ export default function DashboardPage() {
                         type="button"
                         onClick={handleClaimTicket}
                         disabled={
-                          !walletConnected ||
-                          claiming ||
-                          loadingTickets ||
-                          isXpotTooLow
+                          !walletConnected || claiming || loadingTickets
                         }
                         className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
-                          !walletConnected ||
-                          claiming ||
-                          loadingTickets ||
-                          isXpotTooLow
+                          !walletConnected
                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                            : claiming
+                            ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
                             : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
                         }`}
                       >
@@ -763,8 +739,6 @@ export default function DashboardPage() {
                           ? 'Connect wallet to get ticket'
                           : claiming
                           ? 'Generating ticket...'
-                          : isXpotTooLow
-                          ? 'XPOT balance too low'
                           : 'Get today’s ticket'}
                       </button>
                     </div>
@@ -810,28 +784,46 @@ export default function DashboardPage() {
                       the timer hits zero.
                     </p>
                   ) : winner ? (
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm text-slate-200">
-                          One ticket{' '}
-                          <span className="font-mono text-emerald-300">
-                            {winner.code}
-                          </span>{' '}
-                          hit today’s jackpot (preview).
+                    iWonToday ? (
+                      <div className="mt-3 rounded-2xl border border-emerald-500/60 bg-emerald-500/10 px-4 py-3 shadow-[0_0_30px_rgba(16,185,129,0.35)]">
+                        <p className="text-sm font-semibold text-emerald-100">
+                          🎉 You hit today’s XPOT.
                         </p>
-                        <p className="mt-1 text-xs text-slate-400">
-                          In the real draw, this will show the winning ticket
-                          and wallet once the countdown reaches zero.
+                        <p className="mt-1 text-xs text-emerald-50">
+                          Winning ticket:{' '}
+                          <span className="font-mono text-emerald-200">
+                            {winner.code}
+                          </span>
+                        </p>
+                        <p className="mt-1 text-[11px] text-emerald-100/90">
+                          The admin view will show your handle and unlock the
+                          claim flow here.
                         </p>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="mt-3 flex flex-col gap-2">
+                        <p className="text-sm text-slate-200">
+                          Today’s winning ticket is{' '}
+                          <span className="font-mono text-emerald-300">
+                            {winner.code}
+                          </span>
+                          .
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          In the full version, this panel will also show the
+                          winner’s X handle and claim status.
+                        </p>
+                      </div>
+                    )
                   ) : (
                     <p className="mt-3 text-sm text-slate-300">
-                      Your ticket is in today’s draw. The result will appear
-                      here when the timer hits zero.
+                      Your ticket is in today’s draw. As soon as the draw
+                      completes, the winning ticket and handle will appear
+                      here.
                     </p>
                   )}
 
+                  {/* X identity explainer */}
                   <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       XPOT identity system
@@ -954,7 +946,7 @@ export default function DashboardPage() {
                   </div>
                 </section>
 
-                {/* Draw history preview + winners placeholder */}
+                {/* Draw history preview + recent winners placeholder */}
                 <section className="pb-10 px-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-slate-200">
@@ -1024,6 +1016,7 @@ export default function DashboardPage() {
                     </div>
                   )}
 
+                  {/* Recent winners placeholder */}
                   <div className="mt-6 rounded-2xl border border-slate-900 bg-slate-950/60 px-4 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Recent winners
