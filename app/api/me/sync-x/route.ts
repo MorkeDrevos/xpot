@@ -4,62 +4,50 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
 export async function POST() {
-  // Clerk auth – no need to await
-  const { userId } = auth();
+  // In your project auth() is async -> await it
+  const { userId } = await auth();
 
   if (!userId) {
-    return NextResponse.json(
-      { ok: false, error: 'UNAUTH' },
-      { status: 401 },
-    );
+    return NextResponse.json({ ok: false, error: 'UNAUTH' }, { status: 401 });
   }
 
-  // Load Clerk user
-  const user = await clerkClient.users.getUser(userId);
+  // ✅ clerkClient is a function in your setup, call it to get the real client
+  const clerk = await clerkClient();
+  const user = await clerk.users.getUser(userId);
 
-  // Be forgiving when detecting the X account
-  const externalAccounts = (user.externalAccounts || []) as any[];
-
-  const xAccount =
-    externalAccounts.find((acc) => {
-      const provider = (acc.provider ?? '') as string;
-      return (
-        provider === 'oauth_x' ||
-        provider === 'oauth_twitter' ||
-        provider === 'twitter' ||
-        provider.toLowerCase().includes('twitter') ||
-        provider.toLowerCase().includes('x')
-      );
-    }) || externalAccounts[0];
+  // Find linked X / Twitter account
+  const xAccount = user.externalAccounts?.find((acc) => {
+    const provider = (acc.provider as string | undefined) ?? '';
+    return provider === 'oauth_x' || provider === 'twitter' || provider === 'oauth_twitter';
+  });
 
   if (!xAccount) {
     return NextResponse.json(
       { ok: false, error: 'NO_X_ACCOUNT' },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
-  const handle =
-    xAccount.username ||
-    xAccount.screenName ||
-    null;
-
-  const avatar = xAccount.imageUrl || user.imageUrl || null;
+  const handle = xAccount.username || null;
+  const avatar = xAccount.imageUrl || null;
   const name = user.fullName || handle || null;
+  const xId = xAccount.id || null;
 
-  // Use xId (unique in your Prisma schema) as the upsert key
+  // Upsert into your Prisma User table
   const dbUser = await prisma.user.upsert({
-    where: { xId: xAccount.id },
+    where: { clerkId: userId },
     create: {
-      xId: xAccount.id,
-      xHandle: handle ?? undefined,
-      xAvatarUrl: avatar ?? undefined,
-      xName: name ?? undefined,
+      clerkId: userId,
+      xId,
+      xHandle: handle,
+      xAvatarUrl: avatar,
+      xName: name,
     },
     update: {
-      xHandle: handle ?? undefined,
-      xAvatarUrl: avatar ?? undefined,
-      xName: name ?? undefined,
+      xId,
+      xHandle: handle,
+      xAvatarUrl: avatar,
+      xName: name,
     },
   });
 
