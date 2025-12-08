@@ -5,14 +5,10 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-import dynamicImport from 'next/dynamic';
-
-const WalletMultiButton = dynamicImport(
-  () => import('@solana/wallet-adapter-react-ui').then(m => m.WalletMultiButton),
-  { ssr: false }
-);
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useWallet } from '@solana/wallet-adapter-react';
+
 
 function WalletStatusHint() {
   const { wallets, connected } = useWallet();
