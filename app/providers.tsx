@@ -7,9 +7,9 @@ import { ReactNode, useMemo } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 
+// Only use adapters that exist in your installed version
 import {
   PhantomWalletAdapter,
-  BackpackWalletAdapter,
   SolflareWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
 
@@ -25,8 +25,8 @@ export function RootClientProviders({ children }: RootClientProvidersProps) {
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
-      new BackpackWalletAdapter(),
       new SolflareWalletAdapter(),
+      // If you later install extra adapters, add them here
     ],
     []
   );
