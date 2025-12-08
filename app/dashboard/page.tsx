@@ -1,8 +1,6 @@
 // app/dashboard/page.tsx
 'use client';
-
 export const dynamic = 'force-dynamic';
-
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
