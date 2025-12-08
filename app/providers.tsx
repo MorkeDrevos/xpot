@@ -8,6 +8,6 @@ type ProvidersProps = {
 };
 
 export default function Providers({ children }: ProvidersProps) {
-  // No NextAuth, no external providers for now – just render children
+  // No NextAuth / Clerk – just render children
   return <>{children}</>;
 }
