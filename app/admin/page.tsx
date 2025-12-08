@@ -104,16 +104,16 @@ function UsdPill({
 }) {
   const value = formatUsd(amount);
   const base =
-    'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
+    'inline-flex items-center justify-center h-[30px] rounded-full bg-slate-900/70 border border-slate-700/60 text-sky-200 font-semibold shadow-inner hover:shadow-[0_0_6px_rgba(56,189,248,0.15)] transition';
   const cls =
     size === 'sm'
-      ? `${base} px-2 py-0.5 text-xs`
-      : `${base} px-3 py-1 text-sm`;
+      ? `${base} px-3 text-[11px]`
+      : `${base} px-4 text-sm`;
 
   return (
     <span className={cls}>
       <span className="font-mono text-[0.92em]">{value}</span>
-      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">
+      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-slate-400">
         USD
       </span>
     </span>
@@ -134,22 +134,19 @@ function formatWinnerLabel(w: AdminWinner): string | null {
 
 function XpotPill({
   amount,
-  size = 'md',
 }: {
   amount: number | null | undefined;
-  size?: 'sm' | 'md';
 }) {
   const value = formatXpot(amount);
+
   const base =
-    'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
-  const cls =
-    size === 'sm'
-      ? `${base} px-2 py-0.5 text-xs`
-      : `${base} px-3 py-1 text-sm`;
+    'inline-flex items-baseline rounded-full bg-slate-950 text-slate-100 font-medium border border-white/10 px-3 py-0.5 text-xs shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]';
 
   return (
-    <span className={cls}>
-      <span className="font-mono text-[0.92em]">{value}</span>
+    <span className={base}>
+      <span className="font-mono text-[0.92em] tracking-wide">
+        {value}
+      </span>
     </span>
   );
 }
@@ -200,7 +197,7 @@ function CopyableWallet({ address }: { address: string }) {
 // ─────────────────────────────────────────────
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:opacity-40 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:opacity-40 disabled:cursor-not-allowed';
 
 const BTN_SECONDARY =
   'inline-flex items-center justify-center rounded-lg bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 transition disabled:opacity-40 disabled:cursor-not-allowed';
@@ -374,19 +371,44 @@ export default function AdminPage() {
         }),
       });
 
-      const r = res.reward;
+      const raw = res.reward as any;
+
+      // Normalise reward amount (XPOT amount)
+      const rewardAmount =
+        raw?.payoutUsd ??
+        raw?.payoutXpot ??
+        raw?.amountXpot ??
+        raw?.amountUsd ??
+        raw?.amount ??
+        0;
+
+      const xpotAmount = formatXpot(rewardAmount);
+
+      // Optional X handle if backend sends it
+      const xHandle: string | undefined =
+        raw?.xHandle ||
+        raw?.handle ||
+        raw?.user?.xHandle ||
+        raw?.user?.handle;
+
+      const wallet = raw?.walletAddress || '';
+      const shortWallet =
+        wallet && wallet.length > 8
+          ? `${wallet.slice(0, 4)}…${wallet.slice(-4)}`
+          : wallet || '(unknown wallet)';
+
+      const handlePart = xHandle ? ` @${xHandle}` : '';
+
       setBonusSuccess(
-        `Bonus ${formatUsd(r.amountUsd)} sent to ${r.ticketCode} (${r.walletAddress.slice(
-          0,
-          4,
-        )}…${r.walletAddress.slice(-4)}).`,
+        `Bonus ${xpotAmount} sent to ${raw.ticketCode}${handlePart} (${shortWallet}).`,
       );
 
+      // refresh winners list
       try {
         const winnersData = await authedFetch('/api/admin/winners');
         setWinners(winnersData.winners ?? []);
       } catch {
-        // ignore
+        // ignore refresh failure
       }
     } catch (err: any) {
       setBonusError(err.message || 'Failed to drop bonus XPOT');
@@ -397,62 +419,63 @@ export default function AdminPage() {
 
   // ── Pick main XPOT winner ─────────────────────────────────
 
-async function handlePickMainWinner() {
-  setPickError(null);
-  setPickSuccess(null);
+  async function handlePickMainWinner() {
+    setPickError(null);
+    setPickSuccess(null);
 
-  if (!adminToken) {
-    setPickError('Admin token missing. Unlock admin first.');
-    return;
-  }
-
-  setIsPickingWinner(true);
-  try {
-    const data = await authedFetch('/api/admin/pick-winner', {
-      method: 'POST',
-    });
-
-    const raw = data.winner as any;
-    if (!raw) throw new Error('No winner returned from API');
-
-    // 🔧 Normalise shape so payoutUsd is always present
-    const winner: AdminWinner = {
-      ...raw,
-      payoutUsd:
-        raw.payoutUsd ??
-        raw.payoutXpot ?? // common backend name
-        raw.amountUsd ??
-        raw.amountXpot ??
-        0,
-    };
-
-    setPickSuccess(
-      `Main XPOT winner: ${winner.ticketCode} (${winner.walletAddress.slice(
-        0,
-        4,
-      )}…${winner.walletAddress.slice(-4)}).`,
-    );
-
-    // 🔄 Refresh winners from canonical endpoint so UI matches after reload
-    try {
-      const winnersData = await authedFetch('/api/admin/winners');
-      setWinners(winnersData.winners ?? []);
-    } catch (err) {
-      console.error('[ADMIN] refresh winners after pick error', err);
-      // fallback: at least show the locally picked winner
-      setWinners((prev) => [winner, ...prev]);
+    if (!adminToken) {
+      setPickError('Admin token missing. Unlock admin first.');
+      return;
     }
 
-    // Close today’s draw in local state
-    setTodayDraw((prev) => (prev ? { ...prev, status: 'closed' } : prev));
-  } catch (err: any) {
-    setPickError(err.message || 'Failed to pick main XPOT winner');
-  } finally {
-    setIsPickingWinner(false);
+    setIsPickingWinner(true);
+    try {
+      const data = await authedFetch('/api/admin/pick-winner', {
+        method: 'POST',
+      });
+
+      const raw = data.winner as any;
+      if (!raw) throw new Error('No winner returned from API');
+
+      // 🔧 Normalise shape so payoutUsd is always present
+      const winner: AdminWinner = {
+        ...raw,
+        payoutUsd:
+          raw.payoutUsd ??
+          raw.payoutXpot ?? // common backend name
+          raw.amountUsd ??
+          raw.amountXpot ??
+          0,
+      };
+
+      setPickSuccess(
+        `Main XPOT winner: ${winner.ticketCode} (${winner.walletAddress.slice(
+          0,
+          4,
+        )}…${winner.walletAddress.slice(-4)}).`,
+      );
+
+      // 🔄 Refresh winners from canonical endpoint so UI matches after reload
+      try {
+        const winnersData = await authedFetch('/api/admin/winners');
+        setWinners(winnersData.winners ?? []);
+      } catch (err) {
+        console.error('[ADMIN] refresh winners after pick error', err);
+        // fallback: at least show the locally picked winner
+        setWinners((prev) => [winner, ...prev]);
+      }
+
+      // Close today’s draw in local state
+      setTodayDraw((prev) => (prev ? { ...prev, status: 'closed' } : prev));
+    } catch (err: any) {
+      setPickError(err.message || 'Failed to pick main XPOT winner');
+    } finally {
+      setIsPickingWinner(false);
+    }
   }
-}
 
   // ── Panic: reopen today’s draw ──────────────────────────────
+
   async function handleReopenDraw() {
     setTodayDrawError(null);
 
@@ -491,7 +514,7 @@ async function handlePickMainWinner() {
     }
 
     const txUrl = txInputs[winnerId]?.trim() || '';
-    if (!txUrl) {
+       if (!txUrl) {
       setMarkPaidError('Paste a TX link before marking as paid.');
       return;
     }
@@ -580,6 +603,7 @@ async function handlePickMainWinner() {
   }, [adminToken]);
 
   // ── Countdown until todayDraw.closesAt (daily loop) ───────────
+
   useEffect(() => {
     if (!todayDraw?.closesAt) {
       setCountdownText(null);
@@ -618,6 +642,7 @@ async function handlePickMainWinner() {
   }, [todayDraw?.closesAt]);
 
   // Clamp visibleTicketCount if tickets shrink / first load
+
   useEffect(() => {
     setVisibleTicketCount((prev) =>
       Math.min(prev, tickets.length || MAX_TODAY_TICKETS),
@@ -631,6 +656,7 @@ async function handlePickMainWinner() {
   }
 
   // Clamp visibleWinnerCount when winners list changes
+
   useEffect(() => {
     setVisibleWinnerCount((prev) => {
       if (winners.length === 0) return 0;
@@ -695,27 +721,26 @@ async function handlePickMainWinner() {
   // ─────────────────────────────────────────────
 
   return (
-    <main className="mx-auto max-w-7xl flex flex-col gap-6 px-4 py-6 text-slate-100">
+    <main className="mx-auto flex max-w-7xl flex-col gap-4 px-4 pt-0 pb-8 text-slate-100 sm:px-6 lg:px-8">
       {/* Header */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/" className="inline-flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-3">
             <Image
               src="/img/xpot-logo-light.png"
               alt="XPOT"
-              width={112}
-              height={30}
               priority
+              className="h-20 w-auto drop-shadow-[0_0_26px_rgba(52,211,153,0.45)] sm:h-24 lg:h-28 xl:h-32"
             />
           </Link>
           <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-            Admin console
+            OPERATIONS CENTER
           </span>
         </div>
 
         <div className="flex flex-col items-start gap-1 sm:items-end">
           <div className="flex items-center gap-2">
-            <h1 className="text-sm sm:text-base font-semibold text-white">
+            <h1 className="text-sm font-semibold text-white sm:text-base">
               Control room for today&apos;s XPOT.
             </h1>
 
@@ -733,69 +758,76 @@ async function handlePickMainWinner() {
         </div>
       </header>
 
-{/* Admin key card */}
-<section className="relative rounded-3xl bg-transparent">
-  {/* Glow background */}
-  <div className="pointer-events-none absolute -inset-8 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.25),transparent_45%),radial-gradient(circle_at_80%_100%,rgba(56,189,248,0.25),transparent_45%)] opacity-70 blur-2xl" />
+      {/* Admin key card */}
+      <section className="relative rounded-3xl">
+        {/* Glow background */}
+        <div className="pointer-events-none absolute -inset-8 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.25),transparent_45%),radial-gradient(circle_at_80%_100%,rgba(56,189,248,0.25),transparent_45%)] opacity-70 blur-2xl" />
 
-  {/* Glass card */}
-  <div className="relative rounded-3xl bg-black/35 backdrop-blur-xl border border-white/5 shadow-[0_0_60px_rgba(99,102,241,0.12)]">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm font-semibold text-white tracking-wide">
-          Admin key
-        </p>
-        <p className="mt-1 text-xs text-slate-400">
-          Enter your admin token to unlock XPOT operations.
-        </p>
-        {tokenAccepted && (
-          <p className="mt-1 text-xs font-semibold text-emerald-400">
-            Authentication successful. Secure access granted.
-          </p>
-        )}
-      </div>
+        {/* Glass card */}
+        <div className="relative rounded-3xl border border-white/5 bg-black/40 px-5 py-4 shadow-[0_0_60px_rgba(99,102,241,0.15)] backdrop-blur-xl sm:flex sm:items-center sm:justify-between sm:gap-4">
+          {/* Left copy */}
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-semibold tracking-wide text-white">
+              Admin key
+            </p>
 
-      <form
-        onSubmit={handleUnlock}
-        className="flex flex-1 flex-col gap-2 sm:max-w-md sm:flex-row"
-      >
-        <input
-          type="password"
-          className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-          value={tokenInput}
-          onChange={(e) => setTokenInput(e.target.value)}
-          placeholder="Paste admin token…"
-        />
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={isSavingToken || !tokenInput.trim()}
-            className={`${BTN_UTILITY} px-3 py-2 text-xs`}
-          >
-            {tokenAccepted ? 'Update key' : 'Unlock'}
-          </button>
-          {tokenAccepted && (
-            <button
-              type="button"
-              onClick={handleClearToken}
-              className={`${BTN_UTILITY} px-3 py-2 text-xs`}
+            <p
+              className={`text-xs leading-relaxed ${
+                tokenAccepted ? 'text-sky-300' : 'text-slate-400'
+              }`}
             >
-              Clear
+              Enter your admin token to unlock XPOT operations.
+              {tokenAccepted && ' Access level confirmed.'}
+            </p>
+          </div>
+
+          {/* Right input + buttons */}
+          <form
+            onSubmit={handleUnlock}
+            className="mt-3 flex w-full gap-2 sm:mt-0 sm:max-w-md"
+          >
+            <input
+              type="password"
+              className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              placeholder="Paste admin token…"
+            />
+
+            <button
+              type="submit"
+              disabled={isSavingToken || !tokenInput.trim()}
+              className={`${BTN_UTILITY} px-4 py-2 text-xs whitespace-nowrap`}
+            >
+              {tokenAccepted ? 'Update key' : 'Unlock'}
             </button>
-          )}
+
+            {tokenAccepted && (
+              <button
+                type="button"
+                onClick={handleClearToken}
+                className={`${BTN_UTILITY} px-4 py-2 text-xs`}
+              >
+                Clear
+              </button>
+            )}
+          </form>
         </div>
-      </form>
-    </div>
-  </div>
-</section>
+      </section>
 
       {/* Main grid: left (XPOT + summary + entries), right (winners) */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.1fr)]">
         {/* LEFT COLUMN */}
         <div className="space-y-4">
           {/* Big live XPOT card */}
-          <div className={`jackpot-shell ${isWarningCritical ? 'animate-[jackpotPulse_1.5s_ease-in-out_infinite]' : ''}`}>
-            <div className="jackpot-shell-inner">
+          <div
+            className={`jackpot-shell ${
+              isWarningCritical
+                ? 'animate-[jackpotPulse_1.5s_ease-in-out_infinite]'
+                : ''
+            }`}
+          >
+            <div className="jackpot-shell-inner py-6 lg:py-8">
               <JackpotPanel
                 isLocked={isDrawLocked}
                 onJackpotUsdChange={setLiveJackpotUsd}
@@ -806,7 +838,7 @@ async function handlePickMainWinner() {
           {/* Today’s XPOT summary card */}
           <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+              <div className="max-w-xl">
                 <p className="text-sm font-semibold text-slate-100">
                   Today&apos;s round
                 </p>
@@ -816,14 +848,17 @@ async function handlePickMainWinner() {
                 </p>
               </div>
 
-              {todayDraw && (
-                <div className="flex flex-col items-end gap-1 text-xs">
-                  <span className="text-slate-500">{drawDateLabel}</span>
-                  <span className="font-mono text-slate-200">
-                    {drawDateValue ? formatDate(drawDateValue) : '–'}
-                  </span>
-                </div>
-              )}
+              {/* Date / next draw – always rendered so the header stays balanced */}
+              <div className="flex flex-col items-start text-xs sm:items-end">
+                <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  {drawDateLabel}
+                </span>
+                <span className="mt-0.5 font-mono text-slate-200">
+                  {todayDraw && drawDateValue
+                    ? formatDate(drawDateValue)
+                    : '–'}
+                </span>
+              </div>
             </div>
 
             <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
@@ -831,13 +866,13 @@ async function handlePickMainWinner() {
                 <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
                   Round status
                 </p>
-                <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
+                <div className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
                   {todayLoading && <span>Loading...</span>}
                   {todayDraw && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                      className={`inline-flex h-[30px] items-center justify-center rounded-full px-3 text-[11px] uppercase tracking-[0.16em] ${
                         todayDraw.status === 'open'
-                          ? 'bg-emerald-500/10 text-emerald-300'
+                          ? 'border border-slate-600/50 bg-slate-800 text-slate-200'
                           : 'bg-slate-800 text-slate-300'
                       }`}
                     >
@@ -850,16 +885,18 @@ async function handlePickMainWinner() {
                       this automatically.
                     </span>
                   )}
-                </p>
+                </div>
               </div>
 
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
                   Entries in pool
                 </p>
-                <p className="mt-1 font-mono text-slate-100">
-                  {todayLoading ? '–' : todayDraw?.ticketsCount ?? 0}
-                </p>
+                <div className="mt-1">
+                  <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[11px] font-mono tracking-wide text-slate-100">
+                    {todayLoading ? '–' : todayDraw?.ticketsCount ?? 0}
+                  </span>
+                </div>
               </div>
 
               <div>
@@ -892,52 +929,63 @@ async function handlePickMainWinner() {
                 todayDraw.closesAt && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm sm:text-base">
-                      <span className="uppercase tracking-wide text-slate-500 text-xs">
+                      <span className="text-xs uppercase tracking-wide text-slate-500">
                         Closes in
                       </span>
                       <span
-                        className={`
-                          ml-2 font-mono text-2xl font-semibold mt-2 transition-all
-                          ${
-                            isWarningCritical
-                              ? 'text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg animate-pulse'
-                              : isWarningSoon
-                              ? 'text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded-lg'
-                              : 'text-emerald-300'
-                          }
-                        `}
+                        className={`ml-2 mt-2 rounded-lg px-2 py-0.5 font-mono text-2xl font-semibold transition-all ${
+                          isWarningCritical
+                            ? 'animate-pulse bg-amber-500/15 text-amber-300'
+                            : isWarningSoon
+                            ? 'bg-amber-500/10 text-amber-300'
+                            : 'bg-amber-500/5 text-amber-300'
+                        }`}
                       >
                         {countdownText}
                       </span>
                     </p>
 
                     <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                      <button
-                        type="button"
-                        disabled={
-                          isPickingWinner ||
-                          !adminToken ||
-                          todayLoading ||
-                          !todayDraw ||
-                          todayDraw.status !== 'open'
-                        }
-                        onClick={handlePickMainWinner}
-                        className={`
-  ${BTN_PRIMARY} primary-cta px-4 py-2 text-sm transition-all ease-out duration-300
-  ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
-`}
-                      >
-                        {isPickingWinner
-                          ? 'Picking winner…'
-                          : 'Select primary recipient'}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={
+                            isPickingWinner ||
+                            !adminToken ||
+                            todayLoading ||
+                            !todayDraw ||
+                            todayDraw.status !== 'open'
+                          }
+                          onClick={handlePickMainWinner}
+                          className={`${BTN_PRIMARY} primary-cta h-10 w-[272px] mr-[-3px] text-sm transition-all duration-300 ease-out ${
+                            isWarningCritical
+                              ? 'scale-[1.02] ring-2 ring-amber-400/40 shadow-lg'
+                              : ''
+                          }`}
+                        >
+                          Crown today&apos;s XPOT winner
+                        </button>
+
+                        {todayDraw?.status !== 'open' && (
+                          <button
+                            type="button"
+                            onClick={handleCreateTodayDraw}
+                            disabled={creatingDraw || !adminToken}
+                            className={`${BTN_SECONDARY} h-10 px-4 text-[11px] uppercase tracking-[0.16em]`}
+                          >
+                            {creatingDraw
+                              ? 'Creating round…'
+                              : 'Create today’s round'}
+                          </button>
+                        )}
+                      </div>
 
                       {todayDraw?.status === 'closed' && (
                         <button
                           type="button"
                           onClick={handleReopenDraw}
                           disabled={isReopeningDraw || !adminToken}
-                          className="inline-flex items-center justify-center rounded-lg border border-red-500/70 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-red-200 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center justify-center rounded-lg border border-red-500/70 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {isReopeningDraw ? 'Reopening…' : '🚨 Reopen draw (panic)'}
                         </button>
@@ -964,76 +1012,118 @@ async function handlePickMainWinner() {
           </section>
 
           {/* Drop bonus XPOT */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-100">
-              Drop bonus XPOT
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Fire a manual hype XPOT using today&apos;s ticket pool. Winner is
-              picked instantly from all tickets in today&apos;s draw.
-            </p>
+          <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/85 px-4 py-4 shadow-[0_20px_60px_rgba(15,23,42,0.85)]">
+            {/* Ambient glow */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(34,197,94,0.18),transparent_55%)] opacity-70" />
 
-            <form onSubmit={handleDropBonus} className="mt-4 space-y-4">
-              <div>
-                <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Amount
-                </label>
-                <div className="mt-1 flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-1">
+            <div className="relative flex flex-col gap-4">
+              {/* Header row */}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-50">
+                    Drop bonus XPOT
+                  </p>
+                  <p className="mt-1 max-w-xl text-xs text-slate-400">
+                    Fire a manual hype bonus from today&apos;s ticket pool. One
+                    extra winner is picked instantly from all tickets in
+                    today&apos;s draw.
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-end text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                  <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1">
+                    Manual bonus · Off-chain trigger
+                  </span>
+                </div>
+              </div>
+
+              {/* Form grid */}
+              <form
+                onSubmit={handleDropBonus}
+                className="mt-2 grid gap-6 md:grid-cols-[minmax(0,1.4fr)_280px]"
+              >
+                {/* LEFT – amount + presets */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Amount
+                    </label>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={100000}
+                          step={1000}
+                          className="h-10 w-32 rounded-xl border border-slate-700 bg-slate-900/80 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400/80"
+                          value={bonusAmount}
+                          onChange={(e) => setBonusAmount(e.target.value)}
+                        />
+                        <span className="text-xs text-slate-400">XPOT</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Quick presets
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {[100_000, 250_000, 500_000, 1_000_000].map((v) => {
+                        const isActive = Number(bonusAmount) === v;
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setBonusAmount(String(v))}
+                            className={`h-10 rounded-full px-4 text-xs font-medium ${
+                              isActive
+                                ? 'border border-emerald-400/70 bg-emerald-500/15 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.3)]'
+                                : 'border border-slate-700/70 bg-slate-900/80 text-slate-300 hover:border-slate-500'
+                            }`}
+                          >
+                            {v.toLocaleString()} XPOT
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT – label + CTA */}
+                <div className="flex w-full flex-col justify-between gap-3">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Label
+                    </label>
                     <input
-                      type="number"
-                      min={100000}
-                      step={1000}
-                      className="w-32 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-                      value={bonusAmount}
-                      onChange={(e) => setBonusAmount(e.target.value)}
+                      type="text"
+                      className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400/80"
+                      value={bonusLabel}
+                      onChange={(e) => setBonusLabel(e.target.value)}
+                      placeholder="Bonus XPOT"
                     />
-                    <span className="text-xs text-slate-400">XPOT</span>
+                    <p className="text-[11px] text-slate-500">
+                      Shown in the winners log so you can tell hype bonuses
+                      apart from the main XPOT.
+                    </p>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {[100_000, 250_000, 500_000, 1_000_000].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setBonusAmount(String(v))}
-                        className={`${BTN_SECONDARY} px-4 py-2 text-sm ${
-                          Number(bonusAmount) === v
-                            ? 'border-amber-400 bg-amber-500/10 text-amber-200'
-                            : 'border-slate-700 bg-slate-900 text-slate-300'
-                        }`}
-                      >
-                        {v.toLocaleString()} XPOT
-                      </button>
-                    ))}
+                  {/* CTA row */}
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={bonusSubmitting}
+                      className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 via-indigo-500 to-violet-500 text-sm font-semibold text-slate-50 shadow-[0_0_26px_rgba(79,70,229,0.6)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {bonusSubmitting ? 'Dropping bonus…' : 'Drop bonus XPOT'}
+                    </button>
                   </div>
                 </div>
-              </div>
+              </form>
 
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <div className="flex-1">
-                  <label className="block text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Label
-                  </label>
-                  <input
-                    type="text"
-                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-                    value={bonusLabel}
-                    onChange={(e) => setBonusLabel(e.target.value)}
-                    placeholder="Bonus XPOT"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={bonusSubmitting}
-                  className="mt-1 inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm disabled:cursor-not-allowed disabled:bg-emerald-500/40 sm:mt-0"
-                >
-                  {bonusSubmitting ? 'Dropping…' : 'Drop bonus XPOT'}
-                </button>
-              </div>
-
-              <div className="text-xs min-h-[1.25rem]">
+              {/* Status line */}
+              <div className="mt-3 min-h-[1.25rem] text-xs">
                 {bonusError && (
                   <p className="text-amber-300">{bonusError}</p>
                 )}
@@ -1041,7 +1131,7 @@ async function handlePickMainWinner() {
                   <p className="text-emerald-300">{bonusSuccess}</p>
                 )}
               </div>
-            </form>
+            </div>
           </section>
 
           {/* Today’s XPOT entries list */}
@@ -1121,173 +1211,179 @@ async function handlePickMainWinner() {
 
         {/* RIGHT COLUMN – recent winners */}
         <div className="space-y-4">
-          <section className="h-full rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-100">
-              Recent XPOT winners
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Internal log of the latest selected entries and reward status.
-            </p>
+          <section className="relative h-full overflow-hidden rounded-3xl border border-slate-800 bg-black/25 px-5 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.8)] backdrop-blur-xl">
+            {/* subtle ambient glow */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),transparent_65%),radial-gradient(circle_at_80%_100%,rgba(16,185,129,0.12),transparent_55%)] opacity-70" />
 
-            <div className="mt-3">
+            {/* Header */}
+            <div className="relative mb-4">
+              <p className="text-base font-semibold tracking-wide text-white">
+                Recent XPOT winners
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                Internal log of the latest entries and reward execution.
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="relative">
               {winnersLoading && (
-                <p className="text-xs text-slate-500">Loading results…</p>
+                <p className="text-xs text-slate-500">Loading records…</p>
               )}
 
               {winnersError && (
                 <p className="text-xs text-amber-300">{winnersError}</p>
               )}
 
-              {!winnersLoading &&
-                !winnersError &&
-                winners.length === 0 && (
-                  <p className="rounded-xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
-                    No completed draws yet. Once you pick winners and mark XPOT
-                    as paid, they&apos;ll appear here.
-                  </p>
-                )}
+              {!winnersLoading && !winnersError && winners.length === 0 && (
+                <p className="rounded-xl bg-slate-900/70 px-4 py-3 text-xs text-slate-500">
+                  No completed draws yet.
+                </p>
+              )}
 
-              {!winnersLoading &&
-                !winnersError &&
-                visibleWinners.length > 0 && (
-                  <div className="mt-2 space-y-3">
+              {!winnersLoading && !winnersError && visibleWinners.length > 0 && (
+                <>
+                  {/* Flat list, no cards – just clean rows */}
+                  <div className="mt-1 divide-y divide-slate-800/70 border-t border-slate-800/80">
                     {visibleWinners.map((w) => (
                       <article
                         key={w.id}
-                        className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-950/90 px-3 py-2 text-xs"
+                        className="group flex flex-col gap-2 py-4"
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-mono text-[11px] text-slate-100">
+                        {/* TOP ROW: ticket + label + date */}
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-mono text-[11px] text-slate-200">
                             {w.ticketCode}
                           </p>
+
                           <div className="flex items-center gap-2">
                             {(() => {
-                              const displayLabel = formatWinnerLabel(w);
-                              if (!displayLabel) return null;
+                              const label = formatWinnerLabel(w);
+                              if (!label) return null;
 
                               return (
                                 <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                                  className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em] ${
                                     w.kind === 'bonus'
-                                      ? 'bg-emerald-500/10 text-emerald-300'
-                                      : 'bg-slate-800 text-slate-200'
+                                      ? 'bg-emerald-500/12 text-emerald-300'
+                                      : 'bg-slate-800/70 text-slate-200'
                                   }`}
                                 >
-                                  {displayLabel}
+                                  {label}
                                 </span>
                               );
                             })()}
-                            <p className="text-[11px] text-slate-500">
+
+                            <span className="text-[11px] text-slate-500">
                               {formatDate(w.date)}
-                            </p>
+                            </span>
                           </div>
                         </div>
 
+                        {/* MIDDLE ROW: wallet */}
                         <CopyableWallet address={w.walletAddress} />
 
-                        <div className="flex items-center justify-between gap-3">
-                          <XpotPill amount={w.payoutUsd} size="sm" />
+                        {/* BOTTOM ROW: payout + actions */}
+                        <div className="mt-2 flex items-center justify-between gap-3">
+                          <XpotPill amount={w.payoutUsd} />
 
-                          <div className="flex flex-col items-end gap-1">
-                            {w.isPaidOut ? (
-                              w.txUrl && (
-                                <div className="flex items-center gap-2 text-[11px] text-emerald-300">
-                                  <span className="font-semibold">
-                                    Reward sent
-                                  </span>
-                                  <span className="text-emerald-400">·</span>
+                          {w.isPaidOut ? (
+                            w.txUrl && (
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-sky-300">
+                                <span className="font-semibold">
+                                  Reward sent
+                                </span>
+                                <span className="text-slate-500">·</span>
 
-                                  <a
-                                    href={w.txUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="underline decoration-emerald-400/40 hover:decoration-emerald-300 hover:text-emerald-200 transition-colors"
-                                  >
-                                    View TX
-                                  </a>
+                                <a
+                                  href={w.txUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="underline decoration-sky-400/40 hover:text-sky-200"
+                                >
+                                  View TX
+                                </a>
 
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      try {
-                                        await navigator.clipboard.writeText(
-                                          w.txUrl!,
-                                        );
-                                        setCopiedTxWinnerId(w.id);
-                                        setTimeout(
-                                          () => setCopiedTxWinnerId(null),
-                                          1200,
-                                        );
-                                      } catch (err) {
-                                        console.error(
-                                          'Failed to copy TX link',
-                                          err,
-                                        );
-                                      }
-                                    }}
-                                    className="rounded-md border border-emerald-500/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-emerald-200 hover:bg-emerald-500/10"
-                                  >
-                                    {copiedTxWinnerId === w.id
-                                      ? 'Copied'
-                                      : 'Copy TX'}
-                                  </button>
-                                </div>
-                              )
-                            ) : (
-                              <div className="flex flex-col items-end gap-1">
-                                <input
-                                  type="text"
-                                  placeholder="Paste TX link…"
-                                  className="w-44 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
-                                  value={txInputs[w.id] ?? ''}
-                                  onChange={(e) =>
-                                    setTxInputs((prev) => ({
-                                      ...prev,
-                                      [w.id]: e.target.value,
-                                    }))
-                                  }
-                                />
                                 <button
                                   type="button"
-                                  onClick={() => handleMarkAsPaid(w.id)}
-                                  disabled={savingPaidId === w.id}
-                                  className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(
+                                        w.txUrl!,
+                                      );
+                                      setCopiedTxWinnerId(w.id);
+                                      setTimeout(
+                                        () => setCopiedTxWinnerId(null),
+                                        1200,
+                                      );
+                                    } catch {
+                                      // ignore
+                                    }
+                                  }}
+                                  className="rounded-full border border-sky-400/40 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-sky-200 hover:bg-sky-500/10"
                                 >
-                                  {savingPaidId === w.id
-                                    ? 'Saving…'
-                                    : 'Mark as paid'}
+                                  {copiedTxWinnerId === w.id
+                                    ? 'Copied'
+                                    : 'Copy TX'}
                                 </button>
                               </div>
-                            )}
-                          </div>
+                            )
+                          ) : (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder="Paste TX link…"
+                                className="w-44 rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
+                                value={txInputs[w.id] ?? ''}
+                                onChange={(e) =>
+                                  setTxInputs((prev) => ({
+                                    ...prev,
+                                    [w.id]: e.target.value,
+                                  }))
+                                }
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleMarkAsPaid(w.id)}
+                                disabled={savingPaidId === w.id}
+                                className={`${BTN_UTILITY} px-4 py-1.5 text-[11px]`}
+                              >
+                                {savingPaidId === w.id
+                                  ? 'Saving…'
+                                  : 'Mark as paid'}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </article>
                     ))}
-
-                    {markPaidError && (
-                      <p className="mt-2 text-xs text-amber-300">
-                        {markPaidError}
-                      </p>
-                    )}
-
-                    <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-                      <p>
-                        Showing latest {visibleWinners.length} of{' '}
-                        {winners.length} winners
-                      </p>
-
-                      {visibleWinners.length < winners.length && (
-                        <button
-                          type="button"
-                          onClick={handleLoadMoreWinners}
-                          className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
-                        >
-                          Load more
-                        </button>
-                      )}
-                    </div>
                   </div>
-                )}
+
+                  {markPaidError && (
+                    <p className="mt-2 text-xs text-amber-300">
+                      {markPaidError}
+                    </p>
+                  )}
+
+                  {/* FOOTER */}
+                  <div className="mt-2 flex items-center justify-between border-t border-slate-800/80 pt-2 text-xs text-slate-400">
+                    <p>
+                      Showing latest {visibleWinners.length} of{' '}
+                      {winners.length}
+                    </p>
+
+                    {visibleWinners.length < winners.length && (
+                      <button
+                        type="button"
+                        onClick={handleLoadMoreWinners}
+                        className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
+                      >
+                        Load more
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </section>
         </div>
