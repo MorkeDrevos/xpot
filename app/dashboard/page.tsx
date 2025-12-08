@@ -11,6 +11,8 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { REQUIRED_XPOT } from '../../lib/xpot';
 import { useUser, SignOutButton, SignedIn, SignedOut } from '@clerk/nextjs';
 import { XpotSignInModal } from '@/components/XpotSignInModal';
+import { XpotPageShell } from '@/components/XpotPageShell';
+import { XpotCard } from '@/components/XpotCard';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -540,12 +542,30 @@ export default function DashboardPage() {
 
       {/* Show full dashboard ONLY when signed in */}
       <SignedIn>
-        <div className="relative min-h-screen bg-black text-slate-50">
-          {/* Optional: debug logs */}
-          {/* <WalletDebug /> */}
+        {/* <WalletDebug /> */}
 
-          {/* Mobile top bar */}
-          <header className="flex items-center justify-between px-4 py-3 md:hidden">
+        <XpotPageShell
+          title="XPOT holder dashboard"
+          subtitle="Your XPOT eligibility, entries and rewards overview."
+          rightSlot={
+            <div className="flex items-center gap-3">
+              <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">
+                <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs !bg-emerald-500/90 !text-slate-950 hover:!bg-emerald-400" />
+              </div>
+
+              <SignOutButton redirectUrl="/">
+                <button
+                  type="button"
+                  className="hidden h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100 md:inline-flex md:items-center"
+                >
+                  Log out
+                </button>
+              </SignOutButton>
+            </div>
+          }
+        >
+          {/* Mobile top bar (inside shell for consistency) */}
+          <header className="mb-4 flex items-center justify-between md:hidden">
             <Link href="/" className="flex items-center gap-2">
               <Image
                 src="/img/xpot-logo-light.png"
@@ -559,12 +579,12 @@ export default function DashboardPage() {
             <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
           </header>
 
-          <div className="mx-auto flex max-w-6xl">
+          <div className="flex gap-6">
             {/* Left nav */}
-            <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-0 pb-4 md:flex flex-col">
-              <div className="space-y-5">
+            <aside className="hidden w-56 border-r border-slate-900 px-3 pb-4 md:flex md:flex-col">
+              <div className="space-y-5 pt-1">
                 {/* Logo */}
-                <div className="pt-3 px-1">
+                <div className="px-1 pt-1">
                   <Link href="/" className="inline-flex flex-col gap-1">
                     <Image
                       src="/img/xpot-logo-light.png"
@@ -577,19 +597,19 @@ export default function DashboardPage() {
                 </div>
 
                 <SignOutButton redirectUrl="/">
-  <button
-    type="button"
-    className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
-  >
-    Log out
-  </button>
-</SignOutButton>
+                  <button
+                    type="button"
+                    className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
+                  >
+                    Log out
+                  </button>
+                </SignOutButton>
 
                 {/* Nav */}
                 <nav className="space-y-1 text-sm">
                   <Link
                     href="/dashboard"
-                    className="flex items-center gap-3 rounded-full px-3 py-2 font-medium bg-slate-900 text-slate-50"
+                    className="flex items-center gap-3 rounded-full bg-slate-900 px-3 py-2 font-medium text-slate-50"
                   >
                     <span className="text-lg">🏠</span>
                     <span>Dashboard</span>
@@ -617,10 +637,10 @@ export default function DashboardPage() {
                   type="button"
                   onClick={handleClaimTicket}
                   disabled={!walletConnected || claiming || loadingTickets}
-                  className={`btn-premium mt-3 w-full rounded-full py-2 text-sm font-semibold ${
+                  className={`mt-3 w-full rounded-full py-2 text-sm font-semibold ${
                     !walletConnected || claiming || loadingTickets
-                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow'
+                      ? 'cursor-not-allowed bg-slate-800 text-slate-500'
+                      : 'toolbar-glow bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black'
                   }`}
                 >
                   {!walletConnected
@@ -630,16 +650,14 @@ export default function DashboardPage() {
                     : 'Get today’s ticket'}
                 </button>
               </div>
-
-              <div className="mt-auto text-xs text-slate-500" />
             </aside>
 
-            {/* Main shell */}
-            <div className="flex flex-1 gap-6 rounded-[28px] border border-slate-800/70 bg-[#020617] shadow-[0_30px_100px_rgba(0,0,0,0.9)] overflow-hidden">
+            {/* Main content + right sidebar */}
+            <div className="flex flex-1 gap-6 rounded-[28px] border border-slate-800/70 bg-slate-950/40 shadow-[0_30px_100px_rgba(0,0,0,0.9)]">
               {/* Center column */}
-              <section className="min-h-screen flex-1">
+              <section className="min-h-full flex-1">
                 {/* Sticky header */}
-                <header className="sticky top-0 z-10 border-b border-slate-900 bg-black/70 px-4 py-3 backdrop-blur">
+                <header className="sticky top-0 z-10 border-b border-slate-900 bg-slate-950/80 px-4 py-3 backdrop-blur">
                   <div className="flex items-center justify-between">
                     <div>
                       <h1 className="text-2xl font-semibold tracking-tight">
@@ -711,7 +729,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* Right: more + logout */}
+                    {/* Right: more + logout (mobile/center area) */}
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -721,32 +739,26 @@ export default function DashboardPage() {
                       </button>
 
                       <SignOutButton redirectUrl="/">
-  <button
-    type="button"
-    className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
-  >
-    Log out
-  </button>
-</SignOutButton>
+                        <button
+                          type="button"
+                          className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100 md:hidden"
+                        >
+                          Log out
+                        </button>
+                      </SignOutButton>
                     </div>
                   </section>
 
-                  {/* Today’s ticket + result + history + winners go here */}
-                  {/* Keep your existing sections for:
-                        - Today’s ticket
-                        - Today’s result
-                        - My recent tickets
-                        - Recent winners
-                        exactly as you had them before,
-                        inside this Scroll content block.
-                   */}
+                  {/* TODO: your detailed “Today’s ticket / result / history / winners” sections live here.
+                      You can keep or reinsert them exactly as before, inside this space.
+                  */}
                 </div>
               </section>
 
               {/* Right sidebar */}
-              <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
+              <aside className="hidden w-80 flex-col gap-4 px-4 py-4 lg:flex">
                 {/* Wallet card */}
-                <div className="premium-card p-4">
+                <XpotCard className="p-4">
                   <h3 className="text-sm font-semibold">Wallet</h3>
 
                   <p className="mt-1 text-xs text-slate-400">
@@ -754,7 +766,7 @@ export default function DashboardPage() {
                   </p>
 
                   <div className="mt-3">
-                    <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
+                    <WalletMultiButton className="w-full !h-9 !rounded-full !text-sm" />
                     <WalletStatusHint />
                   </div>
 
@@ -812,10 +824,10 @@ export default function DashboardPage() {
                     XPOT uses X as the identity layer. We only read your public
                     wallet balance to check eligibility.
                   </p>
-                </div>
+                </XpotCard>
 
                 {/* Eligibility status card */}
-                <div className="premium-card p-4">
+                <XpotCard className="p-4">
                   <h3 className="text-sm font-semibold">
                     Today’s eligibility
                   </h3>
@@ -874,14 +886,14 @@ export default function DashboardPage() {
                       )}
                     </div>
                   )}
-                </div>
+                </XpotCard>
 
                 {/* How it works */}
-                <div className="premium-card p-4">
+                <XpotCard className="p-4">
                   <h3 className="text-sm font-semibold">
                     How today’s draw works
                   </h3>
-                  <ul className="mt-2 text-xs text-slate-400 space-y-1">
+                  <ul className="mt-2 space-y-1 text-xs text-slate-400">
                     <li>• Get exactly one ticket per wallet.</li>
                     <li>
                       • At entry time, your wallet must hold at least{' '}
@@ -896,11 +908,11 @@ export default function DashboardPage() {
                       • Winner has 24 hours to collect or the XPOT rolls over.
                     </li>
                   </ul>
-                </div>
+                </XpotCard>
               </aside>
             </div>
           </div>
-        </div>
+        </XpotPageShell>
       </SignedIn>
     </>
   );
