@@ -4,7 +4,7 @@ import './globals.css';
 
 import { ClerkProvider } from '@clerk/nextjs';
 import PreLaunchBanner from '@/components/PreLaunchBanner';
-import RootClientProviders from './providers';
+import { RootClientProviders } from './providers';
 
 export const metadata: Metadata = {
   title: 'XPOT',
