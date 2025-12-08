@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-import dynamic from 'next/dynamic';
+import dynamicImport from 'next/dynamic';
 
-const WalletMultiButton = dynamic(
+const WalletMultiButton = dynamicImport(
   () => import('@solana/wallet-adapter-react-ui').then(m => m.WalletMultiButton),
   { ssr: false }
 );
