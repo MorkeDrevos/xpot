@@ -544,6 +544,9 @@ export default function DashboardClient() {
     {/* Show full dashboard ONLY when signed in */}
     <SignedIn>
       <div className="relative min-h-screen bg-black text-slate-50">
+        {/* Optional: debug logs */}
+         {/* <WalletDebug /> */}
+
 
           {/* Mobile top bar */}
           <header className="flex items-center justify-between px-4 py-3 md:hidden">
