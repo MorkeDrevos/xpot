@@ -411,17 +411,6 @@ export default function DashboardPage() {
     <div className="relative min-h-screen bg-black text-slate-50">
       <WalletDebug />
 
-      {/* TEMP BUILD MARKER – REMOVE WHEN DONE */}
-      <div
-        className="text-center text-xs py-2 uppercase tracking-widest font-semibold"
-        style={{
-          background: 'linear-gradient(90deg, #6b21a8, #be185d)',
-          color: '#ffffff',
-        }}
-      >
-        PRE-LAUNCH MODE · XPOT TOKEN NOT DEPLOYED
-      </div>
-
       {/* Mobile top bar */}
       <header className="flex items-center justify-between px-4 py-3 md:hidden">
         <Link href="/" className="flex items-center gap-2">
