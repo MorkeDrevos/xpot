@@ -576,11 +576,14 @@ export default function DashboardPage() {
                   </Link>
                 </div>
 
-                <SignOutButton redirectUrl="/dashboard">
-                  <button className="text-xs text-slate-400 hover:text-white">
-                    Log out
-                  </button>
-                </SignOutButton>
+                <SignOutButton redirectUrl="/">
+  <button
+    type="button"
+    className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
+  >
+    Log out
+  </button>
+</SignOutButton>
 
                 {/* Nav */}
                 <nav className="space-y-1 text-sm">
@@ -717,14 +720,14 @@ export default function DashboardPage() {
                         ⋯
                       </button>
 
-                      <SignOutButton redirectUrl="/dashboard">
-                        <button
-                          type="button"
-                          className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
-                        >
-                          Log out
-                        </button>
-                      </SignOutButton>
+                      <SignOutButton redirectUrl="/">
+  <button
+    type="button"
+    className="h-8 rounded-full border border-slate-800 px-3 text-[11px] font-medium text-slate-400 hover:border-slate-600 hover:bg-slate-900 hover:text-slate-100"
+  >
+    Log out
+  </button>
+</SignOutButton>
                     </div>
                   </section>
 
