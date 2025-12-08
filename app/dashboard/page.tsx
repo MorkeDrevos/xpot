@@ -11,7 +11,6 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { REQUIRED_XPOT } from '@/lib/xpot';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
