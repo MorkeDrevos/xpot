@@ -732,163 +732,157 @@ export default function DashboardPage() {
                     </div>
                   </section>
 
-                   {/* Right sidebar */}
-            <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
-              {/* Wallet card */}
-              <div className="premium-card p-4">
-                <h3 className="text-sm font-semibold">Wallet</h3>
+                            {/* Right sidebar */}
+          <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
+            {/* Wallet card */}
+            <div className="premium-card p-4">
+              <h3 className="text-sm font-semibold">Wallet</h3>
 
-                <p className="mt-1 text-xs text-slate-400">
-                  Connect a wallet before getting today’s ticket.
-                </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Connect a wallet before getting today’s ticket.
+              </p>
 
-                <div className="mt-3">
-                  <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
-                  <WalletStatusHint />
-                </div>
-
-                {publicKey && (
-                  <div className="mt-3 text-xs text-slate-300">
-                    <p className="break-all">
-                      Wallet:{' '}
-                      <span className="font-mono">
-                        {publicKey.toBase58()}
-                      </span>
-                    </p>
-
-                    <p className="mt-1">
-                      XPOT balance:{' '}
-                      {xpotBalance === null && publicKey
-                        ? 'Checking...'
-                        : xpotBalance === 'error'
-                        ? 'Unavailable'
-                        : typeof xpotBalance === 'number'
-                        ? `${Math.floor(
-                            xpotBalance,
-                          ).toLocaleString()} XPOT`
-                        : '-'}
-                    </p>
-
-                    {connected && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await disconnect();
-                            window.location.reload();
-                          } catch (err) {
-                            console.error(
-                              'Failed to disconnect wallet',
-                              err,
-                            );
-                          }
-                        }}
-                        className="mt-3 w-full rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-500 hover:bg-slate-900"
-                      >
-                        Disconnect wallet
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {!publicKey && (
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    Phantom and other Solana wallets work here.
-                  </p>
-                )}
-
-                <p className="mt-3 text-[11px] text-slate-500">
-                  XPOT uses X as the identity layer. We only read your public
-                  wallet balance to check eligibility.
-                </p>
+              <div className="mt-3">
+                <WalletMultiButton className="w-full !rounded-full !h-9 !text-sm" />
+                <WalletStatusHint />
               </div>
 
-              {/* Eligibility status card */}
-              <div className="premium-card p-4">
-                <h3 className="text-sm font-semibold">
-                  Today’s eligibility
-                </h3>
-
-                {!walletConnected && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Connect a wallet to see if you currently qualify for
-                    today’s draw.
-                  </p>
-                )}
-
-                {walletConnected && (
-                  <div className="mt-2 text-xs">
-                    {xpotBalance === null && (
-                      <p className="text-slate-500">
-                        Checking XPOT balance…
-                      </p>
-                    )}
-
-                    {xpotBalance === 'error' && (
-                      <p className="text-amber-300">
-                        We couldn’t read your XPOT balance. Try again in a
-                        moment.
-                      </p>
-                    )}
-
-                    {typeof xpotBalance === 'number' && (
-                      <>
-                        <p
-                          className={
-                            hasRequiredXpot
-                              ? 'text-emerald-300'
-                              : 'text-amber-300'
-                          }
-                        >
-                          {hasRequiredXpot
-                            ? 'You currently meet the XPOT requirement for today’s draw.'
-                            : 'Your XPOT balance is below today’s requirement.'}
-                        </p>
-                        <p className="mt-1 text-slate-400">
-                          Current balance:{' '}
-                          <span className="font-mono text-slate-100">
-                            {Math.floor(
-                              xpotBalance,
-                            ).toLocaleString()}{' '}
-                            XPOT
-                          </span>
-                        </p>
-                        <p className="text-slate-400">
-                          Minimum required:{' '}
-                          <span className="font-mono text-slate-100">
-                            {REQUIRED_XPOT.toLocaleString()} XPOT
-                          </span>
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* How it works */}
-              <div className="premium-card p-4">
-                <h3 className="text-sm font-semibold">
-                  How today’s draw works
-                </h3>
-                <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                  <li>• Get exactly one ticket per wallet.</li>
-                  <li>
-                    • At entry time, your wallet must hold at least{' '}
-                    <span className="font-semibold text-emerald-300">
-                      {REQUIRED_XPOT.toLocaleString()} XPOT
+              {publicKey && (
+                <div className="mt-3 text-xs text-slate-300">
+                  <p className="break-all">
+                    Wallet:{' '}
+                    <span className="font-mono">
+                      {publicKey.toBase58()}
                     </span>
-                    .
-                  </li>
-                  <li>• Wallet is only checked when you get your ticket.</li>
-                  <li>• When the timer hits zero, one ticket wins.</li>
-                  <li>
-                    • Winner has 24 hours to collect or the XPOT rolls over.
-                  </li>
-                </ul>
-              </div>
-            </aside>
-          </div>
+                  </p>
+
+                  <p className="mt-1">
+                    XPOT balance:{' '}
+                    {xpotBalance === null && publicKey
+                      ? 'Checking...'
+                      : xpotBalance === 'error'
+                      ? 'Unavailable'
+                      : typeof xpotBalance === 'number'
+                      ? `${Math.floor(xpotBalance).toLocaleString()} XPOT`
+                      : '-'}
+                  </p>
+
+                  {connected && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await disconnect();
+                          window.location.reload();
+                        } catch (err) {
+                          console.error('Failed to disconnect wallet', err);
+                        }
+                      }}
+                      className="mt-3 w-full rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-500 hover:bg-slate-900"
+                    >
+                      Disconnect wallet
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {!publicKey && (
+                <p className="mt-2 text-[11px] text-slate-500">
+                  Phantom and other Solana wallets work here.
+                </p>
+              )}
+
+              <p className="mt-3 text-[11px] text-slate-500">
+                XPOT uses X as the identity layer. We only read your public
+                wallet balance to check eligibility.
+              </p>
+            </div>
+
+            {/* Eligibility status card */}
+            <div className="premium-card p-4">
+              <h3 className="text-sm font-semibold">
+                Today’s eligibility
+              </h3>
+
+              {!walletConnected && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Connect a wallet to see if you currently qualify for
+                  today’s draw.
+                </p>
+              )}
+
+              {walletConnected && (
+                <div className="mt-2 text-xs">
+                  {xpotBalance === null && (
+                    <p className="text-slate-500">
+                      Checking XPOT balance…
+                    </p>
+                  )}
+
+                  {xpotBalance === 'error' && (
+                    <p className="text-amber-300">
+                      We couldn’t read your XPOT balance. Try again in a
+                      moment.
+                    </p>
+                  )}
+
+                  {typeof xpotBalance === 'number' && (
+                    <>
+                      <p
+                        className={
+                          hasRequiredXpot
+                            ? 'text-emerald-300'
+                            : 'text-amber-300'
+                        }
+                      >
+                        {hasRequiredXpot
+                          ? 'You currently meet the XPOT requirement for today’s draw.'
+                          : 'Your XPOT balance is below today’s requirement.'}
+                      </p>
+                      <p className="mt-1 text-slate-400">
+                        Current balance:{' '}
+                        <span className="font-mono text-slate-100">
+                          {Math.floor(xpotBalance).toLocaleString()} XPOT
+                        </span>
+                      </p>
+                      <p className="text-slate-400">
+                        Minimum required:{' '}
+                        <span className="font-mono text-slate-100">
+                          {REQUIRED_XPOT.toLocaleString()} XPOT
+                        </span>
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* How it works */}
+            <div className="premium-card p-4">
+              <h3 className="text-sm font-semibold">
+                How today’s draw works
+              </h3>
+              <ul className="mt-2 text-xs text-slate-400 space-y-1">
+                <li>• Get exactly one ticket per wallet.</li>
+                <li>
+                  • At entry time, your wallet must hold at least{' '}
+                  <span className="font-semibold text-emerald-300">
+                    {REQUIRED_XPOT.toLocaleString()} XPOT
+                  </span>
+                  .
+                </li>
+                <li>• Wallet is only checked when you get your ticket.</li>
+                <li>• When the timer hits zero, one ticket wins.</li>
+                <li>
+                  • Winner has 24 hours to collect or the XPOT rolls over.
+                </li>
+              </ul>
+            </div>
+          </aside>
         </div>
       </div>
+    </div>
+  </SignedIn>
+</>
   );
 }
