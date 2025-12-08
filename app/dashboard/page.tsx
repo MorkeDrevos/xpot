@@ -1,4 +1,4 @@
-// app/dashboard/page.tsx
+// app/dashboard/DashboardClient.tsx
 'use client';
 
 import Link from 'next/link';
