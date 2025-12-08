@@ -1,13 +1,10 @@
 // components/XpotAccessGate.tsx
 'use client';
 
-import type { ReactNode } from 'react';
+import { ReactNode } from 'react';
 
-type XpotAccessGateProps = {
-  children: ReactNode;
-};
+type Props = { children: ReactNode };
 
-export default function XpotAccessGate({ children }: XpotAccessGateProps) {
-  // Clerk removed – gate is now a simple pass-through
+export default function XpotAccessGate({ children }: Props) {
   return <>{children}</>;
 }
