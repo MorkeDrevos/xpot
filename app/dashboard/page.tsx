@@ -1,6 +1,8 @@
 // app/dashboard/page.tsx
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
@@ -143,7 +145,7 @@ export default function DashboardPage() {
 
   // ─────────────────────────────────────────────
   // Clerk user (for avatar + handle)
-  // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 
   const { user, isLoaded: isUserLoaded } = useUser();
 
@@ -308,7 +310,7 @@ export default function DashboardPage() {
 
   // ─────────────────────────────────────────────
   // Load wallet-specific draw history (preview)
-  // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!publicKey) {
@@ -542,7 +544,7 @@ export default function DashboardPage() {
 
       {/* Show full dashboard ONLY when signed in */}
       <SignedIn>
-        {/* <WalletDebug /> */}
+        <WalletDebug />
 
         <XpotPageShell
           title="XPOT holder dashboard"
@@ -649,6 +651,12 @@ export default function DashboardPage() {
                     ? 'Processing...'
                     : 'Get today’s ticket'}
                 </button>
+
+                {ticketsError && (
+                  <p className="text-[11px] text-amber-300">
+                    {ticketsError}
+                  </p>
+                )}
               </div>
             </aside>
 
@@ -749,9 +757,416 @@ export default function DashboardPage() {
                     </div>
                   </section>
 
-                  {/* TODO: your detailed “Today’s ticket / result / history / winners” sections live here.
-                      You can keep or reinsert them exactly as before, inside this space.
-                  */}
+                  {/* Today’s ticket */}
+                  <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
+                    <h2 className="text-sm font-semibold text-emerald-100">
+                      Today’s ticket
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-400">
+                      One ticket per wallet per draw. You must hold at least{' '}
+                      <span className="font-semibold text-emerald-300">
+                        {REQUIRED_XPOT.toLocaleString()} XPOT
+                      </span>{' '}
+                      at the moment you get your ticket. You can always buy or
+                      sell again later.
+                    </p>
+
+                    {/* Jackpot state (with rollover) */}
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      <span className="font-semibold text-slate-200">
+                        Today’s jackpot:
+                      </span>{' '}
+                      {todaysTicket?.jackpotUsd || '$10,000'}{' '}
+                      <span className="text-slate-500">
+                        · If the winner doesn’t collect in time, the jackpot
+                        rolls into the next draw.
+                      </span>
+                    </p>
+
+                    {!ticketClaimed ? (
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm text-slate-200">
+                            Get your ticket for today’s jackpot.
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Your ticket will be tied to your connected wallet
+                            for today’s draw.
+                          </p>
+
+                          {claiming && (
+                            <p className="mt-1 text-[11px] text-emerald-300 animate-pulse">
+                              Verifying wallet → Locking today’s draw → Minting
+                              ticket…
+                            </p>
+                          )}
+
+                          {!walletConnected && (
+                            <p className="mt-1 text-[11px] text-amber-300">
+                              Connect your wallet on the right to get today’s
+                              ticket.
+                            </p>
+                          )}
+
+                          {claimError && (
+                            <p className="mt-2 text-[11px] text-amber-300">
+                              {claimError}
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleClaimTicket}
+                          disabled={
+                            !walletConnected || claiming || loadingTickets
+                          }
+                          className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
+                            !walletConnected
+                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                              : claiming
+                              ? 'bg-slate-900 text-slate-300 animate-pulse cursor-wait'
+                              : 'bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black hover:brightness-110 toolbar-glow'
+                          }`}
+                        >
+                          {!walletConnected
+                            ? 'Connect wallet to get ticket'
+                            : claiming
+                            ? 'Generating ticket...'
+                            : 'Get today’s ticket'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm text-emerald-100">
+                            ✅ Your ticket is in today’s draw.
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            Come back when the countdown hits zero to see if you
+                            won.
+                          </p>
+                          {todaysTicket && (
+                            <p className="mt-2 text-xs text-slate-300">
+                              Ticket code:{' '}
+                              <span className="font-mono text-emerald-300">
+                                {todaysTicket.code}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </article>
+
+                  {/* Today’s result + identity explainer */}
+                  <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
+                    <h2 className="text-sm font-semibold text-slate-200">
+                      Today’s result
+                    </h2>
+
+                    {!walletConnected ? (
+                      <p className="mt-3 text-sm text-slate-300">
+                        Connect your wallet and get today’s ticket to join the
+                        draw. Once the countdown hits zero, today’s winning
+                        ticket will appear here.
+                      </p>
+                    ) : myTickets.length === 0 ? (
+                      <p className="mt-3 text-sm text-slate-300">
+                        You haven’t got a ticket for today’s draw yet. Get your
+                        ticket above to enter. The result will appear here when
+                        the timer hits zero.
+                      </p>
+                    ) : winner ? (
+                      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm text-slate-200">
+                            One ticket{' '}
+                            <span className="font-mono text-emerald-300">
+                              {winner.code}
+                            </span>{' '}
+                            hit today’s jackpot (preview).
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            In the real draw, this will show the winning ticket
+                            and wallet once the countdown reaches zero.
+                          </p>
+                          {iWonToday && (
+                            <p className="mt-2 text-xs font-semibold text-emerald-300">
+                              This preview winner is your wallet in dev mode.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm text-slate-300">
+                        Your ticket is in today’s draw. The result will appear
+                        here when the timer hits zero.
+                      </p>
+                    )}
+
+                    {/* X identity explainer */}
+                    <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        XPOT identity system
+                      </p>
+
+                      <ul className="mt-2 space-y-1 text-[11px] text-slate-400">
+                        <li>• One XPOT identity per X account (coming)</li>
+                        <li>• Winners revealed by handle, never wallet</li>
+                        <li>• Your wallet always remains self-custodied</li>
+                      </ul>
+
+                      <p className="mt-2 text-[10px] text-slate-500">
+                        This section is wired to live draws. Once the engine is
+                        running, real winning tickets will show here.
+                      </p>
+                    </div>
+                  </article>
+
+                  {/* Your tickets */}
+                  <section className="pb-10 px-4">
+                    <h2 className="pt-3 text-sm font-semibold text-slate-200">
+                      Your tickets
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Each ticket is tied to a specific daily draw and wallet.
+                      Tickets from your{' '}
+                      <span className="font-semibold text-emerald-300">
+                        currently connected wallet
+                      </span>{' '}
+                      are highlighted.
+                    </p>
+
+                    <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
+                      {myTickets.length === 0 ? (
+                        <p className="text-xs text-slate-500">
+                          No tickets yet for this wallet in today&apos;s draw.
+                        </p>
+                      ) : (
+                        myTickets.map((entry) => {
+                          const isCurrentWallet =
+                            currentWalletAddress &&
+                            entry.walletAddress === currentWalletAddress;
+
+                          return (
+                            <article
+                              key={entry.id}
+                              className={`rounded-2xl px-4 pb-4 pt-3 transition border ${
+                                isCurrentWallet
+                                  ? 'border-emerald-400/70 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.25)]'
+                                  : 'border-slate-900 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-950'
+                              }`}
+                            >
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-mono text-sm text-slate-50">
+                                      {entry.code}
+                                    </span>
+
+                                    {entry.status === 'in-draw' && (
+                                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+                                        In draw
+                                      </span>
+                                    )}
+                                    {entry.status === 'won' && (
+                                      <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                                        Winner
+                                      </span>
+                                    )}
+                                    {entry.status === 'claimed' && (
+                                      <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
+                                        Claimed
+                                      </span>
+                                    )}
+                                    {entry.status === 'expired' && (
+                                      <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+                                        Expired
+                                      </span>
+                                    )}
+
+                                    {isCurrentWallet && (
+                                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                                        Current wallet
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <p className="mt-1 text-xs text-slate-400">
+                                    {entry.label}
+                                  </p>
+                                  <p className="mt-1 text-[11px] text-slate-500">
+                                    Created: {formatDateTime(entry.createdAt)}
+                                  </p>
+                                  <p className="mt-1 text-[11px] text-slate-500">
+                                    Wallet:{' '}
+                                    <span className="font-mono">
+                                      {shortWallet(entry.walletAddress)}
+                                    </span>
+                                  </p>
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(entry)}
+                                    className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
+                                  >
+                                    {copiedId === entry.id
+                                      ? 'Copied'
+                                      : 'Copy code'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
+                                    disabled
+                                  >
+                                    View entry tweet (soon)
+                                  </button>
+                                </div>
+                              </div>
+                            </article>
+                          );
+                        })
+                      )}
+                    </div>
+                  </section>
+
+                  {/* Draw history preview + recent winners */}
+                  <section className="pb-10 px-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-semibold text-slate-200">
+                        Draw history
+                      </h2>
+
+                      <Link
+                        href="/dashboard/history"
+                        className="text-[11px] text-slate-400 hover:text-emerald-300"
+                      >
+                        View full history →
+                      </Link>
+                    </div>
+
+                    <p className="text-xs text-slate-500">
+                      Your previous tickets from earlier draws.
+                    </p>
+
+                    {!publicKey && (
+                      <p className="mt-2 text-xs text-slate-500">
+                        Connect your wallet to see your ticket history.
+                      </p>
+                    )}
+
+                    {publicKey && (
+                      <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
+                        {loadingHistory && (
+                          <p className="text-xs text-slate-500">
+                            Loading history…
+                          </p>
+                        )}
+
+                        {!loadingHistory &&
+                          historyEntries.length === 0 && (
+                            <p className="text-xs text-slate-500">
+                              No previous draws yet for this wallet.
+                            </p>
+                          )}
+
+                        {historyEntries.slice(0, 5).map((entry) => (
+                          <article
+                            key={entry.id}
+                            className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="font-mono text-sm text-slate-50">
+                                  {entry.code}
+                                </span>
+                                <p className="mt-1 text-[11px] text-slate-500">
+                                  {formatDate(entry.createdAt)}
+                                </p>
+                              </div>
+
+                              <span className="text-[11px] text-slate-400">
+                                {entry.status}
+                              </span>
+                            </div>
+                          </article>
+                        ))}
+
+                        {historyError && (
+                          <p className="mt-2 text-[11px] text-amber-300">
+                            {historyError}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Recent winners */}
+                    <div className="mt-6 rounded-2xl border border-slate-900 bg-slate-950/60 px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        Recent winners
+                      </p>
+
+                      {loadingWinners && (
+                        <p className="mt-2 text-[11px] text-slate-500">
+                          Loading recent winners…
+                        </p>
+                      )}
+
+                      {!loadingWinners && winnersError && (
+                        <p className="mt-2 text-[11px] text-amber-300">
+                          {winnersError}
+                        </p>
+                      )}
+
+                      {!loadingWinners &&
+                        !winnersError &&
+                        recentWinners.length === 0 && (
+                          <p className="mt-2 text-[11px] text-slate-400">
+                            Once draws go live, the latest winning tickets will
+                            appear here.
+                          </p>
+                        )}
+
+                      {!loadingWinners &&
+                        !winnersError &&
+                        recentWinners.length > 0 && (
+                          <ul className="mt-2 space-y-2">
+                            {recentWinners.map((w) => (
+                              <li
+                                key={w.id}
+                                className="flex items-center justify-between text-[11px] text-slate-300"
+                              >
+                                <div>
+                                  <p className="font-mono text-xs text-slate-50">
+                                    {w.ticketCode}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500">
+                                    {formatDate(w.drawDate)} ·{' '}
+                                    {shortWallet(w.walletAddress)}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[11px] text-emerald-300">
+                                    $
+                                    {w.jackpotUsd.toLocaleString
+                                      ? w.jackpotUsd.toLocaleString()
+                                      : w.jackpotUsd}
+                                  </p>
+                                  {w.handle && (
+                                    <p className="text-[10px] text-slate-500">
+                                      @{w.handle}
+                                    </p>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                    </div>
+                  </section>
                 </div>
               </section>
 
