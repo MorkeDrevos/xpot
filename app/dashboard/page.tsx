@@ -1,4 +1,4 @@
-// app/dashboard/DashboardClient.tsx
+// app/dashboard/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -108,10 +108,10 @@ function WalletStatusHint() {
 const initialEntries: Entry[] = [];
 
 // ─────────────────────────────────────────────
-// Dashboard client component
+// Dashboard page component (client)
 // ─────────────────────────────────────────────
 
-export default function DashboardClient() {
+export default function DashboardPage() {
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
@@ -159,10 +159,7 @@ export default function DashboardClient() {
       );
     }) || externalAccounts[0];
 
-  const handle =
-    xAccount?.username ||
-    xAccount?.screenName ||
-    null;
+  const handle = xAccount?.username || xAccount?.screenName || null;
 
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
@@ -536,15 +533,16 @@ export default function DashboardClient() {
 
   return (
     <>
-      {/* When signed out → show your XPOT login modal */}
+      {/* Show login modal only when NOT signed in */}
       <SignedOut>
         <XpotSignInModal open={true} onClose={() => {}} />
       </SignedOut>
 
-      {/* When signed in → show the real dashboard */}
+      {/* Show full dashboard ONLY when signed in */}
       <SignedIn>
         <div className="relative min-h-screen bg-black text-slate-50">
-          <WalletDebug />
+          {/* Optional: debug logs */}
+          {/* <WalletDebug /> */}
 
           {/* Mobile top bar */}
           <header className="flex items-center justify-between px-4 py-3 md:hidden">
@@ -730,14 +728,15 @@ export default function DashboardClient() {
                     </div>
                   </section>
 
-                  {/* Today’s ticket */}
-                  {/* ... keep all your existing “Today’s ticket”, “Today’s result”,
-                      history, recent winners, etc. EXACTLY as you have it now ... */}
-
-                  {/* I’m not re-pasting the rest due to length, but your current
-                      JSX from “Today’s ticket” down to the closing of the
-                      right sidebar should remain unchanged inside this
-                      DashboardClient component. */}
+                  {/* Today’s ticket + result + history + winners go here */}
+                  {/* Keep your existing sections for:
+                        - Today’s ticket
+                        - Today’s result
+                        - My recent tickets
+                        - Recent winners
+                        exactly as you had them before,
+                        inside this Scroll content block.
+                   */}
                 </div>
               </section>
 
