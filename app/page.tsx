@@ -1,5 +1,4 @@
 // app/page.tsx
-'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -27,56 +26,72 @@ export default function HomePage() {
 
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
         {/* Top nav */}
-        <header className="flex items-center justify-between gap-4 pb-6">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="inline-flex items-center gap-2">
-              <Image
-                src="/img/xpot-logo-light.png"
-                alt="XPOT"
-                width={112}
-                height={30}
-                priority
-              />
-            </Link>
-            <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              The X-powered reward pool
-            </span>
-          </div>
-
-          <nav className="flex items-center gap-3 text-[13px]">
-            <Link
-              href="/dashboard"
-              className="rounded-full px-3 py-1.5 text-slate-300 hover:text-white"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/terms"
-              className="rounded-full px-3 py-1.5 text-slate-400 hover:text-white/90"
-            >
-              Terms
-            </Link>
-
-            <Link
-              href="/dashboard"
-              className="group ml-1 inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-1.5 text-[13px] font-semibold text-slate-950 shadow-[0_14px_40px_rgba(16,185,129,0.40)] transition hover:bg-emerald-300"
-            >
-              Enter today&apos;s XPOT
-              <ArrowRight className="h-3.5 w-3.5 translate-x-0 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </nav>
-        </header>
-
-        {/* Hero + XPOT panel */}
-        <section className="grid flex-1 gap-8 pb-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1.1fr)] lg:items-center">
-          {/* Left: story */}
-          <div className="space-y-7">
-            <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/70 px-3 py-1 text-[11px] font-medium text-slate-300 ring-1 ring-slate-700/70">
-              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-              Daily on-chain XPOT draw for X-powered holders
+        <header className="sticky top-4 z-30 mb-4 rounded-2xl border border-slate-800/70 bg-slate-950/70 px-4 py-3 backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Link href="/" className="inline-flex items-center gap-2">
+                <Image
+                  src="/img/xpot-logo-light.png"
+                  alt="XPOT"
+                  width={112}
+                  height={30}
+                  priority
+                />
+              </Link>
+              <span className="hidden rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 sm:inline-flex">
+                The X-powered reward pool
+              </span>
             </div>
 
-            <div>
+            <nav className="flex items-center gap-3 text-[13px]">
+              <Link
+                href="/dashboard"
+                className="rounded-full px-3 py-1.5 text-slate-300 hover:text-white"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/terms"
+                className="rounded-full px-3 py-1.5 text-slate-400 hover:text-white/90"
+              >
+                Terms
+              </Link>
+
+              <Link
+                href="/dashboard"
+                className="group ml-1 inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-1.5 text-[13px] font-semibold text-slate-950 shadow-[0_14px_40px_rgba(16,185,129,0.40)] transition hover:bg-emerald-300"
+              >
+                Enter today&apos;s XPOT
+                <ArrowRight className="h-3.5 w-3.5 translate-x-0 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </nav>
+          </div>
+        </header>
+
+        {/* Hero + live pool panel */}
+        <motion.section
+          className="grid flex-1 gap-8 pb-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1.1fr)] lg:items-center"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+        >
+          {/* Left: story */}
+          <div className="space-y-7">
+            <motion.div
+              className="inline-flex items-center gap-2 rounded-full bg-slate-900/70 px-3 py-1 text-[11px] font-medium text-slate-300 ring-1 ring-slate-700/70"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, duration: 0.35 }}
+            >
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+              Daily on-chain XPOT pool for X-powered holders
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12, duration: 0.45 }}
+            >
               <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
                 NO TICKETS · JUST XPOT HOLDINGS
               </p>
@@ -94,11 +109,16 @@ export default function HomePage() {
                 XPOT in a self-custody wallet, you can grab a free entry
                 into today&apos;s draw and one XPOT holder is selected.
               </p>
-            </div>
+            </motion.div>
 
             {/* Steps */}
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/80 px-3.5 py-3 text-xs shadow-sm">
+            <motion.div
+              className="grid gap-3 sm:grid-cols-3"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.45 }}
+            >
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/80 px-3.5 py-3 text-xs shadow-sm backdrop-blur">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Step 1
                 </p>
@@ -111,7 +131,7 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/80 px-3.5 py-3 text-xs shadow-sm">
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/80 px-3.5 py-3 text-xs shadow-sm backdrop-blur">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Step 2
                 </p>
@@ -125,7 +145,7 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/80 px-3.5 py-3 text-xs shadow-sm">
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/80 px-3.5 py-3 text-xs shadow-sm backdrop-blur">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Step 3
                 </p>
@@ -137,10 +157,15 @@ export default function HomePage() {
                   and paid directly in XPOT, on-chain.
                 </p>
               </div>
-            </div>
+            </motion.div>
 
             {/* CTA + micro copy */}
-            <div className="flex flex-wrap items-center gap-4">
+            <motion.div
+              className="flex flex-wrap items-center gap-4"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.28, duration: 0.4 }}
+            >
               <Link
                 href="/dashboard"
                 className="group inline-flex items-center gap-2 rounded-xl bg-emerald-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_18px_50px_rgba(16,185,129,0.45)] transition hover:bg-emerald-300"
@@ -156,11 +181,16 @@ export default function HomePage() {
                 </span>
                 , never by wallet.
               </p>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Right: live XPOT panel */}
-          <div className="relative">
+          {/* Right: live pool panel */}
+          <motion.div
+            className="relative"
+            initial={{ opacity: 0, scale: 0.97, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ delay: 0.18, duration: 0.5, ease: 'easeOut' }}
+          >
             <div className="pointer-events-none absolute -inset-10 -z-10 rounded-[2.5rem] bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.50),_transparent_55%),radial-gradient(circle_at_80%_100%,_rgba(52,211,153,0.35),_transparent_52%)] opacity-70 blur-3xl" />
             <div className="jackpot-shell">
               <div className="jackpot-shell-inner">
@@ -171,17 +201,18 @@ export default function HomePage() {
               Live XPOT engine – the same panel admins use to monitor
               today&apos;s draw.
             </p>
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
         {/* LIVE: X handles entering today’s XPOT */}
-        <section className="mt-10 border-t border-slate-800/70 pt-6">
+        <section className="mt-6 border-t border-slate-800/70 pt-6">
           <div className="mb-3 flex items-center gap-2 text-xs">
             <span className="relative flex h-2 w-2">
               <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-80 animate-ping" />
               <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
             </span>
-            <span className="font-medium uppercase tracking-[0.18em] text-emerald-300">
+            <span className="inline-flex items-center gap-1 font-medium uppercase tracking-[0.18em] text-emerald-300">
+              <Activity className="h-3 w-3" />
               Live: X handles entering today&apos;s XPOT
             </span>
           </div>
@@ -206,7 +237,7 @@ export default function HomePage() {
                       <button
                         key={`${loop}-${handle}`}
                         type="button"
-                        className="group inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3.5 py-1.5 text-xs text-slate-100/90 shadow-[0_0_0_1px_rgba(15,23,42,0.9)] hover:border-emerald-400/80 hover:bg-slate-900/95 hover:text-slate-50 transition-colors"
+                        className="group inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3.5 py-1.5 text-xs text-slate-100/90 shadow-[0_0_0_1px_rgba(15,23,42,0.9)] transition-colors hover:border-emerald-400/80 hover:bg-slate-900/95 hover:text-slate-50"
                       >
                         {/* tiny avatar bubble */}
                         <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-slate-100">
@@ -230,7 +261,7 @@ export default function HomePage() {
         </section>
 
         {/* Winner Control Room section */}
-        <section className="grid gap-6 rounded-3xl border border-slate-800 bg-slate-950/90 px-5 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <section className="mt-10 grid gap-6 rounded-3xl border border-slate-800 bg-slate-950/90 px-5 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
               <Lock className="h-3.5 w-3.5" />
@@ -422,6 +453,86 @@ export default function HomePage() {
               First as a guided &quot;read-only cockpit&quot;, then as a
               richer XPOT hub with archives, stats and lore.
             </p>
+          </div>
+        </section>
+
+        {/* Sponsor System */}
+        <section className="mt-10 rounded-3xl border border-slate-800 bg-slate-950/90 px-5 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-xl space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+                🔥 XPOT Sponsor System
+              </div>
+
+              <h2 className="text-lg font-semibold text-slate-50 sm:text-xl">
+                Sponsors don&apos;t just buy ads. They fuel the XPOT
+                pool.
+              </h2>
+
+              <p className="text-sm leading-relaxed text-slate-300">
+                Instead of paying for banner space, sponsors purchase
+                XPOT and deposit it directly into the reward pool. Every
+                sponsored round is fully on-chain, fully visible – and
+                tied to a real brand stepping in to boost today&apos;s
+                XPOT.
+              </p>
+
+              <div className="grid gap-3 text-[12px] text-slate-300 sm:grid-cols-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    For sponsors
+                  </p>
+                  <p className="mt-1 leading-relaxed">
+                    Turn budgets into live XPOT boosts with verifiable
+                    TX links instead of vague impressions.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    For holders
+                  </p>
+                  <p className="mt-1 leading-relaxed">
+                    Bigger daily pools when partners step in. Same
+                    rules, same odds – just more XPOT on the line.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    For XPOT
+                  </p>
+                  <p className="mt-1 leading-relaxed">
+                    Protocol-aligned sponsorships that increase
+                    on-chain volume, liquidity and visibility.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Simple future sponsor slot */}
+            <div className="mt-3 w-full max-w-xs rounded-2xl border border-slate-800 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_80%_120%,rgba(34,197,94,0.18),transparent_55%)] p-4 text-[11px] text-slate-200 shadow-[0_18px_50px_rgba(15,23,42,0.9)]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Upcoming sponsored rounds
+              </p>
+              <div className="mt-3 space-y-2 font-mono">
+                <p className="flex items-center justify-between">
+                  <span className="text-slate-400">2025-12-10</span>
+                  <span className="text-emerald-200">TBA partner</span>
+                </p>
+                <p className="flex items-center justify-between">
+                  <span className="text-slate-400">Pool boost</span>
+                  <span className="text-emerald-300">+1,000,000 XPOT</span>
+                </p>
+                <p className="flex items-center justify-between">
+                  <span className="text-slate-400">Mode</span>
+                  <span className="text-slate-200">On-chain deposit</span>
+                </p>
+              </div>
+              <p className="mt-3 text-[10px] text-slate-400">
+                Future view: live list of verified sponsors and their
+                XPOT deposits for each day&apos;s pool.
+              </p>
+            </div>
           </div>
         </section>
 
