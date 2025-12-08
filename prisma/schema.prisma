@@ -127,7 +127,7 @@ model Reward {
   ticketId   String
   ticket     Ticket   @relation(fields: [ticketId], references: [id])
 
-  // e.g. "Bonus jackpot", "Flash pot", "Stream giveaway"
+  // e.g. "Bonus XPOT", "Stream XPOT", "Community XPOT"
   label      String
 
   // XPOT amount for this reward (token amount, not USD)
@@ -137,4 +137,10 @@ model Reward {
 
   // Store transaction link for this reward payout
   txUrl      String?  @map("payoutTx")
+
+  // 🧿 X sponsor metadata (optional, for user-sponsored drops)
+  sponsorHandle String?   // "@morkedrevos"
+  sponsorName   String?   // Display name from X
+  sponsorAvatar String?   // Avatar URL
+  sponsorUrl    String?   // Link to X profile
 }

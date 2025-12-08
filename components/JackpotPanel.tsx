@@ -293,10 +293,11 @@ export default function JackpotPanel({
           <div className="flex flex-wrap items-end gap-3">
             <div
               className={`
-                text-5xl sm:text-6xl font-semibold text-white
+                text-5xl sm:text-6xl font-semibold
                 tabular-nums
-                transition-transform duration-200
+                transition-transform transition-colors duration-200
                 ${justUpdated ? 'scale-[1.01]' : ''}
+                ${justPumped ? 'text-emerald-300' : 'text-white'}
               `}
             >
               {displayUsd}
@@ -355,7 +356,12 @@ export default function JackpotPanel({
           {/* Single-token price */}
           <p className="mt-1 text-xs text-slate-500">
             1 XPOT ≈{' '}
-            <span className="font-mono">
+            <span
+              className={`
+                font-mono transition-colors duration-200
+                ${justPumped ? 'text-emerald-300' : 'text-slate-100'}
+              `}
+            >
               {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
             </span>{' '}
             <span className="text-slate-500">(via Jupiter)</span>
