@@ -70,9 +70,9 @@ function WalletStatusHint() {
   const { wallets, connected } = useWallet();
 
   const anyDetected = wallets.some(
-    (w) =>
+    w =>
       w.readyState === WalletReadyState.Installed ||
-      w.readyState === WalletReadyState.Loadable,
+      w.readyState === WalletReadyState.Loadable
   );
 
   if (connected) return null;
@@ -166,7 +166,7 @@ if (!mounted) return null;
         console.error('Failed to load tickets from DB', err);
         if (!cancelled) {
           setTicketsError(
-            (err as Error).message ?? 'Failed to load tickets',
+            (err as Error).message ?? 'Failed to load tickets'
           );
         }
       } finally {
@@ -193,9 +193,9 @@ if (!mounted) return null;
     }
 
     const myTicket = entries.find(
-      (t) =>
+      t =>
         t.walletAddress === currentWalletAddress &&
-        t.status === 'in-draw',
+        t.status === 'in-draw'
     );
 
     if (myTicket) {
@@ -223,7 +223,7 @@ if (!mounted) return null;
     (async () => {
       try {
         const res = await fetch(
-          `/api/xpot-balance?address=${publicKey.toBase58()}`,
+          `/api/xpot-balance?address=${publicKey.toBase58()}`
         );
         if (!res.ok) throw new Error(`API error: ${res.status}`);
 
@@ -260,7 +260,7 @@ if (!mounted) return null;
     (async () => {
       try {
         const res = await fetch(
-          `/api/tickets/history?wallet=${publicKey.toBase58()}`,
+          `/api/tickets/history?wallet=${publicKey.toBase58()}`
         );
         if (!res.ok) throw new Error('Failed to load history');
 
@@ -277,7 +277,7 @@ if (!mounted) return null;
               jackpotUsd: `$${(t.jackpotUsd ?? 10_000).toLocaleString?.() ?? '10,000'}`,
               createdAt: t.createdAt,
               walletAddress: t.walletAddress,
-            })),
+            }))
           );
         } else {
           setHistoryEntries([]);
@@ -286,7 +286,7 @@ if (!mounted) return null;
         console.error('Failed to load history', err);
         if (!cancelled) {
           setHistoryError(
-            (err as Error).message ?? 'Failed to load history',
+            (err as Error).message ?? 'Failed to load history'
           );
         }
       } finally {
@@ -346,8 +346,8 @@ if (!mounted) return null;
               `You need at least ${(
                 data.required ?? REQUIRED_XPOT
               ).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
-                data.balance ?? 0,
-              ).toLocaleString()} XPOT.`,
+                data.balance ?? 0
+              ).toLocaleString()} XPOT.`
             );
             break;
 
@@ -359,14 +359,14 @@ if (!mounted) return null;
 
           case 'XPOT_CHECK_FAILED':
             setClaimError(
-              'Could not verify your XPOT balance right now. Please try again in a moment.',
+              'Could not verify your XPOT balance right now. Please try again in a moment.'
             );
             break;
 
           case 'MISSING_WALLET':
           case 'INVALID_BODY':
             setClaimError(
-              'Something is wrong with your wallet address. Try reconnecting your wallet and trying again.',
+              'Something is wrong with your wallet address. Try reconnecting your wallet and trying again.'
             );
             break;
 
@@ -385,8 +385,8 @@ if (!mounted) return null;
       if (Array.isArray(tickets) && tickets.length > 0) {
         setEntries(tickets);
       } else if (ticket) {
-        setEntries((prev) => {
-          const others = prev.filter((t) => t.id !== ticket.id);
+        setEntries(prev => {
+          const others = prev.filter(t => t.id !== ticket.id);
           return [ticket, ...others];
         });
       }
@@ -397,7 +397,7 @@ if (!mounted) return null;
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
       setClaimError(
-        'Unexpected error while getting your ticket. Please try again.',
+        'Unexpected error while getting your ticket. Please try again.'
       );
     } finally {
       setClaiming(false);
