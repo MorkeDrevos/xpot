@@ -535,16 +535,15 @@ export default function DashboardClient() {
   // ─────────────────────────────────────────────
 
   return (
-    <>
-      {/* When signed out → show your XPOT login modal */}
-      <SignedOut>
-        <XpotSignInModal open={true} onClose={() => {}} />
-      </SignedOut>
+  <>
+    {/* Show login modal only when NOT signed in */}
+    <SignedOut>
+      <XpotSignInModal open={true} onClose={() => {}} />
+    </SignedOut>
 
-      {/* When signed in → show the real dashboard */}
-      <SignedIn>
-        <div className="relative min-h-screen bg-black text-slate-50">
-          <WalletDebug />
+    {/* Show full dashboard ONLY when signed in */}
+    <SignedIn>
+      <div className="relative min-h-screen bg-black text-slate-50">
 
           {/* Mobile top bar */}
           <header className="flex items-center justify-between px-4 py-3 md:hidden">
