@@ -557,6 +557,5 @@ export default function HomePage() {
           </div>
         </section>
       </XpotPageShell>
-    </XpotPageShell>
   );
 }
