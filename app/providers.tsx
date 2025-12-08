@@ -1,29 +1,38 @@
 // app/providers.tsx
 'use client';
 
-import { ReactNode, useMemo } from 'react';
-import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { useMemo } from 'react';
+import {
+  ConnectionProvider,
+  WalletProvider,
+} from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { clusterApiUrl } from '@solana/web3.js';
 
-// If you already import these styles somewhere else, you can remove this line.
+import {
+  PhantomWalletAdapter,
+  BackpackWalletAdapter,
+  SolflareWalletAdapter,
+} from '@solana/wallet-adapter-wallets';
+
+// If you already import the wallet styles globally somewhere else,
+// you can delete this. Otherwise it’s fine here:
 import '@solana/wallet-adapter-react-ui/styles.css';
 
-type RootClientProvidersProps = {
-  children: ReactNode;
+const endpoint =
+  process.env.NEXT_PUBLIC_SOLANA_RPC ??
+  'https://api.mainnet-beta.solana.com';
+
+type Props = {
+  children: React.ReactNode;
 };
 
-export function RootClientProviders({ children }: RootClientProvidersProps) {
-  const endpoint = useMemo(
-    () =>
-      process.env.NEXT_PUBLIC_SOLANA_RPC ||
-      clusterApiUrl('mainnet-beta'),
-    [],
-  );
-
+export default function RootClientProviders({ children }: Props) {
   const wallets = useMemo(
-    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+    () => [
+      new PhantomWalletAdapter(),
+      new BackpackWalletAdapter(),
+      new SolflareWalletAdapter({ network: 'mainnet-beta' }),
+    ],
     [],
   );
 
