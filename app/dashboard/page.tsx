@@ -11,7 +11,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
-
+import XpotAccessGate from '@/components/XpotAccessGate';
 import { useUser, SignOutButton } from '@clerk/nextjs';
 
 // ─────────────────────────────────────────────
@@ -537,7 +537,8 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
 
   return (
-  <div className="relative min-h-screen bg-black text-slate-50">
+    <XpotAccessGate>
+      <div className="relative min-h-screen bg-black text-slate-50">
         <WalletDebug />
 
         {/* Mobile top bar */}
@@ -1316,5 +1317,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+    </XpotAccessGate>
   );
 }
