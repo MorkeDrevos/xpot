@@ -12,6 +12,8 @@ type JackpotPanelProps = {
   isLocked?: boolean;
   /** Called whenever the live USD XPOT value updates */
   onJackpotUsdChange?: (value: number | null) => void;
+  /** Standalone = full card, embedded = frameless for inside a bigger shell */
+  variant?: 'standalone' | 'embedded';
 };
 
 function formatUsd(value: number | null) {
@@ -96,6 +98,7 @@ function getMadridSessionKey() {
 export default function JackpotPanel({
   isLocked,
   onJackpotUsdChange,
+  variant = 'standalone',
 }: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -236,15 +239,23 @@ export default function JackpotPanel({
   const displayUsd =
     jackpotUsd === null ? '—' : formatUsd(jackpotUsd);
 
-  return (
-    <section
-      className={`
+  const wrapperClasses =
+    variant === 'standalone'
+      ? `
         relative
         rounded-2xl border border-slate-800
         bg-slate-950/70 px-5 py-4 shadow-sm
         transition-colors duration-300
-      `}
-    >
+      `
+      : `
+        relative
+        rounded-2xl
+        px-0 py-0
+        transition-colors duration-300
+      `;
+
+  return (
+    <section className={wrapperClasses}>
       {/* Soft neon glow on pump */}
       <div
         className={`
@@ -293,10 +304,11 @@ export default function JackpotPanel({
           <div className="flex flex-wrap items-end gap-3">
             <div
               className={`
-                text-5xl sm:text-6xl font-semibold text-white
+                text-5xl sm:text-6xl font-semibold
                 tabular-nums
-                transition-transform duration-200
+                transition-transform transition-colors duration-200
                 ${justUpdated ? 'scale-[1.01]' : ''}
+                ${justPumped ? 'text-emerald-300' : 'text-white'}
               `}
             >
               {displayUsd}
@@ -341,11 +353,11 @@ export default function JackpotPanel({
                     based on the live XPOT price from Jupiter.
                   </p>
                   <p className="text-slate-400">
-                    The winner is always paid in{' '}
+                    All winnings are paid exclusively in{' '}
                     <span className="font-semibold text-emerald-300">
                       XPOT
                     </span>
-                    , not USD.
+                    .
                   </p>
                 </div>
               </div>
@@ -355,7 +367,12 @@ export default function JackpotPanel({
           {/* Single-token price */}
           <p className="mt-1 text-xs text-slate-500">
             1 XPOT ≈{' '}
-            <span className="font-mono">
+            <span
+              className={`
+                font-mono transition-colors duration-200
+                ${justPumped ? 'text-emerald-300' : 'text-slate-100'}
+              `}
+            >
               {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
             </span>{' '}
             <span className="text-slate-500">(via Jupiter)</span>
