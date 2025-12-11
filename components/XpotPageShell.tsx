@@ -1,6 +1,7 @@
+// components/XpotPageShell.tsx
 'use client';
 
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 type XpotPageShellProps = {
   title?: string;
@@ -16,10 +17,8 @@ export function XpotPageShell({
   children,
 }: XpotPageShellProps) {
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-50 relative">
-      {/* ─────────────────────────────────────────────
-          Background galaxy halos
-      ───────────────────────────────────────────── */}
+    <div className="relative min-h-screen bg-[#020617] text-slate-50">
+      {/* Background galaxy halos */}
       <div
         className="pointer-events-none fixed inset-0 -z-10 opacity-70"
         style={{
@@ -31,14 +30,8 @@ export function XpotPageShell({
         }}
       />
 
-      {/* ─────────────────────────────────────────────
-          Main width container (same as admin)
-      ───────────────────────────────────────────── */}
+      {/* Main width container (shared by admin / dashboard / home) */}
       <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-6">
-
-        {/* ─────────────────────────────────────────
-            Page heading block (if provided)
-        ───────────────────────────────────────── */}
         {(title || subtitle || rightSlot) && (
           <header className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -52,15 +45,10 @@ export function XpotPageShell({
               )}
             </div>
 
-            {rightSlot && (
-              <div className="flex-shrink-0">{rightSlot}</div>
-            )}
+            {rightSlot && <div className="flex-shrink-0">{rightSlot}</div>}
           </header>
         )}
 
-        {/* ─────────────────────────────────────────
-            Slot for page content
-        ───────────────────────────────────────── */}
         <div className="relative">{children}</div>
       </div>
     </div>
