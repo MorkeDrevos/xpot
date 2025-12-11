@@ -1,47 +1,55 @@
 // app/api/admin/mark-paid/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '../_auth';
 import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/app/api/admin/_auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  // Admin guard
   const auth = requireAdmin(req);
   if (auth) return auth;
 
   try {
-    const body = await req.json();
-    const winnerId = body?.winnerId as string | undefined;
-    const txUrl = (body?.txUrl as string | undefined) || null;
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
 
-    if (!winnerId) {
+    const winnerId = body.winnerId as string | undefined;
+
+    if (!winnerId || typeof winnerId !== 'string') {
       return NextResponse.json(
-        { ok: false, error: 'MISSING_WINNER_ID' },
+        { ok: false, error: 'MISSING_OR_INVALID_WINNER_ID' },
         { status: 400 },
       );
     }
 
-    const updated = await prisma.reward.update({
+    // Update the Winner record – mark as paid out
+    const updated = await prisma.winner.update({
       where: { id: winnerId },
       data: {
         isPaidOut: true,
-        txUrl,              // store TX link in DB
       },
     });
 
-    return NextResponse.json({
-      ok: true,
-      winner: {
-        id: updated.id,
-        isPaidOut: updated.isPaidOut,
-        txUrl: updated.txUrl,
-      },
-    });
-  } catch (err: any) {
-    console.error('[ADMIN] /mark-paid error', err);
     return NextResponse.json(
       {
-        ok: false,
-        error: err.message || 'FAILED_TO_MARK_PAID',
+        ok: true,
+        winner: {
+          id: updated.id,
+          kind: updated.kind,
+          isPaidOut: updated.isPaidOut,
+        },
       },
+      { status: 200 },
+    );
+  } catch (err: any) {
+    console.error('[XPOT] /admin/mark-paid error:', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
       { status: 500 },
     );
   }
