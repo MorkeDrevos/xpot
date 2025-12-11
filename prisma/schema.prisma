@@ -41,9 +41,9 @@ model User {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  clerkId    String? @unique
-  xUserId    String? @unique
-  xHandle    String? @unique
+  clerkId    String?  @unique
+  xUserId    String?  @unique
+  xHandle    String?  @unique
   xName      String?
   xAvatarUrl String?
 
@@ -58,27 +58,24 @@ model Wallet {
   address   String   @unique
 
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
 
   tickets   Ticket[]
 
   @@index([userId])
 }
 
-// Daily XPOT draw
+// Daily XPOT draw (one main draw per day)
 model Draw {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  // Calendar date of the draw (uniquely one per day)
-  date      DateTime @unique
+  /// The logical “XPOT day” (Madrid time in your code)
+  drawDate  DateTime @unique
 
-  // When the main XPOT closes for this day
   closesAt  DateTime?
-  // "open" | "closed" | "completed"
   status    String   @default("open")
 
-  // Relations
   tickets    Ticket[]
   winners    Winner[]
   bonusDrops BonusDrop[]
@@ -91,20 +88,16 @@ model Ticket {
 
   code          String       @unique
 
-  // Wallet that owns this ticket (by relation)
   walletId      String?
   wallet        Wallet?      @relation(fields: [walletId], references: [id])
 
-  // Snapshot of wallet address for this ticket
   walletAddress String
 
   status        TicketStatus @default(IN_DRAW)
 
-  // Link to the draw this ticket participates in
   drawId        String
   draw          Draw         @relation(fields: [drawId], references: [id])
 
-  // Winners that reference this ticket (main + bonus)
   winners       Winner[]
 
   @@index([walletId])
@@ -123,7 +116,6 @@ model Winner {
   ticketId      String
   ticket        Ticket      @relation(fields: [ticketId], references: [id])
 
-  // Denormalized snapshot fields
   date          DateTime    @default(now())
   ticketCode    String
   walletAddress String
