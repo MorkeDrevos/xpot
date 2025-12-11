@@ -21,11 +21,11 @@ export async function POST(req: NextRequest) {
 
     // 1) Find today's draw that is still open / not resolved
     const draw = await prisma.draw.findFirst({
-      where: {
-        drawDate: { gte: start, lt: end },
-        resolvedAt: null,
-      },
-    });
+  where: {
+    drawDate: { gte: start, lt: end },
+    status: 'open', // or 'closed', but MUST be a valid Draw field
+  },
+});
 
     if (!draw) {
       return NextResponse.json(
