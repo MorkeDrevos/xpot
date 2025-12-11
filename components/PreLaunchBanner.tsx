@@ -2,19 +2,7 @@
 export default function PreLaunchBanner() {
   return (
     <div className="fixed inset-x-0 top-0 z-50">
-      <div
-        className="
-          relative w-full 
-          py-2 sm:py-3 
-          text-[10px] sm:text-[11px] md:text-[12px] 
-          font-semibold tracking-wide text-white/85
-          bg-[url('/nebula-banner.jpg')] 
-          bg-cover bg-center bg-no-repeat
-          backdrop-blur-[2px]
-          border-b border-white/10
-          shadow-[0_0_18px_rgba(120,40,255,0.28)]
-        "
-      >
+      PRE-LAUNCH MODE   ×   XPOT TOKEN NOT DEPLOYED   ×   BUILD v0.9.8
         <div
           className="
             absolute inset-0 
