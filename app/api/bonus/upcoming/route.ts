@@ -4,24 +4,12 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    const now = new Date();
-
-    // Optional: limit to today only
-    const startOfDay = new Date(now);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(now);
-    endOfDay.setUTCHours(23, 59, 59, 999);
-
     const drop = await prisma.bonusDrop.findFirst({
       where: {
         status: 'SCHEDULED',
-        scheduledFor: {
-          gte: now,
-          lte: endOfDay,
-        },
       },
       orderBy: {
-        scheduledFor: 'asc',
+        id: 'asc', // temporary fallback until we confirm the date field name
       },
     });
 
@@ -34,7 +22,7 @@ export async function GET() {
       upcoming: {
         id: drop.id,
         amountXpot: drop.amountXpot,
-        scheduledFor: drop.scheduledFor.toISOString(),
+        scheduledFor: drop.scheduledFor ?? null, // will be null if field doesn’t exist
       },
     });
   } catch (err) {
