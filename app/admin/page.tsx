@@ -1792,16 +1792,16 @@ export default function AdminPage() {
         </main>
       </div>
 
-      {/* ULTRA PREMIUM LOCK MODAL */}
+            {/* ULTRA PREMIUM LOCK MODAL */}
       {!tokenAccepted && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
           <div
             className="
-        relative w-full max-w-md rounded-3xl border border-slate-700/70
-        bg-gradient-to-b from-[#020617] via-[#020617] to-black
-        px-6 py-6 sm:px-8 sm:py-8
-        shadow-[0_0_80px_rgba(15,23,42,0.9)]
-      "
+              relative w-full max-w-md rounded-3xl border border-slate-700/70
+              bg-gradient-to-b from-[#020617] via-[#020617] to-black
+              px-6 py-6 sm:px-8 sm:py-8
+              shadow-[0_0_80px_rgba(15,23,42,0.9)]
+            "
           >
             {/* Glow halo */}
             <div className="pointer-events-none absolute -inset-10 -z-10 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.4),transparent_55%),radial-gradient(circle_at_bottom,_rgba(168,85,247,0.35),transparent_55%)] opacity-70 blur-3xl" />
@@ -1817,11 +1817,11 @@ export default function AdminPage() {
                 />
                 <span
                   className="
-              rounded-full border border-slate-700/70 bg-slate-950/80
-              px-3 py-1
-              text-[9px] uppercase tracking-[0.22em]
-              text-slate-300
-            "
+                    rounded-full border border-slate-700/70 bg-slate-950/80
+                    px-3 py-1
+                    text-[9px] uppercase tracking-[0.22em]
+                    text-slate-300
+                  "
                 >
                   Operations Center
                 </span>
@@ -1834,9 +1834,9 @@ export default function AdminPage() {
                   Unlock XPOT operations center
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Step into the live XPOT control room. Monitor today&apos;s draw,
-                  entries, wallets and rewards &ndash; secured behind your
-                  private{' '}
+                  Step inside the live XPOT control deck. Monitor today&apos;s
+                  round, entries, wallets and reward execution — secured behind
+                  your private{' '}
                   <span className="font-semibold text-slate-200">admin key</span>.
                 </p>
               </div>
@@ -1851,11 +1851,11 @@ export default function AdminPage() {
                       type="password"
                       autoFocus
                       className="
-                  w-full rounded-2xl border border-slate-700/80 bg-slate-950/90
-                  px-4 py-3 pr-20 text-sm text-slate-100
-                  placeholder:text-slate-600
-                  outline-none focus:border-emerald-400/80
-                "
+                        w-full rounded-2xl border border-slate-700/80 bg-slate-950/90
+                        px-4 py-3 pr-20 text-sm text-slate-100
+                        placeholder:text-slate-600
+                        outline-none focus:border-emerald-400/80
+                      "
                       value={tokenInput}
                       onChange={e => setTokenInput(e.target.value)}
                       placeholder="Paste your secret XPOT admin key…"
@@ -1865,14 +1865,14 @@ export default function AdminPage() {
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-500">
-                    Your key is stored locally in this browser only. XPOT cannot
-                    see or recover it.
+                    Your key is encrypted and stored locally in this browser
+                    only.
                   </p>
                   <p className="text-[10px] text-slate-500">
-                    Viewing from a shared screen?{' '}
-                    <span className="font-semibold text-slate-200">
-                      Never share your admin key.
-                    </span>
+                    <span className="font-semibold text-slate-300">
+                      Never share your admin key
+                    </span>{' '}
+                    — it unlocks full XPOT operations.
                   </p>
                 </div>
 
@@ -1889,18 +1889,9 @@ export default function AdminPage() {
                     disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none
                   "
                 >
-                  {isSavingToken ? 'Verifying token…' : 'Enter operations center'}
+                  {isSavingToken ? 'Verifying key…' : 'Unlock admin view'}
                 </button>
               </form>
-
-              <div className="pt-1 text-[10px] text-slate-500">
-                <p>
-                  Viewing from someone else&apos;s screen?{' '}
-                  <span className="text-slate-300">
-                    Never share this token publicly.
-                  </span>
-                </p>
-              </div>
             </div>
           </div>
         </div>
