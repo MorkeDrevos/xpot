@@ -3,9 +3,11 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import JackpotPanel from '@/components/JackpotPanel';
-import { ArrowRight, Lock, Sparkles, Activity, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { ArrowRight, Lock, Sparkles, Users } from 'lucide-react';
+
+import JackpotPanel from '@/components/JackpotPanel';
+import XpotPageShell from '@/components/XpotPageShell';
 
 // Temporary sample handles – swap to real API data later
 const SAMPLE_HANDLES = [
@@ -21,11 +23,9 @@ const SAMPLE_HANDLES = [
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Glow backdrop */}
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.20),_transparent_55%),radial-gradient(circle_at_20%_80%,_rgba(129,140,248,0.20),_transparent_55%)] opacity-80" />
-
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
+    <XpotPageShell>
+      {/* Everything inside here now sits on the same bg + width as admin */}
+      <div className="flex flex-col pb-10">
         {/* Top nav */}
         <header className="flex items-center justify-between gap-4 pb-6">
           <div className="flex items-center gap-3">
@@ -82,17 +82,17 @@ export default function HomePage() {
               </p>
               <h1 className="mt-3 text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-[3.1rem]">
                 The daily on-chain{' '}
-                <span className="text-emerald-300">XPOT pool</span>{' '}
-                for X-powered holders.
+                <span className="text-emerald-300">XPOT pool</span> for
+                X-powered holders.
               </h1>
               <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
                 XPOT is a fixed daily pool – for example{' '}
                 <span className="font-semibold text-emerald-200">
                   1,000,000 XPOT
                 </span>
-                . You don&apos;t buy tickets. If you hold the minimum
-                XPOT in a self-custody wallet, you can grab a free entry
-                into today&apos;s draw and one XPOT holder is selected.
+                . You don&apos;t buy tickets. If you hold the minimum XPOT in a
+                self-custody wallet, you can grab a free entry into today&apos;s
+                draw and one XPOT holder is selected.
               </p>
             </div>
 
@@ -106,8 +106,8 @@ export default function HomePage() {
                   Hold the minimum XPOT
                 </p>
                 <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-                  Keep the threshold amount of XPOT in a self-custody
-                  wallet. No custodial accounts, no exchanges.
+                  Keep the threshold amount of XPOT in a self-custody wallet. No
+                  custodial accounts, no exchanges.
                 </p>
               </div>
 
@@ -119,9 +119,8 @@ export default function HomePage() {
                   Connect X &amp; claim
                 </p>
                 <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-                  Link your X account on the dashboard and grab
-                  today&apos;s XPOT entry. One X handle per XPOT
-                  identity.
+                  Link your X account on the dashboard and grab today&apos;s
+                  XPOT entry. One X handle per XPOT identity.
                 </p>
               </div>
 
@@ -133,8 +132,8 @@ export default function HomePage() {
                   One XPOT holder is picked
                 </p>
                 <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-                  Draw runs once per day. Winner is shown by X handle
-                  and paid directly in XPOT, on-chain.
+                  Draw runs once per day. Winner is shown by X handle and paid
+                  directly in XPOT, on-chain.
                 </p>
               </div>
             </div>
@@ -151,10 +150,8 @@ export default function HomePage() {
 
               <p className="text-[11px] text-slate-500">
                 Winners revealed by{' '}
-                <span className="font-semibold text-slate-200">
-                  X handle
-                </span>
-                , never by wallet.
+                <span className="font-semibold text-slate-200">X handle</span>,
+                never by wallet.
               </p>
             </div>
           </div>
@@ -168,8 +165,8 @@ export default function HomePage() {
               </div>
             </div>
             <p className="mt-2 text-[11px] text-slate-500">
-              Live XPOT engine – the same panel admins use to monitor
-              today&apos;s draw.
+              Live XPOT engine – the same panel admins use to monitor today&apos;s
+              draw.
             </p>
           </div>
         </section>
@@ -188,8 +185,8 @@ export default function HomePage() {
 
           <div className="relative overflow-hidden">
             {/* edge fades */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-950 via-slate-950/80 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#02020a] via-[#02020a]/80 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#02020a] via-[#02020a]/80 to-transparent" />
 
             <motion.div
               className="flex gap-3 pr-10"
@@ -206,7 +203,7 @@ export default function HomePage() {
                       <button
                         key={`${loop}-${handle}`}
                         type="button"
-                        className="group inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3.5 py-1.5 text-xs text-slate-100/90 shadow-[0_0_0_1px_rgba(15,23,42,0.9)] hover:border-emerald-400/80 hover:bg-slate-900/95 hover:text-slate-50 transition-colors"
+                        className="group inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3.5 py-1.5 text-xs text-slate-100/90 shadow-[0_0_0_1px_rgba(15,23,42,0.9)] transition-colors hover:border-emerald-400/80 hover:bg-slate-900/95 hover:text-slate-50"
                       >
                         {/* tiny avatar bubble */}
                         <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-slate-100">
@@ -230,7 +227,7 @@ export default function HomePage() {
         </section>
 
         {/* Winner Control Room section */}
-        <section className="grid gap-6 rounded-3xl border border-slate-800 bg-slate-950/90 px-5 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <section className="mt-10 grid gap-6 rounded-3xl border border-slate-800 bg-slate-950/90 px-5 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
               <Lock className="h-3.5 w-3.5" />
@@ -238,16 +235,16 @@ export default function HomePage() {
             </div>
 
             <h2 className="text-xl font-semibold text-slate-50 sm:text-2xl">
-              Winners don&apos;t just get paid. They get to step behind
-              the curtain.
+              Winners don&apos;t just get paid. They get to step behind the
+              curtain.
             </h2>
 
             <p className="text-sm leading-relaxed text-slate-300">
               Instead of just saying <span className="italic">you won</span>,
               XPOT grants limited access to the{' '}
-              <span className="font-semibold">Control Room</span> – a
-              read-only view into how the engine moves. It should feel
-              like stepping into a private cockpit, not a public website.
+              <span className="font-semibold">Control Room</span> – a read-only
+              view into how the engine moves. It should feel like stepping into
+              a private cockpit, not a public website.
             </p>
 
             <div className="grid gap-3 text-sm sm:grid-cols-2">
@@ -265,8 +262,7 @@ export default function HomePage() {
                       </span>
                       <br />
                       <span className="text-xs text-slate-400">
-                        Each daily pool winner gets limited Control Room
-                        access.
+                        Each daily pool winner gets limited Control Room access.
                       </span>
                     </span>
                   </li>
@@ -279,8 +275,7 @@ export default function HomePage() {
                       </span>
                       <br />
                       <span className="text-xs text-slate-400">
-                        Weekly / monthly specials when XPOT crosses key
-                        levels.
+                        Weekly / monthly specials when XPOT crosses key levels.
                       </span>
                     </span>
                   </li>
@@ -293,15 +288,14 @@ export default function HomePage() {
                       </span>
                       <br />
                       <span className="text-xs text-slate-400">
-                        Partners, creators and protocol sponsors invited
-                        behind the glass.
+                        Partners, creators and protocol sponsors invited behind
+                        the glass.
                       </span>
                     </span>
                   </li>
 
                   <li className="mt-2 text-xs text-slate-500">
-                    No winners → no room. Access is always earned, never
-                    sold.
+                    No winners → no room. Access is always earned, never sold.
                   </li>
                 </ul>
               </div>
@@ -359,8 +353,7 @@ export default function HomePage() {
                       </span>
                       <br />
                       <span className="text-xs text-slate-400">
-                        View selected winners before they&apos;re
-                        published.
+                        View selected winners before they&apos;re published.
                       </span>
                     </span>
                   </li>
@@ -382,9 +375,8 @@ export default function HomePage() {
             </div>
 
             <p className="text-[12px] text-slate-400">
-              We start small, ship the room early, then expand. XPOT
-              will keep layering in new panels, lore and visuals as the
-              ecosystem grows.
+              We start small, ship the room early, then expand. XPOT will keep
+              layering in new panels, lore and visuals as the ecosystem grows.
             </p>
           </div>
 
@@ -418,9 +410,9 @@ export default function HomePage() {
             </div>
 
             <p className="text-[12px] text-slate-400">
-              Control Room access will roll out to winners in stages.
-              First as a guided &quot;read-only cockpit&quot;, then as a
-              richer XPOT hub with archives, stats and lore.
+              Control Room access will roll out to winners in stages. First as a
+              guided &quot;read-only cockpit&quot;, then as a richer XPOT hub
+              with archives, stats and lore.
             </p>
           </div>
         </section>
@@ -432,8 +424,8 @@ export default function HomePage() {
               Transparent by design
             </p>
             <p className="mt-1 leading-relaxed">
-              XPOT runs fully on-chain with verifiable entries, draws
-              and payouts. Winners can always verify their TX.
+              XPOT runs fully on-chain with verifiable entries, draws and
+              payouts. Winners can always verify their TX.
             </p>
           </div>
           <div>
@@ -441,8 +433,8 @@ export default function HomePage() {
               No ticket sales
             </p>
             <p className="mt-1 leading-relaxed">
-              There are no ticket purchases on the site. Holding XPOT is
-              what qualifies you for the daily pool.
+              There are no ticket purchases on the site. Holding XPOT is what
+              qualifies you for the daily pool.
             </p>
           </div>
           <div>
@@ -450,12 +442,12 @@ export default function HomePage() {
               Built for X-native holders
             </p>
             <p className="mt-1 leading-relaxed">
-              Your X handle is your public identity. The wallet stays in
-              the background – rewards stay in your custody.
+              Your X handle is your public identity. The wallet stays in the
+              background – rewards stay in your custody.
             </p>
           </div>
         </section>
       </div>
-    </main>
+    </XpotPageShell>
   );
 }
