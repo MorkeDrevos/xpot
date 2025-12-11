@@ -1,54 +1,48 @@
 // app/api/admin/draw/recent-winners/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '/vercel/path0/lib/prisma';
-
-function isAuthorized(req: NextRequest): boolean {
-  const header =
-    req.headers.get('x-admin-token') ||
-    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-
-  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) return false;
-  return true;
-}
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '../../_auth';
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json(
-      { ok: false, error: 'UNAUTHORIZED' },
-      { status: 401 },
-    );
-  }
+  const auth = requireAdmin(req);
+  if (auth) return auth;
 
-  // Latest completed XPOT rounds that have a selected ticket
-  const draws = await prisma.draw.findMany({
-    where: {
-      winnerTicketId: { not: null },
-    },
-    orderBy: {
-      drawDate: 'desc',
-    },
-    take: 10,
-    include: {
-      winnerTicket: {
-        include: {
-          wallet: true,
+  try {
+    // 1) Load recent MAIN winners (limit 20)
+    const winners = await prisma.winner.findMany({
+      where: {
+        kind: 'MAIN',
+      },
+      orderBy: { date: 'desc' },
+      take: 20,
+      include: {
+        draw: true,
+        ticket: {
+          include: {
+            wallet: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  const winners = draws.map(draw => ({
-    drawId: draw.id,
-    date: draw.drawDate.toISOString(),
-    ticketCode: draw.winnerTicket?.code ?? 'UNKNOWN',
-    walletAddress: draw.winnerTicket?.wallet?.address ?? 'UNKNOWN',
-    jackpotUsd: Number(draw.jackpotUsd ?? 10_000),
-    paidOut: !!draw.paidAt,
-    txUrl: draw.payoutTx || null,
-  }));
+    // 2) Normalize payload
+    const payload = winners.map(w => ({
+      id: w.id,
+      date: w.date.toISOString(),
+      drawId: w.drawId,
+      ticketId: w.ticketId,
+      ticketCode: w.ticketCode,
+      wallet: w.walletAddress,
+      jackpotUsd: w.jackpotUsd ?? 0,
+      drawDate: w.draw.drawDate.toISOString(),
+    }));
 
-  return NextResponse.json({
-    ok: true,
-    winners,
-  });
+    return NextResponse.json({ ok: true, winners: payload }, { status: 200 });
+  } catch (err: any) {
+    console.error('[XPOT] /admin/draw/recent-winners error:', err);
+    return NextResponse.json(
+      { ok: false, error: err.message || 'INTERNAL_ERROR' },
+      { status: 500 }
+    );
+  }
 }
