@@ -12,7 +12,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 import { useUser, SignOutButton } from '@clerk/nextjs';
-import XpotPageShell from '@/components/XpotPageShell';
+import JackpotPanel from '@/components/JackpotPanel'; // ✅ reuse main XPOT box here
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -84,7 +84,7 @@ function WalletStatusHint() {
   const { wallets, connected } = useWallet();
 
   const anyDetected = wallets.some(
-    w =>
+    (w) =>
       w.readyState === WalletReadyState.Installed ||
       w.readyState === WalletReadyState.Loadable,
   );
@@ -150,7 +150,7 @@ export default function DashboardPage() {
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
   const xAccount =
-    externalAccounts.find(acc => {
+    externalAccounts.find((acc) => {
       const provider = (acc.provider ?? '') as string;
       return (
         provider === 'oauth_x' ||
@@ -260,7 +260,7 @@ export default function DashboardPage() {
     }
 
     const myTicket = entries.find(
-      t =>
+      (t) =>
         t.walletAddress === currentWalletAddress &&
         t.status === 'in-draw',
     );
@@ -499,8 +499,8 @@ export default function DashboardPage() {
       if (Array.isArray(tickets) && tickets.length > 0) {
         setEntries(tickets);
       } else if (ticket) {
-        setEntries(prev => {
-          const others = prev.filter(t => t.id !== ticket.id);
+        setEntries((prev) => {
+          const others = prev.filter((t) => t.id !== ticket.id);
           return [ticket, ...others];
         });
       }
@@ -522,11 +522,11 @@ export default function DashboardPage() {
   const normalizedWallet = currentWalletAddress?.toLowerCase();
   const myTickets: Entry[] = normalizedWallet
     ? entries.filter(
-        e => e.walletAddress?.toLowerCase() === normalizedWallet,
+        (e) => e.walletAddress?.toLowerCase() === normalizedWallet,
       )
     : [];
 
-  const winner = entries.find(e => e.status === 'won') || null;
+  const winner = entries.find((e) => e.status === 'won') || null;
   const iWonToday =
     !!winner &&
     !!normalizedWallet &&
@@ -537,7 +537,7 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
 
   return (
-    <XpotPageShell>
+    <div className="relative min-h-screen bg-black text-slate-50">
       <WalletDebug />
 
       {/* Mobile top bar */}
@@ -555,7 +555,7 @@ export default function DashboardPage() {
         <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
       </header>
 
-      <div className="mx-auto flex w-full max-w-6xl">
+      <div className="mx-auto flex max-w-6xl">
         {/* Left nav */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-0 pb-4 md:flex flex-col">
           <div className="space-y-5">
@@ -905,9 +905,9 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-500">
                   Each ticket is tied to a specific daily draw and wallet.
                   Tickets from your{' '}
-                  <span className="font-semibold text-emerald-300">
-                    currently connected wallet
-                  </span>{' '}
+                    <span className="font-semibold text-emerald-300">
+                      currently connected wallet
+                    </span>{' '}
                   are highlighted.
                 </p>
 
@@ -917,7 +917,7 @@ export default function DashboardPage() {
                       No tickets yet for this wallet in today&apos;s draw.
                     </p>
                   ) : (
-                    myTickets.map(entry => {
+                    myTickets.map((entry) => {
                       const isCurrentWallet =
                         currentWalletAddress &&
                         entry.walletAddress === currentWalletAddress;
@@ -1046,7 +1046,7 @@ export default function DashboardPage() {
                         </p>
                       )}
 
-                    {historyEntries.slice(0, 5).map(entry => (
+                    {historyEntries.slice(0, 5).map((entry) => (
                       <article
                         key={entry.id}
                         className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
@@ -1105,7 +1105,7 @@ export default function DashboardPage() {
 
                   {!loadingWinners && recentWinners.length > 0 && (
                     <div className="mt-3 space-y-2">
-                      {recentWinners.map(w => (
+                      {recentWinners.map((w) => (
                         <article
                           key={w.id}
                           className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
@@ -1160,6 +1160,29 @@ export default function DashboardPage() {
 
           {/* Right sidebar */}
           <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
+            {/* Today’s XPOT – informational version of the main box */}
+            <div className="premium-card p-4">
+              <h3 className="text-sm font-semibold">
+                Today’s XPOT
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">
+                Live pool size, USD value and status for today’s draw.
+              </p>
+
+              <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-3">
+                {/* We reuse the same engine but let the card around it
+                   make it feel more “control room” than “hero WOW”. */}
+                <div className="scale-[0.92] origin-top-left">
+                  <JackpotPanel />
+                </div>
+              </div>
+
+              <p className="mt-2 text-[11px] text-slate-500">
+                This is the same XPOT engine you see on the homepage,
+                but here it’s wired as your personal cockpit readout.
+              </p>
+            </div>
+
             {/* Wallet card */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">Wallet</h3>
@@ -1315,6 +1338,6 @@ export default function DashboardPage() {
           </aside>
         </div>
       </div>
-    </XpotPageShell>
+    </div>
   );
 }
