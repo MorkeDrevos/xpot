@@ -1,3 +1,4 @@
+// app/api/admin/bonus-schedule/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
@@ -6,57 +7,79 @@ export async function POST(req: NextRequest) {
   // Admin guard
   await requireAdmin(req);
 
-  const { searchParams } = new URL(req.url);
-  const label = searchParams.get('label') ?? '';
-  const amountXpot = Number(searchParams.get('amountXpot') ?? 0);
-  const delayMinutes = Number(searchParams.get('delayMinutes') ?? 0);
+  // Try to read JSON body (label, amountXpot, delayMinutes)
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
 
-  if (!label) {
+  const labelRaw = (body.label as string | undefined) ?? '';
+  const label = labelRaw.trim() || 'Bonus XPOT';
+
+  const amountXpot = Number(body.amountXpot ?? 0);
+  const delayMinutes = Number(body.delayMinutes ?? 0);
+
+  if (!Number.isFinite(amountXpot) || amountXpot <= 0) {
     return NextResponse.json(
-      { ok: false, error: 'Missing label' },
-      { status: 400 }
+      { ok: false, error: 'INVALID_AMOUNT' },
+      { status: 400 },
     );
   }
 
-  if (!amountXpot || amountXpot < 1) {
+  if (!Number.isFinite(delayMinutes) || delayMinutes < 0) {
     return NextResponse.json(
-      { ok: false, error: 'Invalid amountXpot' },
-      { status: 400 }
+      { ok: false, error: 'INVALID_DELAY' },
+      { status: 400 },
     );
   }
 
-  // 1) Load TODAY'S DRAW
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD
+  // Today window (UTC) – we query by drawDate
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
 
-  const drawToday = await prisma.draw.findFirst({
+  const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
+  const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+
+  // Find today's draw by drawDate
+  const todayDraw = await prisma.draw.findFirst({
     where: {
-      date: {
-        gte: new Date(`${todayStr}T00:00:00Z`),
-        lt: new Date(`${todayStr}T23:59:59Z`),
+      drawDate: {
+        gte: startOfDay,
+        lt: endOfDay,
       },
     },
-    include: { tickets: true },
+    include: {
+      tickets: true,
+    },
   });
 
-  if (!drawToday) {
+  if (!todayDraw) {
     return NextResponse.json(
       { ok: false, error: 'NO_DRAW_TODAY' },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  // 2) Compute scheduled time
-  const scheduledAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+  if (!todayDraw.tickets.length) {
+    return NextResponse.json(
+      { ok: false, error: 'NO_TICKETS_TODAY' },
+      { status: 400 },
+    );
+  }
 
-  // 3) Create BonusDrop row
+  // When the bonus should fire
+  const scheduledAt = new Date(Date.now() + delayMinutes * 60_000);
+
+  // Create the bonus drop row
   const drop = await prisma.bonusDrop.create({
     data: {
-      drawId: drawToday.id,
-      label: `${label} (Bonus XPOT)`.trim(),
-      amountXpot,
+      drawId: todayDraw.id,
+      label,
+      amountXpot: Math.floor(amountXpot),
       scheduledAt,
-      status: 'SCHEDULED',
+      status: 'SCHEDULED', // matches BonusDropStatus enum
     },
   });
 
@@ -65,6 +88,6 @@ export async function POST(req: NextRequest) {
       ok: true,
       drop,
     },
-    { status: 200 }
+    { status: 200 },
   );
 }
