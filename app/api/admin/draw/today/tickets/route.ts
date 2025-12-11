@@ -1,16 +1,19 @@
 // app/api/admin/draw/today/tickets/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '/vercel/path0/lib/prisma';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/app/api/admin/_auth';
 
-function isAuthorized(req: NextRequest): boolean {
-  const header =
-    req.headers.get('x-admin-token') ||
-    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+export const dynamic = 'force-dynamic';
 
-  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) return false;
-  return true;
+// Simple helper to get today's UTC range
+function getTodayRange() {
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const start = new Date(`${todayStr}T00:00:00.000Z`);
+  const end = new Date(`${todayStr}T23:59:59.999Z`);
+  return { start, end };
 }
 
+// Map DB ticket statuses to API-friendly ones
 const statusMap: Record<string, string> = {
   IN_DRAW: 'in-draw',
   WON: 'won',
@@ -20,44 +23,59 @@ const statusMap: Record<string, string> = {
 };
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  const auth = requireAdmin(req);
+  if (auth) return auth;
+
+  try {
+    const { start, end } = getTodayRange();
+
+    // 1) Find today's draw + its tickets
+    const draw = await prisma.draw.findFirst({
+      where: {
+        drawDate: { gte: start, lt: end },
+      },
+      include: {
+        tickets: {
+          include: {
+            wallet: true,
+          },
+        },
+      },
+    });
+
+    if (!draw) {
+      return NextResponse.json(
+        { ok: false, error: 'NO_DRAW_TODAY' },
+        { status: 200 },
+      );
+    }
+
+    // 2) Normalize tickets
+    const tickets = draw.tickets.map((t) => ({
+      id: t.id,
+      code: t.code,
+      status: statusMap[t.status] ?? 'in-draw',
+      createdAt: t.createdAt.toISOString(),
+      wallet: t.wallet?.address ?? '',
+      // DB no longer has jackpotUsd; keep field for UI but compute/fill here
+      jackpotUsd: 0,
+    }));
+
+    // 3) Response
     return NextResponse.json(
-      { ok: false, error: 'UNAUTHORIZED' },
-      { status: 401 },
+      {
+        ok: true,
+        drawId: draw.id,
+        drawDate: draw.drawDate.toISOString(),
+        tickets,
+      },
+      { status: 200 },
+    );
+  } catch (err: any) {
+    console.error('[/admin/draw/today/tickets] error:', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
+      { status: 500 },
     );
   }
-
-  // Same “latest draw” logic as /today = Today’s XPOT
-  const draw = await prisma.draw.findFirst({
-    orderBy: { drawDate: 'desc' },
-  });
-
-  if (!draw) {
-    return NextResponse.json({
-      ok: true,
-      tickets: [],
-    });
-  }
-
-  const tickets = await prisma.ticket.findMany({
-    where: { drawId: draw.id },
-    orderBy: { createdAt: 'asc' },
-    include: {
-      wallet: true,
-    },
-  });
-
-  const mapped = tickets.map(t => ({
-    id: t.id,
-    code: t.code,
-    walletAddress: t.wallet?.address ?? 'UNKNOWN',
-    status: statusMap[t.status] ?? 'in-draw',
-    createdAt: t.createdAt.toISOString(),
-    jackpotUsd: Number(draw.jackpotUsd ?? 10_000),
-  }));
-
-  return NextResponse.json({
-    ok: true,
-    tickets: mapped,
-  });
 }
