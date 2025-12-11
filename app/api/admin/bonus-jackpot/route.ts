@@ -21,17 +21,16 @@ export async function POST(req: NextRequest) {
 
   // Find today's draw and INCLUDE tickets so `draw.tickets` exists
   const draw = await prisma.draw.findFirst({
-    where: {
-      date: {
-        gte: startOfDay,
-        lt: endOfDay,
-      },
+  where: {
+    drawDate: {
+      gte: startOfDay,
+      lt: endOfDay,
     },
-    include: {
-      tickets: true,
-    },
-  });
-
+  },
+  include: {
+    tickets: true,
+  },
+});
   if (!draw) {
     return NextResponse.json(
       { ok: false, error: 'NO_DRAW_TODAY' },
