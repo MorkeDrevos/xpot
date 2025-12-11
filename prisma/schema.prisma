@@ -47,7 +47,7 @@ model User {
   xName      String?
   xAvatarUrl String?
 
-  wallets    Wallet[]   // users can have wallets
+  wallets Wallet[]   // users can have wallets
 }
 
 // Wallet → owns tickets
@@ -65,17 +65,21 @@ model Wallet {
   @@index([userId])
 }
 
-// Daily XPOT draw (one main draw per day)
+// Daily XPOT draw
 model Draw {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  /// The logical “XPOT day” (Madrid time in your code)
+  /// Calendar date of the draw (in UTC, but you’ll treat it as Madrid day)
   drawDate  DateTime @unique
 
+  /// When the main XPOT closes for entries (today’s end)
   closesAt  DateTime?
+
+  /// Simple string status: "open" / "closed" / "completed"
   status    String   @default("open")
 
+  // Relations
   tickets    Ticket[]
   winners    Winner[]
   bonusDrops BonusDrop[]
@@ -88,16 +92,20 @@ model Ticket {
 
   code          String       @unique
 
+  // Wallet that owns this ticket (by relation)
   walletId      String?
   wallet        Wallet?      @relation(fields: [walletId], references: [id])
 
+  // Snapshot of wallet address when ticket was created
   walletAddress String
 
   status        TicketStatus @default(IN_DRAW)
 
+  // Link to the draw this ticket participates in
   drawId        String
   draw          Draw         @relation(fields: [drawId], references: [id])
 
+  // If this ticket ever wins, you’ll get a Winner row
   winners       Winner[]
 
   @@index([walletId])
@@ -107,14 +115,14 @@ model Ticket {
 
 // Log of main + bonus winners
 model Winner {
-  id            String      @id @default(cuid())
-  createdAt     DateTime    @default(now())
+  id           String      @id @default(cuid())
+  createdAt    DateTime    @default(now())
 
-  drawId        String
-  draw          Draw        @relation(fields: [drawId], references: [id])
+  drawId       String
+  draw         Draw        @relation(fields: [drawId], references: [id])
 
-  ticketId      String
-  ticket        Ticket      @relation(fields: [ticketId], references: [id])
+  ticketId     String
+  ticket       Ticket      @relation(fields: [ticketId], references: [id])
 
   date          DateTime    @default(now())
   ticketCode    String
