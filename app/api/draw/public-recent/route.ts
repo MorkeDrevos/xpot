@@ -1,4 +1,4 @@
-¡// app/api/draw/public-recent/route.ts
+// app/api/draw/public-recent/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -6,14 +6,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(_req: NextRequest) {
   try {
-    // Load recent MAIN winners from Winner table
     const winners = await prisma.winner.findMany({
-      where: {
-        kind: 'MAIN',
-      },
-      orderBy: {
-        date: 'desc',
-      },
+      where: { kind: 'MAIN' },
+      orderBy: { date: 'desc' },
       take: 10,
       include: {
         draw: true,
@@ -26,20 +21,19 @@ export async function GET(_req: NextRequest) {
     });
 
     const payload = winners.map((w) => {
-      const handleWallet =
+      const walletRaw =
         w.ticket.wallet?.address || w.walletAddress || '';
 
-      // basic mask for public API
-      const maskedWallet =
-        handleWallet.length > 10
-          ? `${handleWallet.slice(0, 4)}...${handleWallet.slice(-4)}`
-          : handleWallet;
+      const masked =
+        walletRaw.length > 10
+          ? `${walletRaw.slice(0, 4)}...${walletRaw.slice(-4)}`
+          : walletRaw;
 
       return {
         id: w.id,
         date: w.date.toISOString(),
         ticketCode: w.ticketCode,
-        walletAddress: maskedWallet,
+        walletAddress: masked,
         jackpotUsd: w.jackpotUsd,
         payoutUsd: w.payoutUsd,
         kind: w.kind ?? 'MAIN',
@@ -51,19 +45,13 @@ export async function GET(_req: NextRequest) {
     });
 
     return NextResponse.json(
-      {
-        ok: true,
-        winners: payload,
-      },
+      { ok: true, winners: payload },
       { status: 200 },
     );
   } catch (err: any) {
     console.error('[XPOT] /draw/public-recent error:', err);
     return NextResponse.json(
-      {
-        ok: false,
-        error: err?.message || 'INTERNAL_ERROR',
-      },
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
       { status: 500 },
     );
   }
