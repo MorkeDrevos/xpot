@@ -13,15 +13,15 @@ type Body = {
 };
 
 export async function POST(req: NextRequest) {
-  // Admin guard (throws 401/403 if invalid)
+  // 1) Admin guard
   await requireAdmin(req);
 
-  // Parse body
+  // 2) Parse body
   let body: Body | null = null;
   try {
     body = (await req.json()) as Body;
   } catch {
-    // ignore, body stays null
+    // ignore, will fail validation below
   }
 
   if (!body) {
@@ -33,19 +33,19 @@ export async function POST(req: NextRequest) {
 
   const { amountXpot, label, delayMinutes } = body;
 
-  // Validate amount
+  // 3) Validate amount
   if (!amountXpot || !Number.isFinite(amountXpot) || amountXpot < MIN_AMOUNT) {
     return NextResponse.json(
       {
         ok: false,
-        error: `MIN_AMOUNT_${MIN_AMOUNT}`,
-        message: `Enter a valid XPOT amount (min ${MIN_AMOUNT.toLocaleString()} XPOT).`,
+        error: 'MIN_AMOUNT',
+        message: `Enter at least ${MIN_AMOUNT.toLocaleString()} XPOT.`,
       },
       { status: 400 },
     );
   }
 
-  // Validate delay
+  // 4) Validate delay
   if (
     !delayMinutes ||
     !Number.isFinite(delayMinutes) ||
@@ -61,12 +61,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Compute scheduledAt
+  // 5) Compute when this bonus should fire
   const now = new Date();
   const scheduledAt = new Date(now.getTime() + delayMinutes * 60_000);
 
-  // Find today's draw by date (matches your Prisma schema: Draw.date)
-  const todayStr = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+  // 6) Find today's draw using Draw.date (your Prisma schema)
+  const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
   const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
   const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
 
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Create the bonus drop row
+  // 7) Create the bonus drop row
   const drop = await prisma.bonusDrop.create({
     data: {
       drawId: todayDraw.id,
