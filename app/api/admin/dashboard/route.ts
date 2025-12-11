@@ -36,12 +36,12 @@ export async function GET(req: NextRequest) {
 
   // Find today’s draw (by drawDate in Madrid day window)
   const todayDraw = await prisma.draw.findFirst({
-    where: {
-      drawDate: {
-        gte: start,
-        lt: end,
-      },
+  where: {
+    date: {           // ✅ use `date`, matches Prisma model
+      gte: start,
+      lt: end,
     },
+  },
     include: {
       tickets: true,
       rewards: true,
