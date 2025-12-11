@@ -1,69 +1,59 @@
-// app/api/admin/today/route.ts
+// app/api/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/app/api/admin/_auth';
 import { prisma } from '@/lib/prisma';
-import { ensureTodayDraw } from '@/lib/ensureTodayDraw';
 
 export const dynamic = 'force-dynamic';
 
-type DrawStatus = 'open' | 'closed' | 'completed';
-
-function statusFromDraw(draw: {
-  isClosed: boolean;
-  resolvedAt: Date | null;
-}): DrawStatus {
-  if (draw.resolvedAt) return 'completed';
-  if (draw.isClosed) return 'closed';
-  return 'open';
+function getTodayRange() {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const start = new Date(`${todayStr}T00:00:00.000Z`);
+  const end = new Date(`${todayStr}T23:59:59.999Z`);
+  return { start, end };
 }
 
 export async function GET(req: NextRequest) {
-  const auth = requireAdmin(req);
-  if (auth) return auth;
-
   try {
-    // 1) Make sure we have a draw for today (may create one)
-    const todayDraw = await ensureTodayDraw();
+    const { start, end } = getTodayRange();
 
-    if (!todayDraw) {
-      // There is a previous draw still running – don’t auto-create
-      return NextResponse.json({
-        ok: true,
-        today: null,
-      });
+    const draw = await prisma.draw.findFirst({
+      where: {
+        drawDate: { gte: start, lt: end },
+      },
+      include: {
+        tickets: true,
+        winners: true,
+      },
+    });
+
+    if (!draw) {
+      return NextResponse.json(
+        { ok: true, today: null },
+        { status: 200 },
+      );
     }
 
-    // 2) Count today’s tickets
-    const ticketsCount = await prisma.ticket.count({
-      where: { drawId: todayDraw.id },
-    });
+    let status: 'open' | 'closed' | 'completed' = 'open';
 
-    // 3) Compute closesAt = end of today (UTC)
-    const todayStr = todayDraw.drawDate.toISOString().slice(0, 10);
-    const closesAt = new Date(`${todayStr}T23:59:59.000Z`);
+    if (draw.status === 'closed') status = 'closed';
+    else if (draw.status === 'completed') status = 'completed';
 
-    // 4) Build payload in the exact shape AdminPage expects
-    const todayPayload = {
-      id: todayDraw.id,
-      date: todayDraw.drawDate.toISOString(),
-      status: statusFromDraw(todayDraw),
-      jackpotUsd: todayDraw.jackpotUsd ?? 0,
-      rolloverUsd: 0, // you can later compute real rollover here
-      ticketsCount,
-      closesAt: closesAt.toISOString(),
+    const payload = {
+      id: draw.id,
+      date: draw.drawDate.toISOString(),
+      status,
+      jackpotUsd: 0,
+      rolloverUsd: 0,
+      ticketsCount: draw.tickets.length,
+      closesAt: draw.closesAt ? draw.closesAt.toISOString() : null,
     };
 
-    return NextResponse.json({
-      ok: true,
-      today: todayPayload,
-    });
-  } catch (err: any) {
-    console.error('[XPOT] /api/admin/today error:', err);
     return NextResponse.json(
-      {
-        ok: false,
-        error: err?.message || 'INTERNAL_ERROR',
-      },
+      { ok: true, today: payload },
+      { status: 200 },
+    );
+  } catch (err: any) {
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
       { status: 500 },
     );
   }
