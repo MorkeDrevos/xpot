@@ -18,7 +18,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <body className="bg-black text-slate-50 antialiased">
           {/* Fixed purple strip at top */}
           <PreLaunchBanner />
-          {/* Push content below the fixed banner */}
+
+          {/* Push content below the fixed banner.
+              Individual pages (Home, Dashboard, Admin) handle
+              their own layout via XpotPageShell. */}
           <div className="pt-9">{children}</div>
         </body>
       </html>
