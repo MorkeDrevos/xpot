@@ -138,3 +138,29 @@ model Reward {
   // Store transaction link for this reward payout
   txUrl      String?  @map("payoutTx")
 }
+
+enum BonusDropStatus {
+  SCHEDULED
+  FIRED
+  CANCELLED
+}
+
+model BonusDrop {
+  id          String          @id @default(cuid())
+  createdAt   DateTime        @default(now())
+
+  // When this bonus is supposed to fire (used for countdown + worker)
+  scheduledAt DateTime
+
+  // Display label – e.g. "Bonus XPOT", "Stream bonus"
+  label       String
+
+  // XPOT amount (token amount, not USD)
+  amountXpot  Int
+
+  status      BonusDropStatus @default(SCHEDULED)
+
+  // Optional link to the Reward that actually paid it out (once fired)
+  rewardId    String?
+  reward      Reward?         @relation(fields: [rewardId], references: [id])
+}
