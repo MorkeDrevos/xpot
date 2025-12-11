@@ -1,40 +1,69 @@
-// app/api/draw/public-recent/route.ts
-import { NextResponse } from 'next/server';
+¡// app/api/draw/public-recent/route.ts
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Public endpoint: last N completed draws + winners
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(_req: NextRequest) {
   try {
-    const draws = (await prisma.draw.findMany({
+    // Load recent MAIN winners from Winner table
+    const winners = await prisma.winner.findMany({
       where: {
-        winnerTicketId: { not: null },
+        kind: 'MAIN',
       },
       orderBy: {
-        drawDate: 'desc',
+        date: 'desc',
       },
-      take: 30, // last 30 draws for the feed
+      take: 10,
       include: {
-        winnerTicket: true, // relation from winnerTicketId -> Ticket
+        draw: true,
+        ticket: {
+          include: {
+            wallet: true,
+          },
+        },
       },
-    })) as any[];
+    });
 
-    const entries = draws.map(d => ({
-      drawId: d.id as string,
-      // ISO string – easier for client formatting
-      date: (d.drawDate as Date).toISOString(),
-      ticketCode: d.winnerTicket?.code ?? '',
-      walletAddress: d.winnerTicket?.walletAddress ?? '',
-      jackpotUsd: Number(d.jackpotUsd ?? 0),
-      // treat undefined as false
-      paidOut: Boolean(d.winnerPaidOut),
-      txUrl: d.winnerPayoutTxUrl ?? null,
-    }));
+    const payload = winners.map((w) => {
+      const handleWallet =
+        w.ticket.wallet?.address || w.walletAddress || '';
 
-    return NextResponse.json({ ok: true, entries });
-  } catch (err) {
-    console.error('[PUBLIC] recent draw feed error:', err);
+      // basic mask for public API
+      const maskedWallet =
+        handleWallet.length > 10
+          ? `${handleWallet.slice(0, 4)}...${handleWallet.slice(-4)}`
+          : handleWallet;
+
+      return {
+        id: w.id,
+        date: w.date.toISOString(),
+        ticketCode: w.ticketCode,
+        walletAddress: maskedWallet,
+        jackpotUsd: w.jackpotUsd,
+        payoutUsd: w.payoutUsd,
+        kind: w.kind ?? 'MAIN',
+        label: w.label ?? 'XPOT winner',
+        drawDate: w.draw.drawDate.toISOString(),
+        txUrl: w.txUrl || null,
+        isPaidOut: w.isPaidOut,
+      };
+    });
+
     return NextResponse.json(
-      { ok: false, error: 'INTERNAL_ERROR' },
+      {
+        ok: true,
+        winners: payload,
+      },
+      { status: 200 },
+    );
+  } catch (err: any) {
+    console.error('[XPOT] /draw/public-recent error:', err);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: err?.message || 'INTERNAL_ERROR',
+      },
       { status: 500 },
     );
   }
