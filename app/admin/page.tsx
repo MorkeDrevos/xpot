@@ -708,47 +708,6 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [upcomingDrops]);
 
-  // ── Countdown until todayDraw.closesAt (daily loop) ───────────
-  useEffect(() => {
-    if (!todayDraw?.closesAt) {
-      setCountdownText(null);
-      setCountdownSeconds(null);
-      return;
-    }
-
-    const closesAt = new Date(todayDraw.closesAt);
-    const DAY_MS = 24 * 60 * 60 * 1000;
-
-    function updateCountdown() {
-      const nowTime = new Date();
-
-      let target = closesAt;
-      let diff = target.getTime() - nowTime.getTime();
-
-      if (diff <= 0) {
-        target = new Date(closesAt.getTime() + DAY_MS);
-        diff = target.getTime() - nowTime.getTime();
-      }
-
-      const totalSeconds = Math.max(0, Math.floor(diff / 1000));
-      const hours = String(Math.floor(totalSeconds / 3600)).padStart(
-        2,
-        '0',
-      );
-      const minutes = String(
-        Math.floor((totalSeconds % 3600) / 60),
-      ).padStart(2, '0');
-      const seconds = String(totalSeconds % 60).toString().padStart(2, '0');
-
-      setCountdownText(`${hours}:${minutes}:${seconds}`);
-      setCountdownSeconds(totalSeconds);
-    }
-
-    updateCountdown();
-    const id = window.setInterval(updateCountdown, 1000);
-    return () => window.clearInterval(id);
-  }, [todayDraw?.closesAt]);
-
   // Clamp visibleTicketCount if tickets shrink / first load
   useEffect(() => {
     setVisibleTicketCount(prev =>
@@ -900,32 +859,32 @@ export default function AdminPage() {
           </div>
 
         {/* Right: control-room title + status pills */}
-        <div className="flex flex-col items-start gap-1 sm:items-end">
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <h1 className="text-sm font-semibold text-white sm:text-base">
-              Control room for today’s XPOT
-            </h1>
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <h1 className="text-sm font-semibold text-white sm:text-base">
+                Control room for today’s XPOT
+              </h1>
 
-            {AUTO_DRAW_ENABLED && (
-              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] animate-pulse" />
-                Auto draw enabled
-              </span>
-            )}
+              {AUTO_DRAW_ENABLED && (
+                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] animate-pulse" />
+                  Auto draw enabled
+                </span>
+              )}
 
-            {isDevHost && (
-              <span className="rounded-full border border-amber-400/60 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-                Dev environment
-              </span>
-            )}
+              {isDevHost && (
+                <span className="rounded-full border border-amber-400/60 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+                  Dev environment
+                </span>
+              )}
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              Monitor pool state, entries and rewards. All data is live and
+              admin-key gated.
+            </p>
           </div>
-
-          <p className="text-[11px] text-slate-400">
-            Monitor pool state, entries and rewards. All data is live and
-            admin-key gated.
-          </p>
-        </div>
-      </header>
+        </header>
 
       {/* Admin key band */}
       <section className="relative rounded-3xl">
@@ -1783,10 +1742,9 @@ export default function AdminPage() {
                   </div>
                 </>
               )}
-            </div>
-          </section>
-        </div>
+                    </div>
       </section>
     </main>
+  </div>
   );
 }
