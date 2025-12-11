@@ -1,47 +1,49 @@
+// app/api/admin/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '../_auth';
+import { requireAdmin } from '@/app/api/admin/_auth';
 
-type DrawStatus = 'open' | 'closed';
+export const dynamic = 'force-dynamic';
+
+type DrawStatus = 'open' | 'closed' | 'completed';
+
+// Helper: today’s UTC range (treated as Madrid “day” in the app)
+function getTodayRange() {
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const start = new Date(`${todayStr}T00:00:00.000Z`);
+  const end = new Date(`${todayStr}T23:59:59.999Z`);
+  return { start, end };
+}
 
 export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
   try {
-    // Today (UTC)
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-    const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+    const { start, end } = getTodayRange();
 
-    // ✅ Pick the LATEST draw today (in case multiple exist)
+    // 1) Load today’s draw by drawDate
     const draw = await prisma.draw.findFirst({
       where: {
-        drawDate: { gte: startOfDay, lt: endOfDay },
-      },
-      orderBy: {
-        drawDate: 'desc',
+        drawDate: { gte: start, lt: end },
       },
       include: {
         tickets: true,
+        winners: true,
+        bonusDrops: true,
       },
     });
 
     if (!draw) {
-      return NextResponse.json({ ok: true, today: null });
+      return NextResponse.json(
+        { ok: false, error: 'NO_DRAW_TODAY' },
+        { status: 404 },
+      );
     }
 
-        // ✅ No closesAt column exists → calculate it
-    const c = new Date(draw.drawDate);
-    c.setUTCHours(21, 0, 0, 0); // 22:00 Madrid winter
-    const closesAt = c.toISOString();
-
-    // Map Prisma enum → our DrawStatus union
-    const rawStatus = (draw as any).status as string | null;
-
+    // 2) Normalize status into our DrawStatus union
     let status: DrawStatus;
-    switch (rawStatus?.toLowerCase()) {
+    switch (draw.status) {
       case 'closed':
         status = 'closed';
         break;
@@ -50,25 +52,32 @@ export async function GET(req: NextRequest) {
         break;
       default:
         status = 'open';
+        break;
     }
 
-    const today = {
+    // 3) Build payload for admin dashboard
+    const payload = {
       id: draw.id,
       date: draw.drawDate.toISOString(),
       status,
-      jackpotUsd: draw.jackpotUsd ?? 0,
-      rolloverUsd: 0, // safe placeholder for future schema
+      jackpotUsd: 0, // you can wire real USD later if needed
+      rolloverUsd: 0,
       ticketsCount: draw.tickets.length,
-      closesAt,
+      closesAt: draw.closesAt ? draw.closesAt.toISOString() : null,
     };
 
-    return NextResponse.json({ ok: true, today });
-
-  } catch (err) {
-    console.error('[ADMIN] /today error', err);
     return NextResponse.json(
-      { ok: false, error: 'FAILED_TO_LOAD_TODAY' },
-      { status: 500 }
+      {
+        ok: true,
+        today: payload,
+      },
+      { status: 200 },
+    );
+  } catch (err: any) {
+    console.error('[XPOT] /admin/today error:', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
+      { status: 500 },
     );
   }
 }
