@@ -833,7 +833,7 @@ export default function AdminPage() {
         className={`relative min-h-screen ${
           tokenAccepted
             ? ''
-            : 'pointer-events-none select-none blur-[6px] opacity-60'
+            : 'pointer-events-none select-none blur-[3px] opacity-85'
         }`}
       >
         {/* Bright starfield near top of page (under global banner) */}
@@ -917,7 +917,7 @@ export default function AdminPage() {
 
               <p className="text-[11px] text-slate-400">
                 Monitor pool state, entries and rewards. All data is live and
-                admin-key gated.
+                securely gated behind your admin key.
               </p>
             </div>
           </header>
@@ -945,7 +945,7 @@ export default function AdminPage() {
                     </span>
 
                     <span className="text-xs text-slate-400">
-                      Enter your admin token to unlock XPOT operations.
+                      Paste your private admin key to unlock XPOT operations.
                     </span>
                   </div>
 
@@ -1077,7 +1077,7 @@ export default function AdminPage() {
                           )}
                           {!todayLoading && !todayDraw && (
                             <span className="text-xs font-normal text-amber-300">
-                              No XPOT round detected for today - backend should
+                              No XPOT round detected for today – backend should
                               create this automatically.
                             </span>
                           )}
@@ -1611,7 +1611,8 @@ export default function AdminPage() {
                       Recent XPOT winners
                     </p>
                     <p className="mt-0.5 text-xs text-slate-400">
-                      Internal log of the latest entries and reward execution.
+                      Internal log of executed rewards, payouts and winner
+                      tickets.
                     </p>
                   </div>
                 </div>
@@ -1796,11 +1797,11 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-2xl">
           <div
             className="
-              relative w-full max-w-md rounded-3xl border border-slate-700/70
-              bg-gradient-to-b from-[#020617] via-[#020617] to-black
-              px-6 py-6 sm:px-8 sm:py-8
-              shadow-[0_0_80px_rgba(15,23,42,0.9)]
-            "
+        relative w-full max-w-md rounded-3xl border border-slate-700/70
+        bg-gradient-to-b from-[#020617] via-[#020617] to-black
+        px-6 py-6 sm:px-8 sm:py-8
+        shadow-[0_0_80px_rgba(15,23,42,0.9)]
+      "
           >
             {/* Glow halo */}
             <div className="pointer-events-none absolute -inset-10 -z-10 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.4),transparent_55%),radial-gradient(circle_at_bottom,_rgba(168,85,247,0.35),transparent_55%)] opacity-70 blur-3xl" />
@@ -1814,8 +1815,15 @@ export default function AdminPage() {
                   height={32}
                   priority
                 />
-                <span className="rounded-full border border-slate-700/70 bg-slate-950/80 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-slate-300">
-                  Admin access
+                <span
+                  className="
+              rounded-full border border-slate-700/70 bg-slate-950/80
+              px-3 py-1
+              text-[9px] uppercase tracking-[0.22em]
+              text-slate-300
+            "
+                >
+                  Operations Center
                 </span>
               </div>
             </div>
@@ -1823,42 +1831,48 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div>
                 <p className="text-sm font-semibold text-slate-50">
-                  Unlock XPOT control room
+                  Unlock XPOT operations center
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  This portal shows live draws, wallets and payouts. Enter your{' '}
-                  <span className="font-semibold text-slate-200">
-                    admin token
-                  </span>{' '}
-                  to step inside.
+                  Step into the live XPOT control room. Monitor today&apos;s draw,
+                  entries, wallets and rewards &ndash; secured behind your
+                  private{' '}
+                  <span className="font-semibold text-slate-200">admin key</span>.
                 </p>
               </div>
 
               <form onSubmit={handleUnlock} className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Admin token
+                    Admin key
                   </label>
                   <div className="relative">
                     <input
                       type="password"
                       autoFocus
                       className="
-                        w-full rounded-2xl border border-slate-700/80 bg-slate-950/90
-                        px-4 py-3 pr-20 text-sm text-slate-100
-                        placeholder:text-slate-600
-                        outline-none focus:border-emerald-400/80
-                      "
+                  w-full rounded-2xl border border-slate-700/80 bg-slate-950/90
+                  px-4 py-3 pr-20 text-sm text-slate-100
+                  placeholder:text-slate-600
+                  outline-none focus:border-emerald-400/80
+                "
                       value={tokenInput}
                       onChange={e => setTokenInput(e.target.value)}
-                      placeholder="Paste your secret XPOT key…"
+                      placeholder="Paste your secret XPOT admin key…"
                     />
                     <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                      SECURED
+                      Secured
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-500">
-                    Your token is stored locally in this browser only.
+                    Your key is stored locally in this browser only. XPOT cannot
+                    see or recover it.
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Viewing from a shared screen?{' '}
+                    <span className="font-semibold text-slate-200">
+                      Never share your admin key.
+                    </span>
                   </p>
                 </div>
 
@@ -1875,7 +1889,7 @@ export default function AdminPage() {
                     disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none
                   "
                 >
-                  {isSavingToken ? 'Verifying token…' : 'Unlock admin view'}
+                  {isSavingToken ? 'Verifying token…' : 'Enter operations center'}
                 </button>
               </form>
 
