@@ -1,69 +1,51 @@
 // app/api/admin/winners/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/api/admin/_auth';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '../_auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const auth = requireAdmin(req);
   if (auth) return auth;
 
   try {
-    // Reward is the canonical source of winners (main + bonus)
-    const rewards = await prisma.reward.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 50,
+    // Winner is the canonical table for all winners (main + bonus)
+    const winners = await prisma.winner.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50, // limit, adjust if needed
       include: {
-        draw: true,
         ticket: {
           include: {
             wallet: true,
-            user: true, // X identity
           },
         },
+        draw: true,
       },
     });
 
-    const winners = rewards.map((reward) => {
-      const draw = reward.draw;
-      const ticket = reward.ticket;
+    const payload = winners.map(w => ({
+      id: w.id,
+      date: w.date.toISOString(),
+      kind: w.kind ?? 'MAIN',
+      label: w.label ?? null,
+      ticketId: w.ticketId,
+      ticketCode: w.ticketCode,
+      wallet: w.ticket?.wallet?.address ?? w.walletAddress,
+      jackpotUsd: w.jackpotUsd,
+      payoutUsd: w.payoutUsd,
+      isPaidOut: w.isPaidOut,
+      txUrl: w.txUrl ?? null,
+      drawId: w.drawId,
+      drawDate: w.draw.drawDate.toISOString(),
+    }));
 
-      // Decide if this is the main daily XPOT or a bonus pot
-      const isMain =
-        reward.label === "Today's XPOT" ||
-        reward.label === 'Today’s XPOT' ||
-        reward.label === 'Main jackpot';
-
-      return {
-        id: reward.id,
-        kind: isMain ? 'main' : 'bonus',
-        label: reward.label,
-        drawId: reward.drawId,
-        date: draw.drawDate.toISOString(),
-        ticketCode: ticket.code,
-        walletAddress: ticket.wallet?.address ?? '',
-        // "Jackpot size" – use draw.jackpotUsd if we have it,
-        // otherwise fall back to XPOT amount for safety.
-        jackpotUsd: draw.jackpotUsd ?? reward.payoutXpot,
-        // XPOT amount actually paid out
-        payoutUsd: reward.payoutXpot, // still named payoutUsd in UI type, but it’s XPOT
-        isPaidOut: reward.isPaidOut,
-        txUrl: reward.txUrl ?? null,
-        xHandle: ticket.user?.xHandle ?? null,
-        xAvatarUrl: ticket.user?.xAvatarUrl ?? null,
-      };
-    });
-
-    return NextResponse.json({
-      ok: true,
-      winners: winners.slice(0, 30),
-    });
-  } catch (err) {
-    console.error('[ADMIN] /winners error', err);
+    return NextResponse.json({ ok: true, winners: payload }, { status: 200 });
+  } catch (err: any) {
+    console.error('[XPOT] /admin/winners error:', err);
     return NextResponse.json(
-      { ok: false, error: 'FAILED_TO_LOAD_WINNERS' },
-      { status: 500 },
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
+      { status: 500 }
     );
   }
 }
