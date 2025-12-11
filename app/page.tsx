@@ -3,11 +3,11 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { ArrowRight, Lock, Sparkles, Users } from 'lucide-react';
-
 import JackpotPanel from '@/components/JackpotPanel';
+import { ArrowRight, Lock, Sparkles, Users } from 'lucide-react';
+import { motion } from 'framer-motion';
 import XpotPageShell from '@/components/XpotPageShell';
+import BonusStrip from '@/components/BonusStrip';
 
 // Temporary sample handles – swap to real API data later
 const SAMPLE_HANDLES = [
@@ -24,10 +24,9 @@ const SAMPLE_HANDLES = [
 export default function HomePage() {
   return (
     <XpotPageShell>
-      {/* Everything inside here now sits on the same bg + width as admin */}
-      <div className="flex flex-col pb-10">
+      <div className="flex min-h-screen flex-col pb-10">
         {/* Top nav */}
-        <header className="flex items-center justify-between gap-4 pb-6">
+        <header className="flex items-center justify-between gap-4 pb-6 px-4 sm:px-0">
           <div className="flex items-center gap-3">
             <Link href="/" className="inline-flex items-center gap-2">
               <Image
@@ -68,7 +67,7 @@ export default function HomePage() {
         </header>
 
         {/* Hero + XPOT panel */}
-        <section className="grid flex-1 gap-8 pb-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1.1fr)] lg:items-center">
+        <section className="grid flex-1 gap-8 pb-10 px-4 sm:px-0 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1.1fr)] lg:items-center">
           {/* Left: story */}
           <div className="space-y-7">
             <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/70 px-3 py-1 text-[11px] font-medium text-slate-300 ring-1 ring-slate-700/70">
@@ -82,8 +81,8 @@ export default function HomePage() {
               </p>
               <h1 className="mt-3 text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-[3.1rem]">
                 The daily on-chain{' '}
-                <span className="text-emerald-300">XPOT pool</span> for
-                X-powered holders.
+                <span className="text-emerald-300">XPOT pool</span>{' '}
+                for X-powered holders.
               </h1>
               <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
                 XPOT is a fixed daily pool – for example{' '}
@@ -138,6 +137,11 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* Bonus XPOT announcement strip – WOW factor */}
+            <div className="mt-1">
+              <BonusStrip />
+            </div>
+
             {/* CTA + micro copy */}
             <div className="flex flex-wrap items-center gap-4">
               <Link
@@ -165,14 +169,14 @@ export default function HomePage() {
               </div>
             </div>
             <p className="mt-2 text-[11px] text-slate-500">
-              Live XPOT engine – the same panel admins use to monitor today&apos;s
-              draw.
+              Live XPOT engine – the same panel admins use to monitor
+              today&apos;s draw.
             </p>
           </div>
         </section>
 
         {/* LIVE: X handles entering today’s XPOT */}
-        <section className="mt-10 border-t border-slate-800/70 pt-6">
+        <section className="mt-4 border-t border-slate-800/70 pt-6 px-4 sm:px-0">
           <div className="mb-3 flex items-center gap-2 text-xs">
             <span className="relative flex h-2 w-2">
               <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-80 animate-ping" />
@@ -185,8 +189,8 @@ export default function HomePage() {
 
           <div className="relative overflow-hidden">
             {/* edge fades */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#02020a] via-[#02020a]/80 to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#02020a] via-[#02020a]/80 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#020617] via-[#020617]/80 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#020617] via-[#020617]/80 to-transparent" />
 
             <motion.div
               className="flex gap-3 pr-10"
@@ -203,7 +207,7 @@ export default function HomePage() {
                       <button
                         key={`${loop}-${handle}`}
                         type="button"
-                        className="group inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3.5 py-1.5 text-xs text-slate-100/90 shadow-[0_0_0_1px_rgba(15,23,42,0.9)] transition-colors hover:border-emerald-400/80 hover:bg-slate-900/95 hover:text-slate-50"
+                        className="group inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/70 px-3.5 py-1.5 text-xs text-slate-100/90 shadow-[0_0_0_1px_rgba(15,23,42,0.9)] hover:border-emerald-400/80 hover:bg-slate-900/95 hover:text-slate-50 transition-colors"
                       >
                         {/* tiny avatar bubble */}
                         <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-slate-100">
@@ -227,7 +231,7 @@ export default function HomePage() {
         </section>
 
         {/* Winner Control Room section */}
-        <section className="mt-10 grid gap-6 rounded-3xl border border-slate-800 bg-slate-950/90 px-5 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <section className="mt-8 grid gap-6 rounded-3xl border border-slate-800 bg-slate-950/90 px-5 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)] px-4 sm:px-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
               <Lock className="h-3.5 w-3.5" />
@@ -262,7 +266,8 @@ export default function HomePage() {
                       </span>
                       <br />
                       <span className="text-xs text-slate-400">
-                        Each daily pool winner gets limited Control Room access.
+                        Each daily pool winner gets limited Control Room
+                        access.
                       </span>
                     </span>
                   </li>
@@ -418,7 +423,7 @@ export default function HomePage() {
         </section>
 
         {/* Bottom pillars */}
-        <section className="mt-6 grid gap-4 border-t border-slate-800 pt-5 text-[12px] text-slate-400 sm:grid-cols-3">
+        <section className="mt-6 grid gap-4 border-t border-slate-800 pt-5 px-4 text-[12px] text-slate-400 sm:grid-cols-3 sm:px-0">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Transparent by design
