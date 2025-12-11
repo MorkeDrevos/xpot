@@ -77,10 +77,6 @@ type AdminBonusDrop = {
 
 const ADMIN_TOKEN_KEY = 'xpot_admin_token';
 
-// Front-door gate phrase (UX-only, not real security)
-const ENTRY_PASSWORD =
-  process.env.NEXT_PUBLIC_XPOT_ADMIN_GATE?.trim() || 'xpot-ops';
-
 function formatDate(date: string | Date) {
   const d = new Date(date);
   return d.toLocaleDateString('en-GB'); // 03/12/2025
@@ -249,12 +245,6 @@ export default function AdminPage() {
   const [tokenAccepted, setTokenAccepted] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
 
-  // Front-door gate (blur + modal)
-  const [gatePassword, setGatePassword] = useState('');
-  const [gateUnlocked, setGateUnlocked] = useState(false);
-  const [gateError, setGateError] = useState<string | null>(null);
-  const [gateSubmitting, setGateSubmitting] = useState(false);
-
   const [todayDraw, setTodayDraw] = useState<TodayDraw | null>(null);
   const [todayDrawError, setTodayDrawError] = useState<string | null>(null);
   const [todayLoading, setTodayLoading] = useState(true);
@@ -308,8 +298,7 @@ export default function AdminPage() {
   // Bonus jackpot scheduling
   const [bonusAmount, setBonusAmount] = useState('100000');
   const [bonusLabel, setBonusLabel] = useState('Bonus XPOT');
-  const [bonusDelayMinutes, setBonusDelayMinutes] =
-    useState<number>(30); // default 30 min
+  const [bonusDelayMinutes, setBonusDelayMinutes] = useState<number>(30); // default 30 min
   const [bonusSubmitting, setBonusSubmitting] = useState(false);
   const [bonusError, setBonusError] = useState<string | null>(null);
   const [bonusSuccess, setBonusSuccess] = useState<string | null>(null);
@@ -322,8 +311,9 @@ export default function AdminPage() {
   const [nextBonusDrop, setNextBonusDrop] = useState<AdminBonusDrop | null>(
     null,
   );
-  const [nextBonusCountdown, setNextBonusCountdown] =
-    useState<string | null>(null);
+  const [nextBonusCountdown, setNextBonusCountdown] = useState<string | null>(
+    null,
+  );
 
   // Pick main winner state
   const [pickError, setPickError] = useState<string | null>(null);
@@ -391,9 +381,7 @@ export default function AdminPage() {
       });
 
       if (!data || (data as any).ok === false) {
-        throw new Error(
-          (data as any)?.error || 'Failed to create today’s draw',
-        );
+        throw new Error((data as any)?.error || 'Failed to create today’s draw');
       }
 
       window.location.reload();
@@ -812,30 +800,6 @@ export default function AdminPage() {
     setTokenInput('');
   }
 
-  // ── Front-door gate handling ────────────────────────────────────
-
-  function handleGateSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setGateError(null);
-    const value = gatePassword.trim();
-
-    if (!value) {
-      setGateError('Access phrase required.');
-      return;
-    }
-
-    setGateSubmitting(true);
-    setTimeout(() => {
-      if (value === ENTRY_PASSWORD) {
-        setGateUnlocked(true);
-        setGatePassword('');
-      } else {
-        setGateError('Invalid access phrase.');
-      }
-      setGateSubmitting(false);
-    }, 350);
-  }
-
   const isDrawLocked = todayDraw?.status === 'closed';
 
   // Draw date / next draw date helper
@@ -864,29 +828,29 @@ export default function AdminPage() {
 
   return (
     <div className="relative min-h-screen bg-[#02020a] text-slate-100">
-      {/* Bright starfield near top of page (under any global banner) */}
+      {/* Blurred admin page background while locked */}
       <div
-        className="
-          pointer-events-none absolute inset-x-0 top-0
-          h-[220px] -z-10 opacity-85 mix-blend-screen
-          [background-image:
-            radial-gradient(circle_at_12%_18%,rgba(248,250,252,0.98)_1.6px,transparent_0),
-            radial-gradient(circle_at_72%_10%,rgba(226,232,240,0.9)_1.4px,transparent_0),
-            radial-gradient(circle_at_55%_26%,rgba(148,163,184,0.9)_1.2px,transparent_0)
-          ]
-          [background-size:900px_260px,1200px_260px,1400px_260px]
-          [background-position:-120px_-40px,260px_-30px,40px_10px]
-        "
-      />
-
-      {/* Blurred admin shell when gate is locked */}
-      <div
-        className={`relative transition-all duration-500 ${
-          gateUnlocked
-            ? 'blur-0 opacity-100 scale-100'
-            : 'pointer-events-none blur-xl opacity-55 scale-[1.01]'
+        className={`relative min-h-screen ${
+          tokenAccepted
+            ? ''
+            : 'pointer-events-none select-none blur-[6px] opacity-60'
         }`}
       >
+        {/* Bright starfield near top of page (under global banner) */}
+        <div
+          className="
+            pointer-events-none absolute inset-x-0 top-0
+            h-[220px] -z-10 opacity-85 mix-blend-screen
+            [background-image:
+              radial-gradient(circle_at_12%_18%,rgba(248,250,252,0.98)_1.6px,transparent_0),
+              radial-gradient(circle_at_72%_10%,rgba(226,232,240,0.9)_1.4px,transparent_0),
+              radial-gradient(circle_at_55%_26%,rgba(148,163,184,0.9)_1.2px,transparent_0)
+            ]
+            [background-size:900px_260px,1200px_260px,1400px_260px]
+            [background-position:-120px_-40px,260px_-30px,40px_10px]
+          "
+        />
+
         <main className="relative mx-auto flex w-full max-w-[1520px] flex-col gap-6 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
           {/* Galaxy background layers */}
           <div className="pointer-events-none absolute inset-0 -z-30 bg-[#02020a]" />
@@ -958,7 +922,7 @@ export default function AdminPage() {
             </div>
           </header>
 
-          {/* Admin key band */}
+          {/* Admin key band (still useful once unlocked) */}
           <section className="relative rounded-3xl">
             {/* Soft halo */}
             <div className="pointer-events-none absolute -inset-20 bg-[radial-gradient(circle_at_10%_0%,rgba(79,70,229,0.28),transparent_55%),radial-gradient(circle_at_80%_120%,rgba(236,72,153,0.24),transparent_58%)] opacity-70 blur-3xl" />
@@ -1084,9 +1048,7 @@ export default function AdminPage() {
 
                       {todayDraw && (
                         <div className="flex flex-col items-end gap-1 text-xs">
-                          <span className="text-slate-500">
-                            {drawDateLabel}
-                          </span>
+                          <span className="text-slate-500">{drawDateLabel}</span>
                           <span className="font-mono text-slate-200">
                             {drawDateValue ? formatDate(drawDateValue) : '–'}
                           </span>
@@ -1136,10 +1098,7 @@ export default function AdminPage() {
                           Rollover amount
                         </p>
                         <div className="mt-1">
-                          <UsdPill
-                            amount={todayDraw?.rolloverUsd ?? 0}
-                            size="sm"
-                          />
+                          <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
                         </div>
                       </div>
 
@@ -1330,10 +1289,9 @@ export default function AdminPage() {
                         Schedule bonus XPOT
                       </p>
                       <p className="mt-1 max-w-xl text-xs text-slate-400">
-                        Line up hype bonuses from today&apos;s ticket pool. At
-                        the scheduled time, one extra winner will be picked from
-                        all tickets in the draw (once the on-chain worker is
-                        live).
+                        Line up hype bonuses from today&apos;s ticket pool. At the
+                        scheduled time, one extra winner will be picked from all
+                        tickets in the draw (once the on-chain worker is live).
                       </p>
                     </div>
 
@@ -1366,9 +1324,7 @@ export default function AdminPage() {
                               value={bonusAmount}
                               onChange={e => setBonusAmount(e.target.value)}
                             />
-                            <span className="text-xs text-slate-400">
-                              XPOT
-                            </span>
+                            <span className="text-xs text-slate-400">XPOT</span>
                           </div>
                         </div>
                       </div>
@@ -1384,9 +1340,7 @@ export default function AdminPage() {
                               <button
                                 key={v}
                                 type="button"
-                                onClick={() =>
-                                  setBonusAmount(String(v))
-                                }
+                                onClick={() => setBonusAmount(String(v))}
                                 className={`h-9 rounded-full px-4 text-xs font-medium ${
                                   isActive
                                     ? 'border border-emerald-400/70 bg-emerald-500/15 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.3)]'
@@ -1432,18 +1386,14 @@ export default function AdminPage() {
                                 <button
                                   key={mins}
                                   type="button"
-                                  onClick={() =>
-                                    setBonusDelayMinutes(mins)
-                                  }
+                                  onClick={() => setBonusDelayMinutes(mins)}
                                   className={`h-8 rounded-full px-3 text-[11px] font-medium ${
                                     isActive
                                       ? 'border border-sky-400/70 bg-sky-500/15 text-sky-200 shadow-[0_0_0_1px_rgba(56,189,248,0.35)]'
                                       : 'border border-slate-700/70 bg-slate-900/80 text-slate-300 hover:border-slate-500'
                                   }`}
                                 >
-                                  {mins < 60
-                                    ? `${mins} min`
-                                    : `${mins / 60} h`}
+                                  {mins < 60 ? `${mins} min` : `${mins / 60} h`}
                                 </button>
                               );
                             })}
@@ -1481,9 +1431,7 @@ export default function AdminPage() {
                       <p className="text-amber-300">{bonusError}</p>
                     )}
                     {bonusSuccess && (
-                      <p className="text-emerald-300">
-                        {bonusSuccess}
-                      </p>
+                      <p className="text-emerald-300">{bonusSuccess}</p>
                     )}
                   </div>
 
@@ -1582,9 +1530,7 @@ export default function AdminPage() {
 
                 <div className="mt-3">
                   {ticketsLoading && (
-                    <p className="text-xs text-slate-500">
-                      Loading tickets…
-                    </p>
+                    <p className="text-xs text-slate-500">Loading tickets…</p>
                   )}
 
                   {ticketsError && (
@@ -1612,16 +1558,12 @@ export default function AdminPage() {
                               <p className="font-mono text-[11px] text-slate-100">
                                 {t.code}
                               </p>
-                              <CopyableWallet
-                                address={t.walletAddress}
-                              />
+                              <CopyableWallet address={t.walletAddress} />
                             </div>
 
                             <div className="flex flex-col items-end gap-1">
                               <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-200">
-                                {t.status
-                                  .replace('-', ' ')
-                                  .toUpperCase()}
+                                {t.status.replace('-', ' ').toUpperCase()}
                               </span>
                               <p className="font-mono text-[11px] text-slate-500">
                                 {formatDateTime(t.createdAt)}
@@ -1632,8 +1574,8 @@ export default function AdminPage() {
 
                         <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
                           <p>
-                            Showing {visibleTickets.length} of{' '}
-                            {tickets.length} tickets
+                            Showing {visibleTickets.length} of {tickets.length}{' '}
+                            tickets
                           </p>
 
                           {visibleTickets.length < tickets.length && (
@@ -1677,23 +1619,19 @@ export default function AdminPage() {
                 {/* Content */}
                 <div className="relative">
                   {winnersLoading && (
-                    <p className="text-xs text-slate-500">
-                      Loading records…
-                    </p>
+                    <p className="text-xs text-slate-500">Loading records…</p>
                   )}
 
                   {winnersError && (
-                    <p className="text-xs text-amber-300">
-                      {winnersError}
-                    </p>
+                    <p className="text-xs text-amber-300">{winnersError}</p>
                   )}
 
                   {!winnersLoading &&
                     !winnersError &&
                     winners.length === 0 && (
                       <p className="rounded-2xl bg-slate-900/70 px-4 py-3 text-xs text-slate-500">
-                        No completed draws yet. Once you pick winners and
-                        mark XPOT as paid, they&apos;ll appear here.
+                        No completed draws yet. Once you pick winners and mark
+                        XPOT as paid, they&apos;ll appear here.
                       </p>
                     )}
 
@@ -1706,8 +1644,7 @@ export default function AdminPage() {
                           {visibleWinners.map(w => {
                             const label = formatWinnerLabel(w);
                             const isMain =
-                              w.kind === 'main' ||
-                              label === 'Main XPOT';
+                              w.kind === 'main' || label === 'Main XPOT';
                             const displayXpot = isMain
                               ? MAIN_XPOT_REWARD
                               : w.payoutUsd;
@@ -1743,9 +1680,7 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* MIDDLE ROW: wallet */}
-                                <CopyableWallet
-                                  address={w.walletAddress}
-                                />
+                                <CopyableWallet address={w.walletAddress} />
 
                                 {/* BOTTOM ROW: payout + actions */}
                                 <div className="mt-2 flex items-center justify-between gap-3">
@@ -1757,9 +1692,7 @@ export default function AdminPage() {
                                         <span className="font-semibold">
                                           Reward sent
                                         </span>
-                                        <span className="text-slate-500">
-                                          ·
-                                        </span>
+                                        <span className="text-slate-500">·</span>
 
                                         <a
                                           href={w.txUrl}
@@ -1777,14 +1710,9 @@ export default function AdminPage() {
                                               await navigator.clipboard.writeText(
                                                 w.txUrl!,
                                               );
-                                              setCopiedTxWinnerId(
-                                                w.id,
-                                              );
+                                              setCopiedTxWinnerId(w.id);
                                               setTimeout(
-                                                () =>
-                                                  setCopiedTxWinnerId(
-                                                    null,
-                                                  ),
+                                                () => setCopiedTxWinnerId(null),
                                                 1200,
                                               );
                                             } catch {
@@ -1815,12 +1743,8 @@ export default function AdminPage() {
                                       />
                                       <button
                                         type="button"
-                                        onClick={() =>
-                                          handleMarkAsPaid(w.id)
-                                        }
-                                        disabled={
-                                          savingPaidId === w.id
-                                        }
+                                        onClick={() => handleMarkAsPaid(w.id)}
+                                        disabled={savingPaidId === w.id}
                                         className={`${BTN_UTILITY} px-4 py-1.5 text-[11px]`}
                                       >
                                         {savingPaidId === w.id
@@ -1867,103 +1791,103 @@ export default function AdminPage() {
         </main>
       </div>
 
-      {/* ── Front-door premium modal ─────────────────────────────── */}
-      {!gateUnlocked && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center px-4">
-          {/* Dim + extra blur on top */}
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-2xl" />
-
+      {/* ULTRA PREMIUM LOCK MODAL */}
+      {!tokenAccepted && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-2xl">
           <div
             className="
-              relative z-10 w-full max-w-md
-              rounded-3xl border border-slate-700/70
-              bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.22),transparent_55%),linear-gradient(to_bottom,#020617,#020617,#000)]
+              relative w-full max-w-md rounded-3xl border border-slate-700/70
+              bg-gradient-to-b from-[#020617] via-[#020617] to-black
               px-6 py-6 sm:px-8 sm:py-8
-              shadow-[0_24px_80px_rgba(0,0,0,0.9)]
+              shadow-[0_0_80px_rgba(15,23,42,0.9)]
             "
           >
-            {/* Glow ring */}
-            <div className="pointer-events-none absolute -inset-px rounded-3xl border border-white/5" />
+            {/* Glow halo */}
+            <div className="pointer-events-none absolute -inset-10 -z-10 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.4),transparent_55%),radial-gradient(circle_at_bottom,_rgba(168,85,247,0.35),transparent_55%)] opacity-70 blur-3xl" />
 
-            {/* Header */}
-            <div className="relative mb-5 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900/80 shadow-[0_0_40px_rgba(96,165,250,0.35)]">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
                 <Image
                   src="/img/xpot-logo-light.png"
                   alt="XPOT"
-                  width={32}
-                  height={20}
+                  width={110}
+                  height={32}
+                  priority
                 />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
-                  XPOT ACCESS GATE
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-100">
-                  Private operations center
-                </p>
+                <span className="rounded-full border border-slate-700/70 bg-slate-950/80 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-slate-300">
+                  Admin access
+                </span>
               </div>
             </div>
 
-            {/* Copy */}
-            <p className="relative mb-4 text-[11px] leading-relaxed text-slate-400">
-              Enter the private access phrase to view and operate today&apos;s
-              XPOT rounds. Shared only with core operators.
-            </p>
-
-            {/* Form */}
-            <form onSubmit={handleGateSubmit} className="relative space-y-3">
-              <div className="space-y-2">
-                <label className="block text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                  Access phrase
-                </label>
-                <input
-                  type="password"
-                  value={gatePassword}
-                  onChange={e => setGatePassword(e.target.value)}
-                  className="
-                    w-full rounded-2xl border border-slate-700/80
-                    bg-slate-950/90 px-4 py-2.5
-                    text-sm text-slate-100 outline-none
-                    placeholder:text-slate-500
-                    focus:border-sky-400/80
-                  "
-                  placeholder="Type the phrase…"
-                />
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-50">
+                  Unlock XPOT control room
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  This portal shows live draws, wallets and payouts. Enter your{' '}
+                  <span className="font-semibold text-slate-200">
+                    admin token
+                  </span>{' '}
+                  to step inside.
+                </p>
               </div>
 
-              {gateError && (
-                <p className="text-[11px] text-amber-300">
-                  {gateError}
+              <form onSubmit={handleUnlock} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                    Admin token
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      autoFocus
+                      className="
+                        w-full rounded-2xl border border-slate-700/80 bg-slate-950/90
+                        px-4 py-3 pr-20 text-sm text-slate-100
+                        placeholder:text-slate-600
+                        outline-none focus:border-emerald-400/80
+                      "
+                      value={tokenInput}
+                      onChange={e => setTokenInput(e.target.value)}
+                      placeholder="Paste your secret XPOT key…"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                      SECURED
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Your token is stored locally in this browser only.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSavingToken || !tokenInput.trim()}
+                  className="
+                    inline-flex w-full items-center justify-center
+                    rounded-2xl bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600
+                    px-4 py-3 text-sm font-semibold text-emerald-50
+                    shadow-[0_18px_45px_rgba(16,185,129,0.45)]
+                    ring-1 ring-emerald-400/40
+                    transition-all hover:brightness-105 hover:shadow-[0_22px_60px_rgba(16,185,129,0.6)]
+                    disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none
+                  "
+                >
+                  {isSavingToken ? 'Verifying token…' : 'Unlock admin view'}
+                </button>
+              </form>
+
+              <div className="pt-1 text-[10px] text-slate-500">
+                <p>
+                  Viewing from someone else&apos;s screen?{' '}
+                  <span className="text-slate-300">
+                    Never share this token publicly.
+                  </span>
                 </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={gateSubmitting || !gatePassword.trim()}
-                className="
-                  mt-2 inline-flex w-full items-center justify-center
-                  rounded-full bg-gradient-to-br from-sky-500 via-indigo-500 to-emerald-500
-                  px-4 py-2.5 text-sm font-semibold text-slate-950
-                  shadow-[0_14px_40px_rgba(59,130,246,0.55)]
-                  ring-1 ring-sky-300/60
-                  hover:brightness-105
-                  disabled:opacity-40 disabled:cursor-not-allowed
-                  transition-all
-                "
-              >
-                {gateSubmitting ? 'Checking access…' : 'Enter operations center'}
-              </button>
-
-              <p className="mt-3 text-[10px] text-slate-500">
-                Phrase is configured via{' '}
-                <span className="font-mono text-[0.9em]">
-                  NEXT_PUBLIC_XPOT_ADMIN_GATE
-                </span>{' '}
-                or defaults to{' '}
-                <span className="font-mono text-[0.9em]">xpot-ops</span>.
-              </p>
-            </form>
+              </div>
+            </div>
           </div>
         </div>
       )}
