@@ -1,93 +1,58 @@
 // app/api/admin/dashboard/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/app/api/admin/_auth';
-
-export const dynamic = 'force-dynamic';
-
-// Get the current "today" window in Europe/Madrid
-function getMadridDayRange(base: Date = new Date()) {
-  const madridNow = new Date(
-    base.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }),
-  );
-
-  const start = new Date(madridNow);
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-
-  return { start, end };
-}
-
-// 22:00 Madrid close time for a given day
-function getMadridCloseTime(startOfDay: Date) {
-  const close = new Date(startOfDay);
-  close.setHours(22, 0, 0, 0);
-  return close;
-}
+import { requireAdmin } from '../_auth';
 
 export async function GET(req: NextRequest) {
-  // Admin auth
-  const auth = requireAdmin(req);
-  if (auth) return auth;
+  // Admin guard
+  await requireAdmin(req);
 
-  const { start, end } = getMadridDayRange();
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
 
-  // Find today’s draw (by drawDate in Madrid day window)
+  // Simple UTC day window (good enough for today stats)
+  const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
+  const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+
+  // Find today's draw by drawDate, including related records
   const todayDraw = await prisma.draw.findFirst({
-  where: {
-    date: {           // ✅ use `date`, matches Prisma model
-      gte: start,
-      lt: end,
+    where: {
+      drawDate: {
+        gte: startOfDay,
+        lt: endOfDay,
+      },
     },
-  },
     include: {
       tickets: true,
-      rewards: true,
+      winners: true,
+      bonusDrops: true,
     },
   });
 
-  let todaySummary: {
-    id: string;
-    date: string;
-    status: 'open' | 'closed' | 'completed';
-    jackpotUsd: number;
-    rolloverUsd: number; // placeholder for future rollover logic
-    ticketsCount: number;
-    closesAt: string | null;
-  } | null = null;
-
-  if (todayDraw) {
-    const status: 'open' | 'closed' | 'completed' = todayDraw.resolvedAt
-      ? 'completed'
-      : todayDraw.isClosed
-      ? 'closed'
-      : 'open';
-
-    const madridStartOfDay = new Date(
-      todayDraw.drawDate.toLocaleString('en-US', {
-        timeZone: 'Europe/Madrid',
-      }),
+  if (!todayDraw) {
+    return NextResponse.json(
+      {
+        ok: true,
+        today: null,
+      },
+      { status: 200 },
     );
-    madridStartOfDay.setHours(0, 0, 0, 0);
-    const closesAt = getMadridCloseTime(madridStartOfDay);
-
-    todaySummary = {
-      id: todayDraw.id,
-      date: todayDraw.drawDate.toISOString(),
-      status,
-      // Always a number, safe for the admin UI
-      jackpotUsd: todayDraw.jackpotUsd ?? 0,
-      // We don’t have real rollover logic yet – keep 0 for now.
-      rolloverUsd: 0,
-      ticketsCount: todayDraw.tickets.length,
-      closesAt: closesAt.toISOString(),
-    };
   }
 
-  return NextResponse.json({
-    ok: true,
-    today: todaySummary,
-  });
+  const todaySummary = {
+    id: todayDraw.id,
+    date: todayDraw.drawDate.toISOString(),
+    status: todayDraw.status,
+    ticketsCount: todayDraw.tickets.length,
+    winnersCount: todayDraw.winners.length,
+    bonusDropsCount: todayDraw.bonusDrops.length,
+  };
+
+  return NextResponse.json(
+    {
+      ok: true,
+      today: todaySummary,
+    },
+    { status: 200 },
+  );
 }
