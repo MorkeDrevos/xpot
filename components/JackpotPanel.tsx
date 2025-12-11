@@ -12,8 +12,6 @@ type JackpotPanelProps = {
   isLocked?: boolean;
   /** Called whenever the live USD XPOT value updates */
   onJackpotUsdChange?: (value: number | null) => void;
-  /** Standalone = full card, embedded = frameless for inside a bigger shell */
-  variant?: 'standalone' | 'embedded';
 };
 
 function formatUsd(value: number | null) {
@@ -98,7 +96,6 @@ function getMadridSessionKey() {
 export default function JackpotPanel({
   isLocked,
   onJackpotUsdChange,
-  variant = 'standalone',
 }: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -239,23 +236,15 @@ export default function JackpotPanel({
   const displayUsd =
     jackpotUsd === null ? '—' : formatUsd(jackpotUsd);
 
-  const wrapperClasses =
-    variant === 'standalone'
-      ? `
+  return (
+    <section
+      className={`
         relative
         rounded-2xl border border-slate-800
         bg-slate-950/70 px-5 py-4 shadow-sm
         transition-colors duration-300
-      `
-      : `
-        relative
-        rounded-2xl
-        px-0 py-0
-        transition-colors duration-300
-      `;
-
-  return (
-    <section className={wrapperClasses}>
+      `}
+    >
       {/* Soft neon glow on pump */}
       <div
         className={`
@@ -353,11 +342,11 @@ export default function JackpotPanel({
                     based on the live XPOT price from Jupiter.
                   </p>
                   <p className="text-slate-400">
-                    All winnings are paid exclusively in{' '}
+                    The winner is always paid in{' '}
                     <span className="font-semibold text-emerald-300">
                       XPOT
                     </span>
-                    .
+                    , not USD.
                   </p>
                 </div>
               </div>
