@@ -148,20 +148,20 @@ model Reward {
   txUrl      String?  @map("payoutTx")
 }
 
-// Scheduled bonus XPOT drops (pending bonus events)
-// This is what /api/admin/bonus-schedule and /bonus-upcoming use.
-model XpotBonusDrop {
-  id          String          @id @default(cuid())
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+model BonusDrop {
+  id           String          @id @default(cuid())
+  createdAt    DateTime        @default(now())
 
-  amountXpot  Int
-  label       String
-  scheduledAt DateTime
-  status      BonusDropStatus @default(SCHEDULED)
+  // Link to the daily draw this bonus belongs to
+  drawId       String
+  draw         Draw            @relation(fields: [drawId], references: [id])
 
-  // Optional link to the draw this bonus belongs to.
-  // For example, you can attach it to "today's" draw once it's created.
-  drawId      String?
-  draw        Draw?           @relation(fields: [drawId], references: [id])
+  label        String
+  amountXpot   Int
+  scheduledAt  DateTime
+
+  status       BonusDropStatus @default(SCHEDULED)
+
+  @@index([drawId])
+  @@index([status, scheduledAt])
 }
