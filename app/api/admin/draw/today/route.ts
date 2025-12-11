@@ -1,65 +1,67 @@
 // app/api/admin/draw/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '/vercel/path0/lib/prisma'; // keep this as in your project
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '../../_auth';
 
-function isAuthorized(req: NextRequest): boolean {
-  const header =
-    req.headers.get('x-admin-token') ||
-    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+export const dynamic = 'force-dynamic';
 
-  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) return false;
-  return true;
-}
-
-// Treat "Today’s XPOT" as the latest draw in DB
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json(
-      { ok: false, error: 'UNAUTHORIZED' },
-      { status: 401 },
-    );
-  }
+  const auth = requireAdmin(req);
+  if (auth) return auth;
 
-  // Latest draw by date
-  const draw = await prisma.draw.findFirst({
-    orderBy: { drawDate: 'desc' },
-  });
+  try {
+    // 1) Calculate today's range (UTC)
+    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const start = new Date(`${todayStr}T00:00:00.000Z`);
+    const end = new Date(`${todayStr}T23:59:59.999Z`);
 
-  if (!draw) {
-    const today = new Date();
-    return NextResponse.json({
-      ok: true,
-      draw: {
-        id: 'no-draw',
-        date: today.toISOString().slice(0, 10),
-        status: 'open',
-        jackpotUsd: 10_000,
-        rolloverUsd: 0,
-        ticketsCount: 0,
+    // 2) Load today's draw
+    const draw = await prisma.draw.findFirst({
+      where: {
+        drawDate: { gte: start, lt: end },
+      },
+      include: {
+        tickets: true,
+        winners: {
+          include: {
+            ticket: {
+              include: { wallet: true },
+            },
+          },
+        },
       },
     });
-  }
 
-  const ticketsCount = await prisma.ticket.count({
-    where: { drawId: draw.id },
-  });
+    if (!draw) {
+      return NextResponse.json(
+        { ok: false, error: 'NO_DRAW_TODAY' },
+        { status: 200 },
+      );
+    }
 
-  const status =
-    draw.isClosed && draw.resolvedAt
-      ? 'completed'
-      : draw.isClosed
-      ? 'closed'
-      : 'open';
+    // 3) Determine status (based purely on `status` field)
+    const status = draw.status; // "open" | "closed" | "completed"
 
-  return NextResponse.json({
-    ok: true,
-    draw: {
+    // 4) Build response
+    const payload = {
       id: draw.id,
-      date: draw.drawDate.toISOString().slice(0, 10),
-      status, // "open" | "closed" | "completed"
-      jackpotUsd: Number(draw.jackpotUsd ?? 10_000),
-      rolloverUsd: 0,
-      ticketsCount,
-    },
-  });
+      drawDate: draw.drawDate.toISOString(),
+      status,
+      ticketsCount: draw.tickets.length,
+      winners: draw.winners.map((w) => ({
+        id: w.id,
+        kind: w.kind,
+        ticketId: w.ticketId,
+        wallet: w.ticket?.wallet?.address ?? '',
+      })),
+    };
+
+    return NextResponse.json({ ok: true, today: payload }, { status: 200 });
+  } catch (err: any) {
+    console.error('[/admin/draw/today] error:', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? 'INTERNAL_ERROR' },
+      { status: 500 },
+    );
+  }
 }
