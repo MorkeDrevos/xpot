@@ -1,113 +1,58 @@
-// app/api/admin/bonus-schedule/route.ts
+// app/api/admin/bonus-jackpot/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
 
-// Minimum bonus amount and allowed delay options (minutes)
-const MIN_AMOUNT_XPOT = 100_000;
-const ALLOWED_DELAYS = [5, 15, 30, 60];
-
-type Body = {
-  label?: string;
-  amountXpot?: number;
-  delayMinutes?: number;
-};
+// Legacy manual “bonus jackpot” endpoint.
+// Now that we have the BonusDrop system, this can stay as a simple
+// helper that just inspects today’s draw + tickets and returns a summary.
+// It MUST include `tickets` in the query so TypeScript is happy.
 
 export async function POST(req: NextRequest) {
-  // ── 1) Admin guard ──────────────────────────────────────────────
+  // Admin guard (throws 401/403 if invalid)
   await requireAdmin(req);
 
-  // ── 2) Parse body ───────────────────────────────────────────────
-  let body: Body;
-  try {
-    body = (await req.json()) as Body;
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: 'INVALID_JSON' },
-      { status: 400 },
-    );
-  }
-
-  const rawLabel = body.label ?? '';
-  const amountXpot = body.amountXpot;
-  const delayMinutes = body.delayMinutes ?? 5;
-
-  // ── 3) Validate payload ─────────────────────────────────────────
-  if (
-    typeof amountXpot !== 'number' ||
-    !Number.isFinite(amountXpot) ||
-    amountXpot < MIN_AMOUNT_XPOT
-  ) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'INVALID_AMOUNT',
-        message: `amountXpot must be at least ${MIN_AMOUNT_XPOT}.`,
-      },
-      { status: 400 },
-    );
-  }
-
-  if (!ALLOWED_DELAYS.includes(delayMinutes)) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'INVALID_DELAY',
-        message: `delayMinutes must be one of: ${ALLOWED_DELAYS.join(', ')}`,
-      },
-      { status: 400 },
-    );
-  }
-
-  // ── 4) Find today's draw ────────────────────────────────────────
+  // Today in UTC (same pattern we used elsewhere)
   const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
 
-  const startOfDay = new Date(now);
-  startOfDay.setUTCHours(0, 0, 0, 0);
+  const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
+  const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
 
-  const endOfDay = new Date(now);
-  endOfDay.setUTCHours(23, 59, 59, 999);
-
-  const todayDraw = await prisma.draw.findFirst({
+  // Find today's draw and INCLUDE tickets so `draw.tickets` exists
+  const draw = await prisma.draw.findFirst({
     where: {
       date: {
         gte: startOfDay,
-        lte: endOfDay,
+        lt: endOfDay,
       },
+    },
+    include: {
+      tickets: true,
     },
   });
 
-  if (!todayDraw) {
+  if (!draw) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: 'NO_TODAY_DRAW',
-        message: 'No XPOT draw found for today.',
-      },
-      { status: 404 },
+      { ok: false, error: 'NO_DRAW_TODAY' },
+      { status: 400 },
     );
   }
 
-  // ── 5) Compute scheduledAt ──────────────────────────────────────
-  const scheduledAt = new Date(now.getTime() + delayMinutes * 60_000);
+  if (!draw.tickets.length) {
+    return NextResponse.json(
+      { ok: false, error: 'NO_TICKETS_TODAY' },
+      { status: 400 },
+    );
+  }
 
-  // ── 6) Create bonus drop row ────────────────────────────────────
-  const drop = await prisma.bonusDrop.create({
-    data: {
-      drawId: todayDraw.id,
-      label: rawLabel.trim() || 'Bonus XPOT',
-      amountXpot: Math.floor(amountXpot),
-      scheduledAt,
-      status: 'SCHEDULED',
-    },
+  // For now we just return a summary. The real bonus winner
+  // selection now lives in the new bonus-drop flow.
+  return NextResponse.json({
+    ok: true,
+    drawId: draw.id,
+    date: draw.date.toISOString(),
+    status: draw.status,
+    ticketsCount: draw.tickets.length,
   });
-
-  // ── 7) Respond ──────────────────────────────────────────────────
-  return NextResponse.json(
-    {
-      ok: true,
-      drop,
-    },
-    { status: 201 },
-  );
 }
