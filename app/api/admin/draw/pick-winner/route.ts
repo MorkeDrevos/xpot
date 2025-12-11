@@ -89,8 +89,6 @@ export async function POST(req: NextRequest) {
     const randomIndex = Math.floor(Math.random() * tickets.length);
     const winningTicket = tickets[randomIndex];
 
-    const jackpotUsd = 0; // placeholder – we can wire real USD later
-
     // 5) Persist: mark ticket as WON + create Winner row
     const [updatedTicket, newWinner] = await prisma.$transaction([
       prisma.ticket.update({
@@ -101,14 +99,12 @@ export async function POST(req: NextRequest) {
         data: {
           drawId: draw.id,
           ticketId: winningTicket.id,
-          // required fields from your schema:
-          date: new Date(),
+
+          // required fields from your schema
           ticketCode: winningTicket.code,
           walletAddress: winningTicket.walletAddress,
-          // optional but nice:
-          jackpotUsd,
-          payoutUsd: jackpotUsd,
-          isPaidOut: false,
+
+          // optional fields – let Prisma defaults handle jackpotUsd, payoutUsd, isPaidOut, date
           kind: 'MAIN',
           label: 'Main XPOT winner',
         },
