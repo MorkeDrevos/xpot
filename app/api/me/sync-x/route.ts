@@ -1,62 +1,81 @@
 // app/api/me/sync-x/route.ts
-import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Make sure this route is always "live", not cached
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
-  // In your project auth() is async -> await it
-  const { userId } = await auth();
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
 
-  if (!userId) {
-    return NextResponse.json({ ok: false, error: 'UNAUTH' }, { status: 401 });
-  }
+    const clerkId: string | undefined = body.clerkId || body.userId || undefined;
+    const xUserId: string | undefined = body.xUserId || body.x_id || body.xUser || undefined;
+    const handle: string | undefined = body.handle || body.username || body.xHandle || undefined;
+    const name: string | undefined = body.name || body.displayName || body.xName || undefined;
+    const avatar: string | undefined = body.avatar || body.profile_image_url || body.xAvatarUrl || undefined;
 
-  // ✅ clerkClient is a function in your setup, call it to get the real client
-  const clerk = await clerkClient();
-  const user = await clerk.users.getUser(userId);
+    if (!clerkId && !xUserId && !handle) {
+      return NextResponse.json(
+        { ok: false, error: 'MISSING_KEYS' },
+        { status: 400 },
+      );
+    }
 
-  // Find linked X / Twitter account
-  const xAccount = user.externalAccounts?.find((acc) => {
-    const provider = (acc.provider as string | undefined) ?? '';
-    return (
-      provider === 'oauth_x' ||
-      provider === 'twitter' ||
-      provider === 'oauth_twitter'
-    );
-  });
+    // Find existing user by any of the unique identifiers
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          clerkId ? { clerkId } : undefined,
+          xUserId ? { xUserId } : undefined,
+          handle ? { xHandle: handle } : undefined,
+        ].filter(Boolean) as any,
+      },
+    });
 
-  if (!xAccount) {
+    let user;
+
+    if (existing) {
+      user = await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          clerkId: clerkId ?? existing.clerkId,
+          xUserId: xUserId ?? existing.xUserId,
+          xHandle: handle ?? existing.xHandle,
+          xName: name ?? existing.xName,
+          xAvatarUrl: avatar ?? existing.xAvatarUrl,
+        },
+      });
+    } else {
+      user = await prisma.user.create({
+        data: {
+          clerkId: clerkId ?? null,
+          xUserId: xUserId ?? null,
+          xHandle: handle ?? null,
+          xName: name ?? null,
+          xAvatarUrl: avatar ?? null,
+        },
+      });
+    }
+
     return NextResponse.json(
-      { ok: false, error: 'NO_X_ACCOUNT' },
-      { status: 400 }
+      {
+        ok: true,
+        user: {
+          id: user.id,
+          clerkId: user.clerkId,
+          xUserId: user.xUserId,
+          xHandle: user.xHandle,
+          xName: user.xName,
+          xAvatarUrl: user.xAvatarUrl,
+        },
+      },
+      { status: 200 },
+    );
+  } catch (err: any) {
+    console.error('[XPOT] /me/sync-x error:', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
+      { status: 500 },
     );
   }
-
-  const handle = xAccount.username || null;
-  const avatar = xAccount.imageUrl || null;
-  const name   = user.fullName || handle || null;
-  const xId    = xAccount.id || null;
-
-  // Upsert into your Prisma User table
-  const dbUser = await prisma.user.upsert({
-    where: { clerkId: userId },
-    create: {
-      clerkId: userId,
-      xId,
-      xHandle: handle,
-      xAvatarUrl: avatar,
-      xName: name,
-    },
-    update: {
-      xId,
-      xHandle: handle,
-      xAvatarUrl: avatar,
-      xName: name,
-    },
-  });
-
-  return NextResponse.json({ ok: true, user: dbUser });
 }
