@@ -41,13 +41,13 @@ model User {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  clerkId    String?  @unique
-  xUserId    String?  @unique
-  xHandle    String?  @unique
+  clerkId    String? @unique
+  xUserId    String? @unique
+  xHandle    String? @unique
   xName      String?
   xAvatarUrl String?
 
-  wallets Wallet[]   // users can have wallets
+  wallets    Wallet[]   // users can have wallets
 }
 
 // Wallet → owns tickets
@@ -58,7 +58,7 @@ model Wallet {
   address   String   @unique
 
   userId    String?
-  user      User?     @relation(fields: [userId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
 
   tickets   Ticket[]
 
@@ -70,10 +70,15 @@ model Draw {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
+  // Calendar date of the draw (uniquely one per day)
   date      DateTime @unique
+
+  // When the main XPOT closes for this day
   closesAt  DateTime?
+  // "open" | "closed" | "completed"
   status    String   @default("open")
 
+  // Relations
   tickets    Ticket[]
   winners    Winner[]
   bonusDrops BonusDrop[]
@@ -81,22 +86,26 @@ model Draw {
 
 // XPOT ticket in a draw
 model Ticket {
-  id           String       @id @default(cuid())
-  createdAt    DateTime     @default(now())
+  id            String       @id @default(cuid())
+  createdAt     DateTime     @default(now())
 
-  code         String       @unique
+  code          String       @unique
 
-  walletId     String?
-  wallet       Wallet?      @relation(fields: [walletId], references: [id])
+  // Wallet that owns this ticket (by relation)
+  walletId      String?
+  wallet        Wallet?      @relation(fields: [walletId], references: [id])
 
+  // Snapshot of wallet address for this ticket
   walletAddress String
 
-  status       TicketStatus @default(IN_DRAW)
+  status        TicketStatus @default(IN_DRAW)
 
-  drawId       String
-  draw         Draw         @relation(fields: [drawId], references: [id])
+  // Link to the draw this ticket participates in
+  drawId        String
+  draw          Draw         @relation(fields: [drawId], references: [id])
 
-  winners      Winner[]
+  // Winners that reference this ticket (main + bonus)
+  winners       Winner[]
 
   @@index([walletId])
   @@index([drawId])
@@ -105,15 +114,16 @@ model Ticket {
 
 // Log of main + bonus winners
 model Winner {
-  id           String      @id @default(cuid())
-  createdAt    DateTime    @default(now())
+  id            String      @id @default(cuid())
+  createdAt     DateTime    @default(now())
 
-  drawId       String
-  draw         Draw        @relation(fields: [drawId], references: [id])
+  drawId        String
+  draw          Draw        @relation(fields: [drawId], references: [id])
 
-  ticketId     String
-  ticket       Ticket      @relation(fields: [ticketId], references: [id])
+  ticketId      String
+  ticket        Ticket      @relation(fields: [ticketId], references: [id])
 
+  // Denormalized snapshot fields
   date          DateTime    @default(now())
   ticketCode    String
   walletAddress String
