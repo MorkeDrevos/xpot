@@ -1,11 +1,11 @@
 // app/api/admin/draw/pick-winner/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/app/api/admin/_auth';
 import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/app/api/admin/_auth';
 
 export const dynamic = 'force-dynamic';
 
-// Helper: today’s UTC range (we treat it as Madrid day in the app)
+// Helper: today's UTC range (we treat it as Madrid day in the app)
 function getTodayRange() {
   const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const start = new Date(`${todayStr}T00:00:00.000Z`);
@@ -89,6 +89,9 @@ export async function POST(req: NextRequest) {
     const randomIndex = Math.floor(Math.random() * tickets.length);
     const winningTicket = tickets[randomIndex];
 
+    // You *could* compute a real USD value here later
+    const jackpotUsd = 0;
+
     // 5) Persist: mark ticket as WON + create Winner row
     const [updatedTicket, newWinner] = await prisma.$transaction([
       prisma.ticket.update({
@@ -97,14 +100,19 @@ export async function POST(req: NextRequest) {
       }),
       prisma.winner.create({
         data: {
+          // required relation fields
           drawId: draw.id,
           ticketId: winningTicket.id,
 
-          // required fields from your schema
+          // required scalar fields from your schema
           ticketCode: winningTicket.code,
           walletAddress: winningTicket.walletAddress,
 
-          // optional fields – let Prisma defaults handle jackpotUsd, payoutUsd, isPaidOut, date
+          // optional fields (have defaults, but we can set them)
+          date: new Date(),
+          jackpotUsd,
+          payoutUsd: jackpotUsd,
+          isPaidOut: false,
           kind: 'MAIN',
           label: 'Main XPOT winner',
         },
