@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
 
 export async function POST(req: NextRequest) {
+  // Admin guard
   await requireAdmin(req);
 
   const { searchParams } = new URL(req.url);
@@ -30,12 +31,8 @@ export async function POST(req: NextRequest) {
   const updated = await prisma.draw.update({
     where: { id: drawId },
     data: {
-      // if your enum is upper-case, keep 'OPEN', otherwise use 'open'
+      // keep this matching your Prisma enum, e.g. 'OPEN' | 'CLOSED' | 'COMPLETED'
       status: 'OPEN',
-      resolvedAt: null,
-      paidAt: null,
-      payoutTx: null,
-      // 🔹 isClosed removed – this field no longer exists in Prisma
     },
   });
 
