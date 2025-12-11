@@ -1,7 +1,7 @@
-// app/api/admin/pick-winner/route.ts
+// app/api/admin/draw/pick-winner/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/app/api/admin/_auth';
 import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/app/api/admin/_auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +19,11 @@ export async function POST(req: NextRequest) {
   try {
     const { start, end } = getTodayRange();
 
-    // 1) Find today's open draw
+    // 1) Find today's OPEN draw (by drawDate)
     const draw = await prisma.draw.findFirst({
       where: {
         drawDate: { gte: start, lt: end },
-        resolvedAt: null,
+        status: 'open',
       },
     });
 
@@ -34,7 +34,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2) Load in-draw tickets
+    // 2) If there is already a MAIN winner for this draw, return it
+    const existingWinner = await prisma.winner.findFirst({
+      where: {
+        drawId: draw.id,
+        kind: 'MAIN',
+      },
+      include: {
+        ticket: {
+          include: {
+            wallet: true,
+          },
+        },
+      },
+    });
+
+    if (existingWinner) {
+      const payload = {
+        ticketId: existingWinner.ticketId,
+        code: existingWinner.ticket.code,
+        wallet: existingWinner.ticket.wallet?.address ?? '',
+        jackpotUsd: 0, // adjust if you later add a jackpot field somewhere else
+      };
+
+      return NextResponse.json(
+        {
+          ok: true,
+          winner: payload,
+          alreadyExisted: true,
+        },
+        { status: 200 },
+      );
+    }
+
+    // 3) Load all IN_DRAW tickets for this draw
     const tickets = await prisma.ticket.findMany({
       where: {
         drawId: draw.id,
@@ -42,7 +75,6 @@ export async function POST(req: NextRequest) {
       },
       include: {
         wallet: true,
-        user: true,
       },
     });
 
@@ -53,86 +85,51 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3) Guard if already resolved
-    if (draw.winnerTicketId) {
-      const winnerTicket = await prisma.ticket.findUnique({
-        where: { id: draw.winnerTicketId },
-        include: { wallet: true, user: true },
-      });
+    // 4) Pick a random ticket
+    const randomIndex = Math.floor(Math.random() * tickets.length);
+    const winningTicket = tickets[randomIndex];
 
-      if (!winnerTicket) {
-        return NextResponse.json(
-          { ok: false, error: 'DRAW_ALREADY_RESOLVED_BUT_TICKET_MISSING' },
-          { status: 500 },
-        );
-      }
-
-      const winnerPayload = {
-        id: `draw-${draw.id}`,
-        drawId: draw.id,
-        date: draw.drawDate.toISOString(),
-        ticketCode: winnerTicket.code,
-        walletAddress: winnerTicket.wallet?.address ?? '',
-        payoutXpot: draw.jackpotUsd ?? 0,
-        isPaidOut: Boolean(draw.paidAt),
-        txUrl: draw.payoutTx ?? null,
-        kind: 'main' as const,
-        label: "Today's XPOT",
-        xHandle: winnerTicket.user?.xHandle ?? null,
-        xAvatarUrl: winnerTicket.user?.xAvatarUrl ?? null,
-      };
-
-      return NextResponse.json({ ok: true, winner: winnerPayload });
-    }
-
-    // 4) Pick random ticket
-    const winningTicket = tickets[Math.floor(Math.random() * tickets.length)];
-    const now = new Date();
-
-    // 5) Persist everything
-    const [updatedTicket, updatedDraw, reward] = await prisma.$transaction([
+    // 5) Persist changes in a transaction:
+    //    - mark ticket as WON
+    //    - mark draw as completed
+    //    - create a MAIN Winner row
+    const [updatedTicket, updatedDraw, winner] = await prisma.$transaction([
       prisma.ticket.update({
         where: { id: winningTicket.id },
         data: { status: 'WON' },
       }),
       prisma.draw.update({
         where: { id: draw.id },
-        data: {
-          winnerTicketId: winningTicket.id,
-          resolvedAt: now,
-          isClosed: true,
-        },
+        data: { status: 'completed' },
       }),
-      prisma.reward.create({
+      prisma.winner.create({
         data: {
           drawId: draw.id,
           ticketId: winningTicket.id,
-          label: "Today's XPOT",
-          payoutXpot: draw.jackpotUsd ?? 0,
+          kind: 'MAIN',
           isPaidOut: false,
         },
       }),
     ]);
 
-    // 6) Final API payload
-    const winnerPayload = {
-      id: reward.id,
-      drawId: updatedDraw.id,
-      date: updatedDraw.drawDate.toISOString(),
-      ticketCode: updatedTicket.code,
-      walletAddress: winningTicket.wallet?.address ?? '',
-      payoutXpot: reward.payoutXpot,
-      isPaidOut: reward.isPaidOut,
-      txUrl: reward.txUrl ?? null,
-      kind: 'main' as const,
-      label: reward.label,
-      xHandle: winningTicket.user?.xHandle ?? null,
-      xAvatarUrl: winningTicket.user?.xAvatarUrl ?? null,
+    const payload = {
+      ticketId: updatedTicket.id,
+      code: updatedTicket.code,
+      wallet: winningTicket.wallet?.address ?? '',
+      jackpotUsd: 0, // adjust when you wire actual XPOT amount here
+      winnerId: winner.id,
     };
 
-    return NextResponse.json({ ok: true, winner: winnerPayload });
+    return NextResponse.json(
+      {
+        ok: true,
+        winner: payload,
+        alreadyExisted: false,
+      },
+      { status: 200 },
+    );
   } catch (err: any) {
-    console.error('[XPOT] pick-winner error:', err);
+    console.error('[XPOT] /admin/draw/pick-winner error:', err);
     return NextResponse.json(
       { ok: false, error: err?.message || 'INTERNAL_ERROR' },
       { status: 500 },
