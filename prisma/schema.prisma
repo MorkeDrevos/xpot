@@ -21,6 +21,12 @@ enum TicketStatus {
   EXPIRED
 }
 
+enum BonusDropStatus {
+  SCHEDULED
+  FIRED
+  CANCELLED
+}
+
 // ─────────────────────────────────────────────
 // Models
 // ─────────────────────────────────────────────
@@ -81,8 +87,11 @@ model Draw {
   winnerTicketId String?  @unique
   winnerTicket   Ticket?  @relation("DrawWinner", fields: [winnerTicketId], references: [id])
 
-  // Extra hype / bonus jackpots linked to this draw
+  // Extra hype / bonus jackpots linked to this draw (already fired + on-chain)
   rewards        Reward[]
+
+  // Scheduled bonus drops that conceptually belong to this draw
+  bonusDrops     XpotBonusDrop[]
 }
 
 model Ticket {
@@ -116,7 +125,7 @@ model Ticket {
   @@unique([drawId, walletId], name: "OneTicketPerWalletPerDraw")
 }
 
-// Bonus / hype jackpots attached to a daily draw
+// Bonus / hype jackpots that have actually been awarded to a ticket
 model Reward {
   id         String   @id @default(cuid())
   createdAt  DateTime @default(now())
@@ -139,28 +148,20 @@ model Reward {
   txUrl      String?  @map("payoutTx")
 }
 
-enum BonusDropStatus {
-  SCHEDULED
-  FIRED
-  CANCELLED
-}
-
-model BonusDrop {
+// Scheduled bonus XPOT drops (pending bonus events)
+// This is what /api/admin/bonus-schedule and /bonus-upcoming use.
+model XpotBonusDrop {
   id          String          @id @default(cuid())
   createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
-  // When this bonus is supposed to fire (used for countdown + worker)
-  scheduledAt DateTime
-
-  // Display label – e.g. "Bonus XPOT", "Stream bonus"
-  label       String
-
-  // XPOT amount (token amount, not USD)
   amountXpot  Int
-
+  label       String
+  scheduledAt DateTime
   status      BonusDropStatus @default(SCHEDULED)
 
-  // Optional link to the Reward that actually paid it out (once fired)
-  rewardId    String?
-  reward      Reward?         @relation(fields: [rewardId], references: [id])
+  // Optional link to the draw this bonus belongs to.
+  // For example, you can attach it to "today's" draw once it's created.
+  drawId      String?
+  draw        Draw?           @relation(fields: [drawId], references: [id])
 }
