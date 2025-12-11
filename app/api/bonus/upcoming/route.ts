@@ -4,12 +4,31 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
+    const now = new Date();
+
+    // We'll limit "upcoming" to *today* – between now and end of day (UTC)
+    const endOfDay = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+
     const drop = await prisma.bonusDrop.findFirst({
       where: {
-        status: 'SCHEDULED',
+        status: 'SCHEDULED',       // Prisma enum: BonusDropStatus
+        scheduledAt: {
+          gte: now,                // not fired yet
+          lte: endOfDay,           // still today
+        },
       },
       orderBy: {
-        id: 'asc', // temporary fallback until we confirm the date field name
+        scheduledAt: 'asc',
       },
     });
 
@@ -17,14 +36,15 @@ export async function GET() {
       return NextResponse.json({ ok: true, upcoming: null });
     }
 
-    return NextResponse.json({
-      ok: true,
-      upcoming: {
-        id: drop.id,
-        amountXpot: drop.amountXpot,
-        scheduledFor: drop.scheduledFor ?? null, // will be null if field doesn’t exist
-      },
-    });
+    const upcoming = {
+      id: drop.id,
+      label: drop.label,
+      amountXpot: drop.amountXpot,
+      scheduledAt: drop.scheduledAt.toISOString(),
+      status: drop.status,
+    };
+
+    return NextResponse.json({ ok: true, upcoming });
   } catch (err) {
     console.error('[BONUS] /bonus/upcoming error', err);
     return NextResponse.json(
