@@ -12,7 +12,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { REQUIRED_XPOT } from '../../lib/xpot';
 import { useUser, SignOutButton } from '@clerk/nextjs';
-import JackpotPanel from '@/components/JackpotPanel'; // ✅ reuse main XPOT box here
+import XpotPageShell from '@/components/XpotPageShell';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -84,7 +84,7 @@ function WalletStatusHint() {
   const { wallets, connected } = useWallet();
 
   const anyDetected = wallets.some(
-    (w) =>
+    w =>
       w.readyState === WalletReadyState.Installed ||
       w.readyState === WalletReadyState.Loadable,
   );
@@ -150,7 +150,7 @@ export default function DashboardPage() {
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
   const xAccount =
-    externalAccounts.find((acc) => {
+    externalAccounts.find(acc => {
       const provider = (acc.provider ?? '') as string;
       return (
         provider === 'oauth_x' ||
@@ -161,11 +161,7 @@ export default function DashboardPage() {
       );
     }) || externalAccounts[0];
 
-  const handle =
-    xAccount?.username ||
-    xAccount?.screenName ||
-    null;
-
+  const handle = xAccount?.username || xAccount?.screenName || null;
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
 
@@ -232,9 +228,7 @@ export default function DashboardPage() {
       } catch (err) {
         console.error('Failed to load tickets from DB', err);
         if (!cancelled) {
-          setTicketsError(
-            (err as Error).message ?? 'Failed to load tickets',
-          );
+          setTicketsError((err as Error).message ?? 'Failed to load tickets');
         }
       } finally {
         if (!cancelled) setLoadingTickets(false);
@@ -260,9 +254,7 @@ export default function DashboardPage() {
     }
 
     const myTicket = entries.find(
-      (t) =>
-        t.walletAddress === currentWalletAddress &&
-        t.status === 'in-draw',
+      t => t.walletAddress === currentWalletAddress && t.status === 'in-draw',
     );
 
     if (myTicket) {
@@ -311,7 +303,7 @@ export default function DashboardPage() {
 
   // ─────────────────────────────────────────────
   // Load wallet-specific draw history (preview)
-  // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!publicKey) {
@@ -341,7 +333,9 @@ export default function DashboardPage() {
               code: t.code,
               status: t.status as EntryStatus,
               label: t.label,
-              jackpotUsd: `$${(t.jackpotUsd ?? 10_000).toLocaleString?.() ?? '10,000'}`,
+              jackpotUsd: `${
+                (t.jackpotUsd ?? 10_000).toLocaleString?.() ?? '10,000'
+              }`,
               createdAt: t.createdAt,
               walletAddress: t.walletAddress,
             })),
@@ -352,9 +346,7 @@ export default function DashboardPage() {
       } catch (err) {
         console.error('Failed to load history', err);
         if (!cancelled) {
-          setHistoryError(
-            (err as Error).message ?? 'Failed to load history',
-          );
+          setHistoryError((err as Error).message ?? 'Failed to load history');
         }
       } finally {
         if (!cancelled) setLoadingHistory(false);
@@ -499,8 +491,8 @@ export default function DashboardPage() {
       if (Array.isArray(tickets) && tickets.length > 0) {
         setEntries(tickets);
       } else if (ticket) {
-        setEntries((prev) => {
-          const others = prev.filter((t) => t.id !== ticket.id);
+        setEntries(prev => {
+          const others = prev.filter(t => t.id !== ticket.id);
           return [ticket, ...others];
         });
       }
@@ -522,11 +514,11 @@ export default function DashboardPage() {
   const normalizedWallet = currentWalletAddress?.toLowerCase();
   const myTickets: Entry[] = normalizedWallet
     ? entries.filter(
-        (e) => e.walletAddress?.toLowerCase() === normalizedWallet,
+        e => e.walletAddress?.toLowerCase() === normalizedWallet,
       )
     : [];
 
-  const winner = entries.find((e) => e.status === 'won') || null;
+  const winner = entries.find(e => e.status === 'won') || null;
   const iWonToday =
     !!winner &&
     !!normalizedWallet &&
@@ -537,7 +529,7 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
 
   return (
-    <div className="relative min-h-screen bg-black text-slate-50">
+    <XpotPageShell>
       <WalletDebug />
 
       {/* Mobile top bar */}
@@ -555,7 +547,7 @@ export default function DashboardPage() {
         <WalletMultiButton className="!h-8 !rounded-full !px-3 !text-xs" />
       </header>
 
-      <div className="mx-auto flex max-w-6xl">
+      <div className="flex">
         {/* Left nav */}
         <aside className="hidden min-h-screen w-56 border-r border-slate-900 px-3 pt-0 pb-4 md:flex flex-col">
           <div className="space-y-5">
@@ -734,8 +726,8 @@ export default function DashboardPage() {
                   <span className="font-semibold text-emerald-300">
                     {REQUIRED_XPOT.toLocaleString()} XPOT
                   </span>{' '}
-                  at the moment you get your ticket. You can always buy or
-                  sell again later.
+                  at the moment you get your ticket. You can always buy or sell
+                  again later.
                 </p>
 
                 <p className="mt-2 text-[11px] text-slate-500">
@@ -744,8 +736,8 @@ export default function DashboardPage() {
                   </span>{' '}
                   {todaysTicket?.jackpotUsd || '$10,000'}{' '}
                   <span className="text-slate-500">
-                    · If the winner doesn’t collect in time, the jackpot
-                    rolls into the next draw.
+                    · If the winner doesn’t collect in time, the jackpot rolls
+                    into the next draw.
                   </span>
                 </p>
 
@@ -756,8 +748,8 @@ export default function DashboardPage() {
                         Get your ticket for today’s jackpot.
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Your ticket will be tied to your connected wallet
-                        for today’s draw.
+                        Your ticket will be tied to your connected wallet for
+                        today’s draw.
                       </p>
 
                       {claiming && (
@@ -784,9 +776,7 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={handleClaimTicket}
-                      disabled={
-                        !walletConnected || claiming || loadingTickets
-                      }
+                      disabled={!walletConnected || claiming || loadingTickets}
                       className={`btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold sm:mt-0 transition-all duration-300 ${
                         !walletConnected
                           ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
@@ -809,8 +799,8 @@ export default function DashboardPage() {
                         ✅ Your ticket is in today’s draw.
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
-                        Come back when the countdown hits zero to see if
-                        you won.
+                        Come back when the countdown hits zero to see if you
+                        won.
                       </p>
                       {todaysTicket && (
                         <p className="mt-2 text-xs text-slate-300">
@@ -833,15 +823,15 @@ export default function DashboardPage() {
 
                 {!walletConnected ? (
                   <p className="mt-3 text-sm text-slate-300">
-                    Connect your wallet and get today’s ticket to join the
-                    draw. Once the countdown hits zero, today’s winning
-                    ticket will appear here.
+                    Connect your wallet and get today’s ticket to join the draw.
+                    Once the countdown hits zero, today’s winning ticket will
+                    appear here.
                   </p>
                 ) : myTickets.length === 0 ? (
                   <p className="mt-3 text-sm text-slate-300">
                     You haven’t got a ticket for today’s draw yet. Get your
-                    ticket above to enter. The result will appear here when
-                    the timer hits zero.
+                    ticket above to enter. The result will appear here when the
+                    timer hits zero.
                   </p>
                 ) : winner ? (
                   iWonToday ? (
@@ -878,8 +868,7 @@ export default function DashboardPage() {
                 ) : (
                   <p className="mt-3 text-sm text-slate-300">
                     Your ticket is in today’s draw. As soon as the draw
-                    completes, the winning ticket and handle will appear
-                    here.
+                    completes, the winning ticket and handle will appear here.
                   </p>
                 )}
 
@@ -905,9 +894,9 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-500">
                   Each ticket is tied to a specific daily draw and wallet.
                   Tickets from your{' '}
-                    <span className="font-semibold text-emerald-300">
-                      currently connected wallet
-                    </span>{' '}
+                  <span className="font-semibold text-emerald-300">
+                    currently connected wallet
+                  </span>{' '}
                   are highlighted.
                 </p>
 
@@ -917,7 +906,7 @@ export default function DashboardPage() {
                       No tickets yet for this wallet in today&apos;s draw.
                     </p>
                   ) : (
-                    myTickets.map((entry) => {
+                    myTickets.map(entry => {
                       const isCurrentWallet =
                         currentWalletAddress &&
                         entry.walletAddress === currentWalletAddress;
@@ -986,9 +975,7 @@ export default function DashboardPage() {
                                 onClick={() => handleCopy(entry)}
                                 className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
                               >
-                                {copiedId === entry.id
-                                  ? 'Copied'
-                                  : 'Copy code'}
+                                {copiedId === entry.id ? 'Copied' : 'Copy code'}
                               </button>
                               <button
                                 type="button"
@@ -1039,14 +1026,13 @@ export default function DashboardPage() {
                       </p>
                     )}
 
-                    {!loadingHistory &&
-                      historyEntries.length === 0 && (
-                        <p className="text-xs text-slate-500">
-                          No previous draws yet for this wallet.
-                        </p>
-                      )}
+                    {!loadingHistory && historyEntries.length === 0 && (
+                      <p className="text-xs text-slate-500">
+                        No previous draws yet for this wallet.
+                      </p>
+                    )}
 
-                    {historyEntries.slice(0, 5).map((entry) => (
+                    {historyEntries.slice(0, 5).map(entry => (
                       <article
                         key={entry.id}
                         className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-3 pt-2"
@@ -1098,14 +1084,14 @@ export default function DashboardPage() {
                     !winnersError &&
                     recentWinners.length === 0 && (
                       <p className="mt-2 text-[11px] text-slate-500">
-                        No completed draws yet. As soon as XPOT starts,
-                        you’ll see the latest winning tickets here.
+                        No completed draws yet. As soon as XPOT starts, you’ll
+                        see the latest winning tickets here.
                       </p>
                     )}
 
                   {!loadingWinners && recentWinners.length > 0 && (
                     <div className="mt-3 space-y-2">
-                      {recentWinners.map((w) => (
+                      {recentWinners.map(w => (
                         <article
                           key={w.id}
                           className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"
@@ -1120,10 +1106,7 @@ export default function DashboardPage() {
                             <p className="mt-0.5 text-[11px] text-slate-500">
                               Jackpot:{' '}
                               <span className="font-semibold text-emerald-300">
-                                $
-                                {Number(
-                                  w.jackpotUsd ?? 0,
-                                ).toLocaleString()}
+                                ${Number(w.jackpotUsd ?? 0).toLocaleString()}
                               </span>
                             </p>
                           </div>
@@ -1160,29 +1143,6 @@ export default function DashboardPage() {
 
           {/* Right sidebar */}
           <aside className="hidden w-80 flex-col gap-4 bg-slate-950/40 px-4 py-4 lg:flex">
-            {/* Today’s XPOT – informational version of the main box */}
-            <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">
-                Today’s XPOT
-              </h3>
-              <p className="mt-1 text-xs text-slate-400">
-                Live pool size, USD value and status for today’s draw.
-              </p>
-
-              <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-3">
-                {/* We reuse the same engine but let the card around it
-                   make it feel more “control room” than “hero WOW”. */}
-                <div className="scale-[0.92] origin-top-left">
-                  <JackpotPanel />
-                </div>
-              </div>
-
-              <p className="mt-2 text-[11px] text-slate-500">
-                This is the same XPOT engine you see on the homepage,
-                but here it’s wired as your personal cockpit readout.
-              </p>
-            </div>
-
             {/* Wallet card */}
             <div className="premium-card p-4">
               <h3 className="text-sm font-semibold">Wallet</h3>
@@ -1200,9 +1160,7 @@ export default function DashboardPage() {
                 <div className="mt-3 text-xs text-slate-300">
                   <p className="break-all">
                     Wallet:{' '}
-                    <span className="font-mono">
-                      {publicKey.toBase58()}
-                    </span>
+                    <span className="font-mono">{publicKey.toBase58()}</span>
                   </p>
 
                   <p className="mt-1">
@@ -1212,9 +1170,7 @@ export default function DashboardPage() {
                       : xpotBalance === 'error'
                       ? 'Unavailable'
                       : typeof xpotBalance === 'number'
-                      ? `${Math.floor(
-                          xpotBalance,
-                        ).toLocaleString()} XPOT`
+                      ? `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                       : '-'}
                   </p>
 
@@ -1226,10 +1182,7 @@ export default function DashboardPage() {
                           await disconnect();
                           window.location.reload();
                         } catch (err) {
-                          console.error(
-                            'Failed to disconnect wallet',
-                            err,
-                          );
+                          console.error('Failed to disconnect wallet', err);
                         }
                       }}
                       className="mt-3 w-full rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-500 hover:bg-slate-900"
@@ -1254,23 +1207,19 @@ export default function DashboardPage() {
 
             {/* Eligibility status card */}
             <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">
-                Today’s eligibility
-              </h3>
+              <h3 className="text-sm font-semibold">Today’s eligibility</h3>
 
               {!walletConnected && (
                 <p className="mt-2 text-xs text-slate-500">
-                  Connect a wallet to see if you currently qualify for
-                  today’s draw.
+                  Connect a wallet to see if you currently qualify for today’s
+                  draw.
                 </p>
               )}
 
               {walletConnected && (
                 <div className="mt-2 text-xs">
                   {xpotBalance === null && (
-                    <p className="text-slate-500">
-                      Checking XPOT balance…
-                    </p>
+                    <p className="text-slate-500">Checking XPOT balance…</p>
                   )}
 
                   {xpotBalance === 'error' && (
@@ -1296,10 +1245,7 @@ export default function DashboardPage() {
                       <p className="mt-1 text-slate-400">
                         Current balance:{' '}
                         <span className="font-mono text-slate-100">
-                          {Math.floor(
-                            xpotBalance,
-                          ).toLocaleString()}{' '}
-                          XPOT
+                          {Math.floor(xpotBalance).toLocaleString()} XPOT
                         </span>
                       </p>
                       <p className="text-slate-400">
@@ -1316,9 +1262,7 @@ export default function DashboardPage() {
 
             {/* How it works */}
             <div className="premium-card p-4">
-              <h3 className="text-sm font-semibold">
-                How today’s draw works
-              </h3>
+              <h3 className="text-sm font-semibold">How today’s draw works</h3>
               <ul className="mt-2 text-xs text-slate-400 space-y-1">
                 <li>• Get exactly one ticket per wallet.</li>
                 <li>
@@ -1338,6 +1282,6 @@ export default function DashboardPage() {
           </aside>
         </div>
       </div>
-    </div>
+    </XpotPageShell>
   );
 }
