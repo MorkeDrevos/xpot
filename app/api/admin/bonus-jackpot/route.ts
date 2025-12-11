@@ -29,18 +29,13 @@ export async function POST(req: NextRequest) {
     const todayStr = new Date().toISOString().slice(0, 10);
 
     const draw = await prisma.draw.findFirst({
-      where: {
-        drawDate: {
-          gte: new Date(`${todayStr}T00:00:00Z`),
-          lt: new Date(`${todayStr}T23:59:59Z`),
-        },
-      },
-      include: {
-        tickets: {
-          include: { wallet: true },
-        },
-      },
-    });
+  where: {
+    date: {
+      gte: new Date(`${todayStr}T00:00:00Z`),
+      lt: new Date(`${todayStr}T23:59:59Z`),
+    },
+  },
+});
 
     if (!draw) {
       return NextResponse.json(
