@@ -8,10 +8,9 @@ const JACKPOT_XPOT = XPOT_POOL_SIZE;
 const PRICE_POLL_MS = 2000; // 2s – feels live without hammering Jupiter
 
 type JackpotPanelProps = {
-  /** When true, shows "Draw locked" pill in the header */
   isLocked?: boolean;
-  /** Called whenever the live USD XPOT value updates */
   onJackpotUsdChange?: (value: number | null) => void;
+  variant?: 'standalone' | 'embedded';
 };
 
 function formatUsd(value: number | null) {
@@ -96,6 +95,7 @@ function getMadridSessionKey() {
 export default function JackpotPanel({
   isLocked,
   onJackpotUsdChange,
+  variant = 'standalone',
 }: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
