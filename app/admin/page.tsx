@@ -826,63 +826,78 @@ export default function AdminPage() {
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
 
-  // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
 
   return (
-    <main className="relative mx-auto flex w-full max-w-[1520px] flex-col gap-6 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
-      {/* Galaxy background layers */}
-      <div className="pointer-events-none absolute inset-0 -z-30 bg-[#02020a]" />
-
-      {/* Deep blue / purple nebulas */}
-      <div
-        className="
-          pointer-events-none absolute inset-0 -z-20 opacity-80
-          bg-[radial-gradient(circle_at_20%_0%,rgba(59,130,246,0.45),transparent_55%),radial-gradient(circle_at_80%_100%,rgba(147,51,234,0.40),transparent_60%),radial-gradient(circle_at_10%_80%,rgba(15,23,42,0.9),transparent_72%)]
-        "
-      />
-
-      {/* Starfield noise */}
-      <div
-        className="
-          pointer-events-none absolute inset-0 -z-15 opacity-40
-          [background-image:radial-gradient(circle_at_10%_20%,rgba(148,163,184,0.9)_1px,transparent_0),radial-gradient(circle_at_70%_80%,rgba(148,163,184,0.65)_1px,transparent_0)]
-          [background-size:900px_900px,1100px_1100px]
-          [background-position:0px_0px,80px_120px]
-        "
-      />
-
-      {/* Soft vignette */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_72%,rgba(0,0,0,0.97)_100%)]" />
-
-      {/* Nebula band behind dashboard shell */}
-      <div
-        className="
-    pointer-events-none absolute -z-10
-    -inset-x-40 top-10 h-[640px]
-    bg-[radial-gradient(circle_at_0%_20%,rgba(30,64,175,0.55),transparent_55%),radial-gradient(circle_at_60%_0%,rgba(15,23,42,0.9),transparent_55%),radial-gradient(circle_at_100%_80%,rgba(8,47,73,0.85),transparent_60%)]
-    opacity-90 blur-2xl
-  "
-      />
-
-      {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left: logo + section label */}
-        <div className="flex items-center gap-3">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <Image
-              src="/img/xpot-logo-light.png"
-              alt="XPOT"
-              width={132}
-              height={36}
-              priority
-            />
-          </Link>
-          <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-            Operations center
-          </span>
+    <div className="relative min-h-screen bg-[#02020a] text-slate-100">
+      {/* Top pre-launch banner */}
+      <div className="w-full bg-gradient-to-r from-[#7c3aed] via-[#a855f7] to-[#ec4899] shadow-[0_0_30px_rgba(168,85,247,0.55)]">
+        <div className="mx-auto flex h-11 max-w-[1520px] items-center justify-center px-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-50 sm:h-12">
+          PRE-LAUNCH MODE · XPOT TOKEN NOT DEPLOYED · BUILD V0.9.3
         </div>
+      </div>
+
+      <main className="relative mx-auto flex w-full max-w-[1520px] flex-col gap-6 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
+        {/* Galaxy background layers */}
+        <div className="pointer-events-none absolute inset-0 -z-30 bg-[#02020a]" />
+
+        {/* Deep blue / purple nebulas */}
+        <div
+          className="
+            pointer-events-none absolute inset-0 -z-20 opacity-90
+            bg-[radial-gradient(circle_at_10%_0%,rgba(15,23,42,0.95),transparent_60%),radial-gradient(circle_at_0%_60%,rgba(37,99,235,0.45),transparent_60%),radial-gradient(circle_at_100%_30%,rgba(168,85,247,0.60),transparent_60%),radial-gradient(circle_at_100%_90%,rgba(236,72,153,0.55),transparent_65%)]
+          "
+        />
+
+        {/* Star belt – subtle across the top only */}
+        <div
+          className="
+            pointer-events-none absolute inset-x-0 top-0 -z-15 h-[260px]
+            opacity-60
+            [background-image:
+              radial-gradient(circle_at_5%_20%,rgba(248,250,252,0.9)_1px,transparent_0),
+              radial-gradient(circle_at_40%_10%,rgba(226,232,240,0.7)_1px,transparent_0),
+              radial-gradient(circle_at_70%_25%,rgba(148,163,184,0.7)_1.1px,transparent_0),
+              radial-gradient(circle_at_95%_15%,rgba(148,163,184,0.55)_0.9px,transparent_0)
+            ]
+            [background-size:900px_260px,1000px_260px,1100px_260px,1200px_260px]
+            [background-position:0px_0px,180px_10px,40px_40px,260px_30px]
+            mix-blend-screen
+          "
+        />
+
+        {/* Soft vignette */}
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.82)_70%,rgba(0,0,0,0.97)_100%)]" />
+
+        {/* Nebula band behind dashboard shell */}
+        <div
+          className="
+            pointer-events-none absolute -z-10
+            -inset-x-40 top-12 h-[640px]
+            bg-[radial-gradient(circle_at_0%_10%,rgba(37,99,235,0.55),transparent_55%),radial-gradient(circle_at_45%_0%,rgba(15,23,42,0.95),transparent_55%),radial-gradient(circle_at_100%_60%,rgba(168,85,247,0.60),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.55),transparent_60%)]
+            opacity-95 blur-2xl
+          "
+        />
+
+        {/* Header */}
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Left: logo + section label */}
+          <div className="flex items-center gap-3">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <Image
+                src="/img/xpot-logo-light.png"
+                alt="XPOT"
+                width={132}
+                height={36}
+                priority
+              />
+            </Link>
+            <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+              Operations center
+            </span>
+          </div>
 
         {/* Right: control-room title + status pills */}
         <div className="flex flex-col items-start gap-1 sm:items-end">
