@@ -1,9 +1,5 @@
 // prisma/schema.prisma
 
-// ─────────────────────────────────────────────
-// Generator & datasource
-// ─────────────────────────────────────────────
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -40,26 +36,21 @@ enum WinnerKind {
 // Models
 // ─────────────────────────────────────────────
 
-// App user – can be linked to Clerk + X + wallets
+// User (optional identity, NOT tied to tickets)
 model User {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  // Optional Clerk user id (for auth)
-  clerkId   String?  @unique
-
-  // Optional X identity – all nullable so we can still have system / test users
+  clerkId    String?  @unique
   xUserId    String?  @unique
   xHandle    String?  @unique
   xName      String?
   xAvatarUrl String?
 
-  // Relations
-  wallets Wallet[]
-  tickets Ticket[]
+  wallets Wallet[]   // users can have wallets
 }
 
-// Solana wallet – tied to a user (optional)
+// Wallet → owns tickets
 model Wallet {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -67,87 +58,73 @@ model Wallet {
   address   String   @unique
 
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
 
   tickets   Ticket[]
 
   @@index([userId])
 }
 
-// One XPOT draw per day
+// Daily XPOT draw
 model Draw {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  // Calendar date of the draw (unique per day)
   date      DateTime @unique
-
-  // When the main XPOT closes for this day
   closesAt  DateTime?
-
-  // Simple string status: "open" | "closed" | "completed"
   status    String   @default("open")
 
-  // Relations
   tickets    Ticket[]
   winners    Winner[]
-
-  // Scheduled bonus drops that conceptually belong to this draw
   bonusDrops BonusDrop[]
 }
 
-// XPOT entry ticket
+// XPOT ticket in a draw
 model Ticket {
-  id          String       @id @default(cuid())
-  createdAt   DateTime     @default(now())
+  id           String       @id @default(cuid())
+  createdAt    DateTime     @default(now())
 
-  code        String       @unique
+  code         String       @unique
 
-  // Wallet that owns this ticket (by relation + raw address copy)
-  walletId    String?
-  wallet      Wallet?      @relation(fields: [walletId], references: [id])
+  walletId     String?
+  wallet       Wallet?      @relation(fields: [walletId], references: [id])
 
   walletAddress String
 
-  status      TicketStatus @default(IN_DRAW)
+  status       TicketStatus @default(IN_DRAW)
 
-  // Link to the draw this ticket participates in
-  drawId      String
-  draw        Draw         @relation(fields: [drawId], references: [id])
+  drawId       String
+  draw         Draw         @relation(fields: [drawId], references: [id])
 
-  winners     Winner[]
+  winners      Winner[]
 
   @@index([walletId])
   @@index([drawId])
   @@index([status])
 }
 
-// Main + bonus winners log
+// Log of main + bonus winners
 model Winner {
-  id          String      @id @default(cuid())
-  createdAt   DateTime    @default(now())
+  id           String      @id @default(cuid())
+  createdAt    DateTime    @default(now())
 
-  // Draw + ticket relations
-  drawId      String
-  draw        Draw        @relation(fields: [drawId], references: [id])
+  drawId       String
+  draw         Draw        @relation(fields: [drawId], references: [id])
 
-  ticketId    String
-  ticket      Ticket      @relation(fields: [ticketId], references: [id])
+  ticketId     String
+  ticket       Ticket      @relation(fields: [ticketId], references: [id])
 
-  // Snapshot fields for convenience
   date          DateTime    @default(now())
   ticketCode    String
   walletAddress String
 
-  // Jackpot and payout accounting (stored as USD-equivalent or XPOT-equivalent)
-  jackpotUsd   Float       @default(0)
-  payoutUsd    Float       @default(0)
+  jackpotUsd    Float       @default(0)
+  payoutUsd     Float       @default(0)
+  isPaidOut     Boolean     @default(false)
+  txUrl         String?
 
-  isPaidOut    Boolean     @default(false)
-  txUrl        String?
-
-  kind         WinnerKind?
-  label        String?
+  kind          WinnerKind?
+  label         String?
 
   @@index([drawId])
   @@index([ticketId])
@@ -155,7 +132,7 @@ model Winner {
   @@index([kind])
 }
 
-// Scheduled bonus XPOT drops for a given draw
+// Scheduled bonus XPOT drops
 model BonusDrop {
   id          String          @id @default(cuid())
   createdAt   DateTime        @default(now())
