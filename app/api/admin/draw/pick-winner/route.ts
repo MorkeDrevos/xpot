@@ -6,7 +6,7 @@ import { requireAdmin } from '@/app/api/admin/_auth';
 export const dynamic = 'force-dynamic';
 
 function getTodayRange() {
-  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const todayStr = new Date().toISOString().slice(0, 10);
   const start = new Date(`${todayStr}T00:00:00.000Z`);
   const end = new Date(`${todayStr}T23:59:59.999Z`);
   return { start, end };
@@ -19,11 +19,11 @@ export async function POST(req: NextRequest) {
   try {
     const { start, end } = getTodayRange();
 
-    // 1) Find today's draw that is still open
+    // 1) Find today's draw
     const draw = await prisma.draw.findFirst({
       where: {
         drawDate: { gte: start, lt: end },
-        status: 'open', // matches your Draw.status string
+        status: 'open',
       },
     });
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2) If a MAIN winner already exists for this draw, just return it
+    // 2) If MAIN winner already exists, return it
     const existingMain = await prisma.winner.findFirst({
       where: {
         drawId: draw.id,
@@ -42,9 +42,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         ticket: {
-          include: {
-            wallet: true,
-          },
+          include: { wallet: true },
         },
       },
     });
@@ -57,27 +55,29 @@ export async function POST(req: NextRequest) {
         t.wallet?.address ||
         '';
 
-      const payload = {
-        winnerId: existingMain.id,
-        ticketId: t.id,
-        code: existingMain.ticketCode || t.code,
-        wallet: walletAddress,
-        jackpotUsd: existingMain.jackpotUsd ?? 0,
-        isPaidOut: existingMain.isPaidOut,
-      };
-
-      return NextResponse.json({ ok: true, winner: payload }, { status: 200 });
+      return NextResponse.json(
+        {
+          ok: true,
+          winner: {
+            winnerId: existingMain.id,
+            ticketId: t.id,
+            code: existingMain.ticketCode,
+            wallet: walletAddress,
+            jackpotUsd: existingMain.jackpotUsd ?? 0,
+            isPaidOut: existingMain.isPaidOut,
+          },
+        },
+        { status: 200 },
+      );
     }
 
-    // 3) Load all IN_DRAW tickets for this draw
+    // 3) Load all IN_DRAW tickets
     const tickets = await prisma.ticket.findMany({
       where: {
         drawId: draw.id,
         status: 'IN_DRAW',
       },
-      include: {
-        wallet: true,
-      },
+      include: { wallet: true },
     });
 
     if (!tickets.length) {
@@ -87,37 +87,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4) Pick a random ticket
-    const randomIndex = Math.floor(Math.random() * tickets.length);
-    const winningTicket = tickets[randomIndex];
-
+    // 4) Pick random winner
+    const index = Math.floor(Math.random() * tickets.length);
+    const winningTicket = tickets[index];
     const now = new Date();
+
     const walletAddress =
       winningTicket.walletAddress || winningTicket.wallet?.address || '';
 
-    // 5) Persist:
-    //    - mark ticket as WON
-    //    - mark draw as completed
-    //    - create Winner row (MAIN)
+    // 5) Persist changes
     const [updatedTicket, updatedDraw, newWinner] = await prisma.$transaction([
       prisma.ticket.update({
         where: { id: winningTicket.id },
         data: { status: 'WON' },
       }),
+
       prisma.draw.update({
         where: { id: draw.id },
-        data: {
-          status: 'completed',
-        },
+        data: { status: 'completed' },
       }),
-      prisma.winner.create({
+
+      prisma.wwinner.create({
         data: {
           drawId: draw.id,
           ticketId: winningTicket.id,
-          date: now, // explicit, though default(now()) exists
+          date: now,
           ticketCode: winningTicket.code,
           walletAddress,
-          // You can later wire real amounts here if you want:
           jackpotUsd: 0,
           payoutUsd: 0,
           isPaidOut: false,
@@ -126,18 +122,21 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    const payload = {
-      winnerId: newWinner.id,
-      ticketId: updatedTicket.id,
-      code: updatedTicket.code,
-      wallet: walletAddress,
-      jackpotUsd: newWinner.jackpotUsd ?? 0,
-      status: updatedDraw.status,
-    };
-
-    return NextResponse.json({ ok: true, winner: payload }, { status: 200 });
+    return NextResponse.json(
+      {
+        ok: true,
+        winner: {
+          winnerId: newWinner.id,
+          ticketId: updatedTicket.id,
+          code: updatedTicket.code,
+          wallet: walletAddress,
+          jackpotUsd: newWinner.jackpotUsd,
+        },
+      },
+      { status: 200 },
+    );
   } catch (err: any) {
-    console.error('[XPOT] /admin/draw/pick-winner error:', err);
+    console.error('[XPOT] ERROR /admin/pick-winner:', err);
     return NextResponse.json(
       { ok: false, error: err?.message || 'INTERNAL_ERROR' },
       { status: 500 },
