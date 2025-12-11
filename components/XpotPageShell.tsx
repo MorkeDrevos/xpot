@@ -1,5 +1,7 @@
 // components/XpotPageShell.tsx
-import { ReactNode } from 'react';
+'use client';
+
+import type { ReactNode } from 'react';
 
 type XpotPageShellProps = {
   title?: string;
@@ -54,7 +56,7 @@ export default function XpotPageShell({
         "
       />
 
-      {/* Main content container (same width as admin) */}
+      {/* Main content container – matches admin width */}
       <main className="relative mx-auto flex w-full max-w-[1520px] flex-col gap-6 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
         {(title || subtitle || rightSlot) && (
           <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
