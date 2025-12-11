@@ -249,8 +249,8 @@ export default function JackpotPanel({
       <div
         className={`
           pointer-events-none absolute inset-0 rounded-2xl
-          border border-emerald-400/40
-          shadow-[0_0_40px_rgba(52,211,153,0.45)]
+          border border-[#3BA7FF]/40
+          shadow-[0_0_40px_rgba(59,167,255,0.45)]
           opacity-0 transition-opacity duration-500
           ${justPumped ? 'opacity-100' : ''}
         `}
@@ -260,7 +260,7 @@ export default function JackpotPanel({
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div className="space-y-2">
           {/* Section label */}
-          <span className="inline-flex rounded-full bg-emerald-500/12 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+          <span className="inline-flex rounded-full bg-[rgba(59,167,255,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7CC8FF]">
             Today&apos;s XPOT
           </span>
 
@@ -297,7 +297,7 @@ export default function JackpotPanel({
                 tabular-nums
                 transition-transform transition-colors duration-200
                 ${justUpdated ? 'scale-[1.01]' : ''}
-                ${justPumped ? 'text-emerald-300' : 'text-white'}
+                ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
               `}
             >
               {displayUsd}
@@ -333,9 +333,7 @@ export default function JackpotPanel({
                   "
                 >
                   {/* Arrow pointer */}
-                  <div
-                    className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]"
-                  />
+                  <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
 
                   <p className="mb-2">
                     This is the current USD value of today&apos;s XPOT,
@@ -343,7 +341,7 @@ export default function JackpotPanel({
                   </p>
                   <p className="text-slate-400">
                     The winner is always paid in{' '}
-                    <span className="font-semibold text-emerald-300">
+                    <span className="font-semibold text-[#7CC8FF]">
                       XPOT
                     </span>
                     , not USD.
@@ -359,7 +357,7 @@ export default function JackpotPanel({
             <span
               className={`
                 font-mono transition-colors duration-200
-                ${justPumped ? 'text-emerald-300' : 'text-slate-100'}
+                ${justPumped ? 'text-[#7CC8FF]' : 'text-slate-100'}
               `}
             >
               {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
@@ -386,7 +384,7 @@ export default function JackpotPanel({
           )}
 
           {reachedMilestone && (
-            <p className="text-[11px] text-emerald-300">
+            <p className="text-[11px] text-[#7CC8FF]">
               Milestone{' '}
               <span className="font-mono">
                 {formatUsd(reachedMilestone)}
