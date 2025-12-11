@@ -3,54 +3,52 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
 
-const MIN_AMOUNT = 100_000;
+// Minimum bonus amount and allowed delay options (minutes)
+const MIN_AMOUNT_XPOT = 100_000;
 const ALLOWED_DELAYS = [5, 15, 30, 60];
 
 type Body = {
-  amountXpot?: number;
   label?: string;
+  amountXpot?: number;
   delayMinutes?: number;
 };
 
 export async function POST(req: NextRequest) {
-  // 1) Admin guard
+  // ── 1) Admin guard ──────────────────────────────────────────────
   await requireAdmin(req);
 
-  // 2) Parse body
-  let body: Body | null = null;
+  // ── 2) Parse body ───────────────────────────────────────────────
+  let body: Body;
   try {
     body = (await req.json()) as Body;
   } catch {
-    // ignore, will fail validation below
-  }
-
-  if (!body) {
     return NextResponse.json(
-      { ok: false, error: 'INVALID_BODY' },
+      { ok: false, error: 'INVALID_JSON' },
       { status: 400 },
     );
   }
 
-  const { amountXpot, label, delayMinutes } = body;
+  const rawLabel = body.label ?? '';
+  const amountXpot = body.amountXpot;
+  const delayMinutes = body.delayMinutes ?? 5;
 
-  // 3) Validate amount
-  if (!amountXpot || !Number.isFinite(amountXpot) || amountXpot < MIN_AMOUNT) {
+  // ── 3) Validate payload ─────────────────────────────────────────
+  if (
+    typeof amountXpot !== 'number' ||
+    !Number.isFinite(amountXpot) ||
+    amountXpot < MIN_AMOUNT_XPOT
+  ) {
     return NextResponse.json(
       {
         ok: false,
-        error: 'MIN_AMOUNT',
-        message: `Enter at least ${MIN_AMOUNT.toLocaleString()} XPOT.`,
+        error: 'INVALID_AMOUNT',
+        message: `amountXpot must be at least ${MIN_AMOUNT_XPOT}.`,
       },
       { status: 400 },
     );
   }
 
-  // 4) Validate delay
-  if (
-    !delayMinutes ||
-    !Number.isFinite(delayMinutes) ||
-    !ALLOWED_DELAYS.includes(delayMinutes)
-  ) {
+  if (!ALLOWED_DELAYS.includes(delayMinutes)) {
     return NextResponse.json(
       {
         ok: false,
@@ -61,20 +59,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 5) Compute when this bonus should fire
+  // ── 4) Find today's draw ────────────────────────────────────────
   const now = new Date();
-  const scheduledAt = new Date(now.getTime() + delayMinutes * 60_000);
 
-  // 6) Find today's draw using Draw.date (your Prisma schema)
-  const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
-  const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-  const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+  const startOfDay = new Date(now);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(now);
+  endOfDay.setUTCHours(23, 59, 59, 999);
 
   const todayDraw = await prisma.draw.findFirst({
     where: {
       date: {
         gte: startOfDay,
-        lt: endOfDay,
+        lte: endOfDay,
       },
     },
   });
@@ -83,29 +81,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        error: 'NO_DRAW_TODAY',
-        message: 'No XPOT draw found for today. Auto-draw worker should create it.',
+        error: 'NO_TODAY_DRAW',
+        message: 'No XPOT draw found for today.',
       },
-      { status: 400 },
+      { status: 404 },
     );
   }
 
-  // 7) Create the bonus drop row
+  // ── 5) Compute scheduledAt ──────────────────────────────────────
+  const scheduledAt = new Date(now.getTime() + delayMinutes * 60_000);
+
+  // ── 6) Create bonus drop row ────────────────────────────────────
   const drop = await prisma.bonusDrop.create({
     data: {
       drawId: todayDraw.id,
-      label: (label || 'Bonus XPOT').trim(),
+      label: rawLabel.trim() || 'Bonus XPOT',
       amountXpot: Math.floor(amountXpot),
       scheduledAt,
       status: 'SCHEDULED',
     },
   });
 
+  // ── 7) Respond ──────────────────────────────────────────────────
   return NextResponse.json(
     {
       ok: true,
       drop,
     },
-    { status: 200 },
+    { status: 201 },
   );
 }
