@@ -12,7 +12,7 @@ export default function PreLaunchBanner() {
         </span>
         <span className="h-1 w-1 rounded-full bg-white/80" />
         <span className="uppercase tracking-[0.18em] text-white/90">
-          BUILD V0.9.3
+          BUILD V0.9.7
         </span>
       </div>
     </div>
