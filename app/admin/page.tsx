@@ -822,106 +822,97 @@ export default function AdminPage() {
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
 
-  // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────
+// Render
+// ─────────────────────────────────────────────
 
-  return (
-    <div className="relative min-h-screen bg-[#02020a] text-slate-100">
-      {/* Top pre-launch banner */}
-      <div className="w-full bg-gradient-to-r from-[#7c3aed] via-[#a855f7] to-[#ec4899] shadow-[0_0_30px_rgba(168,85,247,0.55)]">
-        <div className="mx-auto flex h-11 max-w-[1520px] items-center justify-center px-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-50 sm:h-12">
-          PRE-LAUNCH MODE · XPOT TOKEN NOT DEPLOYED · BUILD V0.9.3
+return (
+  <div className="relative min-h-screen bg-[#02020a] text-slate-100">
+    {/* Bright starfield near top of page (under global banner) */}
+    <div
+      className="
+        pointer-events-none absolute inset-x-0 top-0
+        h-[220px] -z-10 opacity-85 mix-blend-screen
+        [background-image:
+          radial-gradient(circle_at_12%_18%,rgba(248,250,252,0.98)_1.6px,transparent_0),
+          radial-gradient(circle_at_72%_10%,rgba(226,232,240,0.9)_1.4px,transparent_0),
+          radial-gradient(circle_at_55%_26%,rgba(148,163,184,0.9)_1.2px,transparent_0)
+        ]
+        [background-size:900px_260px,1200px_260px,1400px_260px]
+        [background-position:-120px_-40px,260px_-30px,40px_10px]
+      "
+    />
+
+    <main className="relative mx-auto flex w-full max-w-[1520px] flex-col gap-6 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
+      {/* Galaxy background layers */}
+      <div className="pointer-events-none absolute inset-0 -z-30 bg-[#02020a]" />
+
+      {/* Deep blue / purple nebulas */}
+      <div
+        className="
+          pointer-events-none absolute inset-0 -z-20 opacity-90
+          bg-[radial-gradient(circle_at_10%_0%,rgba(15,23,42,0.95),transparent_60%),radial-gradient(circle_at_0%_60%,rgba(37,99,235,0.45),transparent_60%),radial-gradient(circle_at_100%_30%,rgba(168,85,247,0.60),transparent_60%),radial-gradient(circle_at_100%_90%,rgba(236,72,153,0.55),transparent_65%)]
+        "
+      />
+
+      {/* Soft vignette */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.82)_70%,rgba(0,0,0,0.97)_100%)]" />
+
+      {/* Nebula band behind dashboard shell */}
+      <div
+        className="
+          pointer-events-none absolute -z-10
+          -inset-x-40 top-12 h-[640px]
+          bg-[radial-gradient(circle_at_0%_10%,rgba(37,99,235,0.55),transparent_55%),radial-gradient(circle_at_45%_0%,rgba(15,23,42,0.95),transparent_55%),radial-gradient(circle_at_100%_60%,rgba(168,85,247,0.60),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.55),transparent_60%)]
+          opacity-95 blur-2xl
+        "
+      />
+
+      {/* Header */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Left: logo + section label */}
+        <div className="flex items-center gap-3">
+          <Link href="/" className="inline-flex items-center gap-2">
+            <Image
+              src="/img/xpot-logo-light.png"
+              alt="XPOT"
+              width={132}
+              height={36}
+              priority
+            />
+          </Link>
+          <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+            Operations center
+          </span>
         </div>
-      </div>
 
-      <main className="relative mx-auto flex w-full max-w-[1520px] flex-col gap-6 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
-        {/* Galaxy background layers */}
-        <div className="pointer-events-none absolute inset-0 -z-30 bg-[#02020a]" />
+        {/* Right: control-room title + status pills */}
+        <div className="flex flex-col items-start gap-1 sm:items-end">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <h1 className="text-sm font-semibold text-white sm:text-base">
+              Control room for today’s XPOT
+            </h1>
 
-        {/* Deep blue / purple nebulas */}
-        <div
-          className="
-            pointer-events-none absolute inset-0 -z-20 opacity-90
-            bg-[radial-gradient(circle_at_10%_0%,rgba(15,23,42,0.95),transparent_60%),radial-gradient(circle_at_0%_60%,rgba(37,99,235,0.45),transparent_60%),radial-gradient(circle_at_100%_30%,rgba(168,85,247,0.60),transparent_60%),radial-gradient(circle_at_100%_90%,rgba(236,72,153,0.55),transparent_65%)]
-          "
-        />
+            {AUTO_DRAW_ENABLED && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] animate-pulse" />
+                Auto draw enabled
+              </span>
+            )}
 
-        {/* Star belt – subtle across the top only */}
-        <div
-          className="
-            pointer-events-none absolute inset-x-0 top-0 -z-15 h-[260px]
-            opacity-60
-            [background-image:
-              radial-gradient(circle_at_5%_20%,rgba(248,250,252,0.9)_1px,transparent_0),
-              radial-gradient(circle_at_40%_10%,rgba(226,232,240,0.7)_1px,transparent_0),
-              radial-gradient(circle_at_70%_25%,rgba(148,163,184,0.7)_1.1px,transparent_0),
-              radial-gradient(circle_at_95%_15%,rgba(148,163,184,0.55)_0.9px,transparent_0)
-            ]
-            [background-size:900px_260px,1000px_260px,1100px_260px,1200px_260px]
-            [background-position:0px_0px,180px_10px,40px_40px,260px_30px]
-            mix-blend-screen
-          "
-        />
-
-        {/* Soft vignette */}
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.82)_70%,rgba(0,0,0,0.97)_100%)]" />
-
-        {/* Nebula band behind dashboard shell */}
-        <div
-          className="
-            pointer-events-none absolute -z-10
-            -inset-x-40 top-12 h-[640px]
-            bg-[radial-gradient(circle_at_0%_10%,rgba(37,99,235,0.55),transparent_55%),radial-gradient(circle_at_45%_0%,rgba(15,23,42,0.95),transparent_55%),radial-gradient(circle_at_100%_60%,rgba(168,85,247,0.60),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.55),transparent_60%)]
-            opacity-95 blur-2xl
-          "
-        />
-
-        {/* Header */}
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Left: logo + section label */}
-          <div className="flex items-center gap-3">
-            <Link href="/" className="inline-flex items-center gap-2">
-              <Image
-                src="/img/xpot-logo-light.png"
-                alt="XPOT"
-                width={132}
-                height={36}
-                priority
-              />
-            </Link>
-            <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-              Operations center
-            </span>
+            {isDevHost && (
+              <span className="rounded-full border border-amber-400/60 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+                Dev environment
+              </span>
+            )}
           </div>
 
-          {/* Right: control-room title + status pills */}
-          <div className="flex flex-col items-start gap-1 sm:items-end">
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              <h1 className="text-sm font-semibold text-white sm:text-base">
-                Control room for today’s XPOT
-              </h1>
-
-              {AUTO_DRAW_ENABLED && (
-                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] animate-pulse" />
-                  Auto draw enabled
-                </span>
-              )}
-
-              {isDevHost && (
-                <span className="rounded-full border border-amber-400/60 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-                  Dev environment
-                </span>
-              )}
-            </div>
-
-            <p className="text-[11px] text-slate-400">
-              Monitor pool state, entries and rewards. All data is live and
-              admin-key gated.
-            </p>
-          </div>
-        </header>
+          <p className="text-[11px] text-slate-400">
+            Monitor pool state, entries and rewards. All data is live and
+            admin-key gated.
+          </p>
+        </div>
+      </header>
 
         {/* Admin key band */}
         <section className="relative rounded-3xl">
