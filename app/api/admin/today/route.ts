@@ -32,12 +32,25 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, today: null });
     }
 
-    // ✅ No closesAt column exists → calculate it
+        // ✅ No closesAt column exists → calculate it
     const c = new Date(draw.drawDate);
     c.setUTCHours(21, 0, 0, 0); // 22:00 Madrid winter
     const closesAt = c.toISOString();
 
-    const status: DrawStatus = draw.isClosed ? 'closed' : 'open';
+    // Map Prisma enum → our DrawStatus union
+    const rawStatus = (draw as any).status as string | null;
+
+    let status: DrawStatus;
+    switch (rawStatus?.toLowerCase()) {
+      case 'closed':
+        status = 'closed';
+        break;
+      case 'completed':
+        status = 'completed';
+        break;
+      default:
+        status = 'open';
+    }
 
     const today = {
       id: draw.id,
