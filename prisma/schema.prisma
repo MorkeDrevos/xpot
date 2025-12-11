@@ -1,5 +1,9 @@
 // prisma/schema.prisma
 
+// ─────────────────────────────────────────────
+// Generator & datasource
+// ─────────────────────────────────────────────
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -27,139 +31,143 @@ enum BonusDropStatus {
   CANCELLED
 }
 
+enum WinnerKind {
+  MAIN
+  BONUS
+}
+
 // ─────────────────────────────────────────────
 // Models
 // ─────────────────────────────────────────────
 
+// App user – can be linked to Clerk + X + wallets
 model User {
-  id         String   @id @default(cuid())
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
   // Optional Clerk user id (for auth)
-  clerkId    String?  @unique
+  clerkId   String?  @unique
 
-  // X identity – all optional so we can still have system / test users
-  xId        String?  @unique     // X account id
-  xHandle    String?  @unique     // @handle
-  xName      String?              // display name
-  xAvatarUrl String?              // avatar URL
+  // Optional X identity – all nullable so we can still have system / test users
+  xUserId    String?  @unique
+  xHandle    String?  @unique
+  xName      String?
+  xAvatarUrl String?
 
-  wallets    Wallet[]
-  tickets    Ticket[]
+  // Relations
+  wallets Wallet[]
+  tickets Ticket[]
 }
 
+// Solana wallet – tied to a user (optional)
 model Wallet {
-  id         String          @id @default(cuid())
-  address    String          @unique
-  userId     String
-  user       User            @relation(fields: [userId], references: [id])
-  createdAt  DateTime        @default(now())
-
-  balances   XpUserBalance[]
-  tickets    Ticket[]
-}
-
-model XpUserBalance {
   id        String   @id @default(cuid())
-  walletId  String   @unique
-  wallet    Wallet   @relation(fields: [walletId], references: [id])
-  balance   Int
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  address   String   @unique
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  tickets   Ticket[]
+
+  @@index([userId])
 }
 
+// One XPOT draw per day
 model Draw {
-  id             String   @id @default(cuid())
-  drawDate       DateTime @unique          // one main draw per day
-  isClosed       Boolean  @default(false)
-  resolvedAt     DateTime?
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  // Main jackpot size for this draw (XPOT amount, stored in jackpotUsd column)
-  jackpotUsd     Int?
+  // Calendar date of the draw (unique per day)
+  date      DateTime @unique
 
-  // Payout info for the main winner
-  paidAt         DateTime?
-  payoutTx       String?
+  // When the main XPOT closes for this day
+  closesAt  DateTime?
 
-  // All tickets in this draw
-  tickets        Ticket[] @relation("DrawTickets")
+  // Simple string status: "open" | "closed" | "completed"
+  status    String   @default("open")
 
-  // Winning ticket (when resolved)
-  winnerTicketId String?  @unique
-  winnerTicket   Ticket?  @relation("DrawWinner", fields: [winnerTicketId], references: [id])
-
-  // Extra hype / bonus jackpots linked to this draw (already fired + on-chain)
-  rewards        Reward[]
+  // Relations
+  tickets    Ticket[]
+  winners    Winner[]
 
   // Scheduled bonus drops that conceptually belong to this draw
-  bonusDrops     XpotBonusDrop[]
+  bonusDrops BonusDrop[]
 }
 
+// XPOT entry ticket
 model Ticket {
-  id        String       @id @default(cuid())
-  code      String       @unique
-  createdAt DateTime     @default(now())
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
 
-  // Status of this ticket in the lifecycle
-  status    TicketStatus @default(IN_DRAW)
+  code        String       @unique
 
-  // Draw this ticket belongs to
-  drawId    String
-  draw      Draw         @relation("DrawTickets", fields: [drawId], references: [id])
+  // Wallet that owns this ticket (by relation + raw address copy)
+  walletId    String?
+  wallet      Wallet?      @relation(fields: [walletId], references: [id])
 
-  // Owning user (X identity)
-  userId    String
-  user      User         @relation(fields: [userId], references: [id])
+  walletAddress String
 
-  // Wallet that claimed it
-  // ❗ optional, because X can exist before wallet connect
-  walletId  String?
-  wallet    Wallet?      @relation(fields: [walletId], references: [id])
+  status      TicketStatus @default(IN_DRAW)
 
-  // If this ticket is the main winner of a draw
-  winnerOf  Draw?        @relation("DrawWinner")
+  // Link to the draw this ticket participates in
+  drawId      String
+  draw        Draw         @relation(fields: [drawId], references: [id])
 
-  // Any bonus jackpots this ticket has won
-  rewards   Reward[]
+  winners     Winner[]
 
-  // 🔐 HARD LOCK: one ticket per wallet per draw
-  @@unique([drawId, walletId], name: "OneTicketPerWalletPerDraw")
+  @@index([walletId])
+  @@index([drawId])
+  @@index([status])
 }
 
-// Bonus / hype jackpots that have actually been awarded to a ticket
-model Reward {
-  id         String   @id @default(cuid())
-  createdAt  DateTime @default(now())
+// Main + bonus winners log
+model Winner {
+  id          String      @id @default(cuid())
+  createdAt   DateTime    @default(now())
 
-  drawId     String
-  draw       Draw     @relation(fields: [drawId], references: [id])
+  // Draw + ticket relations
+  drawId      String
+  draw        Draw        @relation(fields: [drawId], references: [id])
 
-  ticketId   String
-  ticket     Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId    String
+  ticket      Ticket      @relation(fields: [ticketId], references: [id])
 
-  // e.g. "Bonus jackpot", "Flash pot", "Stream giveaway"
-  label      String
+  // Snapshot fields for convenience
+  date          DateTime    @default(now())
+  ticketCode    String
+  walletAddress String
 
-  // XPOT amount for this reward (token amount, not USD)
-  payoutXpot Int
+  // Jackpot and payout accounting (stored as USD-equivalent or XPOT-equivalent)
+  jackpotUsd   Float       @default(0)
+  payoutUsd    Float       @default(0)
 
-  isPaidOut  Boolean  @default(false)
+  isPaidOut    Boolean     @default(false)
+  txUrl        String?
 
-  // Store transaction link for this reward payout
-  txUrl      String?  @map("payoutTx")
+  kind         WinnerKind?
+  label        String?
+
+  @@index([drawId])
+  @@index([ticketId])
+  @@index([isPaidOut])
+  @@index([kind])
 }
 
+// Scheduled bonus XPOT drops for a given draw
 model BonusDrop {
-  id           String          @id @default(cuid())
-  createdAt    DateTime        @default(now())
+  id          String          @id @default(cuid())
+  createdAt   DateTime        @default(now())
 
-  drawId       String
-  draw         Draw            @relation(fields: [drawId], references: [id])
+  drawId      String
+  draw        Draw            @relation(fields: [drawId], references: [id])
 
-  label        String
-  amountXpot   Int
-  scheduledAt  DateTime
+  label       String
+  amountXpot  Int
+  scheduledAt DateTime
 
-  status       BonusDropStatus @default(SCHEDULED)
+  status      BonusDropStatus @default(SCHEDULED)
 
   @@index([drawId])
   @@index([status, scheduledAt])
