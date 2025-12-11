@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/app/api/admin/_auth';
-
-export const dynamic = 'force-dynamic';
+import { requireAdmin } from '../_auth';
 
 export async function POST(req: NextRequest) {
-  const auth = requireAdmin(req);
-  if (auth) return auth;
+  await requireAdmin(req);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-  const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+  const today = new Date();
+  const yyyyMmDd = today.toISOString().slice(0, 10); // YYYY-MM-DD
 
+  const startOfDay = new Date(`${yyyyMmDd}T00:00:00Z`);
+  const endOfDay = new Date(`${yyyyMmDd}T23:59:59Z`);
+
+  // Check if today's draw already exists
   const existing = await prisma.draw.findFirst({
     where: {
-      drawDate: {
+      date: {
         gte: startOfDay,
         lt: endOfDay,
       },
@@ -22,23 +22,26 @@ export async function POST(req: NextRequest) {
   });
 
   if (existing) {
-    return NextResponse.json({
-      ok: true,
-      alreadyExists: true,
-      draw: existing,
-    });
+    return NextResponse.json(
+      { ok: false, error: 'DRAW_ALREADY_EXISTS', id: existing.id },
+      { status: 400 }
+    );
   }
 
-  const draw = await prisma.draw.create({
+  // Create new today's draw
+  const newDraw = await prisma.draw.create({
     data: {
-      drawDate: new Date(),
-      jackpotUsd: 1_000_000,
+      date: startOfDay,
+      status: 'open',
     },
   });
 
-  return NextResponse.json({
-    ok: true,
-    alreadyExists: false,
-    draw,
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      id: newDraw.id,
+      date: newDraw.date.toISOString(),
+    },
+    { status: 200 }
+  );
 }
