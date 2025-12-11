@@ -152,7 +152,6 @@ model BonusDrop {
   id           String          @id @default(cuid())
   createdAt    DateTime        @default(now())
 
-  // Link to the daily draw this bonus belongs to
   drawId       String
   draw         Draw            @relation(fields: [drawId], references: [id])
 
