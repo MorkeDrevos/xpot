@@ -404,11 +404,10 @@ export default function JackpotPanel({
       </div>
 
       {/* Footer explainer */}
-      <p className="relative z-10 mt-4 text-xs text-slate-500">
-        Today&apos;s XPOT round is fixed at {poolLabel}. Its USD value
-        tracks the live on-chain XPOT price from Jupiter and updates
-        automatically.
-      </p>
+      <p className="mt-4 text-xs text-slate-400 leading-relaxed">
+  Today's XPOT round is fixed at 1,000,000 XPOT.
+  Its USD value tracks the live on-chain XPOT price from Jupiter and updates automatically.
+</p>
     </section>
   );
 }
