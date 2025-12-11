@@ -822,7 +822,7 @@ export default function AdminPage() {
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
 
-    // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
 // Render
 // ─────────────────────────────────────────────
 
@@ -867,6 +867,52 @@ return (
           opacity-95 blur-2xl
         "
       />
+
+      {/* Header */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Left: logo + section label */}
+        <div className="flex items-center gap-3">
+          <Link href="/" className="inline-flex items-center gap-2">
+            <Image
+              src="/img/xpot-logo-light.png"
+              alt="XPOT"
+              width={132}
+              height={36}
+              priority
+            />
+          </Link>
+          <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+            Operations center
+          </span>
+        </div>
+
+        {/* Right: control-room title + status pills */}
+        <div className="flex flex-col items-start gap-1 sm:items-end">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <h1 className="text-sm font-semibold text-white sm:text-base">
+              Control room for today’s XPOT
+            </h1>
+
+            {AUTO_DRAW_ENABLED && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] animate-pulse" />
+                Auto draw enabled
+              </span>
+            )}
+
+            {isDevHost && (
+              <span className="rounded-full border border-amber-400/60 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+                Dev environment
+              </span>
+            )}
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            Monitor pool state, entries and rewards. All data is live and
+            admin-key gated.
+          </p>
+        </div>
+      </header>
 
       {/* Header */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
