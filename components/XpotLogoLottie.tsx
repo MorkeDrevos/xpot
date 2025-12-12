@@ -1,19 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Lottie from 'lottie-react';
 
-// bundled JSON (no fetch)
 import animationData from '@/app/animations/xpot_logo_loop.json';
 
 type XpotLogoLottieProps = {
   className?: string;
-
-  // If provided, we lock the box size (recommended for stable headers)
   width?: number;
   height?: number;
-
   loop?: boolean;
   autoplay?: boolean;
 };
@@ -25,44 +21,58 @@ export default function XpotLogoLottie({
   loop = true,
   autoplay = true,
 }: XpotLogoLottieProps) {
-  const [failed, setFailed] = useState(false);
+  const w = width ?? 180;
+  const h = height ?? 48;
 
-  // default “header-safe” size if none passed
-  const w = width ?? 132;
-  const h = height ?? 36;
+  const [lottieFailed, setLottieFailed] = useState(false);
+  const [hasFrame, setHasFrame] = useState(false);
 
-  if (failed) {
-    return (
+  // guard: only set once (avoid re-renders every frame)
+  const onEnterFrame = useMemo(() => {
+    let fired = false;
+    return () => {
+      if (!fired) {
+        fired = true;
+        setHasFrame(true);
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      className={['relative inline-block select-none', className].join(' ')}
+      style={{ width: w, height: h, minWidth: w, minHeight: h }}
+      aria-label="XPOT"
+    >
+      {/* BASE LAYER: always visible, premium fallback */}
       <Image
         src="/img/xpot-logo-light.png"
         alt="XPOT"
         width={w}
         height={h}
         priority
-        className={className}
+        className="block h-full w-full object-contain opacity-95"
       />
-    );
-  }
 
-  return (
-    <div
-      className={['relative inline-block select-none', className].join(' ')}
-      style={{
-        width: w,
-        height: h,
-        minWidth: w,
-        minHeight: h,
-      }}
-      aria-label="XPOT"
-    >
-      <Lottie
-        animationData={animationData as any}
-        loop={loop}
-        autoplay={autoplay}
-        rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
-        style={{ width: '100%', height: '100%' }}
-        onError={() => setFailed(true)}
-      />
+      {/* TOP LAYER: Lottie fades in only after frames render */}
+      {!lottieFailed && (
+        <div
+          className={[
+            'absolute inset-0 transition-opacity duration-300',
+            hasFrame ? 'opacity-100' : 'opacity-0',
+          ].join(' ')}
+        >
+          <Lottie
+            animationData={animationData as any}
+            loop={loop}
+            autoplay={autoplay}
+            onEnterFrame={onEnterFrame as any}
+            onError={() => setLottieFailed(true)}
+            rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+      )}
     </div>
   );
 }
