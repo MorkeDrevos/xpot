@@ -9,7 +9,6 @@ import {
   ArrowRight,
   Lock,
   Sparkles,
-  Users,
   ShieldCheck,
   Orbit,
   Zap,
@@ -20,7 +19,7 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
-// Temporary sample handles – swap to real API data later
+// Temporary sample handles - swap to real API data later
 const SAMPLE_HANDLES = [
   'DeWala_222222',
   'CryptoNox',
@@ -60,9 +59,7 @@ function Pill({
   };
 
   return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${map[tone]}`}
-    >
+    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${map[tone]}`}>
       {children}
     </span>
   );
@@ -193,8 +190,8 @@ export default function HomePage() {
 
             <h1 className="mt-3 text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-[3.25rem]">
               The daily on-chain{' '}
-              <span className="text-emerald-300">XPOT pool</span> that feels
-              like a cockpit.
+              <span className="text-emerald-300">XPOT pool</span> that feels like
+              a cockpit.
             </h1>
 
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
@@ -263,12 +260,17 @@ export default function HomePage() {
               <ArrowRight className="h-4 w-4 translate-x-0 transition-transform group-hover:translate-x-0.5" />
             </Link>
 
-            <button type="button" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+            <button
+              type="button"
+              className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}
+            >
               Read the system rules
             </button>
 
             <p className="text-[11px] text-slate-500">
-              Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
+              Winners revealed by{' '}
+              <span className="font-semibold text-slate-200">X handle</span>,
+              never by wallet.
             </p>
           </div>
         </div>
@@ -399,8 +401,8 @@ export default function HomePage() {
 
               <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
                 XPOT is built like a system, not a landing page. The Control Room
-                is a read-only cockpit view into how the engine moves, with the same
-                premium UI you already built in admin.
+                is a read-only cockpit view into how the engine moves, with the
+                same premium UI you already built in admin.
               </p>
             </div>
 
@@ -460,8 +462,7 @@ export default function HomePage() {
               </span>
             </div>
 
-            <pre className="mt-1 max-h-56 overflow-hidden font-mono text-[10px] leading-relaxed text-emerald-100/90">
-{`> XPOT_POOL_STATUS
+            <pre className="mt-1 max-h-56 overflow-hidden font-mono text-[10px] leading-relaxed text-emerald-100/90">{`> XPOT_POOL_STATUS
   pool_today:      1,000,000 XPOT
   pool_value_usd:  live via Jupiter
   entries_today:   2,184
@@ -472,8 +473,7 @@ export default function HomePage() {
   #2025-12-05  @SignalChaser    250,000 XPOT (bonus)
   #2025-12-04  @NFAResearch     1,000,000 XPOT
 
-> note: write access is admin-only. winners can watch, not touch.`}
-            </pre>
+> note: write access is admin-only. winners can watch, not touch.`}</pre>
           </div>
 
           <p className="mt-3 text-[12px] text-slate-400">
@@ -490,7 +490,8 @@ export default function HomePage() {
             Transparent by design
           </p>
           <p className="mt-1 leading-relaxed">
-            XPOT runs on-chain with verifiable entries, draws and payouts. Winners verify TX.
+            XPOT runs on-chain with verifiable entries, draws and payouts. Winners
+            verify TX.
           </p>
         </div>
         <div>
@@ -498,7 +499,8 @@ export default function HomePage() {
             No ticket sales
           </p>
           <p className="mt-1 leading-relaxed">
-            There are no ticket purchases on the site. Holding XPOT is what qualifies you.
+            There are no ticket purchases on the site. Holding XPOT is what
+            qualifies you.
           </p>
         </div>
         <div>
@@ -506,12 +508,13 @@ export default function HomePage() {
             Built for X-native holders
           </p>
           <p className="mt-1 leading-relaxed">
-            Your X handle is your public identity. Wallet stays in the background, rewards stay in custody.
+            Your X handle is your public identity. Wallet stays in the background,
+            rewards stay in custody.
           </p>
         </div>
       </section>
 
-            <footer className="mt-6 pb-10">
+      <footer className="mt-6 pb-10">
         <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
           <span className="inline-flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
