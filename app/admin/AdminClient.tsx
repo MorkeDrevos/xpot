@@ -937,10 +937,17 @@ export default function AdminPage() {
       // Banner is fixed top: add top padding so content doesn't sit under it
       className="pt-12"
     >
-      <PreLaunchBanner />
 
       {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="
+  relative
+  -mx-4 sm:-mx-6
+  px-4 sm:px-6
+  pb-6
+  mb-6
+  border-b border-slate-800/60
+">
+  <div className="mx-auto max-w-[1440px] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link href="/" className="inline-flex items-center gap-2">
             <XpotLogoAnimated />
