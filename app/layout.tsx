@@ -5,7 +5,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 
 import './globals.css';
 import PreLaunchBanner from '@/components/PreLaunchBanner';
-import XpotLogoLottie from '@/components/XpotLogoLottie';
+import XpotTopBar from '@/components/XpotTopBar';
 
 export const metadata: Metadata = {
   title: 'XPOT',
@@ -20,15 +20,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           {/* Fixed purple strip at top */}
           <PreLaunchBanner />
 
-          {/* Push content below the fixed banner */}
-          <div className="pt-9">
-            {/* XPOT animated logo header (optional, tweak as you like) */}
-            <header className="flex items-center justify-center py-6">
-              <XpotLogoLottie className="h-12 w-12" />
-            </header>
+          {/* Main top bar with animated logo */}
+          <XpotTopBar />
 
-            {children}
-          </div>
+          {/* Page content */}
+          <div className="pt-4">{children}</div>
         </body>
       </html>
     </ClerkProvider>
