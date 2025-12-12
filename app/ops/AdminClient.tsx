@@ -286,8 +286,14 @@ const BTN_DANGER =
 export default function AdminPage() {
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState('');
-  const [tokenAccepted, setTokenAccepted] = useState(false);
+  
   const [isSavingToken, setIsSavingToken] = useState(false);
+  const [tokenAccepted, setTokenAccepted] = useState(false);
+  const isUnlocked = tokenAccepted;
+
+useEffect(() => {
+  document.title = isUnlocked ? 'XPOT Ops • Live' : 'XPOT Ops';
+}, [isUnlocked]);
 
   const [todayDraw, setTodayDraw] = useState<TodayDraw | null>(null);
   const [todayDrawError, setTodayDrawError] = useState<string | null>(null);
