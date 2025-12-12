@@ -1,10 +1,10 @@
+// components/XpotLogoLottie.tsx
 'use client';
 
 import Image from 'next/image';
 import Lottie from 'lottie-react';
 
-// ✅ bundled JSON import (no fetch, no URL)
-import animationData from '@/app/animations/xpot_nebula_pulse.json';
+// ✅ Logo animation JSON (bundled, no fetch)
 import animationData from '@/app/animations/xpot_logo_loop.json';
 
 type Props = {
@@ -33,15 +33,16 @@ export default function XpotLogoLottie({
         />
       </div>
     );
-  } catch {
+  } catch (e) {
+    // Static fallback
     return (
       <Image
         src="/img/xpot-logo-light.png"
         alt="XPOT"
         width={width}
         height={height}
-        priority
         className={className}
+        priority
       />
     );
   }
