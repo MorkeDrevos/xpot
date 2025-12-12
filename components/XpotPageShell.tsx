@@ -23,7 +23,7 @@ export default function XpotPageShell({
   subtitle,
   rightSlot,
   children,
-  maxWidthClassName = 'max-w-[1180px]',
+  maxWidthClassName = 'max-w-[1440px]', // ← TEST WIDER WIDTH
   className = '',
   containerClassName = '',
   headerClassName = '',
