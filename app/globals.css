@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 /* ────────────────────────────────────────────────
-   Global XPOT color tokens – Neon Nebula Palette
+   XPOT tokens – Neon Nebula palette
    ──────────────────────────────────────────────── */
 
 :root {
   color-scheme: dark;
 
   /* Core surfaces */
-  --bg: #020618;           /* main background */
-  --bg-elevated: #050b1b;  /* cards / panels */
+  --bg: #020618;
+  --bg-elevated: #050b1b;
   --border-subtle: #0b1220;
   --border-strong: #111827;
 
@@ -20,17 +20,13 @@
   --text-soft: #9ca3af;
   --text-mute: #6b7280;
 
-  /* Brand accents */
+  /* Accents */
   --accent-emerald: #22e3b3;
   --accent-emerald-soft: rgba(34, 227, 179, 0.18);
-
   --accent-blue: #4ea3e3;
   --accent-blue-soft: rgba(78, 163, 227, 0.23);
-
   --accent-purple: #6366f1;
   --accent-purple-soft: rgba(99, 102, 241, 0.2);
-
-  /* Gold highlight – jackpots & winners only */
   --accent-gold: #f5c46c;
   --accent-gold-soft: rgba(245, 196, 108, 0.35);
 
@@ -40,8 +36,8 @@
   --danger: #fb7185;
 
   /* Typography */
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
-    'SF Pro Display', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont,
+    "SF Pro Text", "SF Pro Display", sans-serif;
   font-size: 15px;
 }
 
@@ -51,54 +47,49 @@
   }
 }
 
-/* Base body styling uses tokens */
+/* Base body styling */
 html,
 body {
   background-color: var(--bg);
   color: var(--text);
 }
 
-/* Light theme overrides (applied when <html class="light">) */
+/* ────────────────────────────────────────────────
+   Light theme overrides (<html class="light">)
+   ──────────────────────────────────────────────── */
+
 html.light {
   color-scheme: light;
 
-  /* Main shell */
   --bg: #f3f4f6;
   --bg-elevated: #ffffff;
   --border-subtle: #e5e7eb;
   --border-strong: #d1d5db;
 
-  /* Text */
   --text: #020617;
   --text-soft: #374151;
   --text-mute: #6b7280;
 
-  /* Accents – softer but still XPOT-ish */
   --accent-emerald: #059669;
   --accent-emerald-soft: rgba(5, 150, 105, 0.1);
-
   --accent-blue: #2563eb;
   --accent-blue-soft: rgba(37, 99, 235, 0.1);
-
   --accent-purple: #4f46e5;
   --accent-purple-soft: rgba(79, 70, 229, 0.12);
-
   --accent-gold: #d97706;
   --accent-gold-soft: rgba(217, 119, 6, 0.14);
 
-  /* Status */
   --success: #16a34a;
   --warning: #f59e0b;
   --danger: #dc2626;
 }
 
-/* Light theme – keep Tailwind utilities from looking “dark” */
+/* keep Tailwind dark utilities from fighting light mode */
 
 html.light body {
   color: var(--text);
 }
 
-/* any explicit dark backgrounds -> light tokens */
 html.light .bg-black {
   background-color: var(--bg) !important;
 }
@@ -108,14 +99,12 @@ html.light .bg-slate-950 {
   background-color: var(--bg-elevated) !important;
 }
 
-/* dark borders -> light borders */
 html.light .border-slate-900,
 html.light .border-slate-800,
 html.light .border-slate-700 {
   border-color: var(--border-subtle) !important;
 }
 
-/* very light text colors should become main text in light mode */
 html.light .text-slate-50,
 html.light .text-slate-100,
 html.light .text-slate-200,
@@ -125,7 +114,7 @@ html.light .text-white {
 }
 
 /* ────────────────────────────────────────────────
-   Cinematic background + orbit
+   Cinematic galaxy background (for shells)
    ──────────────────────────────────────────────── */
 
 .cinematic-bg {
@@ -149,19 +138,21 @@ html.light .text-white {
   z-index: -2;
 }
 
-/* Subtle vignette (removed data-URL grain to keep CSS loader happy) */
+/* Simple vignette (no data-URL grain to keep CSS loader happy) */
 .cinematic-bg::after {
   content: "";
   position: fixed;
   inset: -1px;
-  background:
-    radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.55) 75%);
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    rgba(0, 0, 0, 0.55) 75%
+  );
   mix-blend-mode: soft-light;
   pointer-events: none;
   z-index: -1;
 }
 
-/* Orbit animation */
 @keyframes xpot-orbit {
   0% {
     transform: translate3d(-6%, 4%, 0) scale(1);
@@ -184,7 +175,7 @@ html.light .text-white {
 }
 
 /* ────────────────────────────────────────────────
-   Jackpot shell + halo
+   Jackpot shell (outer gradient + inner glass)
    ──────────────────────────────────────────────── */
 
 .jackpot-shell {
@@ -193,17 +184,16 @@ html.light .text-white {
   padding: 2px;
   background: conic-gradient(
     from 210deg,
-    rgba(168,85,247,0.7),
-    rgba(56,189,248,0.5),
-    rgba(59,130,246,0.5),
-    rgba(168,85,247,0.7)
+    rgba(168, 85, 247, 0.7),
+    rgba(56, 189, 248, 0.5),
+    rgba(59, 130, 246, 0.5),
+    rgba(168, 85, 247, 0.7)
   );
-  box-shadow: 0 0 80px rgba(88,28,135,0.45);
+  box-shadow: 0 0 80px rgba(88, 28, 135, 0.45);
   overflow: hidden;
   animation: jackpotPulse 5.5s ease-in-out infinite;
 }
 
-/* Thin orbiting halo around the card */
 .jackpot-shell::before {
   content: "";
   position: absolute;
@@ -218,52 +208,34 @@ html.light .text-white {
   animation: jackpotOrbit 18s linear infinite;
 }
 
-/* Glass core */
 .jackpot-shell-inner {
   position: relative;
   border-radius: 28px;
   background:
     radial-gradient(circle at 20% 0%, rgba(59,130,246,0.32), transparent 60%),
     radial-gradient(circle at 80% 100%, rgba(147,51,234,0.35), transparent 60%),
-    rgba(2,6,23,0.96);
+    rgba(2, 6, 23, 0.96);
   backdrop-filter: blur(20px);
   box-shadow:
-    0 24px 60px rgba(15,23,42,0.95),
-    0 0 0 1px rgba(15,23,42,0.75);
+    0 24px 60px rgba(15, 23, 42, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 0.75);
 }
 
-/* Breathing motion */
 @keyframes jackpotPulse {
   0% {
     transform: scale(1);
-    box-shadow:
-      0 0 50px rgba(88, 28, 135, 0.45),
-      0 0 80px rgba(56, 189, 248, 0.12);
   }
-
   40% {
     transform: scale(1.01);
-    box-shadow:
-      0 0 90px rgba(129, 140, 248, 0.55),
-      0 0 120px rgba(56, 189, 248, 0.25);
   }
-
   70% {
     transform: scale(1.015);
-    box-shadow:
-      0 0 120px rgba(147, 51, 234, 0.6),
-      0 0 160px rgba(34, 227, 179, 0.35);
   }
-
   100% {
     transform: scale(1);
-    box-shadow:
-      0 0 50px rgba(88, 28, 135, 0.45),
-      0 0 80px rgba(56, 189, 248, 0.12);
   }
 }
 
-/* Slow orbit of the halo */
 @keyframes jackpotOrbit {
   0% {
     transform: rotate(0deg) scale(1);
@@ -280,221 +252,22 @@ html.light .text-white {
 }
 
 /* ────────────────────────────────────────────────
-   Buttons / CTAs
+   Premium cards + admin nebula
    ──────────────────────────────────────────────── */
 
-.primary-cta {
-  position: relative;
-  overflow: hidden;
-}
-
-.primary-cta::before {
-  content: "";
-  position: absolute;
-  inset: -40%;
-  background: linear-gradient(120deg, rgba(250,250,250,0.65), transparent 60%);
-  opacity: 0;
-  transform: translateX(-60%);
-  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
-}
-
-.primary-cta:hover::before {
-  opacity: 1;
-  transform: translateX(40%);
-}
-
-.btn-premium {
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease,
-    filter 0.12s ease;
-}
-
-.btn-premium:hover {
-  transform: translateY(-0.5px);
-  filter: brightness(1.05);
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 14px 30px rgba(37, 99, 235, 0.7);
-}
-
-.btn-premium:active {
-  transform: translateY(0.5px) scale(0.98);
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.95),
-    0 6px 16px rgba(15, 23, 42, 0.95);
-}
-
-/* soft glow for main CTA – tuned to cyan */
-.toolbar-glow {
-  box-shadow:
-    0 0 40px rgba(34, 227, 179, 0.65),
-    0 0 0 1px rgba(15, 23, 42, 0.9);
-}
-
-/* ────────────────────────────────────────────────
-   Status pills
-   ──────────────────────────────────────────────── */
-
-.status-pill,
-.status-pill-amber,
-.status-pill-emerald {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 9999px;
-  padding: 2px 10px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.status-pill {
-  background: rgba(37, 99, 235, 0.3);
-  color: #dbeafe;
-  border: 1px solid rgba(59, 130, 246, 0.7);
-}
-
-.status-pill-amber {
-  background: rgba(245, 196, 108, 0.18);
-  color: #fed7aa;
-  border: 1px solid rgba(245, 196, 108, 0.7);
-}
-
-.status-pill-emerald {
-  background: rgba(34, 227, 179, 0.18);
-  color: #bbf7d0;
-  border: 1px solid rgba(34, 227, 179, 0.7);
-}
-
-/* light-mode versions of pills */
-html.light .status-pill {
-  background: rgba(37, 99, 235, 0.08);
-  color: #1e40af;
-  border-color: rgba(37, 99, 235, 0.18);
-}
-
-html.light .status-pill-emerald {
-  background: rgba(34, 197, 94, 0.1);
-  color: #047857;
-  border-color: rgba(34, 197, 94, 0.25);
-}
-
-html.light .status-pill-amber {
-  background: rgba(245, 158, 11, 0.12);
-  color: #92400e;
-  border-color: rgba(245, 158, 11, 0.25);
-}
-
-/* ────────────────────────────────────────────────
-   XPOT verified badge
-   ──────────────────────────────────────────────── */
-
-.x-verified-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  margin-left: 6px;
-  border-radius: 9999px;
-  background: var(--accent-blue);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset,
-    0 0 0 0 rgba(29, 155, 240, 0);
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    filter 0.15s ease;
-}
-
-/* Draw the check mark as pure CSS */
-.x-verified-badge::before {
-  content: '';
-  width: 0.35rem;
-  height: 0.22rem;
-  border-style: solid;
-  border-width: 0 0 2px 2px;
-  border-color: #ffffff;
-  border-radius: 0.5px;
-  transform: translateY(-0.5px) rotate(-45deg);
-}
-
-/* Hover / active */
-.x-verified-badge:hover {
-  transform: translateY(-0.5px);
-  filter: brightness(1.05);
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 4px 10px rgba(15, 23, 42, 0.85);
-}
-
-.x-verified-badge:active {
-  transform: scale(0.9);
-  filter: brightness(0.97);
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 1px 4px rgba(15, 23, 42, 0.9);
-}
-
-/* ────────────────────────────────────────────────
-   Account dropdown animation
-   ──────────────────────────────────────────────── */
-
-.x-account-menu {
-  opacity: 0;
-  transform: translateY(4px) scale(0.97);
-  transform-origin: bottom left;
-  animation: account-menu-in 130ms ease-out forwards;
-}
-
-@keyframes account-menu-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Avatar lock badge (identity locked to draw) */
-
-.x-avatar-lock {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 9999px;
+.admin-shell-bg {
   background:
-    radial-gradient(circle at 30% 20%, #bbf7d0 0, #22c55e 40%, #0f172a 100%);
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 6px 14px rgba(15, 23, 42, 0.9);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+    radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.45), transparent 55%),
+    radial-gradient(circle at 85% 5%, rgba(78, 163, 227, 0.35), transparent 55%),
+    radial-gradient(circle at 15% 85%, rgba(34, 227, 179, 0.25), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.2), transparent 55%),
+    #020618;
 }
-
-.x-avatar-lock-glyph {
-  font-size: 10px;
-  transform: translateY(-0.5px);
-}
-
-/* ────────────────────────────────────────────────
-   Premium shell + cards
-   ──────────────────────────────────────────────── */
 
 .premium-shell {
   backdrop-filter: blur(20px);
 }
 
-/* base card */
 .premium-card {
   border-radius: 1.5rem;
   background:
@@ -507,7 +280,6 @@ html.light .status-pill-amber {
     0 0 0 1px rgba(15, 23, 42, 0.12);
 }
 
-/* hero-style card */
 .card-premium {
   border-radius: 1.5rem;
   background:
@@ -521,249 +293,15 @@ html.light .status-pill-amber {
     0 0 0 1px rgba(15, 23, 42, 0.14);
 }
 
-/* main XPOT highlight block */
-.premium-highlight.jackpot-core {
-  border-radius: 1.25rem;
-  background:
-    radial-gradient(circle at 0 0, var(--accent-emerald-soft), transparent 55%),
-    radial-gradient(circle at 100% 0, var(--accent-blue-soft), transparent 50%),
-    radial-gradient(circle at 50% 100%, var(--accent-purple-soft), transparent 55%),
-    var(--bg-elevated);
-  border: 1px solid rgba(148, 163, 253, 0.5);
-  box-shadow:
-    0 20px 45px rgba(15, 23, 42, 0.7),
-    0 0 0 1px rgba(15, 23, 42, 0.16);
-}
-
 /* ────────────────────────────────────────────────
-   Legal pages
+   Pre-launch banner animation
    ──────────────────────────────────────────────── */
 
-.legal-page {
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top, #020617 0, #020617 40%, #000 100%);
-  padding: 4rem 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.legal-container {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  background: rgba(15, 23, 42, 0.9);
-  border-radius: 1.25rem;
-  padding: 2.5rem 2rem;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
-  color: #e5e7eb;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
-    sans-serif;
-}
-
-@media (max-width: 640px) {
-  .legal-page {
-    padding: 3rem 1.25rem;
-  }
-
-  .legal-container {
-    padding: 2rem 1.5rem;
-  }
-}
-
-.legal-eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.75rem;
-  color: #a5b4fc;
-  margin-bottom: 0.25rem;
-}
-
-.legal-title {
-  font-size: 2rem;
-  line-height: 1.2;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
-}
-
-.legal-updated {
-  font-size: 0.875rem;
-  color: #9ca3af;
-  margin-bottom: 1.5rem;
-}
-
-.legal-intro {
-  margin-bottom: 1rem;
-}
-
-.legal-container h2 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-top: 1.75rem;
-  margin-bottom: 0.5rem;
-  color: #e5e7eb;
-}
-
-.legal-container h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-top: 1.25rem;
-  margin-bottom: 0.4rem;
-  color: #e5e7eb;
-}
-
-.legal-container p {
-  font-size: 0.94rem;
-  line-height: 1.7;
-  margin-bottom: 0.6rem;
-  color: #d1d5db;
-}
-
-.legal-container ul {
-  padding-left: 1.25rem;
-  margin: 0.25rem 0 0.75rem;
-}
-
-.legal-container li {
-  font-size: 0.94rem;
-  line-height: 1.7;
-  color: #d1d5db;
-  margin-bottom: 0.25rem;
-}
-
-.legal-container a {
-  color: #a5b4fc;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-}
-
-.legal-container a:hover {
-  text-decoration-thickness: 2px;
-}
-
-/* XPOT login modal animations & micro-interactions */
-
-@keyframes xpot-fade-in {
-  0% {
-    opacity: 0;
-    transform: translateY(6px) scale(0.97);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes xpot-cta-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55);
-  }
-  70% {
-    box-shadow: 0 0 0 22px rgba(56, 189, 248, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
-  }
-}
-
-.xpot-modal-enter {
-  animation: xpot-fade-in 260ms ease-out forwards;
-}
-
-.xpot-cta-pulse {
-  animation: xpot-cta-pulse 1.8s ease-out infinite;
-}
-
-.xpot-cta-pulse:hover {
-  animation-play-state: paused;
-}
-
-/* Subtle XPOT link hover effect */
-.xpot-link {
-  position: relative;
-}
-
-.xpot-link::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 1px;
-  background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.9), transparent 70%);
-  opacity: 0;
-  transition: opacity 160ms ease-out;
-}
-
-.xpot-link:hover::after {
-  opacity: 1;
-}
-
-/* ────────────────────────────────────────────────
-   Light theme polish – soften greens & pills
-   ──────────────────────────────────────────────── */
-
-html.light .text-emerald-300,
-html.light .text-emerald-400,
-html.light .text-emerald-500 {
-  color: #059669 !important;
-}
-
-/* Emerald pill backgrounds (like "live", USD pill, etc.) */
-html.light .bg-emerald-500\/10 {
-  background-color: rgba(16, 185, 129, 0.06) !important;
-}
-
-/* The green USD chips */
-html.light .bg-emerald-500\/10 .font-mono {
-  color: #047857 !important;
-}
-
-/* Yellow/orange “Pending payout” pills – tone down */
-html.light .bg-amber-500\/10 {
-  background-color: rgba(245, 158, 11, 0.08) !important;
-}
-
-html.light .text-amber-300,
-html.light .text-amber-400 {
-  color: #92400e !important;
-}
-
-/* "LIVE" label next to big amount – keep subtle */
-html.light .text-emerald-300.live-label {
-  color: #16a34a !important;
-  opacity: 0.9;
-}
-
-/* ────────────────────────────────────────────────
-   XPOT admin nebula background
-   ──────────────────────────────────────────────── */
-
-.admin-shell-bg {
-  background:
-    radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.45), transparent 55%),
-    radial-gradient(circle at 85% 5%, rgba(78, 163, 227, 0.35), transparent 55%),
-    radial-gradient(circle at 15% 85%, rgba(34, 227, 179, 0.25), transparent 55%),
-    radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.2), transparent 55%),
-    #020618;
-}
-
-.admin-card,
-.premium-card,
-.card-premium,
-.jackpot-core {
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.02),
-    0 25px 80px rgba(0,0,0,0.65),
-    0 0 120px rgba(99,102,241,0.12),
-    0 0 140px rgba(34,227,179,0.1);
-}
-
-/* Pre-launch banner animation */
 @keyframes xpotBannerMove {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
 }
