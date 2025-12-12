@@ -1,34 +1,25 @@
-import Image from 'next/image';
+// components/XpotLogo.tsx
+'use client';
+
+import XpotLogoLottie from './XpotLogoLottie';
 
 type XpotLogoProps = {
-  variant?: 'light' | 'dark' | 'mark';
-  width?: number;
-  height?: number;
+  withText?: boolean;
   className?: string;
 };
 
 export default function XpotLogo({
-  variant = 'light',
-  width,
-  height,
-  className,
+  withText = true,
+  className = '',
 }: XpotLogoProps) {
-  let src = '/img/xpot-logo-light.png';
-
-  if (variant === 'dark') src = '/img/xpot-black.png';
-  if (variant === 'mark') src = '/img/xpot-mark.png';
-
-  const w = width ?? (variant === 'mark' ? 28 : 140);
-  const h = height ?? (variant === 'mark' ? 28 : 40);
-
   return (
-    <Image
-      src={src}
-      alt="XPOT"
-      width={w}
-      height={h}
-      className={className}
-      priority
-    />
+    <div className={`flex items-center gap-3 ${className}`}>
+      <XpotLogoLottie className="h-10 w-10" />
+      {withText && (
+        <span className="text-xl font-semibold tracking-tight">
+          XPOT
+        </span>
+      )}
+    </div>
   );
 }
