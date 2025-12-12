@@ -18,6 +18,7 @@ import {
 
 import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
+import XpotPageShell from '@/components/XpotPageShell';
 
 // Temporary sample handles – swap to real API data later
 const SAMPLE_HANDLES = [
@@ -132,7 +133,7 @@ export default function HomePage() {
   const marquee = useMemo(() => [...SAMPLE_HANDLES], []);
 
   return (
-    <>
+    <XpotPageShell>
       {/* Top nav */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
