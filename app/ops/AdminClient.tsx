@@ -873,7 +873,7 @@ useEffect(() => {
     drawDateLabel = 'Next draw date';
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
-  return (
+
   return (
   <XpotPageShell showHeader={false} className="pt-12">
     <div className="mt-2">
