@@ -265,8 +265,10 @@ function CopyableWallet({ address }: { address: string }) {
 
 // ─────────────────────────────────────────────
 // Animated logo (Lottie) with safe fallback
-// expects /public/lottie/xpot-logo.json
+// Uses bundled JSON import (no fetch) so it can’t 404 / get blocked.
 // ─────────────────────────────────────────────
+
+import animationData from '@/app/animations/xpot_nebula_pulse.json';
 
 function XpotLogoAnimated({
   className,
@@ -278,37 +280,27 @@ function XpotLogoAnimated({
   height?: number;
 }) {
   const [Lottie, setLottie] = useState<any>(null);
-  const [animationData, setAnimationData] = useState<any>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    (async () => {
       try {
         const mod = await import('lottie-react');
         if (!cancelled) setLottie(() => mod.default);
-      } catch {
+      } catch (e) {
+        console.error('[XPOT LOGO] Failed to load lottie-react:', e);
         if (!cancelled) setFailed(true);
       }
+    })();
 
-      try {
-        const res = await fetch('/lottie/xpot-logo.json', { cache: 'no-store' });
-        if (!res.ok) throw new Error('missing lottie json');
-        const json = await res.json();
-        if (!cancelled) setAnimationData(json);
-      } catch {
-        if (!cancelled) setFailed(true);
-      }
-    }
-
-    load();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  if (failed || !Lottie || !animationData) {
+  if (failed || !Lottie) {
     return (
       <Image
         src="/img/xpot-logo-light.png"
@@ -322,6 +314,7 @@ function XpotLogoAnimated({
   }
 
   const Comp = Lottie;
+
   return (
     <div className={className} style={{ width, height }}>
       <Comp animationData={animationData} loop autoplay />
