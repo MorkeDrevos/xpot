@@ -1,93 +1,87 @@
 // components/XpotLogoLottie.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 
-// 🔒 Bundled animation JSON (MOST STABLE)
+// Bundled JSON import (NO fetch)
 import animationData from '@/app/animations/xpot_logo_loop.json';
 
-type XpotLogoLottieProps = {
+type Props = {
   className?: string;
-  width?: number;
-  height?: number;
+  width?: number;  // optional explicit px width
+  height?: number; // optional explicit px height
   loop?: boolean;
   autoplay?: boolean;
 };
 
+const Lottie = dynamic(() => import('lottie-react').then((m) => m.default), {
+  ssr: false,
+});
+
 export default function XpotLogoLottie({
   className = '',
-  width = 132,
-  height = 36,
+  width,
+  height,
   loop = true,
   autoplay = true,
-}: XpotLogoLottieProps) {
-  const [Lottie, setLottie] = useState<any>(null);
+}: Props) {
+  const [mounted, setMounted] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
 
-  // Respect reduced motion preference
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReducedMotion(mq.matches);
-
-    const handler = () => setReducedMotion(mq.matches);
-    mq.addEventListener?.('change', handler);
-
-    return () => mq.removeEventListener?.('change', handler);
+    setMounted(true);
   }, []);
 
-  // Load lottie-react dynamically (avoids SSR / edge issues)
-  useEffect(() => {
-    let cancelled = false;
+  const sizeStyle = useMemo(() => {
+    const style: React.CSSProperties = {};
+    if (typeof width === 'number') style.width = width;
+    if (typeof height === 'number') style.height = height;
+    return style;
+  }, [width, height]);
 
-    (async () => {
-      try {
-        const mod = await import('lottie-react');
-        if (!cancelled) setLottie(() => mod.default);
-      } catch (err) {
-        console.error('[XPOT LOGO] Failed to load lottie-react:', err);
-        if (!cancelled) setFailed(true);
-      }
-    })();
+  // ✅ Stable fallback (always works)
+  const Fallback = (
+    <Image
+      src="/img/xpot-logo-light.png"
+      alt="XPOT"
+      width={132}
+      height={36}
+      priority
+      className={['block h-full w-full object-contain', className].join(' ')}
+    />
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // 🔁 Hard fallback: static PNG
-  if (failed || reducedMotion || !Lottie) {
+  // Render PNG until client is mounted, then swap to Lottie (no flicker)
+  if (!mounted || failed) {
     return (
-      <Image
-        src="/img/xpot-logo-light.png"
-        alt="XPOT"
-        width={width}
-        height={height}
-        className={className}
-        priority
-      />
+      <div
+        className={['relative', className].join(' ')}
+        style={Object.keys(sizeStyle).length ? sizeStyle : { width: 132, height: 36 }}
+      >
+        {Fallback}
+      </div>
     );
   }
 
   return (
     <div
-      className={className}
-      style={{ width, height }}
-      aria-label="XPOT logo animation"
+      className={['relative select-none', className].join(' ')}
+      style={Object.keys(sizeStyle).length ? sizeStyle : { width: 132, height: 36 }}
+      aria-label="XPOT"
     >
       <Lottie
-        animationData={animationData}
+        animationData={animationData as any}
         loop={loop}
         autoplay={autoplay}
-        renderer="svg"
-        rendererSettings={{
-          preserveAspectRatio: 'xMidYMid meet',
-          progressiveLoad: true,
-        }}
         style={{ width: '100%', height: '100%' }}
+        rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
+        // If anything goes wrong at runtime, fall back safely
+        onComplete={() => {
+          // if loop=false anywhere, this prevents the “plays once then dies” look
+        }}
+        onError={() => setFailed(true)}
       />
     </div>
   );
