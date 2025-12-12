@@ -3,54 +3,94 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
 
-// Shared handler so GET/POST both work in dev
-async function handleDevSeed(req: NextRequest) {
-  // Admin guard
-  await requireAdmin(req);
+export const dynamic = 'force-dynamic';
 
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+function randInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
-  const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-  const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
-
-  // 1) Find today's draw by drawDate
-  let draw = await prisma.draw.findFirst({
-    where: {
-      drawDate: {
-        gte: startOfDay,
-        lt: endOfDay,
-      },
-    },
-  });
-
-  // 2) If none exists, create a simple open draw for today
-  if (!draw) {
-    draw = await prisma.draw.create({
-      data: {
-        drawDate: startOfDay,
-        status: 'open', // uses your default shape; safe for dev
-      },
-    });
-  }
-
-  return NextResponse.json(
-    {
-      ok: true,
-      draw: {
-        id: draw.id,
-        drawDate: draw.drawDate.toISOString(),
-        status: draw.status,
-      },
-    },
-    { status: 200 },
-  );
+function randomWallet() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789';
+  let s = '';
+  for (let i = 0; i < 44; i++) s += chars[randInt(0, chars.length - 1)];
+  return s;
 }
 
 export async function POST(req: NextRequest) {
-  return handleDevSeed(req);
-}
+  const denied = requireAdmin(req);
+  if (denied) return denied;
 
-export async function GET(req: NextRequest) {
-  return handleDevSeed(req);
+  // Always seed "today" draw (open)
+  const today = new Date();
+  const yyyy = today.getUTCFullYear();
+  const mm = String(today.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(today.getUTCDate()).padStart(2, '0');
+  const drawDate = `${yyyy}-${mm}-${dd}T00:00:00.000Z`;
+
+  // Ensure draw exists
+  const draw =
+    (await prisma.draw.findFirst({
+      where: { drawDate: new Date(drawDate) },
+      include: { tickets: true, winners: true },
+    })) ??
+    (await prisma.draw.create({
+      data: {
+        drawDate: new Date(drawDate),
+        status: 'open',
+        jackpotUsd: 0,
+        rolloverUsd: 0,
+        closesAt: new Date(Date.now() + 6 * 60 * 60 * 1000), // +6h
+      },
+    }));
+
+  // Create tickets
+  const ticketCount = randInt(5, 18);
+  const tickets = [];
+  for (let i = 0; i < ticketCount; i++) {
+    tickets.push({
+      drawId: draw.id,
+      wallet: randomWallet(),
+      status: 'IN_DRAW',
+    });
+  }
+
+  // Clear existing tickets/winners for a clean seed run
+  await prisma.winner.deleteMany({ where: { drawId: draw.id } });
+  await prisma.ticket.deleteMany({ where: { drawId: draw.id } });
+
+  await prisma.ticket.createMany({ data: tickets });
+
+  // Pick a winner
+  const all = await prisma.ticket.findMany({
+    where: { drawId: draw.id },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const picked = all[randInt(0, all.length - 1)];
+
+  // Mark winner ticket + create Winner row
+  await prisma.ticket.update({
+    where: { id: picked.id },
+    data: { status: 'WON' },
+  });
+
+  await prisma.winner.create({
+    data: {
+      drawId: draw.id,
+      ticketId: picked.id,
+      wallet: picked.wallet,
+      kind: 'MAIN',
+      amountXpot: 1_000_000,
+      amountUsd: 0,
+      status: 'SENT',
+      txSig: `DEV-SEED-${yyyy}${mm}${dd}-${randInt(100, 999)}`,
+    },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    drawId: draw.id,
+    seededTickets: all.length,
+    winnerWallet: picked.wallet,
+  });
 }
