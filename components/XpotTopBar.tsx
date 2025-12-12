@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import XpotLogo from '@/components/XpotLogo';
+import XpotLogoLottie from '@/components/XpotLogoLottie';
 import ThemeToggle from './ThemeToggle';
 import XpotSignInModal from './XpotSignInModal';
 
@@ -11,7 +11,7 @@ export default function XpotTopBar() {
     <header className="border-b border-white/10 bg-black/60 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link href="/" className="flex items-center gap-3">
-          <XpotLogo className="cursor-pointer" />
+          <XpotLogoLottie className="h-10 w-32 cursor-pointer" />
         </Link>
 
         <div className="flex items-center gap-3">
