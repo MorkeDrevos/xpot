@@ -18,45 +18,56 @@ function randomWallet() {
 
 function todayUtcStart() {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+  return new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    0, 0, 0, 0
+  ));
 }
 
 export async function POST(req: NextRequest) {
   const denied = requireAdmin(req);
   if (denied) return denied;
 
-  // Create a throwaway dev user (Ticket.userId is required in your schema)
+  // Create a dummy dev user (Ticket.userId is required)
   const user = await prisma.user.create({ data: {} });
 
-  // Ensure today's draw exists
   const drawDate = todayUtcStart();
 
-  const draw =
-    (await prisma.draw.findFirst({
-      where: { drawDate },
-    })) ??
-    (await prisma.draw.create({
+  // Ensure today's draw exists
+  let draw = await prisma.draw.findFirst({
+    where: { drawDate },
+  });
+
+  if (!draw) {
+    draw = await prisma.draw.create({
       data: {
         drawDate,
         status: 'open',
         closesAt: new Date(Date.now() + 6 * 60 * 60 * 1000), // +6h
-      } as any, // in case your Draw has extra optional fields
-    }));
+      },
+    });
+  }
 
-  // Clean old tickets for this draw (optional but keeps seeding tidy)
-  await prisma.ticket.deleteMany({ where: { drawId: draw.id } });
+  // Clear old tickets for this draw
+  await prisma.ticket.deleteMany({
+    where: { drawId: draw.id },
+  });
 
-  // Seed some tickets
+  // Create tickets one-by-one (avoids createMany typing issues)
   const ticketCount = randInt(5, 18);
 
-  const tickets = Array.from({ length: ticketCount }).map(() => ({
-    drawId: draw.id,
-    userId: user.id,
-    wallet: randomWallet(),
-    status: 'IN_DRAW',
-  }));
-
-  await prisma.ticket.createMany({ data: tickets });
+  for (let i = 0; i < ticketCount; i++) {
+    await prisma.ticket.create({
+      data: {
+        drawId: draw.id,
+        userId: user.id,
+        wallet: randomWallet(),
+        status: 'IN_DRAW',
+      },
+    });
+  }
 
   return NextResponse.json({
     ok: true,
