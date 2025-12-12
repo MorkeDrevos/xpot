@@ -1,4 +1,4 @@
-// app/dashboard/page.tsx
+r// app/dashboard/page.tsx
 'use client';
 
 export const dynamic = 'force-dynamic';
@@ -55,9 +55,6 @@ type RecentWinner = {
   walletAddress: string;
   handle?: string | null;
 };
-
-const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
