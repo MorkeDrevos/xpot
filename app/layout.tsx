@@ -1,21 +1,23 @@
 // app/layout.tsx
 import './globals.css';
-import type { ReactNode } from 'react';
-import XpotPageShell from '@/components/XpotPageShell';
+
+import { ClerkProvider } from '@clerk/nextjs';
 
 export const metadata = {
   title: 'XPOT',
-  description: 'The X-powered reward pool',
+  description: 'Daily XPOT draws on Solana',
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en">
-      <body>
-        <XpotPageShell>
-          {children}
-        </XpotPageShell>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }
