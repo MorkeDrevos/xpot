@@ -12,7 +12,7 @@ type XpotPageShellProps = {
   children: ReactNode;
 
   // Optional fine-tuning
-  maxWidthClassName?: string; // default: max-w-[1180px]
+  maxWidthClassName?: string; // default: max-w-[1440px]
   className?: string; // applied to outer wrapper
   containerClassName?: string; // applied to inner container
   headerClassName?: string; // applied to header block (title/subtitle row)
@@ -23,7 +23,7 @@ export default function XpotPageShell({
   subtitle,
   rightSlot,
   children,
-  maxWidthClassName = 'max-w-[1440px]', // ← TEST WIDER WIDTH
+  maxWidthClassName = 'max-w-[1440px]', // TEST WIDER WIDTH
   className = '',
   containerClassName = '',
   headerClassName = '',
@@ -57,11 +57,17 @@ export default function XpotPageShell({
         ].join(' ')}
       >
         {(title || subtitle || rightSlot) && (
-          <div className={`mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${headerClassName}`}>
+          <div
+            className={[
+              'mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
+              headerClassName,
+            ].join(' ')}
+          >
             <div>
               {title && <h1 className="text-xl font-semibold text-slate-50">{title}</h1>}
               {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
             </div>
+
             {rightSlot && <div className="shrink-0">{rightSlot}</div>}
           </div>
         )}
