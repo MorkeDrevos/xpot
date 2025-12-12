@@ -5,6 +5,7 @@ import Lottie from 'lottie-react';
 
 // ✅ bundled JSON import (no fetch, no URL)
 import animationData from '@/app/animations/xpot_nebula_pulse.json';
+import animationData from '@/app/animations/xpot_logo_loop.json';
 
 type Props = {
   className?: string;
