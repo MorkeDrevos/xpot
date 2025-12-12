@@ -1,4 +1,4 @@
-// app/admin/AdminClient.tsx
+// app/ops/AdminClient.tsx
 'use client';
 
 import { useEffect, useMemo, useState, FormEvent } from 'react';
@@ -8,6 +8,7 @@ import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
 import { XPOT_POOL_SIZE } from '@/lib/xpot';
+const isUnlocked = /* your existing logic */;
 
 import {
   BadgeCheck,
@@ -303,11 +304,19 @@ export default function AdminPage() {
 
   const [isDevHost, setIsDevHost] = useState(false);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsDevHost(window.location.hostname.startsWith('dev.'));
-    }
-  }, []);
+ useEffect(() => {
+  if (typeof window !== 'undefined') {
+    setIsDevHost(window.location.hostname.startsWith('dev.'));
+  }
+}, []);
+
+useEffect(() => {
+  if (isUnlocked) {
+    document.title = 'XPOT Ops • Live';
+  } else {
+    document.title = 'XPOT Ops';
+  }
+}, [isUnlocked]);
 
   const [txInputs, setTxInputs] = useState<Record<string, string>>({});
   const [savingPaidId, setSavingPaidId] = useState<string | null>(null);
