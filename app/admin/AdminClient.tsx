@@ -1686,8 +1686,7 @@ export default function AdminPage() {
           </section>
         </div>
       </section>
-
-      {/* ULTRA PREMIUM LOCK MODAL */}
+            {/* ULTRA PREMIUM LOCK MODAL */}
       {!tokenAccepted && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
           <div
@@ -1771,23 +1770,22 @@ export default function AdminPage() {
               <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3 text-[11px] text-slate-400">
                 <div className="flex items-start gap-2">
                   <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-300" />
-                  <p>
-                    If your token is wrong you’ll just see request failures - nothing breaks.
-                  </p>
+                  <p>If your token is wrong you’ll just see request failures - nothing breaks.</p>
                 </div>
               </div>
             </div>
 
             <button
-  type="button"
-  onClick={() => setTokenInput('')}
-  className="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700/70 bg-slate-950/60 px-4 py-3 text-xs text-slate-300 hover:bg-slate-900/60"
->
-  <XCircle className="h-4 w-4" />
-  Clear input
-</button>
+              type="button"
+              onClick={() => setTokenInput('')}
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700/70 bg-slate-950/60 px-4 py-3 text-xs text-slate-300 hover:bg-slate-900/60"
+            >
+              <XCircle className="h-4 w-4" />
+              Clear input
+            </button>
           </div>
         </div>
       )}
     </XpotPageShell>
   );
+}
