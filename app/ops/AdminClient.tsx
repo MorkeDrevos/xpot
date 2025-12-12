@@ -8,7 +8,6 @@ import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
 import { XPOT_POOL_SIZE } from '@/lib/xpot';
-const isUnlocked = /* your existing logic */;
 
 import {
   BadgeCheck,
