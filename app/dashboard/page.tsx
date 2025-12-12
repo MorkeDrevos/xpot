@@ -13,7 +13,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import { REQUIRED_XPOT } from '../../lib/xpot';
-import { XpotPageShell } from '@/components/XpotPageShell';
+import XpotPageShell from '@/components/XpotPageShell';
 
 import {
   ArrowRight,
