@@ -1,3 +1,4 @@
+// components/XpotLogoLottie.tsx
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -21,13 +22,13 @@ export default function XpotLogoLottie({
   loop = true,
   autoplay = true,
 }: XpotLogoLottieProps) {
-  const w = width ?? 180;
-  const h = height ?? 48;
+  // Bigger default (your PNG likely has padding, so this fixes “tiny”)
+  const w = width ?? 240;
+  const h = height ?? 64;
 
   const [lottieFailed, setLottieFailed] = useState(false);
   const [hasFrame, setHasFrame] = useState(false);
 
-  // guard: only set once (avoid re-renders every frame)
   const onEnterFrame = useMemo(() => {
     let fired = false;
     return () => {
@@ -44,17 +45,17 @@ export default function XpotLogoLottie({
       style={{ width: w, height: h, minWidth: w, minHeight: h }}
       aria-label="XPOT"
     >
-      {/* BASE LAYER: always visible, premium fallback */}
+      {/* Always-visible PNG base */}
       <Image
         src="/img/xpot-logo-light.png"
         alt="XPOT"
         width={w}
         height={h}
         priority
-        className="block h-full w-full object-contain opacity-95"
+        className="block h-full w-full object-cover"
       />
 
-      {/* TOP LAYER: Lottie fades in only after frames render */}
+      {/* Lottie overlay (fades in only after it actually renders frames) */}
       {!lottieFailed && (
         <div
           className={[
@@ -68,7 +69,10 @@ export default function XpotLogoLottie({
             autoplay={autoplay}
             onEnterFrame={onEnterFrame as any}
             onError={() => setLottieFailed(true)}
-            rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
+            rendererSettings={{
+              // Fill the box (prevents “small inside big box”)
+              preserveAspectRatio: 'xMidYMid slice',
+            }}
             style={{ width: '100%', height: '100%' }}
           />
         </div>
