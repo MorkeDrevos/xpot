@@ -8,6 +8,7 @@ import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
 import { XPOT_POOL_SIZE } from '@/lib/xpot';
+import OpsHeader from '@/components/OpsHeader';
 
 import {
   BadgeCheck,
@@ -877,11 +878,16 @@ useEffect(() => {
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
   return (
-  <XpotPageShell
-    title="Operations Center"
-    subtitle="Control room for today’s XPOT"
-    className="pt-12"
-  >
+  return (
+  <XpotPageShell showHeader={false} className="pt-12">
+    <div className="mt-2">
+      <OpsHeader
+        title="Operations Center"
+        subtitle="Control room for today’s XPOT"
+        // optional if your mark path differs:
+        // markSrc="/brand/xpot-mark.png"
+      />
+    </div>
 
       {/* Admin key band */}
       <section className="relative mt-5 rounded-3xl">
