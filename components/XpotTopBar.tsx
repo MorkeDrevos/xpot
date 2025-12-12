@@ -1,4 +1,3 @@
-// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -14,13 +13,13 @@ export default function XpotTopBar() {
           <XpotLogoLottie
             width={180}
             height={48}
-            className="cursor-pointer opacity-90 hover:opacity-100 transition"
+            className="cursor-pointer"
           />
         </Link>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <XpotSignInModal />
+          <ThemeToggle />
         </div>
       </div>
     </header>
