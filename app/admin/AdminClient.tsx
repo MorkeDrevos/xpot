@@ -929,14 +929,12 @@ export default function AdminPage() {
     drawDateLabel = 'Next draw date';
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
-
   return (
-    <XpotPageShell
-      title="Operations Center"
-      subtitle="Control room for today’s XPOT"
-      // Banner is fixed top: add top padding so content doesn't sit under it
-      className="pt-12"
-    >
+  <XpotPageShell
+    title="Operations Center"
+    subtitle="Control room for today’s XPOT"
+    className="pt-12"
+  >
 
       {/* Header */}
       <header className="
