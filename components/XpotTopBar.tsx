@@ -11,7 +11,7 @@ export default function XpotTopBar() {
     <header className="border-b border-white/10 bg-black/60 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link href="/" className="flex items-center gap-3">
-          <XpotLogoLottie className="h-10 w-32 cursor-pointer" />
+          <XpotLogoLottie className="h-9 w-[132px] cursor-pointer" />
         </Link>
 
         <div className="flex items-center gap-3">
