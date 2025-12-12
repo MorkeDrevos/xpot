@@ -1,4 +1,4 @@
-r// app/dashboard/page.tsx
+// app/dashboard/page.tsx
 'use client';
 
 export const dynamic = 'force-dynamic';
@@ -11,11 +11,23 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 
-import { useUser, SignOutButton } from '@clerk/nextjs';
 import { REQUIRED_XPOT } from '@/lib/xpot';
 import XpotPageShell from '@/components/XpotPageShell';
 
 import { History, LogOut } from 'lucide-react';
+
+// Clerk is OPTIONAL for now
+let useUser: any = null;
+let SignOutButton: any = null;
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const clerk = require('@clerk/nextjs');
+  useUser = clerk.useUser;
+  SignOutButton = clerk.SignOutButton;
+} catch {
+  // Clerk not configured yet – silently ignore
+}
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -56,6 +68,9 @@ type RecentWinner = {
   handle?: string | null;
 };
 
+const BTN_PRIMARY =
+  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
+
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
 
@@ -70,10 +85,18 @@ function WalletStatusHint() {
   if (connected) return null;
 
   if (!anyDetected) {
-    return <p className="mt-2 text-xs text-amber-300">No Solana wallet detected. Install Phantom or Jupiter to continue.</p>;
+    return (
+      <p className="mt-2 text-xs text-amber-300">
+        No Solana wallet detected. Install Phantom or Jupiter to continue.
+      </p>
+    );
   }
 
-  return <p className="mt-2 text-xs text-slate-500">Click “Select Wallet” and choose Phantom or Jupiter to connect.</p>;
+  return (
+    <p className="mt-2 text-xs text-slate-500">
+      Click “Select Wallet” and choose Phantom or Jupiter to connect.
+    </p>
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -103,23 +126,20 @@ export default function DashboardPage() {
   const hasRequiredXpot = typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
   // ─────────────────────────────────────────────
-  // Clerk user (for avatar + handle)
+  // Clerk (optional)
   // ─────────────────────────────────────────────
 
-  const { user, isLoaded: isUserLoaded } = useUser();
+  const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  const { user, isLoaded: isUserLoaded } = clerkEnabled && useUser ? useUser() : { user: null, isLoaded: false };
+
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
   const xAccount =
-    externalAccounts.find(acc => {
-      const provider = String(acc.provider ?? '');
-      return (
-        provider === 'oauth_x' ||
-        provider === 'oauth_twitter' ||
-        provider === 'twitter' ||
-        provider.toLowerCase().includes('twitter') ||
-        provider.toLowerCase().includes('x')
-      );
-    }) || externalAccounts[0];
+    externalAccounts.find(acc =>
+      String(acc.provider ?? '').toLowerCase().includes('twitter') ||
+      String(acc.provider ?? '').toLowerCase().includes('x'),
+    ) || null;
 
   const handle = xAccount?.username || xAccount?.screenName || null;
 
@@ -388,15 +408,17 @@ export default function DashboardPage() {
             <WalletStatusHint />
           </div>
 
-          <SignOutButton redirectUrl="/dashboard">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-            >
-              <LogOut className="h-4 w-4" />
-              Log out
-            </button>
-          </SignOutButton>
+          {clerkEnabled && isUserLoaded && SignOutButton && (
+  <SignOutButton redirectUrl="/dashboard">
+    <button
+      type="button"
+      className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
+    >
+      <LogOut className="h-4 w-4" />
+      Log out
+    </button>
+  </SignOutButton>
+)}
         </div>
       </header>
 
