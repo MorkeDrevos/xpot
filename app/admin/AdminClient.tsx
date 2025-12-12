@@ -1779,16 +1779,15 @@ export default function AdminPage() {
             </div>
 
             <button
-              type="button"
-              onClick={() => setTokenInput('')}
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-700/70 bg-slate-950/60 px-4 py-3 text-xs text-slate-300 hover:bg-slate-900/60"
-            >
-              <XCircle className="h-4 w-4" />
-              Clear input
-            </button>
+  type="button"
+  onClick={() => setTokenInput('')}
+  className="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700/70 bg-slate-950/60 px-4 py-3 text-xs text-slate-300 hover:bg-slate-900/60"
+>
+  <XCircle className="h-4 w-4" />
+  Clear input
+</button>
           </div>
         </div>
       )}
     </XpotPageShell>
   );
-}
