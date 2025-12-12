@@ -2,10 +2,8 @@
 'use client';
 
 import { ReactNode } from 'react';
-import Link from 'next/link';
-
 import PreLaunchBanner from '@/components/PreLaunchBanner';
-import XpotLogoLottie from '@/components/XpotLogoLottie';
+import XpotTopBar from '@/components/XpotTopBar';
 
 type XpotPageShellProps = {
   title?: string;
@@ -20,9 +18,9 @@ type XpotPageShellProps = {
   containerClassName?: string; // applied to inner container
   headerClassName?: string; // applied to header block (title/subtitle row)
 
-  // Global top bar (logo row)
-  showTopBar?: boolean;
-  topBarRightSlot?: ReactNode;
+  // Top bar controls
+  showTopBar?: boolean; // default true
+  topBarClassName?: string; // applied to top bar wrapper
 };
 
 export default function XpotPageShell({
@@ -35,13 +33,23 @@ export default function XpotPageShell({
   containerClassName = '',
   headerClassName = '',
   showTopBar = true,
-  topBarRightSlot,
+  topBarClassName = '',
 }: XpotPageShellProps) {
   return (
     <div
-      className={`relative min-h-screen bg-[#02020a] text-slate-100 ${className}`}
+      className={[
+        'relative min-h-screen bg-[#02020a] text-slate-100',
+        className,
+      ].join(' ')}
     >
       <PreLaunchBanner />
+
+      {/* GLOBAL TOP BAR */}
+      {showTopBar && (
+        <div className={['sticky top-0 z-40', topBarClassName].join(' ')}>
+          <XpotTopBar />
+        </div>
+      )}
 
       {/* GLOBAL NEBULA BACKGROUND (fixed, always visible) */}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[#02020a]" />
@@ -61,26 +69,12 @@ export default function XpotPageShell({
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
-          // banner is fixed at top, so push content down
-          'pt-16 pb-6 sm:pb-8',
+          // PreLaunchBanner is fixed at top, TopBar is sticky, so give breathing room
+          'pt-24 pb-6 sm:pb-8',
           maxWidthClassName,
           containerClassName,
         ].join(' ')}
       >
-        {/* GLOBAL TOP BAR (consistent logo everywhere) */}
-        {showTopBar && (
-          <div className="mb-6 flex items-center justify-between gap-3">
-            <Link href="/" className="inline-flex items-center gap-2">
-              <XpotLogoLottie className="h-10 w-32" />
-            </Link>
-
-            {topBarRightSlot ? (
-              <div className="shrink-0">{topBarRightSlot}</div>
-            ) : null}
-          </div>
-        )}
-
-        {/* PAGE HEADER (optional) */}
         {(title || subtitle || rightSlot) && (
           <div
             className={[
@@ -88,7 +82,7 @@ export default function XpotPageShell({
               headerClassName,
             ].join(' ')}
           >
-            <div>
+            <div className="min-w-0">
               {title && (
                 <h1 className="text-xl font-semibold text-slate-50">{title}</h1>
               )}
