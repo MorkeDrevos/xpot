@@ -1,4 +1,4 @@
-// app/dashboard/DashboardClient.tsx
+// app/hub/DashboardClient.tsx
 'use client';
 
 import Link from 'next/link';
@@ -175,6 +175,10 @@ export default function DashboardClient() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
+
+  useEffect(() => {
+  document.title = connected ? 'XPOT Hub • Live' : 'XPOT Hub';
+}, [connected]);
 
   // Wallet
   const { publicKey, connected } = useWallet();
