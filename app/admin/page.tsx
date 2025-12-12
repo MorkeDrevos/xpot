@@ -1,15 +1,15 @@
 // app/admin/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
 import { XPOT_POOL_SIZE } from '@/lib/xpot';
-
-export const dynamic = 'force-dynamic';
 
 const MAX_TODAY_TICKETS = 10;
 const MAX_RECENT_WINNERS = 9;
@@ -54,7 +54,7 @@ type AdminWinner = {
   ticketCode: string;
   walletAddress: string;
   jackpotUsd: number;
-  payoutUsd: number; // used as XPOT amount in UI
+  payoutUsd: number; // used as XPOT amount in UI for bonus
   isPaidOut: boolean;
   txUrl?: string | null;
   kind?: AdminWinnerKind;
@@ -122,7 +122,9 @@ function UsdPill({
   const base =
     'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
   const cls =
-    size === 'sm' ? `${base} px-2 py-0.5 text-xs` : `${base} px-3 py-1 text-sm`;
+    size === 'sm'
+      ? `${base} px-2 py-0.5 text-xs`
+      : `${base} px-3 py-1 text-sm`;
 
   return (
     <span className={cls}>
@@ -138,7 +140,11 @@ function formatWinnerLabel(w: AdminWinner): string | null {
   if (!w.label) return null;
 
   const raw = w.label.trim();
-  if (w.kind === 'main' || /jackpot/i.test(raw)) return 'Main XPOT';
+
+  if (w.kind === 'main' || /jackpot/i.test(raw)) {
+    return 'Main XPOT';
+  }
+
   return raw.replace(/jackpot/gi, 'XPOT');
 }
 
@@ -157,7 +163,9 @@ function XpotPill({
   const base =
     'inline-flex items-baseline rounded-full border border-slate-700/80 bg-slate-950/80 text-slate-100 font-semibold shadow-[0_0_0_1px_rgba(15,23,42,0.9)]';
   const cls =
-    size === 'sm' ? `${base} px-3 py-1 text-xs` : `${base} px-4 py-1.5 text-sm`;
+    size === 'sm'
+      ? `${base} px-3 py-1 text-xs`
+      : `${base} px-4 py-1.5 text-sm`;
 
   return (
     <span className={cls}>
@@ -171,7 +179,7 @@ function XpotPill({
   );
 }
 
-function truncateAddress(addr: string, visible = 6) {
+function truncateAddress(addr: string, visible: number = 6) {
   if (!addr) return '(unknown wallet)';
   if (addr.length <= visible * 2) return addr;
   return `${addr.slice(0, visible)}…${addr.slice(-visible)}`;
@@ -324,10 +332,8 @@ export default function AdminPage() {
   const [markPaidError, setMarkPaidError] = useState<string | null>(null);
   const [copiedTxWinnerId, setCopiedTxWinnerId] = useState<string | null>(null);
 
-  const [visibleTicketCount, setVisibleTicketCount] =
-    useState(MAX_TODAY_TICKETS);
-  const [visibleWinnerCount, setVisibleWinnerCount] =
-    useState(MAX_RECENT_WINNERS);
+  const [visibleTicketCount, setVisibleTicketCount] = useState(MAX_TODAY_TICKETS);
+  const [visibleWinnerCount, setVisibleWinnerCount] = useState(MAX_RECENT_WINNERS);
 
   const visibleTickets = useMemo(
     () => tickets.slice(0, visibleTicketCount),
@@ -344,10 +350,8 @@ export default function AdminPage() {
   const [countdownText, setCountdownText] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
-  const isWarningSoon =
-    countdownSeconds !== null && countdownSeconds <= 15 * 60;
-  const isWarningCritical =
-    countdownSeconds !== null && countdownSeconds <= 5 * 60;
+  const isWarningSoon = countdownSeconds !== null && countdownSeconds <= 15 * 60;
+  const isWarningCritical = countdownSeconds !== null && countdownSeconds <= 5 * 60;
 
   const [bonusAmount, setBonusAmount] = useState('100000');
   const [bonusLabel, setBonusLabel] = useState('Bonus XPOT');
@@ -360,12 +364,8 @@ export default function AdminPage() {
   const [upcomingLoading, setUpcomingLoading] = useState(false);
   const [upcomingError, setUpcomingError] = useState<string | null>(null);
 
-  const [nextBonusDrop, setNextBonusDrop] = useState<AdminBonusDrop | null>(
-    null,
-  );
-  const [nextBonusCountdown, setNextBonusCountdown] = useState<string | null>(
-    null,
-  );
+  const [nextBonusDrop, setNextBonusDrop] = useState<AdminBonusDrop | null>(null);
+  const [nextBonusCountdown, setNextBonusCountdown] = useState<string | null>(null);
 
   const [pickError, setPickError] = useState<string | null>(null);
   const [pickSuccess, setPickSuccess] = useState<string | null>(null);
@@ -387,7 +387,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  // ── Fetch helpers ───────────────────────────
+  // ── Fetch helpers ────────────────────────────
   async function authedFetch(input: string, init?: RequestInit) {
     if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
 
@@ -505,7 +505,7 @@ export default function AdminPage() {
       setBonusSuccess(
         drop
           ? `Scheduled ${drop.label} · ${drop.amountXpot.toLocaleString()} XPOT.`
-          : 'Scheduled bonus XPOT.',
+          : `Scheduled bonus XPOT.`,
       );
 
       await refreshUpcomingDrops();
@@ -560,9 +560,7 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
-      const data = await authedFetch('/api/admin/pick-winner', {
-        method: 'POST',
-      });
+      const data = await authedFetch('/api/admin/pick-winner', { method: 'POST' });
 
       const raw = (data as any).winner as any;
       if (!raw) throw new Error('No winner returned from API');
@@ -570,18 +568,11 @@ export default function AdminPage() {
       const winner: AdminWinner = {
         ...raw,
         payoutUsd:
-          raw.payoutUsd ??
-          raw.payoutXpot ??
-          raw.amountUsd ??
-          raw.amountXpot ??
-          0,
+          raw.payoutUsd ?? raw.payoutXpot ?? raw.amountUsd ?? raw.amountXpot ?? 0,
       };
 
       setPickSuccess(
-        `Main XPOT winner: ${winner.ticketCode} (${winner.walletAddress.slice(
-          0,
-          4,
-        )}…${winner.walletAddress.slice(-4)}).`,
+        `Main XPOT winner: ${winner.ticketCode} (${winner.walletAddress.slice(0, 4)}…${winner.walletAddress.slice(-4)}).`,
       );
 
       try {
@@ -611,9 +602,7 @@ export default function AdminPage() {
 
     setIsReopeningDraw(true);
     try {
-      const data = await authedFetch('/api/admin/reopen-draw', {
-        method: 'POST',
-      });
+      const data = await authedFetch('/api/admin/reopen-draw', { method: 'POST' });
 
       if (!data || (data as any).ok === false) {
         throw new Error((data as any)?.error || 'Failed to reopen draw');
@@ -692,8 +681,7 @@ export default function AdminPage() {
         if (!cancelled) setTickets((data as any).tickets ?? []);
       } catch (err: any) {
         console.error('[ADMIN] /tickets error', err);
-        if (!cancelled)
-          setTicketsError(err.message || 'Failed to load tickets');
+        if (!cancelled) setTicketsError(err.message || 'Failed to load tickets');
       } finally {
         if (!cancelled) setTicketsLoading(false);
       }
@@ -706,8 +694,7 @@ export default function AdminPage() {
         if (!cancelled) setWinners((data as any).winners ?? []);
       } catch (err: any) {
         console.error('[ADMIN] /winners error', err);
-        if (!cancelled)
-          setWinnersError(err.message || 'Failed to load results');
+        if (!cancelled) setWinnersError(err.message || 'Failed to load results');
       } finally {
         if (!cancelled) setWinnersLoading(false);
       }
@@ -754,10 +741,7 @@ export default function AdminPage() {
       setCountdownSeconds(totalSeconds);
 
       const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
-        2,
-        '0',
-      );
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
       const seconds = String(totalSeconds % 60).padStart(2, '0');
       setCountdownText(`${hours}:${minutes}:${seconds}`);
     }
@@ -786,8 +770,7 @@ export default function AdminPage() {
 
     const next = scheduled.reduce<AdminBonusDrop | null>((acc, d) => {
       if (!acc) return d;
-      return new Date(d.scheduledAt).getTime() <
-        new Date(acc.scheduledAt).getTime()
+      return new Date(d.scheduledAt).getTime() < new Date(acc.scheduledAt).getTime()
         ? d
         : acc;
     }, null);
@@ -810,10 +793,7 @@ export default function AdminPage() {
 
       const totalSeconds = Math.floor(diffMs / 1000);
       const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
-        2,
-        '0',
-      );
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
       const seconds = String(totalSeconds % 60).padStart(2, '0');
       setNextBonusCountdown(`${hours}:${minutes}:${seconds}`);
     }
@@ -824,15 +804,11 @@ export default function AdminPage() {
   }, [upcomingDrops]);
 
   useEffect(() => {
-    setVisibleTicketCount(prev =>
-      Math.min(prev, tickets.length || MAX_TODAY_TICKETS),
-    );
+    setVisibleTicketCount(prev => Math.min(prev, tickets.length || MAX_TODAY_TICKETS));
   }, [tickets.length]);
 
   function handleLoadMoreTickets() {
-    setVisibleTicketCount(prev =>
-      Math.min(prev + MAX_TODAY_TICKETS, tickets.length),
-    );
+    setVisibleTicketCount(prev => Math.min(prev + MAX_TODAY_TICKETS, tickets.length));
   }
 
   useEffect(() => {
@@ -845,9 +821,7 @@ export default function AdminPage() {
   }, [winners.length]);
 
   function handleLoadMoreWinners() {
-    setVisibleWinnerCount(prev =>
-      Math.min(prev + MAX_RECENT_WINNERS, winners.length),
-    );
+    setVisibleWinnerCount(prev => Math.min(prev + MAX_RECENT_WINNERS, winners.length));
   }
 
   // ── Admin token handling ────────────────────
@@ -891,11 +865,7 @@ export default function AdminPage() {
   }
 
   return (
-    <XpotPageShell
-      title="Operations Center"
-      subtitle="Control room for today’s XPOT"
-      rightSlot={null}
-    >
+    <XpotPageShell title="Operations Center" subtitle="Control room for today’s XPOT">
       <div className="relative">
         {/* GLOBAL NEBULA BACKGROUND (fixed, always visible) */}
         <div className="pointer-events-none fixed inset-0 -z-10 bg-[#02020a]" />
@@ -1131,10 +1101,7 @@ export default function AdminPage() {
                           Rollover amount
                         </p>
                         <div className="mt-1">
-                          <UsdPill
-                            amount={todayDraw?.rolloverUsd ?? 0}
-                            size="sm"
-                          />
+                          <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
                         </div>
                       </div>
 
@@ -1149,109 +1116,97 @@ export default function AdminPage() {
                     </div>
 
                     <div className="mt-5 rounded-[24px] bg-slate-950/90 px-3 py-3 text-xs text-slate-500">
-                      {todayDrawError && (
-                        <p className="text-amber-300">{todayDrawError}</p>
-                      )}
+                      {todayDrawError && <p className="text-amber-300">{todayDrawError}</p>}
 
-                      {!todayDrawError &&
-                        !todayLoading &&
-                        todayDraw &&
-                        todayDraw.closesAt && (
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <p className="text-sm sm:text-base">
-                                <span className="text-xs uppercase tracking-wide text-slate-500">
-                                  Closes in
-                                </span>
+                      {!todayDrawError && !todayLoading && todayDraw && todayDraw.closesAt && (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm sm:text-base">
+                              <span className="text-xs uppercase tracking-wide text-slate-500">
+                                Closes in
+                              </span>
+                              <span
+                                className={`
+                                  ml-2 mt-2 font-mono text-2xl font-semibold transition-all
+                                  ${
+                                    isWarningCritical
+                                      ? 'rounded-lg bg-amber-500/10 px-2 py-0.5 text-amber-300 animate-pulse'
+                                      : isWarningSoon
+                                      ? 'rounded-lg bg-amber-500/5 px-2 py-0.5 text-amber-400'
+                                      : 'text-emerald-300'
+                                  }
+                                `}
+                              >
+                                {countdownText}
+                              </span>
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                            {!AUTO_DRAW_ENABLED && (
+                              <button
+                                type="button"
+                                disabled={
+                                  isPickingWinner ||
+                                  !adminToken ||
+                                  todayLoading ||
+                                  !todayDraw ||
+                                  todayDraw.status !== 'open'
+                                }
+                                onClick={handlePickMainWinner}
+                                className={`
+                                  ${BTN_PRIMARY} px-7 py-3 text-sm transition-all ease-out duration-300
+                                  ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
+                                `}
+                              >
+                                {isPickingWinner ? 'Picking winner…' : 'Crown today’s XPOT winner'}
+                              </button>
+                            )}
+
+                            {AUTO_DRAW_ENABLED && (
+                              <div className="flex flex-col items-end text-right">
                                 <span
-                                  className={`
-                                    ml-2 mt-2 font-mono text-2xl font-semibold transition-all
-                                    ${
-                                      isWarningCritical
-                                        ? 'rounded-lg bg-amber-500/10 px-2 py-0.5 text-amber-300 animate-pulse'
-                                        : isWarningSoon
-                                          ? 'rounded-lg bg-amber-500/5 px-2 py-0.5 text-amber-400'
-                                          : 'text-emerald-300'
-                                    }
-                                  `}
+                                  className="
+                                    inline-flex items-center gap-2
+                                    rounded-full border border-sky-400/70
+                                    bg-sky-500/10 px-4 py-1.5
+                                    text-[10px] font-semibold uppercase tracking-[0.2em]
+                                    text-sky-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]
+                                  "
                                 >
-                                  {countdownText}
+                                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
+                                  Auto draw enabled
                                 </span>
-                              </p>
-                            </div>
+                                <span className="mt-1 text-[11px] text-slate-400">
+                                  Manual crown button is disabled while auto-draw is active.
+                                </span>
+                              </div>
+                            )}
 
-                            <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                              {!AUTO_DRAW_ENABLED && (
+                            {todayDraw &&
+                              todayDraw.status === 'closed' &&
+                              adminToken &&
+                              !AUTO_DRAW_ENABLED && (
                                 <button
                                   type="button"
-                                  disabled={
-                                    isPickingWinner ||
-                                    !adminToken ||
-                                    todayLoading ||
-                                    !todayDraw ||
-                                    todayDraw.status !== 'open'
+                                  onClick={handleReopenDraw}
+                                  disabled={isReopeningDraw}
+                                  className={
+                                    BTN_DANGER +
+                                    ' px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]'
                                   }
-                                  onClick={handlePickMainWinner}
-                                  className={`
-                                    ${BTN_PRIMARY} px-7 py-3 text-sm transition-all ease-out duration-300
-                                    ${
-                                      isWarningCritical
-                                        ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]'
-                                        : ''
-                                    }
-                                  `}
                                 >
-                                  {isPickingWinner
-                                    ? 'Picking winner…'
-                                    : 'Crown today’s XPOT winner'}
+                                  {isReopeningDraw ? 'Reopening…' : '🚨 Emergency reopen draw'}
                                 </button>
                               )}
-
-                              {AUTO_DRAW_ENABLED && (
-                                <div className="flex flex-col items-end text-right">
-                                  <span
-                                    className="
-                                      inline-flex items-center gap-2
-                                      rounded-full border border-sky-400/70
-                                      bg-sky-500/10 px-4 py-1.5
-                                      text-[10px] font-semibold uppercase tracking-[0.2em]
-                                      text-sky-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]
-                                    "
-                                  >
-                                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
-                                    Auto draw enabled
-                                  </span>
-                                  <span className="mt-1 text-[11px] text-slate-400">
-                                    Manual crown button is disabled while
-                                    auto-draw is active.
-                                  </span>
-                                </div>
-                              )}
-
-                              {todayDraw &&
-                                todayDraw.status === 'closed' &&
-                                adminToken &&
-                                !AUTO_DRAW_ENABLED && (
-                                  <button
-                                    type="button"
-                                    onClick={handleReopenDraw}
-                                    disabled={isReopeningDraw}
-                                    className={`${BTN_DANGER} px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]`}
-                                  >
-                                    {isReopeningDraw
-                                      ? 'Reopening…'
-                                      : '🚨 Emergency reopen draw'}
-                                  </button>
-                                )}
-                            </div>
                           </div>
-                        )}
+                        </div>
+                      )}
 
                       {!todayDrawError && !todayLoading && !todayDraw && (
                         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-xs text-slate-400">
-                            No XPOT draw scheduled yet. The backend should
-                            auto-create one shortly.
+                          <p className="text-slate-400 text-xs">
+                            No XPOT draw scheduled yet. The backend should auto-create one shortly.
                           </p>
 
                           {isDevHost && (
@@ -1261,9 +1216,7 @@ export default function AdminPage() {
                               disabled={creatingDraw || !adminToken}
                               className="inline-flex items-center justify-center rounded-full border border-emerald-500/70 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              {creatingDraw
-                                ? 'Creating today’s draw…'
-                                : 'Create today’s draw (dev)'}
+                              {creatingDraw ? 'Creating today’s draw…' : 'Create today’s draw (dev)'}
                             </button>
                           )}
                         </div>
@@ -1271,12 +1224,8 @@ export default function AdminPage() {
 
                       {(pickError || pickSuccess) && (
                         <div className="mt-2 text-xs">
-                          {pickError && (
-                            <p className="text-amber-300">{pickError}</p>
-                          )}
-                          {pickSuccess && (
-                            <p className="text-emerald-300">{pickSuccess}</p>
-                          )}
+                          {pickError && <p className="text-amber-300">{pickError}</p>}
+                          {pickSuccess && <p className="text-emerald-300">{pickSuccess}</p>}
                         </div>
                       )}
                     </div>
@@ -1306,13 +1255,9 @@ export default function AdminPage() {
                 <div className="relative flex flex-col gap-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-slate-50">
-                        Schedule bonus XPOT
-                      </p>
+                      <p className="text-sm font-semibold text-slate-50">Schedule bonus XPOT</p>
                       <p className="mt-1 max-w-xl text-xs text-slate-400">
-                        Line up hype bonuses from today&apos;s ticket pool. At
-                        the scheduled time, one extra winner will be picked from
-                        all tickets in the draw.
+                        Line up hype bonuses from today&apos;s ticket pool. At the scheduled time, one extra winner will be picked from all tickets in the draw.
                       </p>
                     </div>
 
@@ -1388,8 +1333,7 @@ export default function AdminPage() {
                             placeholder="Bonus XPOT"
                           />
                           <p className="text-[11px] text-slate-500">
-                            Shown in the winners log so you can tell hype bonuses
-                            apart from the main XPOT.
+                            Shown in the winners log so you can tell hype bonuses apart from the main XPOT.
                           </p>
                         </div>
 
@@ -1422,11 +1366,7 @@ export default function AdminPage() {
                       <div className="mt-3 flex justify-end">
                         <button
                           type="submit"
-                          disabled={
-                            bonusSubmitting ||
-                            !todayDraw ||
-                            todayDraw.status !== 'open'
-                          }
+                          disabled={bonusSubmitting || !todayDraw || todayDraw.status !== 'open'}
                           className="
                             h-11 w-full rounded-full
                             bg-gradient-to-br from-emerald-500 via-green-600 to-emerald-700
@@ -1438,9 +1378,7 @@ export default function AdminPage() {
                             disabled:opacity-50 disabled:cursor-not-allowed
                           "
                         >
-                          {bonusSubmitting
-                            ? 'Scheduling bonus…'
-                            : 'Schedule bonus XPOT'}
+                          {bonusSubmitting ? 'Scheduling bonus…' : 'Schedule bonus XPOT'}
                         </button>
                       </div>
                     </div>
@@ -1448,9 +1386,7 @@ export default function AdminPage() {
 
                   <div className="mt-3 min-h-[1.25rem] text-xs">
                     {bonusError && <p className="text-amber-300">{bonusError}</p>}
-                    {bonusSuccess && (
-                      <p className="text-emerald-300">{bonusSuccess}</p>
-                    )}
+                    {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
                   </div>
 
                   <div className="mt-3 border-t border-slate-800/80 pt-3">
@@ -1469,117 +1405,97 @@ export default function AdminPage() {
                       </button>
                     </div>
 
-                    {nextBonusDrop &&
-                      nextBonusCountdown &&
-                      !upcomingLoading &&
-                      !upcomingError && (
-                        <div className="mt-2 flex items-center justify-between rounded-2xl border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-[11px]">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                              Next bonus XPOT fires in
-                            </span>
-                            <span className="mt-1 text-xs text-slate-300">
-                              {nextBonusDrop.label} ·{' '}
-                              {nextBonusDrop.amountXpot.toLocaleString()} XPOT
-                            </span>
-                          </div>
-                          <span className="font-mono text-lg font-semibold text-emerald-300">
-                            {nextBonusCountdown}
+                    {nextBonusDrop && nextBonusCountdown && !upcomingLoading && !upcomingError && (
+                      <div className="mt-2 flex items-center justify-between rounded-2xl border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-[11px]">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                            Next bonus XPOT fires in
+                          </span>
+                          <span className="mt-1 text-xs text-slate-300">
+                            {nextBonusDrop.label} · {nextBonusDrop.amountXpot.toLocaleString()} XPOT
                           </span>
                         </div>
-                      )}
+                        <span className="font-mono text-lg font-semibold text-emerald-300">
+                          {nextBonusCountdown}
+                        </span>
+                      </div>
+                    )}
 
                     {upcomingLoading && (
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        Loading bonus schedule…
-                      </p>
+                      <p className="mt-1 text-[11px] text-slate-500">Loading bonus schedule…</p>
                     )}
 
                     {upcomingError && (
-                      <p className="mt-1 text-[11px] text-amber-300">
-                        {upcomingError}
-                      </p>
+                      <p className="mt-1 text-[11px] text-amber-300">{upcomingError}</p>
                     )}
 
                     {cancelDropError && (
-                      <p className="mt-1 text-[11px] text-amber-300">
-                        {cancelDropError}
-                      </p>
+                      <p className="mt-1 text-[11px] text-amber-300">{cancelDropError}</p>
                     )}
 
-                    {!upcomingLoading &&
-                      !upcomingError &&
-                      upcomingDrops.length === 0 && (
-                        <p className="mt-1 text-[11px] text-slate-500">
-                          No bonus drops scheduled yet.
-                        </p>
-                      )}
+                    {!upcomingLoading && !upcomingError && upcomingDrops.length === 0 && (
+                      <p className="mt-1 text-[11px] text-slate-500">No bonus drops scheduled yet.</p>
+                    )}
 
-                    {!upcomingLoading &&
-                      !upcomingError &&
-                      upcomingDrops.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {upcomingDrops.map(d => {
-                            const isScheduled = d.status === 'SCHEDULED';
-                            const isCancelled = d.status === 'CANCELLED';
-                            const isFired = d.status === 'FIRED';
+                    {!upcomingLoading && !upcomingError && upcomingDrops.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {upcomingDrops.map(d => {
+                          const isScheduled = d.status === 'SCHEDULED';
+                          const isCancelled = d.status === 'CANCELLED';
+                          const isFired = d.status === 'FIRED';
 
-                            return (
-                              <div
-                                key={d.id}
-                                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/70 px-3 py-2 text-[11px]"
-                              >
-                                <div className="flex flex-col gap-0.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-slate-100">
-                                      {d.label}
-                                    </span>
-                                    <span
-                                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                                        isScheduled
-                                          ? 'bg-emerald-500/12 text-emerald-300'
-                                          : isFired
-                                            ? 'bg-sky-500/10 text-sky-200'
-                                            : 'bg-slate-800/70 text-slate-300'
-                                      }`}
-                                    >
-                                      {d.status}
-                                    </span>
-                                  </div>
-                                  <span className="font-mono text-slate-400">
-                                    {formatDateTime(d.scheduledAt)}
-                                  </span>
-                                </div>
-
+                          return (
+                            <div
+                              key={d.id}
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/70 px-3 py-2 text-[11px]"
+                            >
+                              <div className="flex flex-col gap-0.5">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-mono text-slate-200">
-                                    {d.amountXpot.toLocaleString()} XPOT
+                                  <span className="font-medium text-slate-100">{d.label}</span>
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                                      isScheduled
+                                        ? 'bg-emerald-500/12 text-emerald-300'
+                                        : isFired
+                                        ? 'bg-sky-500/10 text-sky-200'
+                                        : 'bg-slate-800/70 text-slate-300'
+                                    }`}
+                                  >
+                                    {d.status}
                                   </span>
-
-                                  {isScheduled && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCancelBonusDrop(d.id)}
-                                      disabled={cancelingDropId === d.id}
-                                      className={`${BTN_DANGER} px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]`}
-                                    >
-                                      {cancelingDropId === d.id
-                                        ? 'Cancelling…'
-                                        : 'Cancel'}
-                                    </button>
-                                  )}
-
-                                  {isCancelled && (
-                                    <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                                      Cancelled
-                                    </span>
-                                  )}
                                 </div>
+                                <span className="font-mono text-slate-400">
+                                  {formatDateTime(d.scheduledAt)}
+                                </span>
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
+
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-slate-200">
+                                  {d.amountXpot.toLocaleString()} XPOT
+                                </span>
+
+                                {isScheduled && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCancelBonusDrop(d.id)}
+                                    disabled={cancelingDropId === d.id}
+                                    className={`${BTN_DANGER} px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]`}
+                                  >
+                                    {cancelingDropId === d.id ? 'Cancelling…' : 'Cancel'}
+                                  </button>
+                                )}
+
+                                {isCancelled && (
+                                  <span className="text-slate-500 text-[10px] uppercase tracking-[0.16em]">
+                                    Cancelled
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>
@@ -1595,74 +1511,61 @@ export default function AdminPage() {
                   backdrop-blur-xl
                 "
               >
-                <p className="text-sm font-semibold text-slate-100">
-                  Today&apos;s XPOT entries
-                </p>
+                <p className="text-sm font-semibold text-slate-100">Today&apos;s XPOT entries</p>
                 <p className="mt-1 text-xs text-slate-400">
                   Every entry that has been issued for the current XPOT round.
                 </p>
 
                 <div className="mt-3">
-                  {ticketsLoading && (
-                    <p className="text-xs text-slate-500">Loading tickets…</p>
+                  {ticketsLoading && <p className="text-xs text-slate-500">Loading tickets…</p>}
+                  {ticketsError && <p className="text-xs text-amber-300">{ticketsError}</p>}
+
+                  {!ticketsLoading && !ticketsError && visibleTickets.length === 0 && (
+                    <p className="rounded-2xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
+                      No entries yet for today&apos;s XPOT.
+                    </p>
                   )}
-                  {ticketsError && (
-                    <p className="text-xs text-amber-300">{ticketsError}</p>
-                  )}
 
-                  {!ticketsLoading &&
-                    !ticketsError &&
-                    visibleTickets.length === 0 && (
-                      <p className="rounded-2xl bg-slate-950/90 px-3 py-2 text-xs text-slate-500">
-                        No entries yet for today&apos;s XPOT.
-                      </p>
-                    )}
-
-                  {!ticketsLoading &&
-                    !ticketsError &&
-                    visibleTickets.length > 0 && (
-                      <div className="mt-2 border-t border-slate-800/80">
-                        {visibleTickets.map(t => (
-                          <div
-                            key={t.id}
-                            className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 py-3 text-xs first:border-t-0"
-                          >
-                            <div className="space-y-0.5">
-                              <p className="font-mono text-[11px] text-slate-100">
-                                {t.code}
-                              </p>
-                              <CopyableWallet address={t.walletAddress} />
-                            </div>
-
-                            <div className="flex flex-col items-end gap-1">
-                              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-200">
-                                {t.status.replace('-', ' ').toUpperCase()}
-                              </span>
-                              <p className="font-mono text-[11px] text-slate-500">
-                                {formatDateTime(t.createdAt)}
-                              </p>
-                            </div>
+                  {!ticketsLoading && !ticketsError && visibleTickets.length > 0 && (
+                    <div className="mt-2 border-t border-slate-800/80">
+                      {visibleTickets.map(t => (
+                        <div
+                          key={t.id}
+                          className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 py-3 text-xs first:border-t-0"
+                        >
+                          <div className="space-y-0.5">
+                            <p className="font-mono text-[11px] text-slate-100">{t.code}</p>
+                            <CopyableWallet address={t.walletAddress} />
                           </div>
-                        ))}
 
-                        <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-                          <p>
-                            Showing {visibleTickets.length} of {tickets.length}{' '}
-                            tickets
-                          </p>
-
-                          {visibleTickets.length < tickets.length && (
-                            <button
-                              type="button"
-                              onClick={handleLoadMoreTickets}
-                              className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
-                            >
-                              Load more
-                            </button>
-                          )}
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-200">
+                              {t.status.replace('-', ' ').toUpperCase()}
+                            </span>
+                            <p className="font-mono text-[11px] text-slate-500">
+                              {formatDateTime(t.createdAt)}
+                            </p>
+                          </div>
                         </div>
+                      ))}
+
+                      <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                        <p>
+                          Showing {visibleTickets.length} of {tickets.length} tickets
+                        </p>
+
+                        {visibleTickets.length < tickets.length && (
+                          <button
+                            type="button"
+                            onClick={handleLoadMoreTickets}
+                            className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
+                          >
+                            Load more
+                          </button>
+                        )}
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
@@ -1681,164 +1584,138 @@ export default function AdminPage() {
               >
                 <div className="relative mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-base font-semibold tracking-wide text-white">
+                    <p className="text-base font-semibold text-white tracking-wide">
                       Recent XPOT winners
                     </p>
                     <p className="mt-0.5 text-xs text-slate-400">
-                      Internal log of executed rewards, payouts and winner
-                      tickets.
+                      Internal log of executed rewards, payouts and winner tickets.
                     </p>
                   </div>
                 </div>
 
                 <div className="relative">
-                  {winnersLoading && (
-                    <p className="text-xs text-slate-500">Loading records…</p>
-                  )}
-                  {winnersError && (
-                    <p className="text-xs text-amber-300">{winnersError}</p>
-                  )}
+                  {winnersLoading && <p className="text-xs text-slate-500">Loading records…</p>}
+                  {winnersError && <p className="text-xs text-amber-300">{winnersError}</p>}
 
                   {!winnersLoading && !winnersError && winners.length === 0 && (
                     <p className="rounded-2xl bg-slate-900/70 px-4 py-3 text-xs text-slate-500">
-                      No completed draws yet. Once you pick winners and mark
-                      XPOT as paid, they&apos;ll appear here.
+                      No completed draws yet. Once you pick winners and mark XPOT as paid, they&apos;ll appear here.
                     </p>
                   )}
 
-                  {!winnersLoading &&
-                    !winnersError &&
-                    visibleWinners.length > 0 && (
-                      <>
-                        <div className="mt-1 divide-y divide-slate-800/70 border-t border-slate-800/80">
-                          {visibleWinners.map(w => {
-                            const label = formatWinnerLabel(w);
-                            const isMain = w.kind === 'main' || label === 'Main XPOT';
-                            const displayXpot = isMain ? MAIN_XPOT_REWARD : w.payoutUsd;
+                  {!winnersLoading && !winnersError && visibleWinners.length > 0 && (
+                    <>
+                      <div className="mt-1 divide-y divide-slate-800/70 border-t border-slate-800/80">
+                        {visibleWinners.map(w => {
+                          const label = formatWinnerLabel(w);
+                          const isMain = w.kind === 'main' || label === 'Main XPOT';
+                          const displayXpot = isMain ? MAIN_XPOT_REWARD : w.payoutUsd;
 
-                            return (
-                              <article key={w.id} className="group flex flex-col gap-2 py-4">
-                                <div className="flex items-center justify-between gap-3">
-                                  <p className="font-mono text-[11px] text-slate-200">
-                                    {w.ticketCode}
-                                  </p>
+                          return (
+                            <article key={w.id} className="group flex flex-col gap-2 py-4">
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="font-mono text-[11px] text-slate-200">{w.ticketCode}</p>
 
-                                  <div className="flex items-center gap-2">
-                                    {label && (
-                                      <span
-                                        className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em] ${
-                                          w.kind === 'bonus'
-                                            ? 'bg-emerald-500/12 text-emerald-300'
-                                            : 'bg-slate-800/70 text-slate-200'
-                                        }`}
-                                      >
-                                        {label}
-                                      </span>
-                                    )}
-
-                                    <span className="text-[11px] text-slate-500">
-                                      {formatDate(w.date)}
+                                <div className="flex items-center gap-2">
+                                  {label && (
+                                    <span
+                                      className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em] ${
+                                        w.kind === 'bonus'
+                                          ? 'bg-emerald-500/12 text-emerald-300'
+                                          : 'bg-slate-800/70 text-slate-200'
+                                      }`}
+                                    >
+                                      {label}
                                     </span>
-                                  </div>
+                                  )}
+
+                                  <span className="text-[11px] text-slate-500">{formatDate(w.date)}</span>
                                 </div>
+                              </div>
 
-                                <CopyableWallet address={w.walletAddress} />
+                              <CopyableWallet address={w.walletAddress} />
 
-                                <div className="mt-2 flex items-center justify-between gap-3">
-                                  <XpotPill amount={displayXpot} />
+                              <div className="mt-2 flex items-center justify-between gap-3">
+                                <XpotPill amount={displayXpot} />
 
-                                  {w.isPaidOut ? (
-                                    w.txUrl && (
-                                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-sky-300">
-                                        <span className="font-semibold">
-                                          Reward sent
-                                        </span>
-                                        <span className="text-slate-500">·</span>
+                                {w.isPaidOut ? (
+                                  w.txUrl && (
+                                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-sky-300">
+                                      <span className="font-semibold">Reward sent</span>
+                                      <span className="text-slate-500">·</span>
 
-                                        <a
-                                          href={w.txUrl}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="underline decoration-sky-400/40 hover:text-sky-200"
-                                        >
-                                          View TX
-                                        </a>
+                                      <a
+                                        href={w.txUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="underline decoration-sky-400/40 hover:text-sky-200"
+                                      >
+                                        View TX
+                                      </a>
 
-                                        <button
-                                          type="button"
-                                          onClick={async () => {
-                                            try {
-                                              await navigator.clipboard.writeText(w.txUrl!);
-                                              setCopiedTxWinnerId(w.id);
-                                              setTimeout(() => setCopiedTxWinnerId(null), 1200);
-                                            } catch {
-                                              // ignore
-                                            }
-                                          }}
-                                          className="rounded-full border border-sky-400/40 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-sky-200 hover:bg-sky-500/10"
-                                        >
-                                          {copiedTxWinnerId === w.id
-                                            ? 'Copied'
-                                            : 'Copy TX'}
-                                        </button>
-                                      </div>
-                                    )
-                                  ) : (
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <input
-                                        type="text"
-                                        placeholder="Paste TX link…"
-                                        className="w-44 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
-                                        value={txInputs[w.id] ?? ''}
-                                        onChange={e =>
-                                          setTxInputs(prev => ({
-                                            ...prev,
-                                            [w.id]: e.target.value,
-                                          }))
-                                        }
-                                      />
                                       <button
                                         type="button"
-                                        onClick={() => handleMarkAsPaid(w.id)}
-                                        disabled={savingPaidId === w.id}
-                                        className={`${BTN_UTILITY} px-4 py-1.5 text-[11px]`}
+                                        onClick={async () => {
+                                          try {
+                                            await navigator.clipboard.writeText(w.txUrl!);
+                                            setCopiedTxWinnerId(w.id);
+                                            setTimeout(() => setCopiedTxWinnerId(null), 1200);
+                                          } catch {
+                                            // ignore
+                                          }
+                                        }}
+                                        className="rounded-full border border-sky-400/40 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-sky-200 hover:bg-sky-500/10"
                                       >
-                                        {savingPaidId === w.id
-                                          ? 'Saving…'
-                                          : 'Mark as paid'}
+                                        {copiedTxWinnerId === w.id ? 'Copied' : 'Copy TX'}
                                       </button>
                                     </div>
-                                  )}
-                                </div>
-                              </article>
-                            );
-                          })}
-                        </div>
+                                  )
+                                ) : (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="Paste TX link…"
+                                      className="w-44 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 outline-none"
+                                      value={txInputs[w.id] ?? ''}
+                                      onChange={e =>
+                                        setTxInputs(prev => ({ ...prev, [w.id]: e.target.value }))
+                                      }
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMarkAsPaid(w.id)}
+                                      disabled={savingPaidId === w.id}
+                                      className={`${BTN_UTILITY} px-4 py-1.5 text-[11px]`}
+                                    >
+                                      {savingPaidId === w.id ? 'Saving…' : 'Mark as paid'}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
 
-                        {markPaidError && (
-                          <p className="mt-2 text-xs text-amber-300">
-                            {markPaidError}
-                          </p>
+                      {markPaidError && <p className="mt-2 text-xs text-amber-300">{markPaidError}</p>}
+
+                      <div className="mt-2 flex items-center justify-between border-t border-slate-800/80 pt-2 text-xs text-slate-400">
+                        <p>
+                          Showing latest {visibleWinners.length} of {winners.length}
+                        </p>
+
+                        {visibleWinners.length < winners.length && (
+                          <button
+                            type="button"
+                            onClick={handleLoadMoreWinners}
+                            className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
+                          >
+                            Load more
+                          </button>
                         )}
-
-                        <div className="mt-2 flex items-center justify-between border-t border-slate-800/80 pt-2 text-xs text-slate-400">
-                          <p>
-                            Showing latest {visibleWinners.length} of{' '}
-                            {winners.length}
-                          </p>
-
-                          {visibleWinners.length < winners.length && (
-                            <button
-                              type="button"
-                              onClick={handleLoadMoreWinners}
-                              className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}
-                            >
-                              Load more
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </section>
             </div>
@@ -1879,9 +1756,7 @@ export default function AdminPage() {
                     Unlock XPOT operations center
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
-                    Step inside the live XPOT control deck. Monitor today&apos;s
-                    round, entries, wallets and reward execution - secured behind
-                    your private{' '}
+                    Step inside the live XPOT control deck. Monitor today&apos;s round, entries, wallets and reward execution - secured behind your private{' '}
                     <span className="font-semibold text-slate-200">admin key</span>.
                   </p>
                 </div>
@@ -1913,10 +1788,7 @@ export default function AdminPage() {
                       Your key is stored locally in this browser only.
                     </p>
                     <p className="text-[10px] text-slate-500">
-                      <span className="font-semibold text-slate-300">
-                        Never share your admin key
-                      </span>{' '}
-                      - it unlocks full XPOT operations.
+                      <span className="font-semibold text-slate-300">Never share your admin key</span> - it unlocks full XPOT operations.
                     </p>
                   </div>
 
