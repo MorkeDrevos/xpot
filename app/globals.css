@@ -2,23 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Minimal XPOT globals – safe reset */
-
+/* XPOT base theme tokens */
 :root {
   color-scheme: dark;
   --bg: #020617;
   --text: #e5e7eb;
 }
 
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
   background-color: var(--bg);
   color: var(--text);
 }
 
-/* simple helper classes we already use */
+/* Simple helpers that the app already depends on */
 .admin-shell-bg {
   background-color: #020617;
 }
