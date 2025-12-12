@@ -13,6 +13,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import { REQUIRED_XPOT } from '../../lib/xpot';
+import { XpotPageShell } from '@/components/XpotPageShell';
 
 import {
   ArrowRight,
@@ -562,157 +563,145 @@ export default function DashboardPage() {
     !!normalizedWallet &&
     winner.walletAddress?.toLowerCase() === normalizedWallet;
 
-  // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
 
-    return (
-    <div className="relative min-h-screen bg-[#02020a] text-slate-100">
+  return (
+    <XpotPageShell>
       <WalletDebug />
 
-      {/* GLOBAL NEBULA BACKGROUND */}
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[#02020a]" />
-      <div
-        className="
-          pointer-events-none fixed inset-0 -z-10
-          opacity-95
-          bg-[radial-gradient(circle_at_10%_0%,rgba(37,99,235,0.45),transparent_60%),
-              radial-gradient(circle_at_100%_30%,rgba(168,85,247,0.55),transparent_60%),
-              radial-gradient(circle_at_100%_90%,rgba(236,72,153,0.45),transparent_65%),
-              radial-gradient(circle_at_35%_85%,rgba(56,189,248,0.18),transparent_55%)]
-        "
-      />
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
+      {/* HEADER */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="inline-flex items-center gap-2">
+            <Image
+              src="/img/xpot-logo-light.png"
+              alt="XPOT"
+              width={132}
+              height={36}
+              priority
+            />
+          </Link>
 
-      {/* CONTENT */}
-      <div className="relative z-10 mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6">
-        {/* HEADER */}
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="inline-flex items-center gap-2">
-              <Image
-                src="/img/xpot-logo-light.png"
-                alt="XPOT"
-                width={132}
-                height={36}
-                priority
-              />
-            </Link>
+          <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+            Holder dashboard
+          </span>
+        </div>
 
-            <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-              Holder dashboard
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/history"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
+          >
+            <History className="h-4 w-4" />
+            History
+          </Link>
 
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/history"
-              className="rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
+          <WalletMultiButton className="!h-10 !rounded-full !px-4 !text-sm" />
+
+          <SignOutButton redirectUrl="/dashboard">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
             >
-              <History className="h-4 w-4" />
-              History
-            </Link>
+              <LogOut className="h-4 w-4" />
+              Log out
+            </button>
+          </SignOutButton>
+        </div>
+      </header>
 
-            <WalletMultiButton className="!h-10 !rounded-full !px-4 !text-sm" />
+      {/* MAIN GRID */}
+      <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        {/* LEFT COLUMN */}
+        <div className="space-y-4">
+          {/* IDENTITY CARD */}
+          <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
+            <p className="text-sm font-semibold text-slate-100">
+              Connected identity
+            </p>
 
-            <SignOutButton redirectUrl="/dashboard">
+            <p className="mt-1 text-xs text-slate-400">
+              Wallet + X identity used for XPOT draws
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  XPOT balance
+                </p>
+                <p className="mt-1 font-mono text-sm text-slate-100">
+                  {xpotBalance === null
+                    ? 'Checking…'
+                    : xpotBalance === 'error'
+                    ? 'Unavailable'
+                    : `${Math.floor(xpotBalance).toLocaleString()} XPOT`}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  Eligibility
+                </p>
+                <p className="mt-1 font-semibold text-sm text-slate-100">
+                  {typeof xpotBalance === 'number'
+                    ? hasRequiredXpot
+                      ? 'Eligible'
+                      : 'Not eligible'
+                    : '—'}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  Wallet
+                </p>
+                <p className="mt-1 font-mono text-sm text-slate-100">
+                  {currentWalletAddress
+                    ? shortWallet(currentWalletAddress)
+                    : 'Not connected'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* TODAY TICKET */}
+          <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
+            <p className="text-sm font-semibold text-slate-100">Today’s XPOT</p>
+
+            {!ticketClaimed ? (
               <button
                 type="button"
-                className="rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
+                onClick={handleClaimTicket}
+                disabled={!walletConnected || claiming}
+                className={`${BTN_PRIMARY} mt-4 px-6 py-3 text-sm`}
               >
-                <LogOut className="h-4 w-4" />
-                Log out
+                {claiming ? 'Generating…' : 'Get today’s ticket'}
               </button>
-            </SignOutButton>
-          </div>
-        </header>
-
-        {/* MAIN GRID */}
-        <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          {/* LEFT COLUMN */}
-          <div className="space-y-4">
-            {/* IDENTITY CARD */}
-            <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
-              <p className="text-sm font-semibold text-slate-100">
-                Connected identity
+            ) : (
+              <p className="mt-4 text-sm text-emerald-300">
+                Your ticket is in the draw.
               </p>
+            )}
+          </section>
+        </div>
 
-              <p className="mt-1 text-xs text-slate-400">
-                Wallet + X identity used for XPOT draws
-              </p>
+        {/* RIGHT COLUMN */}
+        <div className="space-y-4">
+          {/* RECENT WINNERS */}
+          <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
+            <p className="text-sm font-semibold text-slate-100">
+              Recent winners
+            </p>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    XPOT balance
-                  </p>
-                  <p className="mt-1 font-mono text-sm text-slate-100">
-                    {xpotBalance === null
-                      ? 'Checking…'
-                      : xpotBalance === 'error'
-                      ? 'Unavailable'
-                      : `${Math.floor(xpotBalance).toLocaleString()} XPOT`}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Eligibility
-                  </p>
-                  <p className="mt-1 font-semibold text-sm text-slate-100">
-                    {typeof xpotBalance === 'number'
-                      ? hasRequiredXpot
-                        ? 'Eligible'
-                        : 'Not eligible'
-                      : '—'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Wallet
-                  </p>
-                  <p className="mt-1 font-mono text-sm text-slate-100">
-                    {currentWalletAddress
-                      ? shortWallet(currentWalletAddress)
-                      : 'Not connected'}
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* TODAY TICKET */}
-            <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
-              <p className="text-sm font-semibold text-slate-100">
-                Today’s XPOT
-              </p>
-
-              {!ticketClaimed ? (
-                <button
-                  onClick={handleClaimTicket}
-                  disabled={!walletConnected || claiming}
-                  className={`${BTN_PRIMARY} mt-4 px-6 py-3 text-sm`}
-                >
-                  {claiming ? 'Generating…' : 'Get today’s ticket'}
-                </button>
-              ) : (
-                <p className="mt-4 text-sm text-emerald-300">
-                  Your ticket is in the draw.
+            <div className="mt-4 space-y-2">
+              {recentWinners.length === 0 ? (
+                <p className="text-xs text-slate-500">
+                  No completed draws yet.
                 </p>
-              )}
-            </section>
-          </div>
-
-          {/* RIGHT COLUMN */}
-          <div className="space-y-4">
-            {/* RECENT WINNERS */}
-            <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
-              <p className="text-sm font-semibold text-slate-100">
-                Recent winners
-              </p>
-
-              <div className="mt-4 space-y-2">
-                {recentWinners.map(w => (
+              ) : (
+                recentWinners.map(w => (
                   <div
                     key={w.id}
                     className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
@@ -724,17 +713,17 @@ export default function DashboardPage() {
                       {w.ticketCode}
                     </p>
                   </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        </section>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+      </section>
 
-        {/* FOOTER */}
-        <footer className="mt-8 border-t border-slate-800/70 pt-4 text-xs text-slate-500">
-          XPOT is in Pre-Launch Mode. UI is final, wiring continues.
-        </footer>
-      </div>
-    </div>
+      {/* FOOTER */}
+      <footer className="mt-8 border-t border-slate-800/70 pt-4 text-xs text-slate-500">
+        XPOT is in Pre-Launch Mode. UI is final, wiring continues.
+      </footer>
+    </XpotPageShell>
   );
 }
