@@ -6,10 +6,9 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 
-import { useUser, SignOutButton } from '@clerk/nextjs';
+import { useClerk, useUser } from '@clerk/nextjs';
 
 import XpotPageShell from '@/components/XpotPageShell';
 import { REQUIRED_XPOT } from '@/lib/xpot';
@@ -24,6 +23,7 @@ import {
   Ticket,
   Wallet,
   X,
+  ChevronRight,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -68,10 +68,10 @@ function StatusPill({
     tone === 'emerald'
       ? 'bg-emerald-500/10 text-emerald-300'
       : tone === 'amber'
-      ? 'bg-amber-500/10 text-amber-200'
-      : tone === 'sky'
-      ? 'bg-sky-500/10 text-sky-200'
-      : 'bg-slate-800/70 text-slate-200';
+        ? 'bg-amber-500/10 text-amber-200'
+        : tone === 'sky'
+          ? 'bg-sky-500/10 text-sky-200'
+          : 'bg-slate-800/70 text-slate-200';
 
   return (
     <span
@@ -82,20 +82,217 @@ function StatusPill({
   );
 }
 
-// Debug logger for wallet state
-function WalletDebug() {
-  const { publicKey, connected, wallet } = useWallet();
+async function safeCopy(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ─────────────────────────────────────────────
+// Premium wallet modal (stable, no 3rd-party UI)
+// ─────────────────────────────────────────────
+
+function sortWallets(
+  wallets: ReturnType<typeof useWallet>['wallets'],
+): typeof wallets {
+  const score = (w: (typeof wallets)[number]) => {
+    if (w.readyState === WalletReadyState.Installed) return 0;
+    if (w.readyState === WalletReadyState.Loadable) return 1;
+    if (w.readyState === WalletReadyState.NotDetected) return 2;
+    return 3;
+  };
+  return [...wallets].sort((a, b) => score(a) - score(b));
+}
+
+function PremiumWalletModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { wallets, wallet, connected, connecting, disconnect, select, connect } =
+    useWallet();
+
+  const [busyName, setBusyName] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const list = sortWallets(wallets);
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[XPOT] Wallet state changed:', {
-      connected,
-      publicKey: publicKey?.toBase58() ?? null,
-      walletName: wallet?.adapter?.name ?? null,
-    });
-  }, [connected, publicKey, wallet]);
+    if (!open) {
+      setErr(null);
+      setBusyName(null);
+    }
+  }, [open]);
 
-  return null;
+  async function handlePick(name: string) {
+    try {
+      setErr(null);
+      setBusyName(name);
+      select(name);
+      // connect() can throw if user cancels (that’s fine)
+      await connect();
+      onClose();
+    } catch (e: any) {
+      const msg =
+        typeof e?.message === 'string'
+          ? e.message
+          : 'Connection cancelled. Try again.';
+      setErr(msg);
+    } finally {
+      setBusyName(null);
+    }
+  }
+
+  async function handleDisconnect() {
+    try {
+      setErr(null);
+      await disconnect();
+      onClose();
+    } catch (e: any) {
+      setErr(
+        typeof e?.message === 'string' ? e.message : 'Failed to disconnect.',
+      );
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100]">
+      {/* Backdrop */}
+      <button
+        type="button"
+        aria-label="Close wallet modal"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/70 backdrop-blur-[6px]"
+      />
+
+      {/* Modal */}
+      <div className="relative mx-auto mt-24 w-[92vw] max-w-[560px]">
+        <div className="rounded-[28px] border border-slate-800/70 bg-[#060a14]/90 shadow-2xl shadow-black/60 backdrop-blur-xl">
+          {/* Top glow */}
+          <div className="pointer-events-none absolute inset-x-0 -top-24 h-48 rounded-[999px] bg-[radial-gradient(circle_at_top,_rgba(94,234,212,0.18),_transparent_60%),radial-gradient(circle_at_30%_40%,_rgba(168,85,247,0.16),_transparent_62%)]" />
+          <div className="relative p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">
+                  Connect wallet
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Secure, one tap connection. No popups, no clutter.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-slate-950/60 text-slate-200 hover:bg-slate-900/70"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Current */}
+            <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                    Status
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-slate-100">
+                    {connected
+                      ? `Connected · ${wallet?.adapter?.name ?? 'Wallet'}`
+                      : connecting
+                        ? 'Connecting…'
+                        : 'Not connected'}
+                  </p>
+                </div>
+
+                {connected ? (
+                  <button
+                    type="button"
+                    onClick={handleDisconnect}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
+                  >
+                    Disconnect
+                    <ChevronRight className="h-4 w-4 opacity-70" />
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200">
+                    <Wallet className="h-4 w-4" />
+                    Select
+                  </span>
+                )}
+              </div>
+
+              {err && <p className="mt-2 text-xs text-amber-300">{err}</p>}
+            </div>
+
+            {/* Wallet list */}
+            {!connected && (
+              <div className="mt-4 space-y-2">
+                {list.map(w => {
+                  const name = w.adapter.name;
+                  const ready = w.readyState;
+                  const installed =
+                    ready === WalletReadyState.Installed ||
+                    ready === WalletReadyState.Loadable;
+
+                  const disabled = !installed || !!busyName || connecting;
+
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => handlePick(name)}
+                      className={[
+                        'w-full rounded-2xl border px-4 py-3 text-left transition',
+                        'border-slate-800/80 bg-slate-950/70 hover:bg-slate-900/70',
+                        disabled ? 'opacity-50' : 'opacity-100',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-100">
+                            {name}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {ready === WalletReadyState.Installed
+                              ? 'Installed'
+                              : ready === WalletReadyState.Loadable
+                                ? 'Detected'
+                                : ready === WalletReadyState.NotDetected
+                                  ? 'Not detected'
+                                  : 'Unsupported'}
+                          </p>
+                        </div>
+
+                        <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200">
+                          {busyName === name ? 'Connecting…' : 'Connect'}
+                          <ChevronRight className="h-4 w-4 opacity-70" />
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
+              Tip: Phantom or Jupiter are recommended. You only connect to sign
+              your own actions.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Optional UX helper: show hint under wallet button
@@ -120,18 +317,9 @@ function WalletStatusHint() {
 
   return (
     <p className="mt-2 text-xs text-slate-500">
-      Click “Select Wallet” and choose Phantom or Jupiter to connect.
+      Click “Connect wallet” and choose Phantom or Jupiter.
     </p>
   );
-}
-
-async function safeCopy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // ─────────────────────────────────────────────
@@ -164,6 +352,19 @@ type RecentWinner = {
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
+  // Wallet (MUST be before any useEffect that references `connected`)
+  const { publicKey, connected, wallet } = useWallet();
+  const walletConnected = !!publicKey && connected;
+  const currentWalletAddress = publicKey?.toBase58() ?? null;
+
+  // Premium modal
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+
+  // Fix the title bug (connected used before declaration) ✅
+  useEffect(() => {
+    document.title = connected ? 'XPOT Hub • Live' : 'XPOT Hub';
+  }, [connected]);
+
   // Today entries (global)
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -175,15 +376,6 @@ export default function DashboardClient() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
-
-  useEffect(() => {
-  document.title = connected ? 'XPOT Hub • Live' : 'XPOT Hub';
-}, [connected]);
-
-  // Wallet
-  const { publicKey, connected } = useWallet();
-  const walletConnected = !!publicKey && connected;
-  const currentWalletAddress = publicKey?.toBase58() ?? null;
 
   // XPOT balance
   const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
@@ -199,6 +391,19 @@ export default function DashboardClient() {
   const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
+
+  // Clerk (logout fix)
+  const { signOut } = useClerk();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleLogout() {
+    try {
+      setSigningOut(true);
+      await signOut({ redirectUrl: '/dashboard' });
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   // Clerk user (X identity)
   const { user, isLoaded: isUserLoaded } = useUser();
@@ -544,7 +749,9 @@ export default function DashboardClient() {
       setClaimError(null);
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
-      setClaimError('Unexpected error while getting your ticket. Please try again.');
+      setClaimError(
+        'Unexpected error while getting your ticket. Please try again.',
+      );
     } finally {
       setClaiming(false);
     }
@@ -565,13 +772,18 @@ export default function DashboardClient() {
     !!normalizedWallet &&
     winner.walletAddress?.toLowerCase() === normalizedWallet;
 
+  const walletLabel = wallet?.adapter?.name ?? 'Wallet';
+
   // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
 
   return (
     <XpotPageShell>
-      <WalletDebug />
+      <PremiumWalletModal
+        open={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+      />
 
       {/* HEADER */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -580,9 +792,10 @@ export default function DashboardClient() {
             <Image
               src="/img/xpot-logo-light.png"
               alt="XPOT"
-              width={132}
-              height={36}
+              width={180}
+              height={48}
               priority
+              className="h-[48px] w-auto"
             />
           </Link>
 
@@ -601,17 +814,29 @@ export default function DashboardClient() {
               History
             </Link>
 
-            <WalletMultiButton className="!h-10 !rounded-full !px-4 !text-sm" />
+            <button
+              type="button"
+              onClick={() => setWalletModalOpen(true)}
+              className={[
+                'inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition',
+                'border border-slate-700/80 bg-slate-950/70 text-slate-100 hover:bg-slate-900/70',
+              ].join(' ')}
+            >
+              <Wallet className="h-4 w-4" />
+              {walletConnected
+                ? `${walletLabel} · ${shortWallet(currentWalletAddress!)}`
+                : 'Connect wallet'}
+            </button>
 
-            <SignOutButton redirectUrl="/dashboard">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-              >
-                <LogOut className="h-4 w-4" />
-                Log out
-              </button>
-            </SignOutButton>
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={signingOut}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70 disabled:opacity-50"
+            >
+              <LogOut className="h-4 w-4" />
+              {signingOut ? 'Logging out…' : 'Log out'}
+            </button>
           </div>
 
           <WalletStatusHint />
@@ -649,8 +874,8 @@ export default function DashboardClient() {
                   {xpotBalance === null
                     ? 'Checking…'
                     : xpotBalance === 'error'
-                    ? 'Unavailable'
-                    : `${Math.floor(xpotBalance).toLocaleString()} XPOT`}
+                      ? 'Unavailable'
+                      : `${Math.floor(xpotBalance).toLocaleString()} XPOT`}
                 </p>
               </div>
 
@@ -718,7 +943,9 @@ export default function DashboardClient() {
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-100">Today’s XPOT</p>
+                <p className="text-sm font-semibold text-slate-100">
+                  Today’s XPOT
+                </p>
                 <p className="mt-1 text-xs text-slate-400">
                   Claim a free entry if your wallet holds the minimum XPOT.
                 </p>
@@ -785,7 +1012,8 @@ export default function DashboardClient() {
                 </div>
 
                 <p className="mt-2 text-xs text-slate-500">
-                  Status: <span className="font-semibold text-slate-200">IN DRAW</span>
+                  Status:{' '}
+                  <span className="font-semibold text-slate-200">IN DRAW</span>
                   {' · '}Issued {formatDateTime(todaysTicket.createdAt)}
                 </p>
               </div>
@@ -793,7 +1021,8 @@ export default function DashboardClient() {
 
             {walletConnected && ticketClaimed && !todaysTicket && (
               <p className="mt-4 text-xs text-slate-500">
-                Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.
+                Your wallet has an entry today, but it hasn’t loaded yet. Refresh
+                the page.
               </p>
             )}
 
@@ -836,14 +1065,16 @@ export default function DashboardClient() {
                       className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                        <p className="font-mono text-sm text-slate-100">
+                          {t.code}
+                        </p>
                         <StatusPill
                           tone={
                             t.status === 'in-draw'
                               ? 'emerald'
                               : t.status === 'won'
-                              ? 'sky'
-                              : 'slate'
+                                ? 'sky'
+                                : 'slate'
                           }
                         >
                           {t.status.replace('-', ' ')}
@@ -957,16 +1188,18 @@ export default function DashboardClient() {
                     className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                      <p className="font-mono text-sm text-slate-100">
+                        {t.code}
+                      </p>
                       <StatusPill
                         tone={
                           t.status === 'won'
                             ? 'sky'
                             : t.status === 'claimed'
-                            ? 'emerald'
-                            : t.status === 'in-draw'
-                            ? 'emerald'
-                            : 'slate'
+                              ? 'emerald'
+                              : t.status === 'in-draw'
+                                ? 'emerald'
+                                : 'slate'
                         }
                       >
                         {t.status.replace('-', ' ')}
