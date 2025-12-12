@@ -1,14 +1,12 @@
 // app/dashboard/history/page.tsx
 'use client';
 
-import { WalletReadyState } from '@solana/wallet-adapter-base';
-import { useUser, SignOutButton } from '@clerk/nextjs';
+export const dynamic = 'force-dynamic';
+
+import { useUser } from '@clerk/nextjs';
+import Link from 'next/link';
 
 import XpotPageShell from '@/components/XpotPageShell';
-
-// Helpers
-import Link from 'next/link';
-import Image from 'next/image';
 
 export default function HistoryPage() {
   const { user } = useUser();
@@ -18,8 +16,10 @@ export default function HistoryPage() {
       title="History"
       subtitle="Recent XPOT winners and your past entries"
     >
-      <div className="text-slate-300 p-4">
-        <p className="mb-4">History page content coming soon…</p>
+      <div className="p-4 text-slate-300">
+        <p className="mb-4">
+          History page content coming soon…
+        </p>
 
         <Link
           href="/dashboard"
