@@ -1,79 +1,68 @@
-// components/XpotLogoLottie.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import Lottie from 'lottie-react';
 
-// Bundled animation (NO fetch)
+// bundled JSON (no fetch)
 import animationData from '@/app/animations/xpot_logo_loop.json';
 
 type XpotLogoLottieProps = {
   className?: string;
 
-  // Box size (keeps the logo from ever “squishing”)
+  // If provided, we lock the box size (recommended for stable headers)
   width?: number;
   height?: number;
 
   loop?: boolean;
   autoplay?: boolean;
-
-  // Visual tuning
-  lottieOpacity?: number; // 0..1
 };
 
 export default function XpotLogoLottie({
   className = '',
-  width = 132,
-  height = 36,
+  width,
+  height,
   loop = true,
   autoplay = true,
-  lottieOpacity = 0.75,
 }: XpotLogoLottieProps) {
   const [failed, setFailed] = useState(false);
 
-  // Prevent accidental remount loops
-  const lottieKey = useMemo(() => `xpot-logo-${width}x${height}`, [width, height]);
+  // default “header-safe” size if none passed
+  const w = width ?? 132;
+  const h = height ?? 36;
 
-  return (
-    <div
-      className={['relative select-none', className].join(' ')}
-      style={{ width, height, minWidth: width, minHeight: height }}
-      aria-label="XPOT"
-      role="img"
-    >
-      {/* ALWAYS show premium PNG base (never blank, never “disappears”) */}
+  if (failed) {
+    return (
       <Image
         src="/img/xpot-logo-light.png"
         alt="XPOT"
-        width={width}
-        height={height}
+        width={w}
+        height={h}
         priority
-        className="absolute inset-0 h-full w-full object-contain"
+        className={className}
       />
+    );
+  }
 
-      {/* Lottie overlay (subtle premium shimmer). If it errors, we just hide it. */}
-      {!failed && (
-        <div
-          className="absolute inset-0"
-          style={{
-            opacity: lottieOpacity,
-            pointerEvents: 'none',
-            mixBlendMode: 'screen',
-          }}
-        >
-          <Lottie
-            key={lottieKey}
-            animationData={animationData as any}
-            loop={loop}
-            autoplay={autoplay}
-            renderer="svg"
-            rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
-            style={{ width: '100%', height: '100%' }}
-            onError={() => setFailed(true)}
-          />
-        </div>
-      )}
+  return (
+    <div
+      className={['relative inline-block select-none', className].join(' ')}
+      style={{
+        width: w,
+        height: h,
+        minWidth: w,
+        minHeight: h,
+      }}
+      aria-label="XPOT"
+    >
+      <Lottie
+        animationData={animationData as any}
+        loop={loop}
+        autoplay={autoplay}
+        rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
+        style={{ width: '100%', height: '100%' }}
+        onError={() => setFailed(true)}
+      />
     </div>
   );
 }
