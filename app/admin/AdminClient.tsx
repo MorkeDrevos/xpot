@@ -264,65 +264,6 @@ function CopyableWallet({ address }: { address: string }) {
 }
 
 // ─────────────────────────────────────────────
-// Animated logo (Lottie) with safe fallback
-// Uses bundled JSON import (no fetch) so it can’t 404 / get blocked.
-// ─────────────────────────────────────────────
-
-import animationData from '@/app/animations/xpot_nebula_pulse.json';
-
-function XpotLogoAnimated({
-  className,
-  width = 132,
-  height = 36,
-}: {
-  className?: string;
-  width?: number;
-  height?: number;
-}) {
-  const [Lottie, setLottie] = useState<any>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const mod = await import('lottie-react');
-        if (!cancelled) setLottie(() => mod.default);
-      } catch (e) {
-        console.error('[XPOT LOGO] Failed to load lottie-react:', e);
-        if (!cancelled) setFailed(true);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (failed || !Lottie) {
-    return (
-      <Image
-        src="/img/xpot-logo-light.png"
-        alt="XPOT"
-        width={width}
-        height={height}
-        priority
-        className={className}
-      />
-    );
-  }
-
-  const Comp = Lottie;
-
-  return (
-    <div className={className} style={{ width, height }}>
-      <Comp animationData={animationData} loop autoplay />
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
 // Button styles
 // ─────────────────────────────────────────────
 
@@ -1699,7 +1640,7 @@ export default function AdminPage() {
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <XpotLogoAnimated width={110} height={32} />
+                <XpotLogoLottie width={110} height={32} />
                 <span className="rounded-full border border-slate-700/70 bg-slate-950/80 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-slate-300">
                   Operations Center
                 </span>
