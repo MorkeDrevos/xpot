@@ -1,25 +1,48 @@
 // components/XpotLogo.tsx
 'use client';
 
+import Image from 'next/image';
 import XpotLogoLottie from './XpotLogoLottie';
 
 type XpotLogoProps = {
-  withText?: boolean;
+  variant?: 'light' | 'dark' | 'mark' | 'animated';
+  width?: number;
+  height?: number;
   className?: string;
 };
 
 export default function XpotLogo({
-  withText = true,
-  className = '',
+  variant = 'light',
+  width,
+  height,
+  className,
 }: XpotLogoProps) {
+  // 🔥 Animated version (admin / dashboard)
+  if (variant === 'animated') {
+    return (
+      <XpotLogoLottie
+        className={className ?? 'h-14 w-14'}
+      />
+    );
+  }
+
+  // Static fallback (marketing / public)
+  let src = '/img/xpot-logo-light.png';
+
+  if (variant === 'dark') src = '/img/xpot-black.png';
+  if (variant === 'mark') src = '/img/xpot-mark.png';
+
+  const w = width ?? (variant === 'mark' ? 28 : 140);
+  const h = height ?? (variant === 'mark' ? 28 : 40);
+
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <XpotLogoLottie className="h-10 w-10" />
-      {withText && (
-        <span className="text-xl font-semibold tracking-tight">
-          XPOT
-        </span>
-      )}
-    </div>
+    <Image
+      src={src}
+      alt="XPOT"
+      width={w}
+      height={h}
+      className={className}
+      priority
+    />
   );
 }
