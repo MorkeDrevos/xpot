@@ -869,55 +869,6 @@ export default function AdminPage() {
     className="pt-12"
   >
 
-      {/* Header */}
-<header
-  className="
-    relative
-    -mx-4 sm:-mx-6
-    px-4 sm:px-6
-    pb-6
-    mb-6
-    border-b border-slate-800/60
-  "
->
-  <div className="mx-auto max-w-[1440px] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div className="flex items-center gap-3">
-      <Link href="/" className="inline-flex items-center gap-2">
-        <XpotLogoLottie className="h-10 w-32" />
-      </Link>
-      <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-        Operations center
-      </span>
-    </div>
-
-    <div className="flex flex-col items-start gap-1 sm:items-end">
-      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-        <h1 className="text-sm font-semibold text-white sm:text-base">
-          Control room for today’s XPOT
-        </h1>
-
-        {AUTO_DRAW_ENABLED && (
-          <Badge tone="emerald">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] animate-pulse" />
-            Auto draw enabled
-          </Badge>
-        )}
-
-        {isDevHost && (
-          <Badge tone="amber">
-            <span className="h-2 w-2 rounded-full bg-amber-300 shadow-[0_0_10px_rgba(251,191,36,0.75)]" />
-            Dev environment
-          </Badge>
-        )}
-      </div>
-
-      <p className="text-[11px] text-slate-400">
-        Monitor pool state, entries and rewards. Data is live and gated behind your admin key.
-      </p>
-    </div>
-  </div>
-</header>
-
       {/* Admin key band */}
       <section className="relative mt-5 rounded-3xl">
         <div className="relative rounded-3xl border border-slate-900/70 bg-gradient-to-r from-[#050816]/90 via-[#050816]/80 to-[#050816]/90 shadow-[0_22px_70px_rgba(15,23,42,0.85)]">
