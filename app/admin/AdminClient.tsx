@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-
+import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
 import { XPOT_POOL_SIZE } from '@/lib/xpot';
@@ -949,7 +949,7 @@ export default function AdminPage() {
   <div className="mx-auto max-w-[1440px] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div className="flex items-center gap-3">
       <Link href="/" className="inline-flex items-center gap-2">
-        <XpotLogoAnimated />
+        <XpotLogoLottie className="h-10 w-32" />
       </Link>
       <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
         Operations center
