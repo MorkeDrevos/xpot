@@ -10,7 +10,7 @@ type XpotPageShellProps = {
   children: ReactNode;
 };
 
-function Shell({
+export default function XpotPageShell({
   title,
   subtitle,
   rightSlot,
@@ -18,38 +18,27 @@ function Shell({
 }: XpotPageShellProps) {
   return (
     <div className="min-h-screen bg-[#020617] text-slate-50">
-      {/* Background */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.10),_transparent_55%),radial-gradient(circle_at_20%_80%,_rgba(56,189,248,0.08),_transparent_55%),radial-gradient(circle_at_85%_35%,_rgba(124,58,237,0.10),_transparent_55%)]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
-      </div>
+      {/* background */}
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top,_rgba(94,234,212,0.14),_transparent_55%),radial-gradient(circle_at_20%_80%,_rgba(56,189,248,0.12),_transparent_50%),radial-gradient(circle_at_80%_70%,_rgba(168,85,247,0.12),_transparent_55%)]" />
 
-      {/* WIDE CONTENT SHELL (THIS IS THE KEY FIX) */}
-      <div className="relative z-10 mx-auto w-full max-w-[1800px] px-4 sm:px-6 lg:px-10">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         {(title || subtitle || rightSlot) && (
-          <header className="pt-6 pb-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                {title && (
-                  <h1 className="text-2xl font-semibold tracking-tight">
-                    {title}
-                  </h1>
-                )}
-                {subtitle && (
-                  <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
-                )}
-              </div>
-              {rightSlot && <div>{rightSlot}</div>}
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              {title && (
+                <h1 className="text-xl font-semibold text-slate-50">{title}</h1>
+              )}
+              {subtitle && (
+                <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
+              )}
             </div>
-          </header>
+
+            {rightSlot ? <div className="shrink-0">{rightSlot}</div> : null}
+          </div>
         )}
 
-        <main className="pb-10">{children}</main>
+        {children}
       </div>
     </div>
   );
 }
-
-// Keep both exports to avoid breaking imports
-export default Shell;
-export { Shell as XpotPageShell };
