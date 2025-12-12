@@ -2,7 +2,7 @@
 'use client';
 
 import Image from 'next/image';
-import XpotLogoLottie from './XpotLogoLottie';
+import XpotLogoLottie from '@/components/XpotLogoLottie';
 
 type XpotLogoProps = {
   variant?: 'light' | 'dark' | 'mark' | 'animated';
@@ -17,16 +17,18 @@ export default function XpotLogo({
   height,
   className,
 }: XpotLogoProps) {
-  // 🔥 Animated version (admin / dashboard)
+  // 🔥 Animated version (admin / dashboard / shell)
   if (variant === 'animated') {
     return (
       <XpotLogoLottie
-        className={className ?? 'h-14 w-14'}
+        className={className}
+        width={width ?? 132}
+        height={height ?? 36}
       />
     );
   }
 
-  // Static fallback (marketing / public)
+  // Static fallback (marketing / public pages)
   let src = '/img/xpot-logo-light.png';
 
   if (variant === 'dark') src = '/img/xpot-black.png';
@@ -42,7 +44,6 @@ export default function XpotLogo({
       width={w}
       height={h}
       className={className}
-      priority
     />
   );
 }
