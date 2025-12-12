@@ -1,85 +1,65 @@
 // components/XpotLogoLottie.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
+import { useState } from 'react';
 import Image from 'next/image';
+import Lottie from 'lottie-react';
 
-// Bundled JSON import (NO fetch)
+// 🔒 Bundled animation (NO fetch, NO URL, NO runtime failure)
 import animationData from '@/app/animations/xpot_logo_loop.json';
 
-type Props = {
+type XpotLogoLottieProps = {
   className?: string;
-  width?: number;  // optional explicit px width
-  height?: number; // optional explicit px height
+  width?: number;
+  height?: number;
   loop?: boolean;
   autoplay?: boolean;
 };
 
-const Lottie = dynamic(() => import('lottie-react').then((m) => m.default), {
-  ssr: false,
-});
-
 export default function XpotLogoLottie({
   className = '',
-  width,
-  height,
+  width = 132,
+  height = 36,
   loop = true,
   autoplay = true,
-}: Props) {
-  const [mounted, setMounted] = useState(false);
+}: XpotLogoLottieProps) {
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const sizeStyle = useMemo(() => {
-    const style: React.CSSProperties = {};
-    if (typeof width === 'number') style.width = width;
-    if (typeof height === 'number') style.height = height;
-    return style;
-  }, [width, height]);
-
-  // ✅ Stable fallback (always works)
-  const Fallback = (
-    <Image
-      src="/img/xpot-logo-light.png"
-      alt="XPOT"
-      width={132}
-      height={36}
-      priority
-      className={['block h-full w-full object-contain', className].join(' ')}
-    />
-  );
-
-  // Render PNG until client is mounted, then swap to Lottie (no flicker)
-  if (!mounted || failed) {
+  // ✅ HARD fallback – never blank
+  if (failed) {
     return (
-      <div
-        className={['relative', className].join(' ')}
-        style={Object.keys(sizeStyle).length ? sizeStyle : { width: 132, height: 36 }}
-      >
-        {Fallback}
-      </div>
+      <Image
+        src="/img/xpot-logo-light.png"
+        alt="XPOT"
+        width={width}
+        height={height}
+        priority
+        className={className}
+      />
     );
   }
 
   return (
     <div
       className={['relative select-none', className].join(' ')}
-      style={Object.keys(sizeStyle).length ? sizeStyle : { width: 132, height: 36 }}
+      style={{
+        width,
+        height,
+        minWidth: width,
+        minHeight: height,
+      }}
       aria-label="XPOT"
     >
       <Lottie
         animationData={animationData as any}
         loop={loop}
         autoplay={autoplay}
-        style={{ width: '100%', height: '100%' }}
-        rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
-        // If anything goes wrong at runtime, fall back safely
-        onComplete={() => {
-          // if loop=false anywhere, this prevents the “plays once then dies” look
+        rendererSettings={{
+          preserveAspectRatio: 'xMidYMid meet',
+        }}
+        style={{
+          width: '100%',
+          height: '100%',
         }}
         onError={() => setFailed(true)}
       />
