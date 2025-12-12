@@ -1,7 +1,5 @@
-// app/admin/page.tsx
+// app/admin/AdminClient.tsx
 'use client';
-
-export const dynamic = 'force-dynamic';
 
 import { useEffect, useMemo, useState, FormEvent } from 'react';
 import Image from 'next/image';
