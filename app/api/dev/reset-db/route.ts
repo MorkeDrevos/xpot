@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 // Shared handler for both GET and POST
 async function handleReset(req: NextRequest) {
-  // 🔐 Extra safety: only allow on dev.xpot.bet
+  // Only allow on dev.*
   if (!req.nextUrl.hostname.startsWith('dev.')) {
     return NextResponse.json(
       { ok: false, error: 'RESET_DISABLED_IN_PROD' },
@@ -25,9 +25,7 @@ async function handleReset(req: NextRequest) {
   }
 
   try {
-    // ─────────────────────────────────────────────
     // 1) Nuke legacy tables that can block FK deletions
-    // ─────────────────────────────────────────────
     try {
       await prisma.$executeRawUnsafe(`DELETE FROM "Reward";`);
     } catch {
@@ -40,30 +38,22 @@ async function handleReset(req: NextRequest) {
       // ignore if table doesn't exist
     }
 
-    // ─────────────────────────────────────────────
-    // 2) Clear core XPOT tables
-    // ─────────────────────────────────────────────
+    // 2) Clear core XPOT tables in FK-safe order
     await prisma.$transaction([
       prisma.winner.deleteMany(),
+      prisma.bonusDrop.deleteMany(),
       prisma.ticket.deleteMany(),
       prisma.wallet.deleteMany(),
       prisma.draw.deleteMany(),
       prisma.user.deleteMany(),
-      prisma.bonusDrop.deleteMany(),
     ]);
 
-    // ─────────────────────────────────────────────
-    // 3) Seed demo state:
-    //    • Yesterday: completed draw with paid winner
-    //    • Today: open draw with live entries
-    // ─────────────────────────────────────────────
+    // 3) Seed demo state
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
 
     const todayStart = new Date(`${todayStr}T00:00:00.000Z`);
-    const todayEnd = new Date(`${todayStr}T23:59:59.999Z`);
     const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
-    const yesterdayEnd = new Date(todayEnd.getTime() - 24 * 60 * 60 * 1000);
 
     const yesterdayClosesAt = new Date(
       yesterdayStart.getTime() + 22 * 60 * 60 * 1000,
@@ -74,19 +64,13 @@ async function handleReset(req: NextRequest) {
 
     // Users
     const userAlpha = await prisma.user.create({
-      data: {
-        xHandle: 'dev_alpha_x',
-      },
+      data: { xHandle: 'dev_alpha_x' },
     });
     const userBeta = await prisma.user.create({
-      data: {
-        xHandle: 'dev_beta_x',
-      },
+      data: { xHandle: 'dev_beta_x' },
     });
     const userGamma = await prisma.user.create({
-      data: {
-        xHandle: 'dev_gamma_x',
-      },
+      data: { xHandle: 'dev_gamma_x' },
     });
 
     // Wallets
@@ -138,23 +122,6 @@ async function handleReset(req: NextRequest) {
       },
     });
 
-    // Winner row for yesterday's draw
-    const winner = await prisma.winner.create({
-      data: {
-        drawId: completedDraw.id,
-        ticketId: winningTicket.id,
-        date: now,
-        ticketCode: winningTicket.code,
-        walletAddress: winningTicket.walletAddress,
-        jackpotUsd: 1_000_000,
-        payoutUsd: 1_000_000,
-        isPaidOut: true,
-        txUrl: 'https://solscan.io/tx/DEV_COMPLETED_DRAW',
-        kind: 'MAIN',
-        label: 'Dev seed main winner',
-      },
-    });
-
     // Two live entries for today's open draw
     const todayTicket1 = await prisma.ticket.create({
       data: {
@@ -176,6 +143,23 @@ async function handleReset(req: NextRequest) {
       },
     });
 
+    // Winner row for the completed draw
+    const winnerRow = await prisma.winner.create({
+      data: {
+        drawId: completedDraw.id,
+        ticketId: winningTicket.id,
+        date: now,
+        ticketCode: winningTicket.code,
+        walletAddress: winningTicket.walletAddress,
+        jackpotUsd: 1_000_000,
+        payoutUsd: 1_000_000,
+        isPaidOut: true,
+        kind: 'MAIN',
+        label: 'DEV SEED MAIN WINNER',
+        txUrl: 'https://solscan.io/tx/DEV_COMPLETED_DRAW',
+      },
+    });
+
     return NextResponse.json({
       ok: true,
       cleared: true,
@@ -183,10 +167,9 @@ async function handleReset(req: NextRequest) {
       users: 3,
       wallets: 3,
       tickets: 3,
-      winnerId: winner.id,
+      yesterdayWinnerId: winnerRow.id,
       completedDrawId: completedDraw.id,
       todayDrawId: todayDraw.id,
-      todayTicketIds: [todayTicket1.id, todayTicket2.id],
     });
   } catch (err) {
     console.error('DEV_RESET_ERROR', err);
