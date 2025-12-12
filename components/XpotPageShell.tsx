@@ -1,13 +1,20 @@
 // components/XpotPageShell.tsx
 'use client';
 
-import type { ReactNode } from 'react';
+import { ReactNode } from 'react';
 
 type XpotPageShellProps = {
   title?: string;
   subtitle?: string;
   rightSlot?: ReactNode;
+
   children: ReactNode;
+
+  // Optional fine-tuning
+  maxWidthClassName?: string; // default: max-w-[1180px]
+  className?: string; // applied to outer wrapper
+  containerClassName?: string; // applied to inner container
+  headerClassName?: string; // applied to header block (title/subtitle row)
 };
 
 export default function XpotPageShell({
@@ -15,25 +22,36 @@ export default function XpotPageShell({
   subtitle,
   rightSlot,
   children,
+  maxWidthClassName = 'max-w-[1180px]',
+  className = '',
+  containerClassName = '',
+  headerClassName = '',
 }: XpotPageShellProps) {
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-50">
-      {/* background */}
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top,_rgba(94,234,212,0.14),_transparent_55%),radial-gradient(circle_at_20%_80%,_rgba(56,189,248,0.12),_transparent_50%),radial-gradient(circle_at_80%_70%,_rgba(168,85,247,0.12),_transparent_55%)]" />
+    <div className={`relative min-h-screen bg-[#02020a] text-slate-100 ${className}`}>
+      {/* GLOBAL NEBULA BACKGROUND (fixed, always visible) */}
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[#02020a]" />
+      <div
+        className="
+          pointer-events-none fixed inset-0 -z-10
+          opacity-95
+          bg-[radial-gradient(circle_at_10%_0%,rgba(37,99,235,0.45),transparent_60%),
+              radial-gradient(circle_at_100%_30%,rgba(168,85,247,0.55),transparent_60%),
+              radial-gradient(circle_at_100%_90%,rgba(236,72,153,0.45),transparent_65%),
+              radial-gradient(circle_at_35%_85%,rgba(56,189,248,0.18),transparent_55%)]
+        "
+      />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      {/* CONTENT CONTAINER */}
+      <div className={`relative z-10 mx-auto w-full ${maxWidthClassName} px-4 py-6 sm:px-6 ${containerClassName}`}>
         {(title || subtitle || rightSlot) && (
-          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className={`mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${headerClassName}`}>
             <div>
-              {title && (
-                <h1 className="text-xl font-semibold text-slate-50">{title}</h1>
-              )}
-              {subtitle && (
-                <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
-              )}
+              {title && <h1 className="text-xl font-semibold text-slate-50">{title}</h1>}
+              {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
             </div>
-
-            {rightSlot ? <div className="shrink-0">{rightSlot}</div> : null}
+            {rightSlot && <div className="shrink-0">{rightSlot}</div>}
           </div>
         )}
 
