@@ -2,12 +2,132 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ────────────────────────────────────────────────
+   Global XPOT color tokens – Neon Nebula Palette
+   ──────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* Core surfaces */
+  --bg: #020618;           /* main background */
+  --bg-elevated: #050b1b;  /* cards / panels */
+  --border-subtle: #0b1220;
+  --border-strong: #111827;
+
+  /* Text */
+  --text: #e5e7eb;
+  --text-soft: #9ca3af;
+  --text-mute: #6b7280;
+
+  /* Brand accents */
+  --accent-emerald: #22e3b3;
+  --accent-emerald-soft: rgba(34, 227, 179, 0.18);
+
+  --accent-blue: #4ea3e3;
+  --accent-blue-soft: rgba(78, 163, 227, 0.23);
+
+  --accent-purple: #6366f1;
+  --accent-purple-soft: rgba(99, 102, 241, 0.2);
+
+  /* Gold highlight – jackpots & winners only */
+  --accent-gold: #f5c46c;
+  --accent-gold-soft: rgba(245, 196, 108, 0.35);
+
+  /* Status */
+  --success: #22c55e;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+
+  /* Typography */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'SF Pro Display', sans-serif;
+  font-size: 15px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    font-size: 16px;
+  }
+}
+
+/* Base body styling uses tokens */
 html,
 body {
   background-color: var(--bg);
   color: var(--text);
-  text-shadow: 0 0 1px rgba(255,255,255,0.03);
 }
+
+/* Light theme overrides (applied when <html class="light">) */
+html.light {
+  color-scheme: light;
+
+  /* Main shell */
+  --bg: #f3f4f6;
+  --bg-elevated: #ffffff;
+  --border-subtle: #e5e7eb;
+  --border-strong: #d1d5db;
+
+  /* Text */
+  --text: #020617;
+  --text-soft: #374151;
+  --text-mute: #6b7280;
+
+  /* Accents – softer but still XPOT-ish */
+  --accent-emerald: #059669;
+  --accent-emerald-soft: rgba(5, 150, 105, 0.1);
+
+  --accent-blue: #2563eb;
+  --accent-blue-soft: rgba(37, 99, 235, 0.1);
+
+  --accent-purple: #4f46e5;
+  --accent-purple-soft: rgba(79, 70, 229, 0.12);
+
+  --accent-gold: #d97706;
+  --accent-gold-soft: rgba(217, 119, 6, 0.14);
+
+  /* Status */
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+}
+
+/* Light theme – keep Tailwind utilities from looking “dark” */
+
+html.light body {
+  color: var(--text);
+}
+
+/* any explicit dark backgrounds -> light tokens */
+html.light .bg-black {
+  background-color: var(--bg) !important;
+}
+
+html.light .bg-slate-900,
+html.light .bg-slate-950 {
+  background-color: var(--bg-elevated) !important;
+}
+
+/* dark borders -> light borders */
+html.light .border-slate-900,
+html.light .border-slate-800,
+html.light .border-slate-700 {
+  border-color: var(--border-subtle) !important;
+}
+
+/* very light text colors should become main text in light mode */
+html.light .text-slate-50,
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-slate-300,
+html.light .text-white {
+  color: var(--text) !important;
+}
+
+/* ────────────────────────────────────────────────
+   Cinematic background + orbit
+   ──────────────────────────────────────────────── */
+
 .cinematic-bg {
   position: relative;
   overflow: hidden;
@@ -29,14 +149,13 @@ body {
   z-index: -2;
 }
 
-/* Subtle vignette + film grain */
+/* Subtle vignette (removed data-URL grain to keep CSS loader happy) */
 .cinematic-bg::after {
   content: "";
   position: fixed;
   inset: -1px;
   background:
-    radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.55) 75%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='noStitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
+    radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.55) 75%);
   mix-blend-mode: soft-light;
   pointer-events: none;
   z-index: -1;
@@ -63,6 +182,10 @@ body {
     opacity: 0.75;
   }
 }
+
+/* ────────────────────────────────────────────────
+   Jackpot shell + halo
+   ──────────────────────────────────────────────── */
 
 .jackpot-shell {
   position: relative;
@@ -156,6 +279,10 @@ body {
   }
 }
 
+/* ────────────────────────────────────────────────
+   Buttons / CTAs
+   ──────────────────────────────────────────────── */
+
 .primary-cta {
   position: relative;
   overflow: hidden;
@@ -176,154 +303,33 @@ body {
   transform: translateX(40%);
 }
 
-/* ────────────────────────────────────────────────
-   Global XPOT color tokens – Neon Nebula Palette
-   (deep navy + cyan/teal + subtle purple)
-   ──────────────────────────────────────────────── */
-
-:root {
-  color-scheme: dark;
-
-  /* Core surfaces */
-  /* very dark navy, like the hero image */
-  --bg: #020618;           /* main background */
-  --bg-elevated: #050b1b;  /* cards / panels */
-  --border-subtle: #0b1220;
-  --border-strong: #111827;
-
-  /* Text */
-  --text: #e5e7eb;
-  --text-soft: #9ca3af;
-  --text-mute: #6b7280;
-
-  /* Brand accents (mapped to old names for compatibility) */
-  /* cyan/teal of the X leg */
-  --accent-emerald: #22e3b3;
-  --accent-emerald-soft: rgba(34, 227, 179, 0.18);
-
-  /* XPOT blue arm of the X */
-  --accent-blue: #4ea3e3;
-  --accent-blue-soft: rgba(78, 163, 227, 0.23);
-
-  /* subtle purple from the background glow */
-  --accent-purple: #6366f1;
-  --accent-purple-soft: rgba(99, 102, 241, 0.20);
-
-  /* Gold highlight – jackpots & winners only */
-  --accent-gold: #f5c46c;
-  --accent-gold-soft: rgba(245, 196, 108, 0.35);
-
-  /* Status */
-  --success: #22c55e;
-  --warning: #fbbf24;
-  --danger: #fb7185;
-
-  /* Typography */
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
-    'SF Pro Display', sans-serif;
-  font-size: 15px;
+.btn-premium {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
 }
 
-@media (min-width: 1024px) {
-  :root {
-    font-size: 16px;
-  }
-}
-
-/* Light theme overrides (applied when <html class="light">) */
-html.light {
-  color-scheme: light;
-
-  /* Main shell */
-  --bg: #f3f4f6;              /* page background */
-  --bg-elevated: #ffffff;     /* cards */
-  --border-subtle: #e5e7eb;
-  --border-strong: #d1d5db;
-
-  /* Text */
-  --text: #020617;            /* all white text becomes dark */
-  --text-soft: #374151;
-  --text-mute: #6b7280;
-
-  /* Accents – softer but still XPOT-ish */
-  --accent-emerald: #059669;
-  --accent-emerald-soft: rgba(5, 150, 105, 0.10);
-
-  --accent-blue: #2563eb;
-  --accent-blue-soft: rgba(37, 99, 235, 0.10);
-
-  --accent-purple: #4f46e5;
-  --accent-purple-soft: rgba(79, 70, 229, 0.12);
-
-  --accent-gold: #d97706;
-  --accent-gold-soft: rgba(217, 119, 6, 0.14);
-
-  /* Status */
-  --success: #16a34a;
-  --warning: #f59e0b;
-  --danger: #dc2626;
-}
-
-/* Base body styling uses tokens */
-body {
-  background-color: var(--bg);
-  color: var(--text);
-}
-
-/* Light theme – keep Tailwind utilities from looking “dark” */
-
-html.light body {
-  color: var(--text);
-}
-
-/* any explicit dark backgrounds -> light tokens */
-html.light .bg-black {
-  background-color: var(--bg) !important;
-}
-
-html.light .bg-slate-900,
-html.light .bg-slate-950 {
-  background-color: var(--bg-elevated) !important;
-}
-
-/* dark borders -> light borders */
-html.light .border-slate-900,
-html.light .border-slate-800,
-html.light .border-slate-700 {
-  border-color: var(--border-subtle) !important;
-}
-
-/* very light text colors should become main text in light mode */
-html.light .text-slate-50,
-html.light .text-slate-100,
-html.light .text-slate-200,
-html.light .text-slate-300,
-html.light .text-white {
-  color: var(--text) !important;
-}
-
-/* Admin + premium cards */
-
-html.light .admin-card {
-  background: #ffffff !important;
-  border-color: var(--border-subtle) !important;
+.btn-premium:hover {
+  transform: translateY(-0.5px);
+  filter: brightness(1.05);
   box-shadow:
-    0 6px 20px rgba(0,0,0,0.06),
-    0 0 0 1px rgba(0,0,0,0.04);
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 14px 30px rgba(37, 99, 235, 0.7);
 }
 
-html.light .premium-card,
-html.light .card-premium,
-html.light .premium-highlight {
-  background: #ffffff !important;
+.btn-premium:active {
+  transform: translateY(0.5px) scale(0.98);
   box-shadow:
-    0 6px 20px rgba(0,0,0,0.06),
-    0 0 0 1px rgba(0,0,0,0.04);
+    0 0 0 1px rgba(15, 23, 42, 0.95),
+    0 6px 16px rgba(15, 23, 42, 0.95);
 }
 
-html.light .premium-highlight,
-html.light .jackpot-core {
-  background: #ffffff !important;
+/* soft glow for main CTA – tuned to cyan */
+.toolbar-glow {
+  box-shadow:
+    0 0 40px rgba(34, 227, 179, 0.65),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
 }
 
 /* ────────────────────────────────────────────────
@@ -344,7 +350,7 @@ html.light .jackpot-core {
 }
 
 .status-pill {
-  background: rgba(37, 99, 235, 0.30);
+  background: rgba(37, 99, 235, 0.3);
   color: #dbeafe;
   border: 1px solid rgba(59, 130, 246, 0.7);
 }
@@ -369,7 +375,7 @@ html.light .status-pill {
 }
 
 html.light .status-pill-emerald {
-  background: rgba(34, 197, 94, 0.10);
+  background: rgba(34, 197, 94, 0.1);
   color: #047857;
   border-color: rgba(34, 197, 94, 0.25);
 }
@@ -381,7 +387,7 @@ html.light .status-pill-amber {
 }
 
 /* ────────────────────────────────────────────────
-   XPOT verified badge (custom, non-copyrighted)
+   XPOT verified badge
    ──────────────────────────────────────────────── */
 
 .x-verified-badge {
@@ -391,18 +397,14 @@ html.light .status-pill-amber {
   width: 14px;
   height: 14px;
   margin-left: 6px;
-
   border-radius: 9999px;
   background: var(--accent-blue);
-
   color: #fff;
   font-size: 9px;
   font-weight: 900;
   line-height: 1;
-
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset,
     0 0 0 0 rgba(29, 155, 240, 0);
-
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -421,7 +423,7 @@ html.light .status-pill-amber {
   transform: translateY(-0.5px) rotate(-45deg);
 }
 
-/* Hover = tiny lift & glow */
+/* Hover / active */
 .x-verified-badge:hover {
   transform: translateY(-0.5px);
   filter: brightness(1.05);
@@ -430,7 +432,6 @@ html.light .status-pill-amber {
     0 4px 10px rgba(15, 23, 42, 0.85);
 }
 
-/* Pressed = scale down */
 .x-verified-badge:active {
   transform: scale(0.9);
   filter: brightness(0.97);
@@ -493,7 +494,7 @@ html.light .status-pill-amber {
   backdrop-filter: blur(20px);
 }
 
-/* base card – uses deep navy + subtle purple/cyan glow */
+/* base card */
 .premium-card {
   border-radius: 1.5rem;
   background:
@@ -506,7 +507,7 @@ html.light .status-pill-amber {
     0 0 0 1px rgba(15, 23, 42, 0.12);
 }
 
-/* hero-style card (good for main blocks) */
+/* hero-style card */
 .card-premium {
   border-radius: 1.5rem;
   background:
@@ -520,7 +521,7 @@ html.light .status-pill-amber {
     0 0 0 1px rgba(15, 23, 42, 0.14);
 }
 
-/* main XPOT highlight block (jackpot card) */
+/* main XPOT highlight block */
 .premium-highlight.jackpot-core {
   border-radius: 1.25rem;
   background:
@@ -528,40 +529,10 @@ html.light .status-pill-amber {
     radial-gradient(circle at 100% 0, var(--accent-blue-soft), transparent 50%),
     radial-gradient(circle at 50% 100%, var(--accent-purple-soft), transparent 55%),
     var(--bg-elevated);
-  border: 1px solid rgba(148, 163, 253, 0.5); /* purple/blue border */
+  border: 1px solid rgba(148, 163, 253, 0.5);
   box-shadow:
     0 20px 45px rgba(15, 23, 42, 0.7),
     0 0 0 1px rgba(15, 23, 42, 0.16);
-}
-
-/* buttons */
-.btn-premium {
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease,
-    filter 0.12s ease;
-}
-
-.btn-premium:hover {
-  transform: translateY(-0.5px);
-  filter: brightness(1.05);
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 14px 30px rgba(37, 99, 235, 0.7);
-}
-
-.btn-premium:active {
-  transform: translateY(0.5px) scale(0.98);
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.95),
-    0 6px 16px rgba(15, 23, 42, 0.95);
-}
-
-/* soft glow for main CTA – tuned to cyan */
-.toolbar-glow {
-  box-shadow:
-    0 0 40px rgba(34, 227, 179, 0.65),
-    0 0 0 1px rgba(15, 23, 42, 0.9);
 }
 
 /* ────────────────────────────────────────────────
@@ -707,7 +678,7 @@ html.light .status-pill-amber {
 }
 
 .xpot-cta-pulse:hover {
-  animation-play-state: paused; /* let hover state be crisp */
+  animation-play-state: paused;
 }
 
 /* Subtle XPOT link hover effect */
@@ -735,7 +706,6 @@ html.light .status-pill-amber {
    Light theme polish – soften greens & pills
    ──────────────────────────────────────────────── */
 
-/* All emerald text in light mode → deeper, less neon */
 html.light .text-emerald-300,
 html.light .text-emerald-400,
 html.light .text-emerald-500 {
@@ -770,7 +740,6 @@ html.light .text-emerald-300.live-label {
 
 /* ────────────────────────────────────────────────
    XPOT admin nebula background
-   (deep navy + purple + cyan glow)
    ──────────────────────────────────────────────── */
 
 .admin-shell-bg {
@@ -778,7 +747,7 @@ html.light .text-emerald-300.live-label {
     radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.45), transparent 55%),
     radial-gradient(circle at 85% 5%, rgba(78, 163, 227, 0.35), transparent 55%),
     radial-gradient(circle at 15% 85%, rgba(34, 227, 179, 0.25), transparent 55%),
-    radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.20), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.2), transparent 55%),
     #020618;
 }
 
@@ -790,8 +759,10 @@ html.light .text-emerald-300.live-label {
     inset 0 0 0 1px rgba(255,255,255,0.02),
     0 25px 80px rgba(0,0,0,0.65),
     0 0 120px rgba(99,102,241,0.12),
-    0 0 140px rgba(34,227,179,0.10);
+    0 0 140px rgba(34,227,179,0.1);
 }
+
+/* Pre-launch banner animation */
 @keyframes xpotBannerMove {
   0% { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
