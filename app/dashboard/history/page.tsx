@@ -4,7 +4,7 @@
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useUser, SignOutButton } from '@clerk/nextjs';
 
-import { XpotPageShell } from '@/components/XpotPageShell';
+import XpotPageShell from '@/components/XpotPageShell';
 
 // Helpers
 import Link from 'next/link';
