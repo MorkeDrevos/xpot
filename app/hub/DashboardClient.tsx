@@ -6,10 +6,9 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { WalletReadyState } from '@solana/wallet-adapter-base';
+import { WalletReadyState, WalletName } from '@solana/wallet-adapter-base';
 
-import { useUser, SignOutButton } from '@clerk/nextjs';
+import { useClerk, useUser } from '@clerk/nextjs';
 
 import XpotPageShell from '@/components/XpotPageShell';
 import { REQUIRED_XPOT } from '@/lib/xpot';
@@ -24,6 +23,7 @@ import {
   Ticket,
   Wallet,
   X,
+  ChevronRight,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -68,10 +68,10 @@ function StatusPill({
     tone === 'emerald'
       ? 'bg-emerald-500/10 text-emerald-300'
       : tone === 'amber'
-      ? 'bg-amber-500/10 text-amber-200'
-      : tone === 'sky'
-      ? 'bg-sky-500/10 text-sky-200'
-      : 'bg-slate-800/70 text-slate-200';
+        ? 'bg-amber-500/10 text-amber-200'
+        : tone === 'sky'
+          ? 'bg-sky-500/10 text-sky-200'
+          : 'bg-slate-800/70 text-slate-200';
 
   return (
     <span
@@ -82,23 +82,213 @@ function StatusPill({
   );
 }
 
-// Debug logger for wallet state
-function WalletDebug() {
-  const { publicKey, connected, wallet } = useWallet();
-
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[XPOT] Wallet state changed:', {
-      connected,
-      publicKey: publicKey?.toBase58() ?? null,
-      walletName: wallet?.adapter?.name ?? null,
-    });
-  }, [connected, publicKey, wallet]);
-
-  return null;
+async function safeCopy(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-// Optional UX helper: show hint under wallet button
+// ─────────────────────────────────────────────
+// Premium wallet modal (stable, no 3rd-party UI)
+// ─────────────────────────────────────────────
+
+function sortWallets(
+  wallets: ReturnType<typeof useWallet>['wallets'],
+): typeof wallets {
+  const score = (w: (typeof wallets)[number]) => {
+    if (w.readyState === WalletReadyState.Installed) return 0;
+    if (w.readyState === WalletReadyState.Loadable) return 1;
+    if (w.readyState === WalletReadyState.NotDetected) return 2;
+    return 3;
+  };
+  return [...wallets].sort((a, b) => score(a) - score(b));
+}
+
+function PremiumWalletModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { wallets, wallet, connected, connecting, disconnect, select, connect } =
+    useWallet();
+
+  const [busyName, setBusyName] = useState<WalletName | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const list = sortWallets(wallets);
+
+  useEffect(() => {
+    if (!open) {
+      setErr(null);
+      setBusyName(null);
+    }
+  }, [open]);
+
+  async function handlePick(name: WalletName) {
+    try {
+      setErr(null);
+      setBusyName(name);
+      select(name);
+      await connect();
+      onClose();
+    } catch (e: any) {
+      const msg =
+        typeof e?.message === 'string'
+          ? e.message
+          : 'Connection cancelled. Try again.';
+      setErr(msg);
+    } finally {
+      setBusyName(null);
+    }
+  }
+
+  async function handleDisconnect() {
+    try {
+      setErr(null);
+      await disconnect();
+      onClose();
+    } catch (e: any) {
+      setErr(
+        typeof e?.message === 'string' ? e.message : 'Failed to disconnect.',
+      );
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100]">
+      <button
+        type="button"
+        aria-label="Close wallet modal"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/70 backdrop-blur-[6px]"
+      />
+
+      <div className="relative mx-auto mt-24 w-[92vw] max-w-[560px]">
+        <div className="rounded-[28px] border border-slate-800/70 bg-[#060a14]/90 shadow-2xl shadow-black/60 backdrop-blur-xl">
+          <div className="pointer-events-none absolute inset-x-0 -top-24 h-48 rounded-[999px] bg-[radial-gradient(circle_at_top,_rgba(94,234,212,0.18),_transparent_60%),radial-gradient(circle_at_30%_40%,_rgba(168,85,247,0.16),_transparent_62%)]" />
+          <div className="relative p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">
+                  Connect wallet
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Secure, one tap connection. No clutter.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-slate-950/60 text-slate-200 hover:bg-slate-900/70"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                    Status
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-slate-100">
+                    {connected
+                      ? `Connected · ${wallet?.adapter?.name ?? 'Wallet'}`
+                      : connecting
+                        ? 'Connecting…'
+                        : 'Not connected'}
+                  </p>
+                </div>
+
+                {connected ? (
+                  <button
+                    type="button"
+                    onClick={handleDisconnect}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
+                  >
+                    Disconnect
+                    <ChevronRight className="h-4 w-4 opacity-70" />
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200">
+                    <Wallet className="h-4 w-4" />
+                    Select
+                  </span>
+                )}
+              </div>
+
+              {err && <p className="mt-2 text-xs text-amber-300">{err}</p>}
+            </div>
+
+            {!connected && (
+              <div className="mt-4 space-y-2">
+                {list.map(w => {
+                  const name = w.adapter.name; // WalletName (branded)
+                  const ready = w.readyState;
+                  const installed =
+                    ready === WalletReadyState.Installed ||
+                    ready === WalletReadyState.Loadable;
+
+                  const disabled = !installed || !!busyName || connecting;
+
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => handlePick(name)}
+                      className={[
+                        'w-full rounded-2xl border px-4 py-3 text-left transition',
+                        'border-slate-800/80 bg-slate-950/70 hover:bg-slate-900/70',
+                        disabled ? 'opacity-50' : 'opacity-100',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-100">
+                            {name}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {ready === WalletReadyState.Installed
+                              ? 'Installed'
+                              : ready === WalletReadyState.Loadable
+                                ? 'Detected'
+                                : ready === WalletReadyState.NotDetected
+                                  ? 'Not detected'
+                                  : 'Unsupported'}
+                          </p>
+                        </div>
+
+                        <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200">
+                          {busyName === name ? 'Connecting…' : 'Connect'}
+                          <ChevronRight className="h-4 w-4 opacity-70" />
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
+              Tip: Phantom or Jupiter are recommended. You only connect to sign
+              your own actions.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WalletStatusHint() {
   const { wallets, connected } = useWallet();
 
@@ -120,18 +310,9 @@ function WalletStatusHint() {
 
   return (
     <p className="mt-2 text-xs text-slate-500">
-      Click “Select Wallet” and choose Phantom or Jupiter to connect.
+      Click “Connect wallet” and choose Phantom or Jupiter.
     </p>
   );
-}
-
-async function safeCopy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // ─────────────────────────────────────────────
@@ -164,43 +345,50 @@ type RecentWinner = {
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
-  // Today entries (global)
+  const { publicKey, connected, wallet } = useWallet();
+  const walletConnected = !!publicKey && connected;
+  const currentWalletAddress = publicKey?.toBase58() ?? null;
+
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+
+  useEffect(() => {
+    document.title = connected ? 'XPOT Hub • Live' : 'XPOT Hub';
+  }, [connected]);
+
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
-  // Claim state
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
-  // Wallet
-  const { publicKey, connected } = useWallet();
-  const walletConnected = !!publicKey && connected;
-  const currentWalletAddress = publicKey?.toBase58() ?? null;
-
-  useEffect(() => {
-    document.title = connected ? 'XPOT Hub • Live' : 'XPOT Hub';
-  }, [connected]);
-
-  // XPOT balance
   const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
-  // History (wallet specific)
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Recent winners (global)
   const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
 
-  // Clerk user (X identity)
+  const { signOut } = useClerk();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleLogout() {
+    try {
+      setSigningOut(true);
+      await signOut({ redirectUrl: '/dashboard' });
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   const { user, isLoaded: isUserLoaded } = useUser();
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
@@ -221,9 +409,6 @@ export default function DashboardClient() {
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
 
-  // ─────────────────────────────────────────────
-  // Sync X identity into DB whenever user is loaded
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isUserLoaded || !user) return;
 
@@ -236,9 +421,6 @@ export default function DashboardClient() {
     })();
   }, [isUserLoaded, user]);
 
-  // ─────────────────────────────────────────────
-  // Wire wallet → DB whenever it connects
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isUserLoaded || !user) return;
     if (!publicKey || !connected) return;
@@ -258,9 +440,6 @@ export default function DashboardClient() {
     })();
   }, [isUserLoaded, user, publicKey, connected]);
 
-  // ─────────────────────────────────────────────
-  // Load today's tickets from DB
-  // ─────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
@@ -293,9 +472,6 @@ export default function DashboardClient() {
     };
   }, []);
 
-  // ─────────────────────────────────────────────
-  // Sync "today's ticket" state with DB
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!currentWalletAddress) {
       setTicketClaimed(false);
@@ -316,9 +492,6 @@ export default function DashboardClient() {
     }
   }, [entries, currentWalletAddress]);
 
-  // ─────────────────────────────────────────────
-  // XPOT balance (via API route)
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!publicKey) {
       setXpotBalance(null);
@@ -349,9 +522,6 @@ export default function DashboardClient() {
     };
   }, [publicKey]);
 
-  // ─────────────────────────────────────────────
-  // Load wallet-specific draw history
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!publicKey) {
       setHistoryEntries([]);
@@ -404,9 +574,6 @@ export default function DashboardClient() {
     };
   }, [publicKey]);
 
-  // ─────────────────────────────────────────────
-  // Load recent winners (global)
-  // ─────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     setLoadingWinners(true);
@@ -452,10 +619,6 @@ export default function DashboardClient() {
       cancelled = true;
     };
   }, []);
-
-  // ─────────────────────────────────────────────
-  // Ticket actions
-  // ─────────────────────────────────────────────
 
   async function handleCopyCode(entry: Entry) {
     const ok = await safeCopy(entry.code);
@@ -552,7 +715,6 @@ export default function DashboardClient() {
     }
   }
 
-  // Derived helpers
   const normalizedWallet = currentWalletAddress?.toLowerCase();
   const myTickets: Entry[] = useMemo(() => {
     if (!normalizedWallet) return [];
@@ -567,24 +729,25 @@ export default function DashboardClient() {
     !!normalizedWallet &&
     winner.walletAddress?.toLowerCase() === normalizedWallet;
 
-  // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
+  const walletLabel = wallet?.adapter?.name ?? 'Wallet';
 
   return (
     <XpotPageShell>
-      <WalletDebug />
+      <PremiumWalletModal
+        open={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+      />
 
-      {/* HEADER */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link href="/" className="inline-flex items-center gap-2">
             <Image
               src="/img/xpot-logo-light.png"
               alt="XPOT"
-              width={132}
-              height={36}
+              width={180}
+              height={48}
               priority
+              className="h-[48px] w-auto"
             />
           </Link>
 
@@ -595,38 +758,42 @@ export default function DashboardClient() {
 
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-2">
-            {/* ✅ FIX: hub history route */}
             <Link
-              href="/hub/history"
+              href="/dashboard/history"
               className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
             >
               <History className="h-4 w-4" />
               History
             </Link>
 
-            <WalletMultiButton className="!h-10 !rounded-full !px-4 !text-sm" />
+            <button
+              type="button"
+              onClick={() => setWalletModalOpen(true)}
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 text-sm font-semibold text-slate-100 hover:bg-slate-900/70"
+            >
+              <Wallet className="h-4 w-4" />
+              {walletConnected
+                ? `${walletLabel} · ${shortWallet(currentWalletAddress!)}`
+                : 'Connect wallet'}
+            </button>
 
-            {/* ✅ FIX: logout should return to hub (not /dashboard) */}
-            <SignOutButton redirectUrl="/hub">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-              >
-                <LogOut className="h-4 w-4" />
-                Log out
-              </button>
-            </SignOutButton>
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={signingOut}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70 disabled:opacity-50"
+            >
+              <LogOut className="h-4 w-4" />
+              {signingOut ? 'Logging out…' : 'Log out'}
+            </button>
           </div>
 
           <WalletStatusHint />
         </div>
       </header>
 
-      {/* MAIN GRID */}
       <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        {/* LEFT COLUMN */}
         <div className="space-y-4">
-          {/* IDENTITY CARD */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -653,8 +820,8 @@ export default function DashboardClient() {
                   {xpotBalance === null
                     ? 'Checking…'
                     : xpotBalance === 'error'
-                    ? 'Unavailable'
-                    : `${Math.floor(xpotBalance).toLocaleString()} XPOT`}
+                      ? 'Unavailable'
+                      : `${Math.floor(xpotBalance).toLocaleString()} XPOT`}
                 </p>
               </div>
 
@@ -718,7 +885,6 @@ export default function DashboardClient() {
             </div>
           </section>
 
-          {/* TODAY TICKET */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -812,7 +978,6 @@ export default function DashboardClient() {
             )}
           </section>
 
-          {/* TODAY ENTRIES (your wallet only) */}
           {walletConnected && (
             <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
               <div className="flex items-start justify-between gap-4">
@@ -852,8 +1017,8 @@ export default function DashboardClient() {
                             t.status === 'in-draw'
                               ? 'emerald'
                               : t.status === 'won'
-                              ? 'sky'
-                              : 'slate'
+                                ? 'sky'
+                                : 'slate'
                           }
                         >
                           {t.status.replace('-', ' ')}
@@ -870,9 +1035,7 @@ export default function DashboardClient() {
           )}
         </div>
 
-        {/* RIGHT COLUMN */}
         <div className="space-y-4">
-          {/* RECENT WINNERS */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -895,9 +1058,7 @@ export default function DashboardClient() {
               ) : winnersError ? (
                 <p className="text-xs text-amber-300">{winnersError}</p>
               ) : recentWinners.length === 0 ? (
-                <p className="text-xs text-slate-500">
-                  No completed draws yet.
-                </p>
+                <p className="text-xs text-slate-500">No completed draws yet.</p>
               ) : (
                 recentWinners.map(w => (
                   <div
@@ -931,7 +1092,6 @@ export default function DashboardClient() {
             </div>
           </section>
 
-          {/* WALLET HISTORY (quick view) */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -943,8 +1103,10 @@ export default function DashboardClient() {
                 </p>
               </div>
 
-              {/* ✅ FIX: hub history route */}
-              <Link href="/hub/history" className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+              <Link
+                href="/dashboard/history"
+                className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+              >
                 View all
               </Link>
             </div>
@@ -967,16 +1129,18 @@ export default function DashboardClient() {
                     className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                      <p className="font-mono text-sm text-slate-100">
+                        {t.code}
+                      </p>
                       <StatusPill
                         tone={
                           t.status === 'won'
                             ? 'sky'
                             : t.status === 'claimed'
-                            ? 'emerald'
-                            : t.status === 'in-draw'
-                            ? 'emerald'
-                            : 'slate'
+                              ? 'emerald'
+                              : t.status === 'in-draw'
+                                ? 'emerald'
+                                : 'slate'
                         }
                       >
                         {t.status.replace('-', ' ')}
@@ -993,7 +1157,6 @@ export default function DashboardClient() {
         </div>
       </section>
 
-      {/* FOOTER */}
       <footer className="mt-8 border-t border-slate-800/70 pt-4 text-xs text-slate-500">
         <span className="inline-flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 text-slate-400" />
