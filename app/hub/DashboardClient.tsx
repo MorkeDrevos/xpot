@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletReadyState } from '@solana/wallet-adapter-base';
+import { WalletReadyState, WalletName } from '@solana/wallet-adapter-base';
 
 import { useClerk, useUser } from '@clerk/nextjs';
 
@@ -117,7 +117,7 @@ function PremiumWalletModal({
   const { wallets, wallet, connected, connecting, disconnect, select, connect } =
     useWallet();
 
-  const [busyName, setBusyName] = useState<string | null>(null);
+  const [busyName, setBusyName] = useState<WalletName | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const list = sortWallets(wallets);
@@ -129,12 +129,11 @@ function PremiumWalletModal({
     }
   }, [open]);
 
-  async function handlePick(name: string) {
+  async function handlePick(name: WalletName) {
     try {
       setErr(null);
       setBusyName(name);
       select(name);
-      // connect() can throw if user cancels (that’s fine)
       await connect();
       onClose();
     } catch (e: any) {
@@ -164,7 +163,6 @@ function PremiumWalletModal({
 
   return (
     <div className="fixed inset-0 z-[100]">
-      {/* Backdrop */}
       <button
         type="button"
         aria-label="Close wallet modal"
@@ -172,10 +170,8 @@ function PremiumWalletModal({
         className="absolute inset-0 bg-black/70 backdrop-blur-[6px]"
       />
 
-      {/* Modal */}
       <div className="relative mx-auto mt-24 w-[92vw] max-w-[560px]">
         <div className="rounded-[28px] border border-slate-800/70 bg-[#060a14]/90 shadow-2xl shadow-black/60 backdrop-blur-xl">
-          {/* Top glow */}
           <div className="pointer-events-none absolute inset-x-0 -top-24 h-48 rounded-[999px] bg-[radial-gradient(circle_at_top,_rgba(94,234,212,0.18),_transparent_60%),radial-gradient(circle_at_30%_40%,_rgba(168,85,247,0.16),_transparent_62%)]" />
           <div className="relative p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
@@ -184,7 +180,7 @@ function PremiumWalletModal({
                   Connect wallet
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Secure, one tap connection. No popups, no clutter.
+                  Secure, one tap connection. No clutter.
                 </p>
               </div>
 
@@ -197,7 +193,6 @@ function PremiumWalletModal({
               </button>
             </div>
 
-            {/* Current */}
             <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -233,11 +228,10 @@ function PremiumWalletModal({
               {err && <p className="mt-2 text-xs text-amber-300">{err}</p>}
             </div>
 
-            {/* Wallet list */}
             {!connected && (
               <div className="mt-4 space-y-2">
                 {list.map(w => {
-                  const name = w.adapter.name;
+                  const name = w.adapter.name; // WalletName (branded)
                   const ready = w.readyState;
                   const installed =
                     ready === WalletReadyState.Installed ||
@@ -295,7 +289,6 @@ function PremiumWalletModal({
   );
 }
 
-// Optional UX helper: show hint under wallet button
 function WalletStatusHint() {
   const { wallets, connected } = useWallet();
 
@@ -352,47 +345,38 @@ type RecentWinner = {
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
-  // Wallet (MUST be before any useEffect that references `connected`)
   const { publicKey, connected, wallet } = useWallet();
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
-  // Premium modal
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
-  // Fix the title bug (connected used before declaration) ✅
   useEffect(() => {
     document.title = connected ? 'XPOT Hub • Live' : 'XPOT Hub';
   }, [connected]);
 
-  // Today entries (global)
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
-  // Claim state
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
-  // XPOT balance
   const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
-  // History (wallet specific)
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Recent winners (global)
   const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
 
-  // Clerk (logout fix)
   const { signOut } = useClerk();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -405,7 +389,6 @@ export default function DashboardClient() {
     }
   }
 
-  // Clerk user (X identity)
   const { user, isLoaded: isUserLoaded } = useUser();
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
@@ -426,9 +409,6 @@ export default function DashboardClient() {
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
 
-  // ─────────────────────────────────────────────
-  // Sync X identity into DB whenever user is loaded
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isUserLoaded || !user) return;
 
@@ -441,9 +421,6 @@ export default function DashboardClient() {
     })();
   }, [isUserLoaded, user]);
 
-  // ─────────────────────────────────────────────
-  // Wire wallet → DB whenever it connects
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isUserLoaded || !user) return;
     if (!publicKey || !connected) return;
@@ -463,9 +440,6 @@ export default function DashboardClient() {
     })();
   }, [isUserLoaded, user, publicKey, connected]);
 
-  // ─────────────────────────────────────────────
-  // Load today's tickets from DB
-  // ─────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
@@ -498,9 +472,6 @@ export default function DashboardClient() {
     };
   }, []);
 
-  // ─────────────────────────────────────────────
-  // Sync "today's ticket" state with DB
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!currentWalletAddress) {
       setTicketClaimed(false);
@@ -521,9 +492,6 @@ export default function DashboardClient() {
     }
   }, [entries, currentWalletAddress]);
 
-  // ─────────────────────────────────────────────
-  // XPOT balance (via API route)
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!publicKey) {
       setXpotBalance(null);
@@ -554,9 +522,6 @@ export default function DashboardClient() {
     };
   }, [publicKey]);
 
-  // ─────────────────────────────────────────────
-  // Load wallet-specific draw history
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!publicKey) {
       setHistoryEntries([]);
@@ -609,9 +574,6 @@ export default function DashboardClient() {
     };
   }, [publicKey]);
 
-  // ─────────────────────────────────────────────
-  // Load recent winners (global)
-  // ─────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     setLoadingWinners(true);
@@ -657,10 +619,6 @@ export default function DashboardClient() {
       cancelled = true;
     };
   }, []);
-
-  // ─────────────────────────────────────────────
-  // Ticket actions
-  // ─────────────────────────────────────────────
 
   async function handleCopyCode(entry: Entry) {
     const ok = await safeCopy(entry.code);
@@ -757,7 +715,6 @@ export default function DashboardClient() {
     }
   }
 
-  // Derived helpers
   const normalizedWallet = currentWalletAddress?.toLowerCase();
   const myTickets: Entry[] = useMemo(() => {
     if (!normalizedWallet) return [];
@@ -774,10 +731,6 @@ export default function DashboardClient() {
 
   const walletLabel = wallet?.adapter?.name ?? 'Wallet';
 
-  // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
-
   return (
     <XpotPageShell>
       <PremiumWalletModal
@@ -785,7 +738,6 @@ export default function DashboardClient() {
         onClose={() => setWalletModalOpen(false)}
       />
 
-      {/* HEADER */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link href="/" className="inline-flex items-center gap-2">
@@ -817,10 +769,7 @@ export default function DashboardClient() {
             <button
               type="button"
               onClick={() => setWalletModalOpen(true)}
-              className={[
-                'inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition',
-                'border border-slate-700/80 bg-slate-950/70 text-slate-100 hover:bg-slate-900/70',
-              ].join(' ')}
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 text-sm font-semibold text-slate-100 hover:bg-slate-900/70"
             >
               <Wallet className="h-4 w-4" />
               {walletConnected
@@ -843,11 +792,8 @@ export default function DashboardClient() {
         </div>
       </header>
 
-      {/* MAIN GRID */}
       <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        {/* LEFT COLUMN */}
         <div className="space-y-4">
-          {/* IDENTITY CARD */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -939,7 +885,6 @@ export default function DashboardClient() {
             </div>
           </section>
 
-          {/* TODAY TICKET */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1033,7 +978,6 @@ export default function DashboardClient() {
             )}
           </section>
 
-          {/* TODAY ENTRIES (your wallet only) */}
           {walletConnected && (
             <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
               <div className="flex items-start justify-between gap-4">
@@ -1091,9 +1035,7 @@ export default function DashboardClient() {
           )}
         </div>
 
-        {/* RIGHT COLUMN */}
         <div className="space-y-4">
-          {/* RECENT WINNERS */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1150,7 +1092,6 @@ export default function DashboardClient() {
             </div>
           </section>
 
-          {/* WALLET HISTORY (quick view) */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1216,7 +1157,6 @@ export default function DashboardClient() {
         </div>
       </section>
 
-      {/* FOOTER */}
       <footer className="mt-8 border-t border-slate-800/70 pt-4 text-xs text-slate-500">
         <span className="inline-flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 text-slate-400" />
