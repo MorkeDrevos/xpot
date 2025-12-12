@@ -21,6 +21,9 @@ type XpotPageShellProps = {
   // Top bar controls
   showTopBar?: boolean; // default true
   topBarClassName?: string; // applied to top bar wrapper
+
+  // Header controls
+  showHeader?: boolean; // default true
 };
 
 export default function XpotPageShell({
@@ -34,7 +37,15 @@ export default function XpotPageShell({
   headerClassName = '',
   showTopBar = true,
   topBarClassName = '',
+  showHeader = true,
 }: XpotPageShellProps) {
+  const hasTitle = typeof title === 'string' ? title.trim().length > 0 : !!title;
+  const hasSubtitle =
+    typeof subtitle === 'string' ? subtitle.trim().length > 0 : !!subtitle;
+
+  const shouldRenderHeader =
+    showHeader && (hasTitle || hasSubtitle || !!rightSlot);
+
   return (
     <div
       className={[
@@ -75,7 +86,7 @@ export default function XpotPageShell({
           containerClassName,
         ].join(' ')}
       >
-        {(title || subtitle || rightSlot) && (
+        {shouldRenderHeader && (
           <div
             className={[
               'mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
@@ -83,15 +94,17 @@ export default function XpotPageShell({
             ].join(' ')}
           >
             <div className="min-w-0">
-              {title && (
-                <h1 className="text-xl font-semibold text-slate-50">{title}</h1>
+              {hasTitle && (
+                <h1 className="text-xl font-semibold text-slate-50">
+                  {title}
+                </h1>
               )}
-              {subtitle && (
+              {hasSubtitle && (
                 <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
               )}
             </div>
 
-            {rightSlot && <div className="shrink-0">{rightSlot}</div>}
+            {!!rightSlot && <div className="shrink-0">{rightSlot}</div>}
           </div>
         )}
 
