@@ -4,13 +4,13 @@
 import XpotLogoLottie from './XpotLogoLottie';
 
 type XpotLogoProps = {
-  className?: string;
   withText?: boolean;
+  className?: string;
 };
 
 export default function XpotLogo({
-  className = '',
   withText = true,
+  className = '',
 }: XpotLogoProps) {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
