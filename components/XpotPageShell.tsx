@@ -2,7 +2,10 @@
 'use client';
 
 import { ReactNode } from 'react';
+import Link from 'next/link';
+
 import PreLaunchBanner from '@/components/PreLaunchBanner';
+import XpotLogoLottie from '@/components/XpotLogoLottie';
 
 type XpotPageShellProps = {
   title?: string;
@@ -16,6 +19,10 @@ type XpotPageShellProps = {
   className?: string; // applied to outer wrapper
   containerClassName?: string; // applied to inner container
   headerClassName?: string; // applied to header block (title/subtitle row)
+
+  // Global top bar (logo row)
+  showTopBar?: boolean;
+  topBarRightSlot?: ReactNode;
 };
 
 export default function XpotPageShell({
@@ -23,13 +30,17 @@ export default function XpotPageShell({
   subtitle,
   rightSlot,
   children,
-  maxWidthClassName = 'max-w-[1440px]', // TEST WIDER WIDTH
+  maxWidthClassName = 'max-w-[1440px]',
   className = '',
   containerClassName = '',
   headerClassName = '',
+  showTopBar = true,
+  topBarRightSlot,
 }: XpotPageShellProps) {
   return (
-    <div className={`relative min-h-screen bg-[#02020a] text-slate-100 ${className}`}>
+    <div
+      className={`relative min-h-screen bg-[#02020a] text-slate-100 ${className}`}
+    >
       <PreLaunchBanner />
 
       {/* GLOBAL NEBULA BACKGROUND (fixed, always visible) */}
@@ -56,6 +67,20 @@ export default function XpotPageShell({
           containerClassName,
         ].join(' ')}
       >
+        {/* GLOBAL TOP BAR (consistent logo everywhere) */}
+        {showTopBar && (
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <XpotLogoLottie className="h-10 w-32" />
+            </Link>
+
+            {topBarRightSlot ? (
+              <div className="shrink-0">{topBarRightSlot}</div>
+            ) : null}
+          </div>
+        )}
+
+        {/* PAGE HEADER (optional) */}
         {(title || subtitle || rightSlot) && (
           <div
             className={[
@@ -64,8 +89,12 @@ export default function XpotPageShell({
             ].join(' ')}
           >
             <div>
-              {title && <h1 className="text-xl font-semibold text-slate-50">{title}</h1>}
-              {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
+              {title && (
+                <h1 className="text-xl font-semibold text-slate-50">{title}</h1>
+              )}
+              {subtitle && (
+                <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
+              )}
             </div>
 
             {rightSlot && <div className="shrink-0">{rightSlot}</div>}
