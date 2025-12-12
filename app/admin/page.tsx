@@ -9,6 +9,7 @@ import Link from 'next/link';
 
 import JackpotPanel from '@/components/JackpotPanel';
 import { XPOT_POOL_SIZE } from '@/lib/xpot';
+import XpotPageShell from '@/components/XpotPageShell';
 
 const MAX_TODAY_TICKETS = 10;
 const MAX_RECENT_WINNERS = 9;
@@ -859,7 +860,7 @@ export default function AdminPage() {
   // ─────────────────────────────────────────────
 
   return (
-    <div className="relative min-h-screen bg-[#02020a] text-slate-100">
+  <XpotPageShell title="Operations Center" subtitle="Control room for today’s XPOT" rightSlot={/* your badges row or whatever */}>
       {/* GLOBAL NEBULA BACKGROUND (fixed, always visible) */}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[#02020a]" />
       <div
