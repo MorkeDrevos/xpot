@@ -12,21 +12,10 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
-import { REQUIRED_XPOT } from '../../lib/xpot';
+import { REQUIRED_XPOT } from '@/lib/xpot';
 import XpotPageShell from '@/components/XpotPageShell';
 
-import {
-  ArrowRight,
-  CheckCircle2,
-  Copy,
-  History,
-  LogOut,
-  ShieldCheck,
-  Sparkles,
-  Ticket,
-  Wallet,
-  X,
-} from 'lucide-react';
+import { History, LogOut } from 'lucide-react';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
@@ -34,18 +23,7 @@ import {
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
-  return d.toLocaleDateString('de-DE');
-}
-
-function formatDateTime(date: string | Date) {
-  const d = new Date(date);
-  return d.toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return d.toLocaleDateString('en-GB');
 }
 
 function shortWallet(addr: string) {
@@ -78,39 +56,15 @@ type RecentWinner = {
   handle?: string | null;
 };
 
-const initialEntries: Entry[] = [];
-
 // ─────────────────────────────────────────────
 // Small UI helpers
 // ─────────────────────────────────────────────
 
+const BTN_PRIMARY =
+  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
+
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
-
-function StatusPill({
-  children,
-  tone = 'slate',
-}: {
-  children: React.ReactNode;
-  tone?: 'slate' | 'emerald' | 'amber' | 'sky';
-}) {
-  const cls =
-    tone === 'emerald'
-      ? 'bg-emerald-500/10 text-emerald-300'
-      : tone === 'amber'
-      ? 'bg-amber-500/10 text-amber-200'
-      : tone === 'sky'
-      ? 'bg-sky-500/10 text-sky-200'
-      : 'bg-slate-800/70 text-slate-200';
-
-  return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${cls}`}
-    >
-      {children}
-    </span>
-  );
-}
 
 // Debug logger for wallet state
 function WalletDebug() {
@@ -160,25 +114,20 @@ function WalletStatusHint() {
 // ─────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [entries, setEntries] = useState<Entry[]>(initialEntries);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
-  const { publicKey, connected, disconnect } = useWallet();
+  const { publicKey, connected } = useWallet();
   const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
 
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
-
-  const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
-  const [historyError, setHistoryError] = useState<string | null>(null);
-  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loadingWinners, setLoadingWinners] = useState(false);
@@ -207,8 +156,6 @@ export default function DashboardPage() {
     }) || externalAccounts[0];
 
   const handle = xAccount?.username || xAccount?.screenName || null;
-  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
-  const name = user?.fullName || handle || 'XPOT user';
 
   // ─────────────────────────────────────────────
   // Sync X identity into DB whenever user is loaded
@@ -263,7 +210,7 @@ export default function DashboardPage() {
 
         const data = await res.json();
         if (!cancelled && Array.isArray(data.tickets)) {
-          if (data.tickets.length > 0) setEntries(data.tickets);
+          setEntries(data.tickets);
         }
       } catch (err) {
         console.error('Failed to load tickets from DB', err);
@@ -320,9 +267,7 @@ export default function DashboardPage() {
 
     (async () => {
       try {
-        const res = await fetch(
-          `/api/xpot-balance?address=${publicKey.toBase58()}`,
-        );
+        const res = await fetch(`/api/xpot-balance?address=${publicKey.toBase58()}`);
         if (!res.ok) throw new Error(`API error: ${res.status}`);
         const data: { balance: number } = await res.json();
         if (cancelled) return;
@@ -330,63 +275,6 @@ export default function DashboardPage() {
       } catch (err) {
         console.error('Error loading XPOT balance (via API)', err);
         if (!cancelled) setXpotBalance('error');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [publicKey]);
-
-  // ─────────────────────────────────────────────
-  // Load wallet-specific draw history
-  // ─────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!publicKey) {
-      setHistoryEntries([]);
-      setHistoryError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setLoadingHistory(true);
-    setHistoryError(null);
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/tickets/history?wallet=${publicKey.toBase58()}`,
-        );
-        if (!res.ok) throw new Error('Failed to load history');
-
-        const data = await res.json();
-        if (cancelled) return;
-
-        if (Array.isArray(data.tickets)) {
-          setHistoryEntries(
-            data.tickets.map((t: any) => ({
-              id: t.id,
-              code: t.code,
-              status: t.status as EntryStatus,
-              label: t.label,
-              jackpotUsd: `${
-                (t.jackpotUsd ?? 10_000).toLocaleString?.() ?? '10,000'
-              }`,
-              createdAt: t.createdAt,
-              walletAddress: t.walletAddress,
-            })),
-          );
-        } else {
-          setHistoryEntries([]);
-        }
-      } catch (err) {
-        console.error('Failed to load history', err);
-        if (!cancelled) {
-          setHistoryError((err as Error).message ?? 'Failed to load history');
-        }
-      } finally {
-        if (!cancelled) setLoadingHistory(false);
       }
     })();
 
@@ -429,9 +317,7 @@ export default function DashboardPage() {
       } catch (err) {
         console.error('Failed to load recent winners', err);
         if (!cancelled) {
-          setWinnersError(
-            (err as Error).message ?? 'Failed to load recent winners',
-          );
+          setWinnersError((err as Error).message ?? 'Failed to load recent winners');
         }
       } finally {
         if (!cancelled) setLoadingWinners(false);
@@ -444,18 +330,8 @@ export default function DashboardPage() {
   }, []);
 
   // ─────────────────────────────────────────────
-  // Ticket helpers
+  // Ticket claim
   // ─────────────────────────────────────────────
-
-  async function handleCopy(entry: Entry) {
-    try {
-      await navigator.clipboard.writeText(entry.code);
-      setCopiedId(entry.id);
-      setTimeout(() => setCopiedId(null), 1500);
-    } catch {
-      // ignore
-    }
-  }
 
   async function handleClaimTicket() {
     if (!walletConnected || !publicKey) return;
@@ -487,9 +363,7 @@ export default function DashboardPage() {
         switch (code) {
           case 'NOT_ENOUGH_XPOT':
             setClaimError(
-              `You need at least ${(
-                data.required ?? REQUIRED_XPOT
-              ).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
+              `You need at least ${(data.required ?? REQUIRED_XPOT).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
                 data.balance ?? 0,
               ).toLocaleString()} XPOT.`,
             );
@@ -522,10 +396,10 @@ export default function DashboardPage() {
         return;
       }
 
-      const ticket: Entry = data.ticket;
+      const ticket: Entry | undefined = data.ticket;
       const tickets: Entry[] | undefined = data.tickets;
 
-      if (Array.isArray(tickets) && tickets.length > 0) {
+      if (Array.isArray(tickets)) {
         setEntries(tickets);
       } else if (ticket) {
         setEntries(prev => {
@@ -534,14 +408,14 @@ export default function DashboardPage() {
         });
       }
 
-      setTicketClaimed(true);
-      setTodaysTicket(ticket);
+      if (ticket) {
+        setTicketClaimed(true);
+        setTodaysTicket(ticket);
+      }
       setClaimError(null);
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
-      setClaimError(
-        'Unexpected error while getting your ticket. Please try again.',
-      );
+      setClaimError('Unexpected error while getting your ticket. Please try again.');
     } finally {
       setClaiming(false);
     }
@@ -554,18 +428,8 @@ export default function DashboardPage() {
     return entries.filter(e => e.walletAddress?.toLowerCase() === normalizedWallet);
   }, [entries, normalizedWallet]);
 
-  const winner = entries.find(e => e.status === 'won') || null;
-  const iWonToday =
-    !!winner &&
-    !!normalizedWallet &&
-    winner.walletAddress?.toLowerCase() === normalizedWallet;
-
-    // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
-
   return (
-    <XpotPageShell>
+    <XpotPageShell title="Holder Dashboard" subtitle={handle ? `@${handle}` : 'Wallet + X identity'}>
       <WalletDebug />
 
       {/* HEADER */}
@@ -586,28 +450,38 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard/history"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-          >
-            <History className="h-4 w-4" />
-            History
-          </Link>
-
-          <WalletMultiButton className="!h-10 !rounded-full !px-4 !text-sm" />
-
-          <SignOutButton redirectUrl="/dashboard">
-            <button
-              type="button"
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/history"
               className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
             >
-              <LogOut className="h-4 w-4" />
-              Log out
-            </button>
-          </SignOutButton>
+              <History className="h-4 w-4" />
+              History
+            </Link>
+
+            <WalletMultiButton className="!h-10 !rounded-full !px-4 !text-sm" />
+
+            <SignOutButton redirectUrl="/dashboard">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </button>
+            </SignOutButton>
+          </div>
+
+          <div className="sm:hidden">
+            <WalletStatusHint />
+          </div>
         </div>
       </header>
+
+      <div className="hidden sm:block">
+        <WalletStatusHint />
+      </div>
 
       {/* MAIN GRID */}
       <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -648,6 +522,9 @@ export default function DashboardPage() {
                       : 'Not eligible'
                     : '—'}
                 </p>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Requires {REQUIRED_XPOT.toLocaleString()} XPOT
+                </p>
               </div>
 
               <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
@@ -655,31 +532,61 @@ export default function DashboardPage() {
                   Wallet
                 </p>
                 <p className="mt-1 font-mono text-sm text-slate-100">
-                  {currentWalletAddress
-                    ? shortWallet(currentWalletAddress)
-                    : 'Not connected'}
+                  {currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
                 </p>
               </div>
             </div>
+
+            {ticketsError && (
+              <p className="mt-3 text-xs text-amber-300">{ticketsError}</p>
+            )}
           </section>
 
           {/* TODAY TICKET */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
-            <p className="text-sm font-semibold text-slate-100">Today’s XPOT</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Today’s XPOT</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  One ticket per wallet per day (when eligible).
+                </p>
+              </div>
+
+              <span className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}>
+                My tickets: {myTickets.length}
+              </span>
+            </div>
 
             {!ticketClaimed ? (
-              <button
-                type="button"
-                onClick={handleClaimTicket}
-                disabled={!walletConnected || claiming}
-                className={`${BTN_PRIMARY} mt-4 px-6 py-3 text-sm`}
-              >
-                {claiming ? 'Generating…' : 'Get today’s ticket'}
-              </button>
+              <div className="mt-4 space-y-2">
+                <button
+                  type="button"
+                  onClick={handleClaimTicket}
+                  disabled={!walletConnected || claiming || loadingTickets}
+                  className={`${BTN_PRIMARY} w-full px-6 py-3 text-sm`}
+                >
+                  {claiming ? 'Generating…' : 'Get today’s ticket'}
+                </button>
+
+                {claimError && (
+                  <p className="text-xs text-amber-300">{claimError}</p>
+                )}
+              </div>
             ) : (
-              <p className="mt-4 text-sm text-emerald-300">
-                Your ticket is in the draw.
-              </p>
+              <div className="mt-4 space-y-2">
+                <p className="text-sm text-emerald-300">Your ticket is in the draw.</p>
+
+                {todaysTicket && (
+                  <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Ticket code
+                    </p>
+                    <p className="mt-1 font-mono text-sm text-slate-100">
+                      {todaysTicket.code}
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
           </section>
         </div>
@@ -688,26 +595,36 @@ export default function DashboardPage() {
         <div className="space-y-4">
           {/* RECENT WINNERS */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
-            <p className="text-sm font-semibold text-slate-100">
-              Recent winners
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Recent winners</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Latest completed draws (global)
+                </p>
+              </div>
+
+              <span className={`${BTN_UTILITY} px-3 py-1 text-[11px]`}>
+                {loadingWinners ? 'Loading…' : 'Live'}
+              </span>
+            </div>
+
+            {winnersError && (
+              <p className="mt-3 text-xs text-amber-300">{winnersError}</p>
+            )}
 
             <div className="mt-4 space-y-2">
-              {recentWinners.length === 0 ? (
-                <p className="text-xs text-slate-500">
-                  No completed draws yet.
-                </p>
+              {recentWinners.length === 0 && !loadingWinners ? (
+                <p className="text-xs text-slate-500">No completed draws yet.</p>
               ) : (
                 recentWinners.map(w => (
                   <div
                     key={w.id}
                     className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                   >
-                    <p className="text-xs text-slate-400">
-                      {formatDate(w.drawDate)}
-                    </p>
-                    <p className="font-mono text-sm text-slate-100">
-                      {w.ticketCode}
+                    <p className="text-xs text-slate-400">{formatDate(w.drawDate)}</p>
+                    <p className="mt-1 font-mono text-sm text-slate-100">{w.ticketCode}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {w.handle ? `@${w.handle}` : shortWallet(w.walletAddress)}
                     </p>
                   </div>
                 ))
