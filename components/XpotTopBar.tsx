@@ -2,27 +2,46 @@
 'use client';
 
 import Link from 'next/link';
-import XpotLogoLottie from '@/components/XpotLogoLottie';
-import ThemeToggle from './ThemeToggle';
-import XpotSignInModal from './XpotSignInModal';
+import Image from 'next/image';
+import { ReactNode } from 'react';
 
-export default function XpotTopBar() {
+import ThemeToggle from '@/components/ThemeToggle';
+import XpotSignInModal from '@/components/XpotSignInModal';
+
+type XpotTopBarProps = {
+  logoHref?: string;
+  rightSlot?: ReactNode;
+  showSignIn?: boolean;
+  showThemeToggle?: boolean;
+};
+
+export default function XpotTopBar({
+  logoHref = '/',
+  rightSlot,
+  showSignIn = true,
+  showThemeToggle = true,
+}: XpotTopBarProps) {
   return (
-    <header className="border-b border-white/10 bg-black/60 backdrop-blur">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-3">
-          {/* Bigger, premium, stable */}
-          <XpotLogoLottie
-            width={240}
-            height={64}
-            className="cursor-pointer"
-            fallbackSrc="/img/xpot-logo-light.png"
-          />
-        </Link>
+    <header className="relative z-30">
+      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
+        <div className="flex h-[76px] items-center justify-between">
+          <Link href={logoHref} className="inline-flex items-center gap-3">
+            <Image
+              src="/img/xpot-logo-light.png"
+              alt="XPOT"
+              width={220}
+              height={60}
+              priority
+              className="h-[44px] w-auto"
+            />
+          </Link>
 
-        <div className="flex items-center gap-3">
-          <XpotSignInModal />
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            {rightSlot}
+
+            {showSignIn && <XpotSignInModal />}
+            {showThemeToggle && <ThemeToggle />}
+          </div>
         </div>
       </div>
     </header>
