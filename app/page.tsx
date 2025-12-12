@@ -511,17 +511,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="mt-6 pb-10">
+            <footer className="mt-6 pb-10">
         <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
           <span className="inline-flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             XPOT is in Pre-Launch Mode. UI is final, wiring continues.
           </span>
-          <span className="font-mono text-slate-600">
-            build: cinematic-home
-          </span>
+          <span className="font-mono text-slate-600">build: cinematic-home</span>
         </div>
       </footer>
-    </>
+    </XpotPageShell>
   );
 }
