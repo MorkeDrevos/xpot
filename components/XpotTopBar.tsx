@@ -17,23 +17,13 @@ export default function XpotTopBar() {
           justify-between
           px-4
           sm:px-6
-          h-[84px]
+          h-[96px]
         "
       >
-        {/* LEFT: LOGO */}
-        <Link
-          href="/"
-          className="flex items-center"
-          aria-label="XPOT Home"
-        >
-          <XpotLogoLottie
-            width={260}
-            height={64}
-            className="cursor-pointer"
-          />
+        <Link href="/" className="flex items-center">
+          <XpotLogoLottie />
         </Link>
 
-        {/* RIGHT: AUTH */}
         <div className="flex items-center gap-3">
           <XpotSignInModal />
         </div>
