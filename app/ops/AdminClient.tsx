@@ -377,28 +377,27 @@ export default function AdminPage() {
   }, []);
 
   // ── Fetch helpers ───────────────────────────
-  async function authedFetch(input: string, init?: RequestInit) {
-    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
+async function authedFetch(input: string, init?: RequestInit) {
+  if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
 
-    const res = await fetch(input, {
-      ...init,
-      headers: {
-        ...(init?.headers || {}),
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${adminToken}`,
-        'x-xpot-admin-token': adminToken.trim(),
-      },
-    });
+  const headers = new Headers(init?.headers || {});
+  headers.set('Content-Type', 'application/json');
+  headers.set('x-xpot-admin-token', adminToken.trim());
 
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(
-        `Request failed (${res.status}): ${body || res.statusText || 'Unknown error'}`,
-      );
-    }
+  const res = await fetch(input, {
+    ...init,
+    headers,
+  });
 
-    return res.json();
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Request failed (${res.status}): ${body || res.statusText || 'Unknown error'}`,
+    );
   }
+
+  return res.json();
+}
 
   async function refreshUpcomingDrops() {
     setUpcomingLoading(true);
