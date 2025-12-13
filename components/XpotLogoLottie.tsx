@@ -25,6 +25,9 @@ type XpotLogoLottieProps = {
 
   // 0..1 (only applies to shimmer mode)
   shimmerOpacity?: number;
+
+  // Optional: crispness when scaling
+  quality?: 'normal' | 'high';
 };
 
 export default function XpotLogoLottie({
@@ -35,11 +38,15 @@ export default function XpotLogoLottie({
   autoplay = true,
   mode = 'full',
   shimmerOpacity = 0.7,
+  quality = 'high',
 }: XpotLogoLottieProps) {
   const [failed, setFailed] = useState(false);
 
   // Only remount lottie when size changes (avoids weird restarts)
-  const lottieKey = useMemo(() => `xpot-logo-${width}x${height}`, [width, height]);
+  const lottieKey = useMemo(
+    () => `xpot-logo-${width}x${height}-${mode}`,
+    [width, height, mode]
+  );
 
   const showPngBase = mode === 'shimmer' || failed;
 
@@ -62,15 +69,17 @@ export default function XpotLogoLottie({
         />
       )}
 
-      {/* Lottie (main animation) */}
+      {/* Lottie */}
       {!failed && (
         <div
           className="absolute inset-0"
           style={{
             opacity: mode === 'shimmer' ? shimmerOpacity : 1,
             pointerEvents: 'none',
-            // shimmer uses screen blend, full uses normal rendering
             mixBlendMode: mode === 'shimmer' ? 'screen' : 'normal',
+            // Helps SVG look crisp when scaled
+            transform: 'translateZ(0)',
+            willChange: 'transform, opacity',
           }}
         >
           <Lottie
@@ -79,8 +88,14 @@ export default function XpotLogoLottie({
             loop={loop}
             autoplay={autoplay}
             style={{ width: '100%', height: '100%' }}
-            // lottie-react supports these reliably
+            // If JSON can't be parsed/loaded, fall back to PNG
             onDataFailed={() => setFailed(true)}
+            // Slightly better quality at larger sizes
+            rendererSettings={
+              quality === 'high'
+                ? { preserveAspectRatio: 'xMidYMid meet', progressiveLoad: true }
+                : { preserveAspectRatio: 'xMidYMid meet' }
+            }
           />
         </div>
       )}
