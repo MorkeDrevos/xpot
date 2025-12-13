@@ -1,7 +1,7 @@
 // components/XpotLogoLottie.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Lottie from 'lottie-react';
 
@@ -22,16 +22,21 @@ export default function XpotLogoLottie({
 }: XpotLogoLottieProps) {
   const [failed, setFailed] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
 
-  // Luxury cadence: runs on mount then every 10s
-  useEffect(() => {
-    const t = setTimeout(() => setBurstKey((k) => k + 1), 600);
-    const i = setInterval(() => setBurstKey((k) => k + 1), 10000);
-    return () => {
-      clearTimeout(t);
-      clearInterval(i);
-    };
+  // Trigger a single shimmer burst
+  const triggerBurst = useCallback(() => {
+    setBurstKey((k) => k + 1);
   }, []);
+
+  // Auto-burst every 20s (luxury cadence)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      triggerBurst();
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [triggerBurst]);
 
   const lottieKey = useMemo(
     () => `xpot-logo-${width}x${height}-${mode}-${burstKey}`,
@@ -46,8 +51,13 @@ export default function XpotLogoLottie({
       style={{ width, height, minWidth: width, minHeight: height }}
       aria-label="XPOT"
       role="img"
+      onMouseEnter={() => {
+        setIsHovering(true);
+        triggerBurst(); // immediate burst on hover
+      }}
+      onMouseLeave={() => setIsHovering(false)}
     >
-      {/* Base logo */}
+      {/* Base logo (always visible) */}
       <Image
         src="/img/xpot-logo-light.png"
         alt="XPOT"
@@ -56,13 +66,12 @@ export default function XpotLogoLottie({
         priority
         className="absolute inset-0 h-full w-full object-contain"
         style={{
-          // tighter shadows so they don't brighten the purple banner above
           filter:
             'drop-shadow(0 14px 28px rgba(0,0,0,0.75)) drop-shadow(0 0 22px rgba(56,189,248,0.22))',
         }}
       />
 
-      {/* Shimmer overlay: MASKED to the logo pixels (critical fix) */}
+      {/* Shimmer overlay – masked to logo pixels only */}
       {!failed && (
         <div
           className="absolute inset-0 pointer-events-none"
@@ -72,7 +81,7 @@ export default function XpotLogoLottie({
             transform: 'translateZ(0)',
             willChange: 'transform, opacity',
 
-            // Mask shimmer to logo alpha so it ONLY shows on the logo
+            // Mask shimmer to the logo alpha
             WebkitMaskImage: 'url(/img/xpot-logo-light.png)',
             WebkitMaskRepeat: 'no-repeat',
             WebkitMaskPosition: 'center',
@@ -82,8 +91,11 @@ export default function XpotLogoLottie({
             maskPosition: 'center',
             maskSize: 'contain',
 
-            // Make shimmer clearly visible (premium specular)
-            filter: mode === 'full' ? 'contrast(1.25) brightness(1.18)' : 'contrast(1.15) brightness(1.08)',
+            // Make highlight read clearly on the logo
+            filter:
+              mode === 'full'
+                ? 'contrast(1.25) brightness(1.18)'
+                : 'contrast(1.15) brightness(1.08)',
           }}
         >
           <Lottie
