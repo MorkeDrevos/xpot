@@ -1,4 +1,4 @@
-// app/admin/AdminClient.tsx
+// app/ops/AdminClient.tsx
 'use client';
 
 import { useEffect, useMemo, useState, FormEvent } from 'react';
@@ -389,14 +389,24 @@ async function authedFetch(input: string, init?: RequestInit) {
     headers,
   });
 
+  const raw = await res.text();
+
+  let data: any = null;
+  try {
+    data = raw ? JSON.parse(raw) : null;
+  } catch {
+    data = raw; // keep raw response for debugging
+  }
+
   if (!res.ok) {
-    const body = await res.text();
     throw new Error(
-      `Request failed (${res.status}): ${body || res.statusText || 'Unknown error'}`,
+      `Request failed (${res.status}): ${
+        typeof data === 'string' ? data : JSON.stringify(data)
+      }`,
     );
   }
 
-  return res.json();
+  return data;
 }
 
   async function refreshUpcomingDrops() {
@@ -404,7 +414,7 @@ async function authedFetch(input: string, init?: RequestInit) {
     setUpcomingError(null);
     try {
       const data = await authedFetch('/api/admin/bonus-upcoming');
-      setUpcomingDrops((data as any).drops ?? []);
+      setUpcomingDrops((data as any).upcoming ?? []);
     } catch (err: any) {
       console.error('[ADMIN] refresh upcoming error', err);
       setUpcomingError(err?.message || 'Failed to load upcoming drops');
@@ -691,7 +701,7 @@ async function authedFetch(input: string, init?: RequestInit) {
       setUpcomingError(null);
       try {
         const data = await authedFetch('/api/admin/bonus-upcoming');
-        if (!cancelled) setUpcomingDrops((data as any).drops ?? []);
+        if (!cancelled) setUpcomingDrops((data as any).upcoming ?? []);
       } catch (err: any) {
         console.error('[ADMIN] /bonus-upcoming error', err);
         if (!cancelled)
