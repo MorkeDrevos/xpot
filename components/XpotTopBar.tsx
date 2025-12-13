@@ -2,54 +2,56 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { ReactNode } from 'react';
 
 type XpotTopBarProps = {
-  slogan?: string;
+  rightSlot?: ReactNode;
+  hasBanner?: boolean;
+  maxWidthClassName?: string;
 };
 
 export default function XpotTopBar({
-  slogan = 'THE X-POWERED REWARD POOL',
+  rightSlot,
+  hasBanner = true,
+  maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
+  const topOffset = hasBanner ? 'var(--xpot-banner-h)' : '0px';
+
   return (
-    <header className="relative z-50 w-full">
-      {/* Top bar content */}
-      <div className="mx-auto flex h-[64px] max-w-[1440px] items-center justify-between px-6">
-        {/* Left: Logo + slogan */}
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/img/xpot-logo-light.png"
-              alt="XPOT"
-              width={140}
-              height={40}
-              priority
-              className="h-[40px] w-auto"
-            />
-          </Link>
+    <header
+      className="fixed inset-x-0 z-[50] w-full bg-black/70 backdrop-blur-xl border-b border-white/5"
+      style={{ top: topOffset }}
+    >
+      <div className={`mx-auto px-6 ${maxWidthClassName}`}>
+        <div className="flex h-[72px] items-center justify-between">
+          {/* LEFT: LOGO + SLOGAN */}
+          <div className="flex items-center gap-4">
+            {/* BIGGER LOGO */}
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/img/xpot-logo-light.png"
+                alt="XPOT"
+                width={180}
+                height={48}
+                priority
+                className="h-[44px] w-auto"
+              />
+            </Link>
 
-          <span className="xpot-slogan-pill">
-            {slogan}
-          </span>
+            {/* SLOGAN PILL */}
+            <span className="xpot-slogan-pill">
+              THE X-POWERED REWARD POOL
+            </span>
+          </div>
+
+          {/* RIGHT */}
+          <div className="flex items-center gap-6">
+            {rightSlot}
+          </div>
         </div>
-
-        {/* Right: Nav */}
-        <nav className="flex items-center gap-6 text-sm text-slate-300">
-          <Link href="/dashboard" className="hover:text-white transition">
-            Dashboard
-          </Link>
-          <Link href="/terms" className="hover:text-white transition">
-            Terms
-          </Link>
-          <Link
-            href="/enter"
-            className="rounded-full bg-white px-4 py-2 font-semibold text-black hover:bg-slate-200 transition"
-          >
-            Enter today&apos;s XPOT →
-          </Link>
-        </nav>
       </div>
 
-      {/* Animated premium line */}
+      {/* ANIMATED GREEN LINE */}
       <div className="xpot-animated-line" />
     </header>
   );
