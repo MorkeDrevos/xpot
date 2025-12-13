@@ -18,17 +18,20 @@ type XpotLogoLottieProps = {
 
 export default function XpotLogoLottie({
   className = '',
-  width = 260,
-  height = 72,
+  width = 360,
+  height = 100,
   loop = true,
   autoplay = true,
   mode = 'full',
 }: XpotLogoLottieProps) {
   const [failed, setFailed] = useState(false);
 
-  const lottieKey = useMemo(() => `xpot-logo-${width}x${height}`, [width, height]);
+  const lottieKey = useMemo(
+    () => `xpot-logo-${width}x${height}`,
+    [width, height]
+  );
 
-  const overlayOpacity = mode === 'full' ? 0.95 : 0.55;
+  const overlayOpacity = mode === 'full' ? 0.95 : 0.6;
 
   return (
     <div
@@ -37,7 +40,7 @@ export default function XpotLogoLottie({
       aria-label="XPOT"
       role="img"
     >
-      {/* Base logo (always visible) */}
+      {/* Base logo */}
       <Image
         src="/img/xpot-logo-light.png"
         alt="XPOT"
@@ -47,11 +50,11 @@ export default function XpotLogoLottie({
         className="absolute inset-0 h-full w-full object-contain"
         style={{
           filter:
-            'drop-shadow(0 10px 26px rgba(0,0,0,0.55)) drop-shadow(0 0 18px rgba(34,211,238,0.18))',
+            'drop-shadow(0 16px 36px rgba(0,0,0,0.65)) drop-shadow(0 0 34px rgba(56,189,248,0.28))',
         }}
       />
 
-      {/* Lottie shimmer overlay */}
+      {/* Shimmer overlay */}
       {!failed && (
         <div
           className="absolute inset-0 pointer-events-none"
