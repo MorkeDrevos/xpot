@@ -19,21 +19,29 @@ type XpotLogoLottieProps = {
   autoplay?: boolean;
 
   // Visual tuning
-  lottieOpacity?: number; // 0..1
+  // "full" = the animation is the hero (top bar)
+  // "shimmer" = subtle overlay on top of PNG
+  mode?: 'full' | 'shimmer';
+
+  // 0..1 (only applies to shimmer mode)
+  shimmerOpacity?: number;
 };
 
 export default function XpotLogoLottie({
   className = '',
-  width = 132,
-  height = 36,
+  width = 180,
+  height = 50,
   loop = true,
   autoplay = true,
-  lottieOpacity = 0.75,
+  mode = 'full',
+  shimmerOpacity = 0.7,
 }: XpotLogoLottieProps) {
   const [failed, setFailed] = useState(false);
 
-  // Prevent accidental remount loops
+  // Only remount lottie when size changes (avoids weird restarts)
   const lottieKey = useMemo(() => `xpot-logo-${width}x${height}`, [width, height]);
+
+  const showPngBase = mode === 'shimmer' || failed;
 
   return (
     <div
@@ -42,24 +50,27 @@ export default function XpotLogoLottie({
       aria-label="XPOT"
       role="img"
     >
-      {/* ALWAYS show premium PNG base (never blank, never “disappears”) */}
-      <Image
-        src="/img/xpot-logo-light.png"
-        alt="XPOT"
-        width={width}
-        height={height}
-        priority
-        className="absolute inset-0 h-full w-full object-contain"
-      />
+      {/* PNG base only when needed */}
+      {showPngBase && (
+        <Image
+          src="/img/xpot-logo-light.png"
+          alt="XPOT"
+          width={width}
+          height={height}
+          priority
+          className="absolute inset-0 h-full w-full object-contain"
+        />
+      )}
 
-      {/* Lottie overlay (subtle premium shimmer). If it errors, we just hide it. */}
+      {/* Lottie (main animation) */}
       {!failed && (
         <div
           className="absolute inset-0"
           style={{
-            opacity: lottieOpacity,
+            opacity: mode === 'shimmer' ? shimmerOpacity : 1,
             pointerEvents: 'none',
-            mixBlendMode: 'screen',
+            // shimmer uses screen blend, full uses normal rendering
+            mixBlendMode: mode === 'shimmer' ? 'screen' : 'normal',
           }}
         >
           <Lottie
@@ -67,10 +78,9 @@ export default function XpotLogoLottie({
             animationData={animationData as any}
             loop={loop}
             autoplay={autoplay}
-            renderer="svg"
-            rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
             style={{ width: '100%', height: '100%' }}
-            onError={() => setFailed(true)}
+            // lottie-react supports these reliably
+            onDataFailed={() => setFailed(true)}
           />
         </div>
       )}
