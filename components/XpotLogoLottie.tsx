@@ -1,26 +1,20 @@
-// components/XpotLogoLottie.tsx
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Lottie from 'lottie-react';
 
-// Bundled animation (NO fetch)
 import animationData from '@/app/animations/xpot_logo_loop.json';
 
 type XpotLogoLottieProps = {
   className?: string;
 
-  // Backwards compatible sizing (your AdminClient uses these)
+  // sizing (used in multiple places)
   width?: number;
   height?: number;
 
-  // Premium cadence
-  burstEveryMs?: number; // default 20000 (20s)
-
-  // Slow it down (premium, less “flashy”)
+  // premium cadence
+  burstEveryMs?: number; // default 20s
   speed?: number; // default 0.85
-
-  // Stronger visibility on dark bg
   glow?: boolean; // default true
 };
 
@@ -35,31 +29,33 @@ export default function XpotLogoLottie({
   const lottieRef = useRef<any>(null);
   const [hovered, setHovered] = useState(false);
 
-  // Remount only when size changes
-  const lottieKey = useMemo(() => `xpot-logo-${width}x${height}`, [width, height]);
+  // only remount if size changes
+  const lottieKey = useMemo(
+    () => `xpot-logo-${width}x${height}`,
+    [width, height]
+  );
 
   const playBurst = () => {
     const inst = lottieRef.current;
     if (!inst) return;
 
-    // restart cleanly from frame 0
     try {
+      inst.setSpeed(speed); // ✅ CORRECT WAY
       inst.stop();
       inst.goToAndPlay(0, true);
     } catch {
-      // no-op (lottie instance differences)
+      // lottie instance quirks – ignore safely
     }
   };
 
-  // Auto burst every N ms (premium cadence)
+  // auto burst (premium, slow)
   useEffect(() => {
-    // do NOT autoplay on mount (premium)
-    const id = setInterval(() => playBurst(), burstEveryMs);
+    const id = setInterval(playBurst, burstEveryMs);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [burstEveryMs, lottieKey]);
 
-  // If user hovers, burst immediately
+  // hover burst
   useEffect(() => {
     if (hovered) playBurst();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,19 +63,26 @@ export default function XpotLogoLottie({
 
   return (
     <div
-      className={['relative select-none', className].join(' ')}
-      style={{ width, height, minWidth: width, minHeight: height }}
-      aria-label="XPOT"
-      role="img"
+      className={`relative select-none ${className}`}
+      style={{
+        width,
+        height,
+        minWidth: width,
+        minHeight: height,
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      aria-label="XPOT"
+      role="img"
     >
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          transform: 'scale(1.08)',
+          transform: 'scale(1.06)',
           transformOrigin: 'left center',
-          filter: glow ? 'drop-shadow(0 0 14px rgba(120,180,255,0.28))' : undefined,
+          filter: glow
+            ? 'drop-shadow(0 0 14px rgba(120,180,255,0.28))'
+            : undefined,
         }}
       >
         <Lottie
@@ -92,8 +95,6 @@ export default function XpotLogoLottie({
           rendererSettings={{
             preserveAspectRatio: 'xMidYMid meet',
           }}
-          // slow = premium
-          speed={speed}
         />
       </div>
     </div>
