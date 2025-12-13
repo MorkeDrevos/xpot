@@ -1,36 +1,26 @@
+// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
 import XpotLogoLottie from '@/components/XpotLogoLottie';
+import XpotSignInModal from '@/components/XpotSignInModal';
 
-type XpotTopBarProps = {
-  logoHref?: string;
-};
-
-export default function XpotTopBar({
-  logoHref = '/',
-}: XpotTopBarProps) {
+export default function XpotTopBar() {
   return (
-    <header className="relative z-40 w-full border-b border-white/10 bg-black/80 backdrop-blur">
-      <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-6">
-        {/* LEFT — XPOT LOGO */}
-        <Link
-          href={logoHref}
-          aria-label="XPOT Home"
-          className="flex items-center"
-        >
+    <header className="border-b border-white/10 bg-black/60 backdrop-blur">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3 sm:px-6">
+        {/* LEFT: LOGO */}
+        <Link href="/" className="flex items-center">
           <XpotLogoLottie
-            width={220}
-            height={60}
-            className="select-none"
+            width={420}
+            height={110}
+            className="cursor-pointer"
           />
         </Link>
 
-        {/* RIGHT — AUTH ONLY */}
-        <div className="flex items-center text-sm text-white/70">
-          <span className="cursor-pointer transition hover:text-white">
-            Sign in
-          </span>
+        {/* RIGHT: AUTH ONLY (no theme toggle anymore) */}
+        <div className="flex items-center gap-3">
+          <XpotSignInModal />
         </div>
       </div>
     </header>
