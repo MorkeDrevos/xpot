@@ -21,7 +21,7 @@ function RootProviders({ children }: { children: ReactNode }) {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className="min-h-screen bg-[#05060a] text-slate-100 antialiased">
         <RootProviders>{children}</RootProviders>
       </body>
