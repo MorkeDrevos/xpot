@@ -7,9 +7,9 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ArrowRight, ExternalLink, Lock, Orbit, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 
-import JackpotPanel from '../components/JackpotPanel';
-import BonusStrip from '../components/BonusStrip';
-import XpotPageShell from '../components/XpotPageShell';
+import JackpotPanel from './components/JackpotPanel';
+import BonusStrip from './components/BonusStrip';
+import XpotPageShell from './components/XpotPageShell';
 
 // Sample handles for testing (replace with API later)
 const SAMPLE_HANDLES = [
