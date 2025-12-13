@@ -1,36 +1,53 @@
+// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
-import XpotLogoLottie from '@/components/XpotLogoLottie';
+import Image from 'next/image';
+import { ReactNode } from 'react';
 
 type XpotTopBarProps = {
   logoHref?: string;
+  rightSlot?: ReactNode;
+  hasBanner?: boolean;
+  maxWidthClassName?: string;
 };
 
 export default function XpotTopBar({
   logoHref = '/',
+  rightSlot,
+  hasBanner = true,
+  maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
-  return (
-    <header className="relative z-40 w-full border-b border-white/10 bg-black/80 backdrop-blur">
-      <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-6">
-        {/* LEFT — XPOT LOGO */}
-        <Link
-          href={logoHref}
-          aria-label="XPOT Home"
-          className="flex items-center"
-        >
-          <XpotLogoLottie
-            width={220}
-            height={60}
-            className="select-none"
-          />
-        </Link>
+  const top = hasBanner ? 'var(--xpot-banner-h)' : '0px';
 
-        {/* RIGHT — AUTH ONLY */}
-        <div className="flex items-center text-sm text-white/70">
-          <span className="cursor-pointer transition hover:text-white">
-            Sign in
-          </span>
+  return (
+    <header
+      className="fixed inset-x-0 z-[50] w-full"
+      style={{ top }}
+    >
+      <div className="border-b border-white/10 bg-black/50 backdrop-blur-xl">
+        <div
+          className={`mx-auto flex h-[72px] items-center justify-between px-6 ${maxWidthClassName}`}
+        >
+          {/* LEFT: LOGO */}
+          <Link
+            href={logoHref}
+            className="flex items-center"
+          >
+            <Image
+              src="/img/xpot-logo-light.png"
+              alt="XPOT"
+              width={260}
+              height={72}
+              priority
+              className="h-[56px] w-auto"
+            />
+          </Link>
+
+          {/* RIGHT */}
+          <div className="flex items-center gap-3">
+            {rightSlot ?? null}
+          </div>
         </div>
       </div>
     </header>
