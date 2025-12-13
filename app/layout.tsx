@@ -10,12 +10,8 @@ export const metadata = {
 };
 
 function RootProviders({ children }: { children: ReactNode }) {
-  // If Clerk isn't configured yet, DON'T wrap the whole app with ClerkProvider.
-  // This prevents runtime crashes + missing UI sections during your setup phase.
   const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
   if (!clerkKey) return <>{children}</>;
-
   return <ClerkProvider>{children}</ClerkProvider>;
 }
 
