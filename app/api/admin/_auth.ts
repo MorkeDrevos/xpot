@@ -1,24 +1,31 @@
 // app/api/admin/_auth.ts
 import { NextResponse } from 'next/server';
 
-const HEADER = 'x-xpot-admin-token';
+const ADMIN_TOKEN = process.env.XPOT_ADMIN_TOKEN || '';
+
+export const ADMIN_HEADER = 'x-xpot-admin-token';
 
 export function requireAdmin(req: Request) {
-  const expectedRaw = process.env.XPOT_ADMIN_TOKEN ?? '';
-  const expected = expectedRaw.trim();
-
-  if (!expected) {
+  if (!ADMIN_TOKEN) {
     return NextResponse.json(
       { ok: false, error: 'ADMIN_TOKEN_NOT_CONFIGURED' },
       { status: 500 },
     );
   }
 
-  const incoming = (req.headers.get(HEADER) ?? '').trim();
+  // Primary: your custom header
+  const incoming = (req.headers.get(ADMIN_HEADER) || '').trim();
 
-  if (!incoming || incoming !== expected) {
+  // Optional fallback: Authorization: Bearer <token>
+  const auth = (req.headers.get('authorization') || '').trim();
+  const bearer =
+    auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
+
+  const token = incoming || bearer;
+
+  if (!token || token !== ADMIN_TOKEN) {
     return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
   }
 
-  return null;
+  return null; // ok
 }
