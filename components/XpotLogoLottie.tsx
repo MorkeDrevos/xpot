@@ -1,7 +1,6 @@
-// components/XpotLogoLottie.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 
 type XpotLogoLottieProps = {
@@ -30,12 +29,12 @@ export default function XpotLogoLottie({
   return (
     <div
       className={['relative overflow-hidden select-none', className].join(' ')}
-      style={{ width, height }}
+      style={{ width, height, minWidth: width, minHeight: height }}
       onMouseEnter={triggerBurst}
       aria-label="XPOT"
       role="img"
     >
-      {/* BASE LOGO – intentionally slightly dimmed */}
+      {/* Base logo - slightly dimmed so the highlight is visible */}
       <Image
         src="/img/xpot-logo-light.png"
         alt="XPOT"
@@ -44,27 +43,27 @@ export default function XpotLogoLottie({
         priority
         className="absolute inset-0 h-full w-full object-contain"
         style={{
-          filter:
-            'brightness(0.82) drop-shadow(0 12px 28px rgba(0,0,0,0.8))',
+          filter: 'brightness(0.82) drop-shadow(0 12px 28px rgba(0,0,0,0.8))',
         }}
       />
 
-      {/* SPECULAR SWEEP – THIS IS WHAT YOU SEE */}
+      {/* Specular sweep (mask stays fixed, only background moves) */}
       <div
         key={burst}
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-none xpot-sweep"
         style={{
-          animation: 'xpot-sweep 1.4s ease-out',
+          // The sweep band
           background:
-            'linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.0) 38%, rgba(255,255,255,0.95) 50%, rgba(255,255,255,0.0) 62%, transparent 100%)',
-
+            'linear-gradient(110deg, transparent 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0.95) 50%, rgba(255,255,255,0) 60%, transparent 100%)',
+          backgroundSize: '240% 100%',
+          backgroundPosition: '-140% 0%',
           mixBlendMode: 'screen',
 
+          // Mask to logo pixels (fixed)
           WebkitMaskImage: 'url(/img/xpot-logo-light.png)',
           WebkitMaskRepeat: 'no-repeat',
           WebkitMaskPosition: 'center',
           WebkitMaskSize: 'contain',
-
           maskImage: 'url(/img/xpot-logo-light.png)',
           maskRepeat: 'no-repeat',
           maskPosition: 'center',
@@ -72,22 +71,25 @@ export default function XpotLogoLottie({
         }}
       />
 
-      {/* Local animation (scoped) */}
       <style jsx>{`
-        @keyframes xpot-sweep {
+        .xpot-sweep {
+          animation: xpotSweep 1.35s ease-out forwards;
+        }
+
+        @keyframes xpotSweep {
           0% {
-            transform: translateX(-120%);
             opacity: 0;
+            background-position: -140% 0%;
           }
-          15% {
+          12% {
             opacity: 1;
           }
-          85% {
+          88% {
             opacity: 1;
           }
           100% {
-            transform: translateX(120%);
             opacity: 0;
+            background-position: 140% 0%;
           }
         }
       `}</style>
