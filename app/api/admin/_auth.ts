@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const ADMIN_HEADER = 'x-xpot-admin-key';
 
-export function nowIso() {
+function nowIso() {
   return new Date().toISOString();
 }
 
@@ -14,10 +14,13 @@ export function isAdminAuthed(req: NextRequest) {
   return incoming === expected;
 }
 
-// For route handlers (GET/POST). Returns a NextResponse if blocked, else null.
-export function requireAdminAuth(req: NextRequest) {
-  const ok = isAdminAuthed(req);
-  if (ok) return null;
+/**
+ * Returns a NextResponse(401) if NOT authed, otherwise returns null.
+ * Use in routes like:
+ *   const denied = requireAdmin(req); if (denied) return denied;
+ */
+export function requireAdmin(req: NextRequest): NextResponse | null {
+  if (isAdminAuthed(req)) return null;
 
   return NextResponse.json(
     {
@@ -29,3 +32,6 @@ export function requireAdminAuth(req: NextRequest) {
     { status: 401 }
   );
 }
+
+// Some newer routes may import this name - keep both for compatibility.
+export const requireAdminAuth = requireAdmin;
