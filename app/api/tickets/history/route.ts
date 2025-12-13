@@ -1,50 +1,11 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const wallet = searchParams.get('wallet');
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-  if (!wallet) {
-    return NextResponse.json(
-      { ok: false, error: 'Wallet address is required' },
-      { status: 400 }
-    );
-  }
-
-  const tickets = await prisma.ticket.findMany({
-    where: {
-      wallet: {
-        address: wallet,
-      },
-    },
-    include: {
-      draw: true,
-      wallet: true,
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 200,
-  });
-
-  const history = tickets.map(t => {
-    const status =
-      !t.draw?.isClosed
-        ? 'in-draw'
-        : t.draw?.winnerTicketId === t.id
-          ? 'won'
-          : 'expired';
-
-    return {
-      id: t.id,
-      code: t.code,
-      status,
-      label: "Today’s main jackpot • $10,000",
-      jackpotUsd: 10000,
-      createdAt: t.createdAt.toISOString(),
-      walletAddress: t.wallet.address,
-      drawDate: t.draw?.drawDate?.toISOString() ?? null,
-    };
-  });
-
-  return NextResponse.json({ ok: true, tickets: history }, { status: 200 });
+export async function GET(_req: NextRequest) {
+  return NextResponse.json(
+    { ok: false, error: 'Temporarily disabled (recovery mode).' },
+    { status: 503 },
+  );
 }
