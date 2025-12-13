@@ -17,33 +17,24 @@ export default function XpotLogo({
   height,
   className,
 }: XpotLogoProps) {
-  // 🔥 Animated version (admin / dashboard / shell)
+  // Animated version
   if (variant === 'animated') {
     return (
       <XpotLogoLottie
         className={className}
-        width={width ?? 132}
-        height={height ?? 36}
+        width={width ?? 180}
+        height={height ?? 50}
       />
     );
   }
 
-  // Static fallback (marketing / public pages)
+  // Static fallback
   let src = '/img/xpot-logo-light.png';
-
   if (variant === 'dark') src = '/img/xpot-black.png';
   if (variant === 'mark') src = '/img/xpot-mark.png';
 
-  const w = width ?? (variant === 'mark' ? 28 : 140);
-  const h = height ?? (variant === 'mark' ? 28 : 40);
+  const w = width ?? (variant === 'mark' ? 28 : 180);
+  const h = height ?? (variant === 'mark' ? 28 : 50);
 
-  return (
-    <Image
-      src={src}
-      alt="XPOT"
-      width={w}
-      height={h}
-      className={className}
-    />
-  );
+  return <Image src={src} alt="XPOT" width={w} height={h} className={className} />;
 }
