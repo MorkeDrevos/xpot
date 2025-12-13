@@ -19,11 +19,11 @@ export default function XpotTopBar() {
             {/* Actual logo */}
             <div className="relative transition-transform duration-300 group-hover:-translate-y-[1px]">
               <XpotLogoLottie
-                className="cursor-pointer select-none"
-                // Bigger + responsive: mobile vs desktop
-                width={180}
-                height={50}
-              />
+  className="cursor-pointer select-none"
+  width={180}
+  height={50}
+  mode="full"
+/>
             </div>
           </div>
         </Link>
