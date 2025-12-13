@@ -1,53 +1,34 @@
 // app/api/admin/dev-seed/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '../_auth';
-
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// ───────────────── helpers ─────────────────
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '../_auth';
 
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function randomWalletAddress() {
-  const chars =
-    'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789';
+  // Base58-ish (not strictly validated, but good enough for dev seed)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789';
   let s = '';
   for (let i = 0; i < 44; i++) s += chars[randInt(0, chars.length - 1)];
   return s;
 }
 
-function todayUtcStart() {
-  const now = new Date();
-  return new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0,
-      0,
-      0,
-      0,
-    ),
-  );
+function utcStartOfDay(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
 }
 
-// ───────────────── route ─────────────────
+function addDaysUtc(d: Date, days: number) {
+  const x = new Date(d);
+  x.setUTCDate(x.getUTCDate() + days);
+  return x;
+}
 
-export async function POST(req: NextRequest) {
-  const denied = requireAdmin(req);
-  if (denied) return denied;
-
-  const now = new Date();
-  const drawDate = todayUtcStart();
-
-  // ─────────── user ───────────
-  const user = await prisma.user.create({ data: {} });
-
-  // ─────────── draw ───────────
+async function ensureDraw(drawDate: Date) {
   let draw = await prisma.draw.findFirst({ where: { drawDate } });
 
   if (!draw) {
@@ -55,96 +36,137 @@ export async function POST(req: NextRequest) {
       data: {
         drawDate,
         status: 'open',
-        closesAt: new Date(now.getTime() + 90 * 60 * 1000), // +1.5h
-        rolloverUsd: randInt(0, 500),
+        closesAt: new Date(Date.now() + 6 * 60 * 60 * 1000), // +6h
       } as any,
     });
   }
 
-  // ─────────── cleanup ───────────
-  await prisma.ticket.deleteMany({ where: { drawId: draw.id } });
-  await prisma.bonusDrop?.deleteMany?.({});
-  await prisma.winner?.deleteMany?.({});
+  return draw;
+}
 
-  // ─────────── wallets ───────────
-  const walletCount = randInt(6, 12);
-  const wallets = [];
+async function seedTicketsForDraw(drawId: string, ticketCount: number) {
+  // Create one dummy user for this seed batch
+  const user = await prisma.user.create({ data: {} });
 
-  for (let i = 0; i < walletCount; i++) {
-    const address = randomWalletAddress();
-
-    const wallet = await prisma.wallet.upsert({
-      where: { address } as any,
-      update: {},
-      create: { address } as any,
-    });
-
-    wallets.push(wallet);
-  }
-
-  // ─────────── tickets ───────────
-  const tickets: any[] = [];
-  const ticketCount = randInt(25, 60);
+  // Clear old tickets for this draw to keep it deterministic
+  await prisma.ticket.deleteMany({ where: { drawId } });
 
   for (let i = 0; i < ticketCount; i++) {
-    const wallet = wallets[randInt(0, wallets.length - 1)];
+    const address = randomWalletAddress();
 
-    const ticket = await prisma.ticket.create({
+    await prisma.ticket.create({
       data: {
-        drawId: draw.id,
+        drawId,
         userId: user.id,
-        walletId: wallet.id,
+
+        // Your schema uses a Wallet relation, so connectOrCreate it.
+        wallet: {
+          connectOrCreate: {
+            where: { address } as any,
+            create: { address } as any,
+          },
+        },
+
         status: 'IN_DRAW',
-        createdAt: new Date(now.getTime() - randInt(1, 90) * 60_000),
-      } as any,
-    });
-
-    tickets.push(ticket);
-  }
-
-  // ─────────── winners ───────────
-  const winnerCount = randInt(2, 4);
-  const winnerTickets = tickets.slice(0, winnerCount);
-
-  for (const ticket of winnerTickets) {
-    await prisma.ticket.update({
-      where: { id: ticket.id },
-      data: {
-        status: 'WINNER',
-        payoutXpot: randInt(250_000, 1_500_000),
-        paidAt: now,
       } as any,
     });
   }
 
-  // ─────────── bonuses ───────────
-  if (prisma.bonusDrop) {
-    await prisma.bonusDrop.createMany({
-      data: [
-        {
-          label: 'Community Boost',
-          amountXpot: 250_000,
-          scheduledAt: new Date(now.getTime() - 60 * 60 * 1000),
-          firedAt: new Date(now.getTime() - 55 * 60 * 1000),
-          status: 'FIRED',
-        },
-        {
-          label: 'XPOT Power Hour',
-          amountXpot: 500_000,
-          scheduledAt: new Date(now.getTime() + 2 * 60 * 60 * 1000),
-          status: 'SCHEDULED',
-        },
-      ] as any,
-    });
-  }
+  return { userId: user.id, ticketCount };
+}
 
-  return NextResponse.json({
-    ok: true,
-    drawId: draw.id,
-    wallets: walletCount,
-    tickets: ticketCount,
-    winners: winnerCount,
-    bonuses: 2,
-    note: 'Dev seed completed successfully',
-  });
+export async function POST(req: NextRequest) {
+  const denied = requireAdmin(req);
+  if (denied) return denied;
+
+  try {
+    // Allow overrides from body (optional)
+    // Example:
+    // { "todayTickets": 180, "historyDays": 6, "historyTicketsPerDay": 60 }
+    const body = await req.json().catch(() => ({} as any));
+
+    const todayTickets =
+      typeof body?.todayTickets === 'number' ? Math.max(0, Math.floor(body.todayTickets)) : 120;
+
+    const historyDays =
+      typeof body?.historyDays === 'number' ? Math.max(0, Math.floor(body.historyDays)) : 4;
+
+    const historyTicketsPerDay =
+      typeof body?.historyTicketsPerDay === 'number'
+        ? Math.max(0, Math.floor(body.historyTicketsPerDay))
+        : 40;
+
+    const now = new Date();
+    const todayDrawDate = utcStartOfDay(now);
+
+    // Seed today
+    const todayDraw = await ensureDraw(todayDrawDate);
+    const todaySeed = await seedTicketsForDraw(todayDraw.id, todayTickets);
+
+    // Seed history draws (previous days)
+    const history: Array<{
+      drawDate: string;
+      drawId: string;
+      tickets: number;
+    }> = [];
+
+    for (let d = 1; d <= historyDays; d++) {
+      const drawDate = utcStartOfDay(addDaysUtc(todayDrawDate, -d));
+      const draw = await ensureDraw(drawDate);
+
+      // For history, we don't delete tickets unless you want that behavior.
+      // We'll just add tickets on top (more realistic), but keep it stable-ish.
+      const extraTickets = historyTicketsPerDay;
+
+      // Make a dummy user per day to keep relations simple
+      const user = await prisma.user.create({ data: {} });
+
+      for (let i = 0; i < extraTickets; i++) {
+        const address = randomWalletAddress();
+
+        await prisma.ticket.create({
+          data: {
+            drawId: draw.id,
+            userId: user.id,
+            wallet: {
+              connectOrCreate: {
+                where: { address } as any,
+                create: { address } as any,
+              },
+            },
+            status: 'IN_DRAW',
+          } as any,
+        });
+      }
+
+      history.push({
+        drawDate: drawDate.toISOString(),
+        drawId: draw.id,
+        tickets: extraTickets,
+      });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      seeded: {
+        today: {
+          drawDate: todayDrawDate.toISOString(),
+          drawId: todayDraw.id,
+          tickets: todaySeed.ticketCount,
+          userId: todaySeed.userId,
+        },
+        history,
+      },
+      note: 'Use POST with optional JSON body to control volumes.',
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'DEV_SEED_FAILED',
+        message: err?.message || 'Unknown error',
+      },
+      { status: 500 },
+    );
+  }
 }
