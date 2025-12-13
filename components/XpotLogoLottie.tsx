@@ -1,72 +1,37 @@
+// components/XpotLogo.tsx
 'use client';
 
-import { useEffect, useRef } from 'react';
-import Lottie, { LottieRefCurrentProps } from 'lottie-react';
+import Link from 'next/link';
+import XpotLogoLottie from '@/components/XpotLogoLottie';
 
-// IMPORTANT: this file EXISTS (underscore, not hyphen)
-import animationData from '@/app/animations/xpot_logo_loop.json';
-
-type Props = {
-  size?: number; // px
+type XpotLogoProps = {
+  href?: string;
   className?: string;
+
+  // Single source of truth for sizing (no width/height anymore)
+  size?: number;
+
+  // Optional: show the “pill text” next to the logo (used in top bars)
+  rightLabel?: string;
 };
 
-export default function XpotLogoLottie({
-  size = 34,
-  className,
-}: Props) {
-  const lottieRef = useRef<LottieRefCurrentProps>(null);
-
-  useEffect(() => {
-    const playDoubleFlash = async () => {
-      if (!lottieRef.current) return;
-
-      // First flash
-      lottieRef.current.setSpeed(0.6); // slow = premium
-      lottieRef.current.goToAndPlay(0, true);
-
-      // Let it breathe
-      await new Promise((r) => setTimeout(r, 650));
-
-      // Second flash
-      lottieRef.current.goToAndPlay(0, true);
-    };
-
-    // Initial subtle intro after mount
-    const introTimeout = setTimeout(playDoubleFlash, 1200);
-
-    // Repeat every 20s (as requested earlier)
-    const interval = setInterval(playDoubleFlash, 20_000);
-
-    return () => {
-      clearTimeout(introTimeout);
-      clearInterval(interval);
-    };
-  }, []);
-
+export default function XpotLogo({
+  href = '/',
+  className = '',
+  size = 36,
+  rightLabel,
+}: XpotLogoProps) {
   return (
-    <div
-      className={className}
-      style={{
-        width: size,
-        height: size,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-      aria-label="XPOT"
-      title="XPOT"
-    >
-      <Lottie
-        lottieRef={lottieRef}
-        animationData={animationData}
-        autoplay={false}
-        loop={false}
-        rendererSettings={{
-          preserveAspectRatio: 'xMidYMid meet',
-        }}
-        style={{ width: '100%', height: '100%' }}
-      />
+    <div className={`flex items-center gap-3 ${className}`}>
+      <Link href={href} className="inline-flex items-center">
+        <XpotLogoLottie size={size} />
+      </Link>
+
+      {rightLabel ? (
+        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold tracking-wide text-slate-200">
+          {rightLabel}
+        </span>
+      ) : null}
     </div>
   );
 }
