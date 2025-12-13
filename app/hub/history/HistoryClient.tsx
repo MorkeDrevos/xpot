@@ -9,7 +9,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 
-import { useUser, SignOutButton } from '@clerk/nextjs';
+
 
 import XpotPageShell from '@/components/XpotPageShell';
 import { History, LogOut, ArrowLeft, Trophy, Ticket, X } from 'lucide-react';
