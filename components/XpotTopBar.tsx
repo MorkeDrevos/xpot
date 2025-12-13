@@ -9,13 +9,13 @@ import XpotSignInModal from './XpotSignInModal';
 export default function XpotTopBar() {
   return (
     <header className="border-b border-white/10 bg-black/70 backdrop-blur-md">
-      <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center">
           <XpotLogoLottie
-            width={220}
-            height={60}
+            width={260}
+            height={72}
             mode="full"
-            className="relative z-10"
+            className="relative"
           />
         </Link>
 
