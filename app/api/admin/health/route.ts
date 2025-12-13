@@ -1,16 +1,27 @@
 // app/api/admin/health/route.ts
-export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/app/api/admin/_auth';
+
+const HEADER = 'x-xpot-admin-token';
 
 export async function GET(req: Request) {
-  const denied = requireAdmin(req);
-  if (denied) return denied;
+  const expectedRaw = process.env.XPOT_ADMIN_TOKEN ?? '';
+  const expected = expectedRaw.trim();
 
-  return NextResponse.json({
-    ok: true,
-    ts: new Date().toISOString(),
-  });
+  if (!expected) {
+    return NextResponse.json(
+      { ok: false, error: 'ADMIN_TOKEN_NOT_CONFIGURED' },
+      { status: 500 },
+    );
+  }
+
+  const incoming = (req.headers.get(HEADER) ?? '').trim();
+
+  if (!incoming || incoming !== expected) {
+    return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
+  }
+
+  return NextResponse.json({ ok: true, ts: new Date().toISOString() });
 }
