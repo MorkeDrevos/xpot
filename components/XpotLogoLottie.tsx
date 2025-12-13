@@ -19,15 +19,15 @@ type XpotLogoLottieProps = {
   autoplay?: boolean;
 
   // Visual tuning
-  // "full" = the animation is the hero (top bar)
-  // "shimmer" = subtle overlay on top of PNG
+  // "full"   = stronger shimmer for top bar hero
+  // "shimmer" = subtle shimmer for secondary places
   mode?: 'full' | 'shimmer';
 
-  // 0..1 (only applies to shimmer mode)
+  // 0..1 (overlay strength)
   shimmerOpacity?: number;
 
-  // Optional: crispness when scaling
-  quality?: 'normal' | 'high';
+  // Base logo opacity (keep at 1 for crisp logo)
+  baseOpacity?: number;
 };
 
 export default function XpotLogoLottie({
@@ -37,18 +37,20 @@ export default function XpotLogoLottie({
   loop = true,
   autoplay = true,
   mode = 'full',
-  shimmerOpacity = 0.7,
-  quality = 'high',
+  shimmerOpacity,
+  baseOpacity = 1,
 }: XpotLogoLottieProps) {
   const [failed, setFailed] = useState(false);
 
-  // Only remount lottie when size changes (avoids weird restarts)
+  // Only remount lottie when size/mode changes (avoids weird restarts)
   const lottieKey = useMemo(
     () => `xpot-logo-${width}x${height}-${mode}`,
     [width, height, mode]
   );
 
-  const showPngBase = mode === 'shimmer' || failed;
+  // Default overlay strength
+  const overlayOpacity =
+    shimmerOpacity ?? (mode === 'full' ? 0.95 : 0.6);
 
   return (
     <div
@@ -57,27 +59,26 @@ export default function XpotLogoLottie({
       aria-label="XPOT"
       role="img"
     >
-      {/* PNG base only when needed */}
-      {showPngBase && (
-        <Image
-          src="/img/xpot-logo-light.png"
-          alt="XPOT"
-          width={width}
-          height={height}
-          priority
-          className="absolute inset-0 h-full w-full object-contain"
-        />
-      )}
+      {/* ALWAYS show the real logo base (your Lottie is only the sweep/glow overlay) */}
+      <Image
+        src="/img/xpot-logo-light.png"
+        alt="XPOT"
+        width={width}
+        height={height}
+        priority
+        className="absolute inset-0 h-full w-full object-contain"
+        style={{ opacity: baseOpacity }}
+      />
 
-      {/* Lottie */}
+      {/* Lottie overlay (shimmer/sweep). If it fails, we still have the PNG. */}
       {!failed && (
         <div
           className="absolute inset-0"
           style={{
-            opacity: mode === 'shimmer' ? shimmerOpacity : 1,
+            opacity: overlayOpacity,
             pointerEvents: 'none',
-            mixBlendMode: mode === 'shimmer' ? 'screen' : 'normal',
-            // Helps SVG look crisp when scaled
+            // This is what makes it look like a premium shine
+            mixBlendMode: 'screen',
             transform: 'translateZ(0)',
             willChange: 'transform, opacity',
           }}
@@ -88,14 +89,7 @@ export default function XpotLogoLottie({
             loop={loop}
             autoplay={autoplay}
             style={{ width: '100%', height: '100%' }}
-            // If JSON can't be parsed/loaded, fall back to PNG
             onDataFailed={() => setFailed(true)}
-            // Slightly better quality at larger sizes
-            rendererSettings={
-              quality === 'high'
-                ? { preserveAspectRatio: 'xMidYMid meet', progressiveLoad: true }
-                : { preserveAspectRatio: 'xMidYMid meet' }
-            }
           />
         </div>
       )}
