@@ -33,7 +33,7 @@ export default function XpotTopBar({
             width={180}
             height={48}
             priority
-            className="h-[36px] w-auto opacity-95 hover:opacity-100 transition"
+            className="h-[94px] w-auto opacity-95 hover:opacity-100 transition"
           />
         </Link>
 
