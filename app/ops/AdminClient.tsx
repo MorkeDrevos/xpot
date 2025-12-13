@@ -386,7 +386,7 @@ export default function AdminPage() {
         ...(init?.headers || {}),
         'Content-Type': 'application/json',
         Authorization: `Bearer ${adminToken}`,
-        'x-xpot-admin-token': adminToken,
+        'x-xpot-admin-token': adminToken.trim(),
       },
     });
 
