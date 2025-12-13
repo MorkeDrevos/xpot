@@ -4,12 +4,16 @@
 import Link from 'next/link';
 import XpotLogoLottie from '@/components/XpotLogoLottie';
 
-type XpotLogoProps = {
+export type XpotLogoProps = {
   href?: string;
   className?: string;
 
-  // NEW: single sizing prop (no width/height)
+  // sizing
   size?: number;
+
+  // animation controls (optional)
+  burstEveryMs?: number; // default 20000
+  idleOpacity?: number; // default 0.95
 
   // Optional label pill
   rightLabel?: string;
@@ -18,13 +22,19 @@ type XpotLogoProps = {
 export default function XpotLogo({
   href = '/',
   className = '',
-  size = 40, // a bit bigger by default
+  size = 44, // slightly bigger default
+  burstEveryMs = 20000,
+  idleOpacity = 0.95,
   rightLabel,
 }: XpotLogoProps) {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <Link href={href} className="inline-flex items-center">
-        <XpotLogoLottie size={size} />
+        <XpotLogoLottie
+          size={size}
+          burstEveryMs={burstEveryMs}
+          idleOpacity={idleOpacity}
+        />
       </Link>
 
       {rightLabel ? (
