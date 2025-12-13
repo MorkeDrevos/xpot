@@ -1091,9 +1091,7 @@ async function authedFetch(input: string, init?: RequestInit) {
                               <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
                               Auto draw enabled
                             </span>
-                            <span className="mt-1 text-[11px] text-slate-400">
-                              Manual crown button is disabled while auto-draw is active.
-                            </span>
+                            
                           </div>
                         )}
 
