@@ -1,27 +1,36 @@
-// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
 import XpotLogoLottie from '@/components/XpotLogoLottie';
-import ThemeToggle from './ThemeToggle';
-import XpotSignInModal from './XpotSignInModal';
 
-export default function XpotTopBar() {
+type XpotTopBarProps = {
+  logoHref?: string;
+};
+
+export default function XpotTopBar({
+  logoHref = '/',
+}: XpotTopBarProps) {
   return (
-    <header className="border-b border-white/10 bg-black/75 backdrop-blur-md">
-      <div className="mx-auto flex h-[104px] w-full max-w-[1440px] items-center justify-between px-4 sm:px-6">
-        {/* LEFT: Logo aligned with page content */}
-        <Link href="/" className="inline-flex items-center">
-          {/* Tiny nudge to counter transparent padding in the PNG */}
-          <div className="-ml-1 flex items-center leading-none">
-            <XpotLogoLottie width={420} height={110} />
-          </div>
+    <header className="relative z-40 w-full border-b border-white/10 bg-black/80 backdrop-blur">
+      <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-6">
+        {/* LEFT — XPOT LOGO */}
+        <Link
+          href={logoHref}
+          aria-label="XPOT Home"
+          className="flex items-center"
+        >
+          <XpotLogoLottie
+            width={220}
+            height={60}
+            className="select-none"
+          />
         </Link>
 
-        {/* RIGHT: Controls */}
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <XpotSignInModal />
+        {/* RIGHT — AUTH ONLY */}
+        <div className="flex items-center text-sm text-white/70">
+          <span className="cursor-pointer transition hover:text-white">
+            Sign in
+          </span>
         </div>
       </div>
     </header>
