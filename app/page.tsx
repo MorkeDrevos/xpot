@@ -82,7 +82,7 @@ export default function Home() {
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                  Today&apos;s main jackpot
+                  Today&apos;s main jackpot YEAH
                 </span>
                 <span className="text-[10px] rounded-full border border-amber-400/40 bg-amber-400/5 px-2 py-0.5 uppercase tracking-[0.18em] text-amber-200">
                   One winner only
