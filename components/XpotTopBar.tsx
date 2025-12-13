@@ -15,7 +15,7 @@ export default function XpotTopBar() {
           <div className="relative -mb-[12px]">
             <XpotLogoLottie
               width={360}
-              height={100}
+              height={120}
               mode="full"
             />
           </div>
