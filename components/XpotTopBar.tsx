@@ -8,22 +8,20 @@ import XpotSignInModal from './XpotSignInModal';
 
 export default function XpotTopBar() {
   return (
-    <header className="relative border-b border-white/10 bg-black/75 backdrop-blur-md">
-      {/* Header height tuned for premium spacing */}
-      <div className="mx-auto relative h-[120px] max-w-[1440px] px-6">
-        {/* LOGO — locked to nav grid */}
-        <Link
-          href="/"
-          className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center"
-        >
-          <XpotLogoLottie
-            width={480}
-            height={130}
-          />
-        </Link>
+    <header className="border-b border-white/10 bg-black/75 backdrop-blur-md">
+      <div className="mx-auto flex h-[104px] max-w-[1440px] items-center justify-between px-6">
+        {/* LEFT: Logo aligned to grid */}
+        <div className="flex items-center">
+          <Link href="/" className="inline-flex items-center">
+            {/* Prevent the logo from affecting vertical alignment */}
+            <div className="flex items-center leading-none">
+              <XpotLogoLottie width={460} height={120} />
+            </div>
+          </Link>
+        </div>
 
-        {/* RIGHT CONTROLS */}
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+        {/* RIGHT: Controls aligned */}
+        <div className="flex items-center gap-3">
           <ThemeToggle />
           <XpotSignInModal />
         </div>
