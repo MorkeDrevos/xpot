@@ -1,7 +1,7 @@
 // components/XpotLogoLottie.tsx
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Lottie from 'lottie-react';
 
@@ -23,19 +23,18 @@ export default function XpotLogoLottie({
   const [failed, setFailed] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
+  const [isBursting, setIsBursting] = useState(false);
 
-  // Trigger a single shimmer burst
   const triggerBurst = useCallback(() => {
     setBurstKey((k) => k + 1);
+    setIsBursting(true);
+    window.setTimeout(() => setIsBursting(false), 1400); // roughly the sweep duration
   }, []);
 
-  // Auto-burst every 20s (luxury cadence)
+  // Auto burst every 20s
   useEffect(() => {
-    const interval = setInterval(() => {
-      triggerBurst();
-    }, 20000);
-
-    return () => clearInterval(interval);
+    const i = window.setInterval(() => triggerBurst(), 20000);
+    return () => window.clearInterval(i);
   }, [triggerBurst]);
 
   const lottieKey = useMemo(
@@ -43,7 +42,16 @@ export default function XpotLogoLottie({
     [width, height, mode, burstKey]
   );
 
-  const overlayOpacity = mode === 'full' ? 0.95 : 0.65;
+  // Make shimmer VERY readable on the logo (premium specular)
+  const overlayOpacity = mode === 'full' ? (isHovering ? 1 : 0.95) : 0.7;
+
+  // Stronger “premium shine” look
+  const overlayFilter =
+    mode === 'full'
+      ? isHovering
+        ? 'contrast(1.65) brightness(1.55) saturate(1.25)'
+        : 'contrast(1.45) brightness(1.35) saturate(1.18)'
+      : 'contrast(1.25) brightness(1.15) saturate(1.08)';
 
   return (
     <div
@@ -53,7 +61,7 @@ export default function XpotLogoLottie({
       role="img"
       onMouseEnter={() => {
         setIsHovering(true);
-        triggerBurst(); // immediate burst on hover
+        triggerBurst();
       }}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -71,17 +79,19 @@ export default function XpotLogoLottie({
         }}
       />
 
-      {/* Shimmer overlay – masked to logo pixels only */}
+      {/* Lottie shimmer overlay (masked to logo pixels) */}
       {!failed && (
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             opacity: overlayOpacity,
-            mixBlendMode: 'screen',
+            // Color dodge reads like real specular highlight (more visible than screen)
+            mixBlendMode: 'color-dodge',
             transform: 'translateZ(0)',
             willChange: 'transform, opacity',
+            filter: overlayFilter,
 
-            // Mask shimmer to the logo alpha
+            // Mask overlay to logo alpha only
             WebkitMaskImage: 'url(/img/xpot-logo-light.png)',
             WebkitMaskRepeat: 'no-repeat',
             WebkitMaskPosition: 'center',
@@ -90,12 +100,6 @@ export default function XpotLogoLottie({
             maskRepeat: 'no-repeat',
             maskPosition: 'center',
             maskSize: 'contain',
-
-            // Make highlight read clearly on the logo
-            filter:
-              mode === 'full'
-                ? 'contrast(1.25) brightness(1.18)'
-                : 'contrast(1.15) brightness(1.08)',
           }}
         >
           <Lottie
@@ -103,10 +107,36 @@ export default function XpotLogoLottie({
             animationData={animationData as any}
             loop={false}
             autoplay
+            renderer="svg"
+            rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
             style={{ width: '100%', height: '100%' }}
             onDataFailed={() => setFailed(true)}
           />
         </div>
+      )}
+
+      {/* Extra premium “thin specular band” on burst/hover (masked to logo pixels) */}
+      {(isBursting || isHovering) && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            opacity: isHovering ? 0.55 : 0.35,
+            mixBlendMode: 'color-dodge',
+            filter: 'contrast(1.5) brightness(1.55) saturate(1.25)',
+            // moving band look without JS animation - looks like a clean highlight
+            background:
+              'linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.0) 38%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0.0) 62%, transparent 100%)',
+            // Keep it inside the logo only
+            WebkitMaskImage: 'url(/img/xpot-logo-light.png)',
+            WebkitMaskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+            WebkitMaskSize: 'contain',
+            maskImage: 'url(/img/xpot-logo-light.png)',
+            maskRepeat: 'no-repeat',
+            maskPosition: 'center',
+            maskSize: 'contain',
+          }}
+        />
       )}
     </div>
   );
