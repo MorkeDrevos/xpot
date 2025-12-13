@@ -10,14 +10,14 @@ type TokenConfig = {
 export const IS_DEV_XPOT = false;
 
 /* POOL SIZE (CHANGE HERE ONLY) */
-export const XPOT_POOL_SIZE = 1_000_000; // <--- your pool size lives here
+export const XPOT_POOL_SIZE = 10_000_000; // <--- your pool size lives here
 
 /* TOKENS */
 
 // PRODUCTION TOKEN
 const PROD: TokenConfig = {
-  SYMBOL: 'SOL',
-  MINT: 'Gka1TQEevBbVw4W9K15ER96ZzKByMTb6TBMQzWFEpump',
+  SYMBOL: 'XPOT_TEST',
+  MINT: '4NGbC4RRrUjS78ooSN53Up7gSg4dGrj6F6dxpMWHbonk',
   REQUIRED: 100_000,
 };
 
