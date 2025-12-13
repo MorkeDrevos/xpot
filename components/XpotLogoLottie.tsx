@@ -1,7 +1,7 @@
 // components/XpotLogoLottie.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Lottie from 'lottie-react';
 
@@ -11,8 +11,9 @@ type XpotLogoLottieProps = {
   className?: string;
   width?: number;
   height?: number;
-  loop?: boolean;
-  autoplay?: boolean;
+
+  // "full" = premium hero shimmer
+  // "shimmer" = subtle
   mode?: 'full' | 'shimmer';
 };
 
@@ -20,18 +21,29 @@ export default function XpotLogoLottie({
   className = '',
   width = 520,
   height = 150,
-  loop = true,
-  autoplay = true,
   mode = 'full',
 }: XpotLogoLottieProps) {
   const [failed, setFailed] = useState(false);
 
+  // Re-trigger animation periodically (luxury cadence)
+  const [burstKey, setBurstKey] = useState(0);
+
+  useEffect(() => {
+    // run once after mount and then every 10s
+    const t = setTimeout(() => setBurstKey((k) => k + 1), 600);
+    const i = setInterval(() => setBurstKey((k) => k + 1), 10000);
+    return () => {
+      clearTimeout(t);
+      clearInterval(i);
+    };
+  }, []);
+
   const lottieKey = useMemo(
-    () => `xpot-logo-${width}x${height}`,
-    [width, height]
+    () => `xpot-logo-${width}x${height}-${mode}-${burstKey}`,
+    [width, height, mode, burstKey]
   );
 
-  const overlayOpacity = mode === 'full' ? 0.95 : 0.6;
+  const overlayOpacity = mode === 'full' ? 1 : 0.65;
 
   return (
     <div
@@ -40,7 +52,7 @@ export default function XpotLogoLottie({
       aria-label="XPOT"
       role="img"
     >
-      {/* Base logo - always visible */}
+      {/* Base logo (always visible) */}
       <Image
         src="/img/xpot-logo-light.png"
         alt="XPOT"
@@ -50,16 +62,21 @@ export default function XpotLogoLottie({
         className="absolute inset-0 h-full w-full object-contain"
         style={{
           filter:
-            'drop-shadow(0 26px 54px rgba(0,0,0,0.80)) drop-shadow(0 0 60px rgba(56,189,248,0.40))',
+            'drop-shadow(0 26px 54px rgba(0,0,0,0.80)) drop-shadow(0 0 62px rgba(56,189,248,0.42))',
         }}
       />
 
-      {/* Shimmer overlay */}
+      {/* Premium "shine" overlay, masked to the logo bounds */}
       {!failed && (
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             opacity: overlayOpacity,
+            // Mask keeps shine inside the logo area
+            WebkitMaskImage:
+              'linear-gradient(#000, #000), radial-gradient(circle at center, #000 62%, transparent 80%)',
+            WebkitMaskComposite: 'source-in',
+            maskComposite: 'intersect' as any,
             mixBlendMode: 'screen',
             transform: 'translateZ(0)',
             willChange: 'transform, opacity',
@@ -68,13 +85,24 @@ export default function XpotLogoLottie({
           <Lottie
             key={lottieKey}
             animationData={animationData as any}
-            loop={loop}
-            autoplay={autoplay}
+            loop={false} // IMPORTANT: luxury burst, not constant
+            autoplay
             style={{ width: '100%', height: '100%' }}
             onDataFailed={() => setFailed(true)}
           />
         </div>
       )}
+
+      {/* Subtle constant micro-glow (premium breathing) */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          opacity: mode === 'full' ? 0.12 : 0.08,
+          filter: 'blur(18px)',
+          background:
+            'radial-gradient(circle at 30% 30%, rgba(56,189,248,0.35), transparent 55%), radial-gradient(circle at 80% 60%, rgba(168,85,247,0.25), transparent 55%)',
+        }}
+      />
     </div>
   );
 }
