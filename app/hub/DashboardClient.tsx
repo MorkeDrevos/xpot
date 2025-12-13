@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState, WalletName } from '@solana/wallet-adapter-base';
 
-import { useClerk, useUser } from '@clerk/nextjs';
+
 
 import XpotPageShell from '@/components/XpotPageShell';
 import { REQUIRED_XPOT } from '@/lib/xpot';
@@ -377,7 +377,6 @@ export default function DashboardClient() {
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
 
-  const { signOut } = useClerk();
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleLogout() {
