@@ -1,259 +1,135 @@
 'use client';
 
-import { useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+// components/ClaimTicketSection.tsx
+import { useMemo, useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
-type Entry = {
-  id: number;
-  code: string;
-  status: EntryStatus;
-  label: string;
-  jackpotUsd: string;
-  createdAt: string;
+type ClaimTicketSectionProps = {
+  className?: string;
+
+  // Optional hooks your older code might pass (safe to ignore if unused)
+  onClaim?: (code: string) => Promise<void> | void;
+  onLookup?: (code: string) => Promise<EntryStatus | null> | EntryStatus | null;
 };
 
-function makeCode(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const block = () =>
-    Array.from({ length: 4 })
-      .map(() => alphabet[Math.floor(Math.random() * alphabet.length)])
-      .join('');
-  return `XPOT-${block()}-${block()}`;
-}
+export default function ClaimTicketSection({
+  className = '',
+  onClaim,
+  onLookup,
+}: ClaimTicketSectionProps) {
+  const { connected } = useWallet();
 
-// Seed a couple of preview tickets
-const now = new Date();
-const initialEntries: Entry[] = [
-  {
-    id: 1,
-    code: makeCode(),
-    status: 'won',
-    label: "Today's main jackpot • $10,000",
-    jackpotUsd: '$10,000',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  },
-  {
-    id: 2,
-    code: makeCode(),
-    status: 'in-draw',
-    label: "Yesterday's main jackpot • $8,400",
-    jackpotUsd: '$8,400',
-    createdAt: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  },
-];
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<EntryStatus | null>(null);
+  const [msg, setMsg] = useState<string>('');
 
-export default function ClaimTicketSection() {
-  // 🔐 Clerk instead of NextAuth
-  const { isSignedIn, isLoaded } = useUser();
-  const isAuthed = !!isSignedIn;
-  const loading = !isLoaded;
+  const canSubmit = useMemo(() => {
+    const c = code.trim();
+    return c.length >= 6 && c.length <= 64;
+  }, [code]);
 
-  const [ticketClaimed, setTicketClaimed] = useState(false);
-  const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
-  const [entries, setEntries] = useState<Entry[]>(initialEntries);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-
-  const winner = entries.find(e => e.status === 'won');
-
-  function handleClaimTicket() {
-    if (!isAuthed) {
-      // Send them to Clerk sign-in, then back to dashboard
-      window.location.href = '/sign-in?redirect_url=/dashboard';
-      return;
+  async function handleLookup() {
+    if (!canSubmit) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      if (!onLookup) {
+        setStatus(null);
+        setMsg('Lookup temporarily unavailable.');
+        return;
+      }
+      const s = await onLookup(code.trim());
+      setStatus(s ?? null);
+      setMsg(s ? `Status: ${s}` : 'No ticket found.');
+    } catch (e: any) {
+      setStatus(null);
+      setMsg(e?.message || 'Lookup failed.');
+    } finally {
+      setBusy(false);
     }
-
-    if (ticketClaimed) return;
-
-    const newEntry: Entry = {
-      id: Date.now(),
-      code: makeCode(),
-      status: 'in-draw',
-      label: "Today's main jackpot • $10,000",
-      jackpotUsd: '$10,000',
-      createdAt: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
-
-    setEntries(prev => [newEntry, ...prev]);
-    setTicketClaimed(true);
-    setTodaysTicket(newEntry);
   }
 
-  async function handleCopy(entry: Entry) {
+  async function handleClaim() {
+    if (!canSubmit) return;
+    if (!connected) {
+      setMsg('Connect your wallet first.');
+      return;
+    }
+    setBusy(true);
+    setMsg('');
     try {
-      await navigator.clipboard.writeText(entry.code);
-      setCopiedId(entry.id);
-      setTimeout(() => setCopiedId(null), 1500);
-    } catch {
-      // ignore
+      if (!onClaim) {
+        setMsg('Claim temporarily disabled.');
+        return;
+      }
+      await onClaim(code.trim());
+      setStatus('claimed');
+      setMsg('Claim submitted.');
+    } catch (e: any) {
+      setMsg(e?.message || 'Claim failed.');
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <section className="space-y-4">
-      {/* TODAY'S TICKET */}
-      <article className="premium-card border-b border-slate-900/60 px-4 pt-4 pb-5">
-        <h2 className="text-sm font-semibold text-emerald-100">
-          Today’s ticket
-        </h2>
-        <p className="mt-1 text-xs text-slate-400">
-          One ticket per X account per draw. Hold the minimum XPOT when you
-          claim. You can always buy or sell again later.
-        </p>
-
-        {!ticketClaimed ? (
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-slate-200">
-                Claim your ticket for today’s jackpot.
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Your ticket will be tied to this X account for today’s draw.
-              </p>
-
-              {!isAuthed && (
-                <p className="mt-2 text-[11px] text-amber-300">
-                  Sign in with X first. No posting is required.
-                </p>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleClaimTicket}
-              disabled={loading}
-              className="btn-premium mt-3 rounded-full px-5 py-2 text-sm font-semibold bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-500 text-black toolbar-glow sm:mt-0"
-            >
-              {loading
-                ? 'Checking session…'
-                : isAuthed
-                ? 'Claim today’s ticket'
-                : 'Sign in with X'}
-            </button>
-          </div>
-        ) : (
-          <div className="mt-4">
-            <p className="text-sm text-emerald-100">
-              ✅ Your ticket is in today’s draw.
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Come back when the countdown hits zero to see if you won.
-            </p>
-            {todaysTicket && (
-              <p className="mt-2 text-xs text-slate-300">
-                Ticket code:{' '}
-                <span className="font-mono text-emerald-300">
-                  {todaysTicket.code}
-                </span>
-              </p>
-            )}
-          </div>
-        )}
-      </article>
-
-      {/* TODAY'S RESULT */}
-      <article className="premium-card border-b border-slate-900/60 px-4 pb-5 pt-3">
-        <h2 className="text-sm font-semibold text-slate-200">
-          Today’s result
-        </h2>
-
-        {winner ? (
-          <div className="mt-3">
-            <p className="text-sm text-slate-200">
-              One ticket{' '}
-              <span className="font-mono text-emerald-300">
-                {winner.code}
-              </span>{' '}
-              hit today’s jackpot (preview).
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              In the real draw, this will show the winning ticket and X handle
-              once the countdown reaches zero.
-            </p>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-slate-300">
-            Your tickets are in the draw. The result will appear here when the
-            timer hits zero.
+    <section
+      className={[
+        'rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-sm backdrop-blur',
+        className,
+      ].join(' ')}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-white">Claim ticket</h3>
+          <p className="text-sm text-slate-400">
+            Enter your ticket code to check status (claim flow will be re-enabled after restore).
           </p>
-        )}
-      </article>
-
-      {/* YOUR TICKETS */}
-      <section className="pb-2 px-0">
-        <h2 className="px-4 pt-3 text-sm font-semibold text-slate-200">
-          Your tickets
-        </h2>
-        <p className="px-4 text-xs text-slate-500">
-          Each ticket is tied to a specific daily draw and this X account.
-        </p>
-
-        <div className="mt-3 space-y-2 border-l border-slate-800/80 pl-3">
-          {entries.map(entry => (
-            <article
-              key={entry.id}
-              className="rounded-2xl border border-slate-900 bg-slate-950/70 px-4 pb-4 pt-3 hover:border-slate-700 hover:bg-slate-950 transition"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm text-slate-50">
-                      {entry.code}
-                    </span>
-
-                    {entry.status === 'in-draw' && (
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
-                        In draw
-                      </span>
-                    )}
-                    {entry.status === 'won' && (
-                      <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                        Winner
-                      </span>
-                    )}
-                    {entry.status === 'claimed' && (
-                      <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
-                        Claimed
-                      </span>
-                    )}
-                    {entry.status === 'expired' && (
-                      <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
-                        Expired
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-slate-400">
-                    {entry.label}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    Created: {entry.createdAt}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(entry)}
-                    className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-[11px] text-slate-300 hover:border-slate-500 hover:bg-slate-900"
-                  >
-                    {copiedId === entry.id ? 'Copied' : 'Copy code'}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full border border-slate-800 px-3 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:bg-slate-950"
-                  >
-                    View entry tweet ↗
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
         </div>
-      </section>
+
+        <div className="shrink-0">
+          <WalletMultiButton />
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="Ticket code"
+          className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-white/20"
+        />
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleLookup}
+            disabled={busy || !canSubmit}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? '…' : 'Check'}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClaim}
+            disabled={busy || !canSubmit || !connected}
+            className="rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 px-4 py-3 text-sm font-semibold text-black hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? '…' : 'Claim'}
+          </button>
+        </div>
+      </div>
+
+      {(msg || status) && (
+        <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-slate-200">
+          {msg || (status ? `Status: ${status}` : '')}
+        </div>
+      )}
     </section>
   );
 }
