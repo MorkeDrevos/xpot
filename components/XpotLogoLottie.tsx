@@ -11,24 +11,19 @@ type XpotLogoLottieProps = {
 
 export default function XpotLogoLottie({
   className = '',
-  width = 460,
-  height = 120,
+  width = 420,
+  height = 110,
 }: XpotLogoLottieProps) {
   const [burst, setBurst] = useState(0);
   const lastBurstAtRef = useRef<number>(0);
 
   const triggerBurst = useCallback((reason: 'auto' | 'hover') => {
     const now = Date.now();
-
-    // Prevent “spam flashing” from hover jitter
-    // Hover can only trigger once every 4 seconds.
     if (reason === 'hover' && now - lastBurstAtRef.current < 4000) return;
-
     lastBurstAtRef.current = now;
     setBurst((b) => b + 1);
   }, []);
 
-  // Auto burst every 20s
   useEffect(() => {
     const i = setInterval(() => triggerBurst('auto'), 20000);
     return () => clearInterval(i);
@@ -42,25 +37,24 @@ export default function XpotLogoLottie({
       aria-label="XPOT"
       role="img"
     >
-      {/* Base logo - slightly dimmed so highlight reads */}
+      {/* Base logo - FORCE LEFT ALIGN inside the box */}
       <Image
         src="/img/xpot-logo-light.png"
         alt="XPOT"
         width={width}
         height={height}
         priority
-        className="absolute inset-0 h-full w-full object-contain"
+        className="absolute inset-0 h-full w-full object-contain object-left"
         style={{
           filter: 'brightness(0.84) drop-shadow(0 12px 28px rgba(0,0,0,0.8))',
         }}
       />
 
-      {/* Specular sweep (mask fixed, background moves) */}
+      {/* Sweep - mask ALSO left-aligned so it matches the logo */}
       <div
         key={burst}
         className="absolute inset-0 pointer-events-none xpot-sweep"
         style={{
-          // Thinner, more premium band (less “flash”, more “metal”)
           background:
             'linear-gradient(110deg, transparent 0%, rgba(255,255,255,0) 44%, rgba(255,255,255,0.72) 50%, rgba(255,255,255,0) 56%, transparent 100%)',
           backgroundSize: '260% 100%',
@@ -69,11 +63,12 @@ export default function XpotLogoLottie({
 
           WebkitMaskImage: 'url(/img/xpot-logo-light.png)',
           WebkitMaskRepeat: 'no-repeat',
-          WebkitMaskPosition: 'center',
+          WebkitMaskPosition: 'left center',
           WebkitMaskSize: 'contain',
+
           maskImage: 'url(/img/xpot-logo-light.png)',
           maskRepeat: 'no-repeat',
-          maskPosition: 'center',
+          maskPosition: 'left center',
           maskSize: 'contain',
         }}
       />
