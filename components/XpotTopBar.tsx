@@ -8,24 +8,15 @@ import XpotSignInModal from './XpotSignInModal';
 
 export default function XpotTopBar() {
   return (
-    <header className="border-b border-white/10 bg-black/60 backdrop-blur">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3 sm:px-6">
-        <Link href="/" className="group flex items-center gap-3">
-          {/* Logo wrapper controls perceived size + premium effects */}
-          <div className="relative">
-            {/* Soft glow */}
-            <div className="pointer-events-none absolute -inset-3 rounded-2xl bg-gradient-to-r from-cyan-400/20 via-violet-400/15 to-fuchsia-400/20 blur-xl opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
-
-            {/* Actual logo */}
-            <div className="relative transition-transform duration-300 group-hover:-translate-y-[1px]">
-              <XpotLogoLottie
-  className="cursor-pointer select-none"
-  width={180}
-  height={50}
-  mode="full"
-/>
-            </div>
-          </div>
+    <header className="border-b border-white/10 bg-black/70 backdrop-blur-md">
+      <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-4 sm:px-6">
+        <Link href="/" className="flex items-center">
+          <XpotLogoLottie
+            width={220}
+            height={60}
+            mode="full"
+            className="relative z-10"
+          />
         </Link>
 
         <div className="flex items-center gap-3">
