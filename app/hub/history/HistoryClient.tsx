@@ -9,8 +9,9 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 
-import XpotPageShell from '../../../components/XpotPageShell';
-import { History, LogOut, ArrowLeft, Trophy, Ticket, X } from 'lucide-react';
+import JackpotPanel from '../components/JackpotPanel';
+import BonusStrip from '../components/BonusStrip';
+import XpotPageShell from '../components/XpotPageShell';
 
 // ─────────────────────────────────────────────
 // Formatting helpers
