@@ -1,30 +1,16 @@
 // app/api/admin/health/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-function isAuthorized(req: NextRequest) {
-  const header =
-    req.headers.get('x-admin-token') ||
-    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/api/admin/_auth';
 
-  if (!header || header !== process.env.XPOT_ADMIN_TOKEN) {
-    return false;
-  }
-
-  return true;
-}
-
-export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json(
-      { ok: false, error: 'UNAUTHORIZED' },
-      { status: 401 },
-    );
-  }
+export async function GET(req: Request) {
+  const denied = requireAdmin(req);
+  if (denied) return denied;
 
   return NextResponse.json({
     ok: true,
-    admin: true,
-    envActive: !!process.env.XPOT_ADMIN_TOKEN,
-    now: new Date().toISOString(),
+    ts: new Date().toISOString(),
   });
 }
