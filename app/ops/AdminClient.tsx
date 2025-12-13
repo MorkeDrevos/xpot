@@ -1598,7 +1598,7 @@ async function authedFetch(input: string, init?: RequestInit) {
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-               <XpotLogoLottie />
+               <XpotLogoLottie className="h-[64px]" />
                 <span className="rounded-full border border-slate-700/70 bg-slate-950/80 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-slate-300">
                   Operations Center
                 </span>
