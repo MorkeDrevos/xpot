@@ -1,53 +1,101 @@
 // components/XpotLogoLottie.tsx
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Lottie from 'lottie-react';
+
+// Bundled animation (NO fetch)
 import animationData from '@/app/animations/xpot_logo_loop.json';
 
-type Props = {
+type XpotLogoLottieProps = {
   className?: string;
+
+  // Backwards compatible sizing (your AdminClient uses these)
+  width?: number;
+  height?: number;
+
+  // Premium cadence
+  burstEveryMs?: number; // default 20000 (20s)
+
+  // Slow it down (premium, less “flashy”)
+  speed?: number; // default 0.85
+
+  // Stronger visibility on dark bg
+  glow?: boolean; // default true
 };
 
-export default function XpotLogoLottie({ className = '' }: Props) {
+export default function XpotLogoLottie({
+  className = '',
+  width = 220,
+  height = 64,
+  burstEveryMs = 20000,
+  speed = 0.85,
+  glow = true,
+}: XpotLogoLottieProps) {
   const lottieRef = useRef<any>(null);
+  const [hovered, setHovered] = useState(false);
 
+  // Remount only when size changes
+  const lottieKey = useMemo(() => `xpot-logo-${width}x${height}`, [width, height]);
+
+  const playBurst = () => {
+    const inst = lottieRef.current;
+    if (!inst) return;
+
+    // restart cleanly from frame 0
+    try {
+      inst.stop();
+      inst.goToAndPlay(0, true);
+    } catch {
+      // no-op (lottie instance differences)
+    }
+  };
+
+  // Auto burst every N ms (premium cadence)
   useEffect(() => {
-    if (!lottieRef.current) return;
+    // do NOT autoplay on mount (premium)
+    const id = setInterval(() => playBurst(), burstEveryMs);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [burstEveryMs, lottieKey]);
 
-    lottieRef.current.play();
-
-    const interval = setInterval(() => {
-      lottieRef.current?.goToAndPlay(0, true);
-    }, 20000); // premium cadence
-
-    return () => clearInterval(interval);
-  }, []);
+  // If user hovers, burst immediately
+  useEffect(() => {
+    if (hovered) playBurst();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hovered]);
 
   return (
     <div
-      className={`flex items-center ${className}`}
-      style={{
-        height: 64,        // 🔥 THIS is the key
-        width: 300,
-      }}
+      className={['relative select-none', className].join(' ')}
+      style={{ width, height, minWidth: width, minHeight: height }}
+      aria-label="XPOT"
+      role="img"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <Lottie
-        lottieRef={lottieRef}
-        animationData={animationData}
-        autoplay={false}
-        loop={false}
+      <div
+        className="absolute inset-0 pointer-events-none"
         style={{
-          width: '100%',
-          height: '100%',
-          transform: 'scale(1.35)',      // visual authority
+          transform: 'scale(1.08)',
           transformOrigin: 'left center',
-          filter: 'drop-shadow(0 0 12px rgba(120,180,255,0.35))', // contrast
+          filter: glow ? 'drop-shadow(0 0 14px rgba(120,180,255,0.28))' : undefined,
         }}
-        rendererSettings={{
-          preserveAspectRatio: 'xMidYMid meet',
-        }}
-      />
+      >
+        <Lottie
+          key={lottieKey}
+          lottieRef={lottieRef}
+          animationData={animationData as any}
+          autoplay={false}
+          loop={false}
+          style={{ width: '100%', height: '100%' }}
+          rendererSettings={{
+            preserveAspectRatio: 'xMidYMid meet',
+          }}
+          // slow = premium
+          speed={speed}
+        />
+      </div>
     </div>
   );
 }
