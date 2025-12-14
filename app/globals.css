@@ -252,3 +252,31 @@ body {
     background-position: 200% 50%;
   }
 }
+
+@keyframes xpotStarFlash {
+  0%, 92%, 100% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 0px rgba(56,189,248,0));
+    transform: scale(1);
+  }
+
+  /* first flash */
+  94% {
+    opacity: 1;
+    filter: drop-shadow(0 0 14px rgba(56,189,248,0.9));
+    transform: scale(1.04);
+  }
+
+  /* second flash */
+  96% {
+    opacity: 1;
+    filter: drop-shadow(0 0 18px rgba(56,189,248,1));
+    transform: scale(1.06);
+  }
+
+  98% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 6px rgba(56,189,248,0.35));
+    transform: scale(1.01);
+  }
+}
