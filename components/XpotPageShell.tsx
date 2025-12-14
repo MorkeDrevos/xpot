@@ -11,13 +11,15 @@ type XpotPageShellProps = {
 
   children: ReactNode;
 
-  maxWidthClassName?: string;
-  className?: string;
-  containerClassName?: string;
-  headerClassName?: string;
+  // Optional fine-tuning
+  maxWidthClassName?: string; // default: max-w-[1440px]
+  className?: string; // applied to outer wrapper
+  containerClassName?: string; // applied to inner container
+  headerClassName?: string; // applied to header block (title/subtitle/rightSlot)
 
-  showTopBar?: boolean;
-  topBarClassName?: string;
+  // Top bar controls
+  showTopBar?: boolean; // default true
+  topBarClassName?: string; // optional wrapper class
 };
 
 export default function XpotPageShell({
@@ -39,17 +41,16 @@ export default function XpotPageShell({
         className,
       ].join(' ')}
     >
-      {/* Fixed banner at top */}
       <PreLaunchBanner />
 
-      {/* Fixed top bar – sits directly under banner */}
+      {/* GLOBAL TOP BAR (TopBar itself is fixed; don't wrap in sticky) */}
       {showTopBar && (
-        <div className={['fixed inset-x-0 z-[60]', topBarClassName].join(' ')}>
+        <div className={topBarClassName}>
           <XpotTopBar />
         </div>
       )}
 
-      {/* Nebula background */}
+      {/* GLOBAL NEBULA BACKGROUND (fixed, always visible) */}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[#02020a]" />
       <div
         className="
@@ -63,12 +64,12 @@ export default function XpotPageShell({
       />
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
 
-      {/* CONTENT */}
+      {/* CONTENT CONTAINER */}
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
-          // ✅ precise spacing: banner + topbar + breathing room
-          'pt-[calc(var(--xpot-banner-h,56px)+104px+24px)] pb-6 sm:pb-8',
+          // Clear: banner (var) + topbar (112px) + breathing room
+          'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)] pb-6 sm:pb-8',
           maxWidthClassName,
           containerClassName,
         ].join(' ')}
@@ -76,22 +77,32 @@ export default function XpotPageShell({
         {(title || subtitle || rightSlot) && (
           <div
             className={[
-              'mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between',
+              // Premium header band
+              'mb-6 rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur',
+              'px-5 py-5 sm:px-7 sm:py-6',
+              // Layout: title left, rightSlot right (stacks on mobile)
+              'grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-center',
               headerClassName,
             ].join(' ')}
           >
             <div className="min-w-0">
               {title && (
-                <h1 className="text-xl font-semibold text-slate-50">
+                <h1 className="text-[26px] sm:text-[30px] font-semibold tracking-tight text-slate-50">
                   {title}
                 </h1>
               )}
               {subtitle && (
-                <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
+                <p className="mt-2 text-[14px] sm:text-[15px] text-slate-400">
+                  {subtitle}
+                </p>
               )}
             </div>
 
-            {rightSlot && <div className="shrink-0">{rightSlot}</div>}
+            {rightSlot && (
+              <div className="justify-self-start sm:justify-self-end">
+                {rightSlot}
+              </div>
+            )}
           </div>
         )}
 
