@@ -1,7 +1,7 @@
 // app/api/admin/_auth.ts
 import { NextResponse } from 'next/server';
 
-const ADMIN_HEADER = 'x-xpot-admin-token';
+export const ADMIN_HEADER = 'x-xpot-admin-key';
 
 function isFrozen() {
   // only server reads this (do NOT make it NEXT_PUBLIC)
