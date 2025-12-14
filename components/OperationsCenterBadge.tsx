@@ -39,23 +39,22 @@ export default function OperationsCenterBadge({
     <div className="flex w-full items-start justify-end sm:w-auto sm:items-center">
       <div
         className={[
-          // tighter height (was h-10) + tighter padding
-          'inline-flex h-9 items-center gap-3 rounded-full border px-4 backdrop-blur',
+          // shorter than before (was h-10). This lands ~36px tall.
+          'inline-flex h-9 items-center gap-2.5 rounded-full border px-3.5 pl-3 backdrop-blur',
           'shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_18px_60px_rgba(2,6,23,0.45)]',
           pillCls,
         ].join(' ')}
       >
-        {/* dot aligned nicely inside padding */}
         <span className={['h-2.5 w-2.5 rounded-full', dotCls].join(' ')} />
 
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2 leading-none">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
             {label}
           </span>
-          <span className="text-xs text-slate-400">{sub}</span>
+          <span className="text-[12px] text-slate-400">{sub}</span>
         </div>
 
-        <span className="mx-1 h-4 w-px bg-white/10" />
+        <span className="mx-1 h-3.5 w-px bg-white/10" />
 
         <span className="text-sm font-semibold tracking-tight text-slate-100">
           One protocol. <span className="text-slate-400">One identity.</span>{' '}
