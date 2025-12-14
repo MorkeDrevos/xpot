@@ -875,17 +875,11 @@ async function authedFetch(input: string, init?: RequestInit) {
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
 
-  return (
   <XpotPageShell
-    title="Operations Center"
-    subtitle="Control room for today's XPOT"
-    rightSlot={
-      <OperationsCenterBadge
-        live={true}
-        autoDraw={AUTO_DRAW_ENABLED}
-      />
-    }
-  >
+  title="Operations Center"
+  subtitle="Control room for today's XPOT"
+  rightSlot={<OperationsCenterBadge live={true} autoDraw={AUTO_DRAW_ENABLED} />}
+/>
       {/* Admin key band */}
       <section className="relative mt-5 rounded-3xl">
         <div className="relative rounded-3xl border border-slate-900/70 bg-gradient-to-r from-[#050816]/90 via-[#050816]/80 to-[#050816]/90 shadow-[0_22px_70px_rgba(15,23,42,0.85)]">
