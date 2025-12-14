@@ -382,7 +382,7 @@ export default function AdminPage() {
 
     const headers = new Headers(init?.headers || {});
     headers.set('Content-Type', 'application/json');
-    headers.set('x-xpot-admin-token', adminToken.trim());
+    headers.set('x-xpot-admin-key', adminToken.trim());
 
     const res = await fetch(input, {
       ...init,
