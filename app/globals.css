@@ -274,3 +274,45 @@ html, body {
     opacity: 0.55;
   }
 }
+
+/* Ops slogan – premium, calm, protocol-level */
+.xpot-ops-slogan {
+  max-width: 420px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(180, 210, 200, 0.75);
+  position: relative;
+  animation: xpot-ops-breathe 7s ease-in-out infinite;
+}
+
+/* Soft emerald underline glow */
+.xpot-ops-slogan::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -6px;
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(34, 197, 94, 0.9),
+    transparent
+  );
+  opacity: 0.8;
+}
+
+/* Slow, luxury opacity movement */
+@keyframes xpot-ops-breathe {
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
