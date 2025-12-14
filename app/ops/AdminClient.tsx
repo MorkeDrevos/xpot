@@ -302,6 +302,9 @@ export default function AdminPage() {
   const [winnersLoading, setWinnersLoading] = useState(true);
 
   const [isDevHost, setIsDevHost] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState<string | null>(null);
+  const [didAutoSeed, setDidAutoSeed] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -422,6 +425,44 @@ export default function AdminPage() {
       setUpcomingLoading(false);
     }
   }
+
+  async function handleSeedDemoData(force = false) {
+  setSeedMsg(null);
+
+  if (!adminToken) {
+    setSeedMsg('Admin key missing. Unlock admin first.');
+    return;
+  }
+
+  setIsSeeding(true);
+  try {
+    const url = force ? '/api/admin/dev-seed?force=1' : '/api/admin/dev-seed';
+    const data = await authedFetch(url, { method: 'POST' });
+
+    if ((data as any)?.skipped) {
+      setSeedMsg((data as any)?.message || 'Seed skipped (DB not empty).');
+    } else {
+      setSeedMsg('Seed complete. Reloading ops data...');
+    }
+
+    // refresh panels
+    const todayData = await authedFetch('/api/admin/today');
+    setTodayDraw((todayData as any).today ?? null);
+
+    const ticketsData = await authedFetch('/api/admin/tickets');
+    setTickets((ticketsData as any).tickets ?? []);
+
+    const winnersData = await authedFetch('/api/admin/winners');
+    setWinners((winnersData as any).winners ?? []);
+
+    await refreshUpcomingDrops();
+  } catch (err: any) {
+    console.error('[ADMIN] seed error', err);
+    setSeedMsg(err?.message || 'Seed failed');
+  } finally {
+    setIsSeeding(false);
+  }
+}
 
   // ── Manually create today’s draw (dev) ──────
   async function handleCreateTodayDraw() {
@@ -718,6 +759,39 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminToken]);
 
+  // ── Auto-seed when DB is empty (dev-only, once)
+useEffect(() => {
+  if (!isDevHost) return;
+  if (!adminToken) return;
+  if (didAutoSeed) return;
+
+  // Wait until initial loads are done, otherwise it can seed during the "empty while loading" window
+  if (todayLoading || ticketsLoading || winnersLoading || upcomingLoading) return;
+
+  const isEmpty =
+    !todayDraw &&
+    tickets.length === 0 &&
+    winners.length === 0 &&
+    upcomingDrops.length === 0;
+
+  if (!isEmpty) return;
+
+  setDidAutoSeed(true);
+  handleSeedDemoData(false);
+}, [
+  isDevHost,
+  adminToken,
+  didAutoSeed,
+  todayLoading,
+  ticketsLoading,
+  winnersLoading,
+  upcomingLoading,
+  todayDraw,
+  tickets.length,
+  winners.length,
+  upcomingDrops.length,
+]);
+
   // ── Main countdown (closesAt) ───────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -935,9 +1009,39 @@ export default function AdminPage() {
                   </button>
                 )}
               </div>
+              {isDevHost && tokenAccepted && (
+  <div className="flex gap-2 sm:mt-0">
+    <button
+      type="button"
+      onClick={() => handleSeedDemoData(false)}
+      disabled={isSeeding}
+      className={`${BTN_UTILITY} px-3 py-1.5 text-xs`}
+      title="Dev-only: seed demo draw, tickets, winners"
+    >
+      {isSeeding ? 'Seeding…' : 'Seed demo'}
+    </button>
+
+    <button
+      type="button"
+      onClick={() => handleSeedDemoData(true)}
+      disabled={isSeeding}
+      className={`${BTN_DANGER} px-3 py-1.5 text-xs`}
+      title="Dev-only: force seed even if DB is not empty"
+    >
+      Force seed
+    </button>
+  </div>
+)}
             </form>
           </div>
         </div>
+
+      {seedMsg && (
+  <p className="mt-2 px-6 text-xs text-slate-400">
+    {seedMsg}
+  </p>
+)}
+
       </section>
 
       {/* Main grid */}
@@ -1444,21 +1548,14 @@ export default function AdminPage() {
         <div className="space-y-4">
           {/* Winners */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-100">
-                  Recent XPOT winners
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Internal log of executed rewards, payouts and winner tickets.
-                </p>
-              </div>
-
-              <Badge tone="emerald">
-                <Sparkles className="h-3.5 w-3.5" />
-                Live
-              </Badge>
-            </div>
+            <div>
+  <p className="text-sm font-semibold text-slate-100">
+    Recent XPOT winners
+  </p>
+  <p className="mt-1 text-xs text-slate-400">
+    Internal log of executed rewards, payouts and winner tickets.
+  </p>
+</div>
 
             {markPaidError && (
               <p className="mt-3 text-xs text-amber-300">{markPaidError}</p>
