@@ -1,9 +1,8 @@
-// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { ReactNode } from 'react';
+import XpotLogo from '@/components/XpotLogo';
 
 type XpotTopBarProps = {
   logoHref?: string;
@@ -25,45 +24,43 @@ export default function XpotTopBar({
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
-  // Overlap by 1px to kill any seam/gap forever (even if banner height changes)
+  // Kill banner seam forever
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   return (
     <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
-      {/* Bar */}
+      {/* BAR */}
       <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
-        {/* IMPORTANT: match PageShell container padding exactly */}
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
           <div className="flex min-h-[124px] items-center justify-between gap-6">
-            {/* Left */}
+            {/* LEFT */}
             <div className="flex min-w-0 items-center gap-4">
-              <Link href={logoHref} className="flex shrink-0 items-center gap-3">
-                <Image
-                  src="/img/xpot-logo-light.png"
-                  alt="XPOT"
+              <Link href={logoHref} className="flex shrink-0 items-center">
+                {/* ✅ ANIMATED LOGO (this was missing) */}
+                <XpotLogo
+                  variant="animated"
                   width={460}
-                  height={132}
-                  priority
-                  className="h-[118px] min-h-[118px] w-auto object-contain xpot-starflash"
+                  height={118}
+                  className="min-h-[118px]"
                 />
               </Link>
 
-              {/* Pill + optional slogan */}
+              {/* PROTOCOL PILL */}
               <div className="hidden min-w-0 items-center gap-3 sm:flex">
-                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
+                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-[0.18em] text-slate-300">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
                   <span className="truncate opacity-85">{pillText}</span>
                 </span>
 
-                {sloganRight ? (
-                  <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 lg:inline-flex">
+                {sloganRight && (
+                  <span className="hidden lg:inline-flex items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200">
                     {sloganRight}
                   </span>
-                ) : null}
+                )}
               </div>
             </div>
 
-            {/* Right */}
+            {/* RIGHT */}
             <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
               {rightSlot ?? (
                 <>
@@ -86,7 +83,7 @@ export default function XpotTopBar({
         </div>
       </div>
 
-      {/* Premium line (thin, fades before edges) */}
+      {/* PREMIUM LINE */}
       <div className="relative h-[1px] w-full overflow-hidden">
         <div
           className="
@@ -107,7 +104,6 @@ export default function XpotTopBar({
         />
       </div>
 
-      {/* local keyframes (no globals needed) */}
       <style jsx>{`
         @keyframes xpotLineSweep {
           from {
@@ -116,49 +112,6 @@ export default function XpotTopBar({
           to {
             left: 120%;
           }
-        }
-
-        /*
-          Star flash: we can't target a single star inside a static PNG,
-          so this is a very subtle "premium pulse" on the logo as a whole.
-          Two quick pulses every ~20s (similar to the vibe you described),
-          with long idle time to stay premium.
-        */
-        @keyframes xpotStarFlash {
-          0% {
-            filter: brightness(1) saturate(1);
-            transform: translateZ(0);
-          }
-          8% {
-            filter: brightness(1) saturate(1);
-          }
-
-          /* Pulse 1 */
-          10% {
-            filter: brightness(1.18) saturate(1.08)
-              drop-shadow(0 0 10px rgba(255, 255, 255, 0.22));
-          }
-          12% {
-            filter: brightness(1) saturate(1);
-          }
-
-          /* Pulse 2 (shortly after) */
-          18% {
-            filter: brightness(1.22) saturate(1.1)
-              drop-shadow(0 0 12px rgba(255, 255, 255, 0.26));
-          }
-          20% {
-            filter: brightness(1) saturate(1);
-          }
-
-          100% {
-            filter: brightness(1) saturate(1);
-          }
-        }
-
-        .xpot-starflash {
-          animation: xpotStarFlash 20s ease-in-out infinite;
-          will-change: filter;
         }
       `}</style>
     </header>
