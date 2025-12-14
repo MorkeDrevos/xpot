@@ -39,16 +39,16 @@ export default function OperationsCenterBadge({
     <div className="flex w-full items-start justify-end sm:w-auto sm:items-center">
       <div
         className={[
-          'inline-flex h-10 items-center gap-3 rounded-full border px-4 backdrop-blur',
+          // tighter height (was h-10) + tighter padding
+          'inline-flex h-9 items-center gap-3 rounded-full border px-4 backdrop-blur',
           'shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_18px_60px_rgba(2,6,23,0.45)]',
-          'max-w-full',
           pillCls,
         ].join(' ')}
       >
-        {/* Dot aligned correctly (no weird extra left padding) */}
+        {/* dot aligned nicely inside padding */}
         <span className={['h-2.5 w-2.5 rounded-full', dotCls].join(' ')} />
 
-        <div className="flex items-baseline gap-2 whitespace-nowrap">
+        <div className="flex items-baseline gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
             {label}
           </span>
@@ -57,7 +57,7 @@ export default function OperationsCenterBadge({
 
         <span className="mx-1 h-4 w-px bg-white/10" />
 
-        <span className="text-sm font-semibold tracking-tight text-slate-100 whitespace-nowrap">
+        <span className="text-sm font-semibold tracking-tight text-slate-100">
           One protocol. <span className="text-slate-400">One identity.</span>{' '}
           <span className="text-slate-100">One daily XPOT draw.</span>
         </span>
