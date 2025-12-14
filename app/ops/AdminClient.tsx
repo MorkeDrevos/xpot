@@ -873,10 +873,19 @@ async function authedFetch(input: string, init?: RequestInit) {
   }
   return (
   <XpotPageShell
-    title="Operations Center"
-    subtitle="Control room for today’s XPOT"
-    className="pt-12"
-  >
+  title="Operations Center"
+  subtitle="Control room for today's XPOT"
+  rightSlot={
+    <div className="hidden md:flex items-center justify-end">
+      <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[12px] font-semibold tracking-wide text-slate-200 shadow-sm backdrop-blur">
+        <span className="text-slate-300">One protocol.</span>{' '}
+        <span className="text-slate-200">One identity.</span>{' '}
+        <span className="text-slate-300">One daily</span>{' '}
+        <span className="text-white">XPOT draw.</span>
+      </div>
+    </div>
+  }
+>
 
       {/* Admin key band */}
       <section className="relative mt-5 rounded-3xl">
