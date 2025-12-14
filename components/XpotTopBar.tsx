@@ -38,13 +38,16 @@ export default function XpotTopBar({
             <div className="flex min-w-0 items-center gap-4">
               <Link href={logoHref} className="flex items-center gap-3 shrink-0">
                 <Image
-                  src="/img/xpot-logo-light.png"
-                  alt="XPOT"
-                  width={420}
-                  height={120}
-                  priority
-                  className="h-[110px] min-h-[110px] w-auto object-contain"
-                />
+  src="/img/xpot-logo-light.png"
+  alt="XPOT"
+- width={420}
+- height={120}
+- className="h-[110px] min-h-[110px] w-auto object-contain"
++ width={460}
++ height={132}
++ className="h-[118px] min-h-[118px] w-auto object-contain"
+  priority
+/>
               </Link>
 
               {/* Pill + optional slogan */}
