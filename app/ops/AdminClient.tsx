@@ -7,6 +7,7 @@ import Link from 'next/link';
 import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
+import OperationsCenterBadge from '@/components/OperationsCenterBadge';
 import { XPOT_POOL_SIZE } from '@/lib/xpot';
 
 import {
@@ -873,19 +874,10 @@ async function authedFetch(input: string, init?: RequestInit) {
   }
   return (
   <XpotPageShell
-  title="Operations Center"
-  subtitle="Control room for today's XPOT"
- rightSlot={
-  <div className="flex w-full items-start justify-start sm:w-auto sm:items-center sm:justify-end">
-    <div className="xpot-ops-badge">
-      <span className="xpot-ops-badge-dot" />
-      <span className="xpot-ops-badge-text">
-        <span className="muted">One protocol.</span>{' '}
-        <span className="mid">One identity.</span>{' '}
-        <span className="strong">One daily XPOT draw.</span>
-      </span>
-    </div>
-  </div>
+    title="Operations Center"
+    subtitle="Control room for today's XPOT"
+    rightSlot={<OperationsCenterBadge />}
+  >
 }
 >
 
