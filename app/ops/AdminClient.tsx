@@ -775,13 +775,12 @@ export default function AdminPage() {
         if (!cancelled) setWinnersLoading(false);
       }
 
-      // ── Ops mode ──────────────────────
-      try {
-        await loadOpsMode();
-      } catch (err: any) {
-        console.error('[ADMIN] /ops-mode error', err);
-        // don’t hard-fail the page if mode route is missing
-      }
+      // TEMP: ops-mode paused until DB is fixed
+// try {
+//   await loadOpsMode();
+// } catch (err: any) {
+//   console.error('[ADMIN] /ops-mode error', err);
+// }
 
       // ── Upcoming ──────────────────────
       setUpcomingLoading(true);
