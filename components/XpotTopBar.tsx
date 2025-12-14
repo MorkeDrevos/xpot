@@ -24,9 +24,8 @@ export default function XpotTopBar({
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
-  // Overlap by 1px to kill any seam/gap forever.
-  // Fallback keeps it from hiding if CSS var missing.
-  const top = hasBanner ? 'calc(var(--xpot-banner-h, 56px) - 1px)' : '0px';
+  // Overlap by 1px to kill any seam/gap forever (even if banner height changes)
+  const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   return (
     <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
@@ -34,18 +33,17 @@ export default function XpotTopBar({
       <div className="bg-black/70 backdrop-blur-md border-b border-white/5">
         {/* IMPORTANT: match PageShell container padding exactly */}
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
-          {/* Tall enough for 105px logo */}
-          <div className="flex min-h-[120px] items-center justify-between gap-6">
+          <div className="flex min-h-[124px] items-center justify-between gap-6">
             {/* Left */}
             <div className="flex min-w-0 items-center gap-4">
               <Link href={logoHref} className="flex items-center gap-3 shrink-0">
                 <Image
                   src="/img/xpot-logo-light.png"
                   alt="XPOT"
-                  width={380}
-                  height={105}
+                  width={420}
+                  height={120}
                   priority
-                  className="h-[105px] min-h-[105px] w-auto object-contain"
+                  className="h-[110px] min-h-[110px] w-auto object-contain"
                 />
               </Link>
 
@@ -108,7 +106,6 @@ export default function XpotTopBar({
         />
       </div>
 
-      {/* local keyframes (no globals needed) */}
       <style jsx>{`
         @keyframes xpotLineSweep {
           from {
