@@ -50,10 +50,6 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────
-         BACKGROUND STACK (bottom → top)
-      ───────────────────────────────────────────── */}
-
       {/* Base solid */}
       <div className="pointer-events-none fixed inset-0 -z-30 bg-[#02020a]" />
 
@@ -69,7 +65,7 @@ export default function XpotPageShell({
         "
       />
 
-      {/* ⭐ Bright starfield (tiled so you actually see it) */}
+      {/* ⭐ Bright starfield */}
       <div
         aria-hidden
         className="
@@ -97,9 +93,7 @@ export default function XpotPageShell({
       {/* Vignette / depth mask */}
       <div className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
 
-      {/* ─────────────────────────────────────────────
-         CONTENT CONTAINER
-      ───────────────────────────────────────────── */}
+      {/* CONTENT CONTAINER */}
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
@@ -131,18 +125,20 @@ export default function XpotPageShell({
             </div>
 
             {rightSlot && (
-  <div
-    className="
-      w-full
-      justify-self-stretch
-      sm:w-auto sm:justify-self-end
-    "
-  >
-    <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-      {rightSlot}
-    </div>
-  </div>
-)}
+              <div
+                className="
+                  w-full
+                  justify-self-stretch
+                  sm:w-auto sm:justify-self-end
+                "
+              >
+                <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+                  {rightSlot}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {children}
       </div>
