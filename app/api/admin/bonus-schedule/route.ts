@@ -20,11 +20,18 @@ function todayUtcStart(d = new Date()) {
   );
 }
 
+const ALLOWED_MINUTES = [5, 15, 30, 60] as const;
+
 type Body = {
   amountXpot?: number | string;
   label?: string;
-  minutesFromNow?: number | string; // optional
-  scheduledAt?: string; // optional ISO, overrides minutesFromNow if present
+
+  // legacy + UI variants (support both)
+  minutesFromNow?: number | string;
+  delayMinutes?: number | string;
+
+  // optional ISO, overrides minutes values if present
+  scheduledAt?: string;
 };
 
 export async function GET(req: NextRequest) {
@@ -32,7 +39,6 @@ export async function GET(req: NextRequest) {
   if (denied) return denied;
 
   const drawDate = todayUtcStart();
-
   const draw = await prisma.draw.findUnique({ where: { drawDate } });
 
   if (!draw) {
@@ -78,12 +84,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const label =
-    (body.label ?? '').toString().trim() || 'Bonus XPOT';
+  const label = (body.label ?? '').toString().trim() || 'Bonus XPOT';
 
   // Decide scheduled time
-  let scheduledAt: Date | null = null;
+  let scheduledAt: Date;
 
+  // 1) explicit scheduledAt wins
   if (body.scheduledAt) {
     const d = new Date(body.scheduledAt);
     if (Number.isNaN(d.getTime())) {
@@ -94,14 +100,36 @@ export async function POST(req: NextRequest) {
     }
     scheduledAt = d;
   } else {
-    const mins = Number(body.minutesFromNow ?? 15);
-    const safeMins = Number.isFinite(mins) ? Math.max(1, Math.min(24 * 60, mins)) : 15;
-    scheduledAt = new Date(Date.now() + safeMins * 60 * 1000);
+    // 2) accept delayMinutes (UI) OR minutesFromNow (legacy)
+    const rawMins =
+      body.delayMinutes ?? body.minutesFromNow;
+
+    const mins = Number(rawMins);
+
+    if (!Number.isFinite(mins)) {
+      return NextResponse.json(
+        { ok: false, error: 'INVALID_DELAY_MINUTES' },
+        { status: 400 },
+      );
+    }
+
+    // ✅ hard allowlist, no silent fallback to 15
+    if (!ALLOWED_MINUTES.includes(mins as any)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `INVALID_DELAY_MINUTES_ALLOWED_${ALLOWED_MINUTES.join('_')}`,
+        },
+        { status: 400 },
+      );
+    }
+
+    scheduledAt = new Date(Date.now() + mins * 60 * 1000);
   }
 
   const drawDate = todayUtcStart();
 
-  // Ensure today's draw exists (and matches your Ops page concept of "today")
+  // Ensure today's draw exists
   const draw = await prisma.draw.upsert({
     where: { drawDate },
     update: {},
@@ -112,7 +140,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Write REAL DB row and return it (this is what your UI needs)
   const drop = await prisma.bonusDrop.create({
     data: {
       drawId: draw.id,
