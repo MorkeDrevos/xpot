@@ -873,22 +873,31 @@ async function authedFetch(input: string, init?: RequestInit) {
   }
   return (
   <XpotPageShell
-    title="Operations Center"
-    subtitle="Control room for today’s XPOT"
-    showHeader
-    rightSlot={
-      <div className="flex items-center justify-end">
-        <div className="xpot-slogan-pill">
-          <span className="xpot-slogan-dot" />
-          <span className="xpot-slogan-text">
-            <span className="muted">One protocol.</span>{' '}
-            <span className="mid">One identity.</span>{' '}
-            <span className="strong">One daily XPOT draw.</span>
-          </span>
-        </div>
+  title="Operations Center"
+  subtitle="Control room for today's XPOT"
+  rightSlot={
+    <div className="flex items-center justify-end">
+      <div
+        className="
+          inline-flex items-center gap-2
+          rounded-full
+          border border-emerald-400/20
+          bg-emerald-400/10
+          px-4 py-2
+          text-[11px]
+          font-semibold
+          tracking-wide
+          text-emerald-200
+          backdrop-blur
+          shadow-[0_0_20px_rgba(16,185,129,0.12)]
+        "
+      >
+        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+        One protocol. One identity. One daily XPOT draw.
       </div>
-    }
-  >
+    </div>
+  }
+>
 
       {/* Admin key band */}
       <section className="relative mt-5 rounded-3xl">
