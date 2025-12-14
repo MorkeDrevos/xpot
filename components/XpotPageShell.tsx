@@ -131,7 +131,7 @@ export default function XpotPageShell({
             </div>
 
             {rightSlot && (
-              <div className="justify-self-start sm:justify-self-end">
+              <div className="flex w-full sm:w-auto sm:flex-none sm:justify-end">
                 {rightSlot}
               </div>
             )}
