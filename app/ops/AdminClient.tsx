@@ -1548,23 +1548,14 @@ useEffect(() => {
         <div className="space-y-4">
           {/* Winners */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-100">
-                  Recent XPOT winners
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Internal log of executed rewards, payouts and winner tickets.
-                </p>
-              </div>
-
-              <div className="ml-[-8px] inline-block">
-  <Badge tone="emerald">
-    <Sparkles className="h-3.5 w-3.5" />
-    Live
-  </Badge>
+            <div>
+  <p className="text-sm font-semibold text-slate-100">
+    Recent XPOT winners
+  </p>
+  <p className="mt-1 text-xs text-slate-400">
+    Internal log of executed rewards, payouts and winner tickets.
+  </p>
 </div>
-            </div>
 
             {markPaidError && (
               <p className="mt-3 text-xs text-amber-300">{markPaidError}</p>
