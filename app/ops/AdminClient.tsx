@@ -1,4 +1,4 @@
-// app/admin/AdminClient.tsx
+// app/ops/AdminClient.tsx
 'use client';
 
 import { useEffect, useMemo, useState, FormEvent } from 'react';
