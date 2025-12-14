@@ -1,3 +1,4 @@
+// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -24,43 +25,63 @@ export default function XpotTopBar({
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
-  // Kill banner seam forever
+  // Overlap by 1px to kill any seam/gap forever (even if banner height changes)
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   return (
     <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
-      {/* BAR */}
+      {/* Bar */}
       <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
+        {/* IMPORTANT: match PageShell container padding exactly */}
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
           <div className="flex min-h-[124px] items-center justify-between gap-6">
-            {/* LEFT */}
+            {/* Left */}
             <div className="flex min-w-0 items-center gap-4">
-              <Link href={logoHref} className="flex shrink-0 items-center">
-                {/* ✅ ANIMATED LOGO (this was missing) */}
+              <Link href={logoHref} className="flex shrink-0 items-center gap-3">
+                {/* IMPORTANT:
+                    Use the already-working animated logo (Lottie).
+                    Do NOT animate next/image - that’s why it looked broken. */}
                 <XpotLogo
                   variant="animated"
                   width={460}
                   height={118}
-                  className="min-h-[118px]"
+                  className="h-[118px] w-auto"
                 />
               </Link>
 
-              {/* PROTOCOL PILL */}
+              {/* Pill + optional slogan */}
               <div className="hidden min-w-0 items-center gap-3 sm:flex">
-                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-[0.18em] text-slate-300">
+                <span
+                  className="
+                    inline-flex min-w-0 items-center gap-2
+                    rounded-full border border-white/10 bg-white/[0.03]
+                    px-4 py-1
+                    text-[11px] font-semibold
+                    tracking-[0.18em] uppercase
+                    text-slate-300
+                  "
+                >
                   <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
-                  <span className="truncate opacity-85">{pillText}</span>
+                  <span className="truncate opacity-80">{pillText}</span>
                 </span>
 
-                {sloganRight && (
-                  <span className="hidden lg:inline-flex items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200">
+                {sloganRight ? (
+                  <span
+                    className="
+                      hidden lg:inline-flex items-center
+                      rounded-full border border-white/10 bg-white/[0.035]
+                      px-4 py-1
+                      text-[11px] font-semibold tracking-tight
+                      text-slate-200/90
+                    "
+                  >
                     {sloganRight}
                   </span>
-                )}
+                ) : null}
               </div>
             </div>
 
-            {/* RIGHT */}
+            {/* Right */}
             <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
               {rightSlot ?? (
                 <>
@@ -83,7 +104,7 @@ export default function XpotTopBar({
         </div>
       </div>
 
-      {/* PREMIUM LINE */}
+      {/* Premium line (thin, fades before edges) */}
       <div className="relative h-[1px] w-full overflow-hidden">
         <div
           className="
@@ -104,6 +125,7 @@ export default function XpotTopBar({
         />
       </div>
 
+      {/* local keyframes (no globals needed) */}
       <style jsx>{`
         @keyframes xpotLineSweep {
           from {
