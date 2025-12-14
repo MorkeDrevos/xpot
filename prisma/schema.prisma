@@ -6,8 +6,8 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")  // prisma+postgres (Accelerate) for app runtime
-  directUrl = env("DIRECT_URL")    // direct postgres://... for prisma CLI (db push/migrate)
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─────────────────────────────────────────────
@@ -46,22 +46,22 @@ enum OpsMode {
 // Single-row config table (stores ops mode etc)
 model OpsConfig {
   // enforce exactly one row via stable primary key
-  singleton String   @id @default("singleton")
+  singleton String  @id @default("singleton")
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  mode       OpsMode  @default(MANUAL)
+  mode      OpsMode @default(MANUAL)
 }
 
 // User (optional identity, NOT tied to tickets)
 model User {
-  id         String   @id @default(cuid())
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  clerkId    String?  @unique
-  xUserId    String?  @unique
-  xHandle    String?  @unique
+  clerkId    String? @unique
+  xUserId    String? @unique
+  xHandle    String? @unique
   xName      String?
   xAvatarUrl String?
 
@@ -111,11 +111,11 @@ model Ticket {
 
   code          String       @unique
 
-  // Ticket must always have an owning wallet
+  // ✅ Ticket must always have an owning wallet
   walletId      String
   wallet        Wallet       @relation(fields: [walletId], references: [id])
 
-  // Snapshot of wallet address at creation time
+  // ✅ Snapshot of wallet address at creation time
   walletAddress String
 
   status        TicketStatus @default(IN_DRAW)
@@ -130,7 +130,7 @@ model Ticket {
   @@index([status])
   @@index([walletAddress])
 
-  // Prevent duplicate tickets per wallet per draw
+  // ✅ Prevent duplicate tickets per wallet per draw
   @@unique([walletId, drawId])
 }
 
@@ -157,7 +157,7 @@ model Winner {
   isPaidOut     Boolean    @default(false)
   txUrl         String?
 
-  // Never null
+  // ✅ Never null
   kind          WinnerKind @default(MAIN)
   label         String?
 
