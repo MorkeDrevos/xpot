@@ -42,14 +42,13 @@ enum OpsMode {
 // Models
 // ─────────────────────────────────────────────
 
-// Single-row config table (stores Ops mode etc)
+// Single-row config table (stores ops mode etc)
 model OpsConfig {
-  id        String   @id @default(cuid())
+  // enforce exactly one row via stable primary key
+  singleton String  @id @default("singleton")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // enforce exactly one row via stable unique key
-  singleton String  @unique @default("singleton")
 
   mode      OpsMode @default(MANUAL)
 }
