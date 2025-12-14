@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─────────────────────────────────────────────
@@ -93,11 +94,11 @@ model Ticket {
 
   code          String       @unique
 
-  // ✅ Ticket must always have an owning wallet
+  // Ticket must always have an owning wallet
   walletId      String
   wallet        Wallet       @relation(fields: [walletId], references: [id])
 
-  // ✅ Snapshot of wallet address at creation time
+  // Snapshot of wallet address at creation time
   walletAddress String
 
   status        TicketStatus @default(IN_DRAW)
@@ -115,17 +116,17 @@ model Ticket {
 
 // Log of main + bonus winners
 model Winner {
-  id           String      @id @default(cuid())
-  createdAt    DateTime    @default(now())
+  id            String      @id @default(cuid())
+  createdAt     DateTime    @default(now())
 
-  drawId       String
-  draw         Draw        @relation(fields: [drawId], references: [id])
+  drawId        String
+  draw          Draw        @relation(fields: [drawId], references: [id])
 
-  ticketId     String
-  ticket       Ticket      @relation(fields: [ticketId], references: [id])
+  ticketId      String
+  ticket        Ticket      @relation(fields: [ticketId], references: [id])
 
   // Optional extra timestamp (you already have createdAt)
-  date         DateTime    @default(now())
+  date          DateTime    @default(now())
 
   // Snapshots (keep them - makes rendering fast and stable)
   ticketCode    String
@@ -136,7 +137,7 @@ model Winner {
   isPaidOut     Boolean     @default(false)
   txUrl         String?
 
-  // ✅ Never null
+  // Never null
   kind          WinnerKind  @default(MAIN)
   label         String?
 
