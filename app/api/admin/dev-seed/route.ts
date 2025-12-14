@@ -6,29 +6,22 @@ import { requireAdmin } from '@/app/api/admin/_auth';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// ─────────────────────────────────────────────
-// Dev-only gate
-// ─────────────────────────────────────────────
 function isDevRequest(req: Request) {
   const host = (req.headers.get('host') || '').toLowerCase();
-  const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase(); // production | preview | development
-
+  const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase(); // 'production' | 'preview' | 'development'
   // Hard block production
   if (vercelEnv === 'production') return false;
-
   // Allow dev subdomain, localhost, or preview
-  if (host.startsWith('dev.') || host.includes('localhost') || vercelEnv === 'preview')
-    return true;
-
-  // Non-prod but unknown host: still allow (you can tighten later)
-  return true;
+  if (host.startsWith('dev.') || host.includes('localhost') || vercelEnv === 'preview') return true;
+  return true; // permissive for non-prod
 }
 
-// ─────────────────────────────────────────────
-// Random helpers
-// ─────────────────────────────────────────────
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pick<T>(arr: T[]) {
+  return arr[randInt(0, arr.length - 1)];
 }
 
 function randomBase58(len: number) {
@@ -39,7 +32,6 @@ function randomBase58(len: number) {
 }
 
 function fakeWalletAddress() {
-  // Solana-ish base58 length
   return randomBase58(44);
 }
 
@@ -52,61 +44,61 @@ function isoDayKey(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-function startOfUtcDay(d = new Date()) {
+function startOfUtcDay(d: Date) {
   const yyyyMmDd = isoDayKey(d);
   return new Date(`${yyyyMmDd}T00:00:00.000Z`);
 }
 
-// Stable-ish fake X avatars (any URL works)
-function fakeAvatarUrl(handle: string) {
-  // Placeholder avatar service
-  return `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(handle)}`;
+function addDays(d: Date, days: number) {
+  const x = new Date(d);
+  x.setUTCDate(x.getUTCDate() + days);
+  return x;
 }
 
-function pick<T>(arr: T[]) {
-  return arr[randInt(0, arr.length - 1)];
+function avatarFromHandle(handle: string) {
+  // simple deterministic placeholder avatar (not calling external services)
+  const n = handle.length * 17;
+  return `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(handle)}&radius=50&backgroundType=gradientLinear&size=96&b=${n}`;
 }
 
-function shuffle<T>(arr: T[]) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = randInt(0, i);
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+const HANDLE_POOL = [
+  'XPOTMaxi',
+  'CandleChaser',
+  'LatencyLord',
+  'AlphaSmith',
+  'ChartHermit',
+  'LoopMode',
+  'SolanaSignals',
+  'BlockByBlock',
+  'FlowStateTrader',
+  'HypeEngineer',
+  'DeWala_222222',
+  'CryptoNox',
+  'NebulaNomad',
+  'DiamondHandsHQ',
+  'WalletWhisperer',
+  'MemeMechanic',
+  'OrderbookOwl',
+  'ArcadeApe',
+  'MintMuse',
+  'YieldYeti',
+  'GaslessGandalf',
+  'SatoshiSailor',
+  'DriftDegen',
+  'RaydiumRunner',
+  'JupiterJockey',
+  'TxTrailblazer',
+  'PhantomPilot',
+  'SwapSensei',
+  'PnlPirate',
+  'StakingStoic',
+  'RugRadar',
+  'LiquidityLlama',
+  'MoonMath',
+  'BullishBard',
+  'BearishBouncer',
+];
 
-// ─────────────────────────────────────────────
-// “More realism” knobs
-// ─────────────────────────────────────────────
-// 3 draws: day-2 completed, day-1 completed, today open
-const DRAWS_TO_CREATE = 3;
-
-// Total wallet pool (some repeat entrants)
-const WALLET_POOL_SIZE = 140;
-
-// Users (X identity) to attach to some wallets
-const USER_COUNT = 45;
-
-// Tickets per draw (bigger + realistic)
-const TICKETS_PER_DRAW = [60, 70, 90]; // day-2, day-1, today
-
-// Winners per completed draw
-const MAIN_WINNERS_PER_COMPLETED_DRAW = 1;
-const BONUS_WINNERS_PER_COMPLETED_DRAW = 3;
-
-// Bonus drops for today
-const BONUS_DROPS_TODAY = 8;
-
-// Ticket status mix for “today” (open draw)
-const TODAY_STATUS_DIST: Array<{ status: 'IN_DRAW' | 'EXPIRED' | 'NOT_PICKED'; weight: number }> =
-  [
-    { status: 'IN_DRAW', weight: 78 },
-    { status: 'EXPIRED', weight: 7 },
-    { status: 'NOT_PICKED', weight: 15 },
-  ];
-
-// ─────────────────────────────────────────────
 export async function POST(req: Request) {
   const denied = requireAdmin(req);
   if (denied) return denied;
@@ -121,330 +113,270 @@ export async function POST(req: Request) {
   const url = new URL(req.url);
   const force = url.searchParams.get('force') === '1';
 
-  try {
-    // Detect “empty-ish”
-    const [drawCount, ticketCount, walletCount, userCount, winnerCount, bonusCount] =
-      await Promise.all([
-        prisma.draw.count(),
-        prisma.ticket.count(),
-        prisma.wallet.count(),
-        prisma.user.count(),
-        prisma.winner.count(),
-        prisma.bonusDrop.count(),
-      ]);
+  // If DB is not empty, "Seed demo" should skip. "Force seed" will rebuild demo days.
+  const [drawCount, ticketCount, walletCount, userCount, winnerCount, bonusCount] = await Promise.all([
+    prisma.draw.count(),
+    prisma.ticket.count(),
+    prisma.wallet.count(),
+    prisma.user.count(),
+    prisma.winner.count(),
+    prisma.bonusDrop.count(),
+  ]);
 
-    const isEmpty =
-      drawCount === 0 &&
-      ticketCount === 0 &&
-      walletCount === 0 &&
-      userCount === 0 &&
-      winnerCount === 0 &&
-      bonusCount === 0;
+  const looksEmpty =
+    drawCount === 0 &&
+    ticketCount === 0 &&
+    walletCount === 0 &&
+    userCount === 0 &&
+    winnerCount === 0 &&
+    bonusCount === 0;
 
-    if (!force && !isEmpty) {
-      return NextResponse.json({
-        ok: true,
-        skipped: true,
-        message: 'DB is not empty - skipping seed (use ?force=1 to override).',
-        counts: { drawCount, ticketCount, walletCount, userCount, winnerCount, bonusCount },
-      });
+  if (!force && !looksEmpty) {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      message: 'DB is not empty - skipping seed (use ?force=1 to override).',
+      counts: { drawCount, ticketCount, walletCount, userCount, winnerCount, bonusCount },
+    });
+  }
+
+  // Demo plan
+  const now = new Date();
+  const dayMinus2 = startOfUtcDay(addDays(now, -2));
+  const dayMinus1 = startOfUtcDay(addDays(now, -1));
+  const dayToday = startOfUtcDay(now);
+
+  const demoDays = [dayMinus2, dayMinus1, dayToday];
+
+  // Force mode: wipe ONLY our 3 demo days (safe-ish for dev)
+  if (force) {
+    const drawsToWipe = await prisma.draw.findMany({
+      where: { drawDate: { in: demoDays } },
+      select: { id: true },
+    });
+    const drawIds = drawsToWipe.map((d) => d.id);
+
+    if (drawIds.length) {
+      // order matters due to relations
+      await prisma.winner.deleteMany({ where: { drawId: { in: drawIds } } });
+      await prisma.bonusDrop.deleteMany({ where: { drawId: { in: drawIds } } });
+      await prisma.ticket.deleteMany({ where: { drawId: { in: drawIds } } });
+      await prisma.draw.deleteMany({ where: { id: { in: drawIds } } });
     }
+    // Note: we do NOT delete wallets/users globally (keeps some continuity)
+  }
 
-    // Build draw dates: day-2, day-1, today
-    const today = startOfUtcDay(new Date());
-    const day1 = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-    const day2 = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000);
-    const drawDays = [day2, day1, today].slice(-DRAWS_TO_CREATE);
+  // Ensure users + wallets exist (reused across days)
+  const USERS_TARGET = 35;
+  const WALLETS_TARGET = 60;
 
-    // Ensure draws exist (by unique drawDate)
-    const draws = [];
-    for (let i = 0; i < drawDays.length; i++) {
-      const drawDate = drawDays[i];
+  // Create users
+  const existingUsers = await prisma.user.findMany({ take: USERS_TARGET });
+  const users: { id: string; xHandle?: string | null }[] = [...existingUsers];
 
-      const existing = await prisma.draw.findUnique({
-        where: { drawDate },
-      });
+  while (users.length < USERS_TARGET) {
+    const handleBase = pick(HANDLE_POOL);
+    const handle = `${handleBase}${randInt(1, 999)}`;
+    const created = await prisma.user.create({
+      data: {
+        xHandle: handle,
+        xName: handleBase,
+        xAvatarUrl: avatarFromHandle(handle),
+      },
+      select: { id: true, xHandle: true },
+    });
+    users.push(created);
+  }
 
-      if (existing) {
-        draws.push(existing);
-        continue;
-      }
+  // Create wallets (some linked to users)
+  const existingWallets = await prisma.wallet.findMany({ take: WALLETS_TARGET });
+  const wallets: { id: string; address: string; userId: string | null }[] = [...existingWallets];
 
-      const isToday = isoDayKey(drawDate) === isoDayKey(today);
+  while (wallets.length < WALLETS_TARGET) {
+    const address = fakeWalletAddress();
+    const shouldLinkUser = Math.random() < 0.6; // 60% linked to a user
+    const user = shouldLinkUser ? pick(users) : null;
 
-      const closesAt = isToday
-        ? new Date(Date.now() + 60 * 60 * 1000) // +1h for today
-        : new Date(drawDate.getTime() + 22 * 60 * 60 * 1000); // historical closesAt
+    const created = await prisma.wallet.create({
+      data: {
+        address,
+        userId: user?.id ?? null,
+      },
+      select: { id: true, address: true, userId: true },
+    });
+    wallets.push(created);
+  }
 
+  // Create draws
+  const draws = await Promise.all(
+    demoDays.map(async (drawDate) => {
+      const isToday = isoDayKey(drawDate) === isoDayKey(dayToday);
+      const closesAt = new Date(drawDate.getTime() + (isToday ? 60 * 60 * 1000 : 30 * 60 * 1000)); // today closes +1h, past +30m
       const status = isToday ? 'open' : 'completed';
 
-      const created = await prisma.draw.create({
+      return prisma.draw.create({
         data: {
           drawDate,
           closesAt,
           status,
         },
       });
+    }),
+  );
 
-      draws.push(created);
-    }
+  // Ticket distribution (realistic-ish)
+  const ticketsPlan = [
+    { draw: draws[0], count: 40, kind: 'past' as const },
+    { draw: draws[1], count: 55, kind: 'past' as const },
+    { draw: draws[2], count: 60, kind: 'today' as const },
+  ];
 
-    // Create a pool of users with X identities (unique handles)
-    const handleBases = [
-      'XPOTMaxi',
-      'CandleChaser',
-      'LatencyLord',
-      'AlphaSmith',
-      'SolanaSignals',
-      'ChartHermit',
-      'BlockByBlock',
-      'HypeEngineer',
-      'LoopMode',
-      'FlowState',
-      'NebulaPilot',
-      'RaydiumRanger',
-      'JupiterJockey',
-      'MintWizard',
-      'WalletWhisper',
-    ];
+  const createdTickets: { id: string; drawId: string; walletId: string; code: string; walletAddress: string }[] = [];
 
-    const users = [];
-    for (let i = 0; i < USER_COUNT; i++) {
-      const handle = `${pick(handleBases)}_${randInt(1000, 9999)}_${randomBase58(3)}`;
+  for (const plan of ticketsPlan) {
+    for (let i = 0; i < plan.count; i++) {
+      const w = pick(wallets);
 
-      // xHandle is unique - skip if collision
-      const existing = await prisma.user.findFirst({ where: { xHandle: handle } });
-      if (existing) {
-        users.push(existing);
-        continue;
-      }
+      const code = `XPOT-${isoDayKey(plan.draw.drawDate)}-${randInt(100000, 999999)}-${randomBase58(2)}`;
 
-      const u = await prisma.user.create({
+      // Past draws have mixed statuses, today is mostly IN_DRAW
+      const status =
+        plan.kind === 'today'
+          ? 'IN_DRAW'
+          : pick(['NOT_PICKED', 'NOT_PICKED', 'NOT_PICKED', 'EXPIRED', 'WON']); // sparse winners in past pools
+
+      const t = await prisma.ticket.create({
         data: {
-          xHandle: handle,
-          xName: handle.replace(/_/g, ' '),
-          xAvatarUrl: fakeAvatarUrl(handle),
+          drawId: plan.draw.id,
+          code,
+          walletId: w.id,
+          walletAddress: w.address,
+          status: status as any, // enum TicketStatus
         },
+        select: { id: true, drawId: true, walletId: true, code: true, walletAddress: true },
       });
 
-      users.push(u);
+      createdTickets.push(t);
     }
-
-    // Create wallet pool (some linked to users, some anonymous)
-    const wallets = [];
-    for (let i = 0; i < WALLET_POOL_SIZE; i++) {
-      const address = fakeWalletAddress();
-
-      // address is unique - skip collisions
-      const existing = await prisma.wallet.findFirst({ where: { address } });
-      if (existing) {
-        wallets.push(existing);
-        continue;
-      }
-
-      const linkToUser = i < Math.floor(WALLET_POOL_SIZE * 0.55); // ~55% wallets have a user
-      const user = linkToUser ? pick(users) : null;
-
-      const w = await prisma.wallet.create({
-        data: {
-          address,
-          userId: user?.id ?? null,
-        },
-      });
-
-      wallets.push(w);
-    }
-
-    // Helper to choose status by distribution
-    function weightedTodayStatus() {
-      const total = TODAY_STATUS_DIST.reduce((a, b) => a + b.weight, 0);
-      let r = randInt(1, total);
-      for (const item of TODAY_STATUS_DIST) {
-        r -= item.weight;
-        if (r <= 0) return item.status;
-      }
-      return 'IN_DRAW';
-    }
-
-    // Create tickets across draws (reusing wallet pool to simulate repeat entrants)
-    const createdTickets: Array<{
-      id: string;
-      drawId: string;
-      status: 'IN_DRAW' | 'EXPIRED' | 'NOT_PICKED' | 'WON' | 'CLAIMED';
-      walletAddress: string;
-      code: string;
-    }> = [];
-
-    for (let i = 0; i < draws.length; i++) {
-      const draw = draws[i];
-      const isToday = isoDayKey(draw.drawDate) === isoDayKey(today);
-
-      const count =
-        TICKETS_PER_DRAW[i] ?? TICKETS_PER_DRAW[TICKETS_PER_DRAW.length - 1] ?? 60;
-
-      const localWallets = shuffle(wallets);
-
-      for (let n = 0; n < count; n++) {
-        const wallet = localWallets[n % localWallets.length];
-
-        // Ensure unique ticket code
-        const code = `XPOT-${isoDayKey(draw.drawDate)}-${randInt(100000, 999999)}-${randomBase58(
-          2,
-        )}-${n + 1}`;
-
-        const status = isToday ? weightedTodayStatus() : 'NOT_PICKED';
-
-        const t = await prisma.ticket.create({
-          data: {
-            drawId: draw.id,
-            code,
-            walletId: wallet.id,
-            walletAddress: wallet.address,
-            status,
-          },
-        });
-
-        createdTickets.push({
-          id: t.id,
-          drawId: t.drawId,
-          status: t.status as any,
-          walletAddress: t.walletAddress,
-          code: t.code,
-        });
-      }
-    }
-
-    // For completed draws: create winners (MAIN + BONUS), and set ticket statuses WON/CLAIMED
-    const createdWinners: string[] = [];
-
-    const completedDraws = draws.filter(d => isoDayKey(d.drawDate) !== isoDayKey(today));
-
-    for (const draw of completedDraws) {
-      const ticketsForDraw = createdTickets.filter(t => t.drawId === draw.id);
-
-      // Pick distinct winners
-      const candidates = shuffle(ticketsForDraw);
-
-      const mainTickets = candidates.slice(0, MAIN_WINNERS_PER_COMPLETED_DRAW);
-      const bonusTickets = candidates.slice(
-        MAIN_WINNERS_PER_COMPLETED_DRAW,
-        MAIN_WINNERS_PER_COMPLETED_DRAW + BONUS_WINNERS_PER_COMPLETED_DRAW,
-      );
-
-      // MAIN winner(s)
-      for (const t of mainTickets) {
-        const paid = Math.random() < 0.8; // mostly paid in history
-
-        const w = await prisma.winner.create({
-          data: {
-            drawId: draw.id,
-            ticketId: t.id,
-            date: new Date(draw.drawDate.getTime() + 23 * 60 * 60 * 1000), // late in the day
-            ticketCode: t.code,
-            walletAddress: t.walletAddress,
-            jackpotUsd: 229.64 + Math.random() * 20,
-            payoutUsd: 1_000_000,
-            isPaidOut: paid,
-            txUrl: paid ? fakeTxUrl() : null,
-            kind: 'MAIN',
-            label: 'Main XPOT',
-          },
-        });
-
-        createdWinners.push(w.id);
-
-        // Ticket status: WON or CLAIMED (if paid)
-        await prisma.ticket.update({
-          where: { id: t.id },
-          data: { status: paid ? 'CLAIMED' : 'WON' },
-        });
-      }
-
-      // BONUS winners
-      for (let i = 0; i < bonusTickets.length; i++) {
-        const t = bonusTickets[i];
-        const paid = Math.random() < 0.55; // more unpaid in bonus history
-
-        const w = await prisma.winner.create({
-          data: {
-            drawId: draw.id,
-            ticketId: t.id,
-            date: new Date(draw.drawDate.getTime() + (18 + i) * 60 * 60 * 1000),
-            ticketCode: t.code,
-            walletAddress: t.walletAddress,
-            jackpotUsd: 0,
-            payoutUsd: 25_000 + randInt(0, 75_000),
-            isPaidOut: paid,
-            txUrl: paid ? fakeTxUrl() : null,
-            kind: 'BONUS',
-            label: `Bonus XPOT #${i + 1}`,
-          },
-        });
-
-        createdWinners.push(w.id);
-
-        await prisma.ticket.update({
-          where: { id: t.id },
-          data: { status: paid ? 'CLAIMED' : 'WON' },
-        });
-      }
-    }
-
-    // Today: create some bonus drops (mixed statuses)
-    const todayDraw = draws.find(d => isoDayKey(d.drawDate) === isoDayKey(today));
-    if (todayDraw) {
-      for (let i = 0; i < BONUS_DROPS_TODAY; i++) {
-        const minutes = (i + 1) * 7;
-
-        const roll = Math.random();
-        const status = roll < 0.7 ? 'SCHEDULED' : roll < 0.85 ? 'FIRED' : 'CANCELLED';
-
-        await prisma.bonusDrop.create({
-          data: {
-            drawId: todayDraw.id,
-            label: `Bonus XPOT #${i + 1}`,
-            amountXpot: 10_000 * (i + 1) + randInt(0, 7_500),
-            scheduledAt: new Date(Date.now() + minutes * 60 * 1000),
-            status,
-          },
-        });
-      }
-    }
-
-    // Done: return a compact summary
-    const summary = {
-      ok: true,
-      seeded: true,
-      force,
-      created: {
-        draws: draws.length,
-        users: users.length,
-        wallets: wallets.length,
-        tickets: createdTickets.length,
-        winners: createdWinners.length,
-        bonusDrops: todayDraw ? BONUS_DROPS_TODAY : 0,
-      },
-      notes: [
-        `Draws: ${draws.map(d => isoDayKey(d.drawDate)).join(', ')}`,
-        `Tickets per draw: ${TICKETS_PER_DRAW.join(', ')}`,
-        `Winners created only for completed draws (MAIN + BONUS).`,
-        `Today draw is open with mixed ticket statuses and bonus drops.`,
-      ],
-    };
-
-    return NextResponse.json(summary);
-  } catch (err: any) {
-    console.error('[dev-seed] failed', err);
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'SEED_FAILED',
-        message: err?.message || 'Unknown seed failure',
-        detail:
-          typeof err === 'object' ? (err?.stack ? String(err.stack) : JSON.stringify(err)) : String(err),
-      },
-      { status: 500 },
-    );
   }
+
+  // Winners: for completed draws only (2 days)
+  const createdWinners: string[] = [];
+
+  for (const d of draws.slice(0, 2)) {
+    const dayTickets = createdTickets.filter((t) => t.drawId === d.id);
+    if (!dayTickets.length) continue;
+
+    // MAIN winner
+    const mainTicket = pick(dayTickets);
+    const mainAmountUsd = randInt(160, 380) + Math.random();
+
+    await prisma.ticket.update({
+      where: { id: mainTicket.id },
+      data: { status: 'WON' },
+    });
+
+    const mainWinner = await prisma.winner.create({
+      data: {
+        drawId: d.id,
+        ticketId: mainTicket.id,
+        date: d.drawDate,
+        ticketCode: mainTicket.code,
+        walletAddress: mainTicket.walletAddress,
+        jackpotUsd: mainAmountUsd,
+        payoutUsd: mainAmountUsd,
+        isPaidOut: true,
+        txUrl: fakeTxUrl(),
+        kind: 'MAIN',
+        label: 'Main XPOT',
+      },
+      select: { id: true },
+    });
+
+    createdWinners.push(mainWinner.id);
+
+    // BONUS winners (3 each completed day)
+    for (let i = 1; i <= 3; i++) {
+      const bonusTicket = pick(dayTickets);
+      const xpotAmt = randInt(25000, 90000);
+
+      await prisma.ticket.update({
+        where: { id: bonusTicket.id },
+        data: { status: 'CLAIMED' }, // looks “processed”
+      });
+
+      const w = await prisma.winner.create({
+        data: {
+          drawId: d.id,
+          ticketId: bonusTicket.id,
+          date: d.drawDate,
+          ticketCode: bonusTicket.code,
+          walletAddress: bonusTicket.walletAddress,
+          jackpotUsd: 0,
+          payoutUsd: xpotAmt, // your UI treats this as amount sometimes; ok for demo
+          isPaidOut: true,
+          txUrl: fakeTxUrl(),
+          kind: 'BONUS',
+          label: `Bonus XPOT #${i}`,
+        },
+        select: { id: true },
+      });
+
+      createdWinners.push(w.id);
+    }
+  }
+
+  // Bonus drops: past FIRED + today SCHEDULED
+  const createdBonusDrops: string[] = [];
+
+  // Day -1: fired bonus drops
+  for (let i = 1; i <= 2; i++) {
+    const bd = await prisma.bonusDrop.create({
+      data: {
+        drawId: draws[1].id,
+        label: `Bonus XPOT #${i}`,
+        amountXpot: randInt(25000, 90000),
+        scheduledAt: new Date(draws[1].drawDate.getTime() + i * 10 * 60 * 1000),
+        status: 'FIRED',
+      },
+      select: { id: true },
+    });
+    createdBonusDrops.push(bd.id);
+  }
+
+  // Today: scheduled
+  const bdToday = await prisma.bonusDrop.create({
+    data: {
+      drawId: draws[2].id,
+      label: 'Bonus XPOT',
+      amountXpot: 100000,
+      scheduledAt: new Date(Date.now() + 15 * 60 * 1000),
+      status: 'SCHEDULED',
+    },
+    select: { id: true },
+  });
+  createdBonusDrops.push(bdToday.id);
+
+  // Summary (for UI)
+  const summary = {
+    ok: true,
+    seeded: true,
+    force,
+    created: {
+      draws: draws.length,
+      users: users.length,
+      wallets: wallets.length,
+      tickets: createdTickets.length,
+      winners: createdWinners.length,
+      bonusDrops: createdBonusDrops.length,
+    },
+    notes: [
+      `Draw dates: ${draws.map((d) => isoDayKey(d.drawDate)).join(', ')}`,
+      `Tickets per draw: ${ticketsPlan.map((p) => p.count).join(' + ')} = ${createdTickets.length}`,
+      `Winners created only for completed draws (2 days): 2 MAIN + 6 BONUS`,
+      `Today draw is open with IN_DRAW tickets + 1 scheduled BonusDrop`,
+    ],
+  };
+
+  return NextResponse.json(summary);
 }
