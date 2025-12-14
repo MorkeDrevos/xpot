@@ -1003,7 +1003,7 @@ useEffect(() => {
                 )}
               </div>
               {isDevHost && tokenAccepted && (
-  <div className="mt-2 flex gap-2">
+  <div className="flex gap-2 sm:mt-0">
     <button
       type="button"
       onClick={() => handleSeedDemoData(false)}
