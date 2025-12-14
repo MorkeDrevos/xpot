@@ -19,29 +19,25 @@ export default function XpotTopBar({
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
-  const top = hasBanner ? 'var(--xpot-banner-h, 0px)' : '0px';
+  // Overlap by 1px to kill any seam/gap forever
+  const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   return (
     <header className="fixed inset-x-0 z-[50] w-full" style={{ top }}>
-      <div
-        className="
-          border-b border-white/10
-          bg-black/55 backdrop-blur-xl
-        "
-      >
+      <div className="border-b border-white/10 bg-black/55 backdrop-blur-xl">
         <div className={`mx-auto ${maxWidthClassName} px-4`}>
           <div className="flex items-center justify-between py-4">
             {/* Left: logo + pill */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-5">
               <Link href={logoHref} className="flex items-center gap-3">
-                {/* Make logo slightly bigger here */}
+                {/* Bigger logo (locked height) */}
                 <Image
                   src="/img/xpot-logo-light.png"
                   alt="XPOT"
-                  width={210}
-                  height={56}
+                  width={260}
+                  height={72}
                   priority
-                  className="h-[56px] w-auto"
+                  className="h-[64px] w-auto"
                 />
               </Link>
 
