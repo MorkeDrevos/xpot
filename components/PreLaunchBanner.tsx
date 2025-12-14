@@ -3,7 +3,6 @@
 import { useEffect, useRef } from 'react';
 
 type PreLaunchBannerProps = {
-  // Optional: allow you to force-hide banner if needed later
   hidden?: boolean;
 };
 
@@ -11,8 +10,10 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    const root = document.documentElement;
+
     if (hidden) {
-      document.documentElement.style.setProperty('--xpot-banner-h', '0px');
+      root.style.setProperty('--xpot-banner-h', '0px');
       return;
     }
 
@@ -20,25 +21,24 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
       const el = ref.current;
       if (!el) return;
 
-      // Use real rendered height (incl. borders)
-      const h = Math.ceil(el.getBoundingClientRect().height);
-      document.documentElement.style.setProperty('--xpot-banner-h', `${h}px`);
+      // offsetHeight is integer px (includes borders) - no subpixel weirdness
+      const h = el.offsetHeight || 0;
+      root.style.setProperty('--xpot-banner-h', `${h}px`);
     }
 
     setVar();
 
-    // Track resize + font load + layout changes
     const ro = new ResizeObserver(() => setVar());
     if (ref.current) ro.observe(ref.current);
 
     window.addEventListener('resize', setVar);
-
-    // Safety: if fonts/layout settle after first paint
-    const t = window.setTimeout(setVar, 50);
+    const t1 = window.setTimeout(setVar, 0);
+    const t2 = window.setTimeout(setVar, 120);
 
     return () => {
-      window.clearTimeout(t);
       window.removeEventListener('resize', setVar);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
       ro.disconnect();
     };
   }, [hidden]);
@@ -55,7 +55,8 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
       "
     >
       <div className="mx-auto max-w-[1440px] px-4">
-        <div className="flex items-center justify-center py-2">
+        {/* Lock banner height so it never “breathes” */}
+        <div className="flex h-10 items-center justify-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">
             PRE-LAUNCH MODE <span className="mx-2 text-white/40">•</span> XPOT TOKEN NOT DEPLOYED{' '}
             <span className="mx-2 text-white/40">•</span> BUILD v0.9.7
