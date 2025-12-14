@@ -26,18 +26,18 @@ export default function XpotTopBar({
     <header className="fixed inset-x-0 z-[50] w-full" style={{ top }}>
       <div className="border-b border-white/10 bg-black/55 backdrop-blur-xl">
         <div className={`mx-auto ${maxWidthClassName} px-4`}>
-          <div className="flex items-center justify-between py-5">
+          {/* Make top bar tall enough for 105px logo */}
+          <div className="flex min-h-[120px] items-center justify-between py-3">
             {/* Left: logo + pill */}
             <div className="flex items-center gap-5">
-              <Link href={logoHref} className="flex items-center gap-3">
-                {/* Bigger logo (locked height) */}
+              <Link href={logoHref} className="flex items-center">
                 <Image
                   src="/img/xpot-logo-light.png"
                   alt="XPOT"
-                  width={260}
-                  height={72}
+                  width={380}
+                  height={105}
                   priority
-                  className="h-[70px] w-auto"
+                  className="h-[105px] min-h-[105px] w-auto"
                 />
               </Link>
 
