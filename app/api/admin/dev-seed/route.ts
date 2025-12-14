@@ -17,7 +17,9 @@ function randomWalletAddress() {
 }
 
 function todayUtcStart(d = new Date()) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0),
+  );
 }
 
 function addDaysUtc(date: Date, days: number) {
@@ -26,8 +28,11 @@ function addDaysUtc(date: Date, days: number) {
   return todayUtcStart(d);
 }
 
+function addHours(date: Date, hours: number) {
+  return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
 function makeTicketCode() {
-  // unique enough for dev seeding; includes time + randomness
   const t = Date.now().toString(36).toUpperCase();
   const r = Math.random().toString(36).slice(2, 10).toUpperCase();
   return `XPOT-${t}-${r}`;
@@ -57,37 +62,59 @@ export async function POST(req: NextRequest) {
   const seedWinners = body.seedWinners !== false;           // default true
   const seedBonusDrops = body.seedBonusDrops !== false;     // default true
 
-  // Pre-generate wallets (unique addresses)
-  const walletAddresses = Array.from({ length: walletsCount }, () => randomWalletAddress());
+  // 1) Generate unique wallet addresses
+  const walletAddresses = Array.from({ length: walletsCount }, () =>
+    randomWalletAddress(),
+  );
 
-  // Upsert wallets so we can re-run seed without exploding on unique address
+  // 2) Upsert wallets (so reruns don't fail)
   for (const address of walletAddresses) {
     await prisma.wallet.upsert({
       where: { address },
       update: {},
       create: { address },
+      select: { id: true }, // keep Prisma happy (no extra payload)
     });
   }
 
-  const seeded: any[] = [];
+  // 3) Fetch wallet ids once (do NOT findUnique in the ticket loop)
+  const walletRows = await prisma.wallet.findMany({
+    where: { address: { in: walletAddresses } },
+    select: { id: true, address: true },
+  });
+
+  const walletIdByAddress = new Map<string, string>();
+  for (const w of walletRows) walletIdByAddress.set(w.address, w.id);
+
+  const seeded: Array<{
+    drawId: string;
+    drawDate: string;
+    tickets: number;
+    wallets: number;
+    bonusDrops: 'seeded' | 'skipped';
+    winners: 'seeded' | 'skipped';
+  }> = [];
+
   const start = todayUtcStart();
 
   for (let dayOffset = 0; dayOffset < days; dayOffset++) {
     const drawDate = addDaysUtc(start, dayOffset);
 
-    // Ensure draw exists
+    // closesAt: 6h after the draw day starts (UTC)
+    const closesAt = addHours(drawDate, 6);
+
     const draw = await prisma.draw.upsert({
       where: { drawDate },
       update: {},
       create: {
         drawDate,
         status: 'open',
-        closesAt: new Date(Date.now() + 6 * 60 * 60 * 1000),
+        closesAt,
       },
+      select: { id: true, drawDate: true },
     });
 
     if (clearDrawTickets) {
-      // wipe tickets + winners + bonus drops for this draw (clean slate)
       await prisma.winner.deleteMany({ where: { drawId: draw.id } });
       await prisma.bonusDrop.deleteMany({ where: { drawId: draw.id } });
       await prisma.ticket.deleteMany({ where: { drawId: draw.id } });
@@ -97,31 +124,27 @@ export async function POST(req: NextRequest) {
 
     // Create tickets distributed across wallets
     const createdTicketIds: string[] = [];
+
     for (let i = 0; i < ticketCount; i++) {
       const address = walletAddresses[randInt(0, walletAddresses.length - 1)];
+      const walletId = walletIdByAddress.get(address);
+      if (!walletId) continue;
 
-      const wallet = await prisma.wallet.findUnique({
-  where: { address },
-  select: { id: true },
-});
-
-if (!wallet) continue;
-
-const ticket = await prisma.ticket.create({
-  data: {
-    drawId: draw.id,
-    code: makeTicketCode(),
-    walletId: wallet.id, // ✅ use FK directly
-    walletAddress: address,
-    status: 'IN_DRAW',
-  },
-  select: { id: true },
-});
+      const ticket = await prisma.ticket.create({
+        data: {
+          drawId: draw.id,
+          code: makeTicketCode(),
+          walletId, // ✅ schema-safe
+          walletAddress: address,
+          status: 'IN_DRAW',
+        },
+        select: { id: true },
+      });
 
       createdTicketIds.push(ticket.id);
     }
 
-    // Seed bonus drops (fake upcoming schedule)
+    // Bonus drops
     if (seedBonusDrops) {
       const now = Date.now();
       const bonusCount = randInt(1, 3);
@@ -143,15 +166,23 @@ const ticket = await prisma.ticket.create({
       }
     }
 
-    // Seed winners (a couple fake results)
+    // Winners
     if (seedWinners && createdTicketIds.length > 0) {
       const winnerPickCount = Math.min(randInt(1, 3), createdTicketIds.length);
+      const picked = new Set<string>();
 
       for (let i = 0; i < winnerPickCount; i++) {
-        const ticketId = createdTicketIds[randInt(0, createdTicketIds.length - 1)];
+        // avoid duplicates
+        let ticketId = createdTicketIds[randInt(0, createdTicketIds.length - 1)];
+        let guard = 0;
+        while (picked.has(ticketId) && guard++ < 10) {
+          ticketId = createdTicketIds[randInt(0, createdTicketIds.length - 1)];
+        }
+        picked.add(ticketId);
+
         const t = await prisma.ticket.findUnique({
           where: { id: ticketId },
-          select: { id: true, code: true, walletAddress: true, drawId: true },
+          select: { id: true, code: true, walletAddress: true },
         });
 
         if (!t) continue;
@@ -182,8 +213,5 @@ const ticket = await prisma.ticket.create({
     });
   }
 
-  return NextResponse.json({
-    ok: true,
-    seeded,
-  });
+  return NextResponse.json({ ok: true, seeded });
 }
