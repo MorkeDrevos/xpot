@@ -951,7 +951,9 @@ export default function AdminPage() {
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
-  const isAutoActive = effectiveOpsMode === 'AUTO' && envAutoAllowed;
+
+// TEMP: manual-only until ops-mode + DB are re-enabled
+  const isAutoActive = false;
 
   const DAY_MS = 24 * 60 * 60 * 1000;
   const closesAtDate = todayDraw?.closesAt ? new Date(todayDraw.closesAt) : null;
@@ -1000,46 +1002,45 @@ export default function AdminPage() {
                   : 'Locked · token required'}
               </span>
 
-              {/* Ops mode pill + toggle (only after admin unlock) */}
-              {tokenAccepted && (
-                <div className="hidden sm:flex items-center gap-2">
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
-                    shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] ${
-                      effectiveOpsMode === 'AUTO'
-                        ? 'border border-sky-400/60 bg-sky-500/10 text-sky-100'
-                        : 'border border-slate-600/60 bg-slate-800/60 text-slate-200'
-                    }`}
-                    title={
-                      !envAutoAllowed
-                        ? 'AUTO is not allowed in this environment'
-                        : 'Current ops mode'
-                    }
-                  >
-                    {effectiveOpsMode === 'AUTO' ? 'AUTO MODE' : 'MANUAL MODE'}
-                    {!envAutoAllowed && (
-                      <span className="ml-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[9px] text-amber-200">
-                        ENV LOCK
-                      </span>
-                    )}
-                  </span>
+            {false && (
+  <>
+    {/* OPS MODE (TEMP DISABLED) */}
+    {tokenAccepted && (
+      <div className="hidden sm:flex items-center gap-2">
+        <span
+          className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
+            ${effectiveOpsMode === 'AUTO'
+              ? 'border border-emerald-400/60 bg-emerald-500/10 text-emerald-300'
+              : 'border border-slate-600/60 bg-slate-800/60 text-slate-200'
+            }`}
+          title={!envAutoAllowed ? 'AUTO is not allowed in this environment' : 'Current ops mode'}
+        >
+          {effectiveOpsMode === 'AUTO' ? 'AUTO MODE' : 'MANUAL MODE'}
+        </span>
 
-                  <button
-                    type="button"
-                    className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-                    onClick={() => {
-                      const next: OpsMode =
-                        effectiveOpsMode === 'AUTO' ? 'MANUAL' : 'AUTO';
-                      setModePending(next);
-                      setModeTokenInput('');
-                      setModeError(null);
-                      setModeModalOpen(true);
-                    }}
-                  >
-                    Toggle
-                  </button>
-                </div>
-              )}
+        {!envAutoAllowed && (
+          <span className="ml-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[9px] text-amber-200">
+            ENV LOCK
+          </span>
+        )}
+
+        <button
+          type="button"
+          className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+          onClick={() => {
+            const next: OpsMode = effectiveOpsMode === 'AUTO' ? 'MANUAL' : 'AUTO';
+            setModePending(next);
+            setModeTokenInput('');
+            setModeError(null);
+            setModeModalOpen(true);
+          }}
+        >
+          Toggle
+        </button>
+      </div>
+    )}
+  </>
+)}
             </div>
 
             <form
