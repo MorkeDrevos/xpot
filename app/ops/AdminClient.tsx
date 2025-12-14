@@ -876,11 +876,15 @@ async function authedFetch(input: string, init?: RequestInit) {
   title="Operations Center"
   subtitle="Control room for today's XPOT"
  rightSlot={
-  <div className="flex items-center justify-end">
-    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-[11px] font-semibold tracking-wide text-emerald-200 backdrop-blur shadow-[0_0_20px_rgba(16,185,129,0.12)]">
-      <span className="h-2 w-2 rounded-full bg-emerald-400" />
-      One protocol. One identity. One daily XPOT draw.
-    </span>
+  <div className="flex w-full items-start justify-start sm:w-auto sm:items-center sm:justify-end">
+    <div className="xpot-ops-badge">
+      <span className="xpot-ops-badge-dot" />
+      <span className="xpot-ops-badge-text">
+        <span className="muted">One protocol.</span>{' '}
+        <span className="mid">One identity.</span>{' '}
+        <span className="strong">One daily XPOT draw.</span>
+      </span>
+    </div>
   </div>
 }
 >
