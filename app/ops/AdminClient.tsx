@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+
 import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
@@ -12,10 +13,8 @@ import { XPOT_POOL_SIZE } from '@/lib/xpot';
 
 import {
   BadgeCheck,
-  Ban,
   CalendarClock,
   Crown,
-  Flame,
   Info,
   KeyRound,
   Loader2,
@@ -201,7 +200,7 @@ function Badge({
   children,
   tone = 'slate',
 }: {
-  children: React.ReactNode;
+  children: any;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky' | 'red';
 }) {
   const cls =
@@ -378,37 +377,37 @@ export default function AdminPage() {
   }, []);
 
   // ── Fetch helpers ───────────────────────────
-async function authedFetch(input: string, init?: RequestInit) {
-  if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
+  async function authedFetch(input: string, init?: RequestInit) {
+    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
 
-  const headers = new Headers(init?.headers || {});
-  headers.set('Content-Type', 'application/json');
-  headers.set('x-xpot-admin-token', adminToken.trim());
+    const headers = new Headers(init?.headers || {});
+    headers.set('Content-Type', 'application/json');
+    headers.set('x-xpot-admin-token', adminToken.trim());
 
-  const res = await fetch(input, {
-    ...init,
-    headers,
-  });
+    const res = await fetch(input, {
+      ...init,
+      headers,
+    });
 
-  const raw = await res.text();
+    const raw = await res.text();
 
-  let data: any = null;
-  try {
-    data = raw ? JSON.parse(raw) : null;
-  } catch {
-    data = raw; // keep raw response for debugging
+    let data: any = null;
+    try {
+      data = raw ? JSON.parse(raw) : null;
+    } catch {
+      data = raw; // keep raw response for debugging
+    }
+
+    if (!res.ok) {
+      throw new Error(
+        `Request failed (${res.status}): ${
+          typeof data === 'string' ? data : JSON.stringify(data)
+        }`,
+      );
+    }
+
+    return data;
   }
-
-  if (!res.ok) {
-    throw new Error(
-      `Request failed (${res.status}): ${
-        typeof data === 'string' ? data : JSON.stringify(data)
-      }`,
-    );
-  }
-
-  return data;
-}
 
   async function refreshUpcomingDrops() {
     setUpcomingLoading(true);
@@ -875,11 +874,12 @@ async function authedFetch(input: string, init?: RequestInit) {
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
 
-  <XpotPageShell
-  title="Operations Center"
-  subtitle="Control room for today's XPOT"
-  rightSlot={<OperationsCenterBadge live={true} autoDraw={AUTO_DRAW_ENABLED} />}
-/>
+  return (
+    <XpotPageShell
+      title="Operations Center"
+      subtitle="Control room for today's XPOT"
+      rightSlot={<OperationsCenterBadge live={true} autoDraw={AUTO_DRAW_ENABLED} />}
+    >
       {/* Admin key band */}
       <section className="relative mt-5 rounded-3xl">
         <div className="relative rounded-3xl border border-slate-900/70 bg-gradient-to-r from-[#050816]/90 via-[#050816]/80 to-[#050816]/90 shadow-[0_22px_70px_rgba(15,23,42,0.85)]">
@@ -906,7 +906,10 @@ async function authedFetch(input: string, init?: RequestInit) {
               </span>
             </div>
 
-            <form onSubmit={handleUnlock} className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row">
+            <form
+              onSubmit={handleUnlock}
+              className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row"
+            >
               <input
                 type="password"
                 className="flex-1 rounded-full border border-slate-700/80 bg-[#020617]/90 px-4 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400/80"
@@ -1103,7 +1106,6 @@ async function authedFetch(input: string, init?: RequestInit) {
                               <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
                               Auto draw enabled
                             </span>
-                            
                           </div>
                         )}
 
@@ -1587,7 +1589,8 @@ async function authedFetch(input: string, init?: RequestInit) {
           </section>
         </div>
       </section>
-            {/* ULTRA PREMIUM LOCK MODAL */}
+
+      {/* ULTRA PREMIUM LOCK MODAL */}
       {!tokenAccepted && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
           <div
@@ -1600,7 +1603,7 @@ async function authedFetch(input: string, init?: RequestInit) {
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-               <XpotLogoLottie className="h-[64px]" />
+                <XpotLogoLottie className="h-[64px]" />
                 <span className="rounded-full border border-slate-700/70 bg-slate-950/80 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-slate-300">
                   Operations Center
                 </span>
