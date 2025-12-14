@@ -56,8 +56,8 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
     >
       <div className="mx-auto max-w-[1440px] px-4">
         {/* Lock banner height so it never “breathes” */}
-        <div className="flex h-10 items-center justify-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">
+        <div className="flex h-12 items-center justify-center">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.32em] text-white/80">
             PRE-LAUNCH MODE <span className="mx-2 text-white/40">•</span> XPOT TOKEN NOT DEPLOYED{' '}
             <span className="mx-2 text-white/40">•</span> BUILD v0.9.7
           </p>
