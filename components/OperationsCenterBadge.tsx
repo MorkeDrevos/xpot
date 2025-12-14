@@ -1,3 +1,4 @@
+// components/OperationsCenterBadge.tsx
 'use client';
 
 type OperationsCenterBadgeProps = {
@@ -36,27 +37,33 @@ export default function OperationsCenterBadge({
       : 'Awaiting unlock';
 
   return (
-    <div className="flex w-full items-start justify-end sm:w-auto sm:items-center">
+    <div className="flex w-full min-w-0 justify-end">
       <div
         className={[
-          // shorter than before (was h-10). This lands ~36px tall.
-          'inline-flex h-9 items-center gap-2.5 rounded-full border px-3.5 pl-3 backdrop-blur',
+          // key: allow shrinking inside flex parents
+          'inline-flex max-w-full min-w-0 items-center',
+          // height + spacing (slim)
+          'h-[32px] gap-2 rounded-full border px-3 pl-2.5',
+          'backdrop-blur',
           'shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_18px_60px_rgba(2,6,23,0.45)]',
           pillCls,
         ].join(' ')}
       >
-        <span className={['h-2.5 w-2.5 rounded-full', dotCls].join(' ')} />
+        <span className={['h-2 w-2 shrink-0 rounded-full', dotCls].join(' ')} />
 
-        <div className="flex items-center gap-2 leading-none">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-200">
             {label}
           </span>
-          <span className="text-[12px] text-slate-400">{sub}</span>
+          <span className="min-w-0 truncate text-[11px] text-slate-400">
+            {sub}
+          </span>
         </div>
 
-        <span className="mx-1 h-3.5 w-px bg-white/10" />
+        {/* Divider + long tagline only when there is room */}
+        <span className="hidden lg:inline-flex mx-1 h-4 w-px shrink-0 bg-white/10" />
 
-        <span className="text-sm font-semibold tracking-tight text-slate-100">
+        <span className="hidden lg:inline-flex min-w-0 truncate text-sm font-semibold tracking-tight text-slate-100">
           One protocol. <span className="text-slate-400">One identity.</span>{' '}
           <span className="text-slate-100">One daily XPOT draw.</span>
         </span>
