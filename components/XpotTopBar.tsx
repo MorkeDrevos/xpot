@@ -26,7 +26,7 @@ export default function XpotTopBar({
     <header className="fixed inset-x-0 z-[50] w-full" style={{ top }}>
       <div className="border-b border-white/10 bg-black/55 backdrop-blur-xl">
         <div className={`mx-auto ${maxWidthClassName} px-4`}>
-          <div className="flex items-center justify-between py-4">
+          <div className="flex items-center justify-between py-5">
             {/* Left: logo + pill */}
             <div className="flex items-center gap-5">
               <Link href={logoHref} className="flex items-center gap-3">
@@ -37,7 +37,7 @@ export default function XpotTopBar({
                   width={260}
                   height={72}
                   priority
-                  className="h-[64px] w-auto"
+                  className="h-[70px] w-auto"
                 />
               </Link>
 
