@@ -46,6 +46,8 @@ type TodayDraw = {
   closesAt?: string | null;
 };
 
+type OpsMode = 'MANUAL' | 'AUTO';
+
 type TicketStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
 type AdminTicket = {
@@ -286,8 +288,6 @@ export default function AdminPage() {
   const [tokenAccepted, setTokenAccepted] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
 
-  type OpsMode = 'MANUAL' | 'AUTO';
-
   const [opsMode, setOpsMode] = useState<OpsMode>('MANUAL'); // requested mode (DB)
   const [effectiveOpsMode, setEffectiveOpsMode] = useState<OpsMode>('MANUAL'); // what the system actually uses
   const [envAutoAllowed, setEnvAutoAllowed] = useState<boolean>(false);
@@ -422,6 +422,33 @@ export default function AdminPage() {
     return data;
   }
 
+  async function loadOpsMode() {
+  const data = await authedFetch('/api/admin/ops-mode');
+
+  const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
+  const eff = ((data as any).effectiveMode ?? m) as OpsMode;
+  const allowed = !!(data as any).envAutoAllowed;
+
+  setOpsMode(m);
+  setEffectiveOpsMode(eff);
+  setEnvAutoAllowed(allowed);
+}
+
+async function saveOpsMode(next: OpsMode) {
+  const data = await authedFetch('/api/admin/ops-mode', {
+    method: 'POST',
+    body: JSON.stringify({ mode: next }),
+  });
+
+  const m = ((data as any).mode ?? next) as OpsMode;
+  const eff = ((data as any).effectiveMode ?? m) as OpsMode;
+  const allowed = !!(data as any).envAutoAllowed;
+
+  setOpsMode(m);
+  setEffectiveOpsMode(eff);
+  setEnvAutoAllowed(allowed);
+}
+
   async function refreshUpcomingDrops() {
     setUpcomingLoading(true);
     setUpcomingError(null);
@@ -472,35 +499,6 @@ export default function AdminPage() {
   } finally {
     setIsSeeding(false);
   }
-}
-
-type OpsMode = 'MANUAL' | 'AUTO';
-
-async function loadOpsMode() {
-  const data = await authedFetch('/api/admin/ops-mode');
-
-  const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
-  const eff = ((data as any).effectiveMode ?? m) as OpsMode;
-  const allowed = !!(data as any).envAutoAllowed;
-
-  setOpsMode(m);
-  setEffectiveOpsMode(eff);
-  setEnvAutoAllowed(allowed);
-}
-
-async function saveOpsMode(next: OpsMode) {
-  const data = await authedFetch('/api/admin/ops-mode', {
-    method: 'POST',
-    body: JSON.stringify({ mode: next }),
-  });
-
-  const m = ((data as any).mode ?? next) as OpsMode;
-  const eff = ((data as any).effectiveMode ?? m) as OpsMode;
-  const allowed = !!(data as any).envAutoAllowed;
-
-  setOpsMode(m);
-  setEffectiveOpsMode(eff);
-  setEnvAutoAllowed(allowed);
 }
 
   // ── Manually create today’s draw (dev) ──────
@@ -778,19 +776,73 @@ useEffect(() => {
     // do not hard-fail the page if mode route is missing
   }
 
-  // ── Upcoming ──────────────────────
-  setUpcomingLoading(true);
-  setUpcomingError(null);
-  try {
-    const data = await authedFetch('/api/admin/bonus-upcoming');
-    if (!cancelled) setUpcomingDrops((data as any).upcoming ?? []);
-  } catch (err: any) {
-    if (!cancelled)
-      setUpcomingError(err.message || 'Failed to load upcoming drops');
-  } finally {
-    if (!cancelled) setUpcomingLoading(false);
+    // ── Load Today, tickets, winners, upcoming (+ ops mode) ──
+useEffect(() => {
+  if (!adminToken) return;
+
+  let cancelled = false;
+
+  async function loadAll() {
+    // ── Today ─────────────────────────
+    setTodayLoading(true);
+    setTodayDrawError(null);
+    try {
+      const data = await authedFetch('/api/admin/today');
+      if (!cancelled) setTodayDraw((data as any).today ?? null);
+    } catch (err: any) {
+      if (!cancelled)
+        setTodayDrawError(err?.message || 'Failed to load today');
+    } finally {
+      if (!cancelled) setTodayLoading(false);
+    }
+
+    // ── Tickets ───────────────────────
+    setTicketsLoading(true);
+    setTicketsError(null);
+    try {
+      const data = await authedFetch('/api/admin/tickets');
+      if (!cancelled) setTickets((data as any).tickets ?? []);
+    } catch (err: any) {
+      if (!cancelled)
+        setTicketsError(err?.message || 'Failed to load tickets');
+    } finally {
+      if (!cancelled) setTicketsLoading(false);
+    }
+
+    // ── Winners ───────────────────────
+    setWinnersLoading(true);
+    setWinnersError(null);
+    try {
+      const data = await authedFetch('/api/admin/winners');
+      if (!cancelled) setWinners((data as any).winners ?? []);
+    } catch (err: any) {
+      if (!cancelled)
+        setWinnersError(err?.message || 'Failed to load winners');
+    } finally {
+      if (!cancelled) setWinnersLoading(false);
+    }
+
+    // ── Ops mode ──────────────────────
+    try {
+      await loadOpsMode();
+    } catch (err: any) {
+      console.error('[ADMIN] /ops-mode error', err);
+      // don’t hard-fail the page if mode route is missing
+    }
+
+    // ── Upcoming ──────────────────────
+    setUpcomingLoading(true);
+    setUpcomingError(null);
+    try {
+      const data = await authedFetch('/api/admin/bonus-upcoming');
+      if (!cancelled) setUpcomingDrops((data as any).upcoming ?? []);
+    } catch (err: any) {
+      if (!cancelled)
+        setUpcomingError(err?.message || 'Failed to load upcoming drops');
+    } finally {
+      if (!cancelled) setUpcomingLoading(false);
+    }
   }
-}
 
   loadAll();
 
@@ -800,7 +852,22 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [adminToken]);
 
+  // ── Countdown (today draw closesAt) ───────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!todayDraw?.closesAt) {
+      setCountdownText(null);
+      setCountdownSeconds(null);
+      return;
+    }
+
     const targetTime = new Date(todayDraw.closesAt).getTime();
+    if (!Number.isFinite(targetTime)) {
+      setCountdownText(null);
+      setCountdownSeconds(null);
+      return;
+    }
 
     function updateCountdown() {
       const diffMs = targetTime - Date.now();
@@ -810,10 +877,7 @@ useEffect(() => {
       setCountdownSeconds(totalSeconds);
 
       const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
-        2,
-        '0',
-      );
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
       const seconds = String(totalSeconds % 60).padStart(2, '0');
       setCountdownText(`${hours}:${minutes}:${seconds}`);
     }
@@ -1011,13 +1075,14 @@ useEffect(() => {
       type="button"
       className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
       onClick={() => {
+        const next: OpsMode = effectiveOpsMode === 'AUTO' ? 'MANUAL' : 'AUTO';
+        setModePending(next);
         setModeTokenInput('');
         setModeError(null);
         setModeModalOpen(true);
       }}
-      disabled={!tokenAccepted}
     >
-      Switch
+      Toggle
     </button>
   </div>
 )}
