@@ -37,11 +37,12 @@ export default function OperationsCenterBadge({
       : 'Awaiting unlock';
 
   return (
-    <div className="flex w-full min-w-0 justify-end">
+    // key changes: ml-auto + w-auto (do NOT be w-full)
+    <div className="ml-auto flex w-auto min-w-0 justify-end">
       <div
         className={[
-          // key: allow shrinking inside flex parents
-          'inline-flex max-w-full min-w-0 items-center',
+          // keep everything on one line
+          'inline-flex max-w-full min-w-0 items-center whitespace-nowrap',
           // height + spacing (slim)
           'h-[32px] gap-2 rounded-full border px-3 pl-2.5',
           'backdrop-blur',
@@ -60,14 +61,14 @@ export default function OperationsCenterBadge({
           </span>
         </div>
 
-        {/* Divider + long tagline only when there is room */}
+        {/* Divider + tagline only when there is room */}
         <span className="hidden lg:inline-flex mx-1 h-4 w-px shrink-0 bg-white/10" />
 
-        <span className="text-sm font-semibold tracking-[0.02em] text-slate-100">
-  One protocol.
-  <span className="mx-1 text-slate-400">One identity.</span>
-  <span className="text-slate-100">One daily XPOT draw.</span>
-</span>
+        <span className="hidden lg:inline-flex min-w-0 truncate text-sm font-semibold tracking-[0.02em] text-slate-100">
+          One protocol.
+          <span className="mx-1 text-slate-400">One identity.</span>
+          <span className="text-slate-100">One daily XPOT draw.</span>
+        </span>
       </div>
     </div>
   );
