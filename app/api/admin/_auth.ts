@@ -22,8 +22,12 @@ export function requireAdmin(req: Request) {
     );
   }
 
-  const expected = process.env.XPOT_OPS_ADMIN_KEY ?? '';
-  const incoming = req.headers.get(ADMIN_HEADER) ?? '';
+  // ✅ Backwards compatible: new key preferred, legacy fallback
+  const expected =
+    (process.env.XPOT_OPS_ADMIN_KEY ?? '').trim() ||
+    (process.env.XPOT_ADMIN_TOKEN ?? '').trim();
+
+  const incoming = (req.headers.get(ADMIN_HEADER) ?? '').trim();
 
   if (!expected || incoming !== expected) {
     return NextResponse.json(
