@@ -644,12 +644,18 @@ export default function AdminPage() {
           0,
       };
 
-      setPickSuccess(
-        `Main XPOT winner: ${winner.ticketCode} (${winner.walletAddress.slice(
-          0,
-          4,
-        )}…${winner.walletAddress.slice(-4)}).`,
-      );
+      const addr =
+  typeof winner.walletAddress === 'string'
+    ? winner.walletAddress
+    : '';
+
+const shortAddr = addr
+  ? truncateAddress(addr, 4)
+  : '(no wallet)';
+
+setPickSuccess(
+  `Main XPOT winner: ${winner.ticketCode || '(no ticket)'} (${shortAddr})`
+);
 
       try {
         const winnersData = await authedFetch('/api/admin/winners');
