@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/app/api/admin/_auth';
+import type { Draw, User, Wallet } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -88,7 +89,14 @@ export async function POST(req: Request) {
         ok: true,
         skipped: true,
         message: 'DB is not empty - skipping seed (use ?force=1 to override).',
-        counts: { drawCount, ticketCount, winnerCount, bonusCount, walletCount, userCount },
+        counts: {
+          drawCount,
+          ticketCount,
+          winnerCount,
+          bonusCount,
+          walletCount,
+          userCount,
+        },
       });
     }
 
@@ -107,7 +115,7 @@ export async function POST(req: Request) {
     const days = [day0, day1, day2];
 
     // Create (or upsert) draws per day
-    const draws = [];
+    const draws: Draw[] = [];
     for (let i = 0; i < DRAWS; i++) {
       const drawDate = days[i];
       const existing = await prisma.draw.findUnique({ where: { drawDate } });
@@ -117,7 +125,9 @@ export async function POST(req: Request) {
       }
 
       const closesAt =
-        i === 2 ? new Date(Date.now() + 60 * 60 * 1000) : new Date(drawDate.getTime() + 20 * 60 * 60 * 1000);
+        i === 2
+          ? new Date(Date.now() + 60 * 60 * 1000)
+          : new Date(drawDate.getTime() + 20 * 60 * 60 * 1000);
 
       const status = i < COMPLETED_DRAWS ? 'completed' : 'open';
 
@@ -137,12 +147,30 @@ export async function POST(req: Request) {
     const WALLETS = 120;
 
     const handles = [
-      'CandleChaser','AlphaSmith','LatencyLord','ChartHermit','XPOTMaxi','SolanaSignals','BlockByBlock',
-      'FlowStateTrader','HypeEngineer','DeWala_222222','CryptoNox','LoopMode','FomoPilot','DipSniper',
-      'OrderBookKing','ArbMantis','NebulaNomad','GasGuzzler','WhaleWatcher','MintRanger','KeypairKai',
+      'CandleChaser',
+      'AlphaSmith',
+      'LatencyLord',
+      'ChartHermit',
+      'XPOTMaxi',
+      'SolanaSignals',
+      'BlockByBlock',
+      'FlowStateTrader',
+      'HypeEngineer',
+      'DeWala_222222',
+      'CryptoNox',
+      'LoopMode',
+      'FomoPilot',
+      'DipSniper',
+      'OrderBookKing',
+      'ArbMantis',
+      'NebulaNomad',
+      'GasGuzzler',
+      'WhaleWatcher',
+      'MintRanger',
+      'KeypairKai',
     ];
 
-    const createdUsers = [];
+    const createdUsers: User[] = [];
     for (let i = 0; i < USERS; i++) {
       const xHandle = `${handles[i % handles.length]}_${randInt(10, 999)}`;
       const user = await prisma.user.create({
@@ -150,13 +178,15 @@ export async function POST(req: Request) {
           xUserId: `x_${randomBase58(10)}`,
           xHandle,
           xName: xHandle.replace(/_/g, ' '),
-          xAvatarUrl: `https://api.dicebear.com/8.x/shapes/svg?seed=${encodeURIComponent(xHandle)}`,
+          xAvatarUrl: `https://api.dicebear.com/8.x/shapes/svg?seed=${encodeURIComponent(
+            xHandle,
+          )}`,
         },
       });
       createdUsers.push(user);
     }
 
-    const createdWallets = [];
+    const createdWallets: Wallet[] = [];
     for (let i = 0; i < WALLETS; i++) {
       const address = fakeWallet();
       const maybeUser = i < USERS ? createdUsers[i] : null;
@@ -179,11 +209,14 @@ export async function POST(req: Request) {
 
       const rows = Array.from({ length: ticketCountForDay }).map((_, t) => {
         const wallet = createdWallets[randInt(0, createdWallets.length - 1)];
-        const code = `XPOT-${draw.drawDate.toISOString().slice(0, 10)}-${randInt(100000, 999999)}-${t + 1}`;
+        const code = `XPOT-${draw.drawDate.toISOString().slice(0, 10)}-${randInt(
+          100000,
+          999999,
+        )}-${t + 1}`;
 
         // Completed draws: a few WON/CLAIMED, most NOT_PICKED
         // Today draw: mostly IN_DRAW
-        let status: any = 'IN_DRAW';
+        let status: 'IN_DRAW' | 'NOT_PICKED' | 'WON' | 'CLAIMED' = 'IN_DRAW';
         if (i < COMPLETED_DRAWS) {
           status = t < 3 ? 'CLAIMED' : t < 10 ? 'WON' : 'NOT_PICKED';
         }
@@ -212,7 +245,9 @@ export async function POST(req: Request) {
             drawId: draw.id,
             label: `Bonus XPOT #${b + 1}`,
             amountXpot: randInt(25_000, 150_000),
-            scheduledAt: new Date(draw.drawDate.getTime() + (10 + b * 15) * 60 * 1000),
+            scheduledAt: new Date(
+              draw.drawDate.getTime() + (10 + b * 15) * 60 * 1000,
+            ),
             status: i < COMPLETED_DRAWS ? 'FIRED' : 'SCHEDULED',
           },
         });
@@ -290,7 +325,10 @@ export async function POST(req: Request) {
       },
       notes: [
         `Draw dates: ${days.map((d) => d.toISOString().slice(0, 10)).join(', ')}`,
-        `Tickets per draw: ${TICKETS_PER_DRAW.join(' + ')} = ${TICKETS_PER_DRAW.reduce((a, b) => a + b, 0)}`,
+        `Tickets per draw: ${TICKETS_PER_DRAW.join(' + ')} = ${TICKETS_PER_DRAW.reduce(
+          (a, b) => a + b,
+          0,
+        )}`,
       ],
     });
   } catch (err: any) {
