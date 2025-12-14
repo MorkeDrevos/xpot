@@ -39,16 +39,13 @@ export default function XpotTopBar({
             <div className="flex min-w-0 items-center gap-4">
               <Link href={logoHref} className="flex shrink-0 items-center gap-3">
                 <Image
-  src="/img/xpot-logo-light.png"
-  alt="XPOT"
-  width={460}
-  height={132}
-  priority
-  className="
-    h-[118px] min-h-[118px] w-auto object-contain
-    animate-[xpotStarFlash_20s_ease-in-out_infinite]
-  "
-/>
+                  src="/img/xpot-logo-light.png"
+                  alt="XPOT"
+                  width={460}
+                  height={132}
+                  priority
+                  className="h-[118px] min-h-[118px] w-auto object-contain xpot-starflash"
+                />
               </Link>
 
               {/* Pill + optional slogan */}
@@ -119,6 +116,49 @@ export default function XpotTopBar({
           to {
             left: 120%;
           }
+        }
+
+        /*
+          Star flash: we can't target a single star inside a static PNG,
+          so this is a very subtle "premium pulse" on the logo as a whole.
+          Two quick pulses every ~20s (similar to the vibe you described),
+          with long idle time to stay premium.
+        */
+        @keyframes xpotStarFlash {
+          0% {
+            filter: brightness(1) saturate(1);
+            transform: translateZ(0);
+          }
+          8% {
+            filter: brightness(1) saturate(1);
+          }
+
+          /* Pulse 1 */
+          10% {
+            filter: brightness(1.18) saturate(1.08)
+              drop-shadow(0 0 10px rgba(255, 255, 255, 0.22));
+          }
+          12% {
+            filter: brightness(1) saturate(1);
+          }
+
+          /* Pulse 2 (shortly after) */
+          18% {
+            filter: brightness(1.22) saturate(1.1)
+              drop-shadow(0 0 12px rgba(255, 255, 255, 0.26));
+          }
+          20% {
+            filter: brightness(1) saturate(1);
+          }
+
+          100% {
+            filter: brightness(1) saturate(1);
+          }
+        }
+
+        .xpot-starflash {
+          animation: xpotStarFlash 20s ease-in-out infinite;
+          will-change: filter;
         }
       `}</style>
     </header>
