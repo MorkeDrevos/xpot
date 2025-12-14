@@ -12,13 +12,16 @@
   --text: #e5e7eb;
 
   /* MUST match your purple banner height (PreLaunchBanner).
-     If you see a “gap” between banner and top bar, your banner
-     is not actually 56px tall. Set this to the real height. */
+     If there’s a “gap” between banner and top bar, this value
+     doesn’t match the real rendered banner height. */
   --xpot-banner-h: 56px;
 
   /* Accent (NO green) */
   --xpot-accent: 56 189 248; /* sky-400 */
   --xpot-accent-2: 167 139 250; /* violet-400 */
+
+  /* System divider tone (cool + premium) */
+  --xpot-divider: 148 163 184; /* slate-400 */
 }
 
 html,
@@ -154,8 +157,8 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(var(--xpot-accent), 0.55),
-    rgba(var(--xpot-accent-2), 0.35),
+    rgba(var(--xpot-accent), 0.45),
+    rgba(var(--xpot-accent-2), 0.28),
     transparent
   );
   opacity: 0.75;
@@ -174,9 +177,11 @@ body {
 }
 
 /* ─────────────────────────────────────────────
-   XPOT PREMIUM ANIMATED SEPARATOR LINE
-   - thinner, softer, fades before edges
-   - NO GREEN
+   XPOT SYSTEM DIVIDER (ultra-subtle, premium)
+   - thinner than 1px (optical)
+   - calmer tone (slate-blue, not neon)
+   - fades before edges
+   - very subtle sweep
    ───────────────────────────────────────────── */
 
 .xpot-animated-line {
@@ -184,53 +189,56 @@ body {
   height: 1px;
   width: 100%;
   overflow: hidden;
+
+  /* optical thin line (premium on retina) */
+  transform: scaleY(0.6);
+  transform-origin: center;
 }
 
-/* Base fading gradient line (thin + not edge-to-edge) */
+/* Base line: cool slate-blue, fades early */
 .xpot-animated-line::before {
   content: '';
   position: absolute;
   left: 50%;
   top: 0;
   transform: translateX(-50%);
-  width: 78%;
+  width: 72%;
   height: 100%;
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(var(--xpot-accent), 0.12) 18%,
-    rgba(var(--xpot-accent), 0.22) 50%,
-    rgba(var(--xpot-accent-2), 0.12) 82%,
+    rgba(var(--xpot-divider), 0.08) 20%,
+    rgba(var(--xpot-divider), 0.16) 50%,
+    rgba(var(--xpot-divider), 0.08) 80%,
     rgba(255, 255, 255, 0) 100%
   );
-  opacity: 0.85;
-  filter: blur(0.2px);
+  opacity: 0.9;
 }
 
-/* Subtle moving highlight */
+/* Micro sweep highlight (barely alive) */
 .xpot-animated-line::after {
   content: '';
   position: absolute;
   top: 0;
-  left: -30%;
+  left: -25%;
   height: 100%;
-  width: 26%;
+  width: 22%;
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.12) 50%,
     rgba(255, 255, 255, 0) 100%
   );
-  animation: xpot-line-sweep 7s ease-in-out infinite;
-  opacity: 0.28;
+  animation: xpot-line-sweep 10s ease-in-out infinite;
+  opacity: 0.16;
 }
 
 @keyframes xpot-line-sweep {
   0% {
-    left: -30%;
+    left: -25%;
   }
   100% {
-    left: 130%;
+    left: 125%;
   }
 }
 
