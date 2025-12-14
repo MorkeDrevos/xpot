@@ -2,14 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* XPOT base theme tokens */
+/* ─────────────────────────────────────────────
+   XPOT base theme tokens
+   ───────────────────────────────────────────── */
+
 :root {
   color-scheme: dark;
   --bg: #020617;
   --text: #e5e7eb;
+
+  /* MUST match your purple banner height */
+  --xpot-banner-h: 56px;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   background-color: var(--bg);
@@ -18,7 +25,7 @@ html, body {
 
 /* Simple helpers that the app already depends on */
 .admin-shell-bg {
-  background-color: #020617;
+  background-color: var(--bg);
 }
 
 .premium-card,
@@ -27,234 +34,66 @@ html, body {
 .jackpot-shell-inner {
   border-radius: 1.5rem;
 }
-@keyframes xpotBannerMove {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
 
 /* ─────────────────────────────────────────────
-   XPOT Premium Animated Line
-   Slow, subtle, luxury pulse
-   ───────────────────────────────────────────── */
-
-.xpot-animated-line {
-  position: relative;
-  height: 1px;
-  width: 100%;
-  background: linear-gradient(
-    90deg,
-    rgba(0,0,0,0) 0%,
-    rgba(253, 224, 71, 0.35) 25%,
-    rgba(253, 224, 71, 0.85) 50%,
-    rgba(253, 224, 71, 0.35) 75%,
-    rgba(0,0,0,0) 100%
-  );
-  overflow: hidden;
-}
-
-/* moving glow */
-.xpot-animated-line::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(253, 224, 71, 0.9) 50%,
-    transparent 100%
-  );
-  transform: translateX(-100%);
-  animation: xpot-line-sweep 6s ease-in-out infinite;
-}
-
-@keyframes xpot-line-sweep {
-  0% {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  50% {
-    transform: translateX(100%);
-    opacity: 1;
-  }
-  80% {
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-/* slogan pill */
-.xpot-slogan-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 9999px;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #d1fae5;
-  background: linear-gradient(
-    180deg,
-    rgba(16, 185, 129, 0.15),
-    rgba(16, 185, 129, 0.05)
-  );
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  box-shadow:
-    inset 0 0 12px rgba(16, 185, 129, 0.15),
-    0 0 18px rgba(16, 185, 129, 0.12);
-}
-
-/* ─────────────────────────────────────────────
-   XPOT TOP BAR – PREMIUM GREEN ANIMATED LINE
-   ───────────────────────────────────────────── */
-
-.xpot-animated-line {
-  height: 1px;
-  width: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(34, 197, 94, 0.6),
-    rgba(34, 197, 94, 1),
-    rgba(34, 197, 94, 0.6),
-    transparent
-  );
-  animation: xpot-line-glow 4.5s ease-in-out infinite;
-}
-
-@keyframes xpot-line-glow {
-  0% {
-    opacity: 0.35;
-    filter: blur(0px);
-  }
-  50% {
-    opacity: 1;
-    filter: blur(0.6px);
-  }
-  100% {
-    opacity: 0.35;
-    filter: blur(0px);
-  }
-}
-
-/* ─────────────────────────────────────────────
-   XPOT SLOGAN PILL
+   XPOT SLOGAN PILL (premium glass)
    ───────────────────────────────────────────── */
 
 .xpot-slogan-pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
+  gap: 10px;
   border-radius: 999px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  font-weight: 600;
-  color: #bbf7d0;
-
-  background: linear-gradient(
-    180deg,
-    rgba(34, 197, 94, 0.18),
-    rgba(34, 197, 94, 0.08)
-  );
-
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  box-shadow:
-    inset 0 0 12px rgba(34, 197, 94, 0.15),
-    0 0 20px rgba(34, 197, 94, 0.08);
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 0 22px rgba(15, 23, 42, 0.55);
 }
 
-/* ─────────────────────────────────────────────
-   XPOT TOP BAR – PREMIUM GREEN ANIMATED LINE
-   ───────────────────────────────────────────── */
-
-.xpot-animated-line {
-  height: 1px;
-  width: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(34, 197, 94, 0.6),
-    rgba(34, 197, 94, 1),
-    rgba(34, 197, 94, 0.6),
-    transparent
-  );
-  animation: xpot-line-glow 4.5s ease-in-out infinite;
+.xpot-slogan-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(52, 211, 153);
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.85);
+  animation: xpotPulse 1.6s ease-in-out infinite;
 }
 
-@keyframes xpot-line-glow {
-  0% {
-    opacity: 0.35;
-    filter: blur(0px);
+.xpot-slogan-text {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(226, 232, 240, 0.95);
+  white-space: nowrap;
+}
+
+.xpot-slogan-text .muted {
+  color: rgba(148, 163, 184, 0.95);
+}
+.xpot-slogan-text .mid {
+  color: rgba(203, 213, 225, 0.98);
+}
+.xpot-slogan-text .strong {
+  color: #fff;
+}
+
+@keyframes xpotPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
   }
   50% {
+    transform: scale(1.18);
     opacity: 1;
-    filter: blur(0.6px);
-  }
-  100% {
-    opacity: 0.35;
-    filter: blur(0px);
   }
 }
 
 /* ─────────────────────────────────────────────
-   XPOT SLOGAN PILL
+   XPOT CORE SLOGANS
    ───────────────────────────────────────────── */
 
-.xpot-slogan-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  font-weight: 600;
-  color: #bbf7d0;
-
-  background: linear-gradient(
-    180deg,
-    rgba(34, 197, 94, 0.18),
-    rgba(34, 197, 94, 0.08)
-  );
-
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  box-shadow:
-    inset 0 0 12px rgba(34, 197, 94, 0.15),
-    0 0 20px rgba(34, 197, 94, 0.08);
-}
-
-/* Animated premium green line */
-.xpot-animated-line {
-  height: 1px;
-  width: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(34, 197, 94, 0.9),
-    transparent
-  );
-  background-size: 200% 100%;
-  animation: xpot-line-flow 5.5s linear infinite;
-  opacity: 0.9;
-}
-
-@keyframes xpot-line-flow {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
-  }
-}
-
-/* Core slogan (subtle premium life) */
 .xpot-core-slogan {
   font-size: 12px;
   font-weight: 500;
@@ -275,7 +114,6 @@ html, body {
   }
 }
 
-/* Ops slogan – premium, calm, protocol-level */
 .xpot-ops-slogan {
   max-width: 420px;
   text-align: right;
@@ -304,7 +142,6 @@ html, body {
   opacity: 0.8;
 }
 
-/* Slow, luxury opacity movement */
 @keyframes xpot-ops-breathe {
   0% {
     opacity: 0.55;
@@ -317,119 +154,35 @@ html, body {
   }
 }
 
-:root {
-  /* MUST match your purple banner height */
-  --xpot-banner-h: 56px;
-}
+/* ─────────────────────────────────────────────
+   XPOT PREMIUM ANIMATED SEPARATOR LINE
+   (does NOT touch edges)
+   ───────────────────────────────────────────── */
 
-.xpot-animated-line {
-  height: 1px;
-  width: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(16, 185, 129, 0.0),
-    rgba(16, 185, 129, 0.95),
-    rgba(16, 185, 129, 0.0),
-    transparent
-  );
-  background-size: 220% 100%;
-  animation: xpot-line-scan 3.2s linear infinite;
-  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.35));
-  opacity: 0.95;
-}
-
-@keyframes xpot-line-scan {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 220% 50%; }
-}
-/* Premium slogan pill */
-.xpot-slogan-pill{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  border-radius:999px;
-  padding:10px 14px;
-  border:1px solid rgba(255,255,255,0.10);
-  background:rgba(255,255,255,0.04);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 0 22px rgba(15,23,42,0.55);
-}
-.xpot-slogan-dot{
-  width:8px;
-  height:8px;
-  border-radius:999px;
-  background: rgb(52, 211, 153);
-  box-shadow: 0 0 14px rgba(52,211,153,0.85);
-  animation: xpotPulse 1.6s ease-in-out infinite;
-}
-.xpot-slogan-text{
-  font-size:12px;
-  font-weight:700;
-  letter-spacing:0.02em;
-  color: rgba(226,232,240,0.95);
-  white-space:nowrap;
-}
-.xpot-slogan-text .muted{ color: rgba(148,163,184,0.95); }
-.xpot-slogan-text .mid{ color: rgba(203,213,225,0.98); }
-.xpot-slogan-text .strong{ color: #fff; }
-
-@keyframes xpotPulse{
-  0%,100%{ transform: scale(1); opacity: 0.9; }
-  50%{ transform: scale(1.18); opacity: 1; }
-}
-
-/* Animated premium line (green) */
-.xpot-animated-line{
-  height:1px;
-  width:100%;
-  background: linear-gradient(
-    90deg,
-    rgba(16,185,129,0) 0%,
-    rgba(16,185,129,0.65) 18%,
-    rgba(52,211,153,1) 50%,
-    rgba(16,185,129,0.65) 82%,
-    rgba(16,185,129,0) 100%
-  );
-  background-size: 220% 100%;
-  animation: xpotLineSweep 2.6s ease-in-out infinite;
-  filter: drop-shadow(0 0 10px rgba(52,211,153,0.35));
-  opacity: 0.95;
-}
-@keyframes xpotLineSweep{
-  0%{ background-position: 0% 50%; }
-  50%{ background-position: 100% 50%; }
-  100%{ background-position: 0% 50%; }
-}
-
-/* Premium animated separator line */
 .xpot-animated-line {
   position: relative;
-  height: 1px; /* thinner */
+  height: 1px;
   width: 100%;
   overflow: hidden;
 }
 
-/* The fading gradient line */
+/* Base fading gradient line */
 .xpot-animated-line::before {
   content: '';
   position: absolute;
   left: 50%;
   top: 0;
   transform: translateX(-50%);
-
-  width: 82%; /* DOES NOT touch edges */
+  width: 82%;
   height: 100%;
-
   background: linear-gradient(
     90deg,
-    rgba(16,185,129,0) 0%,
-    rgba(16,185,129,0.35) 20%,
-    rgba(16,185,129,0.65) 50%,
-    rgba(16,185,129,0.35) 80%,
-    rgba(16,185,129,0) 100%
+    rgba(16, 185, 129, 0) 0%,
+    rgba(16, 185, 129, 0.35) 20%,
+    rgba(16, 185, 129, 0.65) 50%,
+    rgba(16, 185, 129, 0.35) 80%,
+    rgba(16, 185, 129, 0) 100%
   );
-
   opacity: 0.75;
 }
 
@@ -441,14 +194,12 @@ html, body {
   left: -30%;
   height: 100%;
   width: 30%;
-
   background: linear-gradient(
     90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0.25) 50%,
-    rgba(255,255,255,0) 100%
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0) 100%
   );
-
   animation: xpot-line-sweep 6s ease-in-out infinite;
   opacity: 0.35;
 }
@@ -459,5 +210,16 @@ html, body {
   }
   100% {
     left: 130%;
+  }
+}
+
+/* (Optional) If you still use this somewhere else, keep it here.
+   Otherwise delete. */
+@keyframes xpotBannerMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
   }
 }
