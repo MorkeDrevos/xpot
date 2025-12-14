@@ -1,4 +1,3 @@
-// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -8,12 +7,7 @@ import { ReactNode } from 'react';
 type XpotTopBarProps = {
   logoHref?: string;
   pillText?: string;
-
-  // (from old version) optional extra pill on the right of the main pill
   sloganRight?: string;
-
-  // if you pass a custom rightSlot, we render it.
-  // if not, we render the default menu items (Hub, Terms, Enter…)
   rightSlot?: ReactNode;
 
   // If you have the purple PreLaunchBanner mounted
@@ -30,37 +24,21 @@ export default function XpotTopBar({
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
-  // Overlap by 1px to kill any seam/gap forever
-  const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
-
-  const defaultRight = (
-    <>
-      <Link href="/hub" className="hover:text-white transition">
-        Hub
-      </Link>
-      <Link href="/terms" className="hover:text-white transition">
-        Terms
-      </Link>
-      <Link
-        href="/hub"
-        className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-slate-200 transition"
-      >
-        Enter today&apos;s XPOT →
-      </Link>
-    </>
-  );
+  // Overlap by 1px to kill any seam/gap forever.
+  // Fallback keeps it from hiding if CSS var missing.
+  const top = hasBanner ? 'calc(var(--xpot-banner-h, 56px) - 1px)' : '0px';
 
   return (
-    <header className="fixed inset-x-0 z-[50] w-full" style={{ top }}>
+    <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
       {/* Bar */}
-      <div className="border-b border-white/10 bg-black/55 backdrop-blur-xl">
+      <div className="bg-black/70 backdrop-blur-md border-b border-white/5">
         {/* IMPORTANT: match PageShell container padding exactly */}
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
-          {/* Make top bar tall enough for 105px logo */}
-          <div className="flex min-h-[120px] items-center justify-between gap-6 py-3">
+          {/* Tall enough for 105px logo */}
+          <div className="flex min-h-[120px] items-center justify-between gap-6">
             {/* Left */}
-            <div className="flex min-w-0 items-center gap-5">
-              <Link href={logoHref} className="flex shrink-0 items-center">
+            <div className="flex min-w-0 items-center gap-4">
+              <Link href={logoHref} className="flex items-center gap-3 shrink-0">
                 <Image
                   src="/img/xpot-logo-light.png"
                   alt="XPOT"
@@ -73,16 +51,9 @@ export default function XpotTopBar({
 
               {/* Pill + optional slogan */}
               <div className="hidden sm:flex min-w-0 items-center gap-3">
-                <span
-                  className="
-                    inline-flex min-w-0 items-center gap-2
-                    rounded-full border border-white/10 bg-white/5
-                    px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em]
-                    text-white/75
-                  "
-                >
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-white/35" />
-                  <span className="truncate">{pillText}</span>
+                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                  <span className="truncate opacity-85">{pillText}</span>
                 </span>
 
                 {sloganRight ? (
@@ -95,7 +66,22 @@ export default function XpotTopBar({
 
             {/* Right */}
             <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
-              {rightSlot ?? defaultRight}
+              {rightSlot ?? (
+                <>
+                  <Link href="/hub" className="hover:text-white transition">
+                    Hub
+                  </Link>
+                  <Link href="/terms" className="hover:text-white transition">
+                    Terms
+                  </Link>
+                  <Link
+                    href="/hub"
+                    className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-slate-200 transition"
+                  >
+                    Enter today&apos;s XPOT →
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
