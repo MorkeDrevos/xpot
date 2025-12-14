@@ -76,7 +76,7 @@ export default function XpotPageShell({
         {(title || subtitle || rightSlot) && (
           <div
             className={[
-              'mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
+              'mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between',
               headerClassName,
             ].join(' ')}
           >
