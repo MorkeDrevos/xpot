@@ -63,10 +63,11 @@ export default function OperationsCenterBadge({
         {/* Divider + long tagline only when there is room */}
         <span className="hidden lg:inline-flex mx-1 h-4 w-px shrink-0 bg-white/10" />
 
-        <span className="hidden lg:inline-flex min-w-0 truncate text-sm font-semibold tracking-tight text-slate-100">
-          One protocol. <span className="text-slate-400">One identity.</span>{' '}
-          <span className="text-slate-100">One daily XPOT draw.</span>
-        </span>
+        <span className="text-sm font-semibold tracking-[0.02em] text-slate-100">
+  One protocol.
+  <span className="mx-1 text-slate-400">One identity.</span>
+  <span className="text-slate-100">One daily XPOT draw.</span>
+</span>
       </div>
     </div>
   );
