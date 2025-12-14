@@ -100,18 +100,23 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < ticketCount; i++) {
       const address = walletAddresses[randInt(0, walletAddresses.length - 1)];
 
-      const ticket = await prisma.ticket.create({
-        data: {
-          drawId: draw.id,
-          code: makeTicketCode(),
-          walletAddress: address,
-          status: 'IN_DRAW',
-          wallet: {
-            connect: { address },
-          },
-        },
-        select: { id: true },
-      });
+      const wallet = await prisma.wallet.findUnique({
+  where: { address },
+  select: { id: true },
+});
+
+if (!wallet) continue;
+
+const ticket = await prisma.ticket.create({
+  data: {
+    drawId: draw.id,
+    code: makeTicketCode(),
+    walletId: wallet.id, // ✅ use FK directly
+    walletAddress: address,
+    status: 'IN_DRAW',
+  },
+  select: { id: true },
+});
 
       createdTicketIds.push(ticket.id);
     }
