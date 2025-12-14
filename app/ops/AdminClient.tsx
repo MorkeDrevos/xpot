@@ -1,9 +1,7 @@
 // app/ops/AdminClient.tsx
 'use client';
 
-import { useEffect, useMemo, useState, FormEvent } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 
 import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
@@ -20,7 +18,6 @@ import {
   Loader2,
   RefreshCcw,
   ShieldAlert,
-  Sparkles,
   Ticket,
   Timer,
   XCircle,
@@ -199,7 +196,7 @@ function Badge({
   children,
   tone = 'slate',
 }: {
-  children: any;
+  children: ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky' | 'red';
 }) {
   const cls =
@@ -314,13 +311,6 @@ export default function AdminPage() {
   const [isDevHost, setIsDevHost] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
-  const [didAutoSeed, setDidAutoSeed] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsDevHost(window.location.hostname.startsWith('dev.'));
-    }
-  }, []);
 
   const [txInputs, setTxInputs] = useState<Record<string, string>>({});
   const [savingPaidId, setSavingPaidId] = useState<string | null>(null);
@@ -378,6 +368,12 @@ export default function AdminPage() {
   const [cancelingDropId, setCancelingDropId] = useState<string | null>(null);
   const [cancelDropError, setCancelDropError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsDevHost(window.location.hostname.startsWith('dev.'));
+    }
+  }, []);
+
   // ── Load admin token ────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -423,31 +419,31 @@ export default function AdminPage() {
   }
 
   async function loadOpsMode() {
-  const data = await authedFetch('/api/admin/ops-mode');
+    const data = await authedFetch('/api/admin/ops-mode');
 
-  const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
-  const eff = ((data as any).effectiveMode ?? m) as OpsMode;
-  const allowed = !!(data as any).envAutoAllowed;
+    const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
+    const eff = ((data as any).effectiveMode ?? m) as OpsMode;
+    const allowed = !!(data as any).envAutoAllowed;
 
-  setOpsMode(m);
-  setEffectiveOpsMode(eff);
-  setEnvAutoAllowed(allowed);
-}
+    setOpsMode(m);
+    setEffectiveOpsMode(eff);
+    setEnvAutoAllowed(allowed);
+  }
 
-async function saveOpsMode(next: OpsMode) {
-  const data = await authedFetch('/api/admin/ops-mode', {
-    method: 'POST',
-    body: JSON.stringify({ mode: next }),
-  });
+  async function saveOpsMode(next: OpsMode) {
+    const data = await authedFetch('/api/admin/ops-mode', {
+      method: 'POST',
+      body: JSON.stringify({ mode: next }),
+    });
 
-  const m = ((data as any).mode ?? next) as OpsMode;
-  const eff = ((data as any).effectiveMode ?? m) as OpsMode;
-  const allowed = !!(data as any).envAutoAllowed;
+    const m = ((data as any).mode ?? next) as OpsMode;
+    const eff = ((data as any).effectiveMode ?? m) as OpsMode;
+    const allowed = !!(data as any).envAutoAllowed;
 
-  setOpsMode(m);
-  setEffectiveOpsMode(eff);
-  setEnvAutoAllowed(allowed);
-}
+    setOpsMode(m);
+    setEffectiveOpsMode(eff);
+    setEnvAutoAllowed(allowed);
+  }
 
   async function refreshUpcomingDrops() {
     setUpcomingLoading(true);
@@ -464,42 +460,41 @@ async function saveOpsMode(next: OpsMode) {
   }
 
   async function handleSeedDemoData(force = false) {
-  setSeedMsg(null);
+    setSeedMsg(null);
 
-  if (!adminToken) {
-    setSeedMsg('Admin key missing. Unlock admin first.');
-    return;
-  }
-
-  setIsSeeding(true);
-  try {
-    const url = force ? '/api/admin/dev-seed?force=1' : '/api/admin/dev-seed';
-    const data = await authedFetch(url, { method: 'POST' });
-
-    if ((data as any)?.skipped) {
-      setSeedMsg((data as any)?.message || 'Seed skipped (DB not empty).');
-    } else {
-      setSeedMsg('Seed complete. Reloading ops data...');
+    if (!adminToken) {
+      setSeedMsg('Admin key missing. Unlock admin first.');
+      return;
     }
 
-    // refresh panels
-    const todayData = await authedFetch('/api/admin/today');
-    setTodayDraw((todayData as any).today ?? null);
+    setIsSeeding(true);
+    try {
+      const url = force ? '/api/admin/dev-seed?force=1' : '/api/admin/dev-seed';
+      const data = await authedFetch(url, { method: 'POST' });
 
-    const ticketsData = await authedFetch('/api/admin/tickets');
-    setTickets((ticketsData as any).tickets ?? []);
+      if ((data as any)?.skipped) {
+        setSeedMsg((data as any)?.message || 'Seed skipped (DB not empty).');
+      } else {
+        setSeedMsg('Seed complete. Reloading ops data...');
+      }
 
-    const winnersData = await authedFetch('/api/admin/winners');
-    setWinners((winnersData as any).winners ?? []);
+      const todayData = await authedFetch('/api/admin/today');
+      setTodayDraw((todayData as any).today ?? null);
 
-    await refreshUpcomingDrops();
-  } catch (err: any) {
-    console.error('[ADMIN] seed error', err);
-    setSeedMsg(err?.message || 'Seed failed');
-  } finally {
-    setIsSeeding(false);
+      const ticketsData = await authedFetch('/api/admin/tickets');
+      setTickets((ticketsData as any).tickets ?? []);
+
+      const winnersData = await authedFetch('/api/admin/winners');
+      setWinners((winnersData as any).winners ?? []);
+
+      await refreshUpcomingDrops();
+    } catch (err: any) {
+      console.error('[ADMIN] seed error', err);
+      setSeedMsg(err?.message || 'Seed failed');
+    } finally {
+      setIsSeeding(false);
+    }
   }
-}
 
   // ── Manually create today’s draw (dev) ──────
   async function handleCreateTodayDraw() {
@@ -642,11 +637,18 @@ async function saveOpsMode(next: OpsMode) {
       const winner: AdminWinner = {
         ...raw,
         payoutUsd:
-          raw.payoutUsd ?? raw.payoutXpot ?? raw.amountUsd ?? raw.amountXpot ?? 0,
+          raw.payoutUsd ??
+          raw.payoutXpot ??
+          raw.amountUsd ??
+          raw.amountXpot ??
+          0,
       };
 
       setPickSuccess(
-        `Main XPOT winner: ${winner.ticketCode} (${winner.walletAddress.slice(0, 4)}…${winner.walletAddress.slice(-4)}).`,
+        `Main XPOT winner: ${winner.ticketCode} (${winner.walletAddress.slice(
+          0,
+          4,
+        )}…${winner.walletAddress.slice(-4)}).`,
       );
 
       try {
@@ -716,7 +718,9 @@ async function saveOpsMode(next: OpsMode) {
         throw new Error((data as any).error || 'Failed to mark as paid');
 
       setWinners(prev =>
-        prev.map(w => (w.id === winnerId ? { ...w, isPaidOut: true, txUrl } : w)),
+        prev.map(w =>
+          w.id === winnerId ? { ...w, isPaidOut: true, txUrl } : w,
+        ),
       );
     } catch (err: any) {
       setMarkPaidError(err.message || 'Failed to mark as paid');
@@ -725,132 +729,81 @@ async function saveOpsMode(next: OpsMode) {
     }
   }
 
-// ── Load Today, tickets, winners, upcoming (+ ops mode) ──
-useEffect(() => {
-  if (!adminToken) return;
+  // ── Load Today, tickets, winners, upcoming (+ ops mode) ──
+  useEffect(() => {
+    if (!adminToken) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  async function loadAll() {
-  // ── Today ─────────────────────────
-  setTodayLoading(true);
-  setTodayDrawError(null);
-  try {
-    const data = await authedFetch('/api/admin/today');
-    if (!cancelled) setTodayDraw((data as any).today ?? null);
-  } catch (err: any) {
-    if (!cancelled) setTodayDrawError(err.message);
-  } finally {
-    if (!cancelled) setTodayLoading(false);
-  }
+    async function loadAll() {
+      // ── Today ─────────────────────────
+      setTodayLoading(true);
+      setTodayDrawError(null);
+      try {
+        const data = await authedFetch('/api/admin/today');
+        if (!cancelled) setTodayDraw((data as any).today ?? null);
+      } catch (err: any) {
+        if (!cancelled)
+          setTodayDrawError(err?.message || 'Failed to load today');
+      } finally {
+        if (!cancelled) setTodayLoading(false);
+      }
 
-  // ── Tickets ───────────────────────
-  setTicketsLoading(true);
-  setTicketsError(null);
-  try {
-    const data = await authedFetch('/api/admin/tickets');
-    if (!cancelled) setTickets((data as any).tickets ?? []);
-  } catch (err: any) {
-    if (!cancelled) setTicketsError(err.message);
-  } finally {
-    if (!cancelled) setTicketsLoading(false);
-  }
+      // ── Tickets ───────────────────────
+      setTicketsLoading(true);
+      setTicketsError(null);
+      try {
+        const data = await authedFetch('/api/admin/tickets');
+        if (!cancelled) setTickets((data as any).tickets ?? []);
+      } catch (err: any) {
+        if (!cancelled)
+          setTicketsError(err?.message || 'Failed to load tickets');
+      } finally {
+        if (!cancelled) setTicketsLoading(false);
+      }
 
-  // ── Winners ───────────────────────
-  setWinnersLoading(true);
-  setWinnersError(null);
-  try {
-    const data = await authedFetch('/api/admin/winners');
-    if (!cancelled) setWinners((data as any).winners ?? []);
-  } catch (err: any) {
-    if (!cancelled) setWinnersError(err.message);
-  } finally {
-    if (!cancelled) setWinnersLoading(false);
-  }
+      // ── Winners ───────────────────────
+      setWinnersLoading(true);
+      setWinnersError(null);
+      try {
+        const data = await authedFetch('/api/admin/winners');
+        if (!cancelled) setWinners((data as any).winners ?? []);
+      } catch (err: any) {
+        if (!cancelled)
+          setWinnersError(err?.message || 'Failed to load winners');
+      } finally {
+        if (!cancelled) setWinnersLoading(false);
+      }
 
-  // ✅ ── Ops mode (ADD THIS HERE) ────
-  try {
-    await loadOpsMode();
-  } catch (err: any) {
-    console.error('[ADMIN] /ops-mode error', err);
-    // do not hard-fail the page if mode route is missing
-  }
+      // ── Ops mode ──────────────────────
+      try {
+        await loadOpsMode();
+      } catch (err: any) {
+        console.error('[ADMIN] /ops-mode error', err);
+        // don’t hard-fail the page if mode route is missing
+      }
 
-    // ── Load Today, tickets, winners, upcoming (+ ops mode) ──
-useEffect(() => {
-  if (!adminToken) return;
-
-  let cancelled = false;
-
-  async function loadAll() {
-    // ── Today ─────────────────────────
-    setTodayLoading(true);
-    setTodayDrawError(null);
-    try {
-      const data = await authedFetch('/api/admin/today');
-      if (!cancelled) setTodayDraw((data as any).today ?? null);
-    } catch (err: any) {
-      if (!cancelled)
-        setTodayDrawError(err?.message || 'Failed to load today');
-    } finally {
-      if (!cancelled) setTodayLoading(false);
+      // ── Upcoming ──────────────────────
+      setUpcomingLoading(true);
+      setUpcomingError(null);
+      try {
+        const data = await authedFetch('/api/admin/bonus-upcoming');
+        if (!cancelled) setUpcomingDrops((data as any).upcoming ?? []);
+      } catch (err: any) {
+        if (!cancelled)
+          setUpcomingError(err?.message || 'Failed to load upcoming drops');
+      } finally {
+        if (!cancelled) setUpcomingLoading(false);
+      }
     }
 
-    // ── Tickets ───────────────────────
-    setTicketsLoading(true);
-    setTicketsError(null);
-    try {
-      const data = await authedFetch('/api/admin/tickets');
-      if (!cancelled) setTickets((data as any).tickets ?? []);
-    } catch (err: any) {
-      if (!cancelled)
-        setTicketsError(err?.message || 'Failed to load tickets');
-    } finally {
-      if (!cancelled) setTicketsLoading(false);
-    }
+    loadAll();
 
-    // ── Winners ───────────────────────
-    setWinnersLoading(true);
-    setWinnersError(null);
-    try {
-      const data = await authedFetch('/api/admin/winners');
-      if (!cancelled) setWinners((data as any).winners ?? []);
-    } catch (err: any) {
-      if (!cancelled)
-        setWinnersError(err?.message || 'Failed to load winners');
-    } finally {
-      if (!cancelled) setWinnersLoading(false);
-    }
-
-    // ── Ops mode ──────────────────────
-    try {
-      await loadOpsMode();
-    } catch (err: any) {
-      console.error('[ADMIN] /ops-mode error', err);
-      // don’t hard-fail the page if mode route is missing
-    }
-
-    // ── Upcoming ──────────────────────
-    setUpcomingLoading(true);
-    setUpcomingError(null);
-    try {
-      const data = await authedFetch('/api/admin/bonus-upcoming');
-      if (!cancelled) setUpcomingDrops((data as any).upcoming ?? []);
-    } catch (err: any) {
-      if (!cancelled)
-        setUpcomingError(err?.message || 'Failed to load upcoming drops');
-    } finally {
-      if (!cancelled) setUpcomingLoading(false);
-    }
-  }
-
-  loadAll();
-
-  return () => {
-    cancelled = true;
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [adminToken]);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
 
   // ── Countdown (today draw closesAt) ───────────────────────
   useEffect(() => {
@@ -877,7 +830,10 @@ useEffect(() => {
       setCountdownSeconds(totalSeconds);
 
       const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
+        2,
+        '0',
+      );
       const seconds = String(totalSeconds % 60).padStart(2, '0');
       setCountdownText(`${hours}:${minutes}:${seconds}`);
     }
@@ -1002,7 +958,9 @@ useEffect(() => {
   const now = new Date();
 
   let drawDateLabel = 'Draw date';
-  let drawDateValue: Date | null = todayDraw?.date ? new Date(todayDraw.date) : null;
+  let drawDateValue: Date | null = todayDraw?.date
+    ? new Date(todayDraw.date)
+    : null;
 
   if (closesAtDate && now >= closesAtDate) {
     drawDateLabel = 'Next draw date';
@@ -1037,49 +995,51 @@ useEffect(() => {
                     : 'border border-slate-700/70 bg-slate-900/70 text-slate-400'
                 }`}
               >
-                {tokenAccepted ? 'Access level confirmed' : 'Locked · token required'}
+                {tokenAccepted
+                  ? 'Access level confirmed'
+                  : 'Locked · token required'}
               </span>
 
-            {/* Ops mode pill + toggle (only after admin unlock) */}
-{tokenAccepted && (
-  <div className="hidden sm:flex items-center gap-2">
-    <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
-      shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] ${
-        effectiveOpsMode === 'AUTO'
-          ? 'border border-sky-400/60 bg-sky-500/10 text-sky-100'
-          : 'border border-slate-600/60 bg-slate-800/60 text-slate-200'
-      }`}
-      title={
-        !envAutoAllowed
-          ? 'AUTO is not allowed in this environment'
-          : 'Current ops mode'
-      }
-    >
-      {effectiveOpsMode === 'AUTO' ? 'AUTO MODE' : 'MANUAL MODE'}
-      {!envAutoAllowed && (
-        <span className="ml-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[9px] text-amber-200">
-          ENV LOCK
-        </span>
-      )}
-    </span>
+              {/* Ops mode pill + toggle (only after admin unlock) */}
+              {tokenAccepted && (
+                <div className="hidden sm:flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
+                    shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] ${
+                      effectiveOpsMode === 'AUTO'
+                        ? 'border border-sky-400/60 bg-sky-500/10 text-sky-100'
+                        : 'border border-slate-600/60 bg-slate-800/60 text-slate-200'
+                    }`}
+                    title={
+                      !envAutoAllowed
+                        ? 'AUTO is not allowed in this environment'
+                        : 'Current ops mode'
+                    }
+                  >
+                    {effectiveOpsMode === 'AUTO' ? 'AUTO MODE' : 'MANUAL MODE'}
+                    {!envAutoAllowed && (
+                      <span className="ml-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[9px] text-amber-200">
+                        ENV LOCK
+                      </span>
+                    )}
+                  </span>
 
-    <button
-      type="button"
-      className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-      onClick={() => {
-        const next: OpsMode = effectiveOpsMode === 'AUTO' ? 'MANUAL' : 'AUTO';
-        setModePending(next);
-        setModeTokenInput('');
-        setModeError(null);
-        setModeModalOpen(true);
-      }}
-    >
-      Toggle
-    </button>
-  </div>
-)}
-
+                  <button
+                    type="button"
+                    className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+                    onClick={() => {
+                      const next: OpsMode =
+                        effectiveOpsMode === 'AUTO' ? 'MANUAL' : 'AUTO';
+                      setModePending(next);
+                      setModeTokenInput('');
+                      setModeError(null);
+                      setModeModalOpen(true);
+                    }}
+                  >
+                    Toggle
+                  </button>
+                </div>
+              )}
             </div>
 
             <form
@@ -1111,39 +1071,35 @@ useEffect(() => {
                   </button>
                 )}
               </div>
-              {isDevHost && tokenAccepted && (
-  <div className="flex gap-2 sm:mt-0">
-    <button
-      type="button"
-      onClick={() => handleSeedDemoData(false)}
-      disabled={isSeeding}
-      className={`${BTN_UTILITY} px-3 py-1.5 text-xs`}
-      title="Dev-only: seed demo draw, tickets, winners"
-    >
-      {isSeeding ? 'Seeding…' : 'Seed demo'}
-    </button>
 
-    <button
-      type="button"
-      onClick={() => handleSeedDemoData(true)}
-      disabled={isSeeding}
-      className={`${BTN_DANGER} px-3 py-1.5 text-xs`}
-      title="Dev-only: force seed even if DB is not empty"
-    >
-      Force seed
-    </button>
-  </div>
-)}
+              {isDevHost && tokenAccepted && (
+                <div className="flex gap-2 sm:mt-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSeedDemoData(false)}
+                    disabled={isSeeding}
+                    className={`${BTN_UTILITY} px-3 py-1.5 text-xs`}
+                    title="Dev-only: seed demo draw, tickets, winners"
+                  >
+                    {isSeeding ? 'Seeding…' : 'Seed demo'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSeedDemoData(true)}
+                    disabled={isSeeding}
+                    className={`${BTN_DANGER} px-3 py-1.5 text-xs`}
+                    title="Dev-only: force seed even if DB is not empty"
+                  >
+                    Force seed
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         </div>
 
-      {seedMsg && (
-  <p className="mt-2 px-6 text-xs text-slate-400">
-    {seedMsg}
-  </p>
-)}
-
+        {seedMsg && <p className="mt-2 px-6 text-xs text-slate-400">{seedMsg}</p>}
       </section>
 
       {/* Main grid */}
@@ -1184,7 +1140,8 @@ useEffect(() => {
                       Today&apos;s round
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
-                      Live overview of today&apos;s XPOT draw, entries, rollovers and prize pool.
+                      Live overview of today&apos;s XPOT draw, entries, rollovers
+                      and prize pool.
                     </p>
                   </div>
 
@@ -1218,7 +1175,8 @@ useEffect(() => {
                       )}
                       {!todayLoading && !todayDraw && (
                         <span className="text-xs font-normal text-amber-300">
-                          No XPOT round detected for today – backend should create this automatically.
+                          No XPOT round detected for today – backend should
+                          create this automatically.
                         </span>
                       )}
                     </p>
@@ -1253,17 +1211,22 @@ useEffect(() => {
                 </div>
 
                 <div className="mt-5 rounded-[24px] bg-slate-950/90 px-3 py-3 text-xs text-slate-500">
-                  {todayDrawError && <p className="text-amber-300">{todayDrawError}</p>}
+                  {todayDrawError && (
+                    <p className="text-amber-300">{todayDrawError}</p>
+                  )}
 
-                  {!todayDrawError && !todayLoading && todayDraw && todayDraw.closesAt && (
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm sm:text-base">
-                          <span className="text-xs uppercase tracking-wide text-slate-500">
-                            Closes in
-                          </span>
-                          <span
-                            className={`
+                  {!todayDrawError &&
+                    !todayLoading &&
+                    todayDraw &&
+                    todayDraw.closesAt && (
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm sm:text-base">
+                            <span className="text-xs uppercase tracking-wide text-slate-500">
+                              Closes in
+                            </span>
+                            <span
+                              className={`
                               ml-2 mt-2 font-mono text-2xl font-semibold transition-all
                               ${
                                 isWarningCritical
@@ -1273,67 +1236,78 @@ useEffect(() => {
                                   : 'text-emerald-300'
                               }
                             `}
-                          >
-                            {countdownText}
-                          </span>
-                        </p>
-                      </div>
+                            >
+                              {countdownText}
+                            </span>
+                          </p>
+                        </div>
 
-                      <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                        
-                      {!isAutoActive && (
-  <button
-    type="button"
-    disabled={
-      isPickingWinner ||
-      !adminToken ||
-      todayLoading ||
-      !todayDraw ||
-      todayDraw.status !== 'open'
-    }
-    onClick={handlePickMainWinner}
-    className={`
-      ${BTN_PRIMARY} px-7 py-3 text-sm transition-all ease-out duration-300
-      ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
-    `}
-  >
-    {isPickingWinner ? 'Picking winner…' : 'Crown today’s XPOT winner'}
-  </button>
-)}
+                        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                          {!isAutoActive && (
+                            <button
+                              type="button"
+                              disabled={
+                                isPickingWinner ||
+                                !adminToken ||
+                                todayLoading ||
+                                !todayDraw ||
+                                todayDraw.status !== 'open'
+                              }
+                              onClick={handlePickMainWinner}
+                              className={`
+                              ${BTN_PRIMARY} px-7 py-3 text-sm transition-all ease-out duration-300
+                              ${
+                                isWarningCritical
+                                  ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]'
+                                  : ''
+                              }
+                            `}
+                            >
+                              {isPickingWinner
+                                ? 'Picking winner…'
+                                : 'Crown today’s XPOT winner'}
+                            </button>
+                          )}
 
-{isAutoActive && (
-  <div className="flex flex-col items-end text-right">
-    <span
-      className="
-        inline-flex items-center gap-2 rounded-full border border-sky-400/70
-        bg-sky-500/10 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em]
-        text-sky-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]
-      "
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
-      Auto draw enabled
-    </span>
-  </div>
-)}
-                        
-                        {todayDraw && todayDraw.status === 'closed' && adminToken && !isAutoActive && (
-                          <button
-                            type="button"
-                            onClick={handleReopenDraw}
-                            disabled={isReopeningDraw}
-                            className={`${BTN_DANGER} px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]`}
-                          >
-                            {isReopeningDraw ? 'Reopening…' : '🚨 Emergency reopen draw'}
-                          </button>
-                        )}
+                          {isAutoActive && (
+                            <div className="flex flex-col items-end text-right">
+                              <span
+                                className="
+                                inline-flex items-center gap-2 rounded-full border border-sky-400/70
+                                bg-sky-500/10 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em]
+                                text-sky-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]
+                              "
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
+                                Auto draw enabled
+                              </span>
+                            </div>
+                          )}
+
+                          {todayDraw &&
+                            todayDraw.status === 'closed' &&
+                            adminToken &&
+                            !isAutoActive && (
+                              <button
+                                type="button"
+                                onClick={handleReopenDraw}
+                                disabled={isReopeningDraw}
+                                className={`${BTN_DANGER} px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]`}
+                              >
+                                {isReopeningDraw
+                                  ? 'Reopening…'
+                                  : '🚨 Emergency reopen draw'}
+                              </button>
+                            )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {!todayDrawError && !todayLoading && !todayDraw && (
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-slate-400 text-xs">
-                        No XPOT draw scheduled yet. The backend should auto-create one shortly.
+                        No XPOT draw scheduled yet. The backend should auto-create
+                        one shortly.
                       </p>
 
                       {isDevHost && (
@@ -1343,7 +1317,9 @@ useEffect(() => {
                           disabled={creatingDraw || !adminToken}
                           className="inline-flex items-center justify-center rounded-full border border-emerald-500/70 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {creatingDraw ? 'Creating today’s draw…' : 'Create today’s draw (dev)'}
+                          {creatingDraw
+                            ? 'Creating today’s draw…'
+                            : 'Create today’s draw (dev)'}
                         </button>
                       )}
                     </div>
@@ -1352,7 +1328,9 @@ useEffect(() => {
                   {(pickError || pickSuccess) && (
                     <div className="mt-2 text-xs">
                       {pickError && <p className="text-amber-300">{pickError}</p>}
-                      {pickSuccess && <p className="text-emerald-300">{pickSuccess}</p>}
+                      {pickSuccess && (
+                        <p className="text-emerald-300">{pickSuccess}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1368,7 +1346,8 @@ useEffect(() => {
                   Schedule bonus XPOT
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Line up hype bonuses from today’s ticket pool. At the scheduled time, one extra winner will be picked.
+                  Line up hype bonuses from today’s ticket pool. At the scheduled
+                  time, one extra winner will be picked.
                 </p>
 
                 <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-slate-500">
@@ -1383,13 +1362,17 @@ useEffect(() => {
                     Next bonus in {nextBonusCountdown}
                   </Badge>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    {nextBonusDrop.label} · {nextBonusDrop.amountXpot.toLocaleString()} XPOT
+                    {nextBonusDrop.label} ·{' '}
+                    {nextBonusDrop.amountXpot.toLocaleString()} XPOT
                   </p>
                 </div>
               )}
             </div>
 
-            <form onSubmit={handleScheduleBonus} className="mt-4 grid gap-4 lg:grid-cols-2">
+            <form
+              onSubmit={handleScheduleBonus}
+              className="mt-4 grid gap-4 lg:grid-cols-2"
+            >
               <div className="space-y-3">
                 <div className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
                   <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
@@ -1444,7 +1427,8 @@ useEffect(() => {
                     placeholder="Bonus XPOT"
                   />
                   <p className="mt-2 text-[11px] text-slate-500">
-                    Shown in the winners log so you can tell hype bonuses apart from the main XPOT.
+                    Shown in the winners log so you can tell hype bonuses apart
+                    from the main XPOT.
                   </p>
 
                   <div className="mt-4">
@@ -1483,7 +1467,9 @@ useEffect(() => {
                   {(bonusError || bonusSuccess) && (
                     <div className="mt-3 text-xs">
                       {bonusError && <p className="text-amber-300">{bonusError}</p>}
-                      {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
+                      {bonusSuccess && (
+                        <p className="text-emerald-300">{bonusSuccess}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1513,12 +1499,18 @@ useEffect(() => {
                 </button>
               </div>
 
-              {upcomingError && <p className="mt-2 text-xs text-amber-300">{upcomingError}</p>}
-              {cancelDropError && <p className="mt-2 text-xs text-amber-300">{cancelDropError}</p>}
+              {upcomingError && (
+                <p className="mt-2 text-xs text-amber-300">{upcomingError}</p>
+              )}
+              {cancelDropError && (
+                <p className="mt-2 text-xs text-amber-300">{cancelDropError}</p>
+              )}
 
               <div className="mt-3 space-y-2">
                 {upcomingDrops.length === 0 ? (
-                  <p className="text-xs text-slate-500">No bonus drops scheduled yet.</p>
+                  <p className="text-xs text-slate-500">
+                    No bonus drops scheduled yet.
+                  </p>
                 ) : (
                   upcomingDrops.map(d => (
                     <div
@@ -1530,7 +1522,8 @@ useEffect(() => {
                           {d.label}
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {formatDateTime(d.scheduledAt)} · {d.amountXpot.toLocaleString()} XPOT
+                          {formatDateTime(d.scheduledAt)} ·{' '}
+                          {d.amountXpot.toLocaleString()} XPOT
                         </p>
                       </div>
 
@@ -1589,7 +1582,9 @@ useEffect(() => {
               ) : ticketsError ? (
                 <p className="text-xs text-amber-300">{ticketsError}</p>
               ) : tickets.length === 0 ? (
-                <p className="text-xs text-slate-500">No entries yet for today&apos;s XPOT.</p>
+                <p className="text-xs text-slate-500">
+                  No entries yet for today&apos;s XPOT.
+                </p>
               ) : (
                 <>
                   {visibleTickets.map(t => (
@@ -1599,7 +1594,9 @@ useEffect(() => {
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                          <p className="font-mono text-sm text-slate-100">
+                            {t.code}
+                          </p>
                           <div className="mt-1">
                             <CopyableWallet address={t.walletAddress} />
                           </div>
@@ -1652,13 +1649,13 @@ useEffect(() => {
           {/* Winners */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div>
-  <p className="text-sm font-semibold text-slate-100">
-    Recent XPOT winners
-  </p>
-  <p className="mt-1 text-xs text-slate-400">
-    Internal log of executed rewards, payouts and winner tickets.
-  </p>
-</div>
+              <p className="text-sm font-semibold text-slate-100">
+                Recent XPOT winners
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Internal log of executed rewards, payouts and winner tickets.
+              </p>
+            </div>
 
             {markPaidError && (
               <p className="mt-3 text-xs text-amber-300">{markPaidError}</p>
@@ -1671,7 +1668,8 @@ useEffect(() => {
                 <p className="text-xs text-amber-300">{winnersError}</p>
               ) : winners.length === 0 ? (
                 <div className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3 text-xs text-slate-500">
-                  No completed draws yet. Once you pick winners and mark XPOT as paid, they&apos;ll appear here.
+                  No completed draws yet. Once you pick winners and mark XPOT as
+                  paid, they&apos;ll appear here.
                 </div>
               ) : (
                 <>
@@ -1779,7 +1777,9 @@ useEffect(() => {
               </li>
               <li className="flex gap-2">
                 <CalendarClock className="h-4 w-4 text-slate-500" />
-                Countdown is based on <span className="font-semibold text-slate-200">closesAt</span> from today’s draw.
+                Countdown is based on{' '}
+                <span className="font-semibold text-slate-200">closesAt</span>{' '}
+                from today’s draw.
               </li>
               <li className="flex gap-2">
                 <Crown className="h-4 w-4 text-slate-500" />
@@ -1791,90 +1791,90 @@ useEffect(() => {
       </section>
 
       {modeModalOpen && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
-    <div className="w-full max-w-md rounded-3xl border border-slate-700/70 bg-gradient-to-b from-[#020617] via-[#020617] to-black px-6 py-6 shadow-[0_0_80px_rgba(15,23,42,0.9)]">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-50">Switch ops mode</p>
-        <button
-          type="button"
-          className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-          onClick={() => setModeModalOpen(false)}
-        >
-          Close
-        </button>
-      </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl border border-slate-700/70 bg-gradient-to-b from-[#020617] via-[#020617] to-black px-6 py-6 shadow-[0_0_80px_rgba(15,23,42,0.9)]">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-50">
+                Switch ops mode
+              </p>
+              <button
+                type="button"
+                className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+                onClick={() => setModeModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
 
-      <p className="mt-2 text-xs text-slate-400">
-        Confirm your admin key to switch to{' '}
-        <span className="font-semibold text-slate-200">
-          {modePending === 'AUTO' ? 'AUTO' : 'MANUAL'}
-        </span>
-        .
-      </p>
+            <p className="mt-2 text-xs text-slate-400">
+              Confirm your admin key to switch to{' '}
+              <span className="font-semibold text-slate-200">
+                {modePending === 'AUTO' ? 'AUTO' : 'MANUAL'}
+              </span>
+              .
+            </p>
 
-      {!envAutoAllowed && modePending === 'AUTO' && (
-        <div className="mt-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
-          AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won’t take effect until allowed.
+            {!envAutoAllowed && modePending === 'AUTO' && (
+              <div className="mt-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+                AUTO is locked in this environment (or disabled by env). You can
+                still save AUTO in DB, but it won’t take effect until allowed.
+              </div>
+            )}
+
+            <div className="mt-4 space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                Admin key (re-enter)
+              </label>
+              <input
+                type="password"
+                className="w-full rounded-2xl border border-slate-700/80 bg-slate-950/90 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-400/80"
+                value={modeTokenInput}
+                onChange={e => setModeTokenInput(e.target.value)}
+                placeholder="Paste admin token…"
+              />
+              {modeError && <p className="text-xs text-amber-300">{modeError}</p>}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                className={`${BTN_UTILITY} flex-1 h-11 text-sm`}
+                onClick={() => setModeModalOpen(false)}
+                disabled={modeSaving}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className={`${BTN_GREEN} flex-1 h-11 text-sm`}
+                disabled={modeSaving || !modeTokenInput.trim()}
+                onClick={async () => {
+                  setModeError(null);
+                  setModeSaving(true);
+                  try {
+                    if (
+                      !adminToken ||
+                      modeTokenInput.trim() !== adminToken.trim()
+                    ) {
+                      throw new Error('Admin key mismatch.');
+                    }
+
+                    await saveOpsMode(modePending);
+                    setModeModalOpen(false);
+                  } catch (err: any) {
+                    setModeError(err?.message || 'Failed to switch mode');
+                  } finally {
+                    setModeSaving(false);
+                  }
+                }}
+              >
+                {modeSaving ? 'Saving…' : 'Confirm switch'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
-
-      <div className="mt-4 space-y-2">
-        <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-          Admin key (re-enter)
-        </label>
-        <input
-          type="password"
-          className="w-full rounded-2xl border border-slate-700/80 bg-slate-950/90 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-400/80"
-          value={modeTokenInput}
-          onChange={e => setModeTokenInput(e.target.value)}
-          placeholder="Paste admin token…"
-        />
-        {modeError && <p className="text-xs text-amber-300">{modeError}</p>}
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          className={`${BTN_UTILITY} flex-1 h-11 text-sm`}
-          onClick={() => setModeModalOpen(false)}
-          disabled={modeSaving}
-        >
-          Cancel
-        </button>
-
-        <button
-          type="button"
-          className={`${BTN_GREEN} flex-1 h-11 text-sm`}
-          disabled={modeSaving || !modeTokenInput.trim()}
-          onClick={async () => {
-            setModeError(null);
-            setModeSaving(true);
-            try {
-              // hard re-check: must match current unlocked token
-              if (!adminToken || modeTokenInput.trim() !== adminToken.trim()) {
-                throw new Error('Admin key mismatch.');
-              }
-
-              await saveOpsMode(modePending);
-
-              // optional: refresh panels after switching
-              // (especially useful if AUTO changes whether buttons show)
-              // await refreshUpcomingDrops();
-
-              setModeModalOpen(false);
-            } catch (err: any) {
-              setModeError(err?.message || 'Failed to switch mode');
-            } finally {
-              setModeSaving(false);
-            }
-          }}
-        >
-          {modeSaving ? 'Saving…' : 'Confirm switch'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
 
       {/* ULTRA PREMIUM LOCK MODAL */}
       {!tokenAccepted && (
@@ -1902,7 +1902,9 @@ useEffect(() => {
                   Unlock XPOT operations center
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Step inside the live XPOT control deck. Monitor today&apos;s round, entries, wallets and reward execution - secured behind your private{' '}
+                  Step inside the live XPOT control deck. Monitor today&apos;s
+                  round, entries, wallets and reward execution - secured behind
+                  your private{' '}
                   <span className="font-semibold text-slate-200">admin key</span>.
                 </p>
               </div>
@@ -1960,7 +1962,10 @@ useEffect(() => {
               <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3 text-[11px] text-slate-400">
                 <div className="flex items-start gap-2">
                   <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-300" />
-                  <p>If your token is wrong you’ll just see request failures - nothing breaks.</p>
+                  <p>
+                    If your token is wrong you’ll just see request failures -
+                    nothing breaks.
+                  </p>
                 </div>
               </div>
             </div>
