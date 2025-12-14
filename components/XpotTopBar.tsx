@@ -25,7 +25,7 @@ export default function XpotTopBar({
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
   // If --xpot-banner-h is missing, we fall back to 56px so the bar never hides under the purple banner.
-  const top = hasBanner ? 'calc(var(--xpot-banner-h, 56px))' : '0px';
+  const top = hasBanner ? 'var(--xpot-banner-h)' : '0px';
 
   return (
     <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
