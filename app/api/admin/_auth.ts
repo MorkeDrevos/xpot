@@ -1,35 +1,52 @@
 // app/api/admin/_auth.ts
 import { NextResponse } from 'next/server';
 
+/**
+ * Single source of truth for admin auth header.
+ * Client must send this header on every /api/admin/* call.
+ */
 export const ADMIN_HEADER = 'x-xpot-admin-key';
 
-function isFrozen() {
-  // only server reads this (do NOT make it NEXT_PUBLIC)
-  return (process.env.XPOT_OPS_FROZEN ?? '').toLowerCase() === 'true';
-}
-
+/**
+ * Admin auth gate for all admin API routes.
+ *
+ * Wiring contract (canonical):
+ * - Header:  x-xpot-admin-key: <token>
+ * - Env:     XPOT_OPS_ADMIN_KEY (preferred)
+ * - Fallback env (legacy): XPOT_ADMIN_TOKEN
+ *
+ * Returns a NextResponse on failure, or null when authorized.
+ */
 export function requireAdmin(req: Request) {
-  // ✅ Freeze gate (panic switch)
-  if (isFrozen()) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'OPS_FROZEN',
-        message:
-          'Ops is currently frozen (XPOT_OPS_FROZEN=true). Disable the env var to re-enable admin actions.',
-      },
-      { status: 423 }, // Locked
-    );
-  }
-
-  // ✅ Backwards compatible: new key preferred, legacy fallback
+  // Prefer the new env var, but keep legacy fallback so ops never bricks
   const expected =
     (process.env.XPOT_OPS_ADMIN_KEY ?? '').trim() ||
     (process.env.XPOT_ADMIN_TOKEN ?? '').trim();
 
+  if (!expected) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'ADMIN_TOKEN_NOT_CONFIGURED',
+        message:
+          'Admin token is not configured. Set XPOT_OPS_ADMIN_KEY (preferred) or XPOT_ADMIN_TOKEN (legacy).',
+      },
+      { status: 500 },
+    );
+  }
+
+  // Primary: custom header
   const incoming = (req.headers.get(ADMIN_HEADER) ?? '').trim();
 
-  if (!expected || incoming !== expected) {
+  // Optional fallback: Authorization: Bearer <token>
+  const auth = (req.headers.get('authorization') ?? '').trim();
+  const bearer = auth.toLowerCase().startsWith('bearer ')
+    ? auth.slice(7).trim()
+    : '';
+
+  const token = incoming || bearer;
+
+  if (!token || token !== expected) {
     return NextResponse.json(
       {
         ok: false,
@@ -40,5 +57,5 @@ export function requireAdmin(req: Request) {
     );
   }
 
-  return null;
+  return null; // ok
 }
