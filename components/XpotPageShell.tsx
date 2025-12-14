@@ -50,8 +50,29 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* GLOBAL NEBULA BACKGROUND (fixed, always visible) */}
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[#02020a]" />
+      {/* ─────────────────────────────────────────────
+         BACKGROUND STACK (bottom → top)
+         Order here is VERY intentional
+      ───────────────────────────────────────────── */}
+
+      {/* Base solid */}
+      <div className="pointer-events-none fixed inset-0 -z-20 bg-[#02020a]" />
+
+      {/* ⭐ Starfield layer (subtle, sharp points) */}
+      <div
+        aria-hidden
+        className="
+          pointer-events-none fixed inset-0 -z-20
+          opacity-70
+          bg-[radial-gradient(1px_1px_at_20%_30%,rgba(255,255,255,0.9)_99%,transparent_100%),
+              radial-gradient(1px_1px_at_70%_20%,rgba(255,255,255,0.8)_99%,transparent_100%),
+              radial-gradient(1.5px_1.5px_at_40%_60%,rgba(255,255,255,0.7)_99%,transparent_100%),
+              radial-gradient(1px_1px_at_85%_65%,rgba(255,255,255,0.85)_99%,transparent_100%),
+              radial-gradient(2px_2px_at_55%_50%,rgba(255,255,255,0.75)_99%,transparent_100%)]
+        "
+      />
+
+      {/* Nebula glow layers */}
       <div
         className="
           pointer-events-none fixed inset-0 -z-10
@@ -62,13 +83,17 @@ export default function XpotPageShell({
               radial-gradient(circle_at_35%_85%,rgba(56,189,248,0.18),transparent_55%)]
         "
       />
+
+      {/* Vignette / depth mask */}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
 
-      {/* CONTENT CONTAINER */}
+      {/* ─────────────────────────────────────────────
+         CONTENT CONTAINER
+      ───────────────────────────────────────────── */}
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
-          // Clear: banner (var) + topbar (112px) + breathing room
+          // Banner + TopBar + breathing room
           'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)] pb-6 sm:pb-8',
           maxWidthClassName,
           containerClassName,
