@@ -18,25 +18,33 @@ export default function XpotTopBar({
       {/* Top bar */}
       <div className="bg-black/80 backdrop-blur-md border-b border-white/5">
         <div className="mx-auto max-w-[1440px] px-6">
-          <div className="flex h-[64px] items-center justify-between">
+          <div className="flex h-[76px] items-center justify-between">
             {/* Left */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <Link href={logoHref} className="flex items-center gap-3">
                 <Image
                   src="/img/xpot-logo-light.png"
                   alt="XPOT"
-                  width={120}
-                  height={36}
+                  width={190}
+                  height={56}
                   priority
-                  className="h-[36px] w-auto"
+                  className="h-[56px] w-auto"
                 />
               </Link>
 
               {showSlogan && (
-                <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-1 text-[11px] font-semibold tracking-wide text-emerald-200">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  THE X-POWERED REWARD PROTOCOL
-                </span>
+                <div className="hidden sm:flex flex-col gap-1">
+                  {/* Primary badge */}
+                  <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-1 text-[11px] font-semibold tracking-wide text-emerald-200">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    THE X-POWERED REWARD POOL
+                  </span>
+
+                  {/* Core slogan */}
+                  <span className="xpot-core-slogan">
+                    One protocol. One identity. One daily XPOT draw.
+                  </span>
+                </div>
               )}
             </div>
 
@@ -59,7 +67,7 @@ export default function XpotTopBar({
         </div>
       </div>
 
-      {/* Animated premium line */}
+      {/* Animated green premium line */}
       <div className="xpot-animated-line" />
     </header>
   );
