@@ -12,14 +12,14 @@ export type XpotLogoLottieProps = {
 
 export default function XpotLogoLottie({
   className,
-  width = 180,
-  height = 50,
+  width,
+  height,
 }: XpotLogoLottieProps) {
+  const style =
+    width || height ? { width: width ?? 'auto', height: height ?? 'auto' } : undefined;
+
   return (
-    <div
-      className={className}
-      style={{ width, height }}
-    >
+    <div className={className} style={style}>
       <Lottie
         animationData={animationData}
         loop
