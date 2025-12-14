@@ -875,27 +875,12 @@ async function authedFetch(input: string, init?: RequestInit) {
   <XpotPageShell
   title="Operations Center"
   subtitle="Control room for today's XPOT"
-  rightSlot={
-  <div className="flex w-full justify-start sm:w-auto sm:justify-end">
-    <div
-      className="
-        relative inline-flex items-center gap-2 overflow-hidden
-        rounded-full border border-emerald-400/25
-        bg-gradient-to-r from-emerald-500/10 via-slate-950/40 to-emerald-500/10
-        px-4 py-2
-        text-[11px] font-semibold tracking-wide text-emerald-100
-        backdrop-blur
-        shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_14px_50px_rgba(0,0,0,0.55)]
-      "
-    >
-      {/* soft sheen */}
-      <span className="pointer-events-none absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_30%_0%,rgba(16,185,129,0.35),transparent_55%)]" />
-      {/* dot */}
-      <span className="relative h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.65)] animate-pulse" />
-      <span className="relative">
-        One protocol. One identity. One daily XPOT draw.
-      </span>
-    </div>
+ rightSlot={
+  <div className="flex items-center justify-end">
+    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-[11px] font-semibold tracking-wide text-emerald-200 backdrop-blur shadow-[0_0_20px_rgba(16,185,129,0.12)]">
+      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+      One protocol. One identity. One daily XPOT draw.
+    </span>
   </div>
 }
 >
