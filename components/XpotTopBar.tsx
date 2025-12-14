@@ -1,3 +1,4 @@
+// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -30,35 +31,32 @@ export default function XpotTopBar({
   return (
     <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
       {/* Bar */}
-      <div className="bg-black/70 backdrop-blur-md border-b border-white/5">
+      <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
         {/* IMPORTANT: match PageShell container padding exactly */}
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
           <div className="flex min-h-[124px] items-center justify-between gap-6">
             {/* Left */}
             <div className="flex min-w-0 items-center gap-4">
-              <Link href={logoHref} className="flex items-center gap-3 shrink-0">
+              <Link href={logoHref} className="flex shrink-0 items-center gap-3">
                 <Image
-  src="/img/xpot-logo-light.png"
-  alt="XPOT"
-- width={420}
-- height={120}
-- className="h-[110px] min-h-[110px] w-auto object-contain"
-+ width={460}
-+ height={132}
-+ className="h-[118px] min-h-[118px] w-auto object-contain"
-  priority
-/>
+                  src="/img/xpot-logo-light.png"
+                  alt="XPOT"
+                  width={460}
+                  height={132}
+                  priority
+                  className="h-[118px] min-h-[118px] w-auto object-contain"
+                />
               </Link>
 
               {/* Pill + optional slogan */}
-              <div className="hidden sm:flex min-w-0 items-center gap-3">
+              <div className="hidden min-w-0 items-center gap-3 sm:flex">
                 <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
                   <span className="truncate opacity-85">{pillText}</span>
                 </span>
 
                 {sloganRight ? (
-                  <span className="hidden lg:inline-flex items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200">
+                  <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 lg:inline-flex">
                     {sloganRight}
                   </span>
                 ) : null}
@@ -69,15 +67,15 @@ export default function XpotTopBar({
             <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
               {rightSlot ?? (
                 <>
-                  <Link href="/hub" className="hover:text-white transition">
+                  <Link href="/hub" className="transition hover:text-white">
                     Hub
                   </Link>
-                  <Link href="/terms" className="hover:text-white transition">
+                  <Link href="/terms" className="transition hover:text-white">
                     Terms
                   </Link>
                   <Link
                     href="/hub"
-                    className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-slate-200 transition"
+                    className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition hover:bg-slate-200"
                   >
                     Enter today&apos;s XPOT →
                   </Link>
@@ -109,6 +107,7 @@ export default function XpotTopBar({
         />
       </div>
 
+      {/* local keyframes (no globals needed) */}
       <style jsx>{`
         @keyframes xpotLineSweep {
           from {
