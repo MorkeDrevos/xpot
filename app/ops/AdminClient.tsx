@@ -765,6 +765,9 @@ useEffect(() => {
   if (!adminToken) return;
   if (didAutoSeed) return;
 
+  // Wait until initial loads are done, otherwise it can seed during the "empty while loading" window
+  if (todayLoading || ticketsLoading || winnersLoading || upcomingLoading) return;
+
   const isEmpty =
     !todayDraw &&
     tickets.length === 0 &&
@@ -779,6 +782,10 @@ useEffect(() => {
   isDevHost,
   adminToken,
   didAutoSeed,
+  todayLoading,
+  ticketsLoading,
+  winnersLoading,
+  upcomingLoading,
   todayDraw,
   tickets.length,
   winners.length,
