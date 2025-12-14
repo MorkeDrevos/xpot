@@ -1558,13 +1558,12 @@ useEffect(() => {
                 </p>
               </div>
 
-              <Badge
-  tone="emerald"
-  className="ml-[-6px] translate-x-[-2px]"
->
-  <Sparkles className="h-3.5 w-3.5" />
-  Live
-</Badge>
+              <div className="ml-[-8px] inline-block">
+  <Badge tone="emerald">
+    <Sparkles className="h-3.5 w-3.5" />
+    Live
+  </Badge>
+</div>
             </div>
 
             {markPaidError && (
