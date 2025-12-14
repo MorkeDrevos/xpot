@@ -2,7 +2,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactNode } from 'react';
+import Image from 'next/image';
+import { ReactNode, useEffect, useState } from 'react';
 import XpotLogo from '@/components/XpotLogo';
 
 type XpotTopBarProps = {
@@ -25,28 +26,38 @@ export default function XpotTopBar({
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
-  // Overlap by 1px to kill any seam/gap forever (even if banner height changes)
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
+
+  // Render static first, then swap to Lottie after mount (prevents “logo missing”)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
       {/* Bar */}
       <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
-        {/* IMPORTANT: match PageShell container padding exactly */}
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
           <div className="flex min-h-[124px] items-center justify-between gap-6">
             {/* Left */}
             <div className="flex min-w-0 items-center gap-4">
               <Link href={logoHref} className="flex shrink-0 items-center gap-3">
-                {/* IMPORTANT:
-                    Use the already-working animated logo (Lottie).
-                    Do NOT animate next/image - that’s why it looked broken. */}
-                <XpotLogo
-                  variant="animated"
-                  width={460}
-                  height={118}
-                  className="h-[118px] w-auto"
-                />
+                {mounted ? (
+                  <XpotLogo
+                    variant="animated"
+                    width={460}
+                    height={118}
+                    className="shrink-0"
+                  />
+                ) : (
+                  <Image
+                    src="/img/xpot-logo-light.png"
+                    alt="XPOT"
+                    width={460}
+                    height={132}
+                    priority
+                    className="h-[118px] w-auto object-contain shrink-0"
+                  />
+                )}
               </Link>
 
               {/* Pill + optional slogan */}
@@ -56,8 +67,8 @@ export default function XpotTopBar({
                     inline-flex min-w-0 items-center gap-2
                     rounded-full border border-white/10 bg-white/[0.03]
                     px-4 py-1
-                    text-[11px] font-semibold
-                    tracking-[0.18em] uppercase
+                    text-[11px] font-semibold uppercase
+                    tracking-[0.18em]
                     text-slate-300
                   "
                 >
@@ -104,7 +115,7 @@ export default function XpotTopBar({
         </div>
       </div>
 
-      {/* Premium line (thin, fades before edges) */}
+      {/* Premium line */}
       <div className="relative h-[1px] w-full overflow-hidden">
         <div
           className="
@@ -125,7 +136,6 @@ export default function XpotTopBar({
         />
       </div>
 
-      {/* local keyframes (no globals needed) */}
       <style jsx>{`
         @keyframes xpotLineSweep {
           from {
