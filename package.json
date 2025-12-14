@@ -1,40 +1,169 @@
-{
-  "name": "xpot",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && next build"
-  },
-  "dependencies": {
-    "@clerk/nextjs": "^6.36.0",
-    "@prisma/client": "^5.20.0",
-    "@solana/spl-token": "^0.4.8",
-    "@solana/wallet-adapter-react": "^0.15.32",
-    "@solana/wallet-adapter-react-ui": "^0.9.34",
-    "@solana/wallet-adapter-wallets": "^0.19.24",
-    "@solana/web3.js": "^1.95.3",
-    "framer-motion": "^12.23.25",
-    "lucide-react": "^0.556.0",
-    "lottie-react": "^2.4.0",
-    "next": "^14.2.25",
-    "prisma": "^5.20.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
-  },
-  "devDependencies": {
-    "@types/node": "22.7.4",
-    "@types/react": "18.3.10",
-    "@types/react-dom": "18.3.0",
-    "autoprefixer": "10.4.20",
-    "eslint": "8.57.0",
-    "eslint-config-next": "14.2.3",
-    "postcss": "8.4.49",
-    "tailwindcss": "3.4.14",
-    "typescript": "5.6.3"
-  }
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum TicketStatus {
+  IN_DRAW
+  WON
+  CLAIMED
+  NOT_PICKED
+  EXPIRED
+}
+
+enum BonusDropStatus {
+  SCHEDULED
+  FIRED
+  CANCELLED
+}
+
+enum WinnerKind {
+  MAIN
+  BONUS
+}
+
+// ─────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────
+
+// User (optional identity, NOT tied to tickets)
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  clerkId    String? @unique
+  xUserId    String? @unique
+  xHandle    String? @unique
+  xName      String?
+  xAvatarUrl String?
+
+  wallets    Wallet[]
+
+  @@index([xHandle])
+}
+
+// Wallet → owns tickets
+model Wallet {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  address   String   @unique
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  tickets   Ticket[]
+
+  @@index([userId])
+}
+
+// Daily XPOT draw
+model Draw {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// Calendar date of the draw (UTC day bucket)
+  drawDate  DateTime @unique
+
+  /// When the main XPOT closes for entries
+  closesAt  DateTime?
+
+  /// "open" / "closed" / "completed"
+  status    String   @default("open")
+
+  tickets    Ticket[]
+  winners    Winner[]
+  bonusDrops BonusDrop[]
+}
+
+// XPOT ticket in a draw
+model Ticket {
+  id            String       @id @default(cuid())
+  createdAt     DateTime     @default(now())
+
+  code          String       @unique
+
+  // ✅ Ticket must always have an owning wallet
+  walletId      String
+  wallet        Wallet       @relation(fields: [walletId], references: [id])
+
+  // ✅ Snapshot of wallet address at creation time
+  walletAddress String
+
+  status        TicketStatus @default(IN_DRAW)
+
+  drawId        String
+  draw          Draw         @relation(fields: [drawId], references: [id])
+
+  winners       Winner[]
+
+  @@index([walletId])
+  @@index([drawId])
+  @@index([status])
+  @@index([walletAddress])
+
+  // ✅ Prevent duplicate tickets per wallet per draw
+  @@unique([walletId, drawId])
+}
+
+// Log of main + bonus winners
+model Winner {
+  id           String      @id @default(cuid())
+  createdAt    DateTime    @default(now())
+
+  drawId       String
+  draw         Draw        @relation(fields: [drawId], references: [id])
+
+  ticketId     String
+  ticket       Ticket      @relation(fields: [ticketId], references: [id])
+
+  // Optional extra timestamp (you already have createdAt)
+  date         DateTime    @default(now())
+
+  // Snapshots (keep them - makes rendering fast and stable)
+  ticketCode    String
+  walletAddress String
+
+  jackpotUsd    Float       @default(0)
+  payoutUsd     Float       @default(0)
+  isPaidOut     Boolean     @default(false)
+  txUrl         String?
+
+  // ✅ Never null
+  kind          WinnerKind  @default(MAIN)
+  label         String?
+
+  @@index([drawId])
+  @@index([ticketId])
+  @@index([isPaidOut])
+  @@index([kind])
+  @@index([walletAddress])
+}
+
+// Scheduled bonus XPOT drops
+model BonusDrop {
+  id          String          @id @default(cuid())
+  createdAt   DateTime        @default(now())
+
+  drawId      String
+  draw        Draw            @relation(fields: [drawId], references: [id])
+
+  label       String
+  amountXpot  Int
+  scheduledAt DateTime
+
+  status      BonusDropStatus @default(SCHEDULED)
+
+  @@index([drawId])
+  @@index([status, scheduledAt])
 }
