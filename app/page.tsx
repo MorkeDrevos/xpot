@@ -210,7 +210,7 @@ export default function HomePage() {
 
                 {/* BonusStrip stays (visual, not essay) */}
                 <div className="pt-1">
-                  <BonusStrip />
+                  <BonusStrip variant="home" />
                 </div>
 
                 {/* Primary CTA + secondary */}
