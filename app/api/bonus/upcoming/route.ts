@@ -1,3 +1,4 @@
+// app/api/bonus/upcoming/route.ts
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -8,32 +9,35 @@ export async function GET() {
   try {
     const now = new Date();
 
-    // Pick the next scheduled bonus in the future
     const next = await prisma.bonusDrop.findFirst({
       where: {
         status: 'SCHEDULED',
-        scheduledAt: { gt: now },
+        scheduledAt: { gte: now },
       },
       orderBy: { scheduledAt: 'asc' },
     });
 
-    if (!next) {
-      return NextResponse.json({ bonus: null }, { status: 200 });
-    }
-
-    return NextResponse.json(
-      {
-        bonus: {
-          id: next.id,
-          label: next.label ?? 'Bonus XPOT',
-          amountXpot: Number(next.amountXpot ?? 0),
-          scheduledAt: next.scheduledAt.toISOString(),
-        },
-      },
+    const res = NextResponse.json(
+      next
+        ? {
+            bonus: {
+              id: next.id,
+              label: next.label ?? 'Bonus XPOT',
+              amountXpot: Number(next.amountXpot ?? 0),
+              scheduledAt: next.scheduledAt.toISOString(),
+              status: next.status,
+            },
+          }
+        : { bonus: null },
       { status: 200 }
     );
+
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
   } catch (e) {
     console.error('[api/bonus/upcoming] error', e);
-    return NextResponse.json({ bonus: null }, { status: 200 });
+    const res = NextResponse.json({ bonus: null }, { status: 200 });
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
   }
 }
