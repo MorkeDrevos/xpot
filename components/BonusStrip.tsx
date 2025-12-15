@@ -101,7 +101,16 @@ export default function BonusStrip({ variant = 'default', className = '' }: Bonu
     );
   }
 
-  if (!bonus) return null;
+  if (!bonus) {
+  if (variant !== 'home') return null;
+
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/60 px-3.5 py-2 text-[11px] text-slate-400">
+      <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+      Bonus XPOT: none scheduled
+    </div>
+  );
+}
 
   // ─────────────────────────────────────────────
   // HOME variant (premium, scanable, one-line)
