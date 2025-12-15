@@ -23,9 +23,8 @@ import {
   XCircle,
 } from 'lucide-react';
 
-const MAX_TODAY_TICKETS = 10;
-const MAX_RECENT_WINNERS = 9;
-const MAIN_XPOT_REWARD = XPOT_POOL_SIZE;
+const MAX_TODAY_TICKETS = 5;
+const MAX_RECENT_WINNERS = 10;
 
 // ─────────────────────────────────────────────
 // Types
@@ -285,7 +284,7 @@ export default function AdminPage() {
   const [tokenAccepted, setTokenAccepted] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
 
-  const [opsMode, setOpsMode] = useState<OpsMode>('MANUAL'); // requested mode (DB)
+  const [, setOpsMode] = useState<OpsMode>('MANUAL'); // requested mode (DB)
   const [effectiveOpsMode, setEffectiveOpsMode] = useState<OpsMode>('MANUAL'); // what the system actually uses
   const [envAutoAllowed, setEnvAutoAllowed] = useState<boolean>(false);
 
@@ -1403,20 +1402,22 @@ export default function AdminPage() {
                   Manual schedule - off-chain
                 </p>
               </div>
-
-              {nextBonusDrop && nextBonusCountdown && (
-                <div className="text-right">
-                  <Badge tone="sky">
-                    <Timer className="h-3.5 w-3.5" />
-                    Next bonus in {nextBonusCountdown}
-                  </Badge>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {nextBonusDrop.label} · {nextBonusDrop.amountXpot.toLocaleString()} XPOT
-                  </p>
-                </div>
-              )}
             </div>
+{nextBonusDrop && nextBonusCountdown && (
+  <div className="mb-4 flex items-center gap-3">
+    <Badge tone="sky">
+      <Timer className="h-3.5 w-3.5" />
+      Next bonus in {nextBonusCountdown}
+    </Badge>
 
+    <span className="text-[11px] text-slate-400">
+      {nextBonusDrop.label} ·{' '}
+      <span className="font-semibold text-slate-200">
+        {nextBonusDrop.amountXpot.toLocaleString()} XPOT
+      </span>
+    </span>
+  </div>
+)}
             <form onSubmit={handleScheduleBonus} className="mt-4 grid gap-4 lg:grid-cols-2">
               <div className="space-y-3">
                 <div className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
