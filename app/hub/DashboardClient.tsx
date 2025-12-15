@@ -317,7 +317,7 @@ export default function DashboardClient() {
   }, [entries, currentWalletAddress]);
 
   // ─────────────────────────────────────────────
-  // XPOT balance (via API route) - allowed without auth, but we gate anyway
+  // XPOT balance (via API route) - gate anyway
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) {
@@ -597,6 +597,7 @@ export default function DashboardClient() {
         onClose={() => setWalletModalOpen(false)}
       />
 
+      {/* IMPORTANT: overlay is NOT inside the blurred container */}
       <HubLockOverlay
         open={showLock}
         reason={
@@ -607,7 +608,14 @@ export default function DashboardClient() {
         showLinkX={isSignedIn && !handle}
       />
 
-      <div className={showLock ? 'pointer-events-none select-none blur-[2px] opacity-95' : ''}>
+      {/* Hub behind overlay only */}
+      <div
+        className={
+          showLock
+            ? 'pointer-events-none select-none blur-[2px] opacity-95'
+            : ''
+        }
+      >
         <XpotPageShell
           topBarProps={{
             pillText: 'HOLDER DASHBOARD',
@@ -645,7 +653,10 @@ export default function DashboardClient() {
                     </button>
                   </SignOutButton>
                 ) : (
-                  <Link href="/sign-in?redirect_url=/hub" className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
+                  <Link
+                    href="/sign-in?redirect_url=/hub"
+                    className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                  >
                     <span>Sign in</span>
                   </Link>
                 )}
