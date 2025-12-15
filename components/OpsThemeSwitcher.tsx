@@ -1,4 +1,6 @@
-function OpsThemeSwitcher() {
+'use client';
+
+import { useEffect, useState } from 'react';function OpsThemeSwitcher() {
   const [active, setActive] = useState<'nebula' | 'icy' | 'royal'>('nebula');
 
   useEffect(() => {
