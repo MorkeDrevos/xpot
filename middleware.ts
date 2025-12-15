@@ -3,11 +3,9 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
 const isPublicRoute = createRouteMatcher([
   '/',
+  '/hub(.*)', // ✅ allow hub to render so we can show blurred lock overlay
   '/sign-in(.*)',
   '/sign-up(.*)',
-  // add any truly public pages here (optional)
-  // '/privacy',
-  // '/terms',
 ]);
 
 export default clerkMiddleware((auth, req) => {
@@ -18,9 +16,7 @@ export default clerkMiddleware((auth, req) => {
 
 export const config = {
   matcher: [
-    // App pages (exclude _next + static files)
     '/((?!.+\\.[\\w]+$|_next).*)',
-    // Always run for API routes too
     '/(api|trpc)(.*)',
   ],
 };
