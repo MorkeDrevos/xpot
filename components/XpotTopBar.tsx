@@ -37,6 +37,9 @@ export default function XpotTopBar({
   const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
   const effectivePillText = isHub ? 'HOLDER DASHBOARD' : pillText;
 
+  // Clerk is "optional" in your layout, so keep topbar safe too
+  const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
   // Overlap by 1px to kill any seam/gap forever (even if banner height changes)
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
@@ -102,7 +105,7 @@ export default function XpotTopBar({
 
             {/* Right */}
             <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
-              {rightSlot ? rightSlot : isHub ? <HubMenu /> : <DefaultNav />}
+              {rightSlot ? rightSlot : isHub ? <HubMenu clerkEnabled={clerkEnabled} /> : <DefaultNav />}
             </div>
           </div>
         </div>
@@ -170,11 +173,11 @@ function DefaultNav() {
 /* Hub-only menu (History + Wallet + Logout) */
 /* ------------------------------- */
 
-function HubMenu() {
+function HubMenu({ clerkEnabled }: { clerkEnabled: boolean }) {
   return (
     <div className="flex items-center gap-4">
       <Link
-        href="/dashboard/history"
+        href="/hub/history"
         className="
           inline-flex items-center gap-2
           rounded-full border border-white/10 bg-white/[0.03]
@@ -188,20 +191,24 @@ function HubMenu() {
 
       <HubWalletMenuInline />
 
-      <SignOutButton redirectUrl="/hub">
-        <button
-          type="button"
-          className="
-            inline-flex items-center gap-2
-            rounded-full border border-white/10 bg-white/[0.03]
-            px-6 py-3 text-base text-slate-200
-            hover:bg-white/[0.06]
-          "
-        >
-          <LogOut className="h-5 w-5" />
-          Log out
-        </button>
-      </SignOutButton>
+      {clerkEnabled ? (
+        <SignOutButton redirectUrl="/">
+          <button
+            type="button"
+            className="
+              inline-flex items-center gap-2
+              rounded-full border border-white/10 bg-white/[0.03]
+              px-6 py-3 text-base text-slate-200
+              hover:bg-white/[0.06]
+            "
+          >
+            <LogOut className="h-5 w-5" />
+            Log out
+          </button>
+        </SignOutButton>
+      ) : (
+        <span className="text-xs text-slate-500">Auth off</span>
+      )}
     </div>
   );
 }
