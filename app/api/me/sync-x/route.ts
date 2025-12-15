@@ -29,7 +29,9 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
-    const clerkUser = await clerkClient.users.getUser(clerkId);
+    const client = await clerkClient();
+    const clerkUser = await client.users.getUser(clerkId);
+
     const externalAccounts = (clerkUser.externalAccounts ?? []) as any[];
     const xAcc = pickXAccount(externalAccounts);
 
@@ -63,7 +65,7 @@ export async function POST() {
       return NextResponse.json({ ok: true, linked: !!xAcc, user: updated }, { status: 200 });
     }
 
-    // 2) Otherwise, try to MERGE into an existing row by xUserId/xHandle if present.
+    // 2) Otherwise, try merge by xUserId/xHandle to avoid unique constraint collisions
     let existingByX: { id: string } | null = null;
 
     if (xUserId) {
@@ -83,7 +85,7 @@ export async function POST() {
       const merged = await prisma.user.update({
         where: { id: existingByX.id },
         data: {
-          clerkId, // attach Clerk identity to this existing X row
+          clerkId,
           xUserId,
           xHandle,
           xName,
@@ -94,7 +96,7 @@ export async function POST() {
       return NextResponse.json({ ok: true, linked: !!xAcc, user: merged }, { status: 200 });
     }
 
-    // 3) Otherwise create a new row for this authenticated Clerk user.
+    // 3) Create new user row
     const created = await prisma.user.create({
       data: {
         clerkId,
