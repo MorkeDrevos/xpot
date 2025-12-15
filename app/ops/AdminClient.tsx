@@ -691,6 +691,12 @@ async function handlePickMainWinner() {
     return;
   }
 
+  // 🔒 HARD BLOCK
+  if (todayDraw.status !== 'open') {
+    setBonusPickError('Bonus winners can only be picked while the draw is open.');
+    return;
+  }
+
   setIsPickingBonusWinner(true);
   try {
     const data = await authedFetch('/api/admin/pick-bonus-winner', {
@@ -1528,18 +1534,20 @@ async function handlePickMainWinner() {
                     {bonusSubmitting ? 'Scheduling…' : 'Schedule bonus XPOT'}
                   </button>
 
-                  <button
+                  <<button
   type="button"
   disabled={
-  isPickingBonusWinner ||
-  !adminToken ||
-  !todayDraw ||
-  todayDraw.status !== 'open'
-}
+    isPickingBonusWinner ||
+    !adminToken ||
+    !todayDraw ||
+    todayDraw.status !== 'open'
+  }
   onClick={handlePickBonusWinnerNow}
-  className={`${BTN_PRIMARY} mt-3 h-12 w-full text-sm`}
+  className={`${BTN_PRIMARY} mt-3 h-12 w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed`}
 >
-  {isPickingBonusWinner
+  {todayDraw?.status !== 'open'
+    ? 'Bonus locked (draw closed)'
+    : isPickingBonusWinner
     ? 'Picking bonus winner…'
     : 'Pick bonus winner now'}
 </button>
