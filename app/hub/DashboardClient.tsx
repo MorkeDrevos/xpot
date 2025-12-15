@@ -2,11 +2,10 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
@@ -35,6 +34,28 @@ const BTN_PRIMARY =
 
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
+
+const BTN_UTILITY =
+  'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
+
+function WalletMenuInline() {
+  const { setVisible } = useWalletModal();
+
+  return (
+    <button
+      type="button"
+      onClick={() => setVisible(true)}
+      className="text-left leading-tight hover:opacity-90"
+    >
+      <div className="text-[28px] font-medium text-slate-100">Select Wallet</div>
+      <div className="text-[28px] font-medium text-slate-100">Change wallet</div>
+    </button>
+  );
+}
+
+function formatDate(date: string | Date) {
+  ...
+}
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
@@ -570,49 +591,43 @@ export default function DashboardClient() {
       <WalletDebug />
 
       {/* HEADER */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <Image
-              src="/img/xpot-logo-light.png"
-              alt="XPOT"
-              width={132}
-              height={36}
-              priority
-            />
-          </Link>
+<header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  {/* left: page label only (no logo) */}
+  <div className="flex items-center gap-3">
+    <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+      Holder dashboard
+    </span>
+  </div>
 
-          <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-            Holder dashboard
-          </span>
-        </div>
+  {/* right: Img2 menu cluster */}
+  <div className="flex flex-col items-end gap-2">
+    <div className="flex items-center gap-4">
+      <Link
+        href="/dashboard/history"
+        className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-base text-slate-200 hover:bg-slate-900/70"
+      >
+        <History className="h-5 w-5" />
+        History
+      </Link>
 
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/history"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-            >
-              <History className="h-4 w-4" />
-              History
-            </Link>
+      <div className="px-2">
+        <WalletMenuInline />
+      </div>
 
-            <WalletMultiButton className="!h-10 !rounded-full !px-4 !text-sm" />
+      <SignOutButton redirectUrl="/dashboard">
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-base text-slate-200 hover:bg-slate-900/70"
+        >
+          <LogOut className="h-5 w-5" />
+          Log out
+        </button>
+      </SignOutButton>
+    </div>
 
-            <SignOutButton redirectUrl="/dashboard">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-              >
-                <LogOut className="h-4 w-4" />
-                Log out
-              </button>
-            </SignOutButton>
-          </div>
-
-          <WalletStatusHint />
-        </div>
-      </header>
+    <WalletStatusHint />
+  </div>
+</header>
 
       {/* MAIN GRID */}
       <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
