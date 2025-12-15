@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 
-import { SignIn, useClerk, useUser, SignOutButton } from '@clerk/nextjs';
+import { useUser, SignOutButton } from '@clerk/nextjs';
 
 import XpotPageShell from '@/components/XpotPageShell';
+import PremiumWalletModal from '@/components/PremiumWalletModal';
+import HubLockOverlay from '@/components/HubLockOverlay';
 import { REQUIRED_XPOT } from '@/lib/xpot';
 
 import {
@@ -23,8 +24,6 @@ import {
   Ticket,
   Wallet,
   X,
-  Lock,
-  ArrowRight,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -36,21 +35,6 @@ const BTN_PRIMARY =
 
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
-
-function WalletMenuInline() {
-  const { setVisible } = useWalletModal();
-
-  return (
-    <button
-      type="button"
-      onClick={() => setVisible(true)}
-      className="text-left leading-tight hover:opacity-90"
-    >
-      <div className="text-[28px] font-medium text-slate-100">Select Wallet</div>
-      <div className="text-[28px] font-medium text-slate-100">Change wallet</div>
-    </button>
-  );
-}
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
@@ -98,22 +82,6 @@ function StatusPill({
   );
 }
 
-// Debug logger for wallet state
-function WalletDebug() {
-  const { publicKey, connected, wallet } = useWallet();
-
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[XPOT] Wallet state changed:', {
-      connected,
-      publicKey: publicKey?.toBase58() ?? null,
-      walletName: wallet?.adapter?.name ?? null,
-    });
-  }, [connected, publicKey, wallet]);
-
-  return null;
-}
-
 // Optional UX helper: show hint under wallet button
 function WalletStatusHint() {
   const { wallets, connected } = useWallet();
@@ -129,14 +97,14 @@ function WalletStatusHint() {
   if (!anyDetected) {
     return (
       <p className="mt-2 text-xs text-amber-300">
-        No Solana wallet detected. Install Phantom or Jupiter to continue.
+        No Solana wallet detected. Install Phantom or Solflare to continue.
       </p>
     );
   }
 
   return (
     <p className="mt-2 text-xs text-slate-500">
-      Click “Select Wallet” and choose Phantom or Jupiter to connect.
+      Click “Select Wallet” and choose a wallet to connect.
     </p>
   );
 }
@@ -176,199 +144,13 @@ type RecentWinner = {
 };
 
 // ─────────────────────────────────────────────
-// Premium lock overlay (Sign-in + require X)
-// ─────────────────────────────────────────────
-
-function PremiumAuthLock({
-  mode,
-  onLinkX,
-}: {
-  mode: 'signin' | 'link-x';
-  onLinkX: () => void;
-}) {
-  const title = mode === 'signin' ? 'Sign in to XPOT' : 'Link X to continue';
-  const subtitle =
-    mode === 'signin'
-      ? 'XPOT Hub is private. Sign in with X to unlock your holder dashboard.'
-      : 'Your account is signed in, but X is not linked. Link X to enter XPOT draws.';
-
-  return (
-    <div
-      className="fixed inset-0 z-[999] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="XPOT access lock"
-    >
-      {/* Backdrop - shows blurred hub behind */}
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-xl" />
-
-      {/* Soft premium glows */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-90"
-        style={{
-          background:
-            'radial-gradient(900px 520px at 20% 20%, rgba(56,189,248,0.18), transparent 60%), radial-gradient(900px 520px at 80% 30%, rgba(168,85,247,0.22), transparent 60%), radial-gradient(900px 520px at 60% 90%, rgba(245,158,11,0.14), transparent 62%)',
-        }}
-      />
-
-      {/* Card */}
-      <div className="relative w-full max-w-[980px] overflow-hidden rounded-[34px] border border-white/10 bg-[#070812]/80 shadow-[0_40px_120px_rgba(0,0,0,0.75)]">
-        {/* Header bar */}
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-6 py-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/40">
-              <Lock className="h-5 w-5 text-slate-200" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-100">
-                {title}
-              </p>
-              <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>
-            </div>
-          </div>
-
-          <span className="hidden rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200 sm:inline-flex">
-            HOLDER ACCESS
-          </span>
-        </div>
-
-        {/* Body */}
-        <div className="grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-          {/* Left: narrative + perks */}
-          <div className="rounded-[28px] border border-white/10 bg-black/35 p-6">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-300/90">
-              XPOT HUB
-            </p>
-
-            <h2 className="mt-3 text-[28px] font-semibold tracking-tight text-slate-50">
-              One identity. One wallet. One daily draw.
-            </h2>
-
-            <p className="mt-3 text-sm text-slate-300/85">
-              Your XPOT access is bound to your X identity and your connected Solana wallet.
-              This keeps the draw fair and the experience clean.
-            </p>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                  Security
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">
-                  X + Wallet gated
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Keeps Hub private and prevents fake entries.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                  Experience
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">
-                  Premium holder UI
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Wallet status, eligibility, tickets, history.
-                </p>
-              </div>
-            </div>
-
-            {mode === 'link-x' ? (
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={onLinkX}
-                  className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-slate-200"
-                >
-                  Open account settings
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </button>
-
-                <p className="text-xs text-slate-400">
-                  In Clerk, connect your X account, then come back.
-                </p>
-              </div>
-            ) : (
-              <p className="mt-6 text-xs text-slate-400">
-                Tip: If you don’t see X as an option, check your Clerk OAuth settings for X/Twitter.
-              </p>
-            )}
-          </div>
-
-          {/* Right: embedded Clerk */}
-          <div className="rounded-[28px] border border-white/10 bg-black/35 p-4">
-            {mode === 'signin' ? (
-              <SignIn
-                routing="path"
-                path="/sign-in"
-                appearance={{
-                  variables: {
-                    colorPrimary: '#fbbf24',
-                    colorBackground: '#0b0c14',
-                    colorText: '#e5e7eb',
-                    borderRadius: '18px',
-                  },
-                  elements: {
-                    card: 'shadow-none border border-white/10 bg-black/40',
-                    headerTitle: 'text-slate-100',
-                    headerSubtitle: 'text-slate-400',
-                    socialButtonsBlockButton:
-                      'rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.07]',
-                    formButtonPrimary:
-                      'rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold hover:brightness-105',
-                    footerActionLink: 'text-amber-300 hover:text-amber-200',
-                  },
-                }}
-              />
-            ) : (
-              <div className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/40">
-                    <X className="h-5 w-5 text-slate-200" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">
-                      X account required
-                    </p>
-                    <p className="mt-0.5 text-xs text-slate-400">
-                      Link X to unlock draw entry and holder identity.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={onLinkX}
-                  className="mt-5 w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-slate-200"
-                >
-                  Link X now
-                </button>
-
-                <p className="mt-3 text-xs text-slate-400">
-                  After linking, refresh this page.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom hairline */}
-        <div className="relative h-[1px] w-full overflow-hidden">
-          <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.08)_0%,rgba(168,85,247,0.18)_35%,rgba(245,158,11,0.18)_65%,rgba(56,189,248,0.08)_100%)] opacity-90" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
 // Page (CLIENT)
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
+  // Premium wallet modal
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+
   // Today entries (global)
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -403,7 +185,6 @@ export default function DashboardClient() {
 
   // Clerk user (X identity)
   const { user, isLoaded: isUserLoaded } = useUser();
-  const { openUserProfile } = useClerk();
   const isSignedIn = !!user;
 
   const externalAccounts = (user?.externalAccounts || []) as any[];
@@ -417,7 +198,8 @@ export default function DashboardClient() {
         provider === 'oauth_twitter' ||
         provider === 'twitter' ||
         p.includes('twitter') ||
-        p.includes('x')
+        p === 'x' ||
+        p.includes('oauth_x')
       );
     }) || null;
 
@@ -425,26 +207,18 @@ export default function DashboardClient() {
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
 
-  // Hard “visual lock”: require sign-in + X linked
-  const isAuthedEnough = isUserLoaded && isSignedIn && !!handle;
-  const showLock =
-    isUserLoaded && (!isSignedIn || (isSignedIn && !handle));
+  // Authed enough = logged in AND X is linked
+  const isAuthedEnough = isSignedIn && !!handle;
 
-  // Prevent scrolling while lock is shown (feels premium, avoids jank)
-  useEffect(() => {
-    if (!showLock) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [showLock]);
+  // Lock overlay ON when missing auth/X
+  const showLock = isUserLoaded ? !isAuthedEnough : true;
 
   // ─────────────────────────────────────────────
   // Sync X identity into DB whenever user is loaded
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isUserLoaded || !user) return;
+    if (!handle) return;
 
     (async () => {
       try {
@@ -453,13 +227,13 @@ export default function DashboardClient() {
         console.error('[XPOT] Failed to sync X identity', e);
       }
     })();
-  }, [isUserLoaded, user]);
+  }, [isUserLoaded, user, handle]);
 
   // ─────────────────────────────────────────────
   // Wire wallet → DB whenever it connects
   // ─────────────────────────────────────────────
   useEffect(() => {
-    if (!isUserLoaded || !user) return;
+    if (!isAuthedEnough) return;
     if (!publicKey || !connected) return;
 
     const address = publicKey.toBase58();
@@ -475,15 +249,22 @@ export default function DashboardClient() {
         console.error('[XPOT] Failed to sync wallet', e);
       }
     })();
-  }, [isUserLoaded, user, publicKey, connected]);
+  }, [isAuthedEnough, publicKey, connected]);
 
   // ─────────────────────────────────────────────
-  // Load today's tickets from DB
+  // Load today's tickets from DB (ONLY when authed)
   // ─────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
     async function loadTickets() {
+      if (!isAuthedEnough) {
+        setEntries([]);
+        setLoadingTickets(false);
+        setTicketsError(null);
+        return;
+      }
+
       setLoadingTickets(true);
       setTicketsError(null);
 
@@ -510,7 +291,7 @@ export default function DashboardClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAuthedEnough]);
 
   // ─────────────────────────────────────────────
   // Sync "today's ticket" state with DB
@@ -536,9 +317,13 @@ export default function DashboardClient() {
   }, [entries, currentWalletAddress]);
 
   // ─────────────────────────────────────────────
-  // XPOT balance (via API route)
+  // XPOT balance (via API route) - allowed without auth, but we gate anyway
   // ─────────────────────────────────────────────
   useEffect(() => {
+    if (!isAuthedEnough) {
+      setXpotBalance(null);
+      return;
+    }
     if (!publicKey) {
       setXpotBalance(null);
       return;
@@ -566,12 +351,19 @@ export default function DashboardClient() {
     return () => {
       cancelled = true;
     };
-  }, [publicKey]);
+  }, [isAuthedEnough, publicKey]);
 
   // ─────────────────────────────────────────────
-  // Load wallet-specific draw history
+  // Load wallet-specific draw history (ONLY when authed)
   // ─────────────────────────────────────────────
   useEffect(() => {
+    if (!isAuthedEnough) {
+      setHistoryEntries([]);
+      setHistoryError(null);
+      setLoadingHistory(false);
+      return;
+    }
+
     if (!publicKey) {
       setHistoryEntries([]);
       setHistoryError(null);
@@ -621,17 +413,25 @@ export default function DashboardClient() {
     return () => {
       cancelled = true;
     };
-  }, [publicKey]);
+  }, [isAuthedEnough, publicKey]);
 
   // ─────────────────────────────────────────────
-  // Load recent winners (global)
+  // Load recent winners (ONLY when authed)
   // ─────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
-    setLoadingWinners(true);
-    setWinnersError(null);
 
-    (async () => {
+    async function loadWinners() {
+      if (!isAuthedEnough) {
+        setRecentWinners([]);
+        setLoadingWinners(false);
+        setWinnersError(null);
+        return;
+      }
+
+      setLoadingWinners(true);
+      setWinnersError(null);
+
       try {
         const res = await fetch('/api/winners/recent?limit=5', {
           cache: 'no-store',
@@ -665,12 +465,13 @@ export default function DashboardClient() {
       } finally {
         if (!cancelled) setLoadingWinners(false);
       }
-    })();
+    }
 
+    loadWinners();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAuthedEnough]);
 
   // ─────────────────────────────────────────────
   // Ticket actions
@@ -684,6 +485,7 @@ export default function DashboardClient() {
   }
 
   async function handleClaimTicket() {
+    if (!isAuthedEnough) return;
     if (!walletConnected || !publicKey) return;
     if (loadingTickets || claiming) return;
 
@@ -790,8 +592,22 @@ export default function DashboardClient() {
 
   return (
     <>
-      {/* Always render the hub UI, but lock it visually until authed + X linked */}
-      <div className={showLock ? 'pointer-events-none select-none blur-[2px]' : ''}>
+      <PremiumWalletModal
+        open={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+      />
+
+      <HubLockOverlay
+        open={showLock}
+        reason={
+          !isSignedIn
+            ? 'Sign in with X to access the Holder Dashboard.'
+            : 'Your account is signed in, but X is not linked. Link X to continue.'
+        }
+        showLinkX={isSignedIn && !handle}
+      />
+
+      <div className={showLock ? 'pointer-events-none select-none blur-[2px] opacity-95' : ''}>
         <XpotPageShell
           topBarProps={{
             pillText: 'HOLDER DASHBOARD',
@@ -806,7 +622,18 @@ export default function DashboardClient() {
                 </Link>
 
                 <div className="rounded-full border border-slate-700/80 bg-slate-950/50 px-4 py-2">
-                  <WalletMenuInline />
+                  <button
+                    type="button"
+                    onClick={() => setWalletModalOpen(true)}
+                    className="text-left leading-tight hover:opacity-90"
+                  >
+                    <div className="text-[28px] font-medium text-slate-100">
+                      Select Wallet
+                    </div>
+                    <div className="text-[28px] font-medium text-slate-100">
+                      Change wallet
+                    </div>
+                  </button>
                   <WalletStatusHint />
                 </div>
 
@@ -818,7 +645,7 @@ export default function DashboardClient() {
                     </button>
                   </SignOutButton>
                 ) : (
-                  <Link href="/sign-in" className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
+                  <Link href="/sign-in?redirect_url=/hub" className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
                     <span>Sign in</span>
                   </Link>
                 )}
@@ -826,8 +653,6 @@ export default function DashboardClient() {
             ),
           }}
         >
-          <WalletDebug />
-
           {/* MAIN GRID */}
           <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             {/* LEFT COLUMN */}
@@ -1202,17 +1027,6 @@ export default function DashboardClient() {
           </footer>
         </XpotPageShell>
       </div>
-
-      {/* Premium auth lock overlay */}
-      {showLock ? (
-        <PremiumAuthLock
-          mode={!isSignedIn ? 'signin' : 'link-x'}
-          onLinkX={() => openUserProfile?.()}
-        />
-      ) : null}
-
-      {/* Safety: if authed enough, ensure UI is interactive (no leftover state) */}
-      {!showLock && isAuthedEnough ? null : null}
     </>
   );
 }
