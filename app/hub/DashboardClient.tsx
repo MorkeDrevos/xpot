@@ -583,45 +583,6 @@ export default function DashboardClient() {
     <XpotPageShell>
       <WalletDebug />
 
-      {/* HEADER */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        {/* left: page label only (no logo) */}
-        <div className="flex items-center gap-3">
-          <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-            Holder dashboard
-          </span>
-        </div>
-
-        {/* right: Img2 menu cluster */}
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard/history"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-base text-slate-200 hover:bg-slate-900/70"
-            >
-              <History className="h-5 w-5" />
-              History
-            </Link>
-
-            <div className="px-2">
-              <WalletMenuInline />
-            </div>
-
-            <SignOutButton redirectUrl="/dashboard">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-base text-slate-200 hover:bg-slate-900/70"
-              >
-                <LogOut className="h-5 w-5" />
-                Log out
-              </button>
-            </SignOutButton>
-          </div>
-
-          <WalletStatusHint />
-        </div>
-      </header>
-
       {/* MAIN GRID */}
       <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         {/* LEFT COLUMN */}
