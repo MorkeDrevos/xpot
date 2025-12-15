@@ -42,12 +42,13 @@ export default function XpotTopBar({
   src="/img/xpot-logo-light.png"
   alt="XPOT"
   width={460}
-  height={132}
+  height={150}
   priority
   className="
-    h-[118px] min-h-[118px] w-auto object-contain
-    animate-[xpotStarFlash_20s_ease-in-out_infinite]
-  "
+  min-h-[150px] h-[18vw] max-h-[220px]
+  w-auto object-contain
+  animate-[xpotStarFlash_20s_ease-in-out_infinite]
+"
 />
               </Link>
 
