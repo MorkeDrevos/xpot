@@ -151,9 +151,10 @@
 
 /* =============================================================
    OPS PAGE OVERRIDE (SAFE)
+   IMPORTANT: attribute is set on <html>, so selector must be html[…]
 ============================================================= */
 
-[data-xpot-page="ops"] {
+html[data-xpot-page="ops"] {
   --xpot-bg-page:
     radial-gradient(1200px 700px at 14% 12%,
       rgba(var(--xpot-accent-primary), 0.20),
@@ -178,7 +179,8 @@
    BASE
 ============================================================= */
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
@@ -186,6 +188,7 @@ body {
   background: var(--xpot-bg-page);
   color: var(--xpot-text);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
 }
 
