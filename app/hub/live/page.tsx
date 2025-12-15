@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 import XpotPageShell from '@/components/XpotPageShell';
-import StatusPill from '@/components/StatusPill';
-
 import {
   Crown,
   Sparkles,
