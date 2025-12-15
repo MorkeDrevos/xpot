@@ -24,7 +24,7 @@ function pickXAccount(externalAccounts: any[]) {
 
 export async function POST() {
   try {
-    const { userId: clerkId } = auth();
+    const { userId: clerkId } = await auth();
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
