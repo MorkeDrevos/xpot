@@ -12,7 +12,10 @@ import { useUser, SignOutButton } from '@clerk/nextjs';
 import XpotPageShell from '@/components/XpotPageShell';
 import PremiumWalletModal from '@/components/PremiumWalletModal';
 import HubLockOverlay from '@/components/HubLockOverlay';
-import { REQUIRED_XPOT } from '@/lib/xpot';
+import JackpotPanel from '@/components/JackpotPanel';
+import BonusStrip from '@/components/BonusStrip';
+
+import { REQUIRED_XPOT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
 import {
   CheckCircle2,
@@ -23,6 +26,14 @@ import {
   Ticket,
   Wallet,
   X,
+  Crown,
+  Timer,
+  Zap,
+  BadgeCheck,
+  ShieldCheck,
+  ExternalLink,
+  RefreshCcw,
+  Stars,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -35,8 +46,14 @@ const BTN_PRIMARY =
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
 
+const BTN_GLOW =
+  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.06] transition shadow-[0_18px_60px_rgba(0,0,0,0.35)]';
+
 const CARD =
   'rounded-[28px] border border-slate-800/70 bg-slate-950/60 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]';
+
+const CARD_HERO =
+  'relative overflow-hidden rounded-[30px] border border-slate-800/70 bg-slate-950/55 shadow-[0_32px_110px_rgba(0,0,0,0.55)]';
 
 const SUBCARD =
   'rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3';
@@ -162,6 +179,10 @@ function initialFromHandle(h?: string | null) {
   return s ? s[0].toUpperCase() : 'X';
 }
 
+function toneForStep(ok: boolean): 'emerald' | 'amber' {
+  return ok ? 'emerald' : 'amber';
+}
+
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
@@ -185,6 +206,14 @@ type RecentWinner = {
   jackpotUsd: number;
   walletAddress: string;
   handle?: string | null;
+};
+
+// Bonus shape is optional - endpoint may evolve
+type BonusLive = {
+  id?: string;
+  amountXpot?: number;
+  scheduledAt?: string; // ISO
+  status?: string;
 };
 
 // ─────────────────────────────────────────────
@@ -227,10 +256,19 @@ export default function DashboardClient() {
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
 
+  // Bonus live (optional)
+  const [bonusLive, setBonusLive] = useState<BonusLive | null>(null);
+  const [bonusError, setBonusError] = useState<string | null>(null);
+  const [bonusCountdown, setBonusCountdown] = useState<string>('00:00:00');
+
+  // Main pot live USD (from JackpotPanel callback)
+  const [mainJackpotUsd, setMainJackpotUsd] = useState<number | null>(null);
+
   // Premium sync feel
   const [countdown, setCountdown] = useState('00:00:00');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncPulse, setSyncPulse] = useState(0);
+  const [manualBusy, setManualBusy] = useState(false);
   const refreshingRef = useRef(false);
 
   // Clerk user (X identity)
@@ -280,7 +318,7 @@ export default function DashboardClient() {
   }, [isUserLoaded, user, handle]);
 
   // ─────────────────────────────────────────────
-  // Wire wallet → DB whenever it connects
+  // Wire wallet -> DB whenever it connects
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) return;
@@ -302,7 +340,7 @@ export default function DashboardClient() {
   }, [isAuthedEnough, publicKey, connected]);
 
   // ─────────────────────────────────────────────
-  // Countdown ticker
+  // Countdown ticker (main draw)
   // ─────────────────────────────────────────────
   useEffect(() => {
     const tick = () => {
@@ -313,6 +351,26 @@ export default function DashboardClient() {
     const t = setInterval(tick, 500);
     return () => clearInterval(t);
   }, []);
+
+  // ─────────────────────────────────────────────
+  // Bonus countdown ticker (if scheduledAt is known)
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    const tick = () => {
+      const iso = bonusLive?.scheduledAt;
+      if (!iso) {
+        setBonusCountdown('00:00:00');
+        return;
+      }
+      const target = new Date(iso).getTime();
+      const ms = target - Date.now();
+      setBonusCountdown(formatCountdown(ms));
+    };
+
+    tick();
+    const t = setInterval(tick, 500);
+    return () => clearInterval(t);
+  }, [bonusLive?.scheduledAt]);
 
   // ─────────────────────────────────────────────
   // Fetch helpers
@@ -371,6 +429,39 @@ export default function DashboardClient() {
     return winners;
   }, []);
 
+  // Bonus is optional - if the endpoint is not ready yet, we fail softly
+  const fetchBonusLive = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bonus/live', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load bonus');
+      const data = await res.json();
+
+      // Accept a few shapes:
+      // - { bonus: {...} }
+      // - { bonuses: [...] }
+      // - direct object
+      const raw =
+        (data && (data.bonus || data.next || data.item)) ??
+        (Array.isArray(data?.bonuses) ? data.bonuses[0] : null) ??
+        data ??
+        null;
+
+      if (!raw) return null;
+
+      const next: BonusLive = {
+        id: raw.id,
+        amountXpot: Number(raw.amountXpot ?? raw.amount ?? 0) || 0,
+        scheduledAt: raw.scheduledAt ?? raw.time ?? null,
+        status: raw.status ?? raw.state ?? null,
+      };
+
+      return next;
+    } catch (e) {
+      console.warn('[XPOT] bonus live fetch failed (non-blocking)', e);
+      return null;
+    }
+  }, []);
+
   const refreshAll = useCallback(
     async (reason: 'initial' | 'poll' | 'manual' = 'poll') => {
       if (!isAuthedEnough) return;
@@ -396,6 +487,16 @@ export default function DashboardClient() {
         }
         const nextWinners = await fetchRecentWinners();
         setRecentWinners(nextWinners);
+
+        // Bonus (global, optional)
+        try {
+          setBonusError(null);
+          const nextBonus = await fetchBonusLive();
+          setBonusLive(nextBonus);
+        } catch (e) {
+          console.warn('[XPOT] bonus live error', e);
+          setBonusError('Bonus feed unavailable');
+        }
 
         // Wallet-specific (only when wallet is present)
         if (addr) {
@@ -448,6 +549,7 @@ export default function DashboardClient() {
       fetchRecentWinners,
       fetchXpotBalance,
       fetchHistory,
+      fetchBonusLive,
     ],
   );
 
@@ -470,6 +572,9 @@ export default function DashboardClient() {
       setLoadingHistory(false);
 
       setXpotBalance(null);
+
+      setBonusLive(null);
+      setBonusError(null);
       return;
     }
 
@@ -628,6 +733,44 @@ export default function DashboardClient() {
     !!normalizedWallet &&
     winner.walletAddress?.toLowerCase() === normalizedWallet;
 
+  // Ritual checklist (addictive UX)
+  const ritual = useMemo(() => {
+    const xOk = !!handle;
+    const wOk = walletConnected;
+    const eligibleOk = !!walletConnected && typeof xpotBalance === 'number' && hasRequiredXpot;
+    const entryOk = !!walletConnected && ticketClaimed;
+
+    return [
+      { key: 'x', label: 'X linked', ok: xOk },
+      { key: 'w', label: 'Wallet connected', ok: wOk },
+      { key: 'e', label: `Eligible (>= ${REQUIRED_XPOT.toLocaleString()} XPOT)`, ok: eligibleOk },
+      { key: 't', label: 'Entry claimed', ok: entryOk },
+    ];
+  }, [handle, walletConnected, xpotBalance, hasRequiredXpot, ticketClaimed]);
+
+  const ritualDone = ritual.filter(r => r.ok).length;
+  const ritualTotal = ritual.length;
+
+  const bonusAmount =
+    typeof bonusLive?.amountXpot === 'number' ? bonusLive?.amountXpot : null;
+
+  const bonusLabel = useMemo(() => {
+    if (!bonusLive) return 'No bonus scheduled';
+    if (bonusLive?.scheduledAt && bonusCountdown !== '00:00:00') return 'Next bonus XPOT';
+    if (bonusLive?.scheduledAt && bonusCountdown === '00:00:00') return 'Bonus XPOT incoming';
+    return 'Bonus XPOT';
+  }, [bonusLive, bonusCountdown]);
+
+  async function handleManualRefresh() {
+    if (manualBusy) return;
+    setManualBusy(true);
+    try {
+      await refreshAll('manual');
+    } finally {
+      setTimeout(() => setManualBusy(false), 700);
+    }
+  }
+
   // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
@@ -726,6 +869,239 @@ export default function DashboardClient() {
             ),
           }}
         >
+          {/* PREMIUM HUB HERO - "Ritual Command Deck" */}
+          <section className="mt-6">
+            <div className={CARD_HERO}>
+              {/* halo */}
+              <div
+                className="
+                  pointer-events-none absolute -inset-40 opacity-80 blur-3xl
+                  bg-[radial-gradient(circle_at_12%_10%,rgba(16,185,129,0.18),transparent_55%),
+                      radial-gradient(circle_at_84%_16%,rgba(56,189,248,0.18),transparent_58%),
+                      radial-gradient(circle_at_72%_92%,rgba(245,158,11,0.10),transparent_62%)]
+                "
+              />
+
+              <div className="relative z-10 grid gap-5 p-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:p-6">
+                {/* Left: Personal + ritual */}
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                        <Crown className="h-3.5 w-3.5 text-amber-200" />
+                        Your daily ritual
+                      </div>
+
+                      <h1 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
+                        Welcome back{handle ? `, @${handle.replace(/^@/, '')}` : ''}.
+                      </h1>
+
+                      <p className="mt-2 text-sm text-slate-300">
+                        Today’s goal: lock your entry, then come back at draw time.
+                        Your identity stays public by handle, your wallet stays self-custody.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleManualRefresh}
+                      className={`${BTN_GLOW} h-10 px-4 text-xs`}
+                      disabled={manualBusy}
+                      title="Refresh live dashboard"
+                    >
+                      <RefreshCcw className="mr-2 h-4 w-4 text-slate-300" />
+                      {manualBusy ? 'Syncing…' : 'Refresh'}
+                    </button>
+                  </div>
+
+                  {/* Ritual checklist */}
+                  <div className="rounded-[22px] border border-slate-800/70 bg-slate-950/55 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                        <p className="text-xs font-semibold text-slate-100">
+                          Daily checklist
+                        </p>
+                      </div>
+                      <StatusPill tone={ritualDone === ritualTotal ? 'emerald' : 'amber'}>
+                        <Stars className="h-3.5 w-3.5" />
+                        {ritualDone}/{ritualTotal}
+                      </StatusPill>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {ritual.map(step => (
+                        <div
+                          key={step.key}
+                          className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800/70 bg-slate-950/70 px-4 py-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-100">
+                              {step.label}
+                            </p>
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              {step.ok ? 'Complete' : 'Pending'}
+                            </p>
+                          </div>
+                          <StatusPill tone={toneForStep(step.ok)}>
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            {step.ok ? 'OK' : 'Fix'}
+                          </StatusPill>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+                      <span className="inline-flex items-center gap-2">
+                        <Timer className="h-4 w-4 text-slate-400" />
+                        Next main draw in{' '}
+                        <span className="font-mono text-slate-200">{countdown}</span>
+                      </span>
+
+                      <span className="inline-flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-amber-200" />
+                        Bonus in{' '}
+                        <span className="font-mono text-slate-200">
+                          {bonusLive?.scheduledAt ? bonusCountdown : '—'}
+                        </span>
+                      </span>
+
+                      <span className="inline-flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                        {lastSyncedAt ? (
+                          <span key={syncPulse}>
+                            Synced {new Date(lastSyncedAt).toLocaleTimeString('de-DE')}
+                          </span>
+                        ) : (
+                          'Syncing…'
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Pots - main + bonus */}
+                <div className="space-y-4">
+                  <div className="rounded-[24px] border border-slate-800/70 bg-slate-950/60 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-100">
+                          Today’s main pot
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Live USD estimate tracks Jupiter pricing.
+                        </p>
+                      </div>
+                      <StatusPill tone="emerald">
+                        <BadgeCheck className="h-3.5 w-3.5" />
+                        Live
+                      </StatusPill>
+                    </div>
+
+                    <div className="mt-3 rounded-2xl border border-slate-800/70 bg-slate-950/70 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                          Main pot
+                        </div>
+                        <div className="font-mono text-sm text-slate-200">
+                          {Number(XPOT_POOL_SIZE ?? 0).toLocaleString()} XPOT
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-slate-500">
+                        Next draw in{' '}
+                        <span className="font-mono text-slate-200">{countdown}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <JackpotPanel
+                        variant="embedded"
+                        onJackpotUsdChange={setMainJackpotUsd}
+                      />
+                    </div>
+
+                    <div className="mt-3 text-[11px] text-slate-500">
+                      {typeof mainJackpotUsd === 'number' ? (
+                        <>
+                          Estimated value:{' '}
+                          <span className="font-semibold text-slate-200">
+                            {mainJackpotUsd.toLocaleString('en-US', {
+                              style: 'currency',
+                              currency: 'USD',
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        </>
+                      ) : (
+                        'Estimating value…'
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] border border-slate-800/70 bg-slate-950/60 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-100">
+                          Bonus XPOT
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Scheduled bonuses can drop anytime.
+                        </p>
+                      </div>
+                      <StatusPill tone={bonusLive?.scheduledAt ? 'amber' : 'slate'}>
+                        <Sparkles className="h-3.5 w-3.5" />
+                        {bonusLive?.scheduledAt ? 'Scheduled' : 'Idle'}
+                      </StatusPill>
+                    </div>
+
+                    <div className="mt-3 rounded-2xl border border-slate-800/70 bg-slate-950/70 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                          {bonusLabel}
+                        </div>
+                        <div className="font-mono text-sm text-slate-200">
+                          {typeof bonusAmount === 'number' && bonusAmount > 0
+                            ? `${Math.floor(bonusAmount).toLocaleString()} XPOT`
+                            : '—'}
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-2">
+                          <Timer className="h-4 w-4 text-amber-200" />
+                          Countdown{' '}
+                          <span className="font-mono text-slate-200">
+                            {bonusLive?.scheduledAt ? bonusCountdown : '—'}
+                          </span>
+                        </span>
+
+                        {bonusLive?.scheduledAt && (
+                          <span className="text-[11px] text-slate-500">
+                            {new Date(bonusLive.scheduledAt).toLocaleString('de-DE')}
+                          </span>
+                        )}
+                      </div>
+
+                      {bonusError && (
+                        <p className="mt-2 text-xs text-amber-300">{bonusError}</p>
+                      )}
+                    </div>
+
+                    {/* Keep your existing BonusStrip for the high-attention scheduled UX */}
+                    <div className="mt-3">
+                      <BonusStrip />
+                    </div>
+
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      Bonus payouts are on-chain. Winner identity is shown by handle.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* MAIN GRID */}
           <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             {/* LEFT COLUMN */}
@@ -915,9 +1291,7 @@ export default function DashboardClient() {
 
                     <p className="mt-2 text-xs text-slate-500">
                       Status:{' '}
-                      <span className="font-semibold text-slate-200">
-                        IN DRAW
-                      </span>
+                      <span className="font-semibold text-slate-200">IN DRAW</span>
                       {' · '}Issued {formatDateTime(todaysTicket.createdAt)}
                     </p>
                   </div>
@@ -1063,6 +1437,17 @@ export default function DashboardClient() {
                       );
                     })
                   )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <Link href="/hub/winners" className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+                    View winners
+                    <ExternalLink className="ml-2 h-4 w-4 text-slate-500" />
+                  </Link>
+
+                  <p className="text-[11px] text-slate-500">
+                    Winners are shown by handle when available.
+                  </p>
                 </div>
               </section>
 
