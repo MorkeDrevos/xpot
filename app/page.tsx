@@ -3,7 +3,6 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ArrowRight, ExternalLink, Lock, Orbit, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 
@@ -125,49 +124,6 @@ export default function HomePage() {
 
   return (
     <XpotPageShell>
-      {/* Top nav */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <Image
-              src="/img/xpot-logo-light.png"
-              alt="XPOT"
-              width={132}
-              height={36}
-              priority
-            />
-          </Link>
-
-          <Pill tone="emerald">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-            The X-powered reward pool
-          </Pill>
-        </div>
-
-        <nav className="flex flex-wrap items-center gap-2 text-[13px]">
-          <Link
-            href="/dashboard"
-            className="rounded-full px-3 py-1.5 text-slate-300 hover:text-white"
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/terms"
-            className="rounded-full px-3 py-1.5 text-slate-400 hover:text-white/90"
-          >
-            Terms
-          </Link>
-
-          <Link
-            href="/dashboard"
-            className="group ml-0 inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-1.5 text-[13px] font-semibold text-slate-950 shadow-[0_14px_40px_rgba(16,185,129,0.40)] transition hover:bg-emerald-300"
-          >
-            Enter today&apos;s XPOT
-            <ArrowRight className="h-3.5 w-3.5 translate-x-0 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </nav>
-      </header>
-
       {/* HERO */}
       <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-center">
         {/* Left */}
@@ -183,10 +139,9 @@ export default function HomePage() {
             </p>
 
             <h1 className="mt-3 text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-[3.25rem]">
-              The daily on-chain{' '}
-              <span className="text-emerald-300">XPOT pool</span> that feels
-              like a cockpit.
-            </h1>
+  One protocol. One identity.{' '}
+  <span className="text-emerald-300">One daily XPOT draw.</span>
+</h1>
 
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
               XPOT is a fixed daily pool (for example{' '}
