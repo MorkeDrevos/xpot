@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '../_auth';
+import { WinnerKind } from '@prisma/client';
 
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
       drawId: draw.id,
       ticketCode: picked.code,
       walletAddress: picked.walletAddress,
-      kind: 'bonus', // ensure your enum supports this
+      kind: 'BONUS', // ensure your enum supports this
       label,
       payoutUsd: amountXpot, // you’re using payoutUsd as XPOT amount in UI
       jackpotUsd: 0,
