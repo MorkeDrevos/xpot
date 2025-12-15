@@ -38,7 +38,7 @@ const BTN_UTILITY =
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
 
-function WalletMenuInline() {
+ function WalletMenuInline() {
   const { setVisible } = useWalletModal();
 
   return (
@@ -47,14 +47,14 @@ function WalletMenuInline() {
       onClick={() => setVisible(true)}
       className="text-left leading-tight hover:opacity-90"
     >
-      <div className="text-[28px] font-medium text-slate-100">Select Wallet</div>
-      <div className="text-[28px] font-medium text-slate-100">Change wallet</div>
+      <div className="text-[28px] font-medium text-slate-100">
+        Select Wallet
+      </div>
+      <div className="text-[28px] font-medium text-slate-100">
+        Change wallet
+      </div>
     </button>
   );
-}
-
-function formatDate(date: string | Date) {
-  ...
 }
 
 function formatDate(date: string | Date) {
