@@ -1847,7 +1847,7 @@ export default function AdminPage() {
       </section>
 
       {modeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
+        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
           <div className="w-full max-w-md rounded-3xl border border-slate-700/70 bg-gradient-to-b from-[#020617] via-[#020617] to-black px-6 py-6 shadow-[0_0_80px_rgba(15,23,42,0.9)]">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-slate-50">
@@ -1934,7 +1934,7 @@ export default function AdminPage() {
 
       {/* ULTRA PREMIUM LOCK MODAL */}
       {!tokenAccepted && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-md">
+        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
           <div
             className="
               relative w-full max-w-md rounded-3xl border border-slate-700/70
