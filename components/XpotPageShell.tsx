@@ -34,53 +34,62 @@ const THEME_KEY = 'xpot_ops_theme_v1';
 type ThemePreset = {
   id: string;
   label: string;
-  vars: Record<string, string>;
+  // IMPORTANT: these must match what globals.css actually USES
+  vars: Record<
+    | '--xpot-accent-primary'
+    | '--xpot-accent-secondary'
+    | '--xpot-accent-glow'
+    | '--xpot-accent-success',
+    string
+  >;
 };
 
-// Your requested anchors (blue -> violet -> magenta)
+// These map to your globals.css “theme-driven tokens”
 const PRESETS: ThemePreset[] = [
   {
     id: 'nebula',
     label: 'Nebula',
     vars: {
-      '--xpot-accent-blue': '56 189 248',
-      '--xpot-accent-violet': '99 102 241',
-      '--xpot-accent-magenta': '236 72 153',
-      '--xpot-accent-emerald': '16 185 129',
+      '--xpot-accent-primary': '56 189 248', // sky
+      '--xpot-accent-secondary': '99 102 241', // violet/indigo
+      '--xpot-accent-glow': '236 72 153', // magenta
+      '--xpot-accent-success': '16 185 129', // emerald
     },
   },
   {
     id: 'icy',
     label: 'Icy',
     vars: {
-      '--xpot-accent-blue': '34 211 238',
-      '--xpot-accent-violet': '129 140 248',
-      '--xpot-accent-magenta': '244 114 182',
-      '--xpot-accent-emerald': '16 185 129',
+      '--xpot-accent-primary': '34 211 238',
+      '--xpot-accent-secondary': '129 140 248',
+      '--xpot-accent-glow': '244 114 182',
+      '--xpot-accent-success': '16 185 129',
     },
   },
   {
     id: 'royal',
     label: 'Royal',
     vars: {
-      '--xpot-accent-blue': '96 165 250',
-      '--xpot-accent-violet': '139 92 246',
-      '--xpot-accent-magenta': '236 72 153',
-      '--xpot-accent-emerald': '16 185 129',
+      '--xpot-accent-primary': '96 165 250',
+      '--xpot-accent-secondary': '139 92 246',
+      '--xpot-accent-glow': '236 72 153',
+      '--xpot-accent-success': '16 185 129',
     },
   },
 ];
 
 function applyPreset(presetId: string) {
-  const preset = PRESETS.find(p => p.id === presetId) ?? PRESETS[0];
+  if (typeof window === 'undefined') return;
+
+  const preset = PRESETS.find((p) => p.id === presetId) ?? PRESETS[0];
   const root = document.documentElement;
 
   for (const [k, v] of Object.entries(preset.vars)) {
     root.style.setProperty(k, v);
   }
 
-  // Keep compat with older name used in some places
-  root.style.setProperty('--xpot-accent-purple', `var(--xpot-accent-violet)`);
+  // Compat for older code that still uses “purple”
+  root.style.setProperty('--xpot-accent-purple', 'var(--xpot-accent-secondary)');
 
   window.localStorage.setItem(THEME_KEY, preset.id);
 }
@@ -89,9 +98,10 @@ function OpsThemeSwitcher() {
   const [active, setActive] = useState<string>('nebula');
 
   useEffect(() => {
-    const saved =
-      typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null;
-    const initial = saved && PRESETS.some(p => p.id === saved) ? saved : 'nebula';
+    const saved = window.localStorage.getItem(THEME_KEY);
+    const initial =
+      saved && PRESETS.some((p) => p.id === saved) ? saved : 'nebula';
+
     setActive(initial);
     applyPreset(initial);
   }, []);
@@ -103,7 +113,7 @@ function OpsThemeSwitcher() {
       </span>
 
       <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03] backdrop-blur">
-        {PRESETS.map(p => {
+        {PRESETS.map((p) => {
           const isActive = p.id === active;
           return (
             <button
@@ -144,14 +154,26 @@ export default function XpotPageShell({
   topBarProps,
   showOpsThemeSwitcher = true,
 }: XpotPageShellProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() || '';
 
   const isOpsOrAdmin = useMemo(() => {
-    return (
-      typeof pathname === 'string' &&
-      (pathname.startsWith('/ops') || pathname.startsWith('/admin'))
-    );
+    return pathname.startsWith('/ops') || pathname.startsWith('/admin');
   }, [pathname]);
+
+  // ✅ CRITICAL: put the ops flag on <html>, not on a wrapper div.
+  // Your globals.css override ([data-xpot-page="ops"]) must match where the vars are read (body/html background).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const root = document.documentElement;
+    if (isOpsOrAdmin) root.setAttribute('data-xpot-page', 'ops');
+    else root.removeAttribute('data-xpot-page');
+
+    return () => {
+      // safety cleanup if the shell unmounts
+      root.removeAttribute('data-xpot-page');
+    };
+  }, [isOpsOrAdmin]);
 
   const mergedRightSlot = useMemo(() => {
     if (!isOpsOrAdmin || !showOpsThemeSwitcher) return rightSlot ?? null;
@@ -166,10 +188,7 @@ export default function XpotPageShell({
 
   return (
     <div
-      className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(
-        ' ',
-      )}
-      data-xpot-page={isOpsOrAdmin ? 'ops' : undefined}
+      className={['relative min-h-screen text-slate-100', className].join(' ')}
     >
       <PreLaunchBanner />
 
@@ -180,28 +199,13 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* Base solid */}
-      <div className="pointer-events-none fixed inset-0 -z-30 bg-[#02020a]" />
+      {/* ✅ Page background now comes from globals.css via --xpot-bg-page */}
+      <div className="pointer-events-none fixed inset-0 -z-30 bg-[var(--xpot-bg-page)]" />
 
-      {/* Nebula glow layers */}
-      <div
-        className="
-          pointer-events-none fixed inset-0 -z-20
-          opacity-95
-          bg-[radial-gradient(circle_at_10%_0%,rgba(37,99,235,0.45),transparent_60%),
-              radial-gradient(circle_at_100%_30%,rgba(168,85,247,0.55),transparent_60%),
-              radial-gradient(circle_at_100%_90%,rgba(236,72,153,0.45),transparent_65%),
-              radial-gradient(circle_at_35%_85%,rgba(56,189,248,0.18),transparent_55%)]
-        "
-      />
-
-      {/* ⭐ Bright starfield */}
+      {/* ⭐ Bright starfield (keep) */}
       <div
         aria-hidden
-        className="
-          pointer-events-none fixed inset-0 -z-10
-          opacity-60 mix-blend-screen
-        "
+        className="pointer-events-none fixed inset-0 -z-20 opacity-60 mix-blend-screen"
         style={{
           backgroundImage: `
             radial-gradient(1px 1px at 12px 18px, rgba(255,255,255,0.95) 99%, transparent 100%),
@@ -221,7 +225,7 @@ export default function XpotPageShell({
       />
 
       {/* Vignette / depth mask */}
-      <div className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
 
       {/* CONTENT CONTAINER */}
       <div
