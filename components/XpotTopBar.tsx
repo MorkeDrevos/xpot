@@ -13,7 +13,6 @@ import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import {
   Crown,
   ExternalLink,
-  LockKeyhole,
   LogOut,
   Radio,
   Shield,
@@ -67,8 +66,6 @@ export default function XpotTopBar({
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
   const pathname = usePathname() || '';
-
-  // Anything under /hub/* must get the same Hub menu (including /hub/history).
   const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
   const effectivePillText = isHub ? 'HOLDER DASHBOARD' : pillText;
 
@@ -145,61 +142,6 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- LIVE CHIP (shared) ---------------- */
-
-function LiveDot({ isOpen }: { isOpen: boolean }) {
-  return (
-    <span className="relative inline-flex h-2.5 w-2.5 items-center justify-center">
-      {isOpen ? (
-        <>
-          <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-emerald-400/60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
-        </>
-      ) : (
-        <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
-      )}
-    </span>
-  );
-}
-
-function LiveNavItem({
-  href,
-  label = 'Live',
-  isOpen,
-  variant,
-}: {
-  href: string;
-  label?: string;
-  isOpen: boolean;
-  variant: 'text' | 'pill';
-}) {
-  if (variant === 'pill') {
-    return (
-      <Link
-        href={href}
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
-        title={isOpen ? 'Live draw is open' : 'Live view'}
-      >
-        <LiveDot isOpen={isOpen} />
-        <Radio className="h-5 w-5 text-emerald-300" />
-        <span className="leading-none">{label}</span>
-      </Link>
-    );
-  }
-
-  return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-2 hover:text-white"
-      title={isOpen ? 'Live draw is open' : 'Live view'}
-    >
-      <LiveDot isOpen={isOpen} />
-      <Radio className="h-4 w-4 text-emerald-300" />
-      <span className="leading-none">{label}</span>
-    </Link>
-  );
-}
-
 /* ---------------- DEFAULT NAV ---------------- */
 
 function DefaultNav({ liveIsOpen }: { liveIsOpen: boolean }) {
@@ -209,7 +151,24 @@ function DefaultNav({ liveIsOpen }: { liveIsOpen: boolean }) {
         Hub
       </Link>
 
-      <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="text" />
+      <Link
+        href="/hub/live"
+        className="inline-flex items-center gap-2 hover:text-white"
+        title={liveIsOpen ? 'Live draw is open' : 'Live view'}
+      >
+        <span className="relative h-2 w-2">
+          {liveIsOpen ? (
+            <>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+            </>
+          ) : (
+            <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
+          )}
+        </span>
+        <Radio className="h-4 w-4 text-emerald-300" />
+        Live
+      </Link>
 
       <Link
         href={WINNERS_HREF}
@@ -227,16 +186,6 @@ function DefaultNav({ liveIsOpen }: { liveIsOpen: boolean }) {
       >
         <ExternalLink className="h-4 w-4" />
         X
-      </Link>
-
-      {/* Public Ops link (locked) */}
-      <Link
-        href="/ops"
-        className="inline-flex items-center gap-2 hover:text-white"
-        title="Operations Center"
-      >
-        <LockKeyhole className="h-4 w-4 text-slate-400" />
-        Ops
       </Link>
 
       <Link
@@ -297,9 +246,26 @@ function HubMenu({
         </span>
       </div>
 
-      {/* HUB MENU LINKS - same on /hub and /hub/history */}
-      <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="pill" />
+      {/* LIVE */}
+      <Link
+        href="/hub/live"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+      >
+        <span className="relative h-2 w-2">
+          {liveIsOpen ? (
+            <>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+            </>
+          ) : (
+            <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
+          )}
+        </span>
+        <Radio className="h-5 w-5 text-emerald-300" />
+        Live
+      </Link>
 
+      {/* WINNERS */}
       <Link
         href={WINNERS_HREF}
         className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
@@ -308,6 +274,7 @@ function HubMenu({
         Winners
       </Link>
 
+      {/* X */}
       <Link
         href={XPOT_X_POST}
         target="_blank"
@@ -318,28 +285,24 @@ function HubMenu({
         X
       </Link>
 
-      {/* OPS:
-         - If admin: show admin-styled Ops
-         - If not admin: show public locked Ops anyway (still protected)
-      */}
-      <Link
-        href="/ops"
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
-        title="Operations Center"
-      >
-        {isAdmin ? (
+      {/* OPS (admin only) */}
+      {isAdmin && (
+        <Link
+          href="/ops"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+        >
           <Shield className="h-5 w-5 text-sky-300" />
-        ) : (
-          <LockKeyhole className="h-5 w-5 text-slate-400" />
-        )}
-        Ops
-      </Link>
+          Ops
+        </Link>
+      )}
 
+      {/* Wallet */}
       <HubWalletMenuInline
         hubWalletStatus={hubWalletStatus}
         onOpenWalletModal={onOpenWalletModal}
       />
 
+      {/* Log out */}
       {clerkEnabled && (
         <SignOutButton redirectUrl="/">
           <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
@@ -393,8 +356,7 @@ function HubWalletMenuInline({
     <Wallet className="h-4 w-4" />
   );
 
-  const open = () =>
-    onOpenWalletModal ? onOpenWalletModal() : setVisible(true);
+  const open = () => (onOpenWalletModal ? onOpenWalletModal() : setVisible(true));
 
   return (
     <button
