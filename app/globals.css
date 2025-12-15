@@ -1,114 +1,79 @@
+/* app/globals.css */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* =============================================================
-   XPOT GLOBAL THEME TOKENS
-   Controlled entirely via CSS variables
+   XPOT GLOBAL TOKENS (NO THEME SWITCHING)
+   Premium ops wash: blue-left -> violet -> magenta-right
 ============================================================= */
 
 :root {
   color-scheme: dark;
 
-  /* ── Text ─────────────────────────────────────────────── */
+  /* Text */
   --xpot-text: rgba(226, 232, 240, 0.94);
   --xpot-text-dim: rgba(226, 232, 240, 0.72);
   --xpot-text-faint: rgba(226, 232, 240, 0.52);
 
-  /* ── Base backgrounds ─────────────────────────────────── */
-  --xpot-bg-0: #02030a;
-  --xpot-bg-1: #030412;
-  --xpot-bg-2: #05061a;
+  /* Deep inks */
+  --xpot-bg-0: #01020a;
+  --xpot-bg-1: #020313;
+  --xpot-bg-2: #04061a;
 
-  /* ── Raw palette anchors ──────────────────────────────── */
-  --xpot-accent-blue: 56 189 248;
-  --xpot-accent-violet: 99 102 241;
-  --xpot-accent-magenta: 236 72 153;
-  --xpot-accent-emerald: 16 185 129;
+  /* Accents (fixed) */
+  --xpot-accent-primary: 56 189 248; /* sky */
+  --xpot-accent-secondary: 99 102 241; /* violet */
+  --xpot-accent-glow: 236 72 153; /* magenta */
+  --xpot-accent-success: 16 185 129; /* emerald */
 
-  /* ── Semantic theme tokens (USED EVERYWHERE) ──────────── */
-  --xpot-accent-primary: var(--xpot-accent-blue);
-  --xpot-accent-secondary: var(--xpot-accent-violet);
-  --xpot-accent-glow: var(--xpot-accent-magenta);
-  --xpot-accent-success: var(--xpot-accent-emerald);
-
-  /* ── Compatibility aliases ────────────────────────────── */
+  /* Compat aliases */
   --xpot-accent-purple: var(--xpot-accent-secondary);
   --xpot-accent-brand: var(--xpot-accent-primary);
 
-  /* ── Borders ──────────────────────────────────────────── */
+  /* Borders */
   --xpot-border-soft: rgba(148, 163, 184, 0.12);
   --xpot-border: rgba(148, 163, 184, 0.18);
   --xpot-border-strong: rgba(148, 163, 184, 0.26);
 
-  /* ── Shadows & glows ──────────────────────────────────── */
+  /* Shadows */
   --xpot-shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.45);
   --xpot-shadow-card: 0 18px 60px rgba(0, 0, 0, 0.55);
 
+  /* Glows */
   --xpot-glow-primary:
-    0 0 0 1px rgba(var(--xpot-accent-primary), 0.24),
+    0 0 0 1px rgba(var(--xpot-accent-primary), 0.22),
     0 0 36px rgba(var(--xpot-accent-primary), 0.14),
-    0 16px 80px rgba(var(--xpot-accent-primary), 0.08);
+    0 18px 90px rgba(var(--xpot-accent-primary), 0.08);
 
   --xpot-glow-secondary:
-    0 0 0 1px rgba(var(--xpot-accent-secondary), 0.24),
-    0 0 40px rgba(var(--xpot-accent-secondary), 0.14),
-    0 16px 90px rgba(var(--xpot-accent-secondary), 0.09);
+    0 0 0 1px rgba(var(--xpot-accent-secondary), 0.22),
+    0 0 44px rgba(var(--xpot-accent-secondary), 0.14),
+    0 18px 110px rgba(var(--xpot-accent-secondary), 0.09);
 
   --xpot-glow-success:
-    0 0 0 1px rgba(var(--xpot-accent-success), 0.22),
+    0 0 0 1px rgba(var(--xpot-accent-success), 0.20),
     0 0 36px rgba(var(--xpot-accent-success), 0.12),
-    0 16px 80px rgba(var(--xpot-accent-success), 0.08);
+    0 18px 90px rgba(var(--xpot-accent-success), 0.08);
 
   --xpot-glow-accent:
-    0 0 0 1px rgba(var(--xpot-accent-glow), 0.22),
-    0 0 44px rgba(var(--xpot-accent-glow), 0.14),
-    0 18px 100px rgba(var(--xpot-accent-glow), 0.10);
+    0 0 0 1px rgba(var(--xpot-accent-glow), 0.20),
+    0 0 48px rgba(var(--xpot-accent-glow), 0.14),
+    0 20px 130px rgba(var(--xpot-accent-glow), 0.10);
 
-  /* ── Glass surfaces ───────────────────────────────────── */
-  --xpot-surface-1: linear-gradient(
-    to bottom right,
-    rgba(255, 255, 255, 0.045),
-    rgba(255, 255, 255, 0.012)
-  );
+  /* Radii */
+  --xpot-r-md: 14px;
+  --xpot-r-lg: 18px;
+  --xpot-r-xl: 22px;
 
-  --xpot-surface-2: linear-gradient(
-    to bottom right,
-    rgba(10, 12, 26, 0.92),
-    rgba(5, 6, 16, 0.86)
-  );
+  /* Blur */
+  --xpot-blur: 12px;
 
-  --xpot-surface-3: linear-gradient(
-    to bottom right,
-    rgba(8, 10, 22, 0.86),
-    rgba(3, 4, 12, 0.84)
-  );
+  /* Focus ring */
+  --xpot-ring: 0 0 0 3px rgba(var(--xpot-accent-primary), 0.25);
 
-  /* ── Page background (theme driven) ───────────────────── */
-  --xpot-bg-page:
-    radial-gradient(1250px 700px at 12% 10%,
-      rgba(var(--xpot-accent-primary), 0.22),
-      transparent 60%
-    ),
-    radial-gradient(1150px 680px at 52% 22%,
-      rgba(var(--xpot-accent-secondary), 0.20),
-      transparent 62%
-    ),
-    radial-gradient(1050px 650px at 92% 18%,
-      rgba(var(--xpot-accent-glow), 0.18),
-      transparent 64%
-    ),
-    radial-gradient(1100px 650px at 50% 115%,
-      rgba(var(--xpot-accent-success), 0.06),
-      transparent 58%
-    ),
-    linear-gradient(to bottom,
-      var(--xpot-bg-2),
-      var(--xpot-bg-0) 68%,
-      #01020a
-    );
-
-  /* ── Misc ─────────────────────────────────────────────── */
+  /* Top strip (your banner uses its own styling - keep this available) */
   --xpot-strip: linear-gradient(
     90deg,
     rgba(88, 28, 135, 0.96),
@@ -116,63 +81,79 @@
     rgba(219, 39, 119, 0.96)
   );
 
-  --xpot-r-md: 14px;
-  --xpot-r-lg: 18px;
-  --xpot-r-xl: 22px;
-  --xpot-blur: 12px;
+  /* Glass surfaces (match screenshot: deep, slightly tinted, premium) */
+  --xpot-surface-1: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0.055),
+    rgba(255, 255, 255, 0.014)
+  );
 
-  --xpot-ring: 0 0 0 3px rgba(var(--xpot-accent-primary), 0.25);
-}
+  --xpot-surface-2: linear-gradient(
+    to bottom right,
+    rgba(10, 12, 26, 0.90),
+    rgba(4, 5, 14, 0.86)
+  );
 
-/* =============================================================
-   THEME VARIANTS (MATCH JS EXACTLY)
-============================================================= */
+  --xpot-surface-3: linear-gradient(
+    to bottom right,
+    rgba(8, 10, 22, 0.86),
+    rgba(2, 3, 10, 0.84)
+  );
 
-:root[data-theme="nebula"] {
-  --xpot-accent-primary: var(--xpot-accent-blue);
-  --xpot-accent-secondary: var(--xpot-accent-violet);
-  --xpot-accent-glow: var(--xpot-accent-magenta);
-  --xpot-accent-success: var(--xpot-accent-emerald);
-}
-
-:root[data-theme="icy"] {
-  --xpot-accent-primary: 34 211 238;
-  --xpot-accent-secondary: 129 140 248;
-  --xpot-accent-glow: 244 114 182;
-  --xpot-accent-success: 16 185 129;
-}
-
-:root[data-theme="royal"] {
-  --xpot-accent-primary: 96 165 250;
-  --xpot-accent-secondary: 139 92 246;
-  --xpot-accent-glow: 236 72 153;
-  --xpot-accent-success: 16 185 129;
-}
-
-/* =============================================================
-   OPS PAGE OVERRIDE (SAFE)
-   IMPORTANT: attribute is set on <html>, so selector must be html[…]
-============================================================= */
-
-html[data-xpot-page="ops"] {
+  /* DEFAULT page bg (nice, but ops gets the premium wash below) */
   --xpot-bg-page:
-    radial-gradient(1200px 700px at 14% 12%,
-      rgba(var(--xpot-accent-primary), 0.20),
+    radial-gradient(1000px 700px at 18% 18%,
+      rgba(var(--xpot-accent-primary), 0.16),
       transparent 62%
     ),
-    radial-gradient(1150px 680px at 58% 22%,
-      rgba(var(--xpot-accent-secondary), 0.18),
+    radial-gradient(980px 680px at 82% 20%,
+      rgba(var(--xpot-accent-glow), 0.12),
       transparent 64%
     ),
-    radial-gradient(1050px 650px at 92% 22%,
-      rgba(var(--xpot-accent-glow), 0.17),
+    radial-gradient(900px 650px at 56% 28%,
+      rgba(var(--xpot-accent-secondary), 0.10),
       transparent 66%
     ),
-    linear-gradient(to bottom,
-      #030413,
-      #01020a 72%,
-      #000109
-    );
+    linear-gradient(to bottom, var(--xpot-bg-2), var(--xpot-bg-0) 70%, #000109);
+}
+
+/* =============================================================
+   OPS MOOD (THIS IS THE SCREENSHOT LOOK)
+   NOTE: This is triggered by <html data-xpot-page="ops">
+============================================================= */
+
+:root[data-xpot-page="ops"] {
+  /* The premium blue-left to magenta-right wash */
+  --xpot-bg-page:
+    radial-gradient(1400px 900px at 12% 22%,
+      rgba(var(--xpot-accent-primary), 0.40),
+      rgba(var(--xpot-accent-primary), 0.14) 38%,
+      transparent 68%
+    ),
+    radial-gradient(1200px 820px at 54% 18%,
+      rgba(var(--xpot-accent-secondary), 0.22),
+      transparent 66%
+    ),
+    radial-gradient(1500px 980px at 92% 26%,
+      rgba(var(--xpot-accent-glow), 0.34),
+      rgba(var(--xpot-accent-glow), 0.12) 42%,
+      transparent 72%
+    ),
+    radial-gradient(1200px 900px at 52% 120%,
+      rgba(16, 185, 129, 0.06),
+      transparent 60%
+    ),
+    linear-gradient(to bottom, #04061a, #01020a 72%, #000109);
+
+  /* Slightly “lusher” glass in ops */
+  --xpot-surface-1: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0.060),
+    rgba(255, 255, 255, 0.014)
+  );
+
+  --xpot-border-soft: rgba(148, 163, 184, 0.14);
+  --xpot-border: rgba(148, 163, 184, 0.20);
 }
 
 /* =============================================================
@@ -194,10 +175,167 @@ body {
 
 ::selection {
   background: rgba(var(--xpot-accent-primary), 0.25);
-  color: white;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
 }
 
 :focus-visible {
   outline: none;
   box-shadow: var(--xpot-ring);
+}
+
+/* WebKit scrollbars */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.26);
+}
+
+/* =============================================================
+   XPOT UTILS (kept - used across your UI)
+============================================================= */
+
+.xpot-page {
+  min-height: 100vh;
+  background: var(--xpot-bg-page);
+}
+
+.xpot-top-strip {
+  background: var(--xpot-strip);
+}
+
+.xpot-max {
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.xpot-glass {
+  background: var(--xpot-surface-1);
+  border: 1px solid var(--xpot-border-soft);
+  border-radius: var(--xpot-r-xl);
+  backdrop-filter: blur(var(--xpot-blur));
+  -webkit-backdrop-filter: blur(var(--xpot-blur));
+  box-shadow: var(--xpot-shadow-soft);
+}
+
+.xpot-panel {
+  background: var(--xpot-surface-2);
+  border: 1px solid var(--xpot-border);
+  border-radius: var(--xpot-r-xl);
+  box-shadow: var(--xpot-shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.xpot-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(820px 280px at 20% 0%, rgba(255, 255, 255, 0.055), transparent 55%),
+    radial-gradient(740px 240px at 80% 0%, rgba(255, 255, 255, 0.04), transparent 60%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03), transparent 40%);
+  opacity: 0.9;
+}
+
+.xpot-card {
+  background: var(--xpot-surface-3);
+  border: 1px solid var(--xpot-border-soft);
+  border-radius: var(--xpot-r-lg);
+  box-shadow: var(--xpot-shadow-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.xpot-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    920px 280px at 50% 0%,
+    rgba(255, 255, 255, 0.045),
+    transparent 62%
+  );
+  opacity: 0.85;
+}
+
+.xpot-card-primary {
+  background: var(--xpot-surface-2);
+  border: 1px solid var(--xpot-border-strong);
+  border-radius: var(--xpot-r-lg);
+  box-shadow: var(--xpot-glow-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.xpot-card-primary[data-glow="secondary"],
+.xpot-card-primary[data-glow="purple"] {
+  box-shadow: var(--xpot-glow-secondary);
+}
+
+.xpot-card-primary[data-glow="success"],
+.xpot-card-primary[data-glow="emerald"] {
+  box-shadow: var(--xpot-glow-success);
+}
+
+.xpot-card-primary[data-glow="glow"],
+.xpot-card-primary[data-glow="magenta"] {
+  box-shadow: var(--xpot-glow-accent);
+}
+
+.xpot-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(148, 163, 184, 0.18),
+    transparent
+  );
+}
+
+/* Animations used by your top bar logo */
+@keyframes xpotStarFlash {
+  0% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+  45% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+  50% { filter: brightness(1.35) drop-shadow(0 0 18px rgba(255, 255, 255, 0.28)); }
+  55% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+  100% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
 }
