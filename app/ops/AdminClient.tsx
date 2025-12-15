@@ -677,6 +677,57 @@ setPickSuccess(
     }
   }
 
+  // ── Pick bonus winner (manual override) ───────
+async function handlePickBonusWinnerNow() {
+  setBonusPickError(null);
+  setBonusPickSuccess(null);
+
+  if (!adminToken) {
+    setBonusPickError('Admin token missing. Unlock admin first.');
+    return;
+  }
+
+  if (!todayDraw) {
+    setBonusPickError('No active draw.');
+    return;
+  }
+
+  setIsPickingBonusWinner(true);
+  try {
+    const data = await authedFetch('/api/admin/pick-bonus-winner', {
+      method: 'POST',
+      body: JSON.stringify({
+        drawId: todayDraw.id,
+        label: bonusLabel || 'Bonus XPOT',
+        amountXpot: Number(bonusAmount),
+      }),
+    });
+
+    const raw = (data as any).winner;
+    if (!raw) throw new Error('No winner returned');
+
+    const winner: AdminWinner = {
+      ...raw,
+      payoutUsd:
+        raw.payoutUsd ??
+        raw.payoutXpot ??
+        raw.amountUsd ??
+        raw.amountXpot ??
+        0,
+    };
+
+    setBonusPickSuccess(
+      `Bonus winner: ${winner.ticketCode || '(no ticket)'}`
+    );
+
+    setWinners(prev => [winner, ...prev]);
+  } catch (err: any) {
+    setBonusPickError(err.message || 'Failed to pick bonus winner');
+  } finally {
+    setIsPickingBonusWinner(false);
+  }
+}
+
   // ── Panic reopen draw ───────────────────────
   async function handleReopenDraw() {
     setTodayDrawError(null);
