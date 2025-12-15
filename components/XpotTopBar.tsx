@@ -11,7 +11,17 @@ import { useUser, SignOutButton } from '@clerk/nextjs';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
-import { Crown, History, LogOut, Ticket, Wallet, X } from 'lucide-react';
+import {
+  Crown,
+  ExternalLink,
+  History,
+  LogOut,
+  Radio,
+  Shield,
+  Ticket,
+  Wallet,
+  X,
+} from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
@@ -38,6 +48,9 @@ type XpotTopBarProps = {
 
   maxWidthClassName?: string; // default: max-w-[1440px]
 };
+
+const XPOT_X_POST =
+  'https://x.com/xpotbet/status/1998020027069653445?s=46&t=F6JSZfQ0P85RPUutnn4nag';
 
 export default function XpotTopBar({
   logoHref = '/',
@@ -196,7 +209,7 @@ function DefaultNav() {
 }
 
 /* ------------------------------- */
-/* Hub-only menu (Identity + History + Wallet + Logout) */
+/* Hub-only menu (Identity + Live + X + Ops + History + Wallet + Logout) */
 /* ------------------------------- */
 
 function HubMenu({
@@ -239,7 +252,8 @@ function HubMenu({
 
   const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
 
-  const initial = (displayHandle || 'X').replace(/^@/, '')[0]?.toUpperCase() || 'X';
+  const initial =
+    (displayHandle || 'X').replace(/^@/, '')[0]?.toUpperCase() || 'X';
 
   return (
     <div className="flex items-center gap-4">
@@ -263,6 +277,58 @@ function HubMenu({
         </span>
       </div>
 
+      {/* LIVE */}
+      <Link
+        href="/hub/live"
+        className="
+          inline-flex items-center gap-2
+          rounded-full border border-white/10 bg-white/[0.03]
+          px-6 py-3 text-base text-slate-200
+          hover:bg-white/[0.06]
+        "
+        aria-label="Live"
+      >
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+        </span>
+        <Radio className="h-5 w-5 text-emerald-300" />
+        Live
+      </Link>
+
+      {/* X post */}
+      <Link
+        href={XPOT_X_POST}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="
+          inline-flex items-center gap-2
+          rounded-full border border-white/10 bg-white/[0.03]
+          px-6 py-3 text-base text-slate-200
+          hover:bg-white/[0.06]
+        "
+        aria-label="XPOT on X"
+      >
+        <ExternalLink className="h-5 w-5 text-slate-200" />
+        X
+      </Link>
+
+      {/* OPS */}
+      <Link
+        href="/ops"
+        className="
+          inline-flex items-center gap-2
+          rounded-full border border-white/10 bg-white/[0.03]
+          px-6 py-3 text-base text-slate-200
+          hover:bg-white/[0.06]
+        "
+        aria-label="Operations"
+      >
+        <Shield className="h-5 w-5 text-sky-300" />
+        Ops
+      </Link>
+
+      {/* HISTORY */}
       <Link
         href="/hub/history"
         className="
@@ -276,7 +342,10 @@ function HubMenu({
         History
       </Link>
 
-      <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
+      <HubWalletMenuInline
+        hubWalletStatus={hubWalletStatus}
+        onOpenWalletModal={onOpenWalletModal}
+      />
 
       {clerkEnabled ? (
         <SignOutButton redirectUrl="/">
@@ -320,8 +389,7 @@ function HubWalletMenuInline({
   const addr = connected && publicKey ? publicKey.toBase58() : null;
 
   const label =
-    hubWalletStatus?.label ??
-    (connected ? 'Wallet linked' : 'Activate wallet');
+    hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Activate wallet');
 
   const sublabel =
     hubWalletStatus?.sublabel ??
@@ -355,6 +423,7 @@ function HubWalletMenuInline({
       type="button"
       onClick={open}
       className={`
+        relative
         group
         text-left leading-tight hover:opacity-95
         rounded-full border border-white/10
