@@ -18,6 +18,9 @@ type XpotPageShellProps = {
   containerClassName?: string; // applied to inner container
   headerClassName?: string; // applied to header block (title/subtitle/rightSlot)
 
+  // Page tag (used by callers for semantics, analytics, styling hooks)
+  pageTag?: string;
+
   // Top bar controls
   showTopBar?: boolean; // default true
   topBarClassName?: string; // optional wrapper class
@@ -33,12 +36,14 @@ export default function XpotPageShell({
   className = '',
   containerClassName = '',
   headerClassName = '',
+  pageTag,
   showTopBar = true,
   topBarClassName = '',
   topBarProps,
 }: XpotPageShellProps) {
   return (
     <div
+      data-page={pageTag}
       className={[
         'relative min-h-screen bg-[#02020a] text-slate-100',
         className,
