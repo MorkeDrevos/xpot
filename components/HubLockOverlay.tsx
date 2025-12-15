@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, X, ArrowRight } from 'lucide-react';
+import { useSignIn } from '@clerk/nextjs';
 
 import XpotLogoLottie from '@/components/XpotLogoLottie';
 
@@ -22,6 +23,18 @@ export default function HubLockOverlay({
   reason?: string;
   showLinkX?: boolean;
 }) {
+  const { isLoaded, signIn } = useSignIn();
+
+  async function handleContinueWithX() {
+    if (!isLoaded || !signIn) return;
+
+    await signIn.authenticateWithRedirect({
+      strategy: 'oauth_x',
+      redirectUrl: '/sso-callback',
+      redirectUrlComplete: '/hub',
+    });
+  }
+
   return (
     <AnimatePresence>
       {open ? (
@@ -106,13 +119,15 @@ export default function HubLockOverlay({
               </div>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link
-                  href="/sign-in?redirect_url=/hub"
+                <button
+                  type="button"
+                  onClick={handleContinueWithX}
+                  disabled={!isLoaded}
                   className={`${BTN_PRIMARY} h-12 px-6 text-sm`}
                 >
                   {showLinkX ? 'Link X to continue' : 'Continue with X'}
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
+                </button>
 
                 <Link href="/" className={`${BTN_UTILITY} h-12 px-6 text-sm`}>
                   Back to homepage
