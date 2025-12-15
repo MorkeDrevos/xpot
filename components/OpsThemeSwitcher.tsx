@@ -1,75 +1,45 @@
-// components/OpsThemeSwitcher.tsx
-'use client';
-
-import { useEffect, useMemo, useState } from 'react';
-
-type ThemeKey = 'nebula' | 'icy' | 'royal';
-
-const STORAGE_KEY = 'xpot_ops_theme';
-
-const THEMES: { key: ThemeKey; label: string }[] = [
-  { key: 'nebula', label: 'Nebula' },
-  { key: 'icy', label: 'Icy' },
-  { key: 'royal', label: 'Royal' },
-];
-
-function applyTheme(theme: ThemeKey) {
-  if (typeof document === 'undefined') return;
-  document.documentElement.setAttribute('data-theme', theme);
-}
-
-export default function OpsThemeSwitcher({
-  defaultTheme = 'nebula',
-}: {
-  defaultTheme?: ThemeKey;
-}) {
-  const [theme, setTheme] = useState<ThemeKey>(defaultTheme);
+function OpsThemeSwitcher() {
+  const [active, setActive] = useState<'nebula' | 'icy' | 'royal'>('nebula');
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    const saved =
+      typeof window !== 'undefined'
+        ? (localStorage.getItem(THEME_KEY) as any)
+        : null;
 
-    const saved = window.localStorage.getItem(STORAGE_KEY) as ThemeKey | null;
-    const initial = saved && THEMES.some(t => t.key === saved) ? saved : defaultTheme;
+    const initial =
+      saved === 'icy' || saved === 'royal' ? saved : 'nebula';
 
-    setTheme(initial);
-    applyTheme(initial);
-  }, [defaultTheme]);
+    setActive(initial);
+    document.documentElement.dataset.theme = initial;
+  }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    applyTheme(theme);
-    window.localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
-
-  const activeIndex = useMemo(() => THEMES.findIndex(t => t.key === theme), [theme]);
+  function select(theme: 'nebula' | 'icy' | 'royal') {
+    setActive(theme);
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_KEY, theme);
+  }
 
   return (
-    <div className="inline-flex items-center gap-3">
-      <span className="hidden sm:inline text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+    <div className="hidden sm:flex items-center gap-2">
+      <span className="text-[10px] uppercase tracking-[0.22em] text-slate-400">
         Theme
       </span>
 
-      <div className="relative inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.04] p-1 backdrop-blur">
-        {/* Active pill */}
-        <div
-          className="absolute top-1 bottom-1 rounded-full bg-white/[0.08] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200"
-          style={{
-            left: `calc(${activeIndex} * 84px + 4px)`,
-            width: '84px',
-          }}
-        />
-
-        {THEMES.map((t) => (
+      <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03] backdrop-blur">
+        {(['nebula', 'icy', 'royal'] as const).map(t => (
           <button
-            key={t.key}
+            key={t}
             type="button"
-            onClick={() => setTheme(t.key)}
+            onClick={() => select(t)}
             className={[
-              'relative z-10 h-10 w-[84px] rounded-full px-4 text-sm font-semibold transition',
-              t.key === theme ? 'text-slate-100' : 'text-slate-300 hover:text-slate-100',
+              'h-8 px-3 text-[11px] font-semibold transition',
+              active === t
+                ? 'bg-white/[0.10] text-slate-50'
+                : 'text-slate-300 hover:bg-white/[0.06]',
             ].join(' ')}
           >
-            {t.label}
+            {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
