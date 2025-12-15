@@ -1,3 +1,4 @@
+// components/Modal.tsx
 'use client';
 
 import { ReactNode, useEffect } from 'react';
@@ -10,7 +11,6 @@ type ModalProps = {
 };
 
 export default function Modal({ open, onClose, title, children }: ModalProps) {
-  // Close on ESC
   useEffect(() => {
     if (!open) return;
 
@@ -28,11 +28,7 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          {title && (
-            <h2 className="text-sm font-semibold text-slate-100">
-              {title}
-            </h2>
-          )}
+          {title && <h2 className="text-sm font-semibold text-slate-100">{title}</h2>}
           <button
             type="button"
             onClick={onClose}

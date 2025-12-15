@@ -1,111 +1,73 @@
 // app/api/me/wallet-sync/route.ts
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
-export const dynamic = 'force-dynamic';
+function normalizeAddress(addr: string) {
+  return addr.trim();
+}
+
+function looksLikeSolanaAddress(addr: string) {
+  // quick sanity: base58 length usually 32-44 chars
+  return addr.length >= 32 && addr.length <= 44;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
 
-    const clerkId: string | undefined = body.clerkId || body.userId || undefined;
-    const address: string | undefined = body.address || body.wallet || body.walletAddress;
-    const handle: string | undefined = body.handle || body.xHandle || undefined;
-    const name: string | undefined = body.name || body.xName || undefined;
-    const avatar: string | undefined = body.avatar || body.xAvatarUrl || undefined;
-    const xUserId: string | undefined = body.xUserId || body.x_id || undefined;
+    const body = await req.json().catch(() => ({}));
+    const raw = body?.address ?? body?.walletAddress ?? body?.wallet ?? null;
+
+    const address =
+      typeof raw === 'string' && raw.trim().length > 0 ? normalizeAddress(raw) : null;
 
     if (!address) {
-      return NextResponse.json(
-        { ok: false, error: 'MISSING_WALLET_ADDRESS' },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: 'MISSING_WALLET_ADDRESS' }, { status: 400 });
     }
 
-    // Find existing wallet
-    const existingWallet = await prisma.wallet.findUnique({
-      where: { address },
-      include: { user: true },
+    if (!looksLikeSolanaAddress(address)) {
+      return NextResponse.json({ ok: false, error: 'INVALID_WALLET_ADDRESS' }, { status: 400 });
+    }
+
+    const user = await prisma.user.upsert({
+      where: { clerkId },
+      create: { clerkId },
+      update: {},
     });
 
-    let user;
+    const existing = await prisma.wallet.findUnique({
+      where: { address },
+      select: { id: true, userId: true },
+    });
 
-    if (existingWallet?.user) {
-      // Update user attached to this wallet
-      user = await prisma.user.update({
-        where: { id: existingWallet.user.id },
-        data: {
-          clerkId: clerkId ?? existingWallet.user.clerkId,
-          xUserId: xUserId ?? existingWallet.user.xUserId,
-          xHandle: handle ?? existingWallet.user.xHandle,
-          xName: name ?? existingWallet.user.xName,
-          xAvatarUrl: avatar ?? existingWallet.user.xAvatarUrl,
-        },
-      });
-    } else {
-      // Need a user
-      // Try match by clerkId or xUserId
-      const foundUser = await prisma.user.findFirst({
-        where: {
-          OR: [
-            clerkId ? { clerkId } : undefined,
-            xUserId ? { xUserId } : undefined,
-            handle ? { xHandle: handle } : undefined,
-          ].filter(Boolean) as any,
-        },
-      });
-
-      if (foundUser) {
-        user = await prisma.user.update({
-          where: { id: foundUser.id },
-          data: {
-            clerkId: clerkId ?? foundUser.clerkId,
-            xUserId: xUserId ?? foundUser.xUserId,
-            xHandle: handle ?? foundUser.xHandle,
-            xName: name ?? foundUser.xName,
-            xAvatarUrl: avatar ?? foundUser.xAvatarUrl,
-          },
-        });
-      } else {
-        user = await prisma.user.create({
-          data: {
-            clerkId: clerkId ?? null,
-            xUserId: xUserId ?? null,
-            xHandle: handle ?? null,
-            xName: name ?? null,
-            xAvatarUrl: avatar ?? null,
-          },
-        });
-      }
-
-      // Create wallet pointing to this user
-      await prisma.wallet.upsert({
-        where: { address },
-        update: { userId: user.id },
-        create: {
-          address,
-          userId: user.id,
-        },
-      });
+    if (existing?.userId && existing.userId !== user.id) {
+      return NextResponse.json({ ok: false, error: 'WALLET_ALREADY_LINKED' }, { status: 409 });
     }
+
+    const wallet = await prisma.wallet.upsert({
+      where: { address },
+      create: { address, userId: user.id },
+      update: { userId: user.id },
+    });
 
     return NextResponse.json(
       {
         ok: true,
-        wallet: address,
-        user: {
-          id: user.id,
-          clerkId: user.clerkId,
-          xUserId: user.xUserId,
-          xHandle: user.xHandle,
-          xName: user.xName,
-          xAvatarUrl: user.xAvatarUrl,
-        },
+        linked: true,
+        wallet: { id: wallet.id, address: wallet.address },
+        user: { id: user.id, clerkId: user.clerkId },
       },
       { status: 200 },
     );
   } catch (err: any) {
-    console.error('[XPOT] /me/wallet-sync error:', err);
+    console.error('[XPOT] /api/me/wallet-sync error:', err);
     return NextResponse.json(
       { ok: false, error: err?.message || 'INTERNAL_ERROR' },
       { status: 500 },

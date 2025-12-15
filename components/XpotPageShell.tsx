@@ -1,7 +1,7 @@
 // components/XpotPageShell.tsx
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, ComponentProps } from 'react';
 import PreLaunchBanner from '@/components/PreLaunchBanner';
 import XpotTopBar from '@/components/XpotTopBar';
 
@@ -21,6 +21,7 @@ type XpotPageShellProps = {
   // Top bar controls
   showTopBar?: boolean; // default true
   topBarClassName?: string; // optional wrapper class
+  topBarProps?: ComponentProps<typeof XpotTopBar>; // ✅ NEW
 };
 
 export default function XpotPageShell({
@@ -34,6 +35,7 @@ export default function XpotPageShell({
   headerClassName = '',
   showTopBar = true,
   topBarClassName = '',
+  topBarProps,
 }: XpotPageShellProps) {
   return (
     <div
@@ -47,7 +49,7 @@ export default function XpotPageShell({
       {/* GLOBAL TOP BAR (TopBar itself is fixed; don't wrap in sticky) */}
       {showTopBar && (
         <div className={topBarClassName}>
-          <XpotTopBar />
+          <XpotTopBar {...topBarProps} />
         </div>
       )}
 

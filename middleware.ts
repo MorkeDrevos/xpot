@@ -5,6 +5,9 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  // add any truly public pages here (optional)
+  // '/privacy',
+  // '/terms',
 ]);
 
 export default clerkMiddleware((auth, req) => {
@@ -14,5 +17,10 @@ export default clerkMiddleware((auth, req) => {
 });
 
 export const config = {
-  matcher: ['/((?!_next|.*\\..*).*)'],
+  matcher: [
+    // App pages (exclude _next + static files)
+    '/((?!.+\\.[\\w]+$|_next).*)',
+    // Always run for API routes too
+    '/(api|trpc)(.*)',
+  ],
 };
