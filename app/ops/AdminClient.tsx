@@ -389,38 +389,37 @@ export default function AdminPage() {
     }
   }, []);
 
-  // ── Fetch helpers ───────────────────────────
   async function authedFetch(input: string, init?: RequestInit) {
-    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
-
-    const headers = new Headers(init?.headers || {});
-    headers.set('Content-Type', 'application/json');
-    headers.set('x-xpot-admin-key', adminToken.trim());
-
-    const res = await fetch(input, {
-      ...init,
-      headers,
-    });
-
-    const raw = await res.text();
-
-    let data: any = null;
-    try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch {
-      data = raw; // keep raw response for debugging
-    }
-
-    if (!res.ok) {
-      throw new Error(
-        `Request failed (${res.status}): ${
-          typeof data === 'string' ? data : JSON.stringify(data)
-        }`,
-      );
-    }
-
-    return data;
+  if (!adminToken) {
+    return { ok: false, error: 'NO_ADMIN_TOKEN' };
   }
+
+  const headers = new Headers(init?.headers || {});
+  headers.set('Content-Type', 'application/json');
+  headers.set('x-xpot-admin-key', adminToken.trim());
+
+  const res = await fetch(input, {
+    ...init,
+    headers,
+  });
+
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      status: res.status,
+      error: data?.error || `Request failed (${res.status})`,
+    };
+  }
+
+  return data;
+}
 
   async function loadOpsMode() {
     const data = await authedFetch('/api/admin/ops-mode');
@@ -678,8 +677,7 @@ async function handlePickMainWinner() {
   }
 }
 
-  // ── Pick bonus winner (manual override) ───────
-async function handlePickBonusWinnerNow() {
+  async function handlePickBonusWinnerNow() {
   setBonusPickError(null);
   setBonusPickSuccess(null);
 
@@ -688,7 +686,7 @@ async function handlePickBonusWinnerNow() {
     return;
   }
 
-  if (!todayDraw) {
+  if (!todayDraw?.id) {
     setBonusPickError('No active draw.');
     return;
   }
@@ -703,6 +701,10 @@ async function handlePickBonusWinnerNow() {
         amountXpot: Number(bonusAmount),
       }),
     });
+
+    if ((data as any)?.ok === false) {
+      throw new Error((data as any).error);
+    }
 
     const raw = (data as any).winner;
     if (!raw) throw new Error('No winner returned');
