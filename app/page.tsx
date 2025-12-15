@@ -188,10 +188,10 @@ export default function HomePage() {
             {/* LEFT: slogan + 1-line + 1 primary CTA */}
             <div className="flex flex-col justify-between gap-6">
               <div className="space-y-5">
-                <Pill tone="emerald">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-                  The X-powered reward protocol
-                </Pill>
+<Pill tone="sky">
+  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
+  Identity: @handle
+</Pill>
 
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
