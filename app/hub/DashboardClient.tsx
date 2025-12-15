@@ -26,35 +26,29 @@ import {
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
-// MATRIX / TERMINAL UI TOKENS
+// Small UI helpers
 // ─────────────────────────────────────────────
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-emerald-300 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.35)] hover:bg-emerald-200 transition disabled:opacity-40';
+  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-950/20 text-emerald-100/90 hover:bg-emerald-900/30 transition disabled:opacity-40';
+  'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 const CARD =
-  'relative overflow-hidden rounded-[28px] border border-emerald-500/18 bg-[#02060a]/70 p-5 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.75)]';
+  'rounded-[28px] border border-slate-800/70 bg-slate-950/60 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]';
 
 const SUBCARD =
-  'rounded-2xl border border-emerald-500/18 bg-emerald-950/25 px-4 py-3';
-
-// CRT scanlines overlay
-const SCANLINES =
-  'before:pointer-events-none before:absolute before:inset-0 before:opacity-[0.12] before:[background:repeating-linear-gradient(to_bottom,rgba(16,185,129,0.12),rgba(16,185,129,0.12)_1px,transparent_1px,transparent_6px)]';
-
-// ─────────────────────────────────────────────
-// Small helpers (unchanged)
-// ─────────────────────────────────────────────
+  'rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3';
 
 function formatDate(date: string | Date) {
-  return new Date(date).toLocaleDateString('de-DE');
+  const d = new Date(date);
+  return d.toLocaleDateString('de-DE');
 }
 
 function formatDateTime(date: string | Date) {
-  return new Date(date).toLocaleString('de-DE', {
+  const d = new Date(date);
+  return d.toLocaleString('de-DE', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -73,17 +67,19 @@ function pad2(n: number) {
 }
 
 function endOfLocalDayMs() {
-  const end = new Date();
+  const now = new Date();
+  const end = new Date(now);
   end.setHours(23, 59, 59, 999);
   return end.getTime();
 }
 
 function formatCountdown(ms: number) {
   if (ms <= 0) return '00:00:00';
-  const s = Math.floor(ms / 1000);
-  return `${pad2(Math.floor(s / 3600))}:${pad2(
-    Math.floor((s % 3600) / 60),
-  )}:${pad2(s % 60)}`;
+  const totalSeconds = Math.floor(ms / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
 }
 
 function StatusPill({
@@ -95,16 +91,19 @@ function StatusPill({
 }) {
   const cls =
     tone === 'emerald'
-      ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+      ? 'bg-emerald-500/10 text-emerald-300'
       : tone === 'amber'
-      ? 'border-lime-300/30 bg-lime-400/10 text-lime-200'
+      ? 'bg-amber-500/10 text-amber-200'
       : tone === 'sky'
-      ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100'
-      : 'border-emerald-500/20 bg-emerald-950/40 text-emerald-100/70';
+      ? 'bg-sky-500/10 text-sky-200'
+      : 'bg-slate-800/70 text-slate-200';
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${cls}`}
+      className={[
+        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+        cls,
+      ].join(' ')}
     >
       {children}
     </span>
@@ -114,14 +113,15 @@ function StatusPill({
 function TinyMeta({ label, value }: { label: string; value: string }) {
   return (
     <div className={SUBCARD}>
-      <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-100/40">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
-      <p className="mt-1 font-mono text-sm text-emerald-100">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
     </div>
   );
 }
 
+// Optional UX helper: show hint under wallet button
 function WalletStatusHint() {
   const { wallets, connected } = useWallet();
 
@@ -133,11 +133,17 @@ function WalletStatusHint() {
 
   if (connected) return null;
 
+  if (!anyDetected) {
+    return (
+      <p className="mt-2 text-xs text-amber-300">
+        No Solana wallet detected. Install Phantom or Solflare to continue.
+      </p>
+    );
+  }
+
   return (
-    <p className="mt-2 text-xs text-emerald-100/50">
-      {anyDetected
-        ? 'Select a wallet to connect.'
-        : 'No Solana wallet detected.'}
+    <p className="mt-2 text-xs text-slate-500">
+      Click “Select Wallet” and choose a wallet to connect.
     </p>
   );
 }
@@ -152,72 +158,478 @@ async function safeCopy(text: string) {
 }
 
 function initialFromHandle(h?: string | null) {
-  return (h || 'X').replace(/^@/, '').charAt(0).toUpperCase();
+  const s = (h || '').replace(/^@/, '').trim();
+  return s ? s[0].toUpperCase() : 'X';
 }
 
 // ─────────────────────────────────────────────
-// Page
+// Types
+// ─────────────────────────────────────────────
+
+type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
+
+type Entry = {
+  id: string;
+  code: string;
+  status: EntryStatus;
+  label?: string;
+  jackpotUsd?: string | number;
+  createdAt: string;
+  walletAddress: string;
+};
+
+type RecentWinner = {
+  id: string;
+  drawDate: string;
+  ticketCode: string;
+  jackpotUsd: number;
+  walletAddress: string;
+  handle?: string | null;
+};
+
+// ─────────────────────────────────────────────
+// Page (CLIENT)
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
-  // ── state & logic (UNCHANGED) ──
-  // ⬇️ EVERYTHING BELOW THIS LINE IS IDENTICAL LOGICALLY
-  // (only classNames and copy color changed)
-
+  // Premium wallet modal
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
-  const [entries, setEntries] = useState<any[]>([]);
+  // Today entries (global)
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
+  // Claim state
   const [ticketClaimed, setTicketClaimed] = useState(false);
-  const [todaysTicket, setTodaysTicket] = useState<any | null>(null);
+  const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
+  // Wallet
   const { publicKey, connected } = useWallet();
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
+  // XPOT balance
   const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
   const hasRequiredXpot =
     typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
-  const [historyEntries, setHistoryEntries] = useState<any[]>([]);
+  // History (wallet specific)
+  const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const [recentWinners, setRecentWinners] = useState<any[]>([]);
+  // Recent winners (global)
+  const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
 
+  // Premium sync feel
   const [countdown, setCountdown] = useState('00:00:00');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncPulse, setSyncPulse] = useState(0);
   const refreshingRef = useRef(false);
 
+  // Clerk user (X identity)
   const { user, isLoaded: isUserLoaded } = useUser();
   const isSignedIn = !!user;
 
   const externalAccounts = (user?.externalAccounts || []) as any[];
-  const xAccount =
-    externalAccounts.find((a: any) =>
-      String(a.provider).toLowerCase().includes('twitter'),
-    ) || null;
 
-  const handle = xAccount?.username || null;
+  const xAccount =
+    externalAccounts.find(acc => {
+      const provider = (acc.provider ?? '') as string;
+      const p = provider.toLowerCase();
+      return (
+        provider === 'oauth_x' ||
+        provider === 'oauth_twitter' ||
+        provider === 'twitter' ||
+        p.includes('twitter') ||
+        p === 'x' ||
+        p.includes('oauth_x')
+      );
+    }) || null;
+
+  const handle = xAccount?.username || xAccount?.screenName || null;
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
 
+  // Authed enough = logged in AND X is linked
   const isAuthedEnough = isSignedIn && !!handle;
+
+  // Lock overlay ON when missing auth/X
   const showLock = isUserLoaded ? !isAuthedEnough : true;
 
-  // ⬇️ all effects, fetchers, handlers remain exactly as before
-  // (omitted here for brevity – they are unchanged from your file)
+  // ─────────────────────────────────────────────
+  // Sync X identity into DB whenever user is loaded
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!isUserLoaded || !user) return;
+    if (!handle) return;
+
+    (async () => {
+      try {
+        await fetch('/api/me/sync-x', { method: 'POST' });
+      } catch (e) {
+        console.error('[XPOT] Failed to sync X identity', e);
+      }
+    })();
+  }, [isUserLoaded, user, handle]);
 
   // ─────────────────────────────────────────────
-  // RENDER
+  // Wire wallet → DB whenever it connects
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthedEnough) return;
+    if (!publicKey || !connected) return;
+
+    const address = publicKey.toBase58();
+
+    (async () => {
+      try {
+        await fetch('/api/me/wallet-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address }),
+        });
+      } catch (e) {
+        console.error('[XPOT] Failed to sync wallet', e);
+      }
+    })();
+  }, [isAuthedEnough, publicKey, connected]);
+
+  // ─────────────────────────────────────────────
+  // Countdown ticker
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    const tick = () => {
+      const ms = endOfLocalDayMs() - Date.now();
+      setCountdown(formatCountdown(ms));
+    };
+    tick();
+    const t = setInterval(tick, 500);
+    return () => clearInterval(t);
+  }, []);
+
+  // ─────────────────────────────────────────────
+  // Fetch helpers
+  // ─────────────────────────────────────────────
+  const fetchTicketsToday = useCallback(async () => {
+    const res = await fetch('/api/tickets/today', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to load tickets');
+    const data = await res.json();
+    const list: Entry[] = Array.isArray(data.tickets) ? data.tickets : [];
+    return list;
+  }, []);
+
+  const fetchXpotBalance = useCallback(async (address: string) => {
+    const res = await fetch(`/api/xpot-balance?address=${address}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    const data: { balance: number } = await res.json();
+    return data.balance;
+  }, []);
+
+  const fetchHistory = useCallback(async (address: string) => {
+    const res = await fetch(`/api/tickets/history?wallet=${address}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error('Failed to load history');
+    const data = await res.json();
+    const tickets: Entry[] = Array.isArray(data.tickets)
+      ? data.tickets.map((t: any) => ({
+          id: t.id,
+          code: t.code,
+          status: t.status as EntryStatus,
+          label: t.label ?? '',
+          jackpotUsd: t.jackpotUsd ?? 0,
+          createdAt: t.createdAt,
+          walletAddress: t.walletAddress,
+        }))
+      : [];
+    return tickets;
+  }, []);
+
+  const fetchRecentWinners = useCallback(async () => {
+    const res = await fetch('/api/winners/recent?limit=5', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to load recent winners');
+    const data = await res.json();
+    const winners: RecentWinner[] = Array.isArray(data.winners)
+      ? data.winners.map((w: any) => ({
+          id: w.id,
+          drawDate: w.drawDate,
+          ticketCode: w.ticketCode,
+          jackpotUsd: w.jackpotUsd ?? 0,
+          walletAddress: w.walletAddress,
+          handle: w.handle ?? null,
+        }))
+      : [];
+    return winners;
+  }, []);
+
+  const refreshAll = useCallback(
+    async (reason: 'initial' | 'poll' | 'manual' = 'poll') => {
+      if (!isAuthedEnough) return;
+      if (refreshingRef.current) return;
+
+      refreshingRef.current = true;
+
+      const addr = publicKey?.toBase58() ?? null;
+
+      try {
+        // Tickets (global)
+        if (reason === 'initial') {
+          setLoadingTickets(true);
+          setTicketsError(null);
+        }
+        const nextTickets = await fetchTicketsToday();
+        setEntries(nextTickets);
+
+        // Winners (global)
+        if (reason === 'initial') {
+          setLoadingWinners(true);
+          setWinnersError(null);
+        }
+        const nextWinners = await fetchRecentWinners();
+        setRecentWinners(nextWinners);
+
+        // Wallet-specific (only when wallet is present)
+        if (addr) {
+          // Balance
+          try {
+            setXpotBalance(null);
+            const b = await fetchXpotBalance(addr);
+            setXpotBalance(b);
+          } catch (e) {
+            console.error('Error loading XPOT balance (via API)', e);
+            setXpotBalance('error');
+          }
+
+          // History
+          try {
+            if (reason === 'initial') setLoadingHistory(true);
+            setHistoryError(null);
+            const h = await fetchHistory(addr);
+            setHistoryEntries(h);
+          } catch (e) {
+            console.error('Failed to load history', e);
+            setHistoryError((e as Error).message ?? 'Failed to load history');
+            setHistoryEntries([]);
+          } finally {
+            setLoadingHistory(false);
+          }
+        } else {
+          setXpotBalance(null);
+          setHistoryEntries([]);
+          setHistoryError(null);
+          setLoadingHistory(false);
+        }
+
+        setLastSyncedAt(Date.now());
+        setSyncPulse(p => p + 1);
+      } catch (e) {
+        console.error('[XPOT] refreshAll error', e);
+        setTicketsError((e as Error).message ?? 'Failed to load tickets');
+        setWinnersError((e as Error).message ?? 'Failed to load recent winners');
+      } finally {
+        setLoadingTickets(false);
+        setLoadingWinners(false);
+        refreshingRef.current = false;
+      }
+    },
+    [
+      isAuthedEnough,
+      publicKey,
+      fetchTicketsToday,
+      fetchRecentWinners,
+      fetchXpotBalance,
+      fetchHistory,
+    ],
+  );
+
+  // ─────────────────────────────────────────────
+  // Load tickets + winners + wallet data (ONLY when authed)
+  // Also keeps things feeling live via a gentle poll
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthedEnough) {
+      setEntries([]);
+      setLoadingTickets(false);
+      setTicketsError(null);
+
+      setRecentWinners([]);
+      setLoadingWinners(false);
+      setWinnersError(null);
+
+      setHistoryEntries([]);
+      setHistoryError(null);
+      setLoadingHistory(false);
+
+      setXpotBalance(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      await refreshAll('initial');
+    })();
+
+    const interval = setInterval(() => {
+      if (cancelled) return;
+      refreshAll('poll');
+    }, 8000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isAuthedEnough, refreshAll]);
+
+  // ─────────────────────────────────────────────
+  // Sync "today's ticket" state with DB
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!currentWalletAddress) {
+      setTicketClaimed(false);
+      setTodaysTicket(null);
+      return;
+    }
+
+    const myTicket = entries.find(
+      t => t.walletAddress === currentWalletAddress && t.status === 'in-draw',
+    );
+
+    if (myTicket) {
+      setTicketClaimed(true);
+      setTodaysTicket(myTicket);
+    } else {
+      setTicketClaimed(false);
+      setTodaysTicket(null);
+    }
+  }, [entries, currentWalletAddress]);
+
+  // Ticket actions
+  async function handleCopyCode(entry: Entry) {
+    const ok = await safeCopy(entry.code);
+    if (!ok) return;
+    setCopiedId(entry.id);
+    setTimeout(() => setCopiedId(null), 1500);
+  }
+
+  async function handleClaimTicket() {
+    if (!isAuthedEnough) return;
+    if (!walletConnected || !publicKey) return;
+    if (loadingTickets || claiming) return;
+
+    setClaimError(null);
+    setClaiming(true);
+
+    const walletAddress = publicKey.toBase58();
+
+    try {
+      const res = await fetch('/api/tickets/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress }),
+      });
+
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok || !data.ok) {
+        const code = data.error as string | undefined;
+
+        switch (code) {
+          case 'NOT_ENOUGH_XPOT':
+            setClaimError(
+              `You need at least ${(data.required ?? REQUIRED_XPOT).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
+                data.balance ?? 0,
+              ).toLocaleString()} XPOT.`,
+            );
+            break;
+
+          case 'NOT_ENOUGH_SOL':
+            setClaimError(
+              'Your wallet needs some SOL for network fees before you can get today’s ticket.',
+            );
+            break;
+
+          case 'XPOT_CHECK_FAILED':
+            setClaimError(
+              'Could not verify your XPOT balance right now. Please try again in a moment.',
+            );
+            break;
+
+          case 'MISSING_WALLET':
+          case 'INVALID_BODY':
+            setClaimError(
+              'Something is wrong with your wallet address. Try reconnecting your wallet and trying again.',
+            );
+            break;
+
+          default:
+            setClaimError('Ticket request failed. Please try again.');
+        }
+
+        console.error('Claim failed', res.status, text);
+        return;
+      }
+
+      const ticket: Entry = data.ticket;
+      const tickets: Entry[] | undefined = data.tickets;
+
+      if (Array.isArray(tickets) && tickets.length > 0) {
+        setEntries(tickets);
+      } else if (ticket) {
+        setEntries(prev => {
+          const others = prev.filter(t => t.id !== ticket.id);
+          return [ticket, ...others];
+        });
+      }
+
+      setTicketClaimed(true);
+      setTodaysTicket(ticket);
+      setClaimError(null);
+
+      // Premium feel: sync immediately after claim
+      refreshAll('manual');
+    } catch (err) {
+      console.error('Error calling /api/tickets/claim', err);
+      setClaimError(
+        'Unexpected error while getting your ticket. Please try again.',
+      );
+    } finally {
+      setClaiming(false);
+    }
+  }
+
+  // Derived helpers
+  const normalizedWallet = currentWalletAddress?.toLowerCase();
+  const myTickets: Entry[] = useMemo(() => {
+    if (!normalizedWallet) return [];
+    return entries.filter(
+      e => e.walletAddress?.toLowerCase() === normalizedWallet,
+    );
+  }, [entries, normalizedWallet]);
+
+  const winner = entries.find(e => e.status === 'won') || null;
+  const iWonToday =
+    !!winner &&
+    !!normalizedWallet &&
+    winner.walletAddress?.toLowerCase() === normalizedWallet;
+
+  // ─────────────────────────────────────────────
+  // Render
   // ─────────────────────────────────────────────
 
   return (
@@ -227,80 +639,114 @@ export default function DashboardClient() {
         onClose={() => setWalletModalOpen(false)}
       />
 
+      {/* IMPORTANT: overlay is NOT inside the blurred container */}
       <HubLockOverlay
         open={showLock}
         reason={
           !isSignedIn
             ? 'Sign in with X to access the Holder Dashboard.'
-            : 'Link X to continue.'
+            : 'Your account is signed in, but X is not linked. Link X to continue.'
         }
         showLinkX={isSignedIn && !handle}
       />
 
-      <div className={showLock ? 'pointer-events-none blur-[2px]' : ''}>
+      {/* Hub behind overlay only */}
+      <div
+        className={
+          showLock
+            ? 'pointer-events-none select-none blur-[2px] opacity-95'
+            : ''
+        }
+      >
         <XpotPageShell
           topBarProps={{
             pillText: 'HOLDER DASHBOARD',
             rightSlot: (
               <div className="flex items-center gap-3">
-                <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-950/30 px-3 py-2">
+                {/* Identity chip */}
+                <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:inline-flex">
                   {avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={avatar}
                       alt={name}
-                      className="h-6 w-6 rounded-full border border-emerald-400/30"
+                      className="h-6 w-6 rounded-full border border-white/10 object-cover"
                     />
                   ) : (
-                    <div className="h-6 w-6 rounded-full flex items-center justify-center border border-emerald-400/30 text-xs text-emerald-200">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-semibold text-slate-200">
                       {initialFromHandle(handle)}
                     </div>
                   )}
-                  <span className="text-xs font-semibold text-emerald-100">
-                    @{handle}
+                  <span className="text-xs font-semibold text-slate-200">
+                    @{(handle || 'x').replace(/^@/, '')}
                   </span>
                 </div>
 
-                <Link href="/hub/history" className={`${BTN_UTILITY} h-10 px-4`}>
-                  <History className="h-4 w-4 mr-2" />
-                  History
+                <Link
+                  href="/hub/history"
+                  className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                >
+                  <History className="mr-2 h-4 w-4" />
+                  <span className="ml-1">History</span>
                 </Link>
 
-                <div className="rounded-full border border-emerald-400/25 bg-emerald-950/30 px-4 py-2">
+                {/* Ritual wallet CTA */}
+                <div className="rounded-full border border-slate-700/80 bg-slate-950/50 px-4 py-2">
                   <button
+                    type="button"
                     onClick={() => setWalletModalOpen(true)}
-                    className="text-left"
+                    className="text-left leading-tight hover:opacity-90"
                   >
-                    <div className="text-[26px] font-medium text-emerald-100">
+                    <div className="text-[28px] font-medium text-slate-100">
                       Select Wallet
                     </div>
-                    <div className="text-[26px] font-medium text-emerald-100">
+                    <div className="text-[28px] font-medium text-slate-100">
                       Change wallet
                     </div>
                   </button>
                   <WalletStatusHint />
                 </div>
 
-                <SignOutButton redirectUrl="/">
-                  <button className={`${BTN_UTILITY} h-10 px-4`}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Log out
-                  </button>
-                </SignOutButton>
+                {isSignedIn ? (
+                  <SignOutButton redirectUrl="/">
+                    <button className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span className="ml-1">Log out</span>
+                    </button>
+                  </SignOutButton>
+                ) : (
+                  <Link
+                    href="/sign-in?redirect_url=/hub"
+                    className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                  >
+                    <span>Sign in</span>
+                  </Link>
+                )}
               </div>
             ),
           }}
         >
           {/* MAIN GRID */}
-          <section className="mt-6 grid gap-6 lg:grid-cols-[3fr_2fr]">
-            {/* LEFT */}
+          <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            {/* LEFT COLUMN */}
             <div className="space-y-4">
-              <section className={`${CARD} ${SCANLINES}`}>
-                <p className="text-sm font-semibold text-emerald-100">
-                  Connected identity
-                </p>
-                <p className="mt-1 text-xs text-emerald-100/45">
-                  Wallet + X identity
-                </p>
+              {/* IDENTITY CARD */}
+              <section className={CARD}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">
+                      Connected identity
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Wallet and X identity used for XPOT draws
+                    </p>
+                  </div>
+
+                  <StatusPill tone={handle ? 'emerald' : 'amber'}>
+                    <X className="h-3.5 w-3.5" />
+                    {handle ? `@${handle}` : 'X not linked'}
+                  </StatusPill>
+                </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <TinyMeta
@@ -313,95 +759,382 @@ export default function DashboardClient() {
                         : `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                     }
                   />
-                  <TinyMeta
-                    label="Eligibility"
-                    value={hasRequiredXpot ? 'Eligible' : 'Not eligible'}
-                  />
-                  <TinyMeta
-                    label="Wallet"
-                    value={
-                      currentWalletAddress
+
+                  <div className={SUBCARD}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Eligibility
+                    </p>
+                    <div className="mt-1">
+                      {typeof xpotBalance === 'number' ? (
+                        hasRequiredXpot ? (
+                          <StatusPill tone="emerald">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Eligible
+                          </StatusPill>
+                        ) : (
+                          <StatusPill tone="amber">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Not eligible
+                          </StatusPill>
+                        )
+                      ) : (
+                        <StatusPill tone="slate">—</StatusPill>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={SUBCARD}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Wallet
+                    </p>
+                    <p className="mt-1 font-mono text-sm text-slate-100">
+                      {currentWalletAddress
                         ? shortWallet(currentWalletAddress)
-                        : 'Not connected'
-                    }
-                  />
+                        : 'Not connected'}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mt-4 text-xs text-emerald-100/50">
-                  Next draw in{' '}
-                  <span className="font-mono text-emerald-200">
-                    {countdown}
-                  </span>
+                <div className="mt-4 flex items-center gap-3">
+                  {avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={avatar}
+                      alt={name}
+                      className="h-9 w-9 rounded-full border border-slate-800 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-800 bg-slate-900 text-slate-300">
+                      <X className="h-4 w-4" />
+                    </div>
+                  )}
+
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-100">
+                      {name}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Holding requirement: {REQUIRED_XPOT.toLocaleString()} XPOT
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs text-slate-500">
+                    Next draw in{' '}
+                    <span className="font-mono text-slate-200">{countdown}</span>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {lastSyncedAt ? (
+                      <span
+                        key={syncPulse}
+                        className="inline-flex items-center gap-2"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                        Synced {new Date(lastSyncedAt).toLocaleTimeString('de-DE')}
+                      </span>
+                    ) : (
+                      'Syncing…'
+                    )}
+                  </div>
                 </div>
               </section>
 
-              {/* TODAY XPOT */}
-              <section className={`${CARD} ${SCANLINES}`}>
-                <p className="text-sm font-semibold text-emerald-100">
-                  Today’s XPOT
-                </p>
-                <p className="mt-1 text-xs text-emerald-100/45">
-                  One free entry per wallet per day
-                </p>
+              {/* TODAY TICKET */}
+              <section className={CARD}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">
+                      Today’s XPOT
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Claim a free entry if your wallet holds the minimum XPOT.
+                    </p>
+                  </div>
+
+                  <StatusPill tone={ticketClaimed ? 'emerald' : 'slate'}>
+                    <Ticket className="h-3.5 w-3.5" />
+                    {ticketClaimed ? 'Entry active' : 'Not claimed'}
+                  </StatusPill>
+                </div>
 
                 {!walletConnected && (
-                  <p className="mt-4 text-xs text-emerald-100/50">
-                    Connect wallet to claim.
-                  </p>
+                  <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3 text-xs text-slate-400">
+                    Activate your wallet to check eligibility and claim today’s
+                    entry.
+                  </div>
                 )}
 
                 {walletConnected && !ticketClaimed && (
                   <>
                     <button
-                      onClick={() => {}}
-                      className={`${BTN_PRIMARY} mt-4 px-6 py-3`}
+                      type="button"
+                      onClick={handleClaimTicket}
+                      disabled={!walletConnected || claiming}
+                      className={`${BTN_PRIMARY} mt-4 px-6 py-3 text-sm`}
                     >
-                      Claim today’s entry
+                      {claiming ? 'Generating…' : 'Claim today’s entry'}
                     </button>
+
                     {claimError && (
-                      <p className="mt-3 text-xs text-lime-300">{claimError}</p>
+                      <p className="mt-3 text-xs text-amber-300">{claimError}</p>
+                    )}
+
+                    {typeof xpotBalance === 'number' && !hasRequiredXpot && (
+                      <p className="mt-3 text-xs text-slate-500">
+                        Your wallet is below the minimum. You need{' '}
+                        <span className="font-semibold text-slate-200">
+                          {REQUIRED_XPOT.toLocaleString()} XPOT
+                        </span>{' '}
+                        to claim today’s entry.
+                      </p>
                     )}
                   </>
                 )}
 
                 {walletConnected && ticketClaimed && todaysTicket && (
-                  <div className="mt-4 rounded-2xl border border-emerald-400/25 bg-emerald-950/30 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-100/40">
-                      Ticket code
+                  <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Your ticket code
                     </p>
-                    <p className="mt-1 font-mono text-base text-emerald-100">
-                      {todaysTicket.code}
+
+                    <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-mono text-base text-slate-100">
+                        {todaysTicket.code}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCode(todaysTicket)}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
+                      >
+                        <Copy className="h-4 w-4" />
+                        {copiedId === todaysTicket.id ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+
+                    <p className="mt-2 text-xs text-slate-500">
+                      Status:{' '}
+                      <span className="font-semibold text-slate-200">
+                        IN DRAW
+                      </span>
+                      {' · '}Issued {formatDateTime(todaysTicket.createdAt)}
                     </p>
                   </div>
                 )}
+
+                {walletConnected && ticketClaimed && !todaysTicket && (
+                  <p className="mt-4 text-xs text-slate-500">
+                    Your wallet has an entry today, but it hasn’t loaded yet.
+                    Refresh the page.
+                  </p>
+                )}
+
+                {iWonToday && (
+                  <div className="mt-4 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                    You won today’s XPOT. Check your wallet and the winners feed.
+                  </div>
+                )}
               </section>
+
+              {/* TODAY ENTRIES (your wallet only) */}
+              {walletConnected && (
+                <section className={CARD}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">
+                        Your entries today
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Entries tied to your connected wallet.
+                      </p>
+                    </div>
+                    <StatusPill tone="sky">
+                      <Wallet className="h-3.5 w-3.5" />
+                      {myTickets.length}
+                    </StatusPill>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {loadingTickets ? (
+                      <p className="text-xs text-slate-500">Loading…</p>
+                    ) : ticketsError ? (
+                      <p className="text-xs text-amber-300">{ticketsError}</p>
+                    ) : myTickets.length === 0 ? (
+                      <p className="text-xs text-slate-500">No entries yet.</p>
+                    ) : (
+                      myTickets.map(t => (
+                        <div
+                          key={t.id}
+                          className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="font-mono text-sm text-slate-100">
+                              {t.code}
+                            </p>
+                            <StatusPill
+                              tone={
+                                t.status === 'in-draw'
+                                  ? 'emerald'
+                                  : t.status === 'won'
+                                  ? 'sky'
+                                  : 'slate'
+                              }
+                            >
+                              {t.status.replace('-', ' ')}
+                            </StatusPill>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Issued {formatDateTime(t.createdAt)}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
+              )}
             </div>
 
-            {/* RIGHT */}
+            {/* RIGHT COLUMN */}
             <div className="space-y-4">
-              <section className={`${CARD} ${SCANLINES}`}>
-                <p className="text-sm font-semibold text-emerald-100">
-                  Recent winners
-                </p>
-                <p className="mt-1 text-xs text-emerald-100/45">
-                  Latest completed draws
-                </p>
+              {/* RECENT WINNERS */}
+              <section className={CARD}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">
+                      Recent winners
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Latest completed draws across all holders.
+                    </p>
+                  </div>
+                  <StatusPill tone="emerald">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Live
+                  </StatusPill>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {loadingWinners ? (
+                    <p className="text-xs text-slate-500">Loading…</p>
+                  ) : winnersError ? (
+                    <p className="text-xs text-amber-300">{winnersError}</p>
+                  ) : recentWinners.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      No completed draws yet.
+                    </p>
+                  ) : (
+                    recentWinners.map(w => {
+                      const h = w.handle ? w.handle.replace(/^@/, '') : null;
+                      return (
+                        <div
+                          key={w.id}
+                          className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-slate-400">
+                              {formatDate(w.drawDate)}
+                            </p>
+                            {h ? (
+                              <StatusPill tone="sky">
+                                <X className="h-3.5 w-3.5" />
+                                @{h}
+                              </StatusPill>
+                            ) : (
+                              <StatusPill tone="slate">wallet</StatusPill>
+                            )}
+                          </div>
+
+                          <div className="mt-2 flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100">
+                              {initialFromHandle(h)}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="truncate font-mono text-sm text-slate-100">
+                                {w.ticketCode}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {h ? `@${h}` : shortWallet(w.walletAddress)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </section>
 
-              <section className={`${CARD} ${SCANLINES}`}>
-                <p className="text-sm font-semibold text-emerald-100">
-                  Your draw history
-                </p>
-                <p className="mt-1 text-xs text-emerald-100/45">
-                  Past entries
-                </p>
+              {/* WALLET HISTORY (quick view) */}
+              <section className={CARD}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">
+                      Your draw history
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Past entries for this wallet (wins, not-picked, expired).
+                    </p>
+                  </div>
+
+                  <Link href="/hub/history" className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+                    View all
+                  </Link>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {!walletConnected ? (
+                    <p className="text-xs text-slate-500">
+                      Connect your wallet to view history.
+                    </p>
+                  ) : loadingHistory ? (
+                    <p className="text-xs text-slate-500">Loading…</p>
+                  ) : historyError ? (
+                    <p className="text-xs text-amber-300">{historyError}</p>
+                  ) : historyEntries.length === 0 ? (
+                    <p className="text-xs text-slate-500">No history yet.</p>
+                  ) : (
+                    historyEntries.slice(0, 5).map(t => (
+                      <div
+                        key={t.id}
+                        className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-mono text-sm text-slate-100">
+                            {t.code}
+                          </p>
+                          <StatusPill
+                            tone={
+                              t.status === 'won'
+                                ? 'sky'
+                                : t.status === 'claimed'
+                                ? 'emerald'
+                                : t.status === 'in-draw'
+                                ? 'emerald'
+                                : 'slate'
+                            }
+                          >
+                            {t.status.replace('-', ' ')}
+                          </StatusPill>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {formatDateTime(t.createdAt)}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
               </section>
             </div>
           </section>
 
-          <footer className="mt-8 border-t border-emerald-500/14 pt-4 text-xs text-emerald-100/45">
-            <Sparkles className="inline h-3.5 w-3.5 mr-2" />
-            XPOT is in Pre-Launch Mode.
+          {/* FOOTER */}
+          <footer className="mt-8 border-t border-slate-800/70 pt-4 text-xs text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+              XPOT is in Pre-Launch Mode. UI is final, wiring continues.
+            </span>
           </footer>
         </XpotPageShell>
       </div>
