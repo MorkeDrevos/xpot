@@ -7,20 +7,18 @@ const isProtectedRoute = createRouteMatcher([
   '/api/internal(.*)',
 ]);
 
-export default clerkMiddleware((auth, req) => {
-  // ✅ DO NOT protect /hub here.
-  // Hub gating is handled in the client with HubLockOverlay.
-
+export default clerkMiddleware(async (auth, req) => {
+  // IMPORTANT: do NOT protect /hub here (your HubLockOverlay handles gating)
   if (isProtectedRoute(req)) {
-    auth().protect();
+    await auth.protect();
   }
 });
 
 export const config = {
   matcher: [
-    // Run middleware on all routes except Next internals and static files
-    '/((?!_next|.*\\.(?:css|js|json|png|jpg|jpeg|gif|svg|ico|webp|avif|ttf|woff|woff2)$).*)',
+    // Run middleware on all routes except Next.js internals + static files
+    '/((?!_next|.*\\..*).*)',
     // Always run for API routes
-    '/(api|trpc)(.*)',
+    '/api/(.*)',
   ],
 };
