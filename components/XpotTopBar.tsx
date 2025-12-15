@@ -13,13 +13,12 @@ import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import {
   Crown,
   ExternalLink,
-  History,
   LogOut,
   Radio,
   Shield,
   Ticket,
+  Trophy,
   Wallet,
-  X,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -51,6 +50,8 @@ type XpotTopBarProps = {
 
 const XPOT_X_POST =
   'https://x.com/xpotbet/status/1998020027069653445?s=46&t=F6JSZfQ0P85RPUutnn4nag';
+
+const WINNERS_HREF = '/winners';
 
 export default function XpotTopBar({
   logoHref = '/',
@@ -126,7 +127,7 @@ export default function XpotTopBar({
                   isAdmin={isAdmin}
                 />
               ) : (
-                <DefaultNav />
+                <DefaultNav liveIsOpen={liveIsOpen} />
               )}
             </div>
           </div>
@@ -143,12 +144,54 @@ export default function XpotTopBar({
 
 /* ---------------- DEFAULT NAV ---------------- */
 
-function DefaultNav() {
+function DefaultNav({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
     <>
-      <Link href="/hub" className="hover:text-white">Hub</Link>
-      <Link href="/terms" className="hover:text-white">Terms</Link>
-      <Link href="/hub" className="rounded-full bg-white px-5 py-2 font-semibold text-black hover:bg-slate-200">
+      <Link href="/hub" className="hover:text-white">
+        Hub
+      </Link>
+
+      <Link
+        href="/hub/live"
+        className="inline-flex items-center gap-2 hover:text-white"
+        title={liveIsOpen ? 'Live draw is open' : 'Live view'}
+      >
+        <span className="relative h-2 w-2">
+          {liveIsOpen ? (
+            <>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+            </>
+          ) : (
+            <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
+          )}
+        </span>
+        <Radio className="h-4 w-4 text-emerald-300" />
+        Live
+      </Link>
+
+      <Link
+        href={WINNERS_HREF}
+        className="inline-flex items-center gap-2 hover:text-white"
+      >
+        <Trophy className="h-4 w-4 text-amber-300" />
+        Winners
+      </Link>
+
+      <Link
+        href={XPOT_X_POST}
+        target="_blank"
+        className="inline-flex items-center gap-2 hover:text-white"
+        title="Official XPOT announcement"
+      >
+        <ExternalLink className="h-4 w-4" />
+        X
+      </Link>
+
+      <Link
+        href="/hub"
+        className="rounded-full bg-white px-5 py-2 font-semibold text-black hover:bg-slate-200"
+      >
         Enter today&apos;s XPOT →
       </Link>
     </>
@@ -173,7 +216,7 @@ function HubMenu({
   const { user, isLoaded } = useUser();
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
-  const xAccount = externalAccounts.find(acc =>
+  const xAccount = externalAccounts.find((acc) =>
     String(acc.provider || '').toLowerCase().includes('twitter') ||
     String(acc.provider || '').toLowerCase().includes('x'),
   );
@@ -188,17 +231,26 @@ function HubMenu({
       {/* Identity */}
       <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:flex">
         {isLoaded && avatar ? (
-          <img src={avatar} alt="X avatar" className="h-6 w-6 rounded-full border border-white/10" />
+          <img
+            src={avatar}
+            alt="X avatar"
+            className="h-6 w-6 rounded-full border border-white/10"
+          />
         ) : (
-          <div className="h-6 w-6 rounded-full border border-white/10 bg-white/[0.04] text-xs flex items-center justify-center">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xs">
             {initial}
           </div>
         )}
-        <span className="text-xs font-semibold">{displayHandle ?? 'X linking…'}</span>
+        <span className="text-xs font-semibold">
+          {displayHandle ?? 'X linking…'}
+        </span>
       </div>
 
       {/* LIVE */}
-      <Link href="/hub/live" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
+      <Link
+        href="/hub/live"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+      >
         <span className="relative h-2 w-2">
           {liveIsOpen ? (
             <>
@@ -211,6 +263,15 @@ function HubMenu({
         </span>
         <Radio className="h-5 w-5 text-emerald-300" />
         Live
+      </Link>
+
+      {/* WINNERS */}
+      <Link
+        href={WINNERS_HREF}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+      >
+        <Trophy className="h-5 w-5 text-amber-300" />
+        Winners
       </Link>
 
       {/* X */}
@@ -235,13 +296,13 @@ function HubMenu({
         </Link>
       )}
 
-      <Link href="/hub/history" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
-        <History className="h-5 w-5" />
-        History
-      </Link>
+      {/* Wallet */}
+      <HubWalletMenuInline
+        hubWalletStatus={hubWalletStatus}
+        onOpenWalletModal={onOpenWalletModal}
+      />
 
-      <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
-
+      {/* Log out */}
       {clerkEnabled && (
         <SignOutButton redirectUrl="/">
           <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
@@ -275,8 +336,11 @@ function HubWalletMenuInline({
 
   const addr = connected && publicKey ? publicKey.toBase58() : null;
 
-  const label = hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Activate wallet');
-  const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Required to enter today’s XPOT');
+  const label =
+    hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Activate wallet');
+  const sublabel =
+    hubWalletStatus?.sublabel ??
+    (addr ? shortWallet(addr) : 'Required to enter today’s XPOT');
 
   const tone: HubWalletTone =
     hubWalletStatus?.winner ? 'sky'
@@ -284,19 +348,25 @@ function HubWalletMenuInline({
     : connected ? 'sky'
     : 'amber';
 
-  const microIcon = hubWalletStatus?.winner ? <Crown className="h-4 w-4" />
-    : hubWalletStatus?.claimed ? <Ticket className="h-4 w-4" />
-    : <Wallet className="h-4 w-4" />;
+  const microIcon = hubWalletStatus?.winner ? (
+    <Crown className="h-4 w-4" />
+  ) : hubWalletStatus?.claimed ? (
+    <Ticket className="h-4 w-4" />
+  ) : (
+    <Wallet className="h-4 w-4" />
+  );
 
-  const open = () => onOpenWalletModal ? onOpenWalletModal() : setVisible(true);
+  const open = () => (onOpenWalletModal ? onOpenWalletModal() : setVisible(true));
 
   return (
     <button
       onClick={open}
-      className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(tone)} hover:opacity-95`}
+      className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(
+        tone,
+      )} hover:opacity-95`}
     >
       <div className="flex items-center gap-2">
-        <span className="h-7 w-7 rounded-full border border-white/10 bg-black/30 flex items-center justify-center">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30">
           {microIcon}
         </span>
         <span className="font-semibold">{label}</span>
