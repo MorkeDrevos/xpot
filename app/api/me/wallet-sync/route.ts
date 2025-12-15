@@ -18,47 +18,37 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const addressRaw: unknown = body?.address ?? body?.walletAddress ?? body?.wallet ?? null;
+    const raw = body?.address ?? body?.walletAddress ?? body?.wallet ?? null;
 
     const address =
-      typeof addressRaw === 'string' && addressRaw.trim().length > 0
-        ? normalizeAddress(addressRaw)
-        : null;
+      typeof raw === 'string' && raw.trim().length > 0 ? normalizeAddress(raw) : null;
 
     if (!address) {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET_ADDRESS' }, { status: 400 });
     }
 
-    // Ensure User exists (keyed by Clerk ID)
+    // Ensure a User exists for this Clerk identity
     const user = await prisma.user.upsert({
       where: { clerkId },
       create: { clerkId },
       update: {},
     });
 
-    // If wallet already exists and belongs to a DIFFERENT user, block it (prevents hijack)
+    // If wallet already linked to another user, block it (prevents hijack)
     const existing = await prisma.wallet.findUnique({
       where: { address },
       select: { id: true, userId: true },
     });
 
     if (existing?.userId && existing.userId !== user.id) {
-      return NextResponse.json(
-        { ok: false, error: 'WALLET_ALREADY_LINKED' },
-        { status: 409 },
-      );
+      return NextResponse.json({ ok: false, error: 'WALLET_ALREADY_LINKED' }, { status: 409 });
     }
 
-    // Link wallet to this user
+    // Create wallet if missing, or link it to this user
     const wallet = await prisma.wallet.upsert({
       where: { address },
-      create: {
-        address,
-        userId: user.id,
-      },
-      update: {
-        userId: user.id,
-      },
+      create: { address, userId: user.id },
+      update: { userId: user.id },
     });
 
     return NextResponse.json(
