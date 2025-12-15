@@ -1175,11 +1175,13 @@ export default function AdminPage() {
         <div className="space-y-4">
           {/* XPOT CARD */}
           <section
-            <div className="pointer-events-none absolute -inset-32 opacity-90
-  bg-[radial-gradient(circle_at_8%_12%,rgba(56,189,248,0.22),transparent_55%),
-      radial-gradient(circle_at_92%_18%,rgba(99,102,241,0.22),transparent_58%),
-      radial-gradient(circle_at_50%_110%,rgba(30,41,59,0.75),transparent_60%)]"
-/>
+            className="
+              relative overflow-hidden rounded-[30px]
+              border border-slate-900/70 bg-transparent
+              shadow-[0_32px_110px_rgba(15,23,42,0.85)]
+              backdrop-blur-xl
+            "
+          >
             <div
               className="
                 pointer-events-none absolute -inset-28
