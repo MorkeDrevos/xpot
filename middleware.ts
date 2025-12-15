@@ -1,22 +1,26 @@
 // middleware.ts
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/hub(.*)', // ✅ allow hub to render so we can show blurred lock overlay
-  '/sign-in(.*)',
-  '/sign-up(.*)',
+const isProtectedRoute = createRouteMatcher([
+  '/ops(.*)',
+  '/api/admin(.*)',
+  '/api/internal(.*)',
 ]);
 
 export default clerkMiddleware((auth, req) => {
-  if (!isPublicRoute(req)) {
-    auth.protect();
+  // ✅ DO NOT protect /hub here.
+  // Hub gating is handled in the client with HubLockOverlay.
+
+  if (isProtectedRoute(req)) {
+    auth().protect();
   }
 });
 
 export const config = {
   matcher: [
-    '/((?!.+\\.[\\w]+$|_next).*)',
+    // Run middleware on all routes except Next internals and static files
+    '/((?!_next|.*\\.(?:css|js|json|png|jpg|jpeg|gif|svg|ico|webp|avif|ttf|woff|woff2)$).*)',
+    // Always run for API routes
     '/(api|trpc)(.*)',
   ],
 };
