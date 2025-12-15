@@ -928,6 +928,7 @@ export default function AdminPage() {
       title="Operations Center"
       subtitle="Control room for today's XPOT"
       rightSlot={<OperationsCenterBadge live={true} autoDraw={isAutoActive} />}
+      pageTag="ops"
     >
       {/* Admin key band */}
       <section className="relative mt-5">
