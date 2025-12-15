@@ -1,10 +1,9 @@
-// app/hub/page.tsx
+// app/link-x/page.tsx
 import { redirect } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
-import DashboardClient from './DashboardClient';
+import LinkXClient from './LinkXClient';
 
 export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
 
 function hasXLinked(user: any) {
   const accounts = user?.externalAccounts ?? [];
@@ -14,15 +13,17 @@ function hasXLinked(user: any) {
   });
 }
 
-export default async function DashboardPage() {
+export default async function LinkXPage({
+  searchParams,
+}: {
+  searchParams?: { redirect_url?: string };
+}) {
   const user = await currentUser();
+  if (!user) redirect(`/sign-in?redirect_url=/link-x`);
 
-  if (!user) redirect('/sign-in?redirect_url=/hub');
-
-  if (!hasXLinked(user)) {
-    redirect('/link-x?redirect_url=/hub');
+  if (hasXLinked(user)) {
+    redirect(searchParams?.redirect_url || '/hub');
   }
 
-export default function HubPage() {
-  return <DashboardClient />;
+  return <LinkXClient redirectUrl={searchParams?.redirect_url || '/hub'} />;
 }
