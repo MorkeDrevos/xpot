@@ -5,25 +5,31 @@
 @tailwind utilities;
 
 /* ─────────────────────────────────────────────────────────────
-   XPOT Global Theme Tokens
+   XPOT Global Theme Tokens (controlled from here)
+   Goal: match Ops screenshot vibe (blue -> violet -> magenta)
 ───────────────────────────────────────────────────────────── */
 
 :root {
   color-scheme: dark;
 
-  /* Core */
+  /* Core text */
   --xpot-text: rgba(226, 232, 240, 0.94);
   --xpot-text-dim: rgba(226, 232, 240, 0.72);
   --xpot-text-faint: rgba(226, 232, 240, 0.52);
 
-  --xpot-bg-0: #030409;
-  --xpot-bg-1: #05060a;
-  --xpot-bg-2: #070915;
+  /* Base background anchors (deep ink) */
+  --xpot-bg-0: #02030a;
+  --xpot-bg-1: #030412;
+  --xpot-bg-2: #05061a;
 
-  /* Accent anchors (tweak these to change the whole vibe) */
-  --xpot-accent-blue: 56 189 248;
-  --xpot-accent-purple: 124 58 237;
-  --xpot-accent-emerald: 16 185 129;
+  /* Accent anchors (the whole site vibe is driven by these) */
+  --xpot-accent-blue: 56 189 248;     /* cyan/sky */
+  --xpot-accent-violet: 99 102 241;   /* indigo */
+  --xpot-accent-magenta: 236 72 153;  /* pink */
+  --xpot-accent-emerald: 16 185 129;  /* success/active */
+
+  /* Keep compat with your older name */
+  --xpot-accent-purple: var(--xpot-accent-violet);
 
   /* Borders */
   --xpot-border-soft: rgba(148, 163, 184, 0.12);
@@ -38,51 +44,69 @@
     0 0 36px rgba(var(--xpot-accent-blue), 0.14),
     0 16px 80px rgba(var(--xpot-accent-blue), 0.08);
 
-  --xpot-glow-purple: 0 0 0 1px rgba(var(--xpot-accent-purple), 0.24),
-    0 0 40px rgba(var(--xpot-accent-purple), 0.14),
-    0 16px 90px rgba(var(--xpot-accent-purple), 0.09);
+  --xpot-glow-purple: 0 0 0 1px rgba(var(--xpot-accent-violet), 0.24),
+    0 0 40px rgba(var(--xpot-accent-violet), 0.14),
+    0 16px 90px rgba(var(--xpot-accent-violet), 0.09);
 
   --xpot-glow-emerald: 0 0 0 1px rgba(var(--xpot-accent-emerald), 0.22),
     0 0 36px rgba(var(--xpot-accent-emerald), 0.12),
     0 16px 80px rgba(var(--xpot-accent-emerald), 0.08);
 
-  /* Surfaces */
+  --xpot-glow-magenta: 0 0 0 1px rgba(var(--xpot-accent-magenta), 0.22),
+    0 0 44px rgba(var(--xpot-accent-magenta), 0.14),
+    0 18px 100px rgba(var(--xpot-accent-magenta), 0.10);
+
+  /* Surfaces (glass) - tuned to the ops screenshot */
   --xpot-surface-1: linear-gradient(
     to bottom right,
     rgba(255, 255, 255, 0.045),
-    rgba(255, 255, 255, 0.015)
+    rgba(255, 255, 255, 0.012)
   );
 
   --xpot-surface-2: linear-gradient(
     to bottom right,
-    rgba(12, 14, 26, 0.92),
-    rgba(8, 10, 18, 0.86)
+    rgba(10, 12, 26, 0.92),
+    rgba(5, 6, 16, 0.86)
   );
 
   --xpot-surface-3: linear-gradient(
     to bottom right,
-    rgba(7, 9, 18, 0.86),
-    rgba(5, 6, 12, 0.84)
+    rgba(8, 10, 22, 0.86),
+    rgba(3, 4, 12, 0.84)
   );
 
-  /* Page background */
+  /* Page background (nebula wash like img1) */
   --xpot-bg-page:
     radial-gradient(
-      1200px 650px at 18% -12%,
-      rgba(var(--xpot-accent-purple), 0.18),
+      1250px 700px at 12% 10%,
+      rgba(var(--xpot-accent-blue), 0.22),
       transparent 60%
     ),
     radial-gradient(
-      1000px 560px at 82% 0%,
-      rgba(var(--xpot-accent-blue), 0.14),
-      transparent 58%
+      1150px 680px at 52% 22%,
+      rgba(var(--xpot-accent-violet), 0.20),
+      transparent 62%
     ),
     radial-gradient(
-      900px 520px at 50% 120%,
-      rgba(var(--xpot-accent-emerald), 0.07),
-      transparent 55%
+      1050px 650px at 92% 18%,
+      rgba(var(--xpot-accent-magenta), 0.18),
+      transparent 64%
     ),
-    linear-gradient(to bottom, var(--xpot-bg-1), var(--xpot-bg-0) 65%, #020309);
+    radial-gradient(
+      1100px 650px at 50% 115%,
+      rgba(var(--xpot-accent-emerald), 0.06),
+      transparent 58%
+    ),
+    linear-gradient(to bottom, var(--xpot-bg-2), var(--xpot-bg-0) 68%, #01020a);
+
+  /* Top strip gradient (pre-launch / banner) */
+  --xpot-strip:
+    linear-gradient(
+      90deg,
+      rgba(88, 28, 135, 0.96),
+      rgba(147, 51, 234, 0.92),
+      rgba(219, 39, 119, 0.96)
+    );
 
   /* Radii */
   --xpot-r-md: 14px;
@@ -100,16 +124,21 @@
 [data-xpot-page="ops"] {
   --xpot-bg-page:
     radial-gradient(
-      1100px 620px at 20% -12%,
-      rgba(var(--xpot-accent-purple), 0.16),
+      1200px 700px at 14% 12%,
+      rgba(var(--xpot-accent-blue), 0.20),
       transparent 62%
     ),
     radial-gradient(
-      900px 520px at 80% 0%,
-      rgba(var(--xpot-accent-blue), 0.12),
-      transparent 60%
+      1150px 680px at 58% 22%,
+      rgba(var(--xpot-accent-violet), 0.18),
+      transparent 64%
     ),
-    linear-gradient(to bottom, #04050a, #020309 72%, #010208);
+    radial-gradient(
+      1050px 650px at 92% 22%,
+      rgba(var(--xpot-accent-magenta), 0.17),
+      transparent 66%
+    ),
+    linear-gradient(to bottom, #030413, #01020a 72%, #000109);
 
   --xpot-surface-1: linear-gradient(
     to bottom right,
@@ -194,6 +223,24 @@ select {
   background: var(--xpot-bg-page);
 }
 
+/* Use this on the purple-magenta prelaunch strip */
+.xpot-top-strip {
+  background: var(--xpot-strip);
+}
+
+/* A reusable nebula halo layer (drop inside cards if you want) */
+.xpot-nebula-halo {
+  pointer-events: none;
+  position: absolute;
+  inset: -40%;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(var(--xpot-accent-blue), 0.26), transparent 55%),
+    radial-gradient(circle at 58% 24%, rgba(var(--xpot-accent-violet), 0.22), transparent 58%),
+    radial-gradient(circle at 92% 30%, rgba(var(--xpot-accent-magenta), 0.20), transparent 62%);
+  opacity: 0.85;
+  filter: blur(28px);
+}
+
 .xpot-max {
   max-width: 1440px;
   margin-left: auto;
@@ -224,8 +271,8 @@ select {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(800px 260px at 20% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
-    radial-gradient(700px 220px at 80% 0%, rgba(255, 255, 255, 0.04), transparent 60%),
+    radial-gradient(820px 280px at 20% 0%, rgba(255, 255, 255, 0.055), transparent 55%),
+    radial-gradient(740px 240px at 80% 0%, rgba(255, 255, 255, 0.04), transparent 60%),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.03), transparent 40%);
   opacity: 0.9;
 }
@@ -245,9 +292,9 @@ select {
   inset: 0;
   pointer-events: none;
   background: radial-gradient(
-    900px 260px at 50% 0%,
-    rgba(255, 255, 255, 0.05),
-    transparent 60%
+    920px 280px at 50% 0%,
+    rgba(255, 255, 255, 0.045),
+    transparent 62%
   );
   opacity: 0.85;
 }
@@ -267,6 +314,10 @@ select {
 
 .xpot-card-primary[data-glow="emerald"] {
   box-shadow: var(--xpot-glow-emerald);
+}
+
+.xpot-card-primary[data-glow="magenta"] {
+  box-shadow: var(--xpot-glow-magenta);
 }
 
 .xpot-divider {
@@ -335,7 +386,8 @@ select {
   background: linear-gradient(
     to right,
     rgba(var(--xpot-accent-blue), 0.16),
-    rgba(var(--xpot-accent-purple), 0.14)
+    rgba(var(--xpot-accent-violet), 0.14),
+    rgba(var(--xpot-accent-magenta), 0.10)
   );
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow: 0 0 0 1px rgba(var(--xpot-accent-blue), 0.18),
