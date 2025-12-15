@@ -13,6 +13,12 @@ type BonusInfo = {
   status?: string;
 };
 
+type BonusStripVariant = 'home' | 'hub' | 'ops';
+
+type BonusStripProps = {
+  variant?: BonusStripVariant;
+};
+
 function pad2(n: number) {
   return n.toString().padStart(2, '0');
 }
@@ -32,7 +38,7 @@ function formatHms(ms: number) {
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
 }
 
-export default function BonusStrip() {
+export default function BonusStrip({ variant = 'home' }: BonusStripProps) {
   const [bonus, setBonus] = useState<BonusInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [nowTick, setNowTick] = useState(Date.now());
@@ -136,6 +142,14 @@ export default function BonusStrip() {
     return null;
   }
 
+  const href =
+    variant === 'ops' ? '/ops' : variant === 'hub' ? '/hub' : '/hub';
+
+  const title =
+    variant === 'ops'
+      ? 'View bonus scheduling in Ops'
+      : 'View and claim entries on the hub';
+
   // Attention modes
   const minutesLeft = msLeft !== null ? Math.floor(msLeft / 60000) : 999999;
 
@@ -196,22 +210,15 @@ export default function BonusStrip() {
       <span className="font-mono text-emerald-200">T-{countdown}</span>
     );
 
-  // Make it clickable to dashboard (feels “real”)
   return (
-    <Link
-      href="/dashboard"
-      className={`${base} ${cls}`}
-      title="View and claim entries on the dashboard"
-    >
+    <Link href={href} className={`${base} ${cls}`} title={title}>
       <span className="relative inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/18">
         <span className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ${dotCls} ${pulse}`} />
         {leftIcon}
       </span>
 
       <span className="min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis">
-        <span className="uppercase tracking-[0.18em] text-emerald-200/90">
-          {label}
-        </span>
+        <span className="uppercase tracking-[0.18em] text-emerald-200/90">{label}</span>
         <span className="mx-2 text-emerald-200/60">•</span>
         {timePart}
         <span className="mx-2 text-emerald-200/60">•</span>
