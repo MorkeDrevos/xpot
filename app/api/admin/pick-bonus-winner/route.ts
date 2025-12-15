@@ -1,11 +1,10 @@
-// app/api/admin/pick-bonus-winner/route.ts
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '../_auth';
+import { requireAdmin } from '@/app/api/admin/_auth';
 import { WinnerKind } from '@prisma/client';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -15,71 +14,70 @@ export async function POST(req: NextRequest) {
   const denied = requireAdmin(req);
   if (denied) return denied;
 
-  const body = await req.json().catch(() => ({}));
-  const amountXpot = Number(body?.amountXpot ?? 0);
-  const label = String(body?.label ?? 'Bonus XPOT').slice(0, 64);
+  try {
+    const body = await req.json();
+    const { drawId, label, amountXpot } = body as {
+      drawId: string;
+      label: string;
+      amountXpot: number;
+    };
 
-  if (!Number.isFinite(amountXpot) || amountXpot < 100000) {
+    if (!drawId || !label || !amountXpot) {
+      return NextResponse.json(
+        { ok: false, error: 'INVALID_INPUT' },
+        { status: 400 },
+      );
+    }
+
+    const tickets = await prisma.ticket.findMany({
+      where: {
+        drawId,
+        status: 'IN_DRAW',
+      },
+      select: {
+        id: true,
+        code: true,
+        walletAddress: true,
+      },
+      take: 2000,
+    });
+
+    if (tickets.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: 'NO_ELIGIBLE_TICKETS' },
+        { status: 400 },
+      );
+    }
+
+    const picked = tickets[randInt(0, tickets.length - 1)];
+
+    const winner = await prisma.winner.create({
+      data: {
+        drawId,
+        ticketId: picked.id,            // REQUIRED
+        ticketCode: picked.code,
+        walletAddress: picked.walletAddress,
+        kind: WinnerKind.BONUS,          // ENUM SAFE
+        label,
+        payoutUsd: amountXpot,
+        jackpotUsd: 0,
+        isPaidOut: false,
+      },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      winner,
+    });
+  } catch (err: any) {
+    console.error('[pick-bonus-winner]', err);
     return NextResponse.json(
-      { ok: false, error: 'Invalid amountXpot (min 100,000).' },
-      { status: 400 },
+      {
+        ok: false,
+        error: 'PICK_BONUS_FAILED',
+        message: err?.message ?? 'Unknown error',
+      },
+      { status: 500 },
     );
   }
-
-  const today = new Date();
-  const yyyyMmDd = today.toISOString().slice(0, 10);
-  const startOfDay = new Date(`${yyyyMmDd}T00:00:00.000Z`);
-  const endOfDay = new Date(`${yyyyMmDd}T23:59:59.999Z`);
-
-  const draw = await prisma.draw.findFirst({
-    where: { drawDate: { gte: startOfDay, lt: endOfDay } },
-  });
-
-  if (!draw) {
-    return NextResponse.json(
-      { ok: false, error: 'No draw found for today.' },
-      { status: 404 },
-    );
-  }
-
-  if (draw.status !== 'open') {
-    return NextResponse.json(
-      { ok: false, error: 'Draw is not open.' },
-      { status: 400 },
-    );
-  }
-
-  // Pull eligible tickets for the draw (adjust statuses to match your schema)
-  const tickets = await prisma.ticket.findMany({
-    where: {
-      drawId: draw.id,
-      status: 'IN_DRAW', // change if your enum differs
-    },
-    select: { id: true, code: true, walletAddress: true },
-  });
-
-  if (tickets.length === 0) {
-    return NextResponse.json(
-      { ok: false, error: 'No eligible tickets in pool.' },
-      { status: 400 },
-    );
-  }
-
-  const picked = tickets[randInt(0, tickets.length - 1)];
-
-  // Create bonus winner (adjust model/fields to your schema)
-  const winner = await prisma.winner.create({
-    data: {
-      drawId: draw.id,
-      ticketCode: picked.code,
-      walletAddress: picked.walletAddress,
-      kind: 'BONUS', // ensure your enum supports this
-      label,
-      payoutUsd: amountXpot, // you’re using payoutUsd as XPOT amount in UI
-      jackpotUsd: 0,
-      isPaidOut: false,
-    },
-  });
-
-  return NextResponse.json({ ok: true, winner });
 }
