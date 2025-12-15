@@ -6,8 +6,6 @@ import { usePathname } from 'next/navigation';
 
 import PreLaunchBanner from '@/components/PreLaunchBanner';
 import XpotTopBar from '@/components/XpotTopBar';
-import OpsThemeSwitcher from '@/components/OpsThemeSwitcher';
-import ThemeHydrator from '@/components/ThemeHydrator';
 
 type XpotPageShellProps = {
   title?: string;
@@ -23,8 +21,6 @@ type XpotPageShellProps = {
   showTopBar?: boolean;
   topBarClassName?: string;
   topBarProps?: ComponentProps<typeof XpotTopBar>;
-
-  showOpsThemeSwitcher?: boolean;
 };
 
 export default function XpotPageShell({
@@ -39,7 +35,6 @@ export default function XpotPageShell({
   showTopBar = true,
   topBarClassName = '',
   topBarProps,
-  showOpsThemeSwitcher = true,
 }: XpotPageShellProps) {
   const pathname = usePathname() || '';
 
@@ -48,40 +43,20 @@ export default function XpotPageShell({
     [pathname],
   );
 
-  /**
-   * Ops/Admin page marker (used by globals.css)
-   * This is the ONLY html mutation allowed here.
-   */
+  // Ops/Admin page marker (used by globals.css)
   useEffect(() => {
     const root = document.documentElement;
 
-    if (isOpsOrAdmin) {
-      root.setAttribute('data-xpot-page', 'ops');
-    } else {
-      root.removeAttribute('data-xpot-page');
-    }
+    if (isOpsOrAdmin) root.setAttribute('data-xpot-page', 'ops');
+    else root.removeAttribute('data-xpot-page');
 
     return () => {
       root.removeAttribute('data-xpot-page');
     };
   }, [isOpsOrAdmin]);
 
-  const mergedRightSlot = useMemo(() => {
-    if (!isOpsOrAdmin || !showOpsThemeSwitcher) return rightSlot ?? null;
-
-    return (
-      <>
-        <OpsThemeSwitcher />
-        {rightSlot && <div className="ml-2">{rightSlot}</div>}
-      </>
-    );
-  }, [isOpsOrAdmin, rightSlot, showOpsThemeSwitcher]);
-
   return (
     <div className={['relative min-h-screen text-slate-100', className].join(' ')}>
-      {/* Theme hydration (client-only, safe) */}
-      <ThemeHydrator />
-
       <PreLaunchBanner />
 
       {showTopBar && (
@@ -90,7 +65,7 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* Background */}
+      {/* Background (comes from globals.css via --xpot-bg-page) */}
       <div className="pointer-events-none fixed inset-0 -z-30 bg-[var(--xpot-bg-page)]" />
 
       {/* Starfield */}
@@ -122,7 +97,7 @@ export default function XpotPageShell({
           containerClassName,
         ].join(' ')}
       >
-        {(title || subtitle || mergedRightSlot) && (
+        {(title || subtitle || rightSlot) && (
           <div
             className={[
               'mb-6 rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur',
@@ -144,11 +119,7 @@ export default function XpotPageShell({
               )}
             </div>
 
-            {mergedRightSlot && (
-              <div className="ml-auto flex items-center gap-2">
-                {mergedRightSlot}
-              </div>
-            )}
+            {rightSlot && <div className="ml-auto flex items-center gap-2">{rightSlot}</div>}
           </div>
         )}
 
