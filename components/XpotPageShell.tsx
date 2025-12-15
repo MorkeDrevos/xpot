@@ -31,35 +31,40 @@ type XpotPageShellProps = {
 
 const THEME_KEY = 'xpot_ops_theme_v1';
 
+type ThemeId = 'nebula' | 'icy' | 'royal';
+
 type ThemePreset = {
-  id: string;
+  id: ThemeId;
   label: string;
-  // IMPORTANT: these must match what globals.css actually USES
-  vars: Record<
-    | '--xpot-accent-primary'
-    | '--xpot-accent-secondary'
-    | '--xpot-accent-glow'
-    | '--xpot-accent-success',
-    string
+
+  // Fallback overrides (in case globals.css does not yet define html[data-theme="icy"/"royal"])
+  // These are the aliases your components should use.
+  overrides: Partial<
+    Record<
+      | '--xpot-accent-primary'
+      | '--xpot-accent-secondary'
+      | '--xpot-accent-glow'
+      | '--xpot-accent-success',
+      string
+    >
   >;
 };
 
-// These map to your globals.css “theme-driven tokens”
 const PRESETS: ThemePreset[] = [
   {
     id: 'nebula',
     label: 'Nebula',
-    vars: {
-      '--xpot-accent-primary': '56 189 248', // sky
-      '--xpot-accent-secondary': '99 102 241', // violet/indigo
-      '--xpot-accent-glow': '236 72 153', // magenta
-      '--xpot-accent-success': '16 185 129', // emerald
+    overrides: {
+      '--xpot-accent-primary': '56 189 248',
+      '--xpot-accent-secondary': '99 102 241',
+      '--xpot-accent-glow': '236 72 153',
+      '--xpot-accent-success': '16 185 129',
     },
   },
   {
     id: 'icy',
     label: 'Icy',
-    vars: {
+    overrides: {
       '--xpot-accent-primary': '34 211 238',
       '--xpot-accent-secondary': '129 140 248',
       '--xpot-accent-glow': '244 114 182',
@@ -69,7 +74,7 @@ const PRESETS: ThemePreset[] = [
   {
     id: 'royal',
     label: 'Royal',
-    vars: {
+    overrides: {
       '--xpot-accent-primary': '96 165 250',
       '--xpot-accent-secondary': '139 92 246',
       '--xpot-accent-glow': '236 72 153',
@@ -78,32 +83,47 @@ const PRESETS: ThemePreset[] = [
   },
 ];
 
-function applyPreset(presetId: string) {
+function isThemeId(v: any): v is ThemeId {
+  return v === 'nebula' || v === 'icy' || v === 'royal';
+}
+
+function applyTheme(theme: ThemeId) {
   if (typeof window === 'undefined') return;
 
-  const preset = PRESETS.find((p) => p.id === presetId) ?? PRESETS[0];
   const root = document.documentElement;
+  root.dataset.theme = theme;
 
-  for (const [k, v] of Object.entries(preset.vars)) {
-    root.style.setProperty(k, v);
+  // Clear any previous inline overrides first (keeps switching clean)
+  root.style.removeProperty('--xpot-accent-primary');
+  root.style.removeProperty('--xpot-accent-secondary');
+  root.style.removeProperty('--xpot-accent-glow');
+  root.style.removeProperty('--xpot-accent-success');
+
+  // Fallback: if globals.css does not define this theme yet, we still want visible changes.
+  // This only touches the alias variables (new components should use these).
+  const preset = PRESETS.find(p => p.id === theme) ?? PRESETS[0];
+  for (const [k, v] of Object.entries(preset.overrides)) {
+    if (!v) continue;
+    root.style.setProperty(k as any, v);
   }
 
-  // Compat for older code that still uses “purple”
+  // Compat for older code that still references “purple”
   root.style.setProperty('--xpot-accent-purple', 'var(--xpot-accent-secondary)');
 
-  window.localStorage.setItem(THEME_KEY, preset.id);
+  window.localStorage.setItem(THEME_KEY, theme);
 }
 
 function OpsThemeSwitcher() {
-  const [active, setActive] = useState<string>('nebula');
+  const [active, setActive] = useState<ThemeId>('nebula');
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const saved = window.localStorage.getItem(THEME_KEY);
-    const initial =
-      saved && PRESETS.some((p) => p.id === saved) ? saved : 'nebula';
+    const initial: ThemeId = isThemeId(saved) ? saved : 'nebula';
 
     setActive(initial);
-    applyPreset(initial);
+    applyTheme(initial);
   }, []);
 
   return (
@@ -113,7 +133,7 @@ function OpsThemeSwitcher() {
       </span>
 
       <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03] backdrop-blur">
-        {PRESETS.map((p) => {
+        {PRESETS.map(p => {
           const isActive = p.id === active;
           return (
             <button
@@ -121,7 +141,7 @@ function OpsThemeSwitcher() {
               type="button"
               onClick={() => {
                 setActive(p.id);
-                applyPreset(p.id);
+                applyTheme(p.id);
               }}
               className={[
                 'h-8 px-3 text-[11px] font-semibold transition',
@@ -160,8 +180,7 @@ export default function XpotPageShell({
     return pathname.startsWith('/ops') || pathname.startsWith('/admin');
   }, [pathname]);
 
-  // ✅ CRITICAL: put the ops flag on <html>, not on a wrapper div.
-  // Your globals.css override ([data-xpot-page="ops"]) must match where the vars are read (body/html background).
+  // Put the ops flag on <html> so globals.css selectors actually affect page bg/borders.
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -170,7 +189,6 @@ export default function XpotPageShell({
     else root.removeAttribute('data-xpot-page');
 
     return () => {
-      // safety cleanup if the shell unmounts
       root.removeAttribute('data-xpot-page');
     };
   }, [isOpsOrAdmin]);
@@ -187,9 +205,7 @@ export default function XpotPageShell({
   }, [isOpsOrAdmin, rightSlot, showOpsThemeSwitcher]);
 
   return (
-    <div
-      className={['relative min-h-screen text-slate-100', className].join(' ')}
-    >
+    <div className={['relative min-h-screen text-slate-100', className].join(' ')}>
       <PreLaunchBanner />
 
       {/* GLOBAL TOP BAR (TopBar itself is fixed; don't wrap in sticky) */}
@@ -199,10 +215,10 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* ✅ Page background now comes from globals.css via --xpot-bg-page */}
+      {/* Page background comes from globals.css via --xpot-bg-page */}
       <div className="pointer-events-none fixed inset-0 -z-30 bg-[var(--xpot-bg-page)]" />
 
-      {/* ⭐ Bright starfield (keep) */}
+      {/* Bright starfield */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-20 opacity-60 mix-blend-screen"
