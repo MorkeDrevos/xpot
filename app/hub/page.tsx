@@ -2,15 +2,15 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import { currentUser } from '@clerk/nextjs/server';
 
 import DashboardClient from './DashboardClient';
 
-export default function DashboardPage() {
-  const { userId } = auth();
+export default async function DashboardPage() {
+  const user = await currentUser();
 
-  if (!userId) {
+  if (!user) {
     redirect('/sign-in?redirect_url=/hub');
   }
 
