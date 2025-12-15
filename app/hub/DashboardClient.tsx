@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
@@ -34,6 +34,12 @@ const BTN_PRIMARY =
 
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
+
+const CARD =
+  'rounded-[28px] border border-slate-800/70 bg-slate-950/60 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]';
+
+const SUBCARD =
+  'rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3';
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
@@ -101,6 +107,17 @@ function StatusPill({
     >
       {children}
     </span>
+  );
+}
+
+function TinyMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={SUBCARD}>
+      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
+    </div>
   );
 }
 
@@ -210,6 +227,12 @@ export default function DashboardClient() {
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
 
+  // Premium sync feel
+  const [countdown, setCountdown] = useState('00:00:00');
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [syncPulse, setSyncPulse] = useState(0);
+  const refreshingRef = useRef(false);
+
   // Clerk user (X identity)
   const { user, isLoaded: isUserLoaded } = useUser();
   const isSignedIn = !!user;
@@ -279,7 +302,7 @@ export default function DashboardClient() {
   }, [isAuthedEnough, publicKey, connected]);
 
   // ─────────────────────────────────────────────
-  // Load today's tickets from DB (ONLY when authed)
+  // Countdown ticker
   // ─────────────────────────────────────────────
   useEffect(() => {
     const tick = () => {
@@ -291,35 +314,27 @@ export default function DashboardClient() {
     return () => clearInterval(t);
   }, []);
 
-    async function loadTickets() {
-      if (!isAuthedEnough) {
-        setEntries([]);
-        setLoadingTickets(false);
-        setTicketsError(null);
-        return;
-      }
-
-      setLoadingTickets(true);
-      setTicketsError(null);
-
-  async function fetchTicketsToday() {
+  // ─────────────────────────────────────────────
+  // Fetch helpers
+  // ─────────────────────────────────────────────
+  const fetchTicketsToday = useCallback(async () => {
     const res = await fetch('/api/tickets/today', { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load tickets');
     const data = await res.json();
     const list: Entry[] = Array.isArray(data.tickets) ? data.tickets : [];
     return list;
-  }
+  }, []);
 
-  async function fetchXpotBalance(address: string) {
+  const fetchXpotBalance = useCallback(async (address: string) => {
     const res = await fetch(`/api/xpot-balance?address=${address}`, {
       cache: 'no-store',
     });
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     const data: { balance: number } = await res.json();
     return data.balance;
-  }
+  }, []);
 
-  async function fetchHistory(address: string) {
+  const fetchHistory = useCallback(async (address: string) => {
     const res = await fetch(`/api/tickets/history?wallet=${address}`, {
       cache: 'no-store',
     });
@@ -337,9 +352,9 @@ export default function DashboardClient() {
         }))
       : [];
     return tickets;
-  }
+  }, []);
 
-  async function fetchRecentWinners() {
+  const fetchRecentWinners = useCallback(async () => {
     const res = await fetch('/api/winners/recent?limit=5', { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load recent winners');
     const data = await res.json();
@@ -354,83 +369,126 @@ export default function DashboardClient() {
         }))
       : [];
     return winners;
-  }
+  }, []);
 
-  async function refreshAll(reason: 'initial' | 'poll' | 'manual' = 'poll') {
-    if (!isAuthedEnough) return;
-    if (refreshingRef.current) return;
+  const refreshAll = useCallback(
+    async (reason: 'initial' | 'poll' | 'manual' = 'poll') => {
+      if (!isAuthedEnough) return;
+      if (refreshingRef.current) return;
 
-    refreshingRef.current = true;
+      refreshingRef.current = true;
 
-    const addr = publicKey?.toBase58() ?? null;
+      const addr = publicKey?.toBase58() ?? null;
 
-    try {
-      // Tickets (global)
-      if (reason === 'initial') {
-        setLoadingTickets(true);
-        setTicketsError(null);
-      }
-      const nextTickets = await fetchTicketsToday();
-      setEntries(nextTickets);
-
-      // Winners (global)
-      if (reason === 'initial') {
-        setLoadingWinners(true);
-        setWinnersError(null);
-      }
-      const nextWinners = await fetchRecentWinners();
-      setRecentWinners(nextWinners);
-
-      // Wallet-specific (only when wallet is present)
-      if (addr) {
-        // Balance
-        try {
-          setXpotBalance(null);
-          const b = await fetchXpotBalance(addr);
-          setXpotBalance(b);
-        } catch (e) {
-          console.error('Error loading XPOT balance (via API)', e);
-          setXpotBalance('error');
+      try {
+        // Tickets (global)
+        if (reason === 'initial') {
+          setLoadingTickets(true);
+          setTicketsError(null);
         }
+        const nextTickets = await fetchTicketsToday();
+        setEntries(nextTickets);
 
-        // History
-        try {
-          if (reason === 'initial') setLoadingHistory(true);
-          setHistoryError(null);
-          const h = await fetchHistory(addr);
-          setHistoryEntries(h);
-        } catch (e) {
-          console.error('Failed to load history', e);
-          setHistoryError((e as Error).message ?? 'Failed to load history');
+        // Winners (global)
+        if (reason === 'initial') {
+          setLoadingWinners(true);
+          setWinnersError(null);
+        }
+        const nextWinners = await fetchRecentWinners();
+        setRecentWinners(nextWinners);
+
+        // Wallet-specific (only when wallet is present)
+        if (addr) {
+          // Balance
+          try {
+            setXpotBalance(null);
+            const b = await fetchXpotBalance(addr);
+            setXpotBalance(b);
+          } catch (e) {
+            console.error('Error loading XPOT balance (via API)', e);
+            setXpotBalance('error');
+          }
+
+          // History
+          try {
+            if (reason === 'initial') setLoadingHistory(true);
+            setHistoryError(null);
+            const h = await fetchHistory(addr);
+            setHistoryEntries(h);
+          } catch (e) {
+            console.error('Failed to load history', e);
+            setHistoryError((e as Error).message ?? 'Failed to load history');
+            setHistoryEntries([]);
+          } finally {
+            setLoadingHistory(false);
+          }
+        } else {
+          setXpotBalance(null);
           setHistoryEntries([]);
-        } finally {
+          setHistoryError(null);
           setLoadingHistory(false);
         }
-      } else {
-        setXpotBalance(null);
-        setHistoryEntries([]);
-        setHistoryError(null);
-        setLoadingHistory(false);
+
+        setLastSyncedAt(Date.now());
+        setSyncPulse(p => p + 1);
+      } catch (e) {
+        console.error('[XPOT] refreshAll error', e);
+        setTicketsError((e as Error).message ?? 'Failed to load tickets');
+        setWinnersError((e as Error).message ?? 'Failed to load recent winners');
+      } finally {
+        setLoadingTickets(false);
+        setLoadingWinners(false);
+        refreshingRef.current = false;
       }
+    },
+    [
+      isAuthedEnough,
+      publicKey,
+      fetchTicketsToday,
+      fetchRecentWinners,
+      fetchXpotBalance,
+      fetchHistory,
+    ],
+  );
 
-      setLastSyncedAt(Date.now());
-      setSyncPulse(p => p + 1);
-    } catch (e) {
-      console.error('[XPOT] refreshAll error', e);
-      setTicketsError((e as Error).message ?? 'Failed to load tickets');
-      setWinnersError((e as Error).message ?? 'Failed to load recent winners');
-    } finally {
+  // ─────────────────────────────────────────────
+  // Load tickets + winners + wallet data (ONLY when authed)
+  // Also keeps things feeling live via a gentle poll
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthedEnough) {
+      setEntries([]);
       setLoadingTickets(false);
-      setLoadingWinners(false);
-      refreshingRef.current = false;
-    }
-  }
+      setTicketsError(null);
 
-    loadTickets();
+      setRecentWinners([]);
+      setLoadingWinners(false);
+      setWinnersError(null);
+
+      setHistoryEntries([]);
+      setHistoryError(null);
+      setLoadingHistory(false);
+
+      setXpotBalance(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      await refreshAll('initial');
+    })();
+
+    const interval = setInterval(() => {
+      if (cancelled) return;
+      refreshAll('poll');
+    }, 8000);
+
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
-  }, [isAuthedEnough]);
+  }, [isAuthedEnough, refreshAll]);
 
   // ─────────────────────────────────────────────
   // Sync "today's ticket" state with DB
@@ -455,167 +513,7 @@ export default function DashboardClient() {
     }
   }, [entries, currentWalletAddress]);
 
-  // ─────────────────────────────────────────────
-  // XPOT balance (via API route) - gate anyway
-  // ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!isAuthedEnough) {
-      setXpotBalance(null);
-      return;
-    }
-    if (!publicKey) {
-      setXpotBalance(null);
-      return;
-    }
-
-    let cancelled = false;
-    setXpotBalance(null);
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/xpot-balance?address=${publicKey.toBase58()}`,
-          { cache: 'no-store' },
-        );
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
-        const data: { balance: number } = await res.json();
-        if (cancelled) return;
-        setXpotBalance(data.balance);
-      } catch (err) {
-        console.error('Error loading XPOT balance (via API)', err);
-        if (!cancelled) setXpotBalance('error');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthedEnough, publicKey]);
-
-  // ─────────────────────────────────────────────
-  // Load wallet-specific draw history (ONLY when authed)
-  // ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!isAuthedEnough) {
-      setHistoryEntries([]);
-      setHistoryError(null);
-      setLoadingHistory(false);
-      return;
-    }
-
-    if (!publicKey) {
-      setHistoryEntries([]);
-      setHistoryError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setLoadingHistory(true);
-    setHistoryError(null);
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/tickets/history?wallet=${publicKey.toBase58()}`,
-          { cache: 'no-store' },
-        );
-        if (!res.ok) throw new Error('Failed to load history');
-
-        const data = await res.json();
-        if (cancelled) return;
-
-        if (Array.isArray(data.tickets)) {
-          setHistoryEntries(
-            data.tickets.map((t: any) => ({
-              id: t.id,
-              code: t.code,
-              status: t.status as EntryStatus,
-              label: t.label ?? '',
-              jackpotUsd: t.jackpotUsd ?? 0,
-              createdAt: t.createdAt,
-              walletAddress: t.walletAddress,
-            })),
-          );
-        } else {
-          setHistoryEntries([]);
-        }
-      } catch (err) {
-        console.error('Failed to load history', err);
-        if (!cancelled) {
-          setHistoryError((err as Error).message ?? 'Failed to load history');
-        }
-      } finally {
-        if (!cancelled) setLoadingHistory(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthedEnough, publicKey]);
-
-  // ─────────────────────────────────────────────
-  // Load recent winners (ONLY when authed)
-  // ─────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadWinners() {
-      if (!isAuthedEnough) {
-        setRecentWinners([]);
-        setLoadingWinners(false);
-        setWinnersError(null);
-        return;
-      }
-
-      setLoadingWinners(true);
-      setWinnersError(null);
-
-      try {
-        const res = await fetch('/api/winners/recent?limit=5', {
-          cache: 'no-store',
-        });
-        if (!res.ok) throw new Error('Failed to load recent winners');
-
-        const data = await res.json();
-        if (cancelled) return;
-
-        if (Array.isArray(data.winners)) {
-          setRecentWinners(
-            data.winners.map((w: any) => ({
-              id: w.id,
-              drawDate: w.drawDate,
-              ticketCode: w.ticketCode,
-              jackpotUsd: w.jackpotUsd ?? 0,
-              walletAddress: w.walletAddress,
-              handle: w.handle ?? null,
-            })),
-          );
-        } else {
-          setRecentWinners([]);
-        }
-      } catch (err) {
-        console.error('Failed to load recent winners', err);
-        if (!cancelled) {
-          setWinnersError(
-            (err as Error).message ?? 'Failed to load recent winners',
-          );
-        }
-      } finally {
-        if (!cancelled) setLoadingWinners(false);
-      }
-    }
-
-    loadWinners();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthedEnough]);
-
-  // ─────────────────────────────────────────────
   // Ticket actions
-  // ─────────────────────────────────────────────
-
   async function handleCopyCode(entry: Entry) {
     const ok = await safeCopy(entry.code);
     if (!ok) return;
@@ -707,7 +605,9 @@ export default function DashboardClient() {
       refreshAll('manual');
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
-      setClaimError('Unexpected error while getting your ticket. Please try again.');
+      setClaimError(
+        'Unexpected error while getting your ticket. Please try again.',
+      );
     } finally {
       setClaiming(false);
     }
@@ -727,20 +627,6 @@ export default function DashboardClient() {
     !!winner &&
     !!normalizedWallet &&
     winner.walletAddress?.toLowerCase() === normalizedWallet;
-
-  const topStatusLabel = !walletConnected
-    ? 'Activate wallet'
-    : ticketClaimed
-    ? 'Entry secured'
-    : 'Wallet linked';
-
-  const topStatusSub = !walletConnected
-    ? 'Required to enter today’s XPOT'
-    : ticketClaimed
-    ? 'You’re in today’s draw'
-    : currentWalletAddress
-    ? shortWallet(currentWalletAddress)
-    : 'Connected';
 
   // ─────────────────────────────────────────────
   // Render
@@ -796,7 +682,10 @@ export default function DashboardClient() {
                   </span>
                 </div>
 
-                <Link href="/hub/history" className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
+                <Link
+                  href="/hub/history"
+                  className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                >
                   <History className="mr-2 h-4 w-4" />
                   <span className="ml-1">History</span>
                 </Link>
@@ -845,7 +734,9 @@ export default function DashboardClient() {
               <section className={CARD}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">Connected identity</p>
+                    <p className="text-sm font-semibold text-slate-100">
+                      Connected identity
+                    </p>
                     <p className="mt-1 text-xs text-slate-400">
                       Wallet and X identity used for XPOT draws
                     </p>
@@ -870,7 +761,9 @@ export default function DashboardClient() {
                   />
 
                   <div className={SUBCARD}>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Eligibility</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Eligibility
+                    </p>
                     <div className="mt-1">
                       {typeof xpotBalance === 'number' ? (
                         hasRequiredXpot ? (
@@ -891,9 +784,13 @@ export default function DashboardClient() {
                   </div>
 
                   <div className={SUBCARD}>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Wallet</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Wallet
+                    </p>
                     <p className="mt-1 font-mono text-sm text-slate-100">
-                      {currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
+                      {currentWalletAddress
+                        ? shortWallet(currentWalletAddress)
+                        : 'Not connected'}
                     </p>
                   </div>
                 </div>
@@ -913,10 +810,32 @@ export default function DashboardClient() {
                   )}
 
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-100">{name}</p>
+                    <p className="truncate text-sm font-semibold text-slate-100">
+                      {name}
+                    </p>
                     <p className="text-xs text-slate-500">
                       Holding requirement: {REQUIRED_XPOT.toLocaleString()} XPOT
                     </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs text-slate-500">
+                    Next draw in{' '}
+                    <span className="font-mono text-slate-200">{countdown}</span>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {lastSyncedAt ? (
+                      <span
+                        key={syncPulse}
+                        className="inline-flex items-center gap-2"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                        Synced {new Date(lastSyncedAt).toLocaleTimeString('de-DE')}
+                      </span>
+                    ) : (
+                      'Syncing…'
+                    )}
                   </div>
                 </div>
               </section>
@@ -925,7 +844,9 @@ export default function DashboardClient() {
               <section className={CARD}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">Today’s XPOT</p>
+                    <p className="text-sm font-semibold text-slate-100">
+                      Today’s XPOT
+                    </p>
                     <p className="mt-1 text-xs text-slate-400">
                       Claim a free entry if your wallet holds the minimum XPOT.
                     </p>
@@ -939,7 +860,8 @@ export default function DashboardClient() {
 
                 {!walletConnected && (
                   <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3 text-xs text-slate-400">
-                    Activate your wallet to check eligibility and claim today’s entry.
+                    Activate your wallet to check eligibility and claim today’s
+                    entry.
                   </div>
                 )}
 
@@ -954,7 +876,9 @@ export default function DashboardClient() {
                       {claiming ? 'Generating…' : 'Claim today’s entry'}
                     </button>
 
-                    {claimError && <p className="mt-3 text-xs text-amber-300">{claimError}</p>}
+                    {claimError && (
+                      <p className="mt-3 text-xs text-amber-300">{claimError}</p>
+                    )}
 
                     {typeof xpotBalance === 'number' && !hasRequiredXpot && (
                       <p className="mt-3 text-xs text-slate-500">
@@ -970,10 +894,14 @@ export default function DashboardClient() {
 
                 {walletConnected && ticketClaimed && todaysTicket && (
                   <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Your ticket code</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Your ticket code
+                    </p>
 
                     <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-                      <p className="font-mono text-base text-slate-100">{todaysTicket.code}</p>
+                      <p className="font-mono text-base text-slate-100">
+                        {todaysTicket.code}
+                      </p>
 
                       <button
                         type="button"
@@ -987,7 +915,9 @@ export default function DashboardClient() {
 
                     <p className="mt-2 text-xs text-slate-500">
                       Status:{' '}
-                      <span className="font-semibold text-slate-200">IN DRAW</span>
+                      <span className="font-semibold text-slate-200">
+                        IN DRAW
+                      </span>
                       {' · '}Issued {formatDateTime(todaysTicket.createdAt)}
                     </p>
                   </div>
@@ -995,7 +925,8 @@ export default function DashboardClient() {
 
                 {walletConnected && ticketClaimed && !todaysTicket && (
                   <p className="mt-4 text-xs text-slate-500">
-                    Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.
+                    Your wallet has an entry today, but it hasn’t loaded yet.
+                    Refresh the page.
                   </p>
                 )}
 
@@ -1011,7 +942,9 @@ export default function DashboardClient() {
                 <section className={CARD}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-slate-100">Your entries today</p>
+                      <p className="text-sm font-semibold text-slate-100">
+                        Your entries today
+                      </p>
                       <p className="mt-1 text-xs text-slate-400">
                         Entries tied to your connected wallet.
                       </p>
@@ -1036,7 +969,9 @@ export default function DashboardClient() {
                           className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                            <p className="font-mono text-sm text-slate-100">
+                              {t.code}
+                            </p>
                             <StatusPill
                               tone={
                                 t.status === 'in-draw'
@@ -1066,7 +1001,9 @@ export default function DashboardClient() {
               <section className={CARD}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">Recent winners</p>
+                    <p className="text-sm font-semibold text-slate-100">
+                      Recent winners
+                    </p>
                     <p className="mt-1 text-xs text-slate-400">
                       Latest completed draws across all holders.
                     </p>
@@ -1083,7 +1020,9 @@ export default function DashboardClient() {
                   ) : winnersError ? (
                     <p className="text-xs text-amber-300">{winnersError}</p>
                   ) : recentWinners.length === 0 ? (
-                    <p className="text-xs text-slate-500">No completed draws yet.</p>
+                    <p className="text-xs text-slate-500">
+                      No completed draws yet.
+                    </p>
                   ) : (
                     recentWinners.map(w => {
                       const h = w.handle ? w.handle.replace(/^@/, '') : null;
@@ -1093,7 +1032,9 @@ export default function DashboardClient() {
                           className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-slate-400">{formatDate(w.drawDate)}</p>
+                            <p className="text-xs text-slate-400">
+                              {formatDate(w.drawDate)}
+                            </p>
                             {h ? (
                               <StatusPill tone="sky">
                                 <X className="h-3.5 w-3.5" />
@@ -1110,7 +1051,9 @@ export default function DashboardClient() {
                             </div>
 
                             <div className="min-w-0">
-                              <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
+                              <p className="truncate font-mono text-sm text-slate-100">
+                                {w.ticketCode}
+                              </p>
                               <p className="mt-1 text-xs text-slate-500">
                                 {h ? `@${h}` : shortWallet(w.walletAddress)}
                               </p>
@@ -1127,7 +1070,9 @@ export default function DashboardClient() {
               <section className={CARD}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">Your draw history</p>
+                    <p className="text-sm font-semibold text-slate-100">
+                      Your draw history
+                    </p>
                     <p className="mt-1 text-xs text-slate-400">
                       Past entries for this wallet (wins, not-picked, expired).
                     </p>
@@ -1140,7 +1085,9 @@ export default function DashboardClient() {
 
                 <div className="mt-4 space-y-2">
                   {!walletConnected ? (
-                    <p className="text-xs text-slate-500">Connect your wallet to view history.</p>
+                    <p className="text-xs text-slate-500">
+                      Connect your wallet to view history.
+                    </p>
                   ) : loadingHistory ? (
                     <p className="text-xs text-slate-500">Loading…</p>
                   ) : historyError ? (
@@ -1154,7 +1101,9 @@ export default function DashboardClient() {
                         className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                          <p className="font-mono text-sm text-slate-100">
+                            {t.code}
+                          </p>
                           <StatusPill
                             tone={
                               t.status === 'won'
@@ -1169,7 +1118,9 @@ export default function DashboardClient() {
                             {t.status.replace('-', ' ')}
                           </StatusPill>
                         </div>
-                        <p className="mt-1 text-xs text-slate-500">{formatDateTime(t.createdAt)}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {formatDateTime(t.createdAt)}
+                        </p>
                       </div>
                     ))
                   )}
