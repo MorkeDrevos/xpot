@@ -390,36 +390,36 @@ export default function AdminPage() {
   }, []);
 
   async function authedFetch(input: string, init?: RequestInit) {
-  if (!adminToken) {
-    return { ok: false, error: 'NO_ADMIN_TOKEN' };
+    if (!adminToken) {
+      return { ok: false, error: 'NO_ADMIN_TOKEN' };
+    }
+
+    const headers = new Headers(init?.headers || {});
+    headers.set('Content-Type', 'application/json');
+    headers.set('x-xpot-admin-key', adminToken.trim());
+
+    const res = await fetch(input, {
+      ...init,
+      headers,
+    });
+
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        status: res.status,
+        error: data?.error || `Request failed (${res.status})`,
+      };
+    }
+
+    return data;
   }
-
-  const headers = new Headers(init?.headers || {});
-  headers.set('Content-Type', 'application/json');
-  headers.set('x-xpot-admin-key', adminToken.trim());
-
-  const res = await fetch(input, {
-    ...init,
-    headers,
-  });
-
-  let data: any = null;
-  try {
-    data = await res.json();
-  } catch {
-    data = null;
-  }
-
-  if (!res.ok) {
-    return {
-      ok: false,
-      status: res.status,
-      error: data?.error || `Request failed (${res.status})`,
-    };
-  }
-
-  return data;
-}
 
   async function loadOpsMode() {
     const data = await authedFetch('/api/admin/ops-mode');
@@ -619,123 +619,119 @@ export default function AdminPage() {
   }
 
   // ── Pick main winner (manual override) ───────
-async function handlePickMainWinner() {
-  setPickError(null);
-  setPickSuccess(null);
+  async function handlePickMainWinner() {
+    setPickError(null);
+    setPickSuccess(null);
 
-  if (!adminToken) {
-    setPickError('Admin token missing. Unlock admin first.');
-    return;
-  }
-
-  setIsPickingWinner(true);
-  try {
-    const data = await authedFetch('/api/admin/pick-winner', {
-      method: 'POST',
-    });
-
-    const raw = (data as any).winner;
-    if (!raw) throw new Error('No winner returned from API');
-
-    const winner: AdminWinner = {
-      ...raw,
-      kind: raw.kind
-        ? (String(raw.kind).toLowerCase() as AdminWinnerKind)
-        : 'main',
-      payoutUsd:
-        raw.payoutUsd ??
-        raw.payoutXpot ??
-        raw.amountUsd ??
-        raw.amountXpot ??
-        0,
-    };
-
-    const addr =
-      typeof winner.walletAddress === 'string'
-        ? winner.walletAddress
-        : '';
-
-    const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
-
-    setPickSuccess(
-      `Main XPOT winner: ${winner.ticketCode || '(no ticket)'} (${shortAddr})`,
-    );
-
-    try {
-      const winnersData = await authedFetch('/api/admin/winners');
-      setWinners((winnersData as any).winners ?? []);
-    } catch (err) {
-      console.error('[ADMIN] refresh winners after pick error', err);
-      setWinners(prev => [winner, ...prev]);
+    if (!adminToken) {
+      setPickError('Admin token missing. Unlock admin first.');
+      return;
     }
 
-    setTodayDraw(prev => (prev ? { ...prev, status: 'closed' } : prev));
-  } catch (err: any) {
-    setPickError(err.message || 'Failed to pick main XPOT winner');
-  } finally {
-    setIsPickingWinner(false);
+    setIsPickingWinner(true);
+    try {
+      const data = await authedFetch('/api/admin/pick-winner', {
+        method: 'POST',
+      });
+
+      const raw = (data as any).winner;
+      if (!raw) throw new Error('No winner returned from API');
+
+      const winner: AdminWinner = {
+        ...raw,
+        kind: raw.kind
+          ? (String(raw.kind).toLowerCase() as AdminWinnerKind)
+          : 'main',
+        payoutUsd:
+          raw.payoutUsd ??
+          raw.payoutXpot ??
+          raw.amountUsd ??
+          raw.amountXpot ??
+          0,
+      };
+
+      const addr =
+        typeof winner.walletAddress === 'string' ? winner.walletAddress : '';
+
+      const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
+
+      setPickSuccess(
+        `Main XPOT winner: ${winner.ticketCode || '(no ticket)'} (${shortAddr})`,
+      );
+
+      try {
+        const winnersData = await authedFetch('/api/admin/winners');
+        setWinners((winnersData as any).winners ?? []);
+      } catch (err) {
+        console.error('[ADMIN] refresh winners after pick error', err);
+        setWinners(prev => [winner, ...prev]);
+      }
+
+      setTodayDraw(prev => (prev ? { ...prev, status: 'closed' } : prev));
+    } catch (err: any) {
+      setPickError(err.message || 'Failed to pick main XPOT winner');
+    } finally {
+      setIsPickingWinner(false);
+    }
   }
-}
 
   async function handlePickBonusWinnerNow() {
-  setBonusPickError(null);
-  setBonusPickSuccess(null);
+    setBonusPickError(null);
+    setBonusPickSuccess(null);
 
-  if (!adminToken) {
-    setBonusPickError('Admin token missing. Unlock admin first.');
-    return;
-  }
-
-  if (!todayDraw?.id) {
-    setBonusPickError('No active draw.');
-    return;
-  }
-
-  // 🔒 HARD BLOCK
-  if (todayDraw.status !== 'open') {
-    setBonusPickError('Bonus winners can only be picked while the draw is open.');
-    return;
-  }
-
-  setIsPickingBonusWinner(true);
-  try {
-    const data = await authedFetch('/api/admin/pick-bonus-winner', {
-      method: 'POST',
-      body: JSON.stringify({
-        drawId: todayDraw.id,
-        label: bonusLabel || 'Bonus XPOT',
-        amountXpot: Number(bonusAmount),
-      }),
-    });
-
-    if ((data as any)?.ok === false) {
-      throw new Error((data as any).error);
+    if (!adminToken) {
+      setBonusPickError('Admin token missing. Unlock admin first.');
+      return;
     }
 
-    const raw = (data as any).winner;
-    if (!raw) throw new Error('No winner returned');
+    if (!todayDraw?.id) {
+      setBonusPickError('No active draw.');
+      return;
+    }
 
-    const winner: AdminWinner = {
-      ...raw,
-      payoutUsd:
-        raw.payoutUsd ??
-        raw.payoutXpot ??
-        raw.amountUsd ??
-        raw.amountXpot ??
-        0,
-    };
+    // 🔒 HARD BLOCK
+    if (todayDraw.status !== 'open') {
+      setBonusPickError('Bonus winners can only be picked while the draw is open.');
+      return;
+    }
 
-    setBonusPickSuccess(
-      `Bonus winner: ${winner.ticketCode || '(no ticket)'}`
-    );
+    setIsPickingBonusWinner(true);
+    try {
+      const data = await authedFetch('/api/admin/pick-bonus-winner', {
+        method: 'POST',
+        body: JSON.stringify({
+          drawId: todayDraw.id,
+          label: bonusLabel || 'Bonus XPOT',
+          amountXpot: Number(bonusAmount),
+        }),
+      });
 
-    setWinners(prev => [winner, ...prev]);
-  } catch (err: any) {
-    setBonusPickError(err.message || 'Failed to pick bonus winner');
-  } finally {
-    setIsPickingBonusWinner(false);
+      if ((data as any)?.ok === false) {
+        throw new Error((data as any).error);
+      }
+
+      const raw = (data as any).winner;
+      if (!raw) throw new Error('No winner returned');
+
+      const winner: AdminWinner = {
+        ...raw,
+        payoutUsd:
+          raw.payoutUsd ??
+          raw.payoutXpot ??
+          raw.amountUsd ??
+          raw.amountXpot ??
+          0,
+      };
+
+      setBonusPickSuccess(`Bonus winner: ${winner.ticketCode || '(no ticket)'}`);
+
+      setWinners(prev => [winner, ...prev]);
+    } catch (err: any) {
+      setBonusPickError(err.message || 'Failed to pick bonus winner');
+    } finally {
+      setIsPickingBonusWinner(false);
+    }
   }
-}
 
   // ── Panic reopen draw ───────────────────────
   async function handleReopenDraw() {
@@ -846,11 +842,11 @@ async function handlePickMainWinner() {
       }
 
       // TEMP: ops-mode paused until DB is fixed
-// try {
-//   await loadOpsMode();
-// } catch (err: any) {
-//   console.error('[ADMIN] /ops-mode error', err);
-// }
+      // try {
+      //   await loadOpsMode();
+      // } catch (err: any) {
+      //   console.error('[ADMIN] /ops-mode error', err);
+      // }
 
       // ── Upcoming ──────────────────────
       setUpcomingLoading(true);
@@ -1021,7 +1017,7 @@ async function handlePickMainWinner() {
 
   const isDrawLocked = todayDraw?.status === 'closed';
 
-// TEMP: manual-only until ops-mode + DB are re-enabled
+  // TEMP: manual-only until ops-mode + DB are re-enabled
   const isAutoActive = false;
 
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -1029,9 +1025,7 @@ async function handlePickMainWinner() {
   const now = new Date();
 
   let drawDateLabel = 'Draw date';
-  let drawDateValue: Date | null = todayDraw?.date
-    ? new Date(todayDraw.date)
-    : null;
+  let drawDateValue: Date | null = todayDraw?.date ? new Date(todayDraw.date) : null;
 
   if (closesAtDate && now >= closesAtDate) {
     drawDateLabel = 'Next draw date';
@@ -1066,50 +1060,54 @@ async function handlePickMainWinner() {
                     : 'border border-slate-700/70 bg-slate-900/70 text-slate-400'
                 }`}
               >
-                {tokenAccepted
-                  ? 'Access level confirmed'
-                  : 'Locked · token required'}
+                {tokenAccepted ? 'Access level confirmed' : 'Locked · token required'}
               </span>
 
-            {false && (
-  <>
-    {/* OPS MODE (TEMP DISABLED) */}
-    {tokenAccepted && (
-      <div className="hidden sm:flex items-center gap-2">
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
-            ${effectiveOpsMode === 'AUTO'
-              ? 'border border-emerald-400/60 bg-emerald-500/10 text-emerald-300'
-              : 'border border-slate-600/60 bg-slate-800/60 text-slate-200'
-            }`}
-          title={!envAutoAllowed ? 'AUTO is not allowed in this environment' : 'Current ops mode'}
-        >
-          {effectiveOpsMode === 'AUTO' ? 'AUTO MODE' : 'MANUAL MODE'}
-        </span>
+              {false && (
+                <>
+                  {/* OPS MODE (TEMP DISABLED) */}
+                  {tokenAccepted && (
+                    <div className="hidden sm:flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
+                          ${
+                            effectiveOpsMode === 'AUTO'
+                              ? 'border border-emerald-400/60 bg-emerald-500/10 text-emerald-300'
+                              : 'border border-slate-600/60 bg-slate-800/60 text-slate-200'
+                          }`}
+                        title={
+                          !envAutoAllowed
+                            ? 'AUTO is not allowed in this environment'
+                            : 'Current ops mode'
+                        }
+                      >
+                        {effectiveOpsMode === 'AUTO' ? 'AUTO MODE' : 'MANUAL MODE'}
+                      </span>
 
-        {!envAutoAllowed && (
-          <span className="ml-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[9px] text-amber-200">
-            ENV LOCK
-          </span>
-        )}
+                      {!envAutoAllowed && (
+                        <span className="ml-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[9px] text-amber-200">
+                          ENV LOCK
+                        </span>
+                      )}
 
-        <button
-          type="button"
-          className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-          onClick={() => {
-            const next: OpsMode = effectiveOpsMode === 'AUTO' ? 'MANUAL' : 'AUTO';
-            setModePending(next);
-            setModeTokenInput('');
-            setModeError(null);
-            setModeModalOpen(true);
-          }}
-        >
-          Toggle
-        </button>
-      </div>
-    )}
-  </>
-)}
+                      <button
+                        type="button"
+                        className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+                        onClick={() => {
+                          const next: OpsMode =
+                            effectiveOpsMode === 'AUTO' ? 'MANUAL' : 'AUTO';
+                          setModePending(next);
+                          setModeTokenInput('');
+                          setModeError(null);
+                          setModeModalOpen(true);
+                        }}
+                      >
+                        Toggle
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <form
@@ -1281,22 +1279,17 @@ async function handlePickMainWinner() {
                 </div>
 
                 <div className="mt-5 rounded-[24px] bg-slate-950/90 px-3 py-3 text-xs text-slate-500">
-                  {todayDrawError && (
-                    <p className="text-amber-300">{todayDrawError}</p>
-                  )}
+                  {todayDrawError && <p className="text-amber-300">{todayDrawError}</p>}
 
-                  {!todayDrawError &&
-                    !todayLoading &&
-                    todayDraw &&
-                    todayDraw.closesAt && (
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-sm sm:text-base">
-                            <span className="text-xs uppercase tracking-wide text-slate-500">
-                              Closes in
-                            </span>
-                            <span
-                              className={`
+                  {!todayDrawError && !todayLoading && todayDraw && todayDraw.closesAt && (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm sm:text-base">
+                          <span className="text-xs uppercase tracking-wide text-slate-500">
+                            Closes in
+                          </span>
+                          <span
+                            className={`
                               ml-2 mt-2 font-mono text-2xl font-semibold transition-all
                               ${
                                 isWarningCritical
@@ -1306,25 +1299,25 @@ async function handlePickMainWinner() {
                                   : 'text-emerald-300'
                               }
                             `}
-                            >
-                              {countdownText}
-                            </span>
-                          </p>
-                        </div>
+                          >
+                            {countdownText}
+                          </span>
+                        </p>
+                      </div>
 
-                        <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                          {!isAutoActive && (
-                            <button
-                              type="button"
-                              disabled={
-                                isPickingWinner ||
-                                !adminToken ||
-                                todayLoading ||
-                                !todayDraw ||
-                                todayDraw.status !== 'open'
-                              }
-                              onClick={handlePickMainWinner}
-                              className={`
+                      <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                        {!isAutoActive && (
+                          <button
+                            type="button"
+                            disabled={
+                              isPickingWinner ||
+                              !adminToken ||
+                              todayLoading ||
+                              !todayDraw ||
+                              todayDraw.status !== 'open'
+                            }
+                            onClick={handlePickMainWinner}
+                            className={`
                               ${BTN_PRIMARY} px-7 py-3 text-sm transition-all ease-out duration-300
                               ${
                                 isWarningCritical
@@ -1332,52 +1325,44 @@ async function handlePickMainWinner() {
                                   : ''
                               }
                             `}
-                            >
-                              {isPickingWinner
-                                ? 'Picking winner…'
-                                : 'Crown today’s XPOT winner'}
-                            </button>
-                          )}
+                          >
+                            {isPickingWinner ? 'Picking winner…' : 'Crown today’s XPOT winner'}
+                          </button>
+                        )}
 
-                          {isAutoActive && (
-                            <div className="flex flex-col items-end text-right">
-                              <span
-                                className="
+                        {isAutoActive && (
+                          <div className="flex flex-col items-end text-right">
+                            <span
+                              className="
                                 inline-flex items-center gap-2 rounded-full border border-sky-400/70
                                 bg-sky-500/10 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em]
                                 text-sky-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]
                               "
-                              >
-                                <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
-                                Auto draw enabled
-                              </span>
-                            </div>
-                          )}
+                            >
+                              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
+                              Auto draw enabled
+                            </span>
+                          </div>
+                        )}
 
-                          {todayDraw &&
-                            todayDraw.status === 'closed' &&
-                            adminToken &&
-                            !isAutoActive && (
-                              <button
-                                type="button"
-                                onClick={handleReopenDraw}
-                                disabled={isReopeningDraw}
-                                className={`${BTN_DANGER} px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]`}
-                              >
-                                {isReopeningDraw
-                                  ? 'Reopening…'
-                                  : '🚨 Emergency reopen draw'}
-                              </button>
-                            )}
-                        </div>
+                        {todayDraw && todayDraw.status === 'closed' && adminToken && !isAutoActive && (
+                          <button
+                            type="button"
+                            onClick={handleReopenDraw}
+                            disabled={isReopeningDraw}
+                            className={`${BTN_DANGER} px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]`}
+                          >
+                            {isReopeningDraw ? 'Reopening…' : '🚨 Emergency reopen draw'}
+                          </button>
+                        )}
                       </div>
-                    )}
+                    </div>
+                  )}
 
                   {!todayDrawError && !todayLoading && !todayDraw && (
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-slate-400 text-xs">
-                        No XPOT draw scheduled yet. The backend should auto-create
-                        one shortly.
+                        No XPOT draw scheduled yet. The backend should auto-create one shortly.
                       </p>
 
                       {isDevHost && (
@@ -1387,9 +1372,7 @@ async function handlePickMainWinner() {
                           disabled={creatingDraw || !adminToken}
                           className="inline-flex items-center justify-center rounded-full border border-emerald-500/70 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {creatingDraw
-                            ? 'Creating today’s draw…'
-                            : 'Create today’s draw (dev)'}
+                          {creatingDraw ? 'Creating today’s draw…' : 'Create today’s draw (dev)'}
                         </button>
                       )}
                     </div>
@@ -1398,9 +1381,7 @@ async function handlePickMainWinner() {
                   {(pickError || pickSuccess) && (
                     <div className="mt-2 text-xs">
                       {pickError && <p className="text-amber-300">{pickError}</p>}
-                      {pickSuccess && (
-                        <p className="text-emerald-300">{pickSuccess}</p>
-                      )}
+                      {pickSuccess && <p className="text-emerald-300">{pickSuccess}</p>}
                     </div>
                   )}
                 </div>
@@ -1412,12 +1393,10 @@ async function handlePickMainWinner() {
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-100">
-                  Schedule bonus XPOT
-                </p>
+                <p className="text-sm font-semibold text-slate-100">Schedule bonus XPOT</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Line up hype bonuses from today’s ticket pool. At the scheduled
-                  time, one extra winner will be picked.
+                  Line up hype bonuses from today’s ticket pool. At the scheduled time, one extra
+                  winner will be picked.
                 </p>
 
                 <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-slate-500">
@@ -1432,22 +1411,16 @@ async function handlePickMainWinner() {
                     Next bonus in {nextBonusCountdown}
                   </Badge>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    {nextBonusDrop.label} ·{' '}
-                    {nextBonusDrop.amountXpot.toLocaleString()} XPOT
+                    {nextBonusDrop.label} · {nextBonusDrop.amountXpot.toLocaleString()} XPOT
                   </p>
                 </div>
               )}
             </div>
 
-            <form
-              onSubmit={handleScheduleBonus}
-              className="mt-4 grid gap-4 lg:grid-cols-2"
-            >
+            <form onSubmit={handleScheduleBonus} className="mt-4 grid gap-4 lg:grid-cols-2">
               <div className="space-y-3">
                 <div className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Amount
-                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Amount</p>
                   <div className="mt-2 flex items-center gap-2">
                     <input
                       className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400/70"
@@ -1487,9 +1460,7 @@ async function handlePickMainWinner() {
 
               <div className="space-y-3">
                 <div className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Label
-                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Label</p>
                   <input
                     className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400/70"
                     value={bonusLabel}
@@ -1497,14 +1468,11 @@ async function handlePickMainWinner() {
                     placeholder="Bonus XPOT"
                   />
                   <p className="mt-2 text-[11px] text-slate-500">
-                    Shown in the winners log so you can tell hype bonuses apart
-                    from the main XPOT.
+                    Shown in the winners log so you can tell hype bonuses apart from the main XPOT.
                   </p>
 
                   <div className="mt-4">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                      Timer
-                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Timer</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {[5, 15, 30, 60].map(m => {
                         const active = bonusDelayMinutes === m;
@@ -1534,38 +1502,34 @@ async function handlePickMainWinner() {
                     {bonusSubmitting ? 'Scheduling…' : 'Schedule bonus XPOT'}
                   </button>
 
-                  <<button
-  type="button"
-  disabled={
-    isPickingBonusWinner ||
-    !adminToken ||
-    !todayDraw ||
-    todayDraw.status !== 'open'
-  }
-  onClick={handlePickBonusWinnerNow}
-  className={`${BTN_PRIMARY} mt-3 h-12 w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed`}
->
-  {todayDraw?.status !== 'open'
-    ? 'Bonus locked (draw closed)'
-    : isPickingBonusWinner
-    ? 'Picking bonus winner…'
-    : 'Pick bonus winner now'}
-</button>
+                  {/* ✅ FIXED: removed the extra "<" */}
+                  <button
+                    type="button"
+                    disabled={
+                      isPickingBonusWinner ||
+                      !adminToken ||
+                      !todayDraw ||
+                      todayDraw.status !== 'open'
+                    }
+                    onClick={handlePickBonusWinnerNow}
+                    className={`${BTN_PRIMARY} mt-3 h-12 w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
+                    {todayDraw?.status !== 'open'
+                      ? 'Bonus locked (draw closed)'
+                      : isPickingBonusWinner
+                      ? 'Picking bonus winner…'
+                      : 'Pick bonus winner now'}
+                  </button>
 
-{bonusPickError && (
-  <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>
-)}
-
-{bonusPickSuccess && (
-  <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>
-)}
+                  {bonusPickError && <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>}
+                  {bonusPickSuccess && (
+                    <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>
+                  )}
 
                   {(bonusError || bonusSuccess) && (
                     <div className="mt-3 text-xs">
                       {bonusError && <p className="text-amber-300">{bonusError}</p>}
-                      {bonusSuccess && (
-                        <p className="text-emerald-300">{bonusSuccess}</p>
-                      )}
+                      {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
                     </div>
                   )}
                 </div>
@@ -1595,18 +1559,12 @@ async function handlePickMainWinner() {
                 </button>
               </div>
 
-              {upcomingError && (
-                <p className="mt-2 text-xs text-amber-300">{upcomingError}</p>
-              )}
-              {cancelDropError && (
-                <p className="mt-2 text-xs text-amber-300">{cancelDropError}</p>
-              )}
+              {upcomingError && <p className="mt-2 text-xs text-amber-300">{upcomingError}</p>}
+              {cancelDropError && <p className="mt-2 text-xs text-amber-300">{cancelDropError}</p>}
 
               <div className="mt-3 space-y-2">
                 {upcomingDrops.length === 0 ? (
-                  <p className="text-xs text-slate-500">
-                    No bonus drops scheduled yet.
-                  </p>
+                  <p className="text-xs text-slate-500">No bonus drops scheduled yet.</p>
                 ) : (
                   upcomingDrops.map(d => (
                     <div
@@ -1614,12 +1572,9 @@ async function handlePickMainWinner() {
                       className="flex flex-col gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-100">
-                          {d.label}
-                        </p>
+                        <p className="truncate text-sm font-semibold text-slate-100">{d.label}</p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {formatDateTime(d.scheduledAt)} ·{' '}
-                          {d.amountXpot.toLocaleString()} XPOT
+                          {formatDateTime(d.scheduledAt)} · {d.amountXpot.toLocaleString()} XPOT
                         </p>
                       </div>
 
@@ -1653,7 +1608,6 @@ async function handlePickMainWinner() {
               </div>
             </div>
           </section>
-
           {/* Today's XPOT entries */}
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
