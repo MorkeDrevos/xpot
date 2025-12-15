@@ -11,19 +11,20 @@ import {
   SolflareWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
 
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { clusterApiUrl } from '@solana/web3.js';
-
 import '@solana/wallet-adapter-react-ui/styles.css';
 
-export default function Providers({ children }: { children: ReactNode }) {
-  const network = WalletAdapterNetwork.Mainnet;
+type Props = { children: ReactNode };
 
+export default function Providers({ children }: Props) {
   const endpoint =
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim() || clusterApiUrl(network);
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
+    'https://api.mainnet-beta.solana.com';
 
   const wallets = useMemo(
-    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter(),
+    ],
     [],
   );
 
