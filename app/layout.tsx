@@ -1,6 +1,5 @@
-'use client';
-
-import { useEffect } from 'react';
+// app/layout.tsx
+import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
 export default function RootLayout({
@@ -8,18 +7,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  useEffect(() => {
-    const saved = localStorage.getItem('xpot_theme');
-    if (saved) {
-      document.documentElement.dataset.theme = saved;
-    } else {
-      document.documentElement.dataset.theme = 'nebula';
-    }
-  }, []);
-
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ClerkProvider>{children}</ClerkProvider>
+      </body>
     </html>
   );
 }
