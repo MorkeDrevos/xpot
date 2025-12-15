@@ -10,42 +10,48 @@ export async function GET(req: NextRequest) {
   if (auth) return auth;
 
   try {
-    // Winner is the canonical table for all winners (main + bonus)
     const winners = await prisma.winner.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 50, // limit, adjust if needed
+      orderBy: { date: 'desc' }, // ✅ canonical ordering
+      take: 50,
       include: {
         ticket: {
-          include: {
-            wallet: true,
-          },
+          include: { wallet: true },
         },
         draw: true,
       },
     });
 
-    const payload = winners.map(w => ({
-      id: w.id,
-      date: w.date.toISOString(),
-      kind: w.kind ?? 'MAIN',
-      label: w.label ?? null,
-      ticketId: w.ticketId,
-      ticketCode: w.ticketCode,
-      wallet: w.ticket?.wallet?.address ?? w.walletAddress,
-      jackpotUsd: w.jackpotUsd,
-      payoutUsd: w.payoutUsd,
-      isPaidOut: w.isPaidOut,
-      txUrl: w.txUrl ?? null,
-      drawId: w.drawId,
-      drawDate: w.draw.drawDate.toISOString(),
-    }));
+    const payload = winners.map(w => {
+      const walletAddress = w.ticket?.wallet?.address ?? w.walletAddress ?? '';
+
+      return {
+        id: w.id,
+        date: w.date.toISOString(),
+        kind: w.kind ?? 'MAIN',
+        label: w.label ?? null,
+
+        ticketId: w.ticketId,
+        ticketCode: w.ticketCode,
+
+        walletAddress,
+        wallet: walletAddress, // keep for backwards compat if anything uses `wallet`
+
+        jackpotUsd: w.jackpotUsd ?? 0,
+        payoutUsd: w.payoutUsd ?? 0,
+        isPaidOut: !!w.isPaidOut,
+        txUrl: w.txUrl ?? null,
+
+        drawId: w.drawId,
+        drawDate: w.draw?.drawDate ? w.draw.drawDate.toISOString() : null,
+      };
+    });
 
     return NextResponse.json({ ok: true, winners: payload }, { status: 200 });
   } catch (err: any) {
     console.error('[XPOT] /admin/winners error:', err);
     return NextResponse.json(
       { ok: false, error: err?.message || 'INTERNAL_ERROR' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
