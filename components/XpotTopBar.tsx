@@ -1,4 +1,3 @@
-// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -19,9 +18,7 @@ type XpotTopBarProps = {
   sloganRight?: string;
   rightSlot?: ReactNode;
 
-  // If you have the purple PreLaunchBanner mounted
   hasBanner?: boolean;
-
   maxWidthClassName?: string; // default: max-w-[1440px]
 };
 
@@ -36,14 +33,11 @@ export default function XpotTopBar({
   const pathname = usePathname() || '';
   const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
 
-  // Overlap by 1px to kill any seam/gap forever (even if banner height changes)
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   return (
     <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
-      {/* Bar */}
       <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
-        {/* IMPORTANT: match PageShell container padding exactly */}
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
           <div className="flex min-h-[124px] items-center justify-between gap-6">
             {/* Left */}
@@ -63,7 +57,6 @@ export default function XpotTopBar({
                 />
               </Link>
 
-              {/* Pill + optional slogan */}
               <div className="hidden min-w-0 items-center gap-3 sm:flex">
                 <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
@@ -80,14 +73,20 @@ export default function XpotTopBar({
 
             {/* Right */}
             <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
-              {/* 1) If caller provides a rightSlot, ALWAYS use it */}
-              {rightSlot ? rightSlot : isHub ? <HubMenu /> : null}
+              {/* If caller provides rightSlot, use it */}
+              {rightSlot ? (
+                rightSlot
+              ) : isHub ? (
+                <HubMenu />
+              ) : (
+                <DefaultNav />
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Premium line (thin, fades before edges) */}
+      {/* Premium line */}
       <div className="relative h-[1px] w-full overflow-hidden">
         <div
           className="
@@ -108,7 +107,6 @@ export default function XpotTopBar({
         />
       </div>
 
-      {/* local keyframes (no globals needed) */}
       <style jsx>{`
         @keyframes xpotLineSweep {
           from {
@@ -123,15 +121,38 @@ export default function XpotTopBar({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Hub-only menu (History + Wallet Modal trigger + Clerk logout)               */
-/* -------------------------------------------------------------------------- */
+/* ------------------------------- */
+/* Non-hub default (your screenshot) */
+/* ------------------------------- */
+
+function DefaultNav() {
+  return (
+    <>
+      <Link href="/hub" className="transition hover:text-white">
+        Hub
+      </Link>
+      <Link href="/terms" className="transition hover:text-white">
+        Terms
+      </Link>
+      <Link
+        href="/hub"
+        className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition hover:bg-slate-200"
+      >
+        Enter today&apos;s XPOT →
+      </Link>
+    </>
+  );
+}
+
+/* ------------------------------- */
+/* Hub-only menu                    */
+/* ------------------------------- */
 
 function HubMenu() {
   return (
     <div className="flex items-center gap-4">
       <Link
-        href="/hub/history"
+        href="/dashboard/history"
         className="
           inline-flex items-center gap-2
           rounded-full border border-white/10 bg-white/[0.03]
@@ -143,10 +164,8 @@ function HubMenu() {
         History
       </Link>
 
-      {/* Wallet connect / change (opens wallet-adapter modal) */}
       <HubWalletMenuInline />
 
-      {/* Clerk sign out */}
       <SignOutButton redirectUrl="/hub">
         <button
           type="button"
@@ -181,12 +200,8 @@ function HubWalletMenuInline() {
         px-6 py-3
       "
     >
-      <div className="text-[28px] font-medium text-slate-100">
-        Select Wallet
-      </div>
-      <div className="text-[28px] font-medium text-slate-100">
-        Change wallet
-      </div>
+      <div className="text-[28px] font-medium text-slate-100">Select Wallet</div>
+      <div className="text-[28px] font-medium text-slate-100">Change wallet</div>
 
       {addr ? (
         <div className="mt-1 text-xs text-slate-400">
