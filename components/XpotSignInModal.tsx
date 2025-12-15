@@ -6,7 +6,7 @@ import { SignedIn, SignedOut, SignIn, UserButton } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 
 // Reuse your generic modal shell
-import Modal from '@/components/Modal';
+import ModalShell from '@/components/Modal';
 
 type XpotSignInModalProps = {
   afterSignOutUrl?: string;
