@@ -15,7 +15,6 @@ import {
   ExternalLink,
   LogOut,
   Radio,
-  Shield,
   Ticket,
   Trophy,
   Wallet,
@@ -33,15 +32,20 @@ export type HubWalletStatus = {
 
 type XpotTopBarProps = {
   logoHref?: string;
+
+  // Public pill (non-hub pages)
   pillText?: string;
+
+  // Optional right slogan (non-hub pages)
   sloganRight?: string;
+
+  // Escape hatch (non-hub pages only)
   rightSlot?: ReactNode;
 
   // Hub enhancements
   hubWalletStatus?: HubWalletStatus;
   onOpenWalletModal?: () => void;
   liveIsOpen?: boolean;
-  isAdmin?: boolean;
 
   // Banner
   hasBanner?: boolean;
@@ -61,13 +65,11 @@ export default function XpotTopBar({
   hubWalletStatus,
   onOpenWalletModal,
   liveIsOpen = false,
-  isAdmin = false,
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
   const pathname = usePathname() || '';
   const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
-  const effectivePillText = isHub ? 'HOLDER DASHBOARD' : pillText;
 
   const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
@@ -91,22 +93,24 @@ export default function XpotTopBar({
               </Link>
 
               <div className="hidden min-w-0 items-center gap-3 sm:flex">
+                {/* Non-hub: show protocol pill, Hub: show HUB pill */}
                 {isHub ? (
                   <Link
                     href="/hub"
                     className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300 hover:bg-white/[0.06]"
+                    title="Back to Hub"
                   >
                     <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
-                    <span className="truncate opacity-85">{effectivePillText}</span>
+                    <span className="truncate opacity-85">HUB</span>
                   </Link>
                 ) : (
                   <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
                     <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
-                    <span className="truncate opacity-85">{effectivePillText}</span>
+                    <span className="truncate opacity-85">{pillText}</span>
                   </span>
                 )}
 
-                {sloganRight && (
+                {!isHub && sloganRight && (
                   <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 lg:inline-flex">
                     {sloganRight}
                   </span>
@@ -116,18 +120,18 @@ export default function XpotTopBar({
 
             {/* RIGHT */}
             <div className="flex items-center gap-6 text-sm text-slate-300">
-              {rightSlot ? (
-                rightSlot
-              ) : isHub ? (
-                <HubMenu
+              {/* IMPORTANT: Hub routes never use rightSlot (prevents “Real-time reward flow” pills in nav). */}
+              {isHub ? (
+                <HubNav
                   clerkEnabled={clerkEnabled}
                   hubWalletStatus={hubWalletStatus}
                   onOpenWalletModal={onOpenWalletModal}
                   liveIsOpen={liveIsOpen}
-                  isAdmin={isAdmin}
                 />
+              ) : rightSlot ? (
+                rightSlot
               ) : (
-                <DefaultNav liveIsOpen={liveIsOpen} />
+                <PublicNav liveIsOpen={liveIsOpen} />
               )}
             </div>
           </div>
@@ -142,33 +146,71 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- DEFAULT NAV ---------------- */
+/* ---------------- LIVE CHIP (shared) ---------------- */
 
-function DefaultNav({ liveIsOpen }: { liveIsOpen: boolean }) {
+function LiveDot({ isOpen }: { isOpen: boolean }) {
+  return (
+    <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
+      {isOpen ? (
+        <>
+          <span className="absolute inline-flex h-3 w-3 animate-ping rounded-full bg-emerald-400/60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+        </>
+      ) : (
+        <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
+      )}
+    </span>
+  );
+}
+
+function LiveNavItem({
+  href,
+  label = 'Live',
+  isOpen,
+  variant,
+}: {
+  href: string;
+  label?: string;
+  isOpen: boolean;
+  variant: 'text' | 'pill';
+}) {
+  if (variant === 'pill') {
+    return (
+      <Link
+        href={href}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+        title={isOpen ? 'Live draw is open' : 'Live view'}
+      >
+        <LiveDot isOpen={isOpen} />
+        <Radio className="h-5 w-5 text-emerald-300" />
+        <span className="leading-none">{label}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-2 hover:text-white"
+      title={isOpen ? 'Live draw is open' : 'Live view'}
+    >
+      <LiveDot isOpen={isOpen} />
+      <Radio className="h-4 w-4 text-emerald-300" />
+      <span className="leading-none">{label}</span>
+    </Link>
+  );
+}
+
+/* ---------------- PUBLIC NAV ---------------- */
+
+function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
     <>
       <Link href="/hub" className="hover:text-white">
         Hub
       </Link>
 
-      <Link
-        href="/hub/live"
-        className="inline-flex items-center gap-2 hover:text-white"
-        title={liveIsOpen ? 'Live draw is open' : 'Live view'}
-      >
-        <span className="relative h-2 w-2">
-          {liveIsOpen ? (
-            <>
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
-            </>
-          ) : (
-            <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
-          )}
-        </span>
-        <Radio className="h-4 w-4 text-emerald-300" />
-        Live
-      </Link>
+      <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="text" />
 
       <Link
         href={WINNERS_HREF}
@@ -198,20 +240,18 @@ function DefaultNav({ liveIsOpen }: { liveIsOpen: boolean }) {
   );
 }
 
-/* ---------------- HUB MENU ---------------- */
+/* ---------------- HUB NAV ---------------- */
 
-function HubMenu({
+function HubNav({
   clerkEnabled,
   hubWalletStatus,
   onOpenWalletModal,
   liveIsOpen,
-  isAdmin,
 }: {
   clerkEnabled: boolean;
   hubWalletStatus?: HubWalletStatus;
   onOpenWalletModal?: () => void;
   liveIsOpen: boolean;
-  isAdmin: boolean;
 }) {
   const { user, isLoaded } = useUser();
   const externalAccounts = (user?.externalAccounts || []) as any[];
@@ -228,7 +268,7 @@ function HubMenu({
 
   return (
     <div className="flex items-center gap-4">
-      {/* Identity */}
+      {/* Identity chip */}
       <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:flex">
         {isLoaded && avatar ? (
           <img
@@ -246,26 +286,8 @@ function HubMenu({
         </span>
       </div>
 
-      {/* LIVE */}
-      <Link
-        href="/hub/live"
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
-      >
-        <span className="relative h-2 w-2">
-          {liveIsOpen ? (
-            <>
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
-            </>
-          ) : (
-            <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
-          )}
-        </span>
-        <Radio className="h-5 w-5 text-emerald-300" />
-        Live
-      </Link>
+      <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="pill" />
 
-      {/* WINNERS */}
       <Link
         href={WINNERS_HREF}
         className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
@@ -274,7 +296,6 @@ function HubMenu({
         Winners
       </Link>
 
-      {/* X */}
       <Link
         href={XPOT_X_POST}
         target="_blank"
@@ -285,24 +306,11 @@ function HubMenu({
         X
       </Link>
 
-      {/* OPS (admin only) */}
-      {isAdmin && (
-        <Link
-          href="/ops"
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
-        >
-          <Shield className="h-5 w-5 text-sky-300" />
-          Ops
-        </Link>
-      )}
-
-      {/* Wallet */}
       <HubWalletMenuInline
         hubWalletStatus={hubWalletStatus}
         onOpenWalletModal={onOpenWalletModal}
       />
 
-      {/* Log out */}
       {clerkEnabled && (
         <SignOutButton redirectUrl="/">
           <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
@@ -337,10 +345,10 @@ function HubWalletMenuInline({
   const addr = connected && publicKey ? publicKey.toBase58() : null;
 
   const label =
-    hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Activate wallet');
+    hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Select wallet');
   const sublabel =
     hubWalletStatus?.sublabel ??
-    (addr ? shortWallet(addr) : 'Required to enter today’s XPOT');
+    (addr ? shortWallet(addr) : 'Change wallet');
 
   const tone: HubWalletTone =
     hubWalletStatus?.winner ? 'sky'
@@ -356,7 +364,8 @@ function HubWalletMenuInline({
     <Wallet className="h-4 w-4" />
   );
 
-  const open = () => (onOpenWalletModal ? onOpenWalletModal() : setVisible(true));
+  const open = () =>
+    onOpenWalletModal ? onOpenWalletModal() : setVisible(true);
 
   return (
     <button
@@ -364,6 +373,7 @@ function HubWalletMenuInline({
       className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(
         tone,
       )} hover:opacity-95`}
+      title={addr ?? undefined}
     >
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30">
