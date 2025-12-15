@@ -1277,7 +1277,7 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 rounded-[24px] bg-slate-950/90 px-3 py-3 text-xs text-slate-500">
+                <div className="mt-5 rounded-[24px] bg-[#061434]/70 px-3 py-3 text-xs text-slate-400 backdrop-blur-md">
                   {todayDrawError && <p className="text-amber-300">{todayDrawError}</p>}
 
                   {!todayDrawError && !todayLoading && todayDraw && todayDraw.closesAt && (
