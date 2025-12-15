@@ -21,9 +21,7 @@ type XpotPageShellProps = {
   // Top bar controls
   showTopBar?: boolean; // default true
   topBarClassName?: string; // optional wrapper class
-
-  // ✅ NEW: pass props to XpotTopBar safely
-  topBarProps?: ComponentProps<typeof XpotTopBar>;
+  topBarProps?: ComponentProps<typeof XpotTopBar>; // ✅ allow hub to override
 };
 
 export default function XpotPageShell({
@@ -51,12 +49,7 @@ export default function XpotPageShell({
       {/* GLOBAL TOP BAR (TopBar itself is fixed; don't wrap in sticky) */}
       {showTopBar && (
         <div className={topBarClassName}>
-          <XpotTopBar
-            hasBanner
-            maxWidthClassName={maxWidthClassName}
-            rightSlot={topBarProps?.rightSlot ?? undefined}
-            {...topBarProps}
-          />
+          <XpotTopBar {...topBarProps} />
         </div>
       )}
 
@@ -101,7 +94,7 @@ export default function XpotPageShell({
       />
 
       {/* Vignette / depth mask */}
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
+      <div className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
 
       {/* CONTENT CONTAINER */}
       <div
