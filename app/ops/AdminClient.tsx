@@ -1480,13 +1480,31 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={bonusSubmitting || !tokenAccepted}
-                    className={`${BTN_GREEN} mt-5 h-12 w-full text-sm`}
-                  >
-                    {bonusSubmitting ? 'Scheduling…' : 'Schedule bonus XPOT'}
-                  </button>
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+  {/* Schedule bonus */}
+  <button
+    type="submit"
+    disabled={bonusSubmitting || !adminToken}
+    className={`${BTN_GREEN} h-10 text-[13px]`}
+  >
+    {bonusSubmitting ? 'Scheduling…' : 'Schedule bonus'}
+  </button>
+
+  {/* Pick bonus winner */}
+  <button
+    type="button"
+    disabled={
+      isPickingBonusWinner ||
+      !adminToken ||
+      !todayDraw ||
+      todayDraw.status !== 'open'
+    }
+    onClick={handlePickBonusWinnerNow}
+    className={`${BTN_PRIMARY} h-11 text-sm`}
+  >
+    {isPickingBonusWinner ? 'Picking…' : 'Pick winner'}
+  </button>
+</div>
 
                   {/* ✅ FIXED: removed the extra "<" */}
                   <button
