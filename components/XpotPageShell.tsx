@@ -1,7 +1,9 @@
 // components/XpotPageShell.tsx
 'use client';
 
-import { ReactNode, ComponentProps } from 'react';
+import { ReactNode, ComponentProps, useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
+
 import PreLaunchBanner from '@/components/PreLaunchBanner';
 import XpotTopBar from '@/components/XpotTopBar';
 
@@ -21,8 +23,112 @@ type XpotPageShellProps = {
   // Top bar controls
   showTopBar?: boolean; // default true
   topBarClassName?: string; // optional wrapper class
-  topBarProps?: ComponentProps<typeof XpotTopBar>; // ✅ NEW
+  topBarProps?: ComponentProps<typeof XpotTopBar>;
+
+  // Theme switcher (Ops/Admin only)
+  showOpsThemeSwitcher?: boolean; // default true
 };
+
+const THEME_KEY = 'xpot_ops_theme_v1';
+
+type ThemePreset = {
+  id: string;
+  label: string;
+  vars: Record<string, string>;
+};
+
+// Your requested anchors (blue -> violet -> magenta)
+const PRESETS: ThemePreset[] = [
+  {
+    id: 'nebula',
+    label: 'Nebula',
+    vars: {
+      '--xpot-accent-blue': '56 189 248',
+      '--xpot-accent-violet': '99 102 241',
+      '--xpot-accent-magenta': '236 72 153',
+      '--xpot-accent-emerald': '16 185 129',
+    },
+  },
+  {
+    id: 'icy',
+    label: 'Icy',
+    vars: {
+      '--xpot-accent-blue': '34 211 238',
+      '--xpot-accent-violet': '129 140 248',
+      '--xpot-accent-magenta': '244 114 182',
+      '--xpot-accent-emerald': '16 185 129',
+    },
+  },
+  {
+    id: 'royal',
+    label: 'Royal',
+    vars: {
+      '--xpot-accent-blue': '96 165 250',
+      '--xpot-accent-violet': '139 92 246',
+      '--xpot-accent-magenta': '236 72 153',
+      '--xpot-accent-emerald': '16 185 129',
+    },
+  },
+];
+
+function applyPreset(presetId: string) {
+  const preset = PRESETS.find(p => p.id === presetId) ?? PRESETS[0];
+  const root = document.documentElement;
+
+  for (const [k, v] of Object.entries(preset.vars)) {
+    root.style.setProperty(k, v);
+  }
+
+  // Keep compat with older name used in some places
+  root.style.setProperty('--xpot-accent-purple', `var(--xpot-accent-violet)`);
+
+  window.localStorage.setItem(THEME_KEY, preset.id);
+}
+
+function OpsThemeSwitcher() {
+  const [active, setActive] = useState<string>('nebula');
+
+  useEffect(() => {
+    const saved =
+      typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null;
+    const initial = saved && PRESETS.some(p => p.id === saved) ? saved : 'nebula';
+    setActive(initial);
+    applyPreset(initial);
+  }, []);
+
+  return (
+    <div className="hidden sm:flex items-center gap-2">
+      <span className="text-[10px] uppercase tracking-[0.22em] text-slate-400">
+        Theme
+      </span>
+
+      <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03] backdrop-blur">
+        {PRESETS.map(p => {
+          const isActive = p.id === active;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                setActive(p.id);
+                applyPreset(p.id);
+              }}
+              className={[
+                'h-8 px-3 text-[11px] font-semibold transition',
+                isActive
+                  ? 'bg-white/[0.10] text-slate-50'
+                  : 'text-slate-300 hover:bg-white/[0.06]',
+              ].join(' ')}
+              title={`Apply ${p.label}`}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function XpotPageShell({
   title,
@@ -36,13 +142,34 @@ export default function XpotPageShell({
   showTopBar = true,
   topBarClassName = '',
   topBarProps,
+  showOpsThemeSwitcher = true,
 }: XpotPageShellProps) {
+  const pathname = usePathname();
+
+  const isOpsOrAdmin = useMemo(() => {
+    return (
+      typeof pathname === 'string' &&
+      (pathname.startsWith('/ops') || pathname.startsWith('/admin'))
+    );
+  }, [pathname]);
+
+  const mergedRightSlot = useMemo(() => {
+    if (!isOpsOrAdmin || !showOpsThemeSwitcher) return rightSlot ?? null;
+
+    return (
+      <>
+        <OpsThemeSwitcher />
+        {rightSlot ? <div className="ml-2">{rightSlot}</div> : null}
+      </>
+    );
+  }, [isOpsOrAdmin, rightSlot, showOpsThemeSwitcher]);
+
   return (
     <div
-      className={[
-        'relative min-h-screen bg-[#02020a] text-slate-100',
-        className,
-      ].join(' ')}
+      className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(
+        ' ',
+      )}
+      data-xpot-page={isOpsOrAdmin ? 'ops' : undefined}
     >
       <PreLaunchBanner />
 
@@ -108,7 +235,7 @@ export default function XpotPageShell({
           containerClassName,
         ].join(' ')}
       >
-        {(title || subtitle || rightSlot) && (
+        {(title || subtitle || mergedRightSlot) && (
           <div
             className={[
               'mb-6 rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur',
@@ -130,10 +257,10 @@ export default function XpotPageShell({
               )}
             </div>
 
-            {rightSlot && (
+            {mergedRightSlot && (
               <div className="w-full justify-self-stretch sm:w-auto sm:justify-self-end">
                 <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-                  {rightSlot}
+                  {mergedRightSlot}
                 </div>
               </div>
             )}
