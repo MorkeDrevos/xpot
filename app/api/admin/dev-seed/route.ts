@@ -49,9 +49,18 @@ function startOfUtcDay(d = new Date()) {
   const yyyyMmDd = d.toISOString().slice(0, 10);
   return new Date(`${yyyyMmDd}T00:00:00.000Z`);
 }
-function endOfUtcDay(d = new Date()) {
-  const yyyyMmDd = d.toISOString().slice(0, 10);
-  return new Date(`${yyyyMmDd}T23:59:59.999Z`);
+
+async function wipeDevData() {
+  // Order matters due to relations.
+  // Winner -> Ticket -> BonusDrop -> Wallet -> User -> Draw
+  await prisma.$transaction([
+    prisma.winner.deleteMany({}),
+    prisma.ticket.deleteMany({}),
+    prisma.bonusDrop.deleteMany({}),
+    prisma.wallet.deleteMany({}),
+    prisma.user.deleteMany({}),
+    prisma.draw.deleteMany({}),
+  ]);
 }
 
 export async function POST(req: Request) {
@@ -88,16 +97,14 @@ export async function POST(req: Request) {
       return NextResponse.json({
         ok: true,
         skipped: true,
-        message: 'DB is not empty - skipping seed (use ?force=1 to override).',
-        counts: {
-          drawCount,
-          ticketCount,
-          winnerCount,
-          bonusCount,
-          walletCount,
-          userCount,
-        },
+        message: 'DB is not empty - skipping seed (use ?force=1 to wipe and reseed).',
+        counts: { drawCount, ticketCount, winnerCount, bonusCount, walletCount, userCount },
       });
+    }
+
+    // If force, make this repeatable: wipe then seed fresh.
+    if (force) {
+      await wipeDevData();
     }
 
     // More realism + ~5x data
@@ -114,15 +121,10 @@ export async function POST(req: Request) {
 
     const days = [day0, day1, day2];
 
-    // Create (or upsert) draws per day
+    // Create draws per day
     const draws: Draw[] = [];
     for (let i = 0; i < DRAWS; i++) {
       const drawDate = days[i];
-      const existing = await prisma.draw.findUnique({ where: { drawDate } });
-      if (existing) {
-        draws.push(existing);
-        continue;
-      }
 
       const closesAt =
         i === 2
@@ -132,17 +134,13 @@ export async function POST(req: Request) {
       const status = i < COMPLETED_DRAWS ? 'completed' : 'open';
 
       const created = await prisma.draw.create({
-        data: {
-          drawDate,
-          closesAt,
-          status,
-        },
+        data: { drawDate, closesAt, status },
       });
+
       draws.push(created);
     }
 
     // Create a pool of users/wallets so tickets repeat across days (realistic)
-    // ~120 wallets, ~45 users. Many wallets not attached to a user (also realistic).
     const USERS = 45;
     const WALLETS = 120;
 
@@ -173,6 +171,7 @@ export async function POST(req: Request) {
     const createdUsers: User[] = [];
     for (let i = 0; i < USERS; i++) {
       const xHandle = `${handles[i % handles.length]}_${randInt(10, 999)}`;
+
       const user = await prisma.user.create({
         data: {
           xUserId: `x_${randomBase58(10)}`,
@@ -183,6 +182,7 @@ export async function POST(req: Request) {
           )}`,
         },
       });
+
       createdUsers.push(user);
     }
 
@@ -192,11 +192,9 @@ export async function POST(req: Request) {
       const maybeUser = i < USERS ? createdUsers[i] : null;
 
       const w = await prisma.wallet.create({
-        data: {
-          address,
-          userId: maybeUser?.id ?? null,
-        },
+        data: { address, userId: maybeUser?.id ?? null },
       });
+
       createdWallets.push(w);
     }
 
@@ -214,8 +212,6 @@ export async function POST(req: Request) {
           999999,
         )}-${t + 1}`;
 
-        // Completed draws: a few WON/CLAIMED, most NOT_PICKED
-        // Today draw: mostly IN_DRAW
         let status: 'IN_DRAW' | 'NOT_PICKED' | 'WON' | 'CLAIMED' = 'IN_DRAW';
         if (i < COMPLETED_DRAWS) {
           status = t < 3 ? 'CLAIMED' : t < 10 ? 'WON' : 'NOT_PICKED';
@@ -245,9 +241,7 @@ export async function POST(req: Request) {
             drawId: draw.id,
             label: `Bonus XPOT #${b + 1}`,
             amountXpot: randInt(25_000, 150_000),
-            scheduledAt: new Date(
-              draw.drawDate.getTime() + (10 + b * 15) * 60 * 1000,
-            ),
+            scheduledAt: new Date(draw.drawDate.getTime() + (10 + b * 15) * 60 * 1000),
             status: i < COMPLETED_DRAWS ? 'FIRED' : 'SCHEDULED',
           },
         });
@@ -269,7 +263,6 @@ export async function POST(req: Request) {
 
       const pick = () => tickets[randInt(0, tickets.length - 1)];
 
-      // MAIN
       const main = pick();
       createdWinners.push(
         await prisma.winner.create({
@@ -289,7 +282,6 @@ export async function POST(req: Request) {
         }),
       );
 
-      // BONUS winners
       for (let b = 0; b < BONUS_WINNERS_PER_COMPLETED_DRAW; b++) {
         const bt = pick();
         createdWinners.push(
