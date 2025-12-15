@@ -3,7 +3,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
 const isPublicRoute = createRouteMatcher([
   '/',
-  '/hub(.*)', // ✅ allow hub to render so we can show blurred lock overlay
+  '/hub(.*)',          // ✅ allow hub to render so we can blur/lock it client-side
   '/sign-in(.*)',
   '/sign-up(.*)',
 ]);
