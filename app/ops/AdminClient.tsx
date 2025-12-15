@@ -1490,7 +1490,7 @@ export default function AdminPage() {
     {bonusSubmitting ? 'Scheduling…' : 'Schedule bonus'}
   </button>
 
-  {/* Pick bonus winner */}
+  {/* Pick bonus winner now */}
   <button
     type="button"
     disabled={
@@ -1500,52 +1500,29 @@ export default function AdminPage() {
       todayDraw.status !== 'open'
     }
     onClick={handlePickBonusWinnerNow}
-    className={`${BTN_PRIMARY} h-11 text-sm`}
+    className={`${BTN_PRIMARY} h-10 text-[13px] disabled:opacity-40 disabled:cursor-not-allowed`}
   >
-    {isPickingBonusWinner ? 'Picking…' : 'Pick winner'}
+    {todayDraw?.status !== 'open'
+      ? 'Bonus locked'
+      : isPickingBonusWinner
+      ? 'Picking…'
+      : 'Pick winner'}
   </button>
 </div>
 
-                  {/* ✅ FIXED: removed the extra "<" */}
-                  <button
-                    type="button"
-                    disabled={
-                      isPickingBonusWinner ||
-                      !adminToken ||
-                      !todayDraw ||
-                      todayDraw.status !== 'open'
-                    }
-                    onClick={handlePickBonusWinnerNow}
-                    className={`${BTN_PRIMARY} mt-3 h-12 w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed`}
-                  >
-                    {todayDraw?.status !== 'open'
-                      ? 'Bonus locked (draw closed)'
-                      : isPickingBonusWinner
-                      ? 'Picking bonus winner…'
-                      : 'Pick bonus winner now'}
-                  </button>
+{bonusPickError && (
+  <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>
+)}
+{bonusPickSuccess && (
+  <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>
+)}
 
-                  {bonusPickError && <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>}
-                  {bonusPickSuccess && (
-                    <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>
-                  )}
-
-                  {(bonusError || bonusSuccess) && (
-                    <div className="mt-3 text-xs">
-                      {bonusError && <p className="text-amber-300">{bonusError}</p>}
-                      {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </form>
-
-            <div className="mt-5 border-t border-slate-800/70 pt-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
-      Upcoming bonus drops
-    </p>
+{(bonusError || bonusSuccess) && (
+  <div className="mt-3 text-xs">
+    {bonusError && <p className="text-amber-300">{bonusError}</p>}
+    {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
+  </div>
+)}
 
     {nextBonusDrop && nextBonusCountdown && (
       <div className="flex items-center gap-3">
