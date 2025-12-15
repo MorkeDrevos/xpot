@@ -1,8 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/internal/bonus-run",
-      "schedule": "*/1 * * * *"
-    }
-  ]
-}
+{}

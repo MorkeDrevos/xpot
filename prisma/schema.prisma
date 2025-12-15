@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─────────────────────────────────────────────
@@ -32,72 +33,89 @@ enum WinnerKind {
   BONUS
 }
 
+// Ops mode for admin control (manual vs auto)
+enum OpsMode {
+  MANUAL
+  AUTO
+}
+
 // ─────────────────────────────────────────────
 // Models
 // ─────────────────────────────────────────────
 
+// Single-row config table (stores ops mode etc)
+model OpsConfig {
+  // enforce exactly one row via stable primary key
+  singleton String   @id @default("singleton")
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  mode       OpsMode  @default(MANUAL)
+}
+
 // User (optional identity, NOT tied to tickets)
 model User {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  createdAt   DateTime @default(now())
 
-  clerkId    String? @unique
-  xUserId    String? @unique
-  xHandle    String? @unique
-  xName      String?
-  xAvatarUrl String?
+  clerkId     String? @unique
+  xUserId     String? @unique
+  xHandle     String? @unique
+  xName       String?
+  xAvatarUrl  String?
 
-  wallets    Wallet[]
+  wallets     Wallet[]
 
   @@index([xHandle])
 }
 
 // Wallet → owns tickets
 model Wallet {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  createdAt   DateTime @default(now())
 
-  address   String   @unique
+  address    String   @unique
 
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
 
-  tickets   Ticket[]
+  tickets    Ticket[]
 
   @@index([userId])
 }
 
 // Daily XPOT draw
 model Draw {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  createdAt   DateTime @default(now())
 
   /// Calendar date of the draw (UTC day bucket)
-  drawDate  DateTime @unique
+  drawDate   DateTime @unique
 
   /// When the main XPOT closes for entries
-  closesAt  DateTime?
+  closesAt   DateTime?
 
   /// "open" / "closed" / "completed"
-  status    String   @default("open")
+  status     String   @default("open")
 
-  tickets    Ticket[]
-  winners    Winner[]
-  bonusDrops BonusDrop[]
+  tickets     Ticket[]
+  winners     Winner[]
+  bonusDrops  BonusDrop[]
 }
 
 // XPOT ticket in a draw
 model Ticket {
   id            String       @id @default(cuid())
-  createdAt     DateTime     @default(now())
+  createdAt      DateTime     @default(now())
 
   code          String       @unique
 
-  // ✅ Ticket must always have an owning wallet
+  // Ticket must always have an owning wallet
   walletId      String
   wallet        Wallet       @relation(fields: [walletId], references: [id])
 
-  // ✅ Snapshot of wallet address at creation time
+  // Snapshot of wallet address at creation time
   walletAddress String
 
   status        TicketStatus @default(IN_DRAW)
@@ -112,23 +130,23 @@ model Ticket {
   @@index([status])
   @@index([walletAddress])
 
-  // ✅ Prevent duplicate tickets per wallet per draw
+  // Prevent duplicate tickets per wallet per draw
   @@unique([walletId, drawId])
 }
 
 // Log of main + bonus winners
 model Winner {
-  id           String      @id @default(cuid())
-  createdAt    DateTime    @default(now())
+  id            String      @id @default(cuid())
+  createdAt      DateTime    @default(now())
 
-  drawId       String
-  draw         Draw        @relation(fields: [drawId], references: [id])
+  drawId        String
+  draw          Draw        @relation(fields: [drawId], references: [id])
 
-  ticketId     String
-  ticket       Ticket      @relation(fields: [ticketId], references: [id])
+  ticketId      String
+  ticket        Ticket      @relation(fields: [ticketId], references: [id])
 
   // Optional extra timestamp (you already have createdAt)
-  date         DateTime    @default(now())
+  date          DateTime    @default(now())
 
   // Snapshots (keep them - makes rendering fast and stable)
   ticketCode    String
@@ -139,7 +157,6 @@ model Winner {
   isPaidOut     Boolean     @default(false)
   txUrl         String?
 
-  // ✅ Never null
   kind          WinnerKind  @default(MAIN)
   label         String?
 
@@ -152,17 +169,17 @@ model Winner {
 
 // Scheduled bonus XPOT drops
 model BonusDrop {
-  id          String          @id @default(cuid())
-  createdAt   DateTime        @default(now())
+  id           String          @id @default(cuid())
+  createdAt     DateTime        @default(now())
 
-  drawId      String
-  draw        Draw            @relation(fields: [drawId], references: [id])
+  drawId       String
+  draw         Draw            @relation(fields: [drawId], references: [id])
 
-  label       String
-  amountXpot  Int
-  scheduledAt DateTime
+  label        String
+  amountXpot   Int
+  scheduledAt  DateTime
 
-  status      BonusDropStatus @default(SCHEDULED)
+  status       BonusDropStatus @default(SCHEDULED)
 
   @@index([drawId])
   @@index([status, scheduledAt])
