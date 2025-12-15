@@ -1,3 +1,4 @@
+// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -18,7 +19,9 @@ type XpotTopBarProps = {
   sloganRight?: string;
   rightSlot?: ReactNode;
 
+  // If you have the purple PreLaunchBanner mounted
   hasBanner?: boolean;
+
   maxWidthClassName?: string; // default: max-w-[1440px]
 };
 
@@ -32,7 +35,9 @@ export default function XpotTopBar({
 }: XpotTopBarProps) {
   const pathname = usePathname() || '';
   const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
+  const effectivePillText = isHub ? 'HOLDER DASHBOARD' : pillText;
 
+  // Overlap by 1px to kill any seam/gap forever (even if banner height changes)
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   return (
@@ -57,11 +62,35 @@ export default function XpotTopBar({
                 />
               </Link>
 
+              {/* Pill + optional slogan */}
               <div className="hidden min-w-0 items-center gap-3 sm:flex">
-                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
-                  <span className="truncate opacity-85">{pillText}</span>
-                </span>
+                {isHub ? (
+                  <Link
+                    href="/hub"
+                    className="
+                      inline-flex min-w-0 items-center gap-2
+                      rounded-full border border-white/10 bg-white/[0.03]
+                      px-4 py-1.5
+                      text-[11px] font-semibold tracking-wide text-slate-300
+                      transition hover:bg-white/[0.06]
+                    "
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                    <span className="truncate opacity-85">{effectivePillText}</span>
+                  </Link>
+                ) : (
+                  <span
+                    className="
+                      inline-flex min-w-0 items-center gap-2
+                      rounded-full border border-white/10 bg-white/[0.03]
+                      px-4 py-1.5
+                      text-[11px] font-semibold tracking-wide text-slate-300
+                    "
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                    <span className="truncate opacity-85">{effectivePillText}</span>
+                  </span>
+                )}
 
                 {sloganRight ? (
                   <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 lg:inline-flex">
@@ -73,20 +102,13 @@ export default function XpotTopBar({
 
             {/* Right */}
             <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
-              {/* If caller provides rightSlot, use it */}
-              {rightSlot ? (
-                rightSlot
-              ) : isHub ? (
-                <HubMenu />
-              ) : (
-                <DefaultNav />
-              )}
+              {rightSlot ? rightSlot : isHub ? <HubMenu /> : <DefaultNav />}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Premium line */}
+      {/* Premium line (thin, fades before edges) */}
       <div className="relative h-[1px] w-full overflow-hidden">
         <div
           className="
@@ -122,7 +144,7 @@ export default function XpotTopBar({
 }
 
 /* ------------------------------- */
-/* Non-hub default (your screenshot) */
+/* Non-hub default (Hub/Terms/CTA)  */
 /* ------------------------------- */
 
 function DefaultNav() {
@@ -145,7 +167,7 @@ function DefaultNav() {
 }
 
 /* ------------------------------- */
-/* Hub-only menu                    */
+/* Hub-only menu (History + Wallet + Logout) */
 /* ------------------------------- */
 
 function HubMenu() {
