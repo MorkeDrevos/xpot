@@ -620,62 +620,63 @@ export default function AdminPage() {
   }
 
   // ── Pick main winner (manual override) ───────
-  async function handlePickMainWinner() {
-    setPickError(null);
-    setPickSuccess(null);
+async function handlePickMainWinner() {
+  setPickError(null);
+  setPickSuccess(null);
 
-    if (!adminToken) {
-      setPickError('Admin token missing. Unlock admin first.');
-      return;
-    }
-
-    setIsPickingWinner(true);
-    try {
-      const data = await authedFetch('/api/admin/pick-winner', {
-        method: 'POST',
-      });
-
-      const raw = (data as any).winner as any;
-      if (!raw) throw new Error('No winner returned from API');
-
-      const winner: AdminWinner = {
-        ...raw,
-        payoutUsd:
-          raw.payoutUsd ??
-          raw.payoutXpot ??
-          raw.amountUsd ??
-          raw.amountXpot ??
-          0,
-      };
-
-      const addr =
-  typeof winner.walletAddress === 'string'
-    ? winner.walletAddress
-    : '';
-
-const shortAddr = addr
-  ? truncateAddress(addr, 4)
-  : '(no wallet)';
-
-setPickSuccess(
-  `Main XPOT winner: ${winner.ticketCode || '(no ticket)'} (${shortAddr})`
-);
-
-      try {
-        const winnersData = await authedFetch('/api/admin/winners');
-        setWinners((winnersData as any).winners ?? []);
-      } catch (err) {
-        console.error('[ADMIN] refresh winners after pick error', err);
-        setWinners(prev => [winner, ...prev]);
-      }
-
-      setTodayDraw(prev => (prev ? { ...prev, status: 'closed' } : prev));
-    } catch (err: any) {
-      setPickError(err.message || 'Failed to pick main XPOT winner');
-    } finally {
-      setIsPickingWinner(false);
-    }
+  if (!adminToken) {
+    setPickError('Admin token missing. Unlock admin first.');
+    return;
   }
+
+  setIsPickingWinner(true);
+  try {
+    const data = await authedFetch('/api/admin/pick-winner', {
+      method: 'POST',
+    });
+
+    const raw = (data as any).winner;
+    if (!raw) throw new Error('No winner returned from API');
+
+    const winner: AdminWinner = {
+      ...raw,
+      kind: raw.kind
+        ? (String(raw.kind).toLowerCase() as AdminWinnerKind)
+        : 'main',
+      payoutUsd:
+        raw.payoutUsd ??
+        raw.payoutXpot ??
+        raw.amountUsd ??
+        raw.amountXpot ??
+        0,
+    };
+
+    const addr =
+      typeof winner.walletAddress === 'string'
+        ? winner.walletAddress
+        : '';
+
+    const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
+
+    setPickSuccess(
+      `Main XPOT winner: ${winner.ticketCode || '(no ticket)'} (${shortAddr})`,
+    );
+
+    try {
+      const winnersData = await authedFetch('/api/admin/winners');
+      setWinners((winnersData as any).winners ?? []);
+    } catch (err) {
+      console.error('[ADMIN] refresh winners after pick error', err);
+      setWinners(prev => [winner, ...prev]);
+    }
+
+    setTodayDraw(prev => (prev ? { ...prev, status: 'closed' } : prev));
+  } catch (err: any) {
+    setPickError(err.message || 'Failed to pick main XPOT winner');
+  } finally {
+    setIsPickingWinner(false);
+  }
+}
 
   // ── Pick bonus winner (manual override) ───────
 async function handlePickBonusWinnerNow() {
