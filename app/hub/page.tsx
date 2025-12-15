@@ -10,9 +10,7 @@ import DashboardClient from './DashboardClient';
 export default function DashboardPage() {
   const { userId } = auth();
 
-  if (!userId) {
-    redirect('/sign-in');
-  }
+  if (!userId) redirect('/sign-in');
 
   return <DashboardClient />;
 }
