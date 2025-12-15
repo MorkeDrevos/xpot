@@ -109,6 +109,8 @@ function WalletDebug() {
     });
   }, [connected, publicKey, wallet]);
 
+ // ^ safe
+
   return null;
 }
 
@@ -212,6 +214,8 @@ export default function DashboardClient() {
 
   // Clerk user (X identity)
   const { user, isLoaded: isUserLoaded } = useUser();
+  const isSignedIn = !!user;
+
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
   const xAccount =
@@ -580,7 +584,40 @@ export default function DashboardClient() {
   // ─────────────────────────────────────────────
 
   return (
-    <XpotPageShell>
+    <XpotPageShell
+      topBarProps={{
+        pillText: 'HOLDER DASHBOARD',
+        rightSlot: (
+          <div className="flex items-center gap-3">
+            <Link
+              href="/hub/history"
+              className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+            >
+              <History className="mr-2 h-4 w-4" />
+              <span className="ml-1">History</span>
+            </Link>
+
+            <div className="rounded-full border border-slate-700/80 bg-slate-950/50 px-4 py-2">
+              <WalletMenuInline />
+              <WalletStatusHint />
+            </div>
+
+            {isSignedIn ? (
+              <SignOutButton redirectUrl="/">
+                <button className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span className="ml-1">Log out</span>
+                </button>
+              </SignOutButton>
+            ) : (
+              <Link href="/sign-in" className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
+                <span>Sign in</span>
+              </Link>
+            )}
+          </div>
+        ),
+      }}
+    >
       <WalletDebug />
 
       {/* MAIN GRID */}
@@ -899,10 +936,7 @@ export default function DashboardClient() {
                 </p>
               </div>
 
-              <Link
-                href="/dashboard/history"
-                className={`${BTN_UTILITY} h-9 px-4 text-xs`}
-              >
+              <Link href="/hub/history" className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
                 View all
               </Link>
             </div>
