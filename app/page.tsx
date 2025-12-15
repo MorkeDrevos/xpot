@@ -7,14 +7,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
   ChevronDown,
+  Copy,
   ExternalLink,
   Lock,
   Sparkles,
+  Check,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
+
+// ─────────────────────────────────────────────
+// Routes (fix broken links)
+// ─────────────────────────────────────────────
+const ROUTE_HUB = '/hub';
+const ROUTE_OPS = '/ops';
+const ROUTE_TERMS = '/terms';
+
+// Contract / CA (display + copy)
+const XPOT_CA = 'So11111111111111111111111111111111111111112';
 
 // Sample handles for testing (replace with API later)
 const SAMPLE_HANDLES = [
@@ -165,6 +177,58 @@ function HandleTicker({ handles }: { handles: string[] }) {
   );
 }
 
+function shortenAddress(addr: string, left = 6, right = 6) {
+  if (!addr) return '';
+  if (addr.length <= left + right + 3) return addr;
+  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
+}
+
+function ContractPill({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // ignore (still keeps UI clean)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-950/70 px-3 py-1 text-[11px] text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          CA
+        </span>
+        <span className="font-mono text-[11px] text-slate-200">
+          {shortenAddress(address, 10, 10)}
+        </span>
+      </span>
+
+      <button
+        type="button"
+        onClick={onCopy}
+        className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-950/70 px-3 py-1 text-[11px] text-slate-300 hover:bg-slate-900/70 transition"
+        title="Copy contract address"
+      >
+        {copied ? (
+          <>
+            <Check className="h-3.5 w-3.5 text-emerald-300" />
+            Copied
+          </>
+        ) : (
+          <>
+            <Copy className="h-3.5 w-3.5 text-slate-400" />
+            Copy
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const marquee = useMemo(() => [...SAMPLE_HANDLES], []);
   const [showLiveEntries, setShowLiveEntries] = useState(false);
@@ -185,13 +249,13 @@ export default function HomePage() {
           />
 
           <div className="relative z-10 grid gap-6 p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)] lg:p-8">
-            {/* LEFT: slogan + 1-line + 1 primary CTA */}
+            {/* LEFT */}
             <div className="flex flex-col justify-between gap-6">
               <div className="space-y-5">
-<Pill tone="sky">
-  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-  Identity: @handle
-</Pill>
+                <Pill tone="sky">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
+                  Identity: @handle
+                </Pill>
 
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
@@ -208,24 +272,30 @@ export default function HomePage() {
                   </p>
                 </div>
 
-                {/* BonusStrip stays (visual, not essay) */}
+                {/* BonusStrip (high attention when scheduled) */}
                 <div className="pt-1">
-                  <BonusStrip variant="home" />
+                  <BonusStrip />
                 </div>
 
-                {/* Primary CTA + secondary */}
+                {/* Contract pill (crypto vibe, zero essay) */}
+                <ContractPill address={XPOT_CA} />
+
+                {/* CTAs */}
                 <div className="flex flex-wrap items-center gap-3">
-                  <Link href="/dashboard" className={`${BTN_GREEN} px-5 py-2.5 text-sm`}>
+                  <Link
+                    href={ROUTE_HUB}
+                    className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}
+                  >
                     Enter today&apos;s XPOT
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
 
-                  <Link href="/terms" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                  <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
                     Terms
                   </Link>
 
                   <Link
-                    href="/admin"
+                    href={ROUTE_OPS}
                     className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
                   >
                     <Lock className="h-4 w-4 text-amber-200" />
@@ -239,7 +309,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Mini stats (scanable) */}
+              {/* Mini stats */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <MiniStat label="Mode" value="On-chain" tone="emerald" />
                 <MiniStat label="Identity" value="@handle" tone="sky" />
@@ -247,7 +317,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* RIGHT: cockpit module = JackpotPanel + Control Room */}
+            {/* RIGHT */}
             <div className="grid gap-4">
               <PremiumCard className="p-5 sm:p-6" halo>
                 <div className="flex items-start justify-between gap-3">
@@ -269,13 +339,13 @@ export default function HomePage() {
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Link href="/dashboard" className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
                     Enter now
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
 
                   <span className="text-[11px] text-slate-500">
-                    Watch live here. Claim entries on the dashboard.
+                    Watch live here. Claim entries in the hub.
                   </span>
                 </div>
               </PremiumCard>
@@ -289,12 +359,13 @@ export default function HomePage() {
                   <span className="font-mono text-emerald-200/70">read-only</span>
                 </div>
 
-                <div className="relative overflow-hidden rounded-2xl border border-slate-900/70 bg-slate-950/70 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
+                {/* If you want this to be “green screen”, change bg + border here */}
+                <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
                   <div
                     className="
                       pointer-events-none absolute -inset-24 opacity-70 blur-3xl
-                      bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.18),transparent_55%),
-                          radial-gradient(circle_at_90%_100%,rgba(56,189,248,0.14),transparent_60%)]
+                      bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.28),transparent_55%),
+                          radial-gradient(circle_at_90%_100%,rgba(56,189,248,0.10),transparent_60%)]
                     "
                   />
 
@@ -321,7 +392,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* OPTIONAL: expandable live entries (keeps wow without noise) */}
+          {/* OPTIONAL: expandable live entries */}
           <div className="relative z-10 border-t border-slate-900/70 px-6 py-4 lg:px-8">
             <button
               type="button"
@@ -336,9 +407,7 @@ export default function HomePage() {
                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
                   Live entries (X handles)
                 </span>
-                <span className="text-[11px] text-slate-500">
-                  Optional - expand to view
-                </span>
+                <span className="text-[11px] text-slate-500">Optional - expand to view</span>
               </span>
 
               <ChevronDown
@@ -370,7 +439,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* WOW FACTOR SECTION (minimal, scanable): THE PROTOCOL STRIP */}
+      {/* WOW FACTOR SECTION: THE PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -414,7 +483,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Tiny footer (no essay) */}
+      {/* Tiny footer */}
       <footer className="mt-8 pb-10">
         <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
           <span className="inline-flex items-center gap-2">
@@ -424,7 +493,7 @@ export default function HomePage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href="/admin"
+              href={ROUTE_OPS}
               className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
             >
               <Lock className="h-3.5 w-3.5 text-amber-200" />
