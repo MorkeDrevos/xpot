@@ -10,6 +10,11 @@ function normalizeAddress(addr: string) {
   return addr.trim();
 }
 
+function looksLikeSolanaAddress(addr: string) {
+  // quick sanity: base58 length usually 32-44 chars
+  return addr.length >= 32 && addr.length <= 44;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { userId: clerkId } = await auth();
@@ -27,14 +32,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET_ADDRESS' }, { status: 400 });
     }
 
-    // Ensure a User exists for this Clerk identity
+    if (!looksLikeSolanaAddress(address)) {
+      return NextResponse.json({ ok: false, error: 'INVALID_WALLET_ADDRESS' }, { status: 400 });
+    }
+
     const user = await prisma.user.upsert({
       where: { clerkId },
       create: { clerkId },
       update: {},
     });
 
-    // If wallet already linked to another user, block it (prevents hijack)
     const existing = await prisma.wallet.findUnique({
       where: { address },
       select: { id: true, userId: true },
@@ -44,7 +51,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'WALLET_ALREADY_LINKED' }, { status: 409 });
     }
 
-    // Create wallet if missing, or link it to this user
     const wallet = await prisma.wallet.upsert({
       where: { address },
       create: { address, userId: user.id },
@@ -54,7 +60,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         ok: true,
-        wallet: wallet.address,
+        linked: true,
+        wallet: { id: wallet.id, address: wallet.address },
         user: { id: user.id, clerkId: user.clerkId },
       },
       { status: 200 },
