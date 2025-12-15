@@ -1,437 +1,556 @@
-'use client';
+/* globals.css */
 
-import Link from 'next/link';
-import Image from 'next/image';
-import { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-import { useUser, SignOutButton } from '@clerk/nextjs';
+/* -------------------------------------------------------------
+   XPOT Global Theme Tokens (controlled from here)
+   Goal: match Ops vibe (blue -> violet -> magenta)
+-------------------------------------------------------------- */
 
-import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+:root {
+  color-scheme: dark;
 
-import {
-  Crown,
-  ExternalLink,
-  LogOut,
-  Radio,
-  Ticket,
-  Trophy,
-  Wallet,
-} from 'lucide-react';
+  /* Core text */
+  --xpot-text: rgba(226, 232, 240, 0.94);
+  --xpot-text-dim: rgba(226, 232, 240, 0.72);
+  --xpot-text-faint: rgba(226, 232, 240, 0.52);
 
-type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
+  /* Base background anchors (deep ink) */
+  --xpot-bg-0: #02030a;
+  --xpot-bg-1: #030412;
+  --xpot-bg-2: #05061a;
 
-export type HubWalletStatus = {
-  label: string;
-  sublabel?: string;
-  tone?: HubWalletTone;
-  claimed?: boolean;
-  winner?: boolean;
-};
+  /* Accent anchors (raw palette) */
+  --xpot-accent-blue: 56 189 248;     /* cyan/sky */
+  --xpot-accent-violet: 99 102 241;   /* indigo */
+  --xpot-accent-magenta: 236 72 153;  /* pink */
+  --xpot-accent-emerald: 16 185 129;  /* success/active */
 
-type XpotTopBarProps = {
-  logoHref?: string;
+  /* Keep compat with older name */
+  --xpot-accent-purple: var(--xpot-accent-violet);
 
-  // Public pill (non-hub pages)
-  pillText?: string;
+  /* Theme-driven tokens (components should use THESE) */
+  --xpot-accent-primary: var(--xpot-accent-blue);
+  --xpot-accent-secondary: var(--xpot-accent-violet);
+  --xpot-accent-glow: var(--xpot-accent-magenta);
+  --xpot-accent-success: var(--xpot-accent-emerald);
 
-  // Optional right slogan (non-hub pages)
-  sloganRight?: string;
+  /* Compatibility aliases (older component names) */
+  --xpot-accent-brand: var(--xpot-accent-primary);
 
-  // Escape hatch (non-hub pages only)
-  rightSlot?: ReactNode;
+  /* Borders */
+  --xpot-border-soft: rgba(148, 163, 184, 0.12);
+  --xpot-border: rgba(148, 163, 184, 0.18);
+  --xpot-border-strong: rgba(148, 163, 184, 0.26);
 
-  // Hub enhancements
-  hubWalletStatus?: HubWalletStatus;
-  onOpenWalletModal?: () => void;
-  liveIsOpen?: boolean;
+  /* Shadows */
+  --xpot-shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --xpot-shadow-card: 0 18px 60px rgba(0, 0, 0, 0.55);
 
-  // Banner
-  hasBanner?: boolean;
-  maxWidthClassName?: string;
-};
+  /* Glows follow theme tokens */
+  --xpot-glow-primary: 0 0 0 1px rgba(var(--xpot-accent-primary), 0.24),
+    0 0 36px rgba(var(--xpot-accent-primary), 0.14),
+    0 16px 80px rgba(var(--xpot-accent-primary), 0.08);
 
-const XPOT_X_POST =
-  'https://x.com/xpotbet/status/1998020027069653445?s=46&t=F6JSZfQ0P85RPUutnn4nag';
+  --xpot-glow-secondary: 0 0 0 1px rgba(var(--xpot-accent-secondary), 0.24),
+    0 0 40px rgba(var(--xpot-accent-secondary), 0.14),
+    0 16px 90px rgba(var(--xpot-accent-secondary), 0.09);
 
-const WINNERS_HREF = '/winners';
+  --xpot-glow-success: 0 0 0 1px rgba(var(--xpot-accent-success), 0.22),
+    0 0 36px rgba(var(--xpot-accent-success), 0.12),
+    0 16px 80px rgba(var(--xpot-accent-success), 0.08);
 
-export default function XpotTopBar({
-  logoHref = '/',
-  pillText = 'THE X-POWERED REWARD PROTOCOL',
-  sloganRight,
-  rightSlot,
-  hubWalletStatus,
-  onOpenWalletModal,
-  liveIsOpen = false,
-  hasBanner = true,
-  maxWidthClassName = 'max-w-[1440px]',
-}: XpotTopBarProps) {
-  const pathname = usePathname() || '';
-  const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
+  --xpot-glow-accent: 0 0 0 1px rgba(var(--xpot-accent-glow), 0.22),
+    0 0 44px rgba(var(--xpot-accent-glow), 0.14),
+    0 18px 100px rgba(var(--xpot-accent-glow), 0.10);
 
-  const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
+  /* Compatibility glows (older variable names) */
+  --xpot-glow-blue: var(--xpot-glow-primary);
+  --xpot-glow-purple: var(--xpot-glow-secondary);
+  --xpot-glow-emerald: var(--xpot-glow-success);
+  --xpot-glow-magenta: var(--xpot-glow-accent);
 
-  return (
-    <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
-      <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
-        <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
-          <div className="flex min-h-[124px] items-center justify-between gap-6">
-            {/* LEFT */}
-            <div className="flex min-w-0 items-center gap-4">
-              <Link href={logoHref} className="flex shrink-0 items-center gap-3">
-                <Image
-                  src="/img/xpot-logo-light.png"
-                  alt="XPOT"
-                  width={460}
-                  height={120}
-                  priority
-                  className="h-[120px] max-h-[120px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
-                />
-              </Link>
+  /* Surfaces (glass) */
+  --xpot-surface-1: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.012)
+  );
 
-              <div className="hidden min-w-0 items-center gap-3 sm:flex">
-                {/* Non-hub: show protocol pill, Hub: show HUB pill */}
-                {isHub ? (
-                  <Link
-                    href="/hub"
-                    className="
-                      inline-flex items-center gap-2 rounded-full
-                      border border-white/10 bg-white/[0.03]
-                      px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300
-                      hover:bg-white/[0.06]
-                    "
-                    title="Back to Hub"
-                  >
-                    <span
-                      className="
-                        h-2 w-2 rounded-full
-                        bg-[rgb(var(--xpot-accent-secondary)/0.75)]
-                        shadow-[0_0_10px_rgb(var(--xpot-accent-secondary)/0.30)]
-                      "
-                    />
-                    <span className="truncate opacity-85">HUB</span>
-                  </Link>
-                ) : (
-                  <span
-                    className="
-                      inline-flex items-center gap-2 rounded-full
-                      border border-white/10 bg-white/[0.03]
-                      px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300
-                    "
-                  >
-                    <span
-                      className="
-                        h-2 w-2 rounded-full
-                        bg-[rgb(var(--xpot-accent-secondary)/0.75)]
-                        shadow-[0_0_10px_rgb(var(--xpot-accent-secondary)/0.30)]
-                      "
-                    />
-                    <span className="truncate opacity-85">{pillText}</span>
-                  </span>
-                )}
+  --xpot-surface-2: linear-gradient(
+    to bottom right,
+    rgba(10, 12, 26, 0.92),
+    rgba(5, 6, 16, 0.86)
+  );
 
-                {!isHub && sloganRight && (
-                  <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 lg:inline-flex">
-                    {sloganRight}
-                  </span>
-                )}
-              </div>
-            </div>
+  --xpot-surface-3: linear-gradient(
+    to bottom right,
+    rgba(8, 10, 22, 0.86),
+    rgba(3, 4, 12, 0.84)
+  );
 
-            {/* RIGHT */}
-            <div className="flex items-center gap-6 text-sm text-slate-300">
-              {/* IMPORTANT: Hub routes never use rightSlot (prevents “Real-time reward flow” pills in nav). */}
-              {isHub ? (
-                <HubNav
-                  clerkEnabled={clerkEnabled}
-                  hubWalletStatus={hubWalletStatus}
-                  onOpenWalletModal={onOpenWalletModal}
-                  liveIsOpen={liveIsOpen}
-                />
-              ) : rightSlot ? (
-                rightSlot
-              ) : (
-                <PublicNav liveIsOpen={liveIsOpen} />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+  /* Page background (nebula wash) */
+  --xpot-bg-page:
+    radial-gradient(
+      1250px 700px at 12% 10%,
+      rgba(var(--xpot-accent-primary), 0.22),
+      transparent 60%
+    ),
+    radial-gradient(
+      1150px 680px at 52% 22%,
+      rgba(var(--xpot-accent-secondary), 0.20),
+      transparent 62%
+    ),
+    radial-gradient(
+      1050px 650px at 92% 18%,
+      rgba(var(--xpot-accent-glow), 0.18),
+      transparent 64%
+    ),
+    radial-gradient(
+      1100px 650px at 50% 115%,
+      rgba(var(--xpot-accent-success), 0.06),
+      transparent 58%
+    ),
+    linear-gradient(to bottom, var(--xpot-bg-2), var(--xpot-bg-0) 68%, #01020a);
 
-      {/* Premium divider (semantic primary) */}
-      <div className="relative h-[1px] w-full overflow-hidden">
-        <div
-          className="
-            absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2
-            bg-[linear-gradient(90deg,
-              rgb(var(--xpot-accent-primary)/0.10),
-              rgb(var(--xpot-accent-primary)/0.55),
-              rgb(var(--xpot-accent-primary)/0.10)
-            )]
-          "
-        />
-      </div>
-    </header>
+  /* Top strip gradient (pre-launch / banner) */
+  --xpot-strip: linear-gradient(
+    90deg,
+    rgba(88, 28, 135, 0.96),
+    rgba(147, 51, 234, 0.92),
+    rgba(219, 39, 119, 0.96)
+  );
+
+  /* Radii */
+  --xpot-r-md: 14px;
+  --xpot-r-lg: 18px;
+  --xpot-r-xl: 22px;
+
+  /* Blur */
+  --xpot-blur: 12px;
+
+  /* Focus ring follows theme primary */
+  --xpot-ring: 0 0 0 3px rgba(var(--xpot-accent-primary), 0.25);
+}
+
+/* -------------------------------------------------------------
+   Theme variants (set on <html data-theme="...">)
+   Ops/Admin will be the only place that changes this.
+-------------------------------------------------------------- */
+
+:root[data-theme="nebula"] {
+  --xpot-accent-primary: var(--xpot-accent-blue);
+  --xpot-accent-secondary: var(--xpot-accent-violet);
+  --xpot-accent-glow: var(--xpot-accent-magenta);
+  --xpot-accent-success: var(--xpot-accent-emerald);
+}
+
+:root[data-theme="emerald"] {
+  --xpot-accent-primary: 16 185 129;
+  --xpot-accent-secondary: 34 197 94;
+  --xpot-accent-glow: 52 211 153;
+  --xpot-accent-success: 16 185 129;
+}
+
+:root[data-theme="amber"] {
+  --xpot-accent-primary: 245 158 11;
+  --xpot-accent-secondary: 251 191 36;
+  --xpot-accent-glow: 252 211 77;
+  --xpot-accent-success: 16 185 129;
+}
+
+:root[data-theme="crimson"] {
+  --xpot-accent-primary: 239 68 68;
+  --xpot-accent-secondary: 220 38 38;
+  --xpot-accent-glow: 248 113 113;
+  --xpot-accent-success: 16 185 129;
+}
+
+/* Ops mood override (allowed, does not fight theme colors) */
+[data-xpot-page="ops"] {
+  --xpot-bg-page:
+    radial-gradient(
+      1200px 700px at 14% 12%,
+      rgba(var(--xpot-accent-primary), 0.20),
+      transparent 62%
+    ),
+    radial-gradient(
+      1150px 680px at 58% 22%,
+      rgba(var(--xpot-accent-secondary), 0.18),
+      transparent 64%
+    ),
+    radial-gradient(
+      1050px 650px at 92% 22%,
+      rgba(var(--xpot-accent-glow), 0.17),
+      transparent 66%
+    ),
+    linear-gradient(to bottom, #030413, #01020a 72%, #000109);
+
+  --xpot-surface-1: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.01)
   );
 }
 
-/* ---------------- LIVE CHIP (shared) ---------------- */
+/* -------------------------------------------------------------
+   Base
+-------------------------------------------------------------- */
 
-function LiveDot({ isOpen }: { isOpen: boolean }) {
-  return (
-    <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
-      {isOpen ? (
-        <>
-          <span className="absolute inline-flex h-3 w-3 animate-ping rounded-full bg-[rgb(var(--xpot-accent-success)/0.55)]" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-[rgb(var(--xpot-accent-success)/0.85)]" />
-        </>
-      ) : (
-        <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
-      )}
-    </span>
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--xpot-bg-page);
+  color: var(--xpot-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}
+
+::selection {
+  background: rgba(var(--xpot-accent-primary), 0.25);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Scrollbars (WebKit) */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.26);
+}
+
+/* Links */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Inputs */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--xpot-ring);
+}
+
+/* -------------------------------------------------------------
+   XPOT Utility Classes (use these everywhere)
+-------------------------------------------------------------- */
+
+.xpot-page {
+  min-height: 100vh;
+  background: var(--xpot-bg-page);
+}
+
+.xpot-top-strip {
+  background: var(--xpot-strip);
+}
+
+.xpot-nebula-halo {
+  pointer-events: none;
+  position: absolute;
+  inset: -40%;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(var(--xpot-accent-primary), 0.26), transparent 55%),
+    radial-gradient(circle at 58% 24%, rgba(var(--xpot-accent-secondary), 0.22), transparent 58%),
+    radial-gradient(circle at 92% 30%, rgba(var(--xpot-accent-glow), 0.20), transparent 62%);
+  opacity: 0.85;
+  filter: blur(28px);
+}
+
+.xpot-max {
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.xpot-glass {
+  background: var(--xpot-surface-1);
+  border: 1px solid var(--xpot-border-soft);
+  border-radius: var(--xpot-r-xl);
+  backdrop-filter: blur(var(--xpot-blur));
+  -webkit-backdrop-filter: blur(var(--xpot-blur));
+  box-shadow: var(--xpot-shadow-soft);
+}
+
+.xpot-panel {
+  background: var(--xpot-surface-2);
+  border: 1px solid var(--xpot-border);
+  border-radius: var(--xpot-r-xl);
+  box-shadow: var(--xpot-shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.xpot-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(820px 280px at 20% 0%, rgba(255, 255, 255, 0.055), transparent 55%),
+    radial-gradient(740px 240px at 80% 0%, rgba(255, 255, 255, 0.04), transparent 60%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03), transparent 40%);
+  opacity: 0.9;
+}
+
+.xpot-card {
+  background: var(--xpot-surface-3);
+  border: 1px solid var(--xpot-border-soft);
+  border-radius: var(--xpot-r-lg);
+  box-shadow: var(--xpot-shadow-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.xpot-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    920px 280px at 50% 0%,
+    rgba(255, 255, 255, 0.045),
+    transparent 62%
+  );
+  opacity: 0.85;
+}
+
+/* Primary card uses theme primary by default */
+.xpot-card-primary {
+  background: var(--xpot-surface-2);
+  border: 1px solid var(--xpot-border-strong);
+  border-radius: var(--xpot-r-lg);
+  box-shadow: var(--xpot-glow-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Support BOTH new semantic + old names so nothing breaks */
+.xpot-card-primary[data-glow="secondary"],
+.xpot-card-primary[data-glow="purple"] {
+  box-shadow: var(--xpot-glow-secondary);
+}
+
+.xpot-card-primary[data-glow="success"],
+.xpot-card-primary[data-glow="emerald"] {
+  box-shadow: var(--xpot-glow-success);
+}
+
+.xpot-card-primary[data-glow="glow"],
+.xpot-card-primary[data-glow="magenta"] {
+  box-shadow: var(--xpot-glow-accent);
+}
+
+.xpot-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(148, 163, 184, 0.18),
+    transparent
   );
 }
 
-function LiveNavItem({
-  href,
-  label = 'Live',
-  isOpen,
-  variant,
-}: {
-  href: string;
-  label?: string;
-  isOpen: boolean;
-  variant: 'text' | 'pill';
-}) {
-  const radioTone = 'text-[rgb(var(--xpot-accent-success)/0.95)]';
+/* Pills */
+.xpot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(2, 3, 10, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
 
-  if (variant === 'pill') {
-    return (
-      <Link
-        href={href}
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
-        title={isOpen ? 'Live draw is open' : 'Live view'}
-      >
-        <LiveDot isOpen={isOpen} />
-        <Radio className={`h-5 w-5 ${radioTone}`} />
-        <span className="leading-none">{label}</span>
-      </Link>
-    );
+.xpot-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(var(--xpot-accent-success), 0.95);
+  box-shadow: 0 0 0 3px rgba(var(--xpot-accent-success), 0.12);
+}
+
+.xpot-pill-muted {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(2, 3, 10, 0.35);
+  color: var(--xpot-text-dim);
+}
+
+/* Buttons */
+.xpot-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 999px;
+  padding: 10px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.92);
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.xpot-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(148, 163, 184, 0.34);
+}
+
+.xpot-btn:active {
+  transform: translateY(0px);
+}
+
+.xpot-btn-primary {
+  background: linear-gradient(
+    to right,
+    rgba(var(--xpot-accent-primary), 0.18),
+    rgba(var(--xpot-accent-secondary), 0.16),
+    rgba(var(--xpot-accent-glow), 0.10)
+  );
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 0 0 1px rgba(var(--xpot-accent-primary), 0.18),
+    0 18px 60px rgba(var(--xpot-accent-primary), 0.08);
+}
+
+.xpot-btn-danger {
+  background: linear-gradient(
+    to right,
+    rgba(239, 68, 68, 0.12),
+    rgba(244, 63, 94, 0.10)
+  );
+  border-color: rgba(244, 63, 94, 0.22);
+}
+
+.xpot-btn:disabled,
+.xpot-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Inputs */
+.xpot-input {
+  width: 100%;
+  border-radius: 999px;
+  padding: 10px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(2, 3, 10, 0.55);
+  color: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.xpot-input::placeholder {
+  color: rgba(226, 232, 240, 0.45);
+}
+
+.xpot-input:focus-visible {
+  box-shadow: var(--xpot-ring);
+  border-color: rgba(var(--xpot-accent-primary), 0.45);
+}
+
+.xpot-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  color: var(--xpot-text-faint);
+}
+
+.xpot-mono {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+/* -------------------------------------------------------------
+   XPOT Animations
+-------------------------------------------------------------- */
+
+@keyframes xpotStarFlash {
+  0% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+  45% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+  50% { filter: brightness(1.35) drop-shadow(0 0 18px rgba(255, 255, 255, 0.28)); }
+  55% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+  100% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+}
+
+@keyframes xpotSheen {
+  0% { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
+  20% { opacity: 0.0; }
+  35% { opacity: 0.22; }
+  55% { opacity: 0.0; }
+  100% { transform: translateX(140%) skewX(-20deg); opacity: 0; }
+}
+
+.xpot-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.xpot-sheen::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  width: 40%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  transform: translateX(-120%) skewX(-20deg);
+  animation: xpotSheen 10s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Dialog polish */
+dialog {
+  border: 1px solid var(--xpot-border-soft);
+  border-radius: var(--xpot-r-xl);
+  background: var(--xpot-surface-2);
+  color: var(--xpot-text);
+  box-shadow: var(--xpot-shadow-card);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .xpot-sheen::after {
+    animation: none !important;
   }
-
-  return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-2 hover:text-white"
-      title={isOpen ? 'Live draw is open' : 'Live view'}
-    >
-      <LiveDot isOpen={isOpen} />
-      <Radio className={`h-4 w-4 ${radioTone}`} />
-      <span className="leading-none">{label}</span>
-    </Link>
-  );
-}
-
-/* ---------------- PUBLIC NAV ---------------- */
-
-function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
-  return (
-    <>
-      <Link href="/hub" className="hover:text-white">
-        Hub
-      </Link>
-
-      <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="text" />
-
-      <Link
-        href={WINNERS_HREF}
-        className="inline-flex items-center gap-2 hover:text-white"
-      >
-        <Trophy className="h-4 w-4 text-[rgb(var(--xpot-accent-secondary)/0.95)]" />
-        Winners
-      </Link>
-
-      <Link
-        href={XPOT_X_POST}
-        target="_blank"
-        className="inline-flex items-center gap-2 hover:text-white"
-        title="Official XPOT announcement"
-      >
-        <ExternalLink className="h-4 w-4" />
-        X
-      </Link>
-
-      <Link
-        href="/hub"
-        className="
-          rounded-full bg-white px-5 py-2 font-semibold text-black
-          hover:bg-slate-200
-        "
-      >
-        Enter today&apos;s XPOT →
-      </Link>
-    </>
-  );
-}
-
-/* ---------------- HUB NAV ---------------- */
-
-function HubNav({
-  clerkEnabled,
-  hubWalletStatus,
-  onOpenWalletModal,
-  liveIsOpen,
-}: {
-  clerkEnabled: boolean;
-  hubWalletStatus?: HubWalletStatus;
-  onOpenWalletModal?: () => void;
-  liveIsOpen: boolean;
-}) {
-  const { user, isLoaded } = useUser();
-  const externalAccounts = (user?.externalAccounts || []) as any[];
-
-  const xAccount = externalAccounts.find(
-    (acc) =>
-      String(acc.provider || '').toLowerCase().includes('twitter') ||
-      String(acc.provider || '').toLowerCase().includes('x'),
-  );
-
-  const handle = xAccount?.username || xAccount?.screenName || null;
-  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
-  const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
-  const initial = (displayHandle || 'X')[1] || 'X';
-
-  return (
-    <div className="flex items-center gap-4">
-      {/* Identity chip */}
-      <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:flex">
-        {isLoaded && avatar ? (
-          <img
-            src={avatar}
-            alt="X avatar"
-            className="h-6 w-6 rounded-full border border-white/10"
-          />
-        ) : (
-          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xs">
-            {initial}
-          </div>
-        )}
-        <span className="text-xs font-semibold">
-          {displayHandle ?? 'X linking…'}
-        </span>
-      </div>
-
-      <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="pill" />
-
-      <Link
-        href={WINNERS_HREF}
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
-      >
-        <Trophy className="h-5 w-5 text-[rgb(var(--xpot-accent-secondary)/0.95)]" />
-        Winners
-      </Link>
-
-      <Link
-        href={XPOT_X_POST}
-        target="_blank"
-        title="Official XPOT announcement"
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
-      >
-        <ExternalLink className="h-5 w-5" />
-        X
-      </Link>
-
-      <HubWalletMenuInline
-        hubWalletStatus={hubWalletStatus}
-        onOpenWalletModal={onOpenWalletModal}
-      />
-
-      {clerkEnabled && (
-        <SignOutButton redirectUrl="/">
-          <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
-            <LogOut className="h-5 w-5" />
-            Log out
-          </button>
-        </SignOutButton>
-      )}
-    </div>
-  );
-}
-
-/* ---------------- WALLET ---------------- */
-
-function toneRing(tone: HubWalletTone) {
-  if (tone === 'emerald')
-    return 'ring-[rgb(var(--xpot-accent-success)/0.22)] bg-[rgb(var(--xpot-accent-success)/0.06)]';
-  if (tone === 'amber') return 'ring-amber-400/20 bg-amber-500/5';
-  if (tone === 'sky')
-    return 'ring-[rgb(var(--xpot-accent-primary)/0.22)] bg-[rgb(var(--xpot-accent-primary)/0.06)]';
-  return 'ring-white/10 bg-white/[0.03]';
-}
-
-function HubWalletMenuInline({
-  hubWalletStatus,
-  onOpenWalletModal,
-}: {
-  hubWalletStatus?: HubWalletStatus;
-  onOpenWalletModal?: () => void;
-}) {
-  const { setVisible } = useWalletModal();
-  const { publicKey, connected } = useWallet();
-
-  const addr = connected && publicKey ? publicKey.toBase58() : null;
-
-  const label =
-    hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Select wallet');
-  const sublabel =
-    hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
-
-  const tone: HubWalletTone = hubWalletStatus?.winner
-    ? 'sky'
-    : hubWalletStatus?.claimed
-    ? 'emerald'
-    : connected
-    ? 'sky'
-    : 'amber';
-
-  const microIcon = hubWalletStatus?.winner ? (
-    <Crown className="h-4 w-4" />
-  ) : hubWalletStatus?.claimed ? (
-    <Ticket className="h-4 w-4" />
-  ) : (
-    <Wallet className="h-4 w-4" />
-  );
-
-  const open = () =>
-    onOpenWalletModal ? onOpenWalletModal() : setVisible(true);
-
-  return (
-    <button
-      onClick={open}
-      className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(
-        tone,
-      )} hover:opacity-95`}
-      title={addr ?? undefined}
-    >
-      <div className="flex items-center gap-2">
-        <span
-          className="
-            flex h-7 w-7 items-center justify-center rounded-full
-            border border-white/10 bg-black/30
-          "
-        >
-          {microIcon}
-        </span>
-        <span className="font-semibold">{label}</span>
-      </div>
-      <div className="mt-1 text-[11px] text-slate-400">{sublabel}</div>
-    </button>
-  );
-}
-
-function shortWallet(addr: string) {
-  return addr ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : '';
 }
