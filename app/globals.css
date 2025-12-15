@@ -22,41 +22,48 @@
   --xpot-bg-1: #030412;
   --xpot-bg-2: #05061a;
 
-  /* Accent anchors (the whole site vibe is driven by these) */
+  /* Accent anchors (raw palette) */
   --xpot-accent-blue: 56 189 248;     /* cyan/sky */
   --xpot-accent-violet: 99 102 241;   /* indigo */
   --xpot-accent-magenta: 236 72 153;  /* pink */
   --xpot-accent-emerald: 16 185 129;  /* success/active */
 
-  /* Keep compat with your older name */
+  /* Keep compat with older name */
   --xpot-accent-purple: var(--xpot-accent-violet);
+
+  /* ✅ THEME-DRIVEN TOKENS (components should use THESE) */
+  --xpot-accent-primary: var(--xpot-accent-blue);
+  --xpot-accent-secondary: var(--xpot-accent-violet);
+  --xpot-accent-glow: var(--xpot-accent-magenta);
+  --xpot-accent-success: var(--xpot-accent-emerald);
 
   /* Borders */
   --xpot-border-soft: rgba(148, 163, 184, 0.12);
   --xpot-border: rgba(148, 163, 184, 0.18);
   --xpot-border-strong: rgba(148, 163, 184, 0.26);
 
-  /* Shadows + glows */
+  /* Shadows */
   --xpot-shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.45);
   --xpot-shadow-card: 0 18px 60px rgba(0, 0, 0, 0.55);
 
-  --xpot-glow-blue: 0 0 0 1px rgba(var(--xpot-accent-blue), 0.24),
-    0 0 36px rgba(var(--xpot-accent-blue), 0.14),
-    0 16px 80px rgba(var(--xpot-accent-blue), 0.08);
+  /* ✅ Glows now follow theme tokens (not hardcoded blue/violet) */
+  --xpot-glow-primary: 0 0 0 1px rgba(var(--xpot-accent-primary), 0.24),
+    0 0 36px rgba(var(--xpot-accent-primary), 0.14),
+    0 16px 80px rgba(var(--xpot-accent-primary), 0.08);
 
-  --xpot-glow-purple: 0 0 0 1px rgba(var(--xpot-accent-violet), 0.24),
-    0 0 40px rgba(var(--xpot-accent-violet), 0.14),
-    0 16px 90px rgba(var(--xpot-accent-violet), 0.09);
+  --xpot-glow-secondary: 0 0 0 1px rgba(var(--xpot-accent-secondary), 0.24),
+    0 0 40px rgba(var(--xpot-accent-secondary), 0.14),
+    0 16px 90px rgba(var(--xpot-accent-secondary), 0.09);
 
-  --xpot-glow-emerald: 0 0 0 1px rgba(var(--xpot-accent-emerald), 0.22),
-    0 0 36px rgba(var(--xpot-accent-emerald), 0.12),
-    0 16px 80px rgba(var(--xpot-accent-emerald), 0.08);
+  --xpot-glow-success: 0 0 0 1px rgba(var(--xpot-accent-success), 0.22),
+    0 0 36px rgba(var(--xpot-accent-success), 0.12),
+    0 16px 80px rgba(var(--xpot-accent-success), 0.08);
 
-  --xpot-glow-magenta: 0 0 0 1px rgba(var(--xpot-accent-magenta), 0.22),
-    0 0 44px rgba(var(--xpot-accent-magenta), 0.14),
-    0 18px 100px rgba(var(--xpot-accent-magenta), 0.10);
+  --xpot-glow-glow: 0 0 0 1px rgba(var(--xpot-accent-glow), 0.22),
+    0 0 44px rgba(var(--xpot-accent-glow), 0.14),
+    0 18px 100px rgba(var(--xpot-accent-glow), 0.10);
 
-  /* Surfaces (glass) - tuned to the ops screenshot */
+  /* Surfaces (glass) */
   --xpot-surface-1: linear-gradient(
     to bottom right,
     rgba(255, 255, 255, 0.045),
@@ -75,38 +82,37 @@
     rgba(3, 4, 12, 0.84)
   );
 
-  /* Page background (nebula wash like img1) */
+  /* Page background (nebula wash) - uses THEME tokens */
   --xpot-bg-page:
     radial-gradient(
       1250px 700px at 12% 10%,
-      rgba(var(--xpot-accent-blue), 0.22),
+      rgba(var(--xpot-accent-primary), 0.22),
       transparent 60%
     ),
     radial-gradient(
       1150px 680px at 52% 22%,
-      rgba(var(--xpot-accent-violet), 0.20),
+      rgba(var(--xpot-accent-secondary), 0.20),
       transparent 62%
     ),
     radial-gradient(
       1050px 650px at 92% 18%,
-      rgba(var(--xpot-accent-magenta), 0.18),
+      rgba(var(--xpot-accent-glow), 0.18),
       transparent 64%
     ),
     radial-gradient(
       1100px 650px at 50% 115%,
-      rgba(var(--xpot-accent-emerald), 0.06),
+      rgba(var(--xpot-accent-success), 0.06),
       transparent 58%
     ),
     linear-gradient(to bottom, var(--xpot-bg-2), var(--xpot-bg-0) 68%, #01020a);
 
   /* Top strip gradient (pre-launch / banner) */
-  --xpot-strip:
-    linear-gradient(
-      90deg,
-      rgba(88, 28, 135, 0.96),
-      rgba(147, 51, 234, 0.92),
-      rgba(219, 39, 119, 0.96)
-    );
+  --xpot-strip: linear-gradient(
+    90deg,
+    rgba(88, 28, 135, 0.96),
+    rgba(147, 51, 234, 0.92),
+    rgba(219, 39, 119, 0.96)
+  );
 
   /* Radii */
   --xpot-r-md: 14px;
@@ -116,26 +122,59 @@
   /* Blur */
   --xpot-blur: 12px;
 
-  /* Focus ring */
-  --xpot-ring: 0 0 0 3px rgba(var(--xpot-accent-blue), 0.25);
+  /* ✅ Focus ring follows theme primary (not fixed blue) */
+  --xpot-ring: 0 0 0 3px rgba(var(--xpot-accent-primary), 0.25);
 }
 
-/* Ops mood override (optional but recommended) */
+/* ─────────────────────────────────────────────────────────────
+   Theme variants (set on <html data-theme="...">)
+   Ops/Admin will be the only place that changes this.
+───────────────────────────────────────────────────────────── */
+
+:root[data-theme="nebula"] {
+  --xpot-accent-primary: var(--xpot-accent-blue);
+  --xpot-accent-secondary: var(--xpot-accent-violet);
+  --xpot-accent-glow: var(--xpot-accent-magenta);
+  --xpot-accent-success: var(--xpot-accent-emerald);
+}
+
+:root[data-theme="emerald"] {
+  --xpot-accent-primary: 16 185 129;
+  --xpot-accent-secondary: 34 197 94;
+  --xpot-accent-glow: 52 211 153;
+  --xpot-accent-success: 16 185 129;
+}
+
+:root[data-theme="amber"] {
+  --xpot-accent-primary: 245 158 11;
+  --xpot-accent-secondary: 251 191 36;
+  --xpot-accent-glow: 252 211 77;
+  --xpot-accent-success: 16 185 129;
+}
+
+:root[data-theme="crimson"] {
+  --xpot-accent-primary: 239 68 68;
+  --xpot-accent-secondary: 220 38 38;
+  --xpot-accent-glow: 248 113 113;
+  --xpot-accent-success: 16 185 129;
+}
+
+/* Ops mood override (still allowed, but now it DOES NOT fight theme colors) */
 [data-xpot-page="ops"] {
   --xpot-bg-page:
     radial-gradient(
       1200px 700px at 14% 12%,
-      rgba(var(--xpot-accent-blue), 0.20),
+      rgba(var(--xpot-accent-primary), 0.20),
       transparent 62%
     ),
     radial-gradient(
       1150px 680px at 58% 22%,
-      rgba(var(--xpot-accent-violet), 0.18),
+      rgba(var(--xpot-accent-secondary), 0.18),
       transparent 64%
     ),
     radial-gradient(
       1050px 650px at 92% 22%,
-      rgba(var(--xpot-accent-magenta), 0.17),
+      rgba(var(--xpot-accent-glow), 0.17),
       transparent 66%
     ),
     linear-gradient(to bottom, #030413, #01020a 72%, #000109);
@@ -166,7 +205,7 @@ body {
 
 /* Nice selection */
 ::selection {
-  background: rgba(var(--xpot-accent-blue), 0.25);
+  background: rgba(var(--xpot-accent-primary), 0.25);
   color: rgba(255, 255, 255, 0.95);
 }
 
@@ -228,15 +267,15 @@ select {
   background: var(--xpot-strip);
 }
 
-/* A reusable nebula halo layer (drop inside cards if you want) */
+/* Nebula halo */
 .xpot-nebula-halo {
   pointer-events: none;
   position: absolute;
   inset: -40%;
   background:
-    radial-gradient(circle at 12% 20%, rgba(var(--xpot-accent-blue), 0.26), transparent 55%),
-    radial-gradient(circle at 58% 24%, rgba(var(--xpot-accent-violet), 0.22), transparent 58%),
-    radial-gradient(circle at 92% 30%, rgba(var(--xpot-accent-magenta), 0.20), transparent 62%);
+    radial-gradient(circle at 12% 20%, rgba(var(--xpot-accent-primary), 0.26), transparent 55%),
+    radial-gradient(circle at 58% 24%, rgba(var(--xpot-accent-secondary), 0.22), transparent 58%),
+    radial-gradient(circle at 92% 30%, rgba(var(--xpot-accent-glow), 0.20), transparent 62%);
   opacity: 0.85;
   filter: blur(28px);
 }
@@ -299,25 +338,26 @@ select {
   opacity: 0.85;
 }
 
+/* ✅ Primary card uses theme primary by default */
 .xpot-card-primary {
   background: var(--xpot-surface-2);
   border: 1px solid var(--xpot-border-strong);
   border-radius: var(--xpot-r-lg);
-  box-shadow: var(--xpot-glow-blue);
+  box-shadow: var(--xpot-glow-primary);
   position: relative;
   overflow: hidden;
 }
 
-.xpot-card-primary[data-glow="purple"] {
-  box-shadow: var(--xpot-glow-purple);
+.xpot-card-primary[data-glow="secondary"] {
+  box-shadow: var(--xpot-glow-secondary);
 }
 
-.xpot-card-primary[data-glow="emerald"] {
-  box-shadow: var(--xpot-glow-emerald);
+.xpot-card-primary[data-glow="success"] {
+  box-shadow: var(--xpot-glow-success);
 }
 
-.xpot-card-primary[data-glow="magenta"] {
-  box-shadow: var(--xpot-glow-magenta);
+.xpot-card-primary[data-glow="glow"] {
+  box-shadow: var(--xpot-glow-glow);
 }
 
 .xpot-divider {
@@ -348,8 +388,8 @@ select {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: rgba(var(--xpot-accent-emerald), 0.95);
-  box-shadow: 0 0 0 3px rgba(var(--xpot-accent-emerald), 0.12);
+  background: rgba(var(--xpot-accent-success), 0.95);
+  box-shadow: 0 0 0 3px rgba(var(--xpot-accent-success), 0.12);
 }
 
 .xpot-pill-muted {
@@ -382,20 +422,26 @@ select {
   transform: translateY(0px);
 }
 
+/* ✅ Primary button uses theme primary/secondary/glow */
 .xpot-btn-primary {
   background: linear-gradient(
     to right,
-    rgba(var(--xpot-accent-blue), 0.16),
-    rgba(var(--xpot-accent-violet), 0.14),
-    rgba(var(--xpot-accent-magenta), 0.10)
+    rgba(var(--xpot-accent-primary), 0.18),
+    rgba(var(--xpot-accent-secondary), 0.16),
+    rgba(var(--xpot-accent-glow), 0.10)
   );
   border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 0 0 1px rgba(var(--xpot-accent-blue), 0.18),
-    0 18px 60px rgba(var(--xpot-accent-blue), 0.08);
+  box-shadow:
+    0 0 0 1px rgba(var(--xpot-accent-primary), 0.18),
+    0 18px 60px rgba(var(--xpot-accent-primary), 0.08);
 }
 
 .xpot-btn-danger {
-  background: linear-gradient(to right, rgba(239, 68, 68, 0.12), rgba(244, 63, 94, 0.1));
+  background: linear-gradient(
+    to right,
+    rgba(239, 68, 68, 0.12),
+    rgba(244, 63, 94, 0.10)
+  );
   border-color: rgba(244, 63, 94, 0.22);
 }
 
@@ -423,7 +469,7 @@ select {
 
 .xpot-input:focus-visible {
   box-shadow: var(--xpot-ring);
-  border-color: rgba(var(--xpot-accent-blue), 0.45);
+  border-color: rgba(var(--xpot-accent-primary), 0.45);
 }
 
 /* Small label text */
@@ -452,7 +498,6 @@ select {
   100% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
 }
 
-/* Gentle border shimmer for hero cards */
 @keyframes xpotSheen {
   0% { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
   20% { opacity: 0.0; }
@@ -482,11 +527,7 @@ select {
   pointer-events: none;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Optional: Make dialogs and toasts feel premium
-───────────────────────────────────────────────────────────── */
-
-/* If your "ugly pop up" is a default dialog, this helps instantly */
+/* Dialog polish */
 dialog {
   border: 1px solid var(--xpot-border-soft);
   border-radius: var(--xpot-r-xl);
@@ -500,10 +541,7 @@ dialog::backdrop {
   backdrop-filter: blur(4px);
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Safety: reduce motion
-───────────────────────────────────────────────────────────── */
-
+/* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   .xpot-sheen::after {
     animation: none !important;
