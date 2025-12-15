@@ -6,18 +6,32 @@ import Image from 'next/image';
 import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 
-import { SignOutButton } from '@clerk/nextjs';
+import { useUser, SignOutButton } from '@clerk/nextjs';
 
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
-import { History, LogOut } from 'lucide-react';
+import { Crown, History, LogOut, Ticket, Wallet, X } from 'lucide-react';
+
+type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
+
+export type HubWalletStatus = {
+  label: string; // e.g. "Activate wallet", "Wallet linked", "Entry secured", "XPOT winner"
+  sublabel?: string; // e.g. short addr, "Required to enter", "You're in today's draw"
+  tone?: HubWalletTone;
+  claimed?: boolean; // used for micro-badge
+  winner?: boolean; // used for micro-badge
+};
 
 type XpotTopBarProps = {
   logoHref?: string;
   pillText?: string;
   sloganRight?: string;
   rightSlot?: ReactNode;
+
+  // Hub enhancements (optional - only used on /hub)
+  hubWalletStatus?: HubWalletStatus;
+  onOpenWalletModal?: () => void; // if provided, used instead of wallet-adapter modal
 
   // If you have the purple PreLaunchBanner mounted
   hasBanner?: boolean;
@@ -30,6 +44,8 @@ export default function XpotTopBar({
   pillText = 'THE X-POWERED REWARD PROTOCOL',
   sloganRight,
   rightSlot,
+  hubWalletStatus,
+  onOpenWalletModal,
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
@@ -105,7 +121,17 @@ export default function XpotTopBar({
 
             {/* Right */}
             <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
-              {rightSlot ? rightSlot : isHub ? <HubMenu clerkEnabled={clerkEnabled} /> : <DefaultNav />}
+              {rightSlot ? (
+                rightSlot
+              ) : isHub ? (
+                <HubMenu
+                  clerkEnabled={clerkEnabled}
+                  hubWalletStatus={hubWalletStatus}
+                  onOpenWalletModal={onOpenWalletModal}
+                />
+              ) : (
+                <DefaultNav />
+              )}
             </div>
           </div>
         </div>
@@ -170,12 +196,73 @@ function DefaultNav() {
 }
 
 /* ------------------------------- */
-/* Hub-only menu (History + Wallet + Logout) */
+/* Hub-only menu (Identity + History + Wallet + Logout) */
 /* ------------------------------- */
 
-function HubMenu({ clerkEnabled }: { clerkEnabled: boolean }) {
+function HubMenu({
+  clerkEnabled,
+  hubWalletStatus,
+  onOpenWalletModal,
+}: {
+  clerkEnabled: boolean;
+  hubWalletStatus?: HubWalletStatus;
+  onOpenWalletModal?: () => void;
+}) {
+  const { user, isLoaded } = useUser();
+
+  // Try to extract X identity from Clerk
+  const externalAccounts = (user?.externalAccounts || []) as any[];
+
+  const xAccount =
+    externalAccounts.find(acc => {
+      const provider = (acc.provider ?? '') as string;
+      const p = provider.toLowerCase();
+      return (
+        provider === 'oauth_x' ||
+        provider === 'oauth_twitter' ||
+        provider === 'twitter' ||
+        p.includes('twitter') ||
+        p === 'x' ||
+        p.includes('oauth_x')
+      );
+    }) || null;
+
+  const handle =
+    (xAccount?.username as string | undefined) ||
+    (xAccount?.screenName as string | undefined) ||
+    null;
+
+  const avatar =
+    (xAccount?.imageUrl as string | undefined) ||
+    (user?.imageUrl as string | undefined) ||
+    null;
+
+  const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
+
+  const initial = (displayHandle || 'X').replace(/^@/, '')[0]?.toUpperCase() || 'X';
+
   return (
     <div className="flex items-center gap-4">
+      {/* Identity chip */}
+      <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:inline-flex">
+        {isLoaded && avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatar}
+            alt={displayHandle ?? 'X identity'}
+            className="h-6 w-6 rounded-full border border-white/10 object-cover"
+          />
+        ) : (
+          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-semibold text-slate-200">
+            {initial}
+          </div>
+        )}
+
+        <span className="text-xs font-semibold text-slate-200">
+          {isLoaded ? displayHandle ?? 'X linking…' : 'Loading…'}
+        </span>
+      </div>
+
       <Link
         href="/hub/history"
         className="
@@ -189,7 +276,7 @@ function HubMenu({ clerkEnabled }: { clerkEnabled: boolean }) {
         History
       </Link>
 
-      <HubWalletMenuInline />
+      <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
 
       {clerkEnabled ? (
         <SignOutButton redirectUrl="/">
@@ -213,30 +300,85 @@ function HubMenu({ clerkEnabled }: { clerkEnabled: boolean }) {
   );
 }
 
-function HubWalletMenuInline() {
+function toneRing(tone: HubWalletTone) {
+  if (tone === 'emerald') return 'ring-emerald-400/20 bg-emerald-500/5';
+  if (tone === 'amber') return 'ring-amber-400/20 bg-amber-500/5';
+  if (tone === 'sky') return 'ring-sky-400/20 bg-sky-500/5';
+  return 'ring-white/10 bg-white/[0.03]';
+}
+
+function HubWalletMenuInline({
+  hubWalletStatus,
+  onOpenWalletModal,
+}: {
+  hubWalletStatus?: HubWalletStatus;
+  onOpenWalletModal?: () => void;
+}) {
   const { setVisible } = useWalletModal();
   const { publicKey, connected } = useWallet();
 
   const addr = connected && publicKey ? publicKey.toBase58() : null;
 
+  const label =
+    hubWalletStatus?.label ??
+    (connected ? 'Wallet linked' : 'Activate wallet');
+
+  const sublabel =
+    hubWalletStatus?.sublabel ??
+    (addr ? shortWallet(addr) : 'Required to enter today’s XPOT');
+
+  const tone: HubWalletTone =
+    hubWalletStatus?.tone ??
+    (hubWalletStatus?.winner
+      ? 'sky'
+      : hubWalletStatus?.claimed
+      ? 'emerald'
+      : connected
+      ? 'sky'
+      : 'amber');
+
+  const microIcon = hubWalletStatus?.winner ? (
+    <Crown className="h-4 w-4 text-sky-200" />
+  ) : hubWalletStatus?.claimed ? (
+    <Ticket className="h-4 w-4 text-emerald-200" />
+  ) : (
+    <Wallet className="h-4 w-4 text-slate-200" />
+  );
+
+  const open = () => {
+    if (onOpenWalletModal) return onOpenWalletModal();
+    setVisible(true);
+  };
+
   return (
     <button
       type="button"
-      onClick={() => setVisible(true)}
-      className="
-        text-left leading-tight hover:opacity-90
-        rounded-full border border-white/10 bg-white/[0.03]
+      onClick={open}
+      className={`
+        group
+        text-left leading-tight hover:opacity-95
+        rounded-full border border-white/10
         px-6 py-3
-      "
+        ring-1 ${toneRing(tone)}
+        transition
+      `}
     >
-      <div className="text-[28px] font-medium text-slate-100">Select Wallet</div>
-      <div className="text-[28px] font-medium text-slate-100">Change wallet</div>
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30">
+          {microIcon}
+        </span>
+        <div className="text-sm font-semibold text-slate-100">{label}</div>
+      </div>
 
-      {addr ? (
-        <div className="mt-1 text-xs text-slate-400">
-          Connected: <span className="font-mono">{shortWallet(addr)}</span>
-        </div>
-      ) : null}
+      <div className="mt-1 flex items-center gap-2">
+        <X className="h-4 w-4 text-slate-400" />
+        <div className="text-[11px] text-slate-400">{sublabel}</div>
+      </div>
+
+      {/* Subtle sheen */}
+      <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
+        <span className="absolute -left-1/3 top-0 h-full w-1/2 rotate-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      </span>
     </button>
   );
 }
