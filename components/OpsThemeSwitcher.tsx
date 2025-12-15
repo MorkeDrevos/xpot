@@ -1,58 +1,77 @@
+// components/OpsThemeSwitcher.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-const THEMES = [
+type ThemeKey = 'nebula' | 'icy' | 'royal';
+
+const STORAGE_KEY = 'xpot_ops_theme';
+
+const THEMES: { key: ThemeKey; label: string }[] = [
   { key: 'nebula', label: 'Nebula' },
-  { key: 'emerald', label: 'Emerald' },
-  { key: 'amber', label: 'Amber' },
-  { key: 'crimson', label: 'Crimson' },
-] as const;
+  { key: 'icy', label: 'Icy' },
+  { key: 'royal', label: 'Royal' },
+];
 
-const STORAGE_KEY = 'xpot-theme';
-
-function setTheme(theme: string) {
+function applyTheme(theme: ThemeKey) {
+  if (typeof document === 'undefined') return;
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(STORAGE_KEY, theme);
 }
 
-export default function OpsThemeSwitcher() {
-  const [active, setActive] = useState<string>('nebula');
+export default function OpsThemeSwitcher({
+  defaultTheme = 'nebula',
+}: {
+  defaultTheme?: ThemeKey;
+}) {
+  const [theme, setTheme] = useState<ThemeKey>(defaultTheme);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY) || 'nebula';
-    setTheme(saved);
-    setActive(saved);
-  }, []);
+    if (typeof window === 'undefined') return;
+
+    const saved = window.localStorage.getItem(STORAGE_KEY) as ThemeKey | null;
+    const initial = saved && THEMES.some(t => t.key === saved) ? saved : defaultTheme;
+
+    setTheme(initial);
+    applyTheme(initial);
+  }, [defaultTheme]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    applyTheme(theme);
+    window.localStorage.setItem(STORAGE_KEY, theme);
+  }, [theme]);
+
+  const activeIndex = useMemo(() => THEMES.findIndex(t => t.key === theme), [theme]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
+    <div className="inline-flex items-center gap-3">
+      <span className="hidden sm:inline text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">
         Theme
       </span>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {THEMES.map(t => {
-          const on = active === t.key;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => {
-                setTheme(t.key);
-                setActive(t.key);
-              }}
-              className={[
-                'xpot-btn px-3 py-1 text-[11px]',
-                on ? 'xpot-btn-primary' : '',
-              ].join(' ')}
-              aria-pressed={on}
-              title={`Switch theme to ${t.label}`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+      <div className="relative inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.04] p-1 backdrop-blur">
+        {/* Active pill */}
+        <div
+          className="absolute top-1 bottom-1 rounded-full bg-white/[0.08] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all duration-200"
+          style={{
+            left: `calc(${activeIndex} * 84px + 4px)`,
+            width: '84px',
+          }}
+        />
+
+        {THEMES.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTheme(t.key)}
+            className={[
+              'relative z-10 h-10 w-[84px] rounded-full px-4 text-sm font-semibold transition',
+              t.key === theme ? 'text-slate-100' : 'text-slate-300 hover:text-slate-100',
+            ].join(' ')}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
     </div>
   );
