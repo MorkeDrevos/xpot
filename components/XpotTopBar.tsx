@@ -4,6 +4,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
+
+import { SignOutButton } from '@clerk/nextjs';
+
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+
+import { History, LogOut } from 'lucide-react';
 
 type XpotTopBarProps = {
   logoHref?: string;
@@ -25,6 +33,9 @@ export default function XpotTopBar({
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
+  const pathname = usePathname() || '';
+  const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
+
   // Overlap by 1px to kill any seam/gap forever (even if banner height changes)
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
@@ -39,17 +50,17 @@ export default function XpotTopBar({
             <div className="flex min-w-0 items-center gap-4">
               <Link href={logoHref} className="flex shrink-0 items-center gap-3">
                 <Image
-  src="/img/xpot-logo-light.png"
-  alt="XPOT"
-  width={460}
-  height={120}
-  priority
-  className="
-    h-[120px] max-h-[120px]
-    w-auto object-contain
-    animate-[xpotStarFlash_20s_ease-in-out_infinite]
-  "
-/>
+                  src="/img/xpot-logo-light.png"
+                  alt="XPOT"
+                  width={460}
+                  height={120}
+                  priority
+                  className="
+                    h-[120px] max-h-[120px]
+                    w-auto object-contain
+                    animate-[xpotStarFlash_20s_ease-in-out_infinite]
+                  "
+                />
               </Link>
 
               {/* Pill + optional slogan */}
@@ -69,22 +80,8 @@ export default function XpotTopBar({
 
             {/* Right */}
             <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
-              {rightSlot ?? (
-                <>
-                  <Link href="/hub" className="transition hover:text-white">
-                    Hub
-                  </Link>
-                  <Link href="/terms" className="transition hover:text-white">
-                    Terms
-                  </Link>
-                  <Link
-                    href="/hub"
-                    className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition hover:bg-slate-200"
-                  >
-                    Enter today&apos;s XPOT →
-                  </Link>
-                </>
-              )}
+              {/* 1) If caller provides a rightSlot, ALWAYS use it */}
+              {rightSlot ? rightSlot : isHub ? <HubMenu /> : null}
             </div>
           </div>
         </div>
@@ -124,4 +121,83 @@ export default function XpotTopBar({
       `}</style>
     </header>
   );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Hub-only menu (History + Wallet Modal trigger + Clerk logout)               */
+/* -------------------------------------------------------------------------- */
+
+function HubMenu() {
+  return (
+    <div className="flex items-center gap-4">
+      <Link
+        href="/hub/history"
+        className="
+          inline-flex items-center gap-2
+          rounded-full border border-white/10 bg-white/[0.03]
+          px-6 py-3 text-base text-slate-200
+          hover:bg-white/[0.06]
+        "
+      >
+        <History className="h-5 w-5" />
+        History
+      </Link>
+
+      {/* Wallet connect / change (opens wallet-adapter modal) */}
+      <HubWalletMenuInline />
+
+      {/* Clerk sign out */}
+      <SignOutButton redirectUrl="/hub">
+        <button
+          type="button"
+          className="
+            inline-flex items-center gap-2
+            rounded-full border border-white/10 bg-white/[0.03]
+            px-6 py-3 text-base text-slate-200
+            hover:bg-white/[0.06]
+          "
+        >
+          <LogOut className="h-5 w-5" />
+          Log out
+        </button>
+      </SignOutButton>
+    </div>
+  );
+}
+
+function HubWalletMenuInline() {
+  const { setVisible } = useWalletModal();
+  const { publicKey, connected } = useWallet();
+
+  const addr = connected && publicKey ? publicKey.toBase58() : null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => setVisible(true)}
+      className="
+        text-left leading-tight hover:opacity-90
+        rounded-full border border-white/10 bg-white/[0.03]
+        px-6 py-3
+      "
+    >
+      <div className="text-[28px] font-medium text-slate-100">
+        Select Wallet
+      </div>
+      <div className="text-[28px] font-medium text-slate-100">
+        Change wallet
+      </div>
+
+      {addr ? (
+        <div className="mt-1 text-xs text-slate-400">
+          Connected: <span className="font-mono">{shortWallet(addr)}</span>
+        </div>
+      ) : null}
+    </button>
+  );
+}
+
+function shortWallet(addr: string) {
+  if (!addr || addr.length < 8) return addr;
+  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
