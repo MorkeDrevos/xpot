@@ -1523,6 +1523,11 @@ export default function AdminPage() {
     {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
   </div>
 )}
+<div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+      Upcoming bonus drops
+    </p>
 
     {nextBonusDrop && nextBonusCountdown && (
       <div className="flex items-center gap-3">
@@ -1544,7 +1549,7 @@ export default function AdminPage() {
   <button
     type="button"
     className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-    onClick={() => refreshUpcomingDrops()}
+    onClick={refreshUpcomingDrops}
     disabled={!tokenAccepted || upcomingLoading}
   >
     <span className="inline-flex items-center gap-2">
@@ -1557,7 +1562,6 @@ export default function AdminPage() {
     </span>
   </button>
 </div>
-
               {upcomingError && <p className="mt-2 text-xs text-amber-300">{upcomingError}</p>}
               {cancelDropError && <p className="mt-2 text-xs text-amber-300">{cancelDropError}</p>}
 
