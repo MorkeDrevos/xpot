@@ -7,7 +7,6 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
 function pickXAccount(externalAccounts: any[]) {
-  // Clerk providers can vary; we match common X/Twitter identifiers
   return (
     externalAccounts.find((acc: any) => {
       const provider = String(acc?.provider ?? '').toLowerCase();
@@ -15,8 +14,8 @@ function pickXAccount(externalAccounts: any[]) {
         provider === 'oauth_x' ||
         provider === 'oauth_twitter' ||
         provider === 'twitter' ||
-        provider.includes('twitter') ||
         provider === 'x' ||
+        provider.includes('twitter') ||
         provider.includes('oauth_x')
       );
     }) ?? null
@@ -25,24 +24,19 @@ function pickXAccount(externalAccounts: any[]) {
 
 export async function POST() {
   try {
-    const { userId } = auth();
-    if (!userId) {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
-    // Fetch full Clerk user (server-side)
-    const user = await clerkClient.users.getUser(userId);
-
-    const externalAccounts = (user.externalAccounts ?? []) as any[];
+    const clerkUser = await clerkClient.users.getUser(clerkId);
+    const externalAccounts = (clerkUser.externalAccounts ?? []) as any[];
     const xAcc = pickXAccount(externalAccounts);
 
-    // If user is signed in but has no X connected, we still upsert Clerk user row
-    const clerkId = user.id;
-
-    const handle =
+    const xHandle =
       (xAcc?.username as string | undefined) ||
       (xAcc?.screenName as string | undefined) ||
-      (user.username as string | undefined) ||
+      (clerkUser.username as string | undefined) ||
       null;
 
     const xUserId =
@@ -50,46 +44,68 @@ export async function POST() {
       (xAcc?.userId as string | undefined) ||
       null;
 
-    const name =
-      (user.fullName as string | null) ||
-      (user.firstName || user.lastName ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : null) ||
-      null;
+    const xName =
+      (clerkUser.fullName as string | null) ||
+      ((clerkUser.firstName || clerkUser.lastName)
+        ? `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim()
+        : null);
 
-    const avatar = (user.imageUrl as string | null) ?? null;
+    const xAvatarUrl = (clerkUser.imageUrl as string | null) ?? null;
 
-    // Upsert by clerkId (this is your strongest identifier)
-    const dbUser = await prisma.user.upsert({
-      where: { clerkId },
-      create: {
+    // 1) If a user row already exists with this clerkId, update it.
+    const byClerk = await prisma.user.findUnique({ where: { clerkId } });
+    if (byClerk) {
+      const updated = await prisma.user.update({
+        where: { id: byClerk.id },
+        data: { xUserId, xHandle, xName, xAvatarUrl },
+      });
+
+      return NextResponse.json({ ok: true, linked: !!xAcc, user: updated }, { status: 200 });
+    }
+
+    // 2) Otherwise, try to MERGE into an existing row by xUserId/xHandle if present.
+    let existingByX: { id: string } | null = null;
+
+    if (xUserId) {
+      existingByX = await prisma.user.findUnique({
+        where: { xUserId },
+        select: { id: true },
+      });
+    }
+    if (!existingByX && xHandle) {
+      existingByX = await prisma.user.findUnique({
+        where: { xHandle },
+        select: { id: true },
+      });
+    }
+
+    if (existingByX) {
+      const merged = await prisma.user.update({
+        where: { id: existingByX.id },
+        data: {
+          clerkId, // attach Clerk identity to this existing X row
+          xUserId,
+          xHandle,
+          xName,
+          xAvatarUrl,
+        },
+      });
+
+      return NextResponse.json({ ok: true, linked: !!xAcc, user: merged }, { status: 200 });
+    }
+
+    // 3) Otherwise create a new row for this authenticated Clerk user.
+    const created = await prisma.user.create({
+      data: {
         clerkId,
         xUserId,
-        xHandle: handle,
-        xName: name,
-        xAvatarUrl: avatar,
-      },
-      update: {
-        xUserId,
-        xHandle: handle,
-        xName: name,
-        xAvatarUrl: avatar,
+        xHandle,
+        xName,
+        xAvatarUrl,
       },
     });
 
-    return NextResponse.json(
-      {
-        ok: true,
-        linked: !!xAcc,
-        user: {
-          id: dbUser.id,
-          clerkId: dbUser.clerkId,
-          xUserId: dbUser.xUserId,
-          xHandle: dbUser.xHandle,
-          xName: dbUser.xName,
-          xAvatarUrl: dbUser.xAvatarUrl,
-        },
-      },
-      { status: 200 },
-    );
+    return NextResponse.json({ ok: true, linked: !!xAcc, user: created }, { status: 200 });
   } catch (err: any) {
     console.error('[XPOT] /api/me/sync-x error:', err);
     return NextResponse.json(
