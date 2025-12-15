@@ -1,4 +1,3 @@
-// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -26,11 +25,11 @@ import {
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
 export type HubWalletStatus = {
-  label: string; // e.g. "Activate wallet", "Wallet linked", "Entry secured", "XPOT winner"
-  sublabel?: string; // e.g. short addr, "Required to enter", "You're in today's draw"
+  label: string;
+  sublabel?: string;
   tone?: HubWalletTone;
-  claimed?: boolean; // used for micro-badge
-  winner?: boolean; // used for micro-badge
+  claimed?: boolean;
+  winner?: boolean;
 };
 
 type XpotTopBarProps = {
@@ -39,14 +38,15 @@ type XpotTopBarProps = {
   sloganRight?: string;
   rightSlot?: ReactNode;
 
-  // Hub enhancements (optional - only used on /hub)
+  // Hub enhancements
   hubWalletStatus?: HubWalletStatus;
-  onOpenWalletModal?: () => void; // if provided, used instead of wallet-adapter modal
+  onOpenWalletModal?: () => void;
+  liveIsOpen?: boolean;
+  isAdmin?: boolean;
 
-  // If you have the purple PreLaunchBanner mounted
+  // Banner
   hasBanner?: boolean;
-
-  maxWidthClassName?: string; // default: max-w-[1440px]
+  maxWidthClassName?: string;
 };
 
 const XPOT_X_POST =
@@ -59,6 +59,8 @@ export default function XpotTopBar({
   rightSlot,
   hubWalletStatus,
   onOpenWalletModal,
+  liveIsOpen = false,
+  isAdmin = false,
   hasBanner = true,
   maxWidthClassName = 'max-w-[1440px]',
 }: XpotTopBarProps) {
@@ -66,10 +68,7 @@ export default function XpotTopBar({
   const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
   const effectivePillText = isHub ? 'HOLDER DASHBOARD' : pillText;
 
-  // Clerk is "optional" in your layout, so keep topbar safe too
   const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-  // Overlap by 1px to kill any seam/gap forever (even if banner height changes)
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   return (
@@ -77,7 +76,7 @@ export default function XpotTopBar({
       <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
           <div className="flex min-h-[124px] items-center justify-between gap-6">
-            {/* Left */}
+            {/* LEFT */}
             <div className="flex min-w-0 items-center gap-4">
               <Link href={logoHref} className="flex shrink-0 items-center gap-3">
                 <Image
@@ -86,54 +85,36 @@ export default function XpotTopBar({
                   width={460}
                   height={120}
                   priority
-                  className="
-                    h-[120px] max-h-[120px]
-                    w-auto object-contain
-                    animate-[xpotStarFlash_20s_ease-in-out_infinite]
-                  "
+                  className="h-[120px] max-h-[120px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
                 />
               </Link>
 
-              {/* Pill + optional slogan */}
               <div className="hidden min-w-0 items-center gap-3 sm:flex">
                 {isHub ? (
                   <Link
                     href="/hub"
-                    className="
-                      inline-flex min-w-0 items-center gap-2
-                      rounded-full border border-white/10 bg-white/[0.03]
-                      px-4 py-1.5
-                      text-[11px] font-semibold tracking-wide text-slate-300
-                      transition hover:bg-white/[0.06]
-                    "
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300 hover:bg-white/[0.06]"
                   >
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                    <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
                     <span className="truncate opacity-85">{effectivePillText}</span>
                   </Link>
                 ) : (
-                  <span
-                    className="
-                      inline-flex min-w-0 items-center gap-2
-                      rounded-full border border-white/10 bg-white/[0.03]
-                      px-4 py-1.5
-                      text-[11px] font-semibold tracking-wide text-slate-300
-                    "
-                  >
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
+                    <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
                     <span className="truncate opacity-85">{effectivePillText}</span>
                   </span>
                 )}
 
-                {sloganRight ? (
+                {sloganRight && (
                   <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 lg:inline-flex">
                     {sloganRight}
                   </span>
-                ) : null}
+                )}
               </div>
             </div>
 
-            {/* Right */}
-            <div className="flex shrink-0 items-center gap-6 text-sm text-slate-300">
+            {/* RIGHT */}
+            <div className="flex items-center gap-6 text-sm text-slate-300">
               {rightSlot ? (
                 rightSlot
               ) : isHub ? (
@@ -141,6 +122,8 @@ export default function XpotTopBar({
                   clerkEnabled={clerkEnabled}
                   hubWalletStatus={hubWalletStatus}
                   onOpenWalletModal={onOpenWalletModal}
+                  liveIsOpen={liveIsOpen}
+                  isAdmin={isAdmin}
                 />
               ) : (
                 <DefaultNav />
@@ -150,224 +133,128 @@ export default function XpotTopBar({
         </div>
       </div>
 
-      {/* Premium line (thin, fades before edges) */}
+      {/* Premium divider */}
       <div className="relative h-[1px] w-full overflow-hidden">
-        <div
-          className="
-            absolute left-1/2 top-0 h-full -translate-x-1/2
-            w-[72%]
-            bg-[linear-gradient(90deg,rgba(56,189,248,0.10)_0%,rgba(56,189,248,0.28)_18%,rgba(56,189,248,0.55)_50%,rgba(56,189,248,0.28)_82%,rgba(56,189,248,0.10)_100%)]
-            opacity-80
-          "
-        />
-        <div
-          className="
-            absolute top-0 h-full w-[20%]
-            bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.28)_50%,rgba(255,255,255,0)_100%)]
-            opacity-20
-            animate-[xpotLineSweep_10s_linear_infinite]
-          "
-          style={{ left: '-20%' }}
-        />
+        <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.1),rgba(56,189,248,0.55),rgba(56,189,248,0.1))]" />
       </div>
-
-      <style jsx>{`
-        @keyframes xpotLineSweep {
-          from {
-            left: -20%;
-          }
-          to {
-            left: 120%;
-          }
-        }
-      `}</style>
     </header>
   );
 }
 
-/* ------------------------------- */
-/* Non-hub default (Hub/Terms/CTA)  */
-/* ------------------------------- */
+/* ---------------- DEFAULT NAV ---------------- */
 
 function DefaultNav() {
   return (
     <>
-      <Link href="/hub" className="transition hover:text-white">
-        Hub
-      </Link>
-      <Link href="/terms" className="transition hover:text-white">
-        Terms
-      </Link>
-      <Link
-        href="/hub"
-        className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition hover:bg-slate-200"
-      >
+      <Link href="/hub" className="hover:text-white">Hub</Link>
+      <Link href="/terms" className="hover:text-white">Terms</Link>
+      <Link href="/hub" className="rounded-full bg-white px-5 py-2 font-semibold text-black hover:bg-slate-200">
         Enter today&apos;s XPOT →
       </Link>
     </>
   );
 }
 
-/* ------------------------------- */
-/* Hub-only menu (Identity + Live + X + Ops + History + Wallet + Logout) */
-/* ------------------------------- */
+/* ---------------- HUB MENU ---------------- */
 
 function HubMenu({
   clerkEnabled,
   hubWalletStatus,
   onOpenWalletModal,
+  liveIsOpen,
+  isAdmin,
 }: {
   clerkEnabled: boolean;
   hubWalletStatus?: HubWalletStatus;
   onOpenWalletModal?: () => void;
+  liveIsOpen: boolean;
+  isAdmin: boolean;
 }) {
   const { user, isLoaded } = useUser();
-
-  // Try to extract X identity from Clerk
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
-  const xAccount =
-    externalAccounts.find(acc => {
-      const provider = (acc.provider ?? '') as string;
-      const p = provider.toLowerCase();
-      return (
-        provider === 'oauth_x' ||
-        provider === 'oauth_twitter' ||
-        provider === 'twitter' ||
-        p.includes('twitter') ||
-        p === 'x' ||
-        p.includes('oauth_x')
-      );
-    }) || null;
+  const xAccount = externalAccounts.find(acc =>
+    String(acc.provider || '').toLowerCase().includes('twitter') ||
+    String(acc.provider || '').toLowerCase().includes('x'),
+  );
 
-  const handle =
-    (xAccount?.username as string | undefined) ||
-    (xAccount?.screenName as string | undefined) ||
-    null;
-
-  const avatar =
-    (xAccount?.imageUrl as string | undefined) ||
-    (user?.imageUrl as string | undefined) ||
-    null;
-
+  const handle = xAccount?.username || xAccount?.screenName || null;
+  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
-
-  const initial =
-    (displayHandle || 'X').replace(/^@/, '')[0]?.toUpperCase() || 'X';
+  const initial = (displayHandle || 'X')[1] || 'X';
 
   return (
     <div className="flex items-center gap-4">
-      {/* Identity chip */}
-      <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:inline-flex">
+      {/* Identity */}
+      <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:flex">
         {isLoaded && avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatar}
-            alt={displayHandle ?? 'X identity'}
-            className="h-6 w-6 rounded-full border border-white/10 object-cover"
-          />
+          <img src={avatar} alt="X avatar" className="h-6 w-6 rounded-full border border-white/10" />
         ) : (
-          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-semibold text-slate-200">
+          <div className="h-6 w-6 rounded-full border border-white/10 bg-white/[0.04] text-xs flex items-center justify-center">
             {initial}
           </div>
         )}
-
-        <span className="text-xs font-semibold text-slate-200">
-          {isLoaded ? displayHandle ?? 'X linking…' : 'Loading…'}
-        </span>
+        <span className="text-xs font-semibold">{displayHandle ?? 'X linking…'}</span>
       </div>
 
       {/* LIVE */}
-      <Link
-        href="/hub/live"
-        className="
-          inline-flex items-center gap-2
-          rounded-full border border-white/10 bg-white/[0.03]
-          px-6 py-3 text-base text-slate-200
-          hover:bg-white/[0.06]
-        "
-        aria-label="Live"
-      >
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+      <Link href="/hub/live" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
+        <span className="relative h-2 w-2">
+          {liveIsOpen ? (
+            <>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+            </>
+          ) : (
+            <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
+          )}
         </span>
         <Radio className="h-5 w-5 text-emerald-300" />
         Live
       </Link>
 
-      {/* X post */}
+      {/* X */}
       <Link
         href={XPOT_X_POST}
         target="_blank"
-        rel="noopener noreferrer"
-        className="
-          inline-flex items-center gap-2
-          rounded-full border border-white/10 bg-white/[0.03]
-          px-6 py-3 text-base text-slate-200
-          hover:bg-white/[0.06]
-        "
-        aria-label="XPOT on X"
+        title="Official XPOT announcement"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
       >
-        <ExternalLink className="h-5 w-5 text-slate-200" />
+        <ExternalLink className="h-5 w-5" />
         X
       </Link>
 
-      {/* OPS */}
-      <Link
-        href="/ops"
-        className="
-          inline-flex items-center gap-2
-          rounded-full border border-white/10 bg-white/[0.03]
-          px-6 py-3 text-base text-slate-200
-          hover:bg-white/[0.06]
-        "
-        aria-label="Operations"
-      >
-        <Shield className="h-5 w-5 text-sky-300" />
-        Ops
-      </Link>
+      {/* OPS (admin only) */}
+      {isAdmin && (
+        <Link
+          href="/ops"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+        >
+          <Shield className="h-5 w-5 text-sky-300" />
+          Ops
+        </Link>
+      )}
 
-      {/* HISTORY */}
-      <Link
-        href="/hub/history"
-        className="
-          inline-flex items-center gap-2
-          rounded-full border border-white/10 bg-white/[0.03]
-          px-6 py-3 text-base text-slate-200
-          hover:bg-white/[0.06]
-        "
-      >
+      <Link href="/hub/history" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
         <History className="h-5 w-5" />
         History
       </Link>
 
-      <HubWalletMenuInline
-        hubWalletStatus={hubWalletStatus}
-        onOpenWalletModal={onOpenWalletModal}
-      />
+      <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
 
-      {clerkEnabled ? (
+      {clerkEnabled && (
         <SignOutButton redirectUrl="/">
-          <button
-            type="button"
-            className="
-              inline-flex items-center gap-2
-              rounded-full border border-white/10 bg-white/[0.03]
-              px-6 py-3 text-base text-slate-200
-              hover:bg-white/[0.06]
-            "
-          >
+          <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
             <LogOut className="h-5 w-5" />
             Log out
           </button>
         </SignOutButton>
-      ) : (
-        <span className="text-xs text-slate-500">Auth off</span>
       )}
     </div>
   );
 }
+
+/* ---------------- WALLET ---------------- */
 
 function toneRing(tone: HubWalletTone) {
   if (tone === 'emerald') return 'ring-emerald-400/20 bg-emerald-500/5';
@@ -388,71 +275,37 @@ function HubWalletMenuInline({
 
   const addr = connected && publicKey ? publicKey.toBase58() : null;
 
-  const label =
-    hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Activate wallet');
-
-  const sublabel =
-    hubWalletStatus?.sublabel ??
-    (addr ? shortWallet(addr) : 'Required to enter today’s XPOT');
+  const label = hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Activate wallet');
+  const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Required to enter today’s XPOT');
 
   const tone: HubWalletTone =
-    hubWalletStatus?.tone ??
-    (hubWalletStatus?.winner
-      ? 'sky'
-      : hubWalletStatus?.claimed
-      ? 'emerald'
-      : connected
-      ? 'sky'
-      : 'amber');
+    hubWalletStatus?.winner ? 'sky'
+    : hubWalletStatus?.claimed ? 'emerald'
+    : connected ? 'sky'
+    : 'amber';
 
-  const microIcon = hubWalletStatus?.winner ? (
-    <Crown className="h-4 w-4 text-sky-200" />
-  ) : hubWalletStatus?.claimed ? (
-    <Ticket className="h-4 w-4 text-emerald-200" />
-  ) : (
-    <Wallet className="h-4 w-4 text-slate-200" />
-  );
+  const microIcon = hubWalletStatus?.winner ? <Crown className="h-4 w-4" />
+    : hubWalletStatus?.claimed ? <Ticket className="h-4 w-4" />
+    : <Wallet className="h-4 w-4" />;
 
-  const open = () => {
-    if (onOpenWalletModal) return onOpenWalletModal();
-    setVisible(true);
-  };
+  const open = () => onOpenWalletModal ? onOpenWalletModal() : setVisible(true);
 
   return (
     <button
-      type="button"
       onClick={open}
-      className={`
-        relative
-        group
-        text-left leading-tight hover:opacity-95
-        rounded-full border border-white/10
-        px-6 py-3
-        ring-1 ${toneRing(tone)}
-        transition
-      `}
+      className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(tone)} hover:opacity-95`}
     >
       <div className="flex items-center gap-2">
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30">
+        <span className="h-7 w-7 rounded-full border border-white/10 bg-black/30 flex items-center justify-center">
           {microIcon}
         </span>
-        <div className="text-sm font-semibold text-slate-100">{label}</div>
+        <span className="font-semibold">{label}</span>
       </div>
-
-      <div className="mt-1 flex items-center gap-2">
-        <X className="h-4 w-4 text-slate-400" />
-        <div className="text-[11px] text-slate-400">{sublabel}</div>
-      </div>
-
-      {/* Subtle sheen */}
-      <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
-        <span className="absolute -left-1/3 top-0 h-full w-1/2 rotate-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-      </span>
+      <div className="mt-1 text-[11px] text-slate-400">{sublabel}</div>
     </button>
   );
 }
 
 function shortWallet(addr: string) {
-  if (!addr || addr.length < 8) return addr;
-  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+  return addr ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : '';
 }
