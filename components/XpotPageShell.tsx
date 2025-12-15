@@ -21,7 +21,7 @@ type XpotPageShellProps = {
   // Top bar controls
   showTopBar?: boolean; // default true
   topBarClassName?: string; // optional wrapper class
-  topBarProps?: ComponentProps<typeof XpotTopBar>; // ✅ allow hub to override
+  topBarProps?: ComponentProps<typeof XpotTopBar>; // ✅ NEW
 };
 
 export default function XpotPageShell({
