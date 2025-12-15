@@ -4,6 +4,35 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+type UiStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
+
+function toUiStatus(raw: any): UiStatus {
+  const s = String(raw ?? '').trim();
+
+  // already UI format
+  if (
+    s === 'in-draw' ||
+    s === 'expired' ||
+    s === 'not-picked' ||
+    s === 'won' ||
+    s === 'claimed'
+  ) {
+    return s;
+  }
+
+  // common DB enum formats
+  const up = s.toUpperCase();
+
+  if (up === 'IN_DRAW' || up === 'IN-DRAW') return 'in-draw';
+  if (up === 'NOT_PICKED' || up === 'NOT-PICKED') return 'not-picked';
+  if (up === 'WON') return 'won';
+  if (up === 'CLAIMED') return 'claimed';
+  if (up === 'EXPIRED') return 'expired';
+
+  // fallback
+  return 'in-draw';
+}
+
 export async function GET() {
   try {
     // Today in UTC
@@ -15,7 +44,6 @@ export async function GET() {
     const start = new Date(`${yyyy}-${mm}-${dd}T00:00:00.000Z`);
     const end = new Date(`${yyyy}-${mm}-${dd}T23:59:59.999Z`);
 
-    // Draw + tickets – cast to any to avoid Prisma TS complaints
     const drawRecord = (await prisma.draw.findFirst({
       where: {
         drawDate: {
@@ -29,7 +57,6 @@ export async function GET() {
       },
     })) as any;
 
-    // No draw today
     if (!drawRecord) {
       return NextResponse.json({
         ok: true,
@@ -38,19 +65,16 @@ export async function GET() {
       });
     }
 
-    // Map tickets into the shape the dashboard expects
     const tickets = (drawRecord.tickets ?? []).map((t: any) => ({
       id: t.id,
       code: t.code,
-      status: t.status ?? 'in-draw', // fallback if model has no status
-      label: 'Ticket for today’s draw',
+      status: toUiStatus(t.status),
+      label: t.label ?? 'Ticket for today’s draw',
       jackpotUsd: drawRecord.jackpotUsd ?? 10_000,
       createdAt: t.createdAt,
-      walletAddress:
-        t.walletAddress ??
-        t.wallet_address ??
-        t.wallet?.address ??
-        '',
+      walletAddress: String(
+        t.walletAddress ?? t.wallet_address ?? t.wallet?.address ?? '',
+      ),
     }));
 
     return NextResponse.json({
@@ -58,7 +82,7 @@ export async function GET() {
       draw: {
         id: drawRecord.id,
         drawDate: drawRecord.drawDate,
-        status: drawRecord.status ?? 'open',
+        status: String(drawRecord.status ?? 'open'),
         jackpotUsd: drawRecord.jackpotUsd ?? 10_000,
         rolloverUsd: drawRecord.rolloverUsd ?? 0,
       },
