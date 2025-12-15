@@ -1,3 +1,4 @@
+// components/XpotPageShell.tsx
 'use client';
 
 import { ReactNode } from 'react';
@@ -97,7 +98,10 @@ export default function XpotPageShell({
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
-          'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)] pb-6 sm:pb-8',
+          showTopBar
+            ? 'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)]'
+            : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]',
+          'pb-6 sm:pb-8',
           maxWidthClassName,
           containerClassName,
         ].join(' ')}
@@ -125,13 +129,7 @@ export default function XpotPageShell({
             </div>
 
             {rightSlot && (
-              <div
-                className="
-                  w-full
-                  justify-self-stretch
-                  sm:w-auto sm:justify-self-end
-                "
-              >
+              <div className="w-full justify-self-stretch sm:w-auto sm:justify-self-end">
                 <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
                   {rightSlot}
                 </div>
