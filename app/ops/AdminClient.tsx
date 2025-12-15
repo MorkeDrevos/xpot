@@ -23,7 +23,7 @@ import {
   XCircle,
 } from 'lucide-react';
 
-const MAX_TODAY_TICKETS = 5;
+const MAX_TODAY_TICKETS = 7;
 const MAX_RECENT_WINNERS = 10;
 
 // ─────────────────────────────────────────────
@@ -1403,21 +1403,6 @@ export default function AdminPage() {
                 </p>
               </div>
             </div>
-{nextBonusDrop && nextBonusCountdown && (
-  <div className="mb-4 flex items-center gap-3">
-    <Badge tone="sky">
-      <Timer className="h-3.5 w-3.5" />
-      Next bonus in {nextBonusCountdown}
-    </Badge>
-
-    <span className="text-[11px] text-slate-400">
-      {nextBonusDrop.label} ·{' '}
-      <span className="font-semibold text-slate-200">
-        {nextBonusDrop.amountXpot.toLocaleString()} XPOT
-      </span>
-    </span>
-  </div>
-)}
             <form onSubmit={handleScheduleBonus} className="mt-4 grid gap-4 lg:grid-cols-2">
               <div className="space-y-3">
                 <div className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
@@ -1538,27 +1523,45 @@ export default function AdminPage() {
             </form>
 
             <div className="mt-5 border-t border-slate-800/70 pt-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                  Upcoming bonus drops
-                </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+      Upcoming bonus drops
+    </p>
 
-                <button
-                  type="button"
-                  className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-                  onClick={() => refreshUpcomingDrops()}
-                  disabled={!tokenAccepted || upcomingLoading}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    {upcomingLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCcw className="h-4 w-4" />
-                    )}
-                    Refresh
-                  </span>
-                </button>
-              </div>
+    {nextBonusDrop && nextBonusCountdown && (
+      <div className="flex items-center gap-3">
+        <Badge tone="sky">
+          <Timer className="h-3.5 w-3.5" />
+          Next bonus in {nextBonusCountdown}
+        </Badge>
+
+        <span className="text-[11px] text-slate-400">
+          {nextBonusDrop.label} ·{' '}
+          <span className="font-semibold text-slate-200">
+            {nextBonusDrop.amountXpot.toLocaleString()} XPOT
+          </span>
+        </span>
+      </div>
+    )}
+  </div>
+
+  <button
+    type="button"
+    className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+    onClick={() => refreshUpcomingDrops()}
+    disabled={!tokenAccepted || upcomingLoading}
+  >
+    <span className="inline-flex items-center gap-2">
+      {upcomingLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <RefreshCcw className="h-4 w-4" />
+      )}
+      Refresh
+    </span>
+  </button>
+</div>
 
               {upcomingError && <p className="mt-2 text-xs text-amber-300">{upcomingError}</p>}
               {cancelDropError && <p className="mt-2 text-xs text-amber-300">{cancelDropError}</p>}
