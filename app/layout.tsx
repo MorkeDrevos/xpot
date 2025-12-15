@@ -11,9 +11,8 @@ export const metadata = {
 };
 
 function RootProviders({ children }: { children: ReactNode }) {
-  // Keep your “Clerk optional” behavior for local builds
   const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  if (!clerkKey) return <Providers>{children}</Providers>;
+  if (!clerkKey) return <>{children}</>;
 
   return (
     <ClerkProvider
@@ -30,7 +29,7 @@ function RootProviders({ children }: { children: ReactNode }) {
         },
       }}
     >
-      <Providers>{children}</Providers>
+      {children}
     </ClerkProvider>
   );
 }
@@ -39,7 +38,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen bg-[#05060a] text-slate-100 antialiased">
-        <RootProviders>{children}</RootProviders>
+        <RootProviders>
+          <Providers>{children}</Providers>
+        </RootProviders>
       </body>
     </html>
   );
