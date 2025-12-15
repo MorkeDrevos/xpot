@@ -1,4 +1,4 @@
-// app/dashboard/DashboardClient.tsx
+// app/hub/DashboardClient.tsx
 'use client';
 
 import Link from 'next/link';
@@ -35,10 +35,7 @@ const BTN_PRIMARY =
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
 
-const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
-
- function WalletMenuInline() {
+function WalletMenuInline() {
   const { setVisible } = useWalletModal();
 
   return (
@@ -47,12 +44,8 @@ const BTN_UTILITY =
       onClick={() => setVisible(true)}
       className="text-left leading-tight hover:opacity-90"
     >
-      <div className="text-[28px] font-medium text-slate-100">
-        Select Wallet
-      </div>
-      <div className="text-[28px] font-medium text-slate-100">
-        Change wallet
-      </div>
+      <div className="text-[28px] font-medium text-slate-100">Select Wallet</div>
+      <div className="text-[28px] font-medium text-slate-100">Change wallet</div>
     </button>
   );
 }
@@ -591,43 +584,43 @@ export default function DashboardClient() {
       <WalletDebug />
 
       {/* HEADER */}
-<header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-  {/* left: page label only (no logo) */}
-  <div className="flex items-center gap-3">
-    <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-      Holder dashboard
-    </span>
-  </div>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        {/* left: page label only (no logo) */}
+        <div className="flex items-center gap-3">
+          <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+            Holder dashboard
+          </span>
+        </div>
 
-  {/* right: Img2 menu cluster */}
-  <div className="flex flex-col items-end gap-2">
-    <div className="flex items-center gap-4">
-      <Link
-        href="/dashboard/history"
-        className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-base text-slate-200 hover:bg-slate-900/70"
-      >
-        <History className="h-5 w-5" />
-        History
-      </Link>
+        {/* right: Img2 menu cluster */}
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/dashboard/history"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-base text-slate-200 hover:bg-slate-900/70"
+            >
+              <History className="h-5 w-5" />
+              History
+            </Link>
 
-      <div className="px-2">
-        <WalletMenuInline />
-      </div>
+            <div className="px-2">
+              <WalletMenuInline />
+            </div>
 
-      <SignOutButton redirectUrl="/dashboard">
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-base text-slate-200 hover:bg-slate-900/70"
-        >
-          <LogOut className="h-5 w-5" />
-          Log out
-        </button>
-      </SignOutButton>
-    </div>
+            <SignOutButton redirectUrl="/dashboard">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-base text-slate-200 hover:bg-slate-900/70"
+              >
+                <LogOut className="h-5 w-5" />
+                Log out
+              </button>
+            </SignOutButton>
+          </div>
 
-    <WalletStatusHint />
-  </div>
-</header>
+          <WalletStatusHint />
+        </div>
+      </header>
 
       {/* MAIN GRID */}
       <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -729,7 +722,9 @@ export default function DashboardClient() {
           <section className="rounded-[30px] border border-slate-900/70 bg-slate-950/60 px-5 py-5 backdrop-blur-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-100">Today’s XPOT</p>
+                <p className="text-sm font-semibold text-slate-100">
+                  Today’s XPOT
+                </p>
                 <p className="mt-1 text-xs text-slate-400">
                   Claim a free entry if your wallet holds the minimum XPOT.
                 </p>
@@ -796,7 +791,8 @@ export default function DashboardClient() {
                 </div>
 
                 <p className="mt-2 text-xs text-slate-500">
-                  Status: <span className="font-semibold text-slate-200">IN DRAW</span>
+                  Status:{' '}
+                  <span className="font-semibold text-slate-200">IN DRAW</span>
                   {' · '}Issued {formatDateTime(todaysTicket.createdAt)}
                 </p>
               </div>
