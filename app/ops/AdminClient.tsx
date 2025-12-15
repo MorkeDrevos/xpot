@@ -361,6 +361,10 @@ export default function AdminPage() {
   const [pickError, setPickError] = useState<string | null>(null);
   const [pickSuccess, setPickSuccess] = useState<string | null>(null);
   const [isPickingWinner, setIsPickingWinner] = useState(false);
+
+  const [bonusPickError, setBonusPickError] = useState<string | null>(null);
+  const [bonusPickSuccess, setBonusPickSuccess] = useState<string | null>(null);
+  const [isPickingBonusWinner, setIsPickingBonusWinner] = useState(false);
   const [isReopeningDraw, setIsReopeningDraw] = useState(false);
 
   const [creatingDraw, setCreatingDraw] = useState(false);
@@ -1469,6 +1473,30 @@ setPickSuccess(
                   >
                     {bonusSubmitting ? 'Scheduling…' : 'Schedule bonus XPOT'}
                   </button>
+
+                  <button
+  type="button"
+  disabled={
+  isPickingBonusWinner ||
+  !adminToken ||
+  !todayDraw ||
+  todayDraw.status !== 'open'
+}
+  onClick={handlePickBonusWinnerNow}
+  className={`${BTN_PRIMARY} mt-3 h-12 w-full text-sm`}
+>
+  {isPickingBonusWinner
+    ? 'Picking bonus winner…'
+    : 'Pick bonus winner now'}
+</button>
+
+{bonusPickError && (
+  <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>
+)}
+
+{bonusPickSuccess && (
+  <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>
+)}
 
                   {(bonusError || bonusSuccess) && (
                     <div className="mt-3 text-xs">
