@@ -118,9 +118,10 @@
 
 /* =============================================================
    OPS MOOD (TRIGGERED BY <html data-xpot-page="ops">)
+   IMPORTANT: use html[...] selector (matches what JS sets)
 ============================================================= */
 
-:root[data-xpot-page="ops"] {
+html[data-xpot-page="ops"] {
   --xpot-bg-page:
     radial-gradient(1400px 900px at 12% 22%,
       rgba(var(--xpot-accent-primary), 0.40),
@@ -167,7 +168,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
-  margin: 0;
+}
+
+/* keep the background stable on scroll for the premium “deep space” feel */
+@media (min-width: 768px) {
+  body {
+    background-attachment: fixed;
+  }
 }
 
 ::selection {
@@ -218,19 +225,13 @@ select {
 }
 
 /* =============================================================
-   XPOT PAGE WRAPPER
-   IMPORTANT: do NOT override body bg with random Tailwind bg-*
+   XPOT UTILS
 ============================================================= */
 
 .xpot-page {
   min-height: 100vh;
-  color: var(--xpot-text);
-  background: transparent; /* body owns the bg */
+  background: var(--xpot-bg-page);
 }
-
-/* =============================================================
-   SURFACES
-============================================================= */
 
 .xpot-top-strip {
   background: var(--xpot-strip);
@@ -328,115 +329,116 @@ select {
   );
 }
 
-/* =============================================================
-   HALO / ATMOSPHERE HELPERS (used by ops cards)
-============================================================= */
-
+/* Halo layer used in ops cards (AdminClient uses this class) */
 .xpot-nebula-halo {
   position: absolute;
-  inset: -60px;
+  inset: -2px;
   pointer-events: none;
   background:
-    radial-gradient(600px 280px at 20% 20%, rgba(var(--xpot-accent-primary), 0.10), transparent 60%),
-    radial-gradient(520px 260px at 75% 18%, rgba(var(--xpot-accent-secondary), 0.10), transparent 62%),
-    radial-gradient(680px 320px at 80% 70%, rgba(var(--xpot-accent-glow), 0.08), transparent 66%);
-  filter: blur(10px);
+    radial-gradient(900px 320px at 18% 0%,
+      rgba(var(--xpot-accent-primary), 0.16),
+      transparent 58%
+    ),
+    radial-gradient(900px 320px at 82% 0%,
+      rgba(var(--xpot-accent-glow), 0.12),
+      transparent 60%
+    ),
+    radial-gradient(700px 240px at 50% 110%,
+      rgba(var(--xpot-accent-secondary), 0.10),
+      transparent 62%
+    );
   opacity: 0.9;
-  transform: translateZ(0);
+  filter: blur(0px);
 }
 
 /* =============================================================
-   INPUTS
+   FORMS + BUTTONS (used by AdminClient)
 ============================================================= */
 
 .xpot-input {
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(2, 3, 10, 0.70);
-  color: rgba(226, 232, 240, 0.92);
-  padding: 12px 14px;
+  background: rgba(2, 3, 10, 0.72);
+  color: rgba(226, 232, 240, 0.95);
+  padding: 10px 12px;
   outline: none;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
 .xpot-input::placeholder {
-  color: rgba(148, 163, 184, 0.55);
+  color: rgba(148, 163, 184, 0.45);
 }
 
 .xpot-input:focus {
-  border-color: rgba(var(--xpot-accent-primary), 0.65);
+  border-color: rgba(16, 185, 129, 0.55);
   box-shadow:
-    var(--xpot-ring),
-    inset 0 0 0 1px rgba(255,255,255,0.02);
+    0 0 0 3px rgba(16, 185, 129, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
-
-/* =============================================================
-   BUTTONS
-============================================================= */
 
 .xpot-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(2, 3, 10, 0.55);
-  color: rgba(226, 232, 240, 0.90);
-  padding: 10px 14px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
-  transition: transform 180ms ease, filter 180ms ease, background 180ms ease, border-color 180ms ease, opacity 180ms ease;
+  color: rgba(226, 232, 240, 0.88);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  transition: filter 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 .xpot-btn:hover {
-  filter: brightness(1.06);
+  background: rgba(2, 3, 10, 0.70);
   border-color: rgba(148, 163, 184, 0.34);
-  background: rgba(2, 3, 10, 0.68);
+  filter: brightness(1.05);
 }
 
 .xpot-btn:active {
-  transform: translateY(1px) scale(0.99);
+  transform: translateY(1px);
 }
 
 .xpot-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .xpot-btn-primary {
-  border-color: rgba(245, 158, 11, 0.35);
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.95), rgba(245, 158, 11, 0.92));
-  color: rgba(0,0,0,0.92);
-  box-shadow:
-    0 0 0 1px rgba(251, 191, 36, 0.18),
-    0 14px 60px rgba(245, 158, 11, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  background: linear-gradient(
+    to bottom right,
+    rgba(16, 185, 129, 0.22),
+    rgba(2, 3, 10, 0.65)
+  );
+  color: rgba(236, 253, 245, 0.92);
 }
 
 .xpot-btn-primary:hover {
-  filter: brightness(1.04);
+  border-color: rgba(16, 185, 129, 0.55);
+  filter: brightness(1.06);
 }
 
 .xpot-btn-danger {
-  border-color: rgba(248, 113, 113, 0.30);
-  background: rgba(127, 29, 29, 0.40);
+  border-color: rgba(248, 113, 113, 0.35);
+  background: linear-gradient(
+    to bottom right,
+    rgba(248, 113, 113, 0.18),
+    rgba(2, 3, 10, 0.70)
+  );
   color: rgba(254, 226, 226, 0.92);
-  box-shadow:
-    0 0 0 1px rgba(248, 113, 113, 0.10),
-    0 18px 70px rgba(248, 113, 113, 0.07);
 }
 
 .xpot-btn-danger:hover {
-  border-color: rgba(248, 113, 113, 0.42);
-  background: rgba(127, 29, 29, 0.52);
+  border-color: rgba(248, 113, 113, 0.55);
+  filter: brightness(1.06);
 }
 
 /* =============================================================
-   MICRO ANIMATIONS
+   Logo animation used by top bar
 ============================================================= */
 
-/* Logo animation used by top bar */
 @keyframes xpotStarFlash {
   0% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
   45% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
@@ -445,16 +447,8 @@ select {
   100% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
 }
 
-@keyframes xpotFloatSlow {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-3px); }
-  100% { transform: translateY(0px); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   * {
-    animation: none !important;
-    transition: none !important;
     scroll-behavior: auto !important;
   }
 }
