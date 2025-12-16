@@ -22,6 +22,9 @@ type XpotPageShellProps = {
   topBarProps?: ComponentProps<typeof XpotTopBar>;
 
   showAtmosphere?: boolean;
+
+  // ✅ Fix: was used but missing from type
+  showOpsThemeSwitcher?: boolean;
 };
 
 const THEME_KEY = 'xpot_ops_theme_v1';
@@ -137,6 +140,7 @@ export default function XpotPageShell({
   showTopBar = true,
   topBarClassName = '',
   topBarProps,
+  showAtmosphere = true,
   showOpsThemeSwitcher = true,
 }: XpotPageShellProps) {
   const pathname = usePathname();
