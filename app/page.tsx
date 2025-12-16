@@ -356,6 +356,18 @@ export default function HomePage() {
 
                 {/* Contract */}
                 <ContractPill address={XPOT_CA} />
+
+                {/* CTAs (keep only what's in the screenshot) */}
+<div className="flex flex-col gap-3">
+  <Link href={ROUTE_HUB} className={`${BTN_GREEN} group w-fit px-6 py-3 text-sm`}>
+    Enter today&apos;s XPOT
+    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+  </Link>
+
+  <p className="text-[11px] text-slate-500">
+    Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
+  </p>
+</div>
               </div>
 
               {/* Mini stats */}
