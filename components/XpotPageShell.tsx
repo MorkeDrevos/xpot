@@ -1,4 +1,3 @@
-// components/XpotPageShell.tsx
 'use client';
 
 import { ReactNode, ComponentProps, useEffect, useMemo } from 'react';
@@ -22,6 +21,7 @@ type XpotPageShellProps = {
   topBarClassName?: string;
   topBarProps?: ComponentProps<typeof XpotTopBar>;
 
+  // if false, disables starfield + vignette overlays entirely
   showAtmosphere?: boolean;
 };
 
@@ -41,6 +41,7 @@ export default function XpotPageShell({
 }: XpotPageShellProps) {
   const pathname = usePathname() || '';
 
+  // One deterministic marker for CSS
   const pageKey = useMemo(() => {
     if (pathname.startsWith('/ops') || pathname.startsWith('/admin')) return 'ops';
     if (pathname.startsWith('/hub')) return 'hub';
@@ -48,11 +49,7 @@ export default function XpotPageShell({
   }, [pathname]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute('data-xpot-page', pageKey);
-    return () => {
-      // keep it deterministic - no cleanup needed
-    };
+    document.documentElement.setAttribute('data-xpot-page', pageKey);
   }, [pageKey]);
 
   return (
@@ -65,34 +62,10 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {showAtmosphere && (
-        <>
-          <div
-            aria-hidden
-            className="pointer-events-none fixed inset-0 -z-20 opacity-60 mix-blend-screen"
-            style={{
-              backgroundImage: `
-                radial-gradient(1px 1px at 12px 18px, rgba(255,255,255,0.95) 99%, transparent 100%),
-                radial-gradient(1px 1px at 42px 58px, rgba(255,255,255,0.70) 99%, transparent 100%),
-                radial-gradient(1px 1px at 88px 24px, rgba(255,255,255,0.55) 99%, transparent 100%)
-              `,
-              backgroundSize: '140px 140px',
-              backgroundPosition: '0 0',
-              filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.12))',
-            }}
-          />
+      {/* Atmosphere overlays are CSS-only now */}
+      {showAtmosphere && <div aria-hidden className="xpot-atmosphere" />}
 
-          <div
-            aria-hidden
-            className="pointer-events-none fixed inset-0 -z-10"
-            style={{
-              background:
-                'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.65) 72%, rgba(0,0,0,0.85) 100%)',
-            }}
-          />
-        </>
-      )}
-
+      {/* Content */}
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
@@ -114,8 +87,16 @@ export default function XpotPageShell({
             ].join(' ')}
           >
             <div className="min-w-0">
-              {title && <h1 className="text-[26px] sm:text-[30px] font-semibold text-slate-50">{title}</h1>}
-              {subtitle && <p className="mt-2 text-[14px] sm:text-[15px] text-slate-400">{subtitle}</p>}
+              {title && (
+                <h1 className="text-[26px] sm:text-[30px] font-semibold text-slate-50">
+                  {title}
+                </h1>
+              )}
+              {subtitle && (
+                <p className="mt-2 text-[14px] sm:text-[15px] text-slate-400">
+                  {subtitle}
+                </p>
+              )}
             </div>
 
             {rightSlot && <div className="ml-auto flex items-center gap-2">{rightSlot}</div>}
