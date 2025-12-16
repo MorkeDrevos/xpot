@@ -21,6 +21,9 @@ type XpotPageShellProps = {
   showTopBar?: boolean;
   topBarClassName?: string;
   topBarProps?: ComponentProps<typeof XpotTopBar>;
+
+  // optional: keep your atmosphere layers, but background is ALWAYS CSS-driven
+  showAtmosphere?: boolean;
 };
 
 export default function XpotPageShell({
@@ -35,6 +38,7 @@ export default function XpotPageShell({
   showTopBar = true,
   topBarClassName = '',
   topBarProps,
+  showAtmosphere = true,
 }: XpotPageShellProps) {
   const pathname = usePathname() || '';
 
@@ -56,7 +60,7 @@ export default function XpotPageShell({
   }, [isOpsOrAdmin]);
 
   return (
-    <div className={['relative min-h-screen text-slate-100', className].join(' ')}>
+    <div className={['xpot-page relative min-h-screen text-slate-100', className].join(' ')}>
       <PreLaunchBanner />
 
       {showTopBar && (
@@ -65,38 +69,36 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* ✅ Background layer driven by CSS var (must be background:, not background-color) */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-30"
-        style={{ background: 'var(--xpot-bg-page)' }}
-      />
+      {/* Atmosphere layers only (background itself is driven by globals.css) */}
+      {showAtmosphere && (
+        <>
+          {/* Starfield */}
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0 -z-20 opacity-60 mix-blend-screen"
+            style={{
+              backgroundImage: `
+                radial-gradient(1px 1px at 12px 18px, rgba(255,255,255,0.95) 99%, transparent 100%),
+                radial-gradient(1px 1px at 42px 58px, rgba(255,255,255,0.70) 99%, transparent 100%),
+                radial-gradient(1px 1px at 88px 24px, rgba(255,255,255,0.55) 99%, transparent 100%)
+              `,
+              backgroundSize: '140px 140px',
+              backgroundPosition: '0 0',
+              filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.12))',
+            }}
+          />
 
-      {/* Starfield */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-20 opacity-60 mix-blend-screen"
-        style={{
-          backgroundImage: `
-            radial-gradient(1px 1px at 12px 18px, rgba(255,255,255,0.95) 99%, transparent 100%),
-            radial-gradient(1px 1px at 42px 58px, rgba(255,255,255,0.70) 99%, transparent 100%),
-            radial-gradient(1px 1px at 88px 24px, rgba(255,255,255,0.55) 99%, transparent 100%)
-          `,
-          backgroundSize: '140px 140px',
-          backgroundPosition: '0 0',
-          filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.12))',
-        }}
-      />
-
-      {/* ✅ Vignette (use inline style, not Tailwind bg-[...] to avoid build quirks) */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{
-          background:
-            'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.65) 72%, rgba(0,0,0,0.85) 100%)',
-        }}
-      />
+          {/* Vignette */}
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0 -z-10"
+            style={{
+              background:
+                'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.65) 72%, rgba(0,0,0,0.85) 100%)',
+            }}
+          />
+        </>
+      )}
 
       {/* Content */}
       <div
