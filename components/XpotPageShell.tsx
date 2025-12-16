@@ -44,16 +44,14 @@ export default function XpotPageShell({
   const pageKey = useMemo(() => {
     if (pathname.startsWith('/ops') || pathname.startsWith('/admin')) return 'ops';
     if (pathname.startsWith('/hub')) return 'hub';
-    return 'default';
+    return 'site';
   }, [pathname]);
 
-  // Page marker (background is CSS-driven)
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-xpot-page', pageKey);
     return () => {
-      // optional: keep it deterministic even during transitions
-      root.setAttribute('data-xpot-page', 'default');
+      // keep it deterministic - no cleanup needed
     };
   }, [pageKey]);
 
@@ -67,7 +65,6 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* Atmosphere layers only (background itself is driven by globals.css) */}
       {showAtmosphere && (
         <>
           <div
@@ -96,7 +93,6 @@ export default function XpotPageShell({
         </>
       )}
 
-      {/* Content */}
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
