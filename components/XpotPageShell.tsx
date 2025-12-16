@@ -65,9 +65,6 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* Background (comes from globals.css via --xpot-bg-page) */}
-      <div className="pointer-events-none fixed inset-0 -z-30 bg-[var(--xpot-bg-page)]" />
-
       {/* Starfield */}
       <div
         aria-hidden
