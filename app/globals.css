@@ -219,11 +219,12 @@ select {
 
 /* =============================================================
    XPOT UTILS
+   Important: background is owned by BODY only.
 ============================================================= */
 
 .xpot-page {
   min-height: 100vh;
-  background: var(--xpot-bg-page);
+  background: transparent; /* critical: let globals.css own the bg via body */
 }
 
 .xpot-top-strip {
