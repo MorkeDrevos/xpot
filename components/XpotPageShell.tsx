@@ -22,7 +22,6 @@ type XpotPageShellProps = {
   topBarClassName?: string;
   topBarProps?: ComponentProps<typeof XpotTopBar>;
 
-  // optional: keep your atmosphere layers, but background is ALWAYS CSS-driven
   showAtmosphere?: boolean;
 };
 
@@ -42,22 +41,21 @@ export default function XpotPageShell({
 }: XpotPageShellProps) {
   const pathname = usePathname() || '';
 
-  const isOpsOrAdmin = useMemo(
-    () => pathname.startsWith('/ops') || pathname.startsWith('/admin'),
-    [pathname],
-  );
+  const pageKey = useMemo(() => {
+    if (pathname.startsWith('/ops') || pathname.startsWith('/admin')) return 'ops';
+    if (pathname.startsWith('/hub')) return 'hub';
+    return 'default';
+  }, [pathname]);
 
-  // Ops/Admin page marker (used by globals.css)
+  // Page marker (background is CSS-driven)
   useEffect(() => {
     const root = document.documentElement;
-
-    if (isOpsOrAdmin) root.setAttribute('data-xpot-page', 'ops');
-    else root.removeAttribute('data-xpot-page');
-
+    root.setAttribute('data-xpot-page', pageKey);
     return () => {
-      root.removeAttribute('data-xpot-page');
+      // optional: keep it deterministic even during transitions
+      root.setAttribute('data-xpot-page', 'default');
     };
-  }, [isOpsOrAdmin]);
+  }, [pageKey]);
 
   return (
     <div className={['xpot-page relative min-h-screen text-slate-100', className].join(' ')}>
@@ -72,7 +70,6 @@ export default function XpotPageShell({
       {/* Atmosphere layers only (background itself is driven by globals.css) */}
       {showAtmosphere && (
         <>
-          {/* Starfield */}
           <div
             aria-hidden
             className="pointer-events-none fixed inset-0 -z-20 opacity-60 mix-blend-screen"
@@ -88,7 +85,6 @@ export default function XpotPageShell({
             }}
           />
 
-          {/* Vignette */}
           <div
             aria-hidden
             className="pointer-events-none fixed inset-0 -z-10"
@@ -122,21 +118,11 @@ export default function XpotPageShell({
             ].join(' ')}
           >
             <div className="min-w-0">
-              {title && (
-                <h1 className="text-[26px] sm:text-[30px] font-semibold text-slate-50">
-                  {title}
-                </h1>
-              )}
-              {subtitle && (
-                <p className="mt-2 text-[14px] sm:text-[15px] text-slate-400">
-                  {subtitle}
-                </p>
-              )}
+              {title && <h1 className="text-[26px] sm:text-[30px] font-semibold text-slate-50">{title}</h1>}
+              {subtitle && <p className="mt-2 text-[14px] sm:text-[15px] text-slate-400">{subtitle}</p>}
             </div>
 
-            {rightSlot && (
-              <div className="ml-auto flex items-center gap-2">{rightSlot}</div>
-            )}
+            {rightSlot && <div className="ml-auto flex items-center gap-2">{rightSlot}</div>}
           </div>
         )}
 
