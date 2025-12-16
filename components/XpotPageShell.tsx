@@ -21,13 +21,7 @@ type XpotPageShellProps = {
   topBarClassName?: string;
   topBarProps?: ComponentProps<typeof XpotTopBar>;
 
-  // Top bar controls
-  showTopBar?: boolean; // default true
-  topBarClassName?: string; // optional wrapper class
-  topBarProps?: ComponentProps<typeof XpotTopBar>;
-
-  // Theme switcher (Ops/Admin only)
-  showOpsThemeSwitcher?: boolean; // default true
+  showAtmosphere?: boolean;
 };
 
 const THEME_KEY = 'xpot_ops_theme_v1';
