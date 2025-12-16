@@ -65,6 +65,13 @@ export default function XpotPageShell({
         </div>
       )}
 
+      {/* ✅ Background (must use background:, not Tailwind bg-[...] which becomes background-color) */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-30"
+        style={{ background: 'var(--xpot-bg-page)' }}
+      />
+
       {/* Starfield */}
       <div
         aria-hidden
@@ -76,6 +83,8 @@ export default function XpotPageShell({
             radial-gradient(1px 1px at 88px 24px, rgba(255,255,255,0.55) 99%, transparent 100%)
           `,
           backgroundSize: '140px 140px',
+          backgroundPosition: '0 0',
+          filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.12))',
         }}
       />
 
@@ -116,7 +125,9 @@ export default function XpotPageShell({
               )}
             </div>
 
-            {rightSlot && <div className="ml-auto flex items-center gap-2">{rightSlot}</div>}
+            {rightSlot && (
+              <div className="ml-auto flex items-center gap-2">{rightSlot}</div>
+            )}
           </div>
         )}
 
