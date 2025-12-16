@@ -323,6 +323,16 @@ export default function HomePage() {
                     Built to scale into a reward ecosystem for communities, creators and sponsors.
                   </p>
 
+                  <div className="mt-3">
+  <Pill tone="emerald">
+    <ShieldCheck className="h-3.5 w-3.5" />
+    Built with a 10-year rewards runway at launch
+  </Pill>
+  <p className="mt-2 text-[12px] text-slate-400">
+    Baseline funded at launch: 1,000,000 XPOT/day from the Rewards Reserve.
+  </p>
+</div>
+
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <Pill tone="emerald">
                       <ShieldCheck className="h-3.5 w-3.5" />
