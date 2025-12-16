@@ -65,7 +65,7 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* ✅ Background (must use background:, not Tailwind bg-[...] which becomes background-color) */}
+      {/* ✅ Background layer driven by CSS var (must be background:, not background-color) */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-30"
@@ -88,8 +88,15 @@ export default function XpotPageShell({
         }}
       />
 
-      {/* Vignette */}
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_72%,rgba(0,0,0,0.85)_100%)]" />
+      {/* ✅ Vignette (use inline style, not Tailwind bg-[...] to avoid build quirks) */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{
+          background:
+            'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.65) 72%, rgba(0,0,0,0.85) 100%)',
+        }}
+      />
 
       {/* Content */}
       <div
