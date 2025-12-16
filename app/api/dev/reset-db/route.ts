@@ -4,12 +4,38 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+function getHost(req: NextRequest) {
+  // On Vercel/proxies, x-forwarded-host is the real host
+  const xfHost = req.headers.get('x-forwarded-host');
+  if (xfHost) return xfHost.split(',')[0].trim();
+  return req.nextUrl.host; // includes hostname:port sometimes
+}
+
+function isAllowedDevHost(host: string) {
+  const h = host.toLowerCase();
+
+  // Local dev
+  if (h.startsWith('localhost')) return true;
+  if (h.startsWith('127.0.0.1')) return true;
+
+  // Your dev subdomain(s)
+  if (h === 'dev.xpot.bet') return true;
+  if (h.startsWith('dev.')) return true;
+
+  // Vercel preview / dev deployments
+  if (h.endsWith('.vercel.app')) return true;
+
+  return false;
+}
+
 // Shared handler for both GET and POST
 async function handleReset(req: NextRequest) {
-  // Only allow on dev.*
-  if (!req.nextUrl.hostname.startsWith('dev.')) {
+  const host = getHost(req);
+
+  // Only allow on dev hosts
+  if (!isAllowedDevHost(host)) {
     return NextResponse.json(
-      { ok: false, error: 'RESET_DISABLED_IN_PROD' },
+      { ok: false, error: 'RESET_DISABLED_IN_PROD', host },
       { status: 403 },
     );
   }
@@ -111,7 +137,6 @@ async function handleReset(req: NextRequest) {
     });
 
     // Tickets
-    // Winner ticket for yesterday's completed draw
     const winningTicket = await prisma.ticket.create({
       data: {
         code: 'AUTO-DEV-YESTERDAY-001',
@@ -122,8 +147,7 @@ async function handleReset(req: NextRequest) {
       },
     });
 
-    // Two live entries for today's open draw
-    const todayTicket1 = await prisma.ticket.create({
+    await prisma.ticket.create({
       data: {
         code: 'AUTO-DEV-TODAY-001',
         status: 'IN_DRAW',
@@ -133,7 +157,7 @@ async function handleReset(req: NextRequest) {
       },
     });
 
-    const todayTicket2 = await prisma.ticket.create({
+    await prisma.ticket.create({
       data: {
         code: 'AUTO-DEV-TODAY-002',
         status: 'IN_DRAW',
@@ -162,6 +186,7 @@ async function handleReset(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
+      host,
       cleared: true,
       seeded: true,
       users: 3,
@@ -180,6 +205,5 @@ async function handleReset(req: NextRequest) {
   }
 }
 
-// Allow both GET + POST for convenience
 export const GET = handleReset;
 export const POST = handleReset;

@@ -12,6 +12,16 @@ import {
   Lock,
   Sparkles,
   Check,
+  Blocks,
+  ShieldCheck,
+  Zap,
+  Users,
+  BadgeCheck,
+  Globe,
+  Stars,
+  Wand2,
+  Crown,
+  CheckCircle2,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -58,7 +68,7 @@ function Pill({
   tone = 'slate',
 }: {
   children: React.ReactNode;
-  tone?: 'slate' | 'emerald' | 'amber' | 'sky';
+  tone?: 'slate' | 'emerald' | 'amber' | 'sky' | 'violet';
 }) {
   const map: Record<string, string> = {
     slate:
@@ -68,6 +78,8 @@ function Pill({
     amber:
       'border-amber-400/50 bg-amber-500/10 text-amber-200 shadow-[0_0_0_1px_rgba(245,158,11,0.16)]',
     sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
+    violet:
+      'border-violet-400/45 bg-violet-500/10 text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.16)]',
   };
 
   return (
@@ -83,10 +95,12 @@ function PremiumCard({
   children,
   className = '',
   halo = true,
+  sheen = false,
 }: {
   children: React.ReactNode;
   className?: string;
   halo?: boolean;
+  sheen?: boolean;
 }) {
   return (
     <section
@@ -94,6 +108,7 @@ function PremiumCard({
         'relative overflow-hidden rounded-[30px]',
         'border border-slate-900/70 bg-transparent',
         'shadow-[0_32px_110px_rgba(15,23,42,0.85)] backdrop-blur-xl',
+        sheen ? 'xpot-sheen' : '',
         className,
       ].join(' ')}
     >
@@ -101,8 +116,9 @@ function PremiumCard({
         <div
           className="
             pointer-events-none absolute -inset-28
-            bg-[radial-gradient(circle_at_5%_0%,rgba(59,130,246,0.30),transparent_55%),
-                radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.22),transparent_58%)]
+            bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.26),transparent_55%),
+                radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.22),transparent_58%),
+                radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.16),transparent_58%)]
             opacity-85
           "
         />
@@ -119,7 +135,7 @@ function MiniStat({
 }: {
   label: string;
   value: React.ReactNode;
-  tone?: 'slate' | 'emerald' | 'sky' | 'amber';
+  tone?: 'slate' | 'emerald' | 'sky' | 'amber' | 'violet';
 }) {
   const toneCls =
     tone === 'emerald'
@@ -128,6 +144,8 @@ function MiniStat({
       ? 'text-sky-200'
       : tone === 'amber'
       ? 'text-amber-200'
+      : tone === 'violet'
+      ? 'text-violet-200'
       : 'text-slate-200';
 
   return (
@@ -192,7 +210,7 @@ function ContractPill({ address }: { address: string }) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1200);
     } catch {
-      // ignore (still keeps UI clean)
+      // ignore
     }
   }
 
@@ -229,22 +247,46 @@ function ContractPill({ address }: { address: string }) {
   );
 }
 
+function Bullet({
+  children,
+  tone = 'emerald',
+}: {
+  children: React.ReactNode;
+  tone?: 'emerald' | 'sky' | 'amber' | 'violet';
+}) {
+  const dot =
+    tone === 'sky'
+      ? 'bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]'
+      : tone === 'amber'
+      ? 'bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.9)]'
+      : tone === 'violet'
+      ? 'bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]'
+      : 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]';
+
+  return (
+    <li className="flex gap-3 text-sm text-slate-300">
+      <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${dot}`} />
+      <span>{children}</span>
+    </li>
+  );
+}
+
 export default function HomePage() {
   const marquee = useMemo(() => [...SAMPLE_HANDLES], []);
   const [showLiveEntries, setShowLiveEntries] = useState(false);
 
   return (
     <XpotPageShell>
-      {/* ONE MAIN STORY ABOVE THE FOLD: MEGA HERO */}
+      {/* HERO */}
       <section className="mt-6">
         <div className="relative overflow-hidden rounded-[36px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
-          {/* Cinematic halo */}
+          {/* Cinematic halo (new mood: emerald + violet + sky) */}
           <div
             className="
-              pointer-events-none absolute -inset-40 opacity-80 blur-3xl
-              bg-[radial-gradient(circle_at_10%_10%,rgba(16,185,129,0.22),transparent_55%),
-                  radial-gradient(circle_at_90%_20%,rgba(56,189,248,0.22),transparent_55%),
-                  radial-gradient(circle_at_80%_90%,rgba(236,72,153,0.18),transparent_60%)]
+              pointer-events-none absolute -inset-40 opacity-85 blur-3xl
+              bg-[radial-gradient(circle_at_12%_10%,rgba(16,185,129,0.20),transparent_55%),
+                  radial-gradient(circle_at_86%_16%,rgba(139,92,246,0.22),transparent_58%),
+                  radial-gradient(circle_at_82%_92%,rgba(56,189,248,0.16),transparent_60%)]
             "
           />
 
@@ -252,16 +294,25 @@ export default function HomePage() {
             {/* LEFT */}
             <div className="flex flex-col justify-between gap-6">
               <div className="space-y-5">
-                <Pill tone="sky">
-                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-                  Identity: @handle
-                </Pill>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone="sky">
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
+                    Identity: @handle
+                  </Pill>
+
+                  <Pill tone="violet">
+                    <span className="h-1.5 w-1.5 rounded-full bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
+                    Protocol layer
+                  </Pill>
+                </div>
 
                 <div>
+                  {/* SLOGAN 1: do not change */}
                   <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
                     NO TICKETS · JUST XPOT HOLDINGS
                   </p>
 
+                  {/* SLOGAN 2: do not change */}
                   <h1 className="mt-3 text-balance text-4xl font-semibold leading-tight sm:text-5xl">
                     One protocol. One identity.{' '}
                     <span className="text-emerald-300">One daily XPOT draw.</span>
@@ -269,15 +320,41 @@ export default function HomePage() {
 
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
                     Hold XPOT, connect X, claim your entry. One winner daily, paid on-chain.
+                    Built to scale into a reward ecosystem for communities, creators and sponsors.
                   </p>
+
+                  <div className="mt-3">
+  <Pill tone="emerald">
+    <ShieldCheck className="h-3.5 w-3.5" />
+    Built with a 10-year rewards runway at launch
+  </Pill>
+  <p className="mt-2 text-[12px] text-slate-400">
+    Baseline funded at launch: 1,000,000 XPOT/day from the Rewards Reserve.
+  </p>
+</div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <Pill tone="emerald">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Transparent by design
+                    </Pill>
+                    <Pill tone="sky">
+                      <Zap className="h-3.5 w-3.5" />
+                      Composable modules
+                    </Pill>
+                    <Pill tone="amber">
+                      <BadgeCheck className="h-3.5 w-3.5" />
+                      Reputation over time
+                    </Pill>
+                  </div>
                 </div>
 
-                {/* BonusStrip (high attention when scheduled) */}
+                {/* BonusStrip */}
                 <div className="pt-1">
                   <BonusStrip />
                 </div>
 
-                {/* Contract pill (crypto vibe, zero essay) */}
+                {/* Contract */}
                 <ContractPill address={XPOT_CA} />
 
                 {/* CTAs */}
@@ -313,13 +390,13 @@ export default function HomePage() {
               <div className="grid gap-3 sm:grid-cols-3">
                 <MiniStat label="Mode" value="On-chain" tone="emerald" />
                 <MiniStat label="Identity" value="@handle" tone="sky" />
-                <MiniStat label="Custody" value="Self" tone="amber" />
+                <MiniStat label="Layer" value="Rewards protocol" tone="violet" />
               </div>
             </div>
 
             {/* RIGHT */}
             <div className="grid gap-4">
-              <PremiumCard className="p-5 sm:p-6" halo>
+              <PremiumCard className="p-5 sm:p-6" halo sheen>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
@@ -335,7 +412,7 @@ export default function HomePage() {
                 </div>
 
                 <div className="mt-4">
-                  <JackpotPanel variant="standalone" />
+                  <JackpotPanel variant="standalone" badgeLabel="10+ year runway" />
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -359,18 +436,23 @@ export default function HomePage() {
                   <span className="font-mono text-emerald-200/70">read-only</span>
                 </div>
 
-                {/* If you want this to be “green screen”, change bg + border here */}
                 <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
                   <div
                     className="
                       pointer-events-none absolute -inset-24 opacity-70 blur-3xl
                       bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.28),transparent_55%),
-                          radial-gradient(circle_at_90%_100%,rgba(56,189,248,0.10),transparent_60%)]
+                          radial-gradient(circle_at_90%_100%,rgba(139,92,246,0.10),transparent_60%)]
                     "
                   />
 
                   <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
-{`> XPOT_POOL_STATUS
+{`> XPOT_PROTOCOL
+  primitive:       daily reward selection
+  identity:        X handle + wallet (self custody)
+  proof:           on-chain payout verification
+  composable:      modules can plug in later
+
+> TODAY
   pool_today:      1,000,000 XPOT
   pool_value_usd:  live via Jupiter
   entries_today:   2,184
@@ -379,9 +461,7 @@ export default function HomePage() {
 > LAST_WINNERS
   #2025-12-06  @DeWala_222222   1,000,000 XPOT
   #2025-12-05  @SignalChaser    250,000 XPOT (bonus)
-  #2025-12-04  @NFAResearch     1,000,000 XPOT
-
-> note: write access is admin-only. winners can watch, not touch.`}
+  #2025-12-04  @NFAResearch     1,000,000 XPOT`}
                   </pre>
                 </div>
 
@@ -392,7 +472,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* OPTIONAL: expandable live entries */}
+          {/* Expandable live entries */}
           <div className="relative z-10 border-t border-slate-900/70 px-6 py-4 lg:px-8">
             <button
               type="button"
@@ -439,7 +519,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* WOW FACTOR SECTION: THE PROTOCOL STRIP */}
+      {/* THE PROTOCOL STRIP (kept, slightly tightened) */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -478,6 +558,156 @@ export default function HomePage() {
             </p>
             <p className="mt-2 text-sm text-slate-300">
               Winner verifies the transaction. Transparency is the product.
+            </p>
+          </PremiumCard>
+        </div>
+      </section>
+
+      {/* NEW: ECOSYSTEM LAYER - "BUILT TO BE BUILT ON" */}
+      <section className="mt-8">
+        <PremiumCard className="p-6 sm:p-8" halo sheen>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <Pill tone="violet">
+                <Blocks className="h-3.5 w-3.5" />
+                Built to be built on
+              </Pill>
+
+              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
+                XPOT is a rewards protocol, not a one-off game.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                The daily draw is the primitive. On top of it we can add modules that reward
+                participation, streaks and reputation over time. That is how XPOT becomes an
+                ecosystem for communities, creators and sponsors.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Fair by design
+              </Pill>
+              <Pill tone="sky">
+                <Globe className="h-3.5 w-3.5" />
+                Sponsor friendly
+              </Pill>
+              <Pill tone="amber">
+                <Stars className="h-3.5 w-3.5" />
+                Portable loyalty
+              </Pill>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-950/30">
+                  <Wand2 className="h-5 w-5 text-emerald-200" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Modules</p>
+                  <p className="text-xs text-slate-400">Plug-in reward logic</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2">
+                <Bullet>Streak boosters and attendance rewards</Bullet>
+                <Bullet tone="sky">Creator-gated drops</Bullet>
+                <Bullet tone="amber">Sponsor-funded pools</Bullet>
+                <Bullet tone="violet">Milestone ladders</Bullet>
+              </ul>
+            </div>
+
+            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-500/25 bg-sky-950/25">
+                  <Users className="h-5 w-5 text-sky-200" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Identity</p>
+                  <p className="text-xs text-slate-400">Reputation across time</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2">
+                <Bullet tone="sky">X handle is public, wallet stays self-custody</Bullet>
+                <Bullet tone="violet">History, streaks and wins become your profile</Bullet>
+                <Bullet tone="emerald">Anti-bot gravity without KYC vibes</Bullet>
+              </ul>
+            </div>
+
+            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-950/20">
+                  <ShieldCheck className="h-5 w-5 text-amber-200" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Fairness layer</p>
+                  <p className="text-xs text-slate-400">If XPOT picked it, it&apos;s fair</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2">
+                <Bullet tone="amber">On-chain proof of payouts</Bullet>
+                <Bullet tone="emerald">Transparent winner announcements</Bullet>
+                <Bullet tone="sky">Reusable selection primitive for other apps</Bullet>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+              <p className="text-sm text-slate-300">
+                XPOT is designed for rewards, not for addiction loops.
+              </p>
+            </div>
+
+            <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
+              Claim your entry
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </PremiumCard>
+      </section>
+
+      {/* NEW: WHO IT'S FOR */}
+      <section className="mt-8">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="sky">
+              <Crown className="h-3.5 w-3.5" />
+              Creators
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">
+              Giveaways without chaos.
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              One link, one mechanic, transparent winners and a premium experience.
+            </p>
+          </PremiumCard>
+
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="amber">
+              <Globe className="h-3.5 w-3.5" />
+              Sponsors
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">
+              Fund moments, not ads.
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              Sponsor pools and bonuses with visibility and provable distribution.
+            </p>
+          </PremiumCard>
+
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="emerald">
+              <Zap className="h-3.5 w-3.5" />
+              Communities
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">
+              Portable loyalty.
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              Your XPOT history travels with you and unlocks better rewards over time.
             </p>
           </PremiumCard>
         </div>

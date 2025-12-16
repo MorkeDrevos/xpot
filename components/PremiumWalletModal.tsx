@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState, type WalletName } from '@solana/wallet-adapter-base';
-import { ChevronRight, ExternalLink, Shield, Wallet, X } from 'lucide-react';
+import { ChevronRight, ExternalLink, Shield, Wallet } from 'lucide-react';
+
+import XpotLogoLottie from '@/components/XpotLogoLottie';
 
 const BTN_PRIMARY =
   'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
@@ -25,7 +27,8 @@ export default function PremiumWalletModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const { wallets, wallet, publicKey, connected, connecting, disconnect, select } = useWallet();
+  const { wallets, wallet, publicKey, connected, connecting, disconnect, select } =
+    useWallet();
   const [busy, setBusy] = useState<string | null>(null);
 
   const detected = useMemo(() => {
@@ -89,7 +92,26 @@ export default function PremiumWalletModal({
             <div className="pointer-events-none absolute -bottom-24 left-[18%] h-[380px] w-[380px] rounded-full bg-amber-500/10 blur-3xl" />
 
             <div className="relative px-6 py-6 sm:px-7 sm:py-7">
-              <div className="flex items-start justify-between gap-4">
+              {/* XPOT brand header (logo + close) */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <XpotLogoLottie className="h-8 w-auto" height={32} />
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                    XPOT
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10"
+                  aria-label="Close"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-5 flex items-start justify-between gap-4">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
                     <Shield className="h-4 w-4 text-emerald-200" />
@@ -106,14 +128,8 @@ export default function PremiumWalletModal({
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-200 hover:bg-white/10"
-                  aria-label="Close"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                {/* keep spacing clean on the right */}
+                <div className="hidden sm:block" />
               </div>
 
               {/* Connected row */}
@@ -183,7 +199,8 @@ export default function PremiumWalletModal({
                     const isSelected = wallet?.adapter?.name === String(name);
 
                     const installed =
-                      rs === WalletReadyState.Installed || rs === WalletReadyState.Loadable;
+                      rs === WalletReadyState.Installed ||
+                      rs === WalletReadyState.Loadable;
 
                     return (
                       <button
