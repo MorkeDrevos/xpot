@@ -22,6 +22,7 @@ import {
   Copy,
   Check,
   ShieldCheck,
+  PieChart,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -56,10 +57,10 @@ type XpotTopBarProps = {
   maxWidthClassName?: string;
 };
 
-const XPOT_X_POST =
-  'https://x.com/xpotbet';
+const XPOT_X_POST = 'https://x.com/xpotbet';
 
 const WINNERS_HREF = '/winners';
+const TOKENOMICS_HREF = '/tokenomics';
 
 /**
  * Official Contract Address (shown in top bar on public pages).
@@ -234,26 +235,26 @@ function OfficialContractRoyalChip() {
         "
         title={XPOT_OFFICIAL_CA}
       >
-        {/* Aura (royal, but subtle so it feels premium not loud) */}
+        {/* Aura */}
         <div className="pointer-events-none absolute -inset-10 rounded-full opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_10%,rgba(16,185,129,0.20),transparent_55%),radial-gradient(circle_at_86%_70%,rgba(245,158,11,0.10),transparent_60%)]" />
 
         {/* Fine edge highlight */}
         <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
 
-        {/* Seal (smaller to reduce height) */}
-       <span
-  className="
-    relative z-10 inline-flex h-8 w-8 items-center justify-center
-    rounded-full
-    border border-amber-300/25
-    bg-[radial-gradient(circle_at_30%_30%,rgba(245,158,11,0.18),rgba(0,0,0,0.35))]
-    shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_14px_40px_rgba(0,0,0,0.55)]
-  "
->
-  <ShieldCheck className="h-4 w-4 text-emerald-200" />
-</span>>
+        {/* Seal */}
+        <span
+          className="
+            relative z-10 inline-flex h-8 w-8 items-center justify-center
+            rounded-full
+            border border-amber-300/25
+            bg-[radial-gradient(circle_at_30%_30%,rgba(245,158,11,0.18),rgba(0,0,0,0.35))]
+            shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_14px_40px_rgba(0,0,0,0.55)]
+          "
+        >
+          <ShieldCheck className="h-4 w-4 text-emerald-200" />
+        </span>
 
-        {/* Engraved label + CA (single compact stack) */}
+        {/* Engraved label + CA */}
         <div className="relative z-10 flex items-center gap-3">
           <div className="flex flex-col leading-none">
             <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">
@@ -264,7 +265,7 @@ function OfficialContractRoyalChip() {
             </span>
           </div>
 
-          {/* Optional price, compact (no divider line) */}
+          {/* Optional price */}
           <div className="hidden xl:flex items-center gap-2">
             <span className="h-1 w-1 rounded-full bg-white/15" />
             <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
@@ -276,7 +277,7 @@ function OfficialContractRoyalChip() {
           </div>
         </div>
 
-        {/* Copy button (slimmer) */}
+        {/* Copy button */}
         <button
           type="button"
           onClick={onCopy}
@@ -368,6 +369,14 @@ function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
       <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="text" />
 
       <Link
+        href={TOKENOMICS_HREF}
+        className="inline-flex items-center gap-2 hover:text-white"
+      >
+        <PieChart className="h-4 w-4 text-emerald-300" />
+        Tokenomics
+      </Link>
+
+      <Link
         href={WINNERS_HREF}
         className="inline-flex items-center gap-2 hover:text-white"
       >
@@ -427,6 +436,7 @@ function HubNav({
       {/* Identity chip */}
       <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:flex">
         {isLoaded && avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={avatar}
             alt="X avatar"
@@ -443,6 +453,14 @@ function HubNav({
       </div>
 
       <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="pill" />
+
+      <Link
+        href={TOKENOMICS_HREF}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+      >
+        <PieChart className="h-5 w-5 text-emerald-300" />
+        Tokenomics
+      </Link>
 
       <Link
         href={WINNERS_HREF}
@@ -522,8 +540,7 @@ function HubWalletMenuInline({
     <Wallet className="h-4 w-4" />
   );
 
-  const open = () =>
-    onOpenWalletModal ? onOpenWalletModal() : setVisible(true);
+  const open = () => (onOpenWalletModal ? onOpenWalletModal() : setVisible(true));
 
   return (
     <button
