@@ -73,7 +73,6 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
               PRE-LAUNCH MODE <span className="mx-2 text-white/40">•</span> CONTRACT DEPLOYED{' '}
               <span className="mx-2 text-white/40">•</span> OFFICIAL CA VERIFIED{' '}
               <span className="mx-2 text-white/40">•</span> TRADING NOT ACTIVE YET{' '}
-              <span className="ml-2 text-white/70">BUILD v0.9.8</span>
             </p>
           </div>
         </div>
