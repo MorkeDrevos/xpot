@@ -56,7 +56,7 @@ function formatUsd(v: number | null | undefined) {
 
 export function MobileMenuButton({
   onClick,
-  label = 'Menu',
+  label = 'Open menu',
 }: {
   onClick: () => void;
   label?: string;
@@ -65,11 +65,19 @@ export function MobileMenuButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-200 hover:bg-white/[0.06]"
       aria-label={label}
+      className="
+        inline-flex h-10 w-10 items-center justify-center
+        rounded-full
+        border border-white/10
+        bg-white/[0.03]
+        text-slate-200
+        hover:bg-white/[0.06]
+        shadow-[0_18px_60px_rgba(0,0,0,0.45)]
+        backdrop-blur
+      "
     >
       <Menu className="h-5 w-5" />
-      <span className="text-sm font-semibold">{label}</span>
     </button>
   );
 }
