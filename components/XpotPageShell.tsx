@@ -23,8 +23,11 @@ type XpotPageShellProps = {
 
   showAtmosphere?: boolean;
 
-  // ✅ Fix: was used but missing from type
+  // Keep your existing feature
   showOpsThemeSwitcher?: boolean;
+
+  // ✅ New feature: explicit page tag (used for styling, telemetry, theming hooks)
+  pageTag?: string;
 };
 
 const THEME_KEY = 'xpot_ops_theme_v1';
@@ -87,8 +90,7 @@ function OpsThemeSwitcher() {
   const [active, setActive] = useState<string>('nebula');
 
   useEffect(() => {
-    const saved =
-      typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null;
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null;
     const initial = saved && PRESETS.some(p => p.id === saved) ? saved : 'nebula';
     setActive(initial);
     applyPreset(initial);
@@ -113,9 +115,7 @@ function OpsThemeSwitcher() {
               }}
               className={[
                 'h-8 px-3 text-[11px] font-semibold transition',
-                isActive
-                  ? 'bg-white/[0.10] text-slate-50'
-                  : 'text-slate-300 hover:bg-white/[0.06]',
+                isActive ? 'bg-white/[0.10] text-slate-50' : 'text-slate-300 hover:bg-white/[0.06]',
               ].join(' ')}
               title={`Apply ${p.label}`}
             >
@@ -142,15 +142,20 @@ export default function XpotPageShell({
   topBarProps,
   showAtmosphere = true,
   showOpsThemeSwitcher = true,
+  pageTag,
 }: XpotPageShellProps) {
   const pathname = usePathname();
 
-  const isOpsOrAdmin = useMemo(() => {
-    return (
-      typeof pathname === 'string' &&
-      (pathname.startsWith('/ops') || pathname.startsWith('/admin'))
-    );
+  const inferredTag = useMemo(() => {
+    if (typeof pathname !== 'string') return undefined;
+    if (pathname.startsWith('/ops') || pathname.startsWith('/admin')) return 'ops';
+    if (pathname.startsWith('/hub')) return 'hub';
+    return undefined;
   }, [pathname]);
+
+  const resolvedPageTag = pageTag || inferredTag;
+
+  const isOpsOrAdmin = resolvedPageTag === 'ops';
 
   const mergedRightSlot = useMemo(() => {
     if (!isOpsOrAdmin || !showOpsThemeSwitcher) return rightSlot ?? null;
@@ -165,10 +170,8 @@ export default function XpotPageShell({
 
   return (
     <div
-      className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(
-        ' ',
-      )}
-      data-xpot-page={isOpsOrAdmin ? 'ops' : undefined}
+      className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(' ')}
+      data-xpot-page={resolvedPageTag}
     >
       <PreLaunchBanner />
 
@@ -178,10 +181,8 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* Atmosphere overlays are CSS-only now */}
       {showAtmosphere && <div aria-hidden className="xpot-atmosphere" />}
 
-      {/* Content */}
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
