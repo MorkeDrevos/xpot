@@ -22,4 +22,12 @@ export default function WinnersLoading() {
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2">
               <div className="h-4 w-36 rounded-full bg-white/10" />
-              <div className="h-3 w-[420px] max-w-[70vw] rounded-full bg-white/
+              <div className="h-3 w-[420px] max-w-[70vw] rounded-full bg-white/5" />
+            </div>
+            <div className="h-8 w-24 rounded-full bg-white/5 ring-1 ring-white/10" />
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
