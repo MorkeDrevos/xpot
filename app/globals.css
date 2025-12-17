@@ -387,6 +387,15 @@ select {
   100% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
 }
 
+/* =============================================================
+   PRE-LAUNCH BANNER SWEEP (shimmer)
+============================================================= */
+
+@keyframes xpotBannerSweep {
+  0%   { transform: translateX(-60%); }
+  100% { transform: translateX(160%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto !important;
