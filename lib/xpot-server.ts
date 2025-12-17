@@ -5,7 +5,7 @@ import { REQUIRED_XPOT } from './xpot';
 
 // TODO: set your real RPC + XPOT mint in env
 const RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-const XPOT_MINT = new PublicKey(process.env.XPOT_MINT as string); // e.g. 'So11111111111111111111111111111111111111112'
+const XPOT_MINT = new PublicKey(process.env.XPOT_MINT as string); // e.g. 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1'
 
 const connection = new Connection(RPC_URL, 'confirmed');
 
