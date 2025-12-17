@@ -226,7 +226,7 @@ function OfficialContractRoyalChip() {
           group relative inline-flex items-center gap-3
           rounded-full
           px-3 py-1
-          border border-emerald-400/14
+          border border-emerald-400/8
           bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]
           shadow-[0_22px_70px_rgba(0,0,0,0.52)]
           backdrop-blur-xl
@@ -238,23 +238,20 @@ function OfficialContractRoyalChip() {
         <div className="pointer-events-none absolute -inset-10 rounded-full opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_10%,rgba(16,185,129,0.20),transparent_55%),radial-gradient(circle_at_86%_70%,rgba(245,158,11,0.10),transparent_60%)]" />
 
         {/* Fine edge highlight */}
-        <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/10" />
+        <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
 
         {/* Seal (smaller to reduce height) */}
-        <span
-          className="
-            relative z-10 inline-flex h-8 w-8 items-center justify-center
-            rounded-full
-            border border-amber-300/25
-            bg-[radial-gradient(circle_at_30%_30%,rgba(245,158,11,0.18),rgba(0,0,0,0.35))]
-            shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_14px_40px_rgba(0,0,0,0.55)]
-          "
-        >
-          <ShieldCheck className="h-4 w-4 text-emerald-200" />
-          <span className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-3 w-3 items-center justify-center rounded-full bg-amber-300/90 text-[9px] font-black text-black shadow-[0_0_12px_rgba(245,158,11,0.50)]">
-            ✓
-          </span>
-        </span>
+       <span
+  className="
+    relative z-10 inline-flex h-8 w-8 items-center justify-center
+    rounded-full
+    border border-amber-300/25
+    bg-[radial-gradient(circle_at_30%_30%,rgba(245,158,11,0.18),rgba(0,0,0,0.35))]
+    shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_14px_40px_rgba(0,0,0,0.55)]
+  "
+>
+  <ShieldCheck className="h-4 w-4 text-emerald-200" />
+</span>>
 
         {/* Engraved label + CA (single compact stack) */}
         <div className="relative z-10 flex items-center gap-3">
