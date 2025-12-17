@@ -1,3 +1,4 @@
+// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -11,20 +12,15 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
 import {
-  BadgeCheck,
-  CalendarClock,
   Check,
   Copy,
   Crown,
   ExternalLink,
-  Info,
-  KeyRound,
   LogOut,
   PieChart,
   Radio,
   ShieldCheck,
   Ticket,
-  Timer,
   Trophy,
   Wallet,
   Map,
@@ -70,14 +66,12 @@ const ROADMAP_HREF = '/roadmap';
 
 /**
  * Official Contract Address (shown in top bar on public pages).
- * Replace with your real mint when ready.
  */
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
 /**
  * Optional - if you implement this API route later:
  * return { priceUsd: number }
- * Safe if missing - chip just shows "—".
  */
 const XPOT_PRICE_ENDPOINT = '/api/price/xpot';
 
@@ -139,7 +133,6 @@ export default function XpotTopBar({
                   </span>
                 )}
 
-                {/* ✅ Moved Official CA here (compact) so RIGHT side stays clean */}
                 {!isHub && <OfficialContractMiniPill />}
               </div>
             </div>
@@ -155,7 +148,6 @@ export default function XpotTopBar({
                 />
               ) : (
                 <>
-                  {/* Escape hatch slot (kept) */}
                   {rightSlot ? rightSlot : <PublicNav liveIsOpen={liveIsOpen} />}
                 </>
               )}
@@ -172,7 +164,7 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- OFFICIAL CA MINI PILL (COMPACT) ---------------- */
+/* ---------------- OFFICIAL CA MINI PILL ---------------- */
 
 function shortenAddress(addr: string, left = 8, right = 6) {
   if (!addr) return '';
@@ -253,7 +245,9 @@ function OfficialContractMiniPill() {
 
         <div className="hidden 2xl:flex items-center gap-2">
           <span className="h-1 w-1 rounded-full bg-white/15" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">XPOT</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+            XPOT
+          </span>
           <span className="font-mono text-[12px] text-slate-100/85">{formatUsd(priceUsd)}</span>
         </div>
 
@@ -269,7 +263,11 @@ function OfficialContractMiniPill() {
           "
           title="Copy official contract address"
         >
-          {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4 text-slate-100/90" />}
+          {copied ? (
+            <Check className="h-4 w-4 text-emerald-200" />
+          ) : (
+            <Copy className="h-4 w-4 text-slate-100/90" />
+          )}
         </button>
       </div>
     </div>
@@ -347,7 +345,6 @@ function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
         Tokenomics
       </Link>
 
-      {/* ✅ Roadmap added */}
       <Link href={ROADMAP_HREF} className="inline-flex items-center gap-2 hover:text-white">
         <Map className="h-4 w-4 text-sky-300" />
         Roadmap
@@ -368,7 +365,10 @@ function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
         X
       </Link>
 
-      <Link href="/hub" className="rounded-full bg-white px-5 py-2 font-semibold text-black hover:bg-slate-200">
+      <Link
+        href="/hub"
+        className="rounded-full bg-white px-5 py-2 font-semibold text-black hover:bg-slate-200"
+      >
         Enter today&apos;s XPOT →
       </Link>
     </>
@@ -408,7 +408,11 @@ function HubNav({
       <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:flex">
         {isLoaded && avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatar} alt="X avatar" className="h-6 w-6 rounded-full border border-white/10" />
+          <img
+            src={avatar}
+            alt="X avatar"
+            className="h-6 w-6 rounded-full border border-white/10"
+          />
         ) : (
           <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xs">
             {initial}
@@ -417,24 +421,8 @@ function HubNav({
         <span className="text-xs font-semibold">{displayHandle ?? 'X linking…'}</span>
       </div>
 
+      {/* Hub menu = clean: Live, Winners, X, Wallet, Log out */}
       <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="pill" />
-
-      <Link
-        href={TOKENOMICS_HREF}
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
-      >
-        <PieChart className="h-5 w-5 text-emerald-300" />
-        Tokenomics
-      </Link>
-
-      {/* ✅ Roadmap added */}
-      <Link
-        href={ROADMAP_HREF}
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
-      >
-        <Map className="h-5 w-5 text-sky-300" />
-        Roadmap
-      </Link>
 
       <Link
         href={WINNERS_HREF}
@@ -454,7 +442,10 @@ function HubNav({
         X
       </Link>
 
-      <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
+      <HubWalletMenuInline
+        hubWalletStatus={hubWalletStatus}
+        onOpenWalletModal={onOpenWalletModal}
+      />
 
       {clerkEnabled && (
         <SignOutButton redirectUrl="/">
@@ -493,7 +484,13 @@ function HubWalletMenuInline({
   const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
 
   const tone: HubWalletTone =
-    hubWalletStatus?.winner ? 'sky' : hubWalletStatus?.claimed ? 'emerald' : connected ? 'sky' : 'amber';
+    hubWalletStatus?.winner
+      ? 'sky'
+      : hubWalletStatus?.claimed
+      ? 'emerald'
+      : connected
+      ? 'sky'
+      : 'amber';
 
   const microIcon = hubWalletStatus?.winner ? (
     <Crown className="h-4 w-4" />
@@ -508,7 +505,9 @@ function HubWalletMenuInline({
   return (
     <button
       onClick={open}
-      className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(tone)} hover:opacity-95`}
+      className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(
+        tone,
+      )} hover:opacity-95`}
       title={addr ?? undefined}
     >
       <div className="flex items-center gap-2">
