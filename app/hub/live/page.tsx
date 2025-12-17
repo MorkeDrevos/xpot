@@ -125,8 +125,6 @@ export default function HubLivePage() {
   return (
     <XpotPageShell
       topBarProps={{
-        pillText: 'XPOT LIVE',
-        sloganRight: 'Real-time reward flow',
         liveIsOpen,
       }}
     >
