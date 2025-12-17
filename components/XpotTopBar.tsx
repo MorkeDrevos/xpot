@@ -6,6 +6,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
+
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
@@ -22,20 +23,6 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
-/* ───────────────────────────────────────────── */
-/* CONFIG                                       */
-/* ───────────────────────────────────────────── */
-
-const XPOT_OFFICIAL_CA = 'So11111111111111111111111111111111111111112'; // replace later
-const XPOT_PRICE_ENDPOINT = '/api/price/xpot'; // optional, safe if missing
-
-const XPOT_X_POST =
-  'https://x.com/xpotbet/status/1998020027069653445?s=46&t=F6JSZfQ0P85RPUutnn4nag';
-
-const WINNERS_HREF = '/winners';
-
-/* ───────────────────────────────────────────── */
-
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
 export type HubWalletStatus = {
@@ -48,108 +35,43 @@ export type HubWalletStatus = {
 
 type XpotTopBarProps = {
   logoHref?: string;
+
+  // Public pill (non-hub pages)
   pillText?: string;
+
+  // Optional right slogan (non-hub pages)
   sloganRight?: string;
+
+  // Escape hatch (non-hub pages only)
   rightSlot?: ReactNode;
+
+  // Hub enhancements
   hubWalletStatus?: HubWalletStatus;
   onOpenWalletModal?: () => void;
   liveIsOpen?: boolean;
+
+  // Banner
   hasBanner?: boolean;
   maxWidthClassName?: string;
 };
 
-/* ───────────────────────────────────────────── */
+const XPOT_X_POST =
+  'https://x.com/xpotbet/status/1998020027069653445?s=46&t=F6JSZfQ0P85RPUutnn4nag';
 
-function shorten(addr: string, l = 6, r = 6) {
-  return `${addr.slice(0, l)}…${addr.slice(-r)}`;
-}
+const WINNERS_HREF = '/winners';
 
-function formatUsd(v: number | null) {
-  if (!v || !Number.isFinite(v)) return '—';
-  if (v >= 1) return `$${v.toFixed(2)}`;
-  if (v >= 0.01) return `$${v.toFixed(4)}`;
-  return `$${v.toFixed(6)}`;
-}
+/**
+ * Official Contract Address (shown in top bar on public pages).
+ * Replace with your real mint when ready.
+ */
+const XPOT_OFFICIAL_CA = 'So11111111111111111111111111111111111111112';
 
-/* ───────────────────────────────────────────── */
-/* OFFICIAL CONTRACT STRIP                       */
-/* ───────────────────────────────────────────── */
-
-function OfficialContractStrip() {
-  const [copied, setCopied] = useState(false);
-  const [priceUsd, setPriceUsd] = useState<number | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function tick() {
-      try {
-        const res = await fetch(XPOT_PRICE_ENDPOINT, { cache: 'no-store' });
-        const data = await res.json();
-        if (!cancelled && typeof data?.priceUsd === 'number') {
-          setPriceUsd(data.priceUsd);
-        }
-      } catch {
-        // silent
-      }
-    }
-
-    tick();
-    const id = setInterval(tick, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
-
-  async function onCopy() {
-    await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="inline-flex items-center gap-3 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 shadow-[0_0_40px_rgba(16,185,129,0.25)]">
-        <ShieldCheck className="h-4 w-4 text-emerald-300" />
-
-        <div className="flex flex-col leading-tight">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
-            Official XPOT Contract
-          </span>
-          <span className="font-mono text-[11px] text-emerald-100">
-            {shorten(XPOT_OFFICIAL_CA)}
-          </span>
-        </div>
-
-        <span className="mx-1 h-4 w-px bg-emerald-400/30" />
-
-        <div className="text-[11px] font-mono text-emerald-200">
-          {formatUsd(priceUsd)}
-        </div>
-
-        <button
-          onClick={onCopy}
-          className="ml-1 inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100 hover:bg-emerald-500/20"
-        >
-          {copied ? (
-            <>
-              <Check className="h-3.5 w-3.5" /> Copied
-            </>
-          ) : (
-            <>
-              <Copy className="h-3.5 w-3.5" /> Copy
-            </>
-          )}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ───────────────────────────────────────────── */
-/* MAIN COMPONENT                               */
-/* ───────────────────────────────────────────── */
+/**
+ * Optional - if you implement this API route later:
+ * return { priceUsd: number }
+ * Safe if missing - chip just shows "—".
+ */
+const XPOT_PRICE_ENDPOINT = '/api/price/xpot';
 
 export default function XpotTopBar({
   logoHref = '/',
@@ -164,6 +86,7 @@ export default function XpotTopBar({
 }: XpotTopBarProps) {
   const pathname = usePathname() || '';
   const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
+
   const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
@@ -173,27 +96,46 @@ export default function XpotTopBar({
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
           <div className="flex min-h-[124px] items-center justify-between gap-6">
             {/* LEFT */}
-            <div className="flex items-center gap-4">
-              <Link href={logoHref} className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-4">
+              <Link href={logoHref} className="flex shrink-0 items-center gap-3">
                 <Image
                   src="/img/xpot-logo-light.png"
                   alt="XPOT"
                   width={460}
                   height={120}
                   priority
-                  className="h-[120px] w-auto object-contain"
+                  className="h-[120px] max-h-[120px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
                 />
               </Link>
 
-              {!isHub && (
-                <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
-                  {pillText}
-                </span>
-              )}
+              <div className="hidden min-w-0 items-center gap-3 sm:flex">
+                {/* Non-hub: show protocol pill, Hub: show HUB pill */}
+                {isHub ? (
+                  <Link
+                    href="/hub"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300 hover:bg-white/[0.06]"
+                    title="Back to Hub"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                    <span className="truncate opacity-85">HUB</span>
+                  </Link>
+                ) : (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
+                    <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                    <span className="truncate opacity-85">{pillText}</span>
+                  </span>
+                )}
+
+                {!isHub && sloganRight && (
+                  <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 lg:inline-flex">
+                    {sloganRight}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* RIGHT */}
-            <div className="flex items-center gap-4 text-sm text-slate-300">
+            <div className="flex items-center gap-6 text-sm text-slate-300">
               {isHub ? (
                 <HubNav
                   clerkEnabled={clerkEnabled}
@@ -203,9 +145,11 @@ export default function XpotTopBar({
                 />
               ) : (
                 <>
-                  <OfficialContractStrip />
-                  {rightSlot}
-                  <PublicNav liveIsOpen={liveIsOpen} />
+                  {/* Official CA - show on all public pages (anti-copycat) */}
+                  <OfficialContractChip />
+
+                  {/* Escape hatch slot (kept) */}
+                  {rightSlot ? rightSlot : <PublicNav liveIsOpen={liveIsOpen} />}
                 </>
               )}
             </div>
@@ -213,15 +157,384 @@ export default function XpotTopBar({
         </div>
       </div>
 
+      {/* Premium divider */}
       <div className="relative h-[1px] w-full overflow-hidden">
-        <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(16,185,129,0.15),rgba(16,185,129,0.55),rgba(16,185,129,0.15))]" />
+        <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.1),rgba(56,189,248,0.55),rgba(56,189,248,0.1))]" />
       </div>
     </header>
   );
 }
 
-/* ───────────────────────────────────────────── */
-/* EXISTING NAV / HUB CODE BELOW (UNCHANGED)    */
-/* ───────────────────────────────────────────── */
+/* ---------------- OFFICIAL CA CHIP ---------------- */
 
-/* ... rest of your file remains exactly the same ... */
+function shortenAddress(addr: string, left = 10, right = 10) {
+  if (!addr) return '';
+  if (addr.length <= left + right + 3) return addr;
+  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
+}
+
+function formatUsd(v: number | null) {
+  if (v === null || !Number.isFinite(v)) return '—';
+  if (v >= 1) return `$${v.toFixed(2)}`;
+  if (v >= 0.01) return `$${v.toFixed(4)}`;
+  return `$${v.toFixed(6)}`;
+}
+
+function OfficialContractChip() {
+  const [copied, setCopied] = useState(false);
+  const [priceUsd, setPriceUsd] = useState<number | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function poll() {
+      try {
+        const res = await fetch(XPOT_PRICE_ENDPOINT, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!alive) return;
+        if (typeof data?.priceUsd === 'number') setPriceUsd(data.priceUsd);
+      } catch {
+        // silent
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, 5000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div className="hidden items-center sm:flex">
+      <div
+        className="
+          group relative inline-flex items-center gap-3
+          rounded-full border border-emerald-400/35 bg-emerald-500/10
+          px-4 py-2
+          shadow-[0_0_40px_rgba(16,185,129,0.18)]
+          hover:bg-emerald-500/[0.14]
+        "
+        title={XPOT_OFFICIAL_CA}
+      >
+        {/* glow layer */}
+        <div
+          className="
+            pointer-events-none absolute -inset-8 rounded-full opacity-70 blur-2xl
+            bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.25),transparent_60%)]
+          "
+        />
+
+        <span className="relative z-10 inline-flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-emerald-300" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+            Official
+          </span>
+        </span>
+
+        <span className="relative z-10 h-4 w-px bg-emerald-400/25" />
+
+        <span className="relative z-10 flex flex-col leading-tight">
+          <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/80">
+            CA
+          </span>
+          <span className="font-mono text-[11px] text-emerald-100">
+            {shortenAddress(XPOT_OFFICIAL_CA, 10, 10)}
+          </span>
+        </span>
+
+        <span className="relative z-10 h-4 w-px bg-emerald-400/25" />
+
+        <span className="relative z-10 flex flex-col leading-tight">
+          <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/80">
+            Price
+          </span>
+          <span className="font-mono text-[11px] text-emerald-100">
+            {formatUsd(priceUsd)}
+          </span>
+        </span>
+
+        <button
+          type="button"
+          onClick={onCopy}
+          className="
+            relative z-10 inline-flex items-center gap-2
+            rounded-full border border-emerald-400/25 bg-emerald-500/10
+            px-3 py-1.5 text-[11px] text-emerald-100
+            hover:bg-emerald-500/20
+          "
+          title="Copy official contract address"
+        >
+          {copied ? (
+            <>
+              <Check className="h-3.5 w-3.5 text-emerald-200" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3.5 w-3.5 text-emerald-200/90" />
+              Copy
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- LIVE CHIP (shared) ---------------- */
+
+function LiveDot({ isOpen }: { isOpen: boolean }) {
+  return (
+    <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
+      {isOpen ? (
+        <>
+          <span className="absolute inline-flex h-3 w-3 animate-ping rounded-full bg-emerald-400/60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+        </>
+      ) : (
+        <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
+      )}
+    </span>
+  );
+}
+
+function LiveNavItem({
+  href,
+  label = 'Live',
+  isOpen,
+  variant,
+}: {
+  href: string;
+  label?: string;
+  isOpen: boolean;
+  variant: 'text' | 'pill';
+}) {
+  if (variant === 'pill') {
+    return (
+      <Link
+        href={href}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+        title={isOpen ? 'Live draw is open' : 'Live view'}
+      >
+        <LiveDot isOpen={isOpen} />
+        <Radio className="h-5 w-5 text-emerald-300" />
+        <span className="leading-none">{label}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-2 hover:text-white"
+      title={isOpen ? 'Live draw is open' : 'Live view'}
+    >
+      <LiveDot isOpen={isOpen} />
+      <Radio className="h-4 w-4 text-emerald-300" />
+      <span className="leading-none">{label}</span>
+    </Link>
+  );
+}
+
+/* ---------------- PUBLIC NAV ---------------- */
+
+function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
+  return (
+    <>
+      <Link href="/hub" className="hover:text-white">
+        Hub
+      </Link>
+
+      <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="text" />
+
+      <Link
+        href={WINNERS_HREF}
+        className="inline-flex items-center gap-2 hover:text-white"
+      >
+        <Trophy className="h-4 w-4 text-amber-300" />
+        Winners
+      </Link>
+
+      <Link
+        href={XPOT_X_POST}
+        target="_blank"
+        className="inline-flex items-center gap-2 hover:text-white"
+        title="Official XPOT announcement"
+      >
+        <ExternalLink className="h-4 w-4" />
+        X
+      </Link>
+
+      <Link
+        href="/hub"
+        className="rounded-full bg-white px-5 py-2 font-semibold text-black hover:bg-slate-200"
+      >
+        Enter today&apos;s XPOT →
+      </Link>
+    </>
+  );
+}
+
+/* ---------------- HUB NAV ---------------- */
+
+function HubNav({
+  clerkEnabled,
+  hubWalletStatus,
+  onOpenWalletModal,
+  liveIsOpen,
+}: {
+  clerkEnabled: boolean;
+  hubWalletStatus?: HubWalletStatus;
+  onOpenWalletModal?: () => void;
+  liveIsOpen: boolean;
+}) {
+  const { user, isLoaded } = useUser();
+  const externalAccounts = (user?.externalAccounts || []) as any[];
+
+  const xAccount = externalAccounts.find(
+    (acc) =>
+      String(acc.provider || '').toLowerCase().includes('twitter') ||
+      String(acc.provider || '').toLowerCase().includes('x'),
+  );
+
+  const handle = xAccount?.username || xAccount?.screenName || null;
+  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
+  const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
+  const initial = (displayHandle || 'X')[1] || 'X';
+
+  return (
+    <div className="flex items-center gap-4">
+      {/* Identity chip */}
+      <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:flex">
+        {isLoaded && avatar ? (
+          <img
+            src={avatar}
+            alt="X avatar"
+            className="h-6 w-6 rounded-full border border-white/10"
+          />
+        ) : (
+          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xs">
+            {initial}
+          </div>
+        )}
+        <span className="text-xs font-semibold">
+          {displayHandle ?? 'X linking…'}
+        </span>
+      </div>
+
+      <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="pill" />
+
+      <Link
+        href={WINNERS_HREF}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+      >
+        <Trophy className="h-5 w-5 text-amber-300" />
+        Winners
+      </Link>
+
+      <Link
+        href={XPOT_X_POST}
+        target="_blank"
+        title="Official XPOT announcement"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+      >
+        <ExternalLink className="h-5 w-5" />
+        X
+      </Link>
+
+      <HubWalletMenuInline
+        hubWalletStatus={hubWalletStatus}
+        onOpenWalletModal={onOpenWalletModal}
+      />
+
+      {clerkEnabled && (
+        <SignOutButton redirectUrl="/">
+          <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]">
+            <LogOut className="h-5 w-5" />
+            Log out
+          </button>
+        </SignOutButton>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- WALLET ---------------- */
+
+function toneRing(tone: HubWalletTone) {
+  if (tone === 'emerald') return 'ring-emerald-400/20 bg-emerald-500/5';
+  if (tone === 'amber') return 'ring-amber-400/20 bg-amber-500/5';
+  if (tone === 'sky') return 'ring-sky-400/20 bg-sky-500/5';
+  return 'ring-white/10 bg-white/[0.03]';
+}
+
+function HubWalletMenuInline({
+  hubWalletStatus,
+  onOpenWalletModal,
+}: {
+  hubWalletStatus?: HubWalletStatus;
+  onOpenWalletModal?: () => void;
+}) {
+  const { setVisible } = useWalletModal();
+  const { publicKey, connected } = useWallet();
+
+  const addr = connected && publicKey ? publicKey.toBase58() : null;
+
+  const label =
+    hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Select wallet');
+  const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
+
+  const tone: HubWalletTone =
+    hubWalletStatus?.winner
+      ? 'sky'
+      : hubWalletStatus?.claimed
+      ? 'emerald'
+      : connected
+      ? 'sky'
+      : 'amber';
+
+  const microIcon = hubWalletStatus?.winner ? (
+    <Crown className="h-4 w-4" />
+  ) : hubWalletStatus?.claimed ? (
+    <Ticket className="h-4 w-4" />
+  ) : (
+    <Wallet className="h-4 w-4" />
+  );
+
+  const open = () => (onOpenWalletModal ? onOpenWalletModal() : setVisible(true));
+
+  return (
+    <button
+      onClick={open}
+      className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(
+        tone,
+      )} hover:opacity-95`}
+      title={addr ?? undefined}
+    >
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30">
+          {microIcon}
+        </span>
+        <span className="font-semibold">{label}</span>
+      </div>
+      <div className="mt-1 text-[11px] text-slate-400">{sublabel}</div>
+    </button>
+  );
+}
+
+function shortWallet(addr: string) {
+  return addr ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : '';
+}
