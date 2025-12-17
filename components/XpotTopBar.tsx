@@ -109,7 +109,6 @@ export default function XpotTopBar({
               </Link>
 
               <div className="hidden min-w-0 items-center gap-3 sm:flex">
-                {/* Non-hub: show protocol pill, Hub: show HUB pill */}
                 {isHub ? (
                   <Link
                     href="/hub"
@@ -145,10 +144,9 @@ export default function XpotTopBar({
                 />
               ) : (
                 <>
-                  {/* Official CA - show on all public pages (anti-copycat) */}
-                  <OfficialContractChip />
+                  {/* Official CA - compact + premium */}
+                  <OfficialContractChipCompact />
 
-                  {/* Escape hatch slot (kept) */}
                   {rightSlot ? rightSlot : <PublicNav liveIsOpen={liveIsOpen} />}
                 </>
               )}
@@ -165,9 +163,9 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- OFFICIAL CA CHIP ---------------- */
+/* ---------------- OFFICIAL CA CHIP (compact) ---------------- */
 
-function shortenAddress(addr: string, left = 10, right = 10) {
+function shortenAddress(addr: string, left = 6, right = 6) {
   if (!addr) return '';
   if (addr.length <= left + right + 3) return addr;
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
@@ -180,7 +178,7 @@ function formatUsd(v: number | null) {
   return `$${v.toFixed(6)}`;
 }
 
-function OfficialContractChip() {
+function OfficialContractChipCompact() {
   const [copied, setCopied] = useState(false);
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
 
@@ -218,75 +216,62 @@ function OfficialContractChip() {
   }
 
   return (
-    <div className="hidden items-center sm:flex">
+    <div className="hidden items-center md:flex">
       <div
         className="
           group relative inline-flex items-center gap-3
-          rounded-full border border-emerald-400/35 bg-emerald-500/10
-          px-4 py-2
-          shadow-[0_0_40px_rgba(16,185,129,0.18)]
-          hover:bg-emerald-500/[0.14]
+          rounded-full border border-emerald-400/25 bg-emerald-500/[0.08]
+          px-3 py-1.5
+          shadow-[0_0_34px_rgba(16,185,129,0.14)]
+          hover:bg-emerald-500/[0.12]
         "
         title={XPOT_OFFICIAL_CA}
       >
-        {/* glow layer */}
+        {/* subtle glow */}
         <div
           className="
-            pointer-events-none absolute -inset-8 rounded-full opacity-70 blur-2xl
-            bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.25),transparent_60%)]
+            pointer-events-none absolute -inset-8 rounded-full opacity-60 blur-2xl
+            bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.22),transparent_62%)]
           "
         />
 
+        {/* left badge */}
         <span className="relative z-10 inline-flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-emerald-300" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
-            Official
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">
+            Official CA
           </span>
         </span>
 
-        <span className="relative z-10 h-4 w-px bg-emerald-400/25" />
-
-        <span className="relative z-10 flex flex-col leading-tight">
-          <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/80">
-            CA
-          </span>
-          <span className="font-mono text-[11px] text-emerald-100">
-            {shortenAddress(XPOT_OFFICIAL_CA, 10, 10)}
-          </span>
+        {/* address (single line) */}
+        <span className="relative z-10 font-mono text-[11px] text-emerald-100/95">
+          {shortenAddress(XPOT_OFFICIAL_CA, 10, 10)}
         </span>
 
-        <span className="relative z-10 h-4 w-px bg-emerald-400/25" />
-
-        <span className="relative z-10 flex flex-col leading-tight">
-          <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/80">
-            Price
-          </span>
-          <span className="font-mono text-[11px] text-emerald-100">
+        {/* optional price - tiny, not labeled */}
+        <span className="relative z-10 hidden items-center gap-2 lg:inline-flex">
+          <span className="h-3 w-px bg-emerald-300/15" />
+          <span className="font-mono text-[11px] text-emerald-100/85">
             {formatUsd(priceUsd)}
           </span>
         </span>
 
+        {/* copy icon button */}
         <button
           type="button"
           onClick={onCopy}
           className="
-            relative z-10 inline-flex items-center gap-2
-            rounded-full border border-emerald-400/25 bg-emerald-500/10
-            px-3 py-1.5 text-[11px] text-emerald-100
-            hover:bg-emerald-500/20
+            relative z-10 inline-flex items-center justify-center
+            rounded-full border border-emerald-400/15 bg-black/20
+            p-2
+            hover:bg-black/30
           "
           title="Copy official contract address"
         >
           {copied ? (
-            <>
-              <Check className="h-3.5 w-3.5 text-emerald-200" />
-              Copied
-            </>
+            <Check className="h-4 w-4 text-emerald-200" />
           ) : (
-            <>
-              <Copy className="h-3.5 w-3.5 text-emerald-200/90" />
-              Copy
-            </>
+            <Copy className="h-4 w-4 text-emerald-200/90" />
           )}
         </button>
       </div>
@@ -495,7 +480,8 @@ function HubWalletMenuInline({
 
   const label =
     hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Select wallet');
-  const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
+  const sublabel =
+    hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
 
   const tone: HubWalletTone =
     hubWalletStatus?.winner
@@ -514,7 +500,8 @@ function HubWalletMenuInline({
     <Wallet className="h-4 w-4" />
   );
 
-  const open = () => (onOpenWalletModal ? onOpenWalletModal() : setVisible(true));
+  const open = () =>
+    onOpenWalletModal ? onOpenWalletModal() : setVisible(true);
 
   return (
     <button
