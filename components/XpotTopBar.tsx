@@ -53,7 +53,7 @@ const XPOT_X_POST =
 
 const WINNERS_HREF = '/winners';
 
-const XPOT_OFFICIAL_CA = 'So11111111111111111111111111111111111111112';
+const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 const XPOT_PRICE_ENDPOINT = '/api/price/xpot';
 
 export default function XpotTopBar({
