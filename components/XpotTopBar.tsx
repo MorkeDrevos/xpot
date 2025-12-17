@@ -26,7 +26,10 @@ import {
   Map,
 } from 'lucide-react';
 
-import MobileMenu, { MobileMenuButton, type MobileMenuSection } from '@/components/MobileMenu';
+import MobileMenu, {
+  MobileMenuButton,
+  type MobileMenuSection,
+} from '@/components/MobileMenu';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
@@ -96,7 +99,7 @@ export default function XpotTopBar({
   const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
-  // MobileMenu state + (optional) CA price polling shared with the mobile drawer
+  // MobileMenu state + CA price polling shared with the mobile drawer
   const [menuOpen, setMenuOpen] = useState(false);
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
 
@@ -115,13 +118,13 @@ export default function XpotTopBar({
       }
     }
 
-    // Only poll when menu is likely useful (public pages or when menu open)
+    // Only poll when useful (public pages or when menu is open)
     if (!isHub || menuOpen) {
       poll();
-      const id = setInterval(poll, 7000);
+      const id = window.setInterval(poll, 7000);
       return () => {
         alive = false;
-        clearInterval(id);
+        window.clearInterval(id);
       };
     }
 
@@ -219,10 +222,12 @@ export default function XpotTopBar({
 
   return (
     <>
+      {/* z-[60] for the header, but we ensure inner content sits above the divider */}
       <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
         <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
           <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
-            <div className="flex min-h-[124px] items-center justify-between gap-6">
+            {/* Make nav content explicitly above any decorative layers */}
+            <div className="relative z-[10] flex min-h-[124px] items-center justify-between gap-6">
               {/* LEFT */}
               <div className="flex min-w-0 items-center gap-4">
                 <Link href={logoHref} className="flex shrink-0 items-center gap-3">
@@ -266,9 +271,14 @@ export default function XpotTopBar({
 
               {/* RIGHT */}
               <div className="flex items-center gap-3 text-sm text-slate-300">
-                {/* Mobile button */}
+                {/* Mobile button (icon-only) */}
                 <div className="flex lg:hidden">
-                  <MobileMenuButton onClick={() => setMenuOpen(true)} label="Menu" />
+                  <MobileMenuButton
+                    onClick={() => setMenuOpen(true)}
+                    // icon-only requirement (no visible "Menu" text)
+                    label=""
+                    aria-label="Open menu"
+                  />
                 </div>
 
                 {/* Desktop nav */}
@@ -289,8 +299,8 @@ export default function XpotTopBar({
           </div>
         </div>
 
-        {/* Premium divider */}
-        <div className="relative h-[1px] w-full overflow-hidden">
+        {/* Premium divider - decorative only, never blocks/overlaps dropdowns */}
+        <div className="pointer-events-none relative z-[0] h-[1px] w-full overflow-hidden">
           <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.1),rgba(56,189,248,0.55),rgba(56,189,248,0.1))]" />
         </div>
       </header>
@@ -353,10 +363,10 @@ function OfficialContractMiniPill() {
     }
 
     poll();
-    const id = setInterval(poll, 7000);
+    const id = window.setInterval(poll, 7000);
     return () => {
       alive = false;
-      clearInterval(id);
+      window.clearInterval(id);
     };
   }, []);
 
@@ -492,6 +502,7 @@ function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
         Hub
       </Link>
 
+      {/* Keep Live only once */}
       <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="text" />
 
       <Link href={TOKENOMICS_HREF} className="inline-flex items-center gap-2 hover:text-white">
@@ -546,7 +557,7 @@ function HubNav({
   const externalAccounts = (user?.externalAccounts || []) as any[];
 
   const xAccount = externalAccounts.find(
-    acc =>
+    (acc) =>
       String(acc.provider || '').toLowerCase().includes('twitter') ||
       String(acc.provider || '').toLowerCase().includes('x'),
   );
@@ -571,6 +582,7 @@ function HubNav({
         <span className="text-xs font-semibold">{displayHandle ?? 'X linking…'}</span>
       </div>
 
+      {/* Keep Live only once */}
       <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="pill" />
 
       <Link
@@ -641,7 +653,13 @@ function HubMobileFooter({
   const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
 
   const tone: HubWalletTone =
-    hubWalletStatus?.winner ? 'sky' : hubWalletStatus?.claimed ? 'emerald' : connected ? 'sky' : 'amber';
+    hubWalletStatus?.winner
+      ? 'sky'
+      : hubWalletStatus?.claimed
+      ? 'emerald'
+      : connected
+      ? 'sky'
+      : 'amber';
 
   const microIcon = hubWalletStatus?.winner ? (
     <Crown className="h-4 w-4" />
@@ -725,7 +743,13 @@ function HubWalletMenuInline({
   const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
 
   const tone: HubWalletTone =
-    hubWalletStatus?.winner ? 'sky' : hubWalletStatus?.claimed ? 'emerald' : connected ? 'sky' : 'amber';
+    hubWalletStatus?.winner
+      ? 'sky'
+      : hubWalletStatus?.claimed
+      ? 'emerald'
+      : connected
+      ? 'sky'
+      : 'amber';
 
   const microIcon = hubWalletStatus?.winner ? (
     <Crown className="h-4 w-4" />
