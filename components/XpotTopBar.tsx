@@ -1,4 +1,3 @@
-// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -12,17 +11,23 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
 import {
+  BadgeCheck,
+  CalendarClock,
+  Check,
+  Copy,
   Crown,
   ExternalLink,
+  Info,
+  KeyRound,
   LogOut,
+  PieChart,
   Radio,
+  ShieldCheck,
   Ticket,
+  Timer,
   Trophy,
   Wallet,
-  Copy,
-  Check,
-  ShieldCheck,
-  PieChart,
+  Map,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -61,6 +66,7 @@ const XPOT_X_POST = 'https://x.com/xpotbet';
 
 const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
+const ROADMAP_HREF = '/roadmap';
 
 /**
  * Official Contract Address (shown in top bar on public pages).
@@ -132,6 +138,9 @@ export default function XpotTopBar({
                     {sloganRight}
                   </span>
                 )}
+
+                {/* ✅ Moved Official CA here (compact) so RIGHT side stays clean */}
+                {!isHub && <OfficialContractMiniPill />}
               </div>
             </div>
 
@@ -146,9 +155,6 @@ export default function XpotTopBar({
                 />
               ) : (
                 <>
-                  {/* Official CA - royal */}
-                  <OfficialContractRoyalChip />
-
                   {/* Escape hatch slot (kept) */}
                   {rightSlot ? rightSlot : <PublicNav liveIsOpen={liveIsOpen} />}
                 </>
@@ -166,9 +172,9 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- OFFICIAL CA CHIP (ROYAL, SLIM) ---------------- */
+/* ---------------- OFFICIAL CA MINI PILL (COMPACT) ---------------- */
 
-function shortenAddress(addr: string, left = 10, right = 10) {
+function shortenAddress(addr: string, left = 8, right = 6) {
   if (!addr) return '';
   if (addr.length <= left + right + 3) return addr;
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
@@ -181,7 +187,7 @@ function formatUsd(v: number | null) {
   return `$${v.toFixed(6)}`;
 }
 
-function OfficialContractRoyalChip() {
+function OfficialContractMiniPill() {
   const [copied, setCopied] = useState(false);
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
 
@@ -201,7 +207,7 @@ function OfficialContractRoyalChip() {
     }
 
     poll();
-    const id = setInterval(poll, 5000);
+    const id = setInterval(poll, 7000);
     return () => {
       alive = false;
       clearInterval(id);
@@ -218,84 +224,52 @@ function OfficialContractRoyalChip() {
     }
   }
 
-  const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 12, 10), []);
+  const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 10, 8), []);
 
   return (
-    <div className="hidden items-center md:flex">
+    <div className="hidden items-center xl:flex">
       <div
         className="
-          group relative inline-flex items-center gap-3
+          group relative inline-flex items-center gap-2
           rounded-full
-          px-3 py-1
-          border border-emerald-400/8
-          bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]
-          shadow-[0_22px_70px_rgba(0,0,0,0.52)]
-          backdrop-blur-xl
-          hover:border-emerald-300/22
+          px-3 py-1.5
+          border border-white/10
+          bg-white/[0.03]
+          backdrop-blur
+          hover:bg-white/[0.06]
         "
         title={XPOT_OFFICIAL_CA}
       >
-        {/* Aura */}
-        <div className="pointer-events-none absolute -inset-10 rounded-full opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_10%,rgba(16,185,129,0.20),transparent_55%),radial-gradient(circle_at_86%_70%,rgba(245,158,11,0.10),transparent_60%)]" />
-
-        {/* Fine edge highlight */}
-        <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
-
-        {/* Seal */}
-        <span
-          className="
-            relative z-10 inline-flex h-8 w-8 items-center justify-center
-            rounded-full
-            border border-amber-300/25
-            bg-[radial-gradient(circle_at_30%_30%,rgba(245,158,11,0.18),rgba(0,0,0,0.35))]
-            shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_14px_40px_rgba(0,0,0,0.55)]
-          "
-        >
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30">
           <ShieldCheck className="h-4 w-4 text-emerald-200" />
         </span>
 
-        {/* Engraved label + CA */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="flex flex-col leading-none">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">
-              OFFICIAL CA
-            </span>
-            <span className="mt-1 font-mono text-[12px] text-slate-100/95">
-              {addrShort}
-            </span>
-          </div>
-
-          {/* Optional price */}
-          <div className="hidden xl:flex items-center gap-2">
-            <span className="h-1 w-1 rounded-full bg-white/15" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              XPOT
-            </span>
-            <span className="font-mono text-[12px] text-slate-100/85">
-              {formatUsd(priceUsd)}
-            </span>
-          </div>
+        <div className="flex flex-col leading-none">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-emerald-200/90">
+            Official CA
+          </span>
+          <span className="mt-1 font-mono text-[12px] text-slate-100/95">{addrShort}</span>
         </div>
 
-        {/* Copy button */}
+        <div className="hidden 2xl:flex items-center gap-2">
+          <span className="h-1 w-1 rounded-full bg-white/15" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">XPOT</span>
+          <span className="font-mono text-[12px] text-slate-100/85">{formatUsd(priceUsd)}</span>
+        </div>
+
         <button
           type="button"
           onClick={onCopy}
           className="
-            relative z-10 inline-flex items-center justify-center
-            h-8 w-8 rounded-full
+            inline-flex items-center justify-center
+            h-7 w-7 rounded-full
             border border-white/10
             bg-white/[0.04]
             hover:bg-white/[0.07]
-            shadow-[0_14px_40px_rgba(0,0,0,0.40)]
           "
           title="Copy official contract address"
         >
-          {copied ? (
-            <Check className="h-4 w-4 text-emerald-200" />
-          ) : (
-            <Copy className="h-4 w-4 text-slate-100/90" />
-          )}
+          {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4 text-slate-100/90" />}
         </button>
       </div>
     </div>
@@ -368,18 +342,18 @@ function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
 
       <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="text" />
 
-      <Link
-        href={TOKENOMICS_HREF}
-        className="inline-flex items-center gap-2 hover:text-white"
-      >
+      <Link href={TOKENOMICS_HREF} className="inline-flex items-center gap-2 hover:text-white">
         <PieChart className="h-4 w-4 text-emerald-300" />
         Tokenomics
       </Link>
 
-      <Link
-        href={WINNERS_HREF}
-        className="inline-flex items-center gap-2 hover:text-white"
-      >
+      {/* ✅ Roadmap added */}
+      <Link href={ROADMAP_HREF} className="inline-flex items-center gap-2 hover:text-white">
+        <Map className="h-4 w-4 text-sky-300" />
+        Roadmap
+      </Link>
+
+      <Link href={WINNERS_HREF} className="inline-flex items-center gap-2 hover:text-white">
         <Trophy className="h-4 w-4 text-amber-300" />
         Winners
       </Link>
@@ -394,10 +368,7 @@ function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
         X
       </Link>
 
-      <Link
-        href="/hub"
-        className="rounded-full bg-white px-5 py-2 font-semibold text-black hover:bg-slate-200"
-      >
+      <Link href="/hub" className="rounded-full bg-white px-5 py-2 font-semibold text-black hover:bg-slate-200">
         Enter today&apos;s XPOT →
       </Link>
     </>
@@ -437,19 +408,13 @@ function HubNav({
       <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:flex">
         {isLoaded && avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatar}
-            alt="X avatar"
-            className="h-6 w-6 rounded-full border border-white/10"
-          />
+          <img src={avatar} alt="X avatar" className="h-6 w-6 rounded-full border border-white/10" />
         ) : (
           <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xs">
             {initial}
           </div>
         )}
-        <span className="text-xs font-semibold">
-          {displayHandle ?? 'X linking…'}
-        </span>
+        <span className="text-xs font-semibold">{displayHandle ?? 'X linking…'}</span>
       </div>
 
       <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="pill" />
@@ -460,6 +425,15 @@ function HubNav({
       >
         <PieChart className="h-5 w-5 text-emerald-300" />
         Tokenomics
+      </Link>
+
+      {/* ✅ Roadmap added */}
+      <Link
+        href={ROADMAP_HREF}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 hover:bg-white/[0.06]"
+      >
+        <Map className="h-5 w-5 text-sky-300" />
+        Roadmap
       </Link>
 
       <Link
@@ -480,10 +454,7 @@ function HubNav({
         X
       </Link>
 
-      <HubWalletMenuInline
-        hubWalletStatus={hubWalletStatus}
-        onOpenWalletModal={onOpenWalletModal}
-      />
+      <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
 
       {clerkEnabled && (
         <SignOutButton redirectUrl="/">
@@ -518,19 +489,11 @@ function HubWalletMenuInline({
 
   const addr = connected && publicKey ? publicKey.toBase58() : null;
 
-  const label =
-    hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Select wallet');
-  const sublabel =
-    hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
+  const label = hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Select wallet');
+  const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
 
   const tone: HubWalletTone =
-    hubWalletStatus?.winner
-      ? 'sky'
-      : hubWalletStatus?.claimed
-      ? 'emerald'
-      : connected
-      ? 'sky'
-      : 'amber';
+    hubWalletStatus?.winner ? 'sky' : hubWalletStatus?.claimed ? 'emerald' : connected ? 'sky' : 'amber';
 
   const microIcon = hubWalletStatus?.winner ? (
     <Crown className="h-4 w-4" />
@@ -545,9 +508,7 @@ function HubWalletMenuInline({
   return (
     <button
       onClick={open}
-      className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(
-        tone,
-      )} hover:opacity-95`}
+      className={`group rounded-full border border-white/10 px-6 py-3 ring-1 ${toneRing(tone)} hover:opacity-95`}
       title={addr ?? undefined}
     >
       <div className="flex items-center gap-2">
