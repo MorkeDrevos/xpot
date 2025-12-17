@@ -1,8 +1,9 @@
+// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
@@ -144,9 +145,10 @@ export default function XpotTopBar({
                 />
               ) : (
                 <>
-                  {/* Official CA - compact + premium */}
-                  <OfficialContractChipCompact />
+                  {/* Official CA - royal */}
+                  <OfficialContractRoyalChip />
 
+                  {/* Escape hatch slot (kept) */}
                   {rightSlot ? rightSlot : <PublicNav liveIsOpen={liveIsOpen} />}
                 </>
               )}
@@ -163,9 +165,9 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- OFFICIAL CA CHIP (compact) ---------------- */
+/* ---------------- OFFICIAL CA CHIP (ROYAL) ---------------- */
 
-function shortenAddress(addr: string, left = 6, right = 6) {
+function shortenAddress(addr: string, left = 10, right = 10) {
   if (!addr) return '';
   if (addr.length <= left + right + 3) return addr;
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
@@ -178,7 +180,7 @@ function formatUsd(v: number | null) {
   return `$${v.toFixed(6)}`;
 }
 
-function OfficialContractChipCompact() {
+function OfficialContractRoyalChip() {
   const [copied, setCopied] = useState(false);
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
 
@@ -215,63 +217,88 @@ function OfficialContractChipCompact() {
     }
   }
 
+  const addrShort = useMemo(
+    () => shortenAddress(XPOT_OFFICIAL_CA, 12, 10),
+    [],
+  );
+
   return (
     <div className="hidden items-center md:flex">
       <div
         className="
           group relative inline-flex items-center gap-3
-          rounded-full border border-emerald-400/25 bg-emerald-500/[0.08]
+          rounded-full
           px-3 py-1.5
-          shadow-[0_0_34px_rgba(16,185,129,0.14)]
-          hover:bg-emerald-500/[0.12]
+          border border-emerald-400/15
+          bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]
+          shadow-[0_28px_90px_rgba(0,0,0,0.55)]
+          backdrop-blur-xl
+          hover:border-emerald-300/25
         "
         title={XPOT_OFFICIAL_CA}
       >
-        {/* subtle glow */}
-        <div
+        {/* Royal aura */}
+        <div className="pointer-events-none absolute -inset-10 rounded-full opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_10%,rgba(16,185,129,0.22),transparent_55%),radial-gradient(circle_at_80%_60%,rgba(245,158,11,0.10),transparent_60%)]" />
+
+        {/* Fine edge highlight */}
+        <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/10" />
+
+        {/* Seal */}
+        <span
           className="
-            pointer-events-none absolute -inset-8 rounded-full opacity-60 blur-2xl
-            bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.22),transparent_62%)]
+            relative z-10 inline-flex h-9 w-9 items-center justify-center
+            rounded-full
+            border border-amber-300/25
+            bg-[radial-gradient(circle_at_30%_30%,rgba(245,158,11,0.22),rgba(0,0,0,0.35))]
+            shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_18px_50px_rgba(0,0,0,0.6)]
           "
-        />
-
-        {/* left badge */}
-        <span className="relative z-10 inline-flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-emerald-300" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">
-            Official CA
+        >
+          <ShieldCheck className="h-4.5 w-4.5 text-emerald-200" />
+          <span className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-3 w-3 items-center justify-center rounded-full bg-amber-300/90 text-[9px] font-black text-black shadow-[0_0_12px_rgba(245,158,11,0.55)]">
+            ✓
           </span>
         </span>
 
-        {/* address (single line) */}
-        <span className="relative z-10 font-mono text-[11px] text-emerald-100/95">
-          {shortenAddress(XPOT_OFFICIAL_CA, 10, 10)}
-        </span>
+        {/* Engraved label + CA */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="flex flex-col leading-none">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-emerald-200/90">
+              Official Contract
+            </span>
+            <span className="mt-1 font-mono text-[12px] text-slate-100/95">
+              {addrShort}
+            </span>
+          </div>
 
-        {/* optional price - tiny, not labeled */}
-        <span className="relative z-10 hidden items-center gap-2 lg:inline-flex">
-          <span className="h-3 w-px bg-emerald-300/15" />
-          <span className="font-mono text-[11px] text-emerald-100/85">
-            {formatUsd(priceUsd)}
-          </span>
-        </span>
+          {/* Price (tiny, luxury - only xl) */}
+          <div className="hidden xl:flex flex-col leading-none pl-3 border-l border-white/10">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-400">
+              XPOT
+            </span>
+            <span className="mt-1 font-mono text-[12px] text-slate-100/85">
+              {formatUsd(priceUsd)}
+            </span>
+          </div>
+        </div>
 
-        {/* copy icon button */}
+        {/* Copy button - royal */}
         <button
           type="button"
           onClick={onCopy}
           className="
             relative z-10 inline-flex items-center justify-center
-            rounded-full border border-emerald-400/15 bg-black/20
-            p-2
-            hover:bg-black/30
+            h-9 w-9 rounded-full
+            border border-white/10
+            bg-white/[0.04]
+            hover:bg-white/[0.07]
+            shadow-[0_18px_50px_rgba(0,0,0,0.45)]
           "
           title="Copy official contract address"
         >
           {copied ? (
-            <Check className="h-4 w-4 text-emerald-200" />
+            <Check className="h-4.5 w-4.5 text-emerald-200" />
           ) : (
-            <Copy className="h-4 w-4 text-emerald-200/90" />
+            <Copy className="h-4.5 w-4.5 text-slate-100/90" />
           )}
         </button>
       </div>
