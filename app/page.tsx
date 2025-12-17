@@ -36,7 +36,7 @@ const ROUTE_OPS = '/ops';
 const ROUTE_TERMS = '/terms';
 
 // Contract / CA (display + copy)
-const XPOT_CA = 'So11111111111111111111111111111111111111112';
+const XPOT_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
 // Optional explorer base (Solana)
 const SOLSCAN_TOKEN_BASE = 'https://solscan.io/token/';
