@@ -61,14 +61,14 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
               Below I re-add a subtle animated shimmer background that does NOT change layout height. */}
           <div className="relative w-full">
             <div
-              className="
-                pointer-events-none absolute inset-0
-                opacity-60
-                bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]
-                translate-x-[-60%]
-                animate-[xpotBannerSweep_5.5s_linear_infinite]
-              "
-            />
+  className="
+    pointer-events-none absolute inset-0
+    opacity-60
+    bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]
+    translate-x-[-60%]
+    animate-[xpotBannerSweep_5.5s_linear_infinite]
+  "
+/>
             <p className="relative text-center text-[12px] font-semibold uppercase tracking-[0.32em] text-white/80">
               PRE-LAUNCH MODE <span className="mx-2 text-white/40">•</span> CONTRACT DEPLOYED{' '}
               <span className="mx-2 text-white/40">•</span> OFFICIAL CA VERIFIED{' '}
