@@ -43,7 +43,7 @@ const ROUTE_TERMS = '/terms';
 const XPOT_CA =
   process.env.NEXT_PUBLIC_XPOT_MINT ||
   process.env.NEXT_PUBLIC_XPOT_CA ||
-  'So11111111111111111111111111111111111111112';
+  'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
 const SOLANA_CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || ''; // 'devnet' | 'mainnet-beta' | ''
 
