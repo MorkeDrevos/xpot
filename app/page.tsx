@@ -29,7 +29,7 @@ import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
 // ─────────────────────────────────────────────
-// Routes (fix broken links)
+// Routes
 // ─────────────────────────────────────────────
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
@@ -37,6 +37,9 @@ const ROUTE_TERMS = '/terms';
 
 // Contract / CA (display + copy)
 const XPOT_CA = 'So11111111111111111111111111111111111111112';
+
+// Optional explorer base (Solana)
+const SOLSCAN_TOKEN_BASE = 'https://solscan.io/token/';
 
 // Sample handles for testing (replace with API later)
 const SAMPLE_HANDLES = [
@@ -201,8 +204,11 @@ function shortenAddress(addr: string, left = 6, right = 6) {
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
 
-function ContractPill({ address }: { address: string }) {
+function ContractBar({ address }: { address: string }) {
   const [copied, setCopied] = useState(false);
+
+  const short = shortenAddress(address, 6, 6);
+  const explorerHref = `${SOLSCAN_TOKEN_BASE}${address}`;
 
   async function onCopy() {
     try {
@@ -216,33 +222,48 @@ function ContractPill({ address }: { address: string }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-950/70 px-3 py-1 text-[11px] text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
+      <div className="inline-flex items-center gap-3 rounded-full border border-slate-800/70 bg-slate-950/70 px-3 py-1.5 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
         <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
           CA
         </span>
-        <span className="font-mono text-[11px] text-slate-200">
-          {shortenAddress(address, 10, 10)}
-        </span>
-      </span>
 
-      <button
-        type="button"
-        onClick={onCopy}
-        className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-950/70 px-3 py-1 text-[11px] text-slate-300 hover:bg-slate-900/70 transition"
-        title="Copy contract address"
+        <span
+          className="font-mono text-[11px] text-slate-200"
+          title={address}
+        >
+          {short}
+        </span>
+
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex items-center gap-1 rounded-full border border-slate-800/70 bg-slate-900/40 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-900/70 transition"
+          title="Copy contract address"
+        >
+          {copied ? (
+            <>
+              <Check className="h-3.5 w-3.5 text-emerald-300" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3.5 w-3.5 text-slate-400" />
+              Copy
+            </>
+          )}
+        </button>
+      </div>
+
+      <a
+        href={explorerHref}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900/70 transition"
+        title="Open in explorer"
       >
-        {copied ? (
-          <>
-            <Check className="h-3.5 w-3.5 text-emerald-300" />
-            Copied
-          </>
-        ) : (
-          <>
-            <Copy className="h-3.5 w-3.5 text-slate-400" />
-            Copy
-          </>
-        )}
-      </button>
+        Explorer
+        <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+      </a>
     </div>
   );
 }
@@ -280,7 +301,7 @@ export default function HomePage() {
       {/* HERO */}
       <section className="mt-6">
         <div className="relative overflow-hidden rounded-[36px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
-          {/* Cinematic halo (new mood: emerald + violet + sky) */}
+          {/* Cinematic halo */}
           <div
             className="
               pointer-events-none absolute -inset-40 opacity-85 blur-3xl
@@ -307,12 +328,10 @@ export default function HomePage() {
                 </div>
 
                 <div>
-                  {/* SLOGAN 1: do not change */}
                   <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
                     NO TICKETS · JUST XPOT HOLDINGS
                   </p>
 
-                  {/* SLOGAN 2: do not change */}
                   <h1 className="mt-3 text-balance text-4xl font-semibold leading-tight sm:text-5xl">
                     One protocol. One identity.{' '}
                     <span className="text-emerald-300">One daily XPOT draw.</span>
@@ -322,16 +341,6 @@ export default function HomePage() {
                     Hold XPOT, connect X, claim your entry. One winner daily, paid on-chain.
                     Built to scale into a reward ecosystem for communities, creators and sponsors.
                   </p>
-
-                  <div className="mt-3">
-  <Pill tone="emerald">
-    <ShieldCheck className="h-3.5 w-3.5" />
-    Built with a 10-year rewards runway at launch
-  </Pill>
-  <p className="mt-2 text-[12px] text-slate-400">
-    Baseline funded at launch: 1,000,000 XPOT/day from the Rewards Reserve.
-  </p>
-</div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <Pill tone="emerald">
@@ -354,34 +363,32 @@ export default function HomePage() {
                   <BonusStrip />
                 </div>
 
-                {/* Contract */}
-                <ContractPill address={XPOT_CA} />
+                {/* Contract (upgraded) */}
+                <ContractBar address={XPOT_CA} />
 
-                {/* CTAs */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <Link
-                    href={ROUTE_HUB}
-                    className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}
-                  >
-                    Enter today&apos;s XPOT
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
+                {/* CTAs (match your screenshot layout) */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
+                      Enter today&apos;s XPOT
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
 
-                  <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                    Terms
-                  </Link>
+                    <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                      Terms
+                    </Link>
 
-                  <Link
-                    href={ROUTE_OPS}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
-                  >
-                    <Lock className="h-4 w-4 text-amber-200" />
-                    Operations Center
-                  </Link>
+                    <Link
+                      href={ROUTE_OPS}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
+                    >
+                      <Lock className="h-4 w-4 text-amber-200" />
+                      Operations Center
+                    </Link>
+                  </div>
 
                   <p className="text-[11px] text-slate-500">
-                    Winners revealed by{' '}
-                    <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
+                    Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
                   </p>
                 </div>
               </div>
@@ -412,7 +419,7 @@ export default function HomePage() {
                 </div>
 
                 <div className="mt-4">
-                  <JackpotPanel variant="standalone" badgeLabel="10+ year runway" />
+                  <JackpotPanel variant="standalone" />
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -491,9 +498,7 @@ export default function HomePage() {
               </span>
 
               <ChevronDown
-                className={`h-4 w-4 text-slate-400 transition-transform ${
-                  showLiveEntries ? 'rotate-180' : ''
-                }`}
+                className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`}
               />
             </button>
 
@@ -519,7 +524,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* THE PROTOCOL STRIP (kept, slightly tightened) */}
+      {/* THE PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -563,7 +568,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* NEW: ECOSYSTEM LAYER - "BUILT TO BE BUILT ON" */}
+      {/* ECOSYSTEM */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -578,8 +583,7 @@ export default function HomePage() {
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
                 The daily draw is the primitive. On top of it we can add modules that reward
-                participation, streaks and reputation over time. That is how XPOT becomes an
-                ecosystem for communities, creators and sponsors.
+                participation, streaks and reputation over time.
               </p>
             </div>
 
@@ -642,7 +646,7 @@ export default function HomePage() {
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-slate-100">Fairness layer</p>
-                  <p className="text-xs text-slate-400">If XPOT picked it, it&apos;s fair</p>
+                  <p className="text-xs text-slate-400">Verifiable payouts</p>
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
@@ -669,7 +673,7 @@ export default function HomePage() {
         </PremiumCard>
       </section>
 
-      {/* NEW: WHO IT'S FOR */}
+      {/* WHO IT'S FOR */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -713,7 +717,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Tiny footer */}
+      {/* Footer */}
       <footer className="mt-8 pb-10">
         <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
           <span className="inline-flex items-center gap-2">
