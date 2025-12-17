@@ -70,7 +70,7 @@ const XPOT_OFFICIAL_CA = 'So11111111111111111111111111111111111111112';
 /**
  * Optional - if you implement this API route later:
  * return { priceUsd: number }
- * Safe if missing - chip just shows "—".
+ * Safe if missing - chip just hides price.
  */
 const XPOT_PRICE_ENDPOINT = '/api/price/xpot';
 
@@ -145,7 +145,7 @@ export default function XpotTopBar({
                 />
               ) : (
                 <>
-                  {/* Official CA - royal */}
+                  {/* Official CA - slim royal */}
                   <OfficialContractRoyalChip />
 
                   {/* Escape hatch slot (kept) */}
@@ -165,16 +165,16 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- OFFICIAL CA CHIP (ROYAL, SLIM) ---------------- */
+/* ---------------- OFFICIAL CA CHIP (ROYAL, SLIMMER + SHORTER CA) ---------------- */
 
-function shortenAddress(addr: string, left = 10, right = 10) {
+function shortenAddress(addr: string, left = 7, right = 7) {
   if (!addr) return '';
   if (addr.length <= left + right + 3) return addr;
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
 
 function formatUsd(v: number | null) {
-  if (v === null || !Number.isFinite(v)) return '—';
+  if (v === null || !Number.isFinite(v)) return null; // hide instead of showing "—"
   if (v >= 1) return `$${v.toFixed(2)}`;
   if (v >= 0.01) return `$${v.toFixed(4)}`;
   return `$${v.toFixed(6)}`;
@@ -200,7 +200,7 @@ function OfficialContractRoyalChip() {
     }
 
     poll();
-    const id = setInterval(poll, 5000);
+    const id = setInterval(poll, 6000);
     return () => {
       alive = false;
       clearInterval(id);
@@ -217,86 +217,87 @@ function OfficialContractRoyalChip() {
     }
   }
 
-  const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 12, 10), []);
+  const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 7, 7), []);
+  const priceText = formatUsd(priceUsd);
 
   return (
     <div className="hidden items-center md:flex">
       <div
         className="
-          group relative inline-flex items-center gap-3
+          group relative inline-flex items-center gap-2.5
           rounded-full
-          px-3 py-1
+          px-2.5 py-[5px]
           border border-emerald-400/14
           bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]
-          shadow-[0_22px_70px_rgba(0,0,0,0.52)]
+          shadow-[0_18px_55px_rgba(0,0,0,0.52)]
           backdrop-blur-xl
           hover:border-emerald-300/22
         "
         title={XPOT_OFFICIAL_CA}
       >
-        {/* Aura (royal, but subtle so it feels premium not loud) */}
-        <div className="pointer-events-none absolute -inset-10 rounded-full opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_10%,rgba(16,185,129,0.20),transparent_55%),radial-gradient(circle_at_86%_70%,rgba(245,158,11,0.10),transparent_60%)]" />
-
-        {/* Fine edge highlight */}
+        {/* Aura */}
+        <div className="pointer-events-none absolute -inset-10 rounded-full opacity-60 blur-3xl bg-[radial-gradient(circle_at_18%_10%,rgba(16,185,129,0.18),transparent_55%),radial-gradient(circle_at_86%_70%,rgba(245,158,11,0.10),transparent_60%)]" />
         <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/10" />
 
-        {/* Seal (smaller to reduce height) */}
+        {/* Seal (smaller) */}
         <span
           className="
-            relative z-10 inline-flex h-8 w-8 items-center justify-center
+            relative z-10 inline-flex h-7 w-7 items-center justify-center
             rounded-full
             border border-amber-300/25
-            bg-[radial-gradient(circle_at_30%_30%,rgba(245,158,11,0.18),rgba(0,0,0,0.35))]
-            shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_14px_40px_rgba(0,0,0,0.55)]
+            bg-[radial-gradient(circle_at_30%_30%,rgba(245,158,11,0.16),rgba(0,0,0,0.35))]
+            shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_12px_34px_rgba(0,0,0,0.50)]
           "
         >
-          <ShieldCheck className="h-4 w-4 text-emerald-200" />
-          <span className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-3 w-3 items-center justify-center rounded-full bg-amber-300/90 text-[9px] font-black text-black shadow-[0_0_12px_rgba(245,158,11,0.50)]">
+          <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+          <span className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-[10px] w-[10px] items-center justify-center rounded-full bg-amber-300/90 text-[8px] font-black text-black shadow-[0_0_10px_rgba(245,158,11,0.45)]">
             ✓
           </span>
         </span>
 
-        {/* Engraved label + CA (single compact stack) */}
-        <div className="relative z-10 flex items-center gap-3">
+        {/* Label + CA */}
+        <div className="relative z-10 flex items-center gap-2.5">
           <div className="flex flex-col leading-none">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-emerald-200/90">
               OFFICIAL CA
             </span>
-            <span className="mt-1 font-mono text-[12px] text-slate-100/95">
+            <span className="mt-[3px] font-mono text-[11px] text-slate-100/95">
               {addrShort}
             </span>
           </div>
 
-          {/* Optional price, compact (no divider line) */}
-          <div className="hidden xl:flex items-center gap-2">
-            <span className="h-1 w-1 rounded-full bg-white/15" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              XPOT
-            </span>
-            <span className="font-mono text-[12px] text-slate-100/85">
-              {formatUsd(priceUsd)}
-            </span>
-          </div>
+          {/* XPOT price (only if available, no dash line) */}
+          {priceText && (
+            <div className="hidden xl:flex items-center gap-2">
+              <span className="h-1 w-1 rounded-full bg-white/15" />
+              <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                XPOT
+              </span>
+              <span className="font-mono text-[11px] text-slate-100/85">
+                {priceText}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Copy button (slimmer) */}
+        {/* Copy button (smaller) */}
         <button
           type="button"
           onClick={onCopy}
           className="
             relative z-10 inline-flex items-center justify-center
-            h-8 w-8 rounded-full
+            h-7 w-7 rounded-full
             border border-white/10
             bg-white/[0.04]
             hover:bg-white/[0.07]
-            shadow-[0_14px_40px_rgba(0,0,0,0.40)]
+            shadow-[0_12px_34px_rgba(0,0,0,0.40)]
           "
           title="Copy official contract address"
         >
           {copied ? (
-            <Check className="h-4 w-4 text-emerald-200" />
+            <Check className="h-3.5 w-3.5 text-emerald-200" />
           ) : (
-            <Copy className="h-4 w-4 text-slate-100/90" />
+            <Copy className="h-3.5 w-3.5 text-slate-100/90" />
           )}
         </button>
       </div>
