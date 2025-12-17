@@ -1,3 +1,4 @@
+// components/PreLaunchBanner.tsx
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -20,8 +21,6 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
     function setVar() {
       const el = ref.current;
       if (!el) return;
-
-      // offsetHeight is integer px (includes borders) - no subpixel weirdness
       const h = el.offsetHeight || 0;
       root.style.setProperty('--xpot-banner-h', `${h}px`);
     }
@@ -55,14 +54,42 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
       "
     >
       <div className="mx-auto max-w-[1440px] px-4">
-        {/* Lock banner height so it never “breathes” */}
         <div className="flex h-12 items-center justify-center">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.32em] text-white/80">
-            PRE-LAUNCH MODE <span className="mx-2 text-white/40">•</span> XPOT TOKEN NOT DEPLOYED{' '}
-            <span className="mx-2 text-white/40">•</span> BUILD v0.9.7
-          </p>
+          {/* NOTE: animation stopped because there is no animation class/keyframes on this element.
+              If you previously had moving shimmer/scroll, it was likely removed from globals.css
+              (keyframes) or removed from the className here.
+              Below I re-add a subtle animated shimmer background that does NOT change layout height. */}
+          <div className="relative w-full">
+            <div
+              className="
+                pointer-events-none absolute inset-0
+                opacity-60
+                bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]
+                translate-x-[-60%]
+                animate-[xpotBannerSweep_5.5s_linear_infinite]
+              "
+            />
+            <p className="relative text-center text-[12px] font-semibold uppercase tracking-[0.32em] text-white/80">
+              PRE-LAUNCH MODE <span className="mx-2 text-white/40">•</span> CONTRACT DEPLOYED{' '}
+              <span className="mx-2 text-white/40">•</span> OFFICIAL CA VERIFIED{' '}
+              <span className="mx-2 text-white/40">•</span> TRADING NOT ACTIVE YET{' '}
+              <span className="ml-2 text-white/70">BUILD v0.9.8</span>
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* Keyframes kept local so it can’t “disappear” if globals.css changed */}
+      <style jsx global>{`
+        @keyframes xpotBannerSweep {
+          0% {
+            transform: translateX(-60%);
+          }
+          100% {
+            transform: translateX(160%);
+          }
+        }
+      `}</style>
     </div>
   );
 }
