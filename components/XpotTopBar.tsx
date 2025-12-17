@@ -36,24 +36,42 @@ export type HubWalletStatus = {
 
 type XpotTopBarProps = {
   logoHref?: string;
+
+  // Public pill (non-hub pages)
   pillText?: string;
+
+  // Optional right slogan (non-hub pages)
   sloganRight?: string;
+
+  // Escape hatch (non-hub pages only)
   rightSlot?: ReactNode;
 
+  // Hub enhancements
   hubWalletStatus?: HubWalletStatus;
   onOpenWalletModal?: () => void;
   liveIsOpen?: boolean;
 
+  // Banner
   hasBanner?: boolean;
   maxWidthClassName?: string;
 };
 
 const XPOT_X_POST =
-  'https://x.com/xpotbet/status/1998020027069653445?s=46&t=F6JSZfQ0P85RPUutnn4nag';
+  'https://x.com/xpotbet';
 
 const WINNERS_HREF = '/winners';
 
+/**
+ * Official Contract Address (shown in top bar on public pages).
+ * Replace with your real mint when ready.
+ */
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
+
+/**
+ * Optional - if you implement this API route later:
+ * return { priceUsd: number }
+ * Safe if missing - chip just shows "—".
+ */
 const XPOT_PRICE_ENDPOINT = '/api/price/xpot';
 
 export default function XpotTopBar({
@@ -127,7 +145,10 @@ export default function XpotTopBar({
                 />
               ) : (
                 <>
+                  {/* Official CA - royal */}
                   <OfficialContractRoyalChip />
+
+                  {/* Escape hatch slot (kept) */}
                   {rightSlot ? rightSlot : <PublicNav liveIsOpen={liveIsOpen} />}
                 </>
               )}
@@ -136,6 +157,7 @@ export default function XpotTopBar({
         </div>
       </div>
 
+      {/* Premium divider */}
       <div className="relative h-[1px] w-full overflow-hidden">
         <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.1),rgba(56,189,248,0.55),rgba(56,189,248,0.1))]" />
       </div>
@@ -143,7 +165,7 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- OFFICIAL CA CHIP (ROYAL, WIDER, NO YELLOW TICK, NEW ORNAMENT) ---------------- */
+/* ---------------- OFFICIAL CA CHIP (ROYAL, SLIM) ---------------- */
 
 function shortenAddress(addr: string, left = 10, right = 10) {
   if (!addr) return '';
@@ -152,7 +174,7 @@ function shortenAddress(addr: string, left = 10, right = 10) {
 }
 
 function formatUsd(v: number | null) {
-  if (v === null || !Number.isFinite(v)) return null; // hide instead of "—"
+  if (v === null || !Number.isFinite(v)) return '—';
   if (v >= 1) return `$${v.toFixed(2)}`;
   if (v >= 0.01) return `$${v.toFixed(4)}`;
   return `$${v.toFixed(6)}`;
@@ -178,7 +200,7 @@ function OfficialContractRoyalChip() {
     }
 
     poll();
-    const id = setInterval(poll, 6000);
+    const id = setInterval(poll, 5000);
     return () => {
       alive = false;
       clearInterval(id);
@@ -195,109 +217,88 @@ function OfficialContractRoyalChip() {
     }
   }
 
-  const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 10, 10), []);
-  const priceText = formatUsd(priceUsd);
+  const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 12, 10), []);
 
   return (
     <div className="hidden items-center md:flex">
       <div
         className="
-          group relative inline-flex items-center
+          group relative inline-flex items-center gap-3
           rounded-full
+          px-3 py-1
           border border-emerald-400/14
           bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]
-          shadow-[0_18px_55px_rgba(0,0,0,0.52)]
+          shadow-[0_22px_70px_rgba(0,0,0,0.52)]
           backdrop-blur-xl
           hover:border-emerald-300/22
-          px-3 py-[6px]
-          min-w-[360px]
         "
         title={XPOT_OFFICIAL_CA}
       >
-        {/* Aura */}
-        <div className="pointer-events-none absolute -inset-10 rounded-full opacity-60 blur-3xl bg-[radial-gradient(circle_at_18%_10%,rgba(16,185,129,0.18),transparent_55%),radial-gradient(circle_at_86%_70%,rgba(56,189,248,0.10),transparent_60%)]" />
+        {/* Aura (royal, but subtle so it feels premium not loud) */}
+        <div className="pointer-events-none absolute -inset-10 rounded-full opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_10%,rgba(16,185,129,0.20),transparent_55%),radial-gradient(circle_at_86%_70%,rgba(245,158,11,0.10),transparent_60%)]" />
+
+        {/* Fine edge highlight */}
         <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/10" />
 
-        <div className="relative z-10 flex w-full items-center justify-between gap-3">
-          {/* Left cluster */}
-          <div className="flex min-w-0 items-center gap-3">
-            {/* Seal (no yellow tick) */}
-            <span
-              className="
-                inline-flex h-7 w-7 items-center justify-center
-                rounded-full
-                border border-emerald-300/18
-                bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.14),rgba(0,0,0,0.38))]
-                shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_12px_34px_rgba(0,0,0,0.50)]
-              "
-            >
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+        {/* Seal (smaller to reduce height) */}
+        <span
+          className="
+            relative z-10 inline-flex h-8 w-8 items-center justify-center
+            rounded-full
+            border border-amber-300/25
+            bg-[radial-gradient(circle_at_30%_30%,rgba(245,158,11,0.18),rgba(0,0,0,0.35))]
+            shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_14px_40px_rgba(0,0,0,0.55)]
+          "
+        >
+          <ShieldCheck className="h-4 w-4 text-emerald-200" />
+          <span className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-3 w-3 items-center justify-center rounded-full bg-amber-300/90 text-[9px] font-black text-black shadow-[0_0_12px_rgba(245,158,11,0.50)]">
+            ✓
+          </span>
+        </span>
+
+        {/* Engraved label + CA (single compact stack) */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="flex flex-col leading-none">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">
+              OFFICIAL CA
             </span>
-
-            {/* Text */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-emerald-200/90">
-                  OFFICIAL CA
-                </span>
-
-                {/* optional tiny crown “royal” accent */}
-                <Crown className="h-3.5 w-3.5 text-emerald-200/70" />
-              </div>
-
-              <div className="mt-[3px] flex items-center gap-2">
-                <span className="truncate font-mono text-[11px] text-slate-100/95">
-                  {addrShort}
-                </span>
-
-                {priceText && (
-                  <span className="hidden xl:inline-flex items-center gap-2">
-                    {/* New “ornament” separator (not a boring line) */}
-                    <span className="relative inline-flex h-4 w-[1px] overflow-hidden rounded-full">
-                      <span className="absolute inset-0 bg-gradient-to-b from-transparent via-emerald-200/25 to-transparent" />
-                    </span>
-                    <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                      XPOT
-                    </span>
-                    <span className="font-mono text-[11px] text-slate-100/80">
-                      {priceText}
-                    </span>
-                  </span>
-                )}
-              </div>
-            </div>
+            <span className="mt-1 font-mono text-[12px] text-slate-100/95">
+              {addrShort}
+            </span>
           </div>
 
-          {/* New ornament between content and copy (royal divider + diamond) */}
-          <div className="flex items-center gap-2">
-            <span className="relative hidden sm:inline-flex h-5 w-[1px] overflow-hidden rounded-full">
-              <span className="absolute inset-0 bg-gradient-to-b from-transparent via-white/14 to-transparent" />
-              <span className="absolute inset-0 blur-[1px] bg-gradient-to-b from-transparent via-emerald-300/18 to-transparent" />
+          {/* Optional price, compact (no divider line) */}
+          <div className="hidden xl:flex items-center gap-2">
+            <span className="h-1 w-1 rounded-full bg-white/15" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              XPOT
             </span>
-            <span className="hidden sm:inline-flex h-2 w-2 rotate-45 rounded-[3px] border border-white/10 bg-white/[0.04] shadow-[0_0_18px_rgba(16,185,129,0.18)]" />
-
-            {/* Copy button (smaller, clean) */}
-            <button
-              type="button"
-              onClick={onCopy}
-              className="
-                inline-flex items-center justify-center
-                h-8 w-8 rounded-full
-                border border-white/10
-                bg-white/[0.04]
-                hover:bg-white/[0.07]
-                shadow-[0_12px_34px_rgba(0,0,0,0.40)]
-              "
-              title="Copy official contract address"
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-200" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 text-slate-100/90" />
-              )}
-            </button>
+            <span className="font-mono text-[12px] text-slate-100/85">
+              {formatUsd(priceUsd)}
+            </span>
           </div>
         </div>
+
+        {/* Copy button (slimmer) */}
+        <button
+          type="button"
+          onClick={onCopy}
+          className="
+            relative z-10 inline-flex items-center justify-center
+            h-8 w-8 rounded-full
+            border border-white/10
+            bg-white/[0.04]
+            hover:bg-white/[0.07]
+            shadow-[0_14px_40px_rgba(0,0,0,0.40)]
+          "
+          title="Copy official contract address"
+        >
+          {copied ? (
+            <Check className="h-4 w-4 text-emerald-200" />
+          ) : (
+            <Copy className="h-4 w-4 text-slate-100/90" />
+          )}
+        </button>
       </div>
     </div>
   );
@@ -369,7 +370,10 @@ function PublicNav({ liveIsOpen }: { liveIsOpen: boolean }) {
 
       <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="text" />
 
-      <Link href={WINNERS_HREF} className="inline-flex items-center gap-2 hover:text-white">
+      <Link
+        href={WINNERS_HREF}
+        className="inline-flex items-center gap-2 hover:text-white"
+      >
         <Trophy className="h-4 w-4 text-amber-300" />
         Winners
       </Link>
@@ -423,6 +427,7 @@ function HubNav({
 
   return (
     <div className="flex items-center gap-4">
+      {/* Identity chip */}
       <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:flex">
         {isLoaded && avatar ? (
           <img
@@ -435,7 +440,9 @@ function HubNav({
             {initial}
           </div>
         )}
-        <span className="text-xs font-semibold">{displayHandle ?? 'X linking…'}</span>
+        <span className="text-xs font-semibold">
+          {displayHandle ?? 'X linking…'}
+        </span>
       </div>
 
       <LiveNavItem href="/hub/live" isOpen={liveIsOpen} variant="pill" />
@@ -458,7 +465,10 @@ function HubNav({
         X
       </Link>
 
-      <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
+      <HubWalletMenuInline
+        hubWalletStatus={hubWalletStatus}
+        onOpenWalletModal={onOpenWalletModal}
+      />
 
       {clerkEnabled && (
         <SignOutButton redirectUrl="/">
@@ -515,7 +525,8 @@ function HubWalletMenuInline({
     <Wallet className="h-4 w-4" />
   );
 
-  const open = () => (onOpenWalletModal ? onOpenWalletModal() : setVisible(true));
+  const open = () =>
+    onOpenWalletModal ? onOpenWalletModal() : setVisible(true);
 
   return (
     <button
