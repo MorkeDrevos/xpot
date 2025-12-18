@@ -347,55 +347,104 @@ function RunwayBadge() {
 
 function PrinciplesStrip() {
   return (
-    <div className="rounded-[24px] border border-slate-900/70 bg-slate-950/45 p-4 shadow-[0_22px_80px_rgba(0,0,0,0.45)] backdrop-blur">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Principles</p>
-        <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-slate-600">
-          <span className="h-1 w-1 rounded-full bg-white/20" />
-          <span>Small surface</span>
-          <span className="h-1 w-1 rounded-full bg-white/20" />
-          <span>Provable outcomes</span>
+    <div className="relative overflow-hidden rounded-[26px] border border-slate-900/60 bg-slate-950/35 p-5 shadow-[0_26px_90px_rgba(0,0,0,0.42)] backdrop-blur">
+      {/* soft wash */}
+      <div
+        className="
+          pointer-events-none absolute -inset-24 opacity-70 blur-3xl
+          bg-[radial-gradient(circle_at_12%_20%,rgba(16,185,129,0.18),transparent_55%),
+              radial-gradient(circle_at_88%_18%,rgba(56,189,248,0.16),transparent_58%),
+              radial-gradient(circle_at_60%_120%,rgba(245,158,11,0.10),transparent_60%)]
+        "
+      />
+
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Principles</p>
+          <span className="hidden sm:inline-block h-4 w-px bg-white/10" />
+          <p className="hidden sm:block text-[10px] uppercase tracking-[0.22em] text-slate-600">
+            Small surface <span className="mx-2 text-white/15">•</span> Provable outcomes
+          </p>
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
-        <div className="group rounded-[20px] border border-emerald-500/15 bg-emerald-500/5 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-950/30">
-              <ShieldCheck className="h-4 w-4 text-emerald-200" />
+      <div className="relative z-10 mt-4 grid gap-3 md:grid-cols-3">
+        {/* Qualification */}
+        <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+          <div
+            className="
+              pointer-events-none absolute -inset-20 opacity-60 blur-3xl
+              bg-[radial-gradient(circle_at_20%_10%,rgba(16,185,129,0.20),transparent_55%)]
+            "
+          />
+
+          <div className="relative flex items-start gap-3">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-950/25">
+              <ShieldCheck className="h-5 w-5 text-emerald-200" />
             </span>
+
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">Qualification</p>
-              <p className="mt-0.5 text-[12px] text-slate-300">No purchases. No tickets.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">
+                Qualification
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-100">No purchases. No tickets.</p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-slate-400">
+                Holding XPOT is the requirement to enter.
+              </p>
             </div>
           </div>
-          <p className="mt-2 text-[12px] text-slate-400">Holding XPOT is the requirement to enter.</p>
         </div>
 
-        <div className="group rounded-[20px] border border-sky-500/15 bg-sky-500/5 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-950/25">
-              <Users className="h-4 w-4 text-sky-200" />
+        {/* Identity */}
+        <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+          <div
+            className="
+              pointer-events-none absolute -inset-20 opacity-60 blur-3xl
+              bg-[radial-gradient(circle_at_18%_10%,rgba(56,189,248,0.18),transparent_55%)]
+            "
+          />
+
+          <div className="relative flex items-start gap-3">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-950/20">
+              <Users className="h-5 w-5 text-sky-200" />
             </span>
+
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200/90">Identity</p>
-              <p className="mt-0.5 text-[12px] text-slate-300">Public by handle.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200/90">
+                Identity
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-100">Public by handle.</p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-slate-400">
+                Your X handle is public. Wallet stays self-custody.
+              </p>
             </div>
           </div>
-          <p className="mt-2 text-[12px] text-slate-400">Your X handle is public. Wallet stays self-custody.</p>
         </div>
 
-        <div className="group rounded-[20px] border border-amber-500/15 bg-amber-500/5 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-950/20">
-              <Crown className="h-4 w-4 text-amber-200" />
+        {/* Payout */}
+        <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+          <div
+            className="
+              pointer-events-none absolute -inset-20 opacity-55 blur-3xl
+              bg-[radial-gradient(circle_at_20%_10%,rgba(245,158,11,0.14),transparent_55%)]
+            "
+          />
+
+          <div className="relative flex items-start gap-3">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-950/15">
+              <Crown className="h-5 w-5 text-amber-200" />
             </span>
+
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90">Payout</p>
-              <p className="mt-0.5 text-[12px] text-slate-300">Paid on-chain in XPOT.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90">
+                Payout
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-100">Paid on-chain in XPOT.</p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-slate-400">
+                Winners verify the transaction. Proof stays public.
+              </p>
             </div>
           </div>
-          <p className="mt-2 text-[12px] text-slate-400">Winners verify the transaction. Proof stays public.</p>
         </div>
       </div>
     </div>
