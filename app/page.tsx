@@ -28,24 +28,17 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
-// ─────────────────────────────────────────────
-// Routes
-// ─────────────────────────────────────────────
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
 const ROUTE_TERMS = '/terms';
 
-// ─────────────────────────────────────────────
-// Dynamic CA
-// ─────────────────────────────────────────────
 const XPOT_CA =
   process.env.NEXT_PUBLIC_XPOT_MINT ||
   process.env.NEXT_PUBLIC_XPOT_CA ||
   'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
-const SOLANA_CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || ''; // 'devnet' | 'mainnet-beta' | ''
+const SOLANA_CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || '';
 
-// Sample handles for testing (replace with API later)
 const SAMPLE_HANDLES = [
   'DeWala_222222',
   'CryptoNox',
@@ -312,6 +305,95 @@ function RoyalContractBar({ mint }: { mint: string }) {
   );
 }
 
+/* ─────────────────────────────────────────────
+   New: Principles strip (replaces 3 value cards)
+   ───────────────────────────────────────────── */
+
+function PrinciplesStrip() {
+  return (
+    <div className="rounded-[24px] border border-slate-900/70 bg-slate-950/45 p-4 shadow-[0_22px_80px_rgba(0,0,0,0.45)] backdrop-blur">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Principles</p>
+        <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-slate-600">
+          <span className="h-1 w-1 rounded-full bg-white/20" />
+          <span>Small surface</span>
+          <span className="h-1 w-1 rounded-full bg-white/20" />
+          <span>Provable outcomes</span>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
+        {/* Qualification */}
+        <div className="group rounded-[20px] border border-emerald-500/15 bg-emerald-500/5 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-950/30">
+              <ShieldCheck className="h-4 w-4 text-emerald-200" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">Qualification</p>
+              <p className="mt-0.5 text-[12px] text-slate-300">No purchases. No tickets.</p>
+            </div>
+          </div>
+          <p className="mt-2 text-[12px] text-slate-400">Holding XPOT is the requirement to enter.</p>
+        </div>
+
+        {/* Identity */}
+        <div className="group rounded-[20px] border border-sky-500/15 bg-sky-500/5 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-950/25">
+              <Users className="h-4 w-4 text-sky-200" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200/90">Identity</p>
+              <p className="mt-0.5 text-[12px] text-slate-300">Public by handle.</p>
+            </div>
+          </div>
+          <p className="mt-2 text-[12px] text-slate-400">Your X handle is public. Wallet stays self-custody.</p>
+        </div>
+
+        {/* Payout */}
+        <div className="group rounded-[20px] border border-amber-500/15 bg-amber-500/5 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-950/20">
+              <Crown className="h-4 w-4 text-amber-200" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90">Payout</p>
+              <p className="mt-0.5 text-[12px] text-slate-300">Paid on-chain in XPOT.</p>
+            </div>
+          </div>
+          <p className="mt-2 text-[12px] text-slate-400">Winners verify the transaction. Proof stays public.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   New: subtle divider label
+   ───────────────────────────────────────────── */
+
+function SectionDividerLabel({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-500">{label}</span>
+      <span className="h-px flex-1 bg-white/10" />
+      <span className="hidden sm:inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-slate-600">
+        <span className="h-1 w-1 rounded-full bg-white/20" />
+        <span>Eligibility</span>
+        <span className="h-1 w-1 rounded-full bg-white/20" />
+        <span>Identity</span>
+        <span className="h-1 w-1 rounded-full bg-white/20" />
+        <span>Proof</span>
+      </span>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Existing helpers (unchanged)
+   ───────────────────────────────────────────── */
+
 function Bullet({
   children,
   tone = 'emerald',
@@ -335,10 +417,6 @@ function Bullet({
     </li>
   );
 }
-
-/* ─────────────────────────────────────────────
-   STEP
-   ───────────────────────────────────────────── */
 
 function Step({
   n,
@@ -493,7 +571,6 @@ export default function HomePage() {
           <div className="relative z-10 grid gap-6 p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)] lg:p-8">
             {/* LEFT */}
             <div className="flex flex-col justify-between gap-6">
-              {/* ✅ Redesigned (premium) hero-left stack - keeps everything, reorganises */}
               <div className="space-y-5">
                 {/* Top rail */}
                 <div className="flex flex-wrap items-center gap-2">
@@ -527,7 +604,7 @@ export default function HomePage() {
                     ecosystem for communities, creators and sponsors.
                   </p>
 
-                  {/* Runway (kept) */}
+                  {/* Runway */}
                   <div className="mt-4 rounded-[22px] border border-emerald-400/15 bg-emerald-500/5 px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <Pill tone="emerald">
@@ -541,41 +618,18 @@ export default function HomePage() {
                     </p>
                   </div>
 
-                  {/* Value pillars (same content, better hierarchy) */}
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-[20px] border border-emerald-400/15 bg-slate-950/45 px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-emerald-200" />
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">
-                          Proof-first transparency
-                        </p>
-                      </div>
-                      <p className="mt-1 text-[12px] text-slate-400">On-chain payout verification, built-in.</p>
-                    </div>
-
-                    <div className="rounded-[20px] border border-sky-400/15 bg-slate-950/45 px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-sky-200" />
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200/90">
-                          Calm UX, live data
-                        </p>
-                      </div>
-                      <p className="mt-1 text-[12px] text-slate-400">Simple surface, real-time engine.</p>
-                    </div>
-
-                    <div className="rounded-[20px] border border-amber-400/15 bg-slate-950/45 px-4 py-3 sm:col-span-2">
-                      <div className="flex items-center gap-2">
-                        <BadgeCheck className="h-4 w-4 text-amber-200" />
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90">
-                          Reputation over time
-                        </p>
-                      </div>
-                      <p className="mt-1 text-[12px] text-slate-400">Identity-linked history that compounds.</p>
-                    </div>
+                  {/* ✅ Principles strip replaces the 3 value-pill cards */}
+                  <div className="mt-4">
+                    <PrinciplesStrip />
                   </div>
 
-                  {/* BONUS XPOT SPOTLIGHT (kept) */}
+                  {/* ✅ Divider label above Bonus + CA */}
                   <div className="mt-5">
+                    <SectionDividerLabel label="Entry mechanics" />
+                  </div>
+
+                  {/* BONUS XPOT SPOTLIGHT */}
+                  <div className="mt-3">
                     <div className="relative">
                       <div
                         className="
@@ -601,12 +655,12 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* CA bar (kept) */}
+                  {/* CA bar */}
                   <div className="mt-4">
                     <RoyalContractBar mint={mint} />
                   </div>
 
-                  {/* CTAs (kept, cleaner grid) */}
+                  {/* CTAs */}
                   <div className="mt-5 grid gap-3 sm:grid-cols-[auto_auto_1fr] sm:items-center">
                     <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
                       Enter today&apos;s XPOT
@@ -634,7 +688,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Mini stats (kept) */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <MiniStat label="Mode" value="On-chain" tone="emerald" />
                 <MiniStat label="Identity" value="@handle" tone="sky" />
