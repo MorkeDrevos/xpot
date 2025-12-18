@@ -3,25 +3,25 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
+  BadgeCheck,
+  Blocks,
+  Check,
+  CheckCircle2,
   ChevronDown,
   Copy,
-  ExternalLink,
-  Lock,
-  Sparkles,
-  Check,
-  Blocks,
-  ShieldCheck,
-  Zap,
-  Users,
-  BadgeCheck,
-  Globe,
-  Stars,
-  Wand2,
   Crown,
-  CheckCircle2,
+  ExternalLink,
+  Globe,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Stars,
+  Users,
+  Wand2,
+  Zap,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -159,15 +159,15 @@ function MiniStat({
 
   return (
     <div className="rounded-2xl border border-slate-900/70 bg-slate-950/70 px-4 py-3">
-      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-        {label}
-      </p>
+      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <div className={`mt-1 font-mono text-sm ${toneCls}`}>{value}</div>
     </div>
   );
 }
 
 function HandleTicker({ handles }: { handles: string[] }) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <div className="relative overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/55 px-2 py-2 shadow-[0_18px_60px_rgba(15,23,42,0.65)]">
       <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[#02020a] via-[#02020a]/80 to-transparent" />
@@ -175,12 +175,12 @@ function HandleTicker({ handles }: { handles: string[] }) {
 
       <motion.div
         className="flex gap-2 pr-10"
-        animate={{ x: ['0%', '-50%'] }}
-        transition={{ duration: 34, ease: 'linear', repeat: Infinity }}
+        animate={reduceMotion ? undefined : { x: ['0%', '-50%'] }}
+        transition={reduceMotion ? undefined : { duration: 34, ease: 'linear', repeat: Infinity }}
       >
-        {[0, 1].map((loop) => (
+        {[0, 1].map(loop => (
           <div key={loop} className="flex gap-2">
-            {handles.map((handle) => {
+            {handles.map(handle => {
               const clean = handle.replace(/^@/, '');
               const initial = clean.charAt(0).toUpperCase();
 
@@ -268,9 +268,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
             <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
               Official CA
             </span>
-            <span className="font-mono text-[12px] text-slate-100/90">
-              {shortenAddress(mint, 10, 10)}
-            </span>
+            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 10, 10)}</span>
           </span>
         </span>
 
@@ -344,6 +342,107 @@ function Bullet({
   );
 }
 
+function Step({
+  n,
+  title,
+  desc,
+  icon,
+  tone = 'emerald',
+}: {
+  n: string;
+  title: string;
+  desc: string;
+  icon: React.ReactNode;
+  tone?: 'emerald' | 'sky' | 'amber' | 'violet';
+}) {
+  const ring =
+    tone === 'sky'
+      ? 'border-sky-500/25 bg-sky-950/25'
+      : tone === 'amber'
+      ? 'border-amber-500/25 bg-amber-950/20'
+      : tone === 'violet'
+      ? 'border-violet-500/25 bg-violet-950/25'
+      : 'border-emerald-500/25 bg-emerald-950/30';
+
+  const txt =
+    tone === 'sky'
+      ? 'text-sky-200'
+      : tone === 'amber'
+      ? 'text-amber-200'
+      : tone === 'violet'
+      ? 'text-violet-200'
+      : 'text-emerald-200';
+
+  return (
+    <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Step {n}</span>
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+          Proof-first
+        </span>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${ring}`}>
+          {icon}
+        </span>
+        <div>
+          <p className="text-sm font-semibold text-slate-100">{title}</p>
+          <p className={`text-xs ${txt}`}>{desc}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Accordion({
+  items,
+}: {
+  items: { q: string; a: string }[];
+}) {
+  const [open, setOpen] = useState<number | null>(0);
+
+  return (
+    <div className="grid gap-3">
+      {items.map((it, idx) => {
+        const isOpen = open === idx;
+
+        return (
+          <div
+            key={it.q}
+            className="overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/55"
+          >
+            <button
+              type="button"
+              onClick={() => setOpen(v => (v === idx ? null : idx))}
+              className="group flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+            >
+              <span className="text-sm font-semibold text-slate-100">{it.q}</span>
+              <ChevronDown
+                className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            <AnimatePresence initial={false}>
+              {isOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-5 pb-5 text-sm leading-relaxed text-slate-300">{it.a}</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function HomePage() {
   const marquee = useMemo(() => [...SAMPLE_HANDLES], []);
   const [showLiveEntries, setShowLiveEntries] = useState(false);
@@ -351,6 +450,28 @@ export default function HomePage() {
   // keep client reactive if you ever swap env injection patterns later
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
+
+  const faq = useMemo(
+    () => [
+      {
+        q: 'Do I need to buy tickets to enter?',
+        a: 'No. XPOT is designed around holdings, identity and provable payouts. The hub handles eligibility and entry rules.',
+      },
+      {
+        q: 'Is my wallet public on the site?',
+        a: 'The public identity is your X handle. Wallet remains self-custody and is not the headline identity.',
+      },
+      {
+        q: 'How do winners verify payouts?',
+        a: 'Payouts are on-chain. Winners can verify the transaction directly via explorer. Transparency is a feature, not a slogan.',
+      },
+      {
+        q: 'What happens after launch?',
+        a: 'The daily draw is the primitive. Modules like streaks, sponsor pools and creator drops can plug into the same protocol layer.',
+      },
+    ],
+    [],
+  );
 
   return (
     <XpotPageShell>
@@ -389,8 +510,7 @@ export default function HomePage() {
                   </p>
 
                   <h1 className="mt-3 text-balance text-4xl font-semibold leading-tight sm:text-5xl">
-                    One protocol. One identity.{' '}
-                    <span className="text-emerald-300">One daily XPOT draw.</span>
+                    One protocol. One identity. <span className="text-emerald-300">One daily XPOT draw.</span>
                   </h1>
 
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
@@ -430,7 +550,7 @@ export default function HomePage() {
                   <BonusStrip />
                 </div>
 
-                {/* ✅ NEW: royal, compact, dynamic CA (no wiring changes) */}
+                {/* ✅ CA bar stays */}
                 <RoyalContractBar mint={mint} />
 
                 {/* CTAs */}
@@ -453,8 +573,7 @@ export default function HomePage() {
                   </Link>
 
                   <p className="text-[11px] text-slate-500">
-                    Winners revealed by{' '}
-                    <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
+                    Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
                   </p>
                 </div>
               </div>
@@ -473,9 +592,7 @@ export default function HomePage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Live pool value and milestones (via Jupiter).
-                    </p>
+                    <p className="mt-1 text-xs text-slate-400">Live pool value and milestones (via Jupiter).</p>
                   </div>
 
                   <Pill tone="sky">
@@ -485,7 +602,7 @@ export default function HomePage() {
                 </div>
 
                 <div className="mt-4">
-                  {/* ✅ RESTORED: the small runway badge on the panel */}
+                  {/* ✅ RESTORED: runway badge */}
                   <JackpotPanel variant="standalone" badgeLabel="10+ year runway" />
                 </div>
 
@@ -495,9 +612,7 @@ export default function HomePage() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
 
-                  <span className="text-[11px] text-slate-500">
-                    Watch live here. Claim entries in the hub.
-                  </span>
+                  <span className="text-[11px] text-slate-500">Watch live here. Claim entries in the hub.</span>
                 </div>
               </PremiumCard>
 
@@ -539,9 +654,7 @@ export default function HomePage() {
                   </pre>
                 </div>
 
-                <p className="mt-3 text-[12px] text-slate-400">
-                  Read-only cockpit view. Same panels as ops. Winners get access.
-                </p>
+                <p className="mt-3 text-[12px] text-slate-400">Read-only cockpit view. Same panels as ops. Winners get access.</p>
               </PremiumCard>
             </div>
           </div>
@@ -550,7 +663,7 @@ export default function HomePage() {
           <div className="relative z-10 border-t border-slate-900/70 px-6 py-4 lg:px-8">
             <button
               type="button"
-              onClick={() => setShowLiveEntries((v) => !v)}
+              onClick={() => setShowLiveEntries(v => !v)}
               className="group inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-900/70 bg-slate-950/50 px-4 py-3 text-left shadow-[0_18px_60px_rgba(15,23,42,0.55)] transition hover:bg-slate-950/70"
             >
               <span className="flex items-center gap-3">
@@ -558,17 +671,11 @@ export default function HomePage() {
                   <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-70 animate-ping" />
                   <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
                 </span>
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-                  Live entries (X handles)
-                </span>
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Live entries (X handles)</span>
                 <span className="text-[11px] text-slate-500">Optional - expand to view</span>
               </span>
 
-              <ChevronDown
-                className={`h-4 w-4 text-slate-400 transition-transform ${
-                  showLiveEntries ? 'rotate-180' : ''
-                }`}
-              />
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`} />
             </button>
 
             <AnimatePresence initial={false}>
@@ -582,15 +689,85 @@ export default function HomePage() {
                 >
                   <div className="mt-3">
                     <HandleTicker handles={marquee} />
-                    <p className="mt-2 text-[11px] text-slate-500">
-                      Handles are shown, wallets stay in self-custody.
-                    </p>
+                    <p className="mt-2 text-[11px] text-slate-500">Handles are shown, wallets stay in self-custody.</p>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </div>
+      </section>
+
+      {/* NEW: HOW IT WORKS */}
+      <section className="mt-8">
+        <PremiumCard className="p-6 sm:p-8" halo sheen>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <Pill tone="sky">
+                <Blocks className="h-3.5 w-3.5" />
+                How it works
+              </Pill>
+
+              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
+                A daily on-chain reward primitive, wrapped in identity.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                XPOT is built to feel premium and calm. Simple entry, provable outcomes and room for modules later.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Proof first
+              </Pill>
+              <Pill tone="violet">
+                <Users className="h-3.5 w-3.5" />
+                Identity layer
+              </Pill>
+              <Pill tone="amber">
+                <Stars className="h-3.5 w-3.5" />
+                Sponsor ready
+              </Pill>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <Step
+              n="01"
+              title="Hold XPOT"
+              desc="Eligibility is holdings-based"
+              icon={<ShieldCheck className="h-5 w-5 text-emerald-200" />}
+              tone="emerald"
+            />
+            <Step
+              n="02"
+              title="Connect X and wallet"
+              desc="Public handle, self-custody wallet"
+              icon={<Users className="h-5 w-5 text-sky-200" />}
+              tone="sky"
+            />
+            <Step
+              n="03"
+              title="Claim entry, verify payout"
+              desc="On-chain proof is the product"
+              icon={<Crown className="h-5 w-5 text-amber-200" />}
+              tone="amber"
+            />
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+              <p className="text-sm text-slate-300">Designed for rewards, not for addiction loops.</p>
+            </div>
+
+            <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
+              Claim your entry
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </PremiumCard>
       </section>
 
       {/* THE PROTOCOL STRIP */}
@@ -601,12 +778,8 @@ export default function HomePage() {
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
               Qualification
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">
-              No purchases. No tickets.
-            </p>
-            <p className="mt-2 text-sm text-slate-300">
-              Holding XPOT is the only requirement to enter.
-            </p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">No purchases. No tickets.</p>
+            <p className="mt-2 text-sm text-slate-300">Holding XPOT is the only requirement to enter.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -614,12 +787,8 @@ export default function HomePage() {
               <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
               Identity
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">
-              Public by handle.
-            </p>
-            <p className="mt-2 text-sm text-slate-300">
-              Your X handle is the public identity. Wallet stays private.
-            </p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Public by handle.</p>
+            <p className="mt-2 text-sm text-slate-300">Your X handle is the public identity. Wallet stays private.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -627,12 +796,8 @@ export default function HomePage() {
               <span className="h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
               Payout
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">
-              Paid on-chain in XPOT.
-            </p>
-            <p className="mt-2 text-sm text-slate-300">
-              Winner verifies the transaction. Transparency is the product.
-            </p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
+            <p className="mt-2 text-sm text-slate-300">Winner verifies the transaction. Transparency is the product.</p>
           </PremiumCard>
         </div>
       </section>
@@ -651,9 +816,7 @@ export default function HomePage() {
                 XPOT is a rewards protocol, not a one-off game.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                The daily draw is the primitive. On top of it we can add modules that reward
-                participation, streaks and reputation over time. That is how XPOT becomes an
-                ecosystem for communities, creators and sponsors.
+                The daily draw is the primitive. On top of it we can add modules that reward participation, streaks and reputation over time. That is how XPOT becomes an ecosystem for communities, creators and sponsors.
               </p>
             </div>
 
@@ -730,9 +893,7 @@ export default function HomePage() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                XPOT is designed for rewards, not for addiction loops.
-              </p>
+              <p className="text-sm text-slate-300">XPOT is designed for rewards, not for addiction loops.</p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -751,12 +912,8 @@ export default function HomePage() {
               <Crown className="h-3.5 w-3.5" />
               Creators
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">
-              Giveaways without chaos.
-            </p>
-            <p className="mt-2 text-sm text-slate-300">
-              One link, one mechanic, transparent winners and a premium experience.
-            </p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
+            <p className="mt-2 text-sm text-slate-300">One link, one mechanic, transparent winners and a premium experience.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -764,12 +921,8 @@ export default function HomePage() {
               <Globe className="h-3.5 w-3.5" />
               Sponsors
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">
-              Fund moments, not ads.
-            </p>
-            <p className="mt-2 text-sm text-slate-300">
-              Sponsor pools and bonuses with visibility and provable distribution.
-            </p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
+            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -777,14 +930,43 @@ export default function HomePage() {
               <Zap className="h-3.5 w-3.5" />
               Communities
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">
-              Portable loyalty.
-            </p>
-            <p className="mt-2 text-sm text-slate-300">
-              Your XPOT history travels with you and unlocks better rewards over time.
-            </p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
+            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
           </PremiumCard>
         </div>
+      </section>
+
+      {/* NEW: FAQ (premium trust section) */}
+      <section className="mt-8">
+        <PremiumCard className="p-6 sm:p-8" halo={false}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Clarity
+              </Pill>
+              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                This page is intentionally calm. The real action is in the hub, the proof lives on-chain.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="sky">
+                <Users className="h-3.5 w-3.5" />
+                Identity
+              </Pill>
+              <Pill tone="amber">
+                <Stars className="h-3.5 w-3.5" />
+                Proof
+              </Pill>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <Accordion items={faq} />
+          </div>
+        </PremiumCard>
       </section>
 
       {/* Tiny footer */}
