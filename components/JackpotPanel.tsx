@@ -131,9 +131,11 @@ function readJupiterUsdPrice(payload: unknown, mint: string): number | null {
   if (!payload || typeof payload !== 'object') return null;
   const p: any = payload;
 
+  // lite-api v3 (common)
   const a = p?.[mint]?.usdPrice;
   if (typeof a === 'number' && Number.isFinite(a)) return a;
 
+  // price.jup.ag v4 style { data: { mint: { price } } }
   const b = p?.data?.[mint]?.price;
   if (typeof b === 'number' && Number.isFinite(b)) return b;
 
@@ -317,14 +319,25 @@ export default function JackpotPanel({
     }
   }, []);
 
-  // Live price: Jupiter primary, DexScreener fallback
+  // Live price: Jupiter primary (two endpoints), DexScreener fallback
   useEffect(() => {
     let timer: number | null = null;
     let aborted = false;
     const ctrl = new AbortController();
 
-    async function fetchFromJupiter(): Promise<number | null> {
+    async function fetchFromJupiterLite(): Promise<number | null> {
       const res = await fetch(`https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`, {
+        signal: ctrl.signal,
+        cache: 'no-store',
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return readJupiterUsdPrice(json, TOKEN_MINT);
+    }
+
+    // ✅ still Jupiter, just a different endpoint (extra reliability, no Birdeye)
+    async function fetchFromJupiterLegacy(): Promise<number | null> {
+      const res = await fetch(`https://price.jup.ag/v4/price?ids=${TOKEN_MINT}`, {
         signal: ctrl.signal,
         cache: 'no-store',
       });
@@ -350,14 +363,22 @@ export default function JackpotPanel({
         let price: number | null = null;
         let src: PriceSource = 'Jupiter';
 
-        price = await fetchFromJupiter();
+        price = await fetchFromJupiterLite();
+
         if (!(typeof price === 'number' && Number.isFinite(price))) {
-          const backup = await fetchFromDexScreener();
-          if (typeof backup === 'number' && Number.isFinite(backup)) {
-            price = backup;
-            src = 'DexScreener';
+          // second Jupiter endpoint before we ever switch to backup provider
+          const alt = await fetchFromJupiterLegacy();
+          if (typeof alt === 'number' && Number.isFinite(alt)) {
+            price = alt;
+            src = 'Jupiter';
           } else {
-            price = null;
+            const backup = await fetchFromDexScreener();
+            if (typeof backup === 'number' && Number.isFinite(backup)) {
+              price = backup;
+              src = 'DexScreener';
+            } else {
+              price = null;
+            }
           }
         }
 
@@ -586,6 +607,9 @@ export default function JackpotPanel({
     ? 'border-amber-400/35 bg-amber-500/10 text-amber-200'
     : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200';
 
+  const viaLabel =
+    priceSource === 'DexScreener' ? 'DexScreener (backup)' : 'Jupiter';
+
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
       {/* Soft neon glow on pump */}
@@ -599,11 +623,11 @@ export default function JackpotPanel({
         `}
       />
 
-      {/* HEADER (matches your compact rail) */}
+      {/* HEADER (compact rail) */}
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
-          <p className="mt-1 text-xs text-slate-400">Pool value and milestones (via Jupiter).</p>
+          <p className="mt-1 text-xs text-slate-400">Pool value and milestones (via {viaLabel}).</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -628,7 +652,7 @@ export default function JackpotPanel({
               {poolLabel}
             </span>
 
-            <span className="text-xs text-slate-500">- via Jupiter</span>
+            <span className="text-xs text-slate-500">- via {viaLabel}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -638,7 +662,9 @@ export default function JackpotPanel({
               </span>
             )}
 
-            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}>
+            <span
+              className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}
+            >
               {topStatus}
             </span>
           </div>
@@ -659,7 +685,7 @@ export default function JackpotPanel({
               {displayUsdText}
             </div>
 
-            <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
+            <p className="mt-2 text-xs text-slate-500">Auto-updates from live ticks</p>
           </div>
 
           {/* Right meta (USD VALUE + 1 XPOT + Observed) */}
@@ -695,7 +721,13 @@ export default function JackpotPanel({
 
           {spark ? (
             <>
-              <svg width="100%" height="70" viewBox="0 0 560 54" className="block text-slate-300" aria-label="XPOT momentum sparkline (observed)">
+              <svg
+                width="100%"
+                height="70"
+                viewBox="0 0 560 54"
+                className="block text-slate-300"
+                aria-label="XPOT momentum sparkline (observed)"
+              >
                 <polyline
                   fill="none"
                   stroke="currentColor"
@@ -721,7 +753,9 @@ export default function JackpotPanel({
         <div className="rounded-2xl border border-slate-800/80 bg-black/20 px-5 py-4">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Milestone</p>
-            <p className="text-[11px] text-slate-300">{jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'}</p>
+            <p className="text-[11px] text-slate-300">
+              {jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'}
+            </p>
           </div>
 
           <div className="relative h-3 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
@@ -770,12 +804,10 @@ export default function JackpotPanel({
         </div>
 
         {showUnavailable ? (
-          <p className="mt-3 text-[12px] text-amber-200">
-            Live price not available yet - auto-populates when Jupiter is live.
-          </p>
+          <p className="mt-3 text-[12px] text-amber-200">Live price not available yet - auto-populates when feeds are live.</p>
         ) : (
           <p className="mt-3 text-[12px] text-slate-500">
-            Updates every {Math.round(PRICE_POLL_MS / 1000)}s. Fallback engages automatically if Jupiter is unavailable.
+            Updates every {Math.round(PRICE_POLL_MS / 1000)}s. Backup engages automatically if Jupiter is unavailable.
           </p>
         )}
       </div>
