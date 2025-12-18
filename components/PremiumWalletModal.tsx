@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState, type WalletName } from '@solana/wallet-adapter-base';
 import { ChevronRight, ExternalLink, Shield, Wallet } from 'lucide-react';
@@ -18,6 +18,116 @@ const BTN_UTILITY =
 function shortAddr(a: string) {
   if (!a) return a;
   return `${a.slice(0, 4)}…${a.slice(-4)}`;
+}
+
+function PremiumStatusBanner({
+  text = 'PRE-LAUNCH MODE',
+  items = ['CONTRACT DEPLOYED', 'TRADING NOT ACTIVE YET'],
+}: {
+  text?: string;
+  items?: string[];
+}) {
+  const reduce = useReducedMotion();
+  const line = [text, ...items].join('  •  ');
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Banner body */}
+      <div
+        className="
+          relative
+          border-b border-white/10
+          bg-gradient-to-r from-purple-700/55 via-violet-600/55 to-indigo-700/55
+        "
+      >
+        {/* Moving shimmer layer */}
+        <motion.div
+          aria-hidden
+          className="
+            pointer-events-none absolute inset-0
+            opacity-70
+            [background:linear-gradient(110deg,transparent,rgba(255,255,255,0.20),transparent)]
+            [background-size:220%_100%]
+          "
+          initial={{ backgroundPositionX: '0%' }}
+          animate={reduce ? undefined : { backgroundPositionX: ['0%', '220%'] }}
+          transition={
+            reduce
+              ? undefined
+              : { duration: 3.8, ease: 'linear', repeat: Infinity }
+          }
+        />
+
+        {/* Subtle star/sparkle grain */}
+        <motion.div
+          aria-hidden
+          className="
+            pointer-events-none absolute inset-0 opacity-60
+            [background-image:
+              radial-gradient(circle_at_18%_42%,rgba(255,255,255,0.22)_0px,transparent_1.6px),
+              radial-gradient(circle_at_72%_34%,rgba(255,255,255,0.18)_0px,transparent_1.5px),
+              radial-gradient(circle_at_46%_78%,rgba(255,255,255,0.16)_0px,transparent_1.4px),
+              radial-gradient(circle_at_88%_66%,rgba(255,255,255,0.14)_0px,transparent_1.4px)
+            ]
+            [background-size:520px_120px]
+          "
+          initial={{ backgroundPositionX: 0 }}
+          animate={reduce ? undefined : { backgroundPositionX: [0, 520] }}
+          transition={
+            reduce
+              ? undefined
+              : { duration: 8, ease: 'linear', repeat: Infinity }
+          }
+        />
+
+        {/* Soft inner glow */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.20),transparent_62%)]"
+        />
+
+        {/* Content */}
+        <div className="relative flex h-11 items-center justify-center px-6">
+          {/* Fade edges */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-0 h-full w-16 bg-gradient-to-r from-black/35 to-transparent"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute right-0 top-0 h-full w-16 bg-gradient-to-l from-black/35 to-transparent"
+          />
+
+          {/* Marquee */}
+          <div className="relative w-full overflow-hidden">
+            <motion.div
+              className="flex w-max items-center gap-10"
+              initial={{ x: 0 }}
+              animate={reduce ? undefined : { x: ['0%', '-50%'] }}
+              transition={
+                reduce
+                  ? undefined
+                  : { duration: 18, ease: 'linear', repeat: Infinity }
+              }
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-[0.42em] text-white/90">
+                {line}
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.42em] text-white/90">
+                {line}
+              </span>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+
+      {/* Micro highlight line */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
+      />
+    </div>
+  );
 }
 
 export default function PremiumWalletModal({
@@ -87,6 +197,12 @@ export default function PremiumWalletModal({
               overflow-hidden
             "
           >
+            {/* Premium top banner */}
+            <PremiumStatusBanner
+              text="PRE-LAUNCH MODE"
+              items={['CONTRACT DEPLOYED', 'TRADING NOT ACTIVE YET']}
+            />
+
             {/* Ambient glow */}
             <div className="pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-purple-500/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 left-[18%] h-[380px] w-[380px] rounded-full bg-amber-500/10 blur-3xl" />
@@ -128,7 +244,6 @@ export default function PremiumWalletModal({
                   </p>
                 </div>
 
-                {/* keep spacing clean on the right */}
                 <div className="hidden sm:block" />
               </div>
 
@@ -170,9 +285,7 @@ export default function PremiumWalletModal({
                   </div>
 
                   {connecting && (
-                    <p className="mt-2 text-xs text-amber-300">
-                      Waiting for wallet approval…
-                    </p>
+                    <p className="mt-2 text-xs text-amber-300">Waiting for wallet approval…</p>
                   )}
                 </div>
 
@@ -199,8 +312,7 @@ export default function PremiumWalletModal({
                     const isSelected = wallet?.adapter?.name === String(name);
 
                     const installed =
-                      rs === WalletReadyState.Installed ||
-                      rs === WalletReadyState.Loadable;
+                      rs === WalletReadyState.Installed || rs === WalletReadyState.Loadable;
 
                     return (
                       <button
@@ -244,9 +356,7 @@ export default function PremiumWalletModal({
 
                         {!installed && (
                           <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-                            <span className="text-xs text-slate-300">
-                              Install to use this wallet
-                            </span>
+                            <span className="text-xs text-slate-300">Install to use this wallet</span>
                             <span className="inline-flex items-center gap-2 text-xs text-amber-200">
                               <ExternalLink className="h-4 w-4" />
                               Extension / App
