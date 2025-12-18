@@ -337,7 +337,7 @@ function Bullet({
 }
 
 /* ─────────────────────────────────────────────
-   STEP (no repeating “PROOF-FIRST”)
+   STEP
    ───────────────────────────────────────────── */
 
 function Step({
@@ -493,7 +493,9 @@ export default function HomePage() {
           <div className="relative z-10 grid gap-6 p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)] lg:p-8">
             {/* LEFT */}
             <div className="flex flex-col justify-between gap-6">
+              {/* ✅ Redesigned (premium) hero-left stack - keeps everything, reorganises */}
               <div className="space-y-5">
+                {/* Top rail */}
                 <div className="flex flex-wrap items-center gap-2">
                   <Pill tone="sky">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
@@ -504,101 +506,135 @@ export default function HomePage() {
                     <span className="h-1.5 w-1.5 rounded-full bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
                     Protocol layer
                   </Pill>
+
+                  <span className="ml-1 hidden sm:inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                    Proof-first
+                  </span>
                 </div>
 
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
+                {/* Hero block */}
+                <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
                     NO TICKETS · JUST XPOT HOLDINGS
                   </p>
 
-                  <h1 className="mt-3 text-balance text-4xl font-semibold leading-tight sm:text-5xl">
+                  <h1 className="mt-3 text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
                     One protocol. One identity. <span className="text-emerald-300">One daily XPOT draw.</span>
                   </h1>
 
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                    Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain.
-                    Built to scale into a rewards ecosystem for communities, creators and sponsors.
+                    Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain. Built to scale into a rewards
+                    ecosystem for communities, creators and sponsors.
                   </p>
 
-                  <div className="mt-3">
-                    <Pill tone="emerald">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      Built with a 10-year rewards runway at launch
-                    </Pill>
+                  {/* Runway (kept) */}
+                  <div className="mt-4 rounded-[22px] border border-emerald-400/15 bg-emerald-500/5 px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Pill tone="emerald">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Built with a 10-year rewards runway at launch
+                      </Pill>
+                    </div>
+
                     <p className="mt-2 text-[12px] text-slate-400">
                       Baseline funded at launch: 1,000,000 XPOT/day from the Rewards Reserve.
                     </p>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <Pill tone="emerald">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      Proof-first transparency
-                    </Pill>
-                    <Pill tone="sky">
-                      <Zap className="h-3.5 w-3.5" />
-                      Calm UX, live data
-                    </Pill>
-                    <Pill tone="amber">
-                      <BadgeCheck className="h-3.5 w-3.5" />
-                      Reputation over time
-                    </Pill>
-                  </div>
-                </div>
-
-                {/* BONUS XPOT SPOTLIGHT */}
-                <div className="relative">
-                  <div
-                    className="
-                      pointer-events-none absolute -inset-10 opacity-75 blur-2xl
-                      bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),
-                          radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]
-                    "
-                  />
-                  <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.12)]">
-                    <div className="mb-2 flex items-center justify-between px-2">
-                      <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
-                          <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-                        </span>
-                        Bonus XPOT
-                      </span>
-                      <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">same entry</span>
+                  {/* Value pillars (same content, better hierarchy) */}
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-[20px] border border-emerald-400/15 bg-slate-950/45 px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-emerald-200" />
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">
+                          Proof-first transparency
+                        </p>
+                      </div>
+                      <p className="mt-1 text-[12px] text-slate-400">On-chain payout verification, built-in.</p>
                     </div>
 
-                    {/* BonusStrip now self-refreshes (poll + visibility refetch) */}
-                    <BonusStrip variant="home" />
+                    <div className="rounded-[20px] border border-sky-400/15 bg-slate-950/45 px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-sky-200" />
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200/90">
+                          Calm UX, live data
+                        </p>
+                      </div>
+                      <p className="mt-1 text-[12px] text-slate-400">Simple surface, real-time engine.</p>
+                    </div>
+
+                    <div className="rounded-[20px] border border-amber-400/15 bg-slate-950/45 px-4 py-3 sm:col-span-2">
+                      <div className="flex items-center gap-2">
+                        <BadgeCheck className="h-4 w-4 text-amber-200" />
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90">
+                          Reputation over time
+                        </p>
+                      </div>
+                      <p className="mt-1 text-[12px] text-slate-400">Identity-linked history that compounds.</p>
+                    </div>
                   </div>
-                </div>
 
-                <RoyalContractBar mint={mint} />
+                  {/* BONUS XPOT SPOTLIGHT (kept) */}
+                  <div className="mt-5">
+                    <div className="relative">
+                      <div
+                        className="
+                          pointer-events-none absolute -inset-10 opacity-75 blur-2xl
+                          bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),
+                              radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]
+                        "
+                      />
+                      <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.12)]">
+                        <div className="mb-2 flex items-center justify-between px-2">
+                          <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
+                              <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+                            </span>
+                            Bonus XPOT
+                          </span>
+                          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">same entry</span>
+                        </div>
 
-                {/* CTAs */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
-                    Enter today&apos;s XPOT
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
+                        <BonusStrip variant="home" />
+                      </div>
+                    </div>
+                  </div>
 
-                  <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                    Terms
-                  </Link>
+                  {/* CA bar (kept) */}
+                  <div className="mt-4">
+                    <RoyalContractBar mint={mint} />
+                  </div>
 
-                  <Link
-                    href={ROUTE_OPS}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
-                  >
-                    <Lock className="h-4 w-4 text-amber-200" />
-                    Operations Center
-                  </Link>
+                  {/* CTAs (kept, cleaner grid) */}
+                  <div className="mt-5 grid gap-3 sm:grid-cols-[auto_auto_1fr] sm:items-center">
+                    <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
+                      Enter today&apos;s XPOT
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
 
-                  <p className="text-[11px] text-slate-500">
-                    Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
-                  </p>
+                    <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-3 text-sm`}>
+                      Terms
+                    </Link>
+
+                    <div className="flex flex-wrap items-center justify-start gap-3 sm:justify-end">
+                      <Link
+                        href={ROUTE_OPS}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-sm text-slate-200 hover:bg-slate-900 transition"
+                      >
+                        <Lock className="h-4 w-4 text-amber-200" />
+                        Operations Center
+                      </Link>
+
+                      <p className="text-[11px] text-slate-500">
+                        Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              {/* Mini stats (kept) */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <MiniStat label="Mode" value="On-chain" tone="emerald" />
                 <MiniStat label="Identity" value="@handle" tone="sky" />
