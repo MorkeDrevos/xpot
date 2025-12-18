@@ -765,21 +765,20 @@ export default function HomePage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <RunwayBadge />
-                    <Pill tone="sky">
-                      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
-                      Live
-                    </Pill>
-                  </div>
+  <Pill tone="sky">
+    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
+    Live
+  </Pill>
+</div>
                 </div>
 
                 <div className="mt-4">
                   <JackpotPanel
   variant="standalone"
   badgeLabel="10+ year runway"
-  badgeTooltip={
-    "Funded for 10+ years of daily XPOT rewards.\nSized from the Rewards Reserve at launch: 1,000,000 XPOT/day baseline for 10+ years.\nPaid in XPOT, on-chain, and auditable."
-  }
+  badgeTooltip={`Funded at launch: 3.75B XPOT is allocated to the Rewards Runway wallet.
+At 1,000,000 XPOT/day, that covers ~10.3 years of baseline rewards.
+Distribution remains on-chain and transparent.`}
 />
                 </div>
 
@@ -822,12 +821,11 @@ export default function HomePage() {
   pool_today:      1,000,000 XPOT
   pool_value_usd:  live via Jupiter
   entries_today:   2,184
-  next_draw_in:    11:07:43
 
 > LAST_WINNERS
-  #2025-12-06  @DeWala_222222   1,000,000 XPOT
-  #2025-12-05  @SignalChaser    250,000 XPOT (bonus)
-  #2025-12-04  @NFAResearch     1,000,000 XPOT`}
+  #2025-12-18  @DeWala_222222   1,000,000 XPOT
+  #2025-12-18  @SignalChaser    250,000 XPOT (bonus)
+  #2025-12-17  @NFAResearch     1,000,000 XPOT`}
                   </pre>
                 </div>
 
