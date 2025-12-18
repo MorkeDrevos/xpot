@@ -1,3 +1,4 @@
+// components/XpotPageShell.tsx
 'use client';
 
 import { ReactNode, ComponentProps, useEffect, useMemo, useState } from 'react';
@@ -26,7 +27,7 @@ type XpotPageShellProps = {
   // Keep your existing feature
   showOpsThemeSwitcher?: boolean;
 
-  // ✅ New feature: explicit page tag (used for styling, telemetry, theming hooks)
+  // New feature: explicit page tag (used for styling, telemetry, theming hooks)
   pageTag?: string;
 };
 
@@ -98,9 +99,7 @@ function OpsThemeSwitcher() {
 
   return (
     <div className="hidden sm:flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-[0.22em] text-slate-400">
-        Theme
-      </span>
+      <span className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Theme</span>
 
       <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03] backdrop-blur">
         {PRESETS.map(p => {
@@ -154,7 +153,6 @@ export default function XpotPageShell({
   }, [pathname]);
 
   const resolvedPageTag = pageTag || inferredTag;
-
   const isOpsOrAdmin = resolvedPageTag === 'ops';
 
   const mergedRightSlot = useMemo(() => {
@@ -173,6 +171,7 @@ export default function XpotPageShell({
       className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(' ')}
       data-xpot-page={resolvedPageTag}
     >
+      {/* Banner is hidden on mobile inside PreLaunchBanner (hidden sm:block) */}
       <PreLaunchBanner />
 
       {showTopBar && (
@@ -204,16 +203,8 @@ export default function XpotPageShell({
             ].join(' ')}
           >
             <div className="min-w-0">
-              {title && (
-                <h1 className="text-[26px] sm:text-[30px] font-semibold text-slate-50">
-                  {title}
-                </h1>
-              )}
-              {subtitle && (
-                <p className="mt-2 text-[14px] sm:text-[15px] text-slate-400">
-                  {subtitle}
-                </p>
-              )}
+              {title && <h1 className="text-[26px] font-semibold text-slate-50 sm:text-[30px]">{title}</h1>}
+              {subtitle && <p className="mt-2 text-[14px] text-slate-400 sm:text-[15px]">{subtitle}</p>}
             </div>
 
             {mergedRightSlot && (
