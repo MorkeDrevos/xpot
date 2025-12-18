@@ -44,12 +44,9 @@ function formatUsd(value: number | null) {
 
 // Milestone ladder for highlights (USD)
 const MILESTONES = [
-  25, 50, 75, 100,
-  150, 200, 300, 400, 500,
-  750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000,
-  7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000,
-  75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 500_000,
-  750_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
+  25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000, 7_500, 10_000, 15_000,
+  20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000,
+  1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
 ];
 
 function clamp(n: number, a: number, b: number) {
@@ -281,7 +278,7 @@ export default function JackpotPanel({
         for (let i = 0; i < sparkRaw.length; i += step) down.push(sparkRaw[i]);
         if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) down.push(sparkRaw[sparkRaw.length - 1]);
 
-        const built = buildSparklinePoints(down, 220, 36);
+        const built = buildSparklinePoints(down, 220, 26);
         setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
       }
     }
@@ -478,7 +475,7 @@ export default function JackpotPanel({
         for (let i = 0; i < sparkRaw.length; i += step) down.push(sparkRaw[i]);
         if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) down.push(sparkRaw[sparkRaw.length - 1]);
 
-        const built = buildSparklinePoints(down, 220, 36);
+        const built = buildSparklinePoints(down, 220, 26);
         setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
       } else {
         setSpark(null);
@@ -498,8 +495,7 @@ export default function JackpotPanel({
   const reachedMilestone =
     jackpotUsd != null ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null : null;
 
-  const nextMilestone =
-    jackpotUsd != null ? MILESTONES.find(m => jackpotUsd < m) ?? null : null;
+  const nextMilestone = jackpotUsd != null ? MILESTONES.find(m => jackpotUsd < m) ?? null : null;
 
   const prevMilestoneForBar = useMemo(() => {
     if (jackpotUsd == null) return null;
@@ -521,13 +517,11 @@ export default function JackpotPanel({
   const poolLabel = `${JACKPOT_XPOT.toLocaleString()} XPOT`;
 
   const displayUsdText =
-    displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd)
-      ? '—'
-      : formatUsd(displayJackpotUsd);
+    displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd) ? '—' : formatUsd(displayJackpotUsd);
 
   const panelChrome =
     variant === 'embedded'
-      ? 'rounded-2xl border border-slate-800/70 bg-slate-950/45 px-5 py-4 shadow-sm'
+      ? 'rounded-2xl border border-slate-800/70 bg-slate-950/45 px-4 py-4 shadow-sm'
       : 'rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-4 shadow-sm';
 
   const volGlow =
@@ -537,17 +531,14 @@ export default function JackpotPanel({
         ? 'shadow-[0_0_40px_rgba(248,113,113,0.26)]'
         : '';
 
-  const volText =
-    volPulse === 'up'
-      ? 'text-emerald-100'
-      : volPulse === 'down'
-        ? 'text-rose-100'
-        : '';
+  const volText = volPulse === 'up' ? 'text-emerald-100' : volPulse === 'down' ? 'text-rose-100' : '';
 
-  const observedLabel =
-    coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
+  const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
 
   const isWide = layout === 'wide';
+
+  const momentumPct =
+    spark && spark.max > spark.min ? (((spark.max - spark.min) / spark.min) * 100).toFixed(2) : '0.00';
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -555,51 +546,59 @@ export default function JackpotPanel({
       <div
         className={`
           pointer-events-none absolute inset-0 rounded-2xl
-          border border-[#3BA7FF]/40
-          shadow-[0_0_40px_rgba(59,167,255,0.45)]
+          border border-[#3BA7FF]/35
+          shadow-[0_0_44px_rgba(59,167,255,0.42)]
           opacity-0 transition-opacity duration-500
           ${justPumped ? 'opacity-100' : ''}
         `}
       />
 
-      {/* HEADER */}
-      <div className="relative z-10 flex items-start justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
+      {/* ENGINE SLAB HEADER */}
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <span className="inline-flex rounded-full bg-[rgba(59,167,255,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7CC8FF]">
             Today&apos;s XPOT
           </span>
 
-          <span className="inline-flex items-baseline rounded-xl bg-black/40 px-4 py-2 font-mono text-lg tracking-[0.16em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
+          <span className="inline-flex items-baseline rounded-xl bg-black/40 px-3.5 py-2 font-mono text-[15px] tracking-[0.14em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
             {poolLabel}
+          </span>
+
+          <span className="hidden sm:inline-flex items-center gap-2 text-[11px] text-slate-500">
+            <span className="h-1 w-1 rounded-full bg-white/20" />
+            <span className="text-slate-400">via Jupiter</span>
           </span>
         </div>
 
-        <div className="flex flex-col items-end gap-1 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
           {!!badgeLabel && <HeaderBadge label={badgeLabel} tooltip={badgeTooltip} />}
 
           {isLocked && (
-            <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+            <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
               Draw locked
             </span>
           )}
 
-          {showUnavailable && (
-            <span className="text-[11px] font-semibold text-amber-300">
-              Live price not available yet.
-            </span>
-          )}
+          <span
+            className={[
+              'rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]',
+              showUnavailable ? 'border-amber-400/35 bg-amber-500/10 text-amber-200' : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200',
+            ].join(' ')}
+          >
+            {showUnavailable ? 'Price pending' : 'Live'}
+          </span>
         </div>
       </div>
 
-      {/* WIDE BODY */}
-      <div className="relative z-10 mt-6 grid gap-6 lg:gap-8">
-        <div className={isWide ? 'grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start' : 'grid gap-6'}>
-          {/* LEFT: Big number + spark + milestone */}
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-end gap-3">
+      {/* SLAB BODY */}
+      <div className="relative z-10 mt-4 grid gap-3">
+        <div className={isWide ? 'grid gap-3 lg:grid-cols-[1.3fr_0.7fr]' : 'grid gap-3'}>
+          {/* LEFT: Big number + micro context */}
+          <div className="min-w-0 rounded-2xl border border-white/10 bg-black/22 px-4 py-3">
+            <div className="flex flex-wrap items-end justify-between gap-3">
               <div
                 className={`
-                  text-5xl sm:text-6xl font-semibold tabular-nums
+                  text-4xl sm:text-5xl font-semibold tabular-nums
                   transition-transform transition-colors duration-200
                   ${justUpdated ? 'scale-[1.01]' : ''}
                   ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
@@ -609,80 +608,33 @@ export default function JackpotPanel({
                 {displayUsdText}
               </div>
 
-              <div className="mt-2 flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full border border-white/25 bg-black/40 px-2.5 py-[5px] text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">
-                  USD estimate
+              <div className="flex flex-col items-end gap-1 text-[11px] text-slate-400">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">USD value</span>
+                <span className="font-mono text-slate-200">
+                  1 XPOT ≈ {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
                 </span>
-
-                {/* Tooltip - IMPORTANT: cursor-default so no hand cursor */}
-                <div className="relative group cursor-default select-none">
-                  <div
-                    aria-label="USD estimate info"
-                    className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-black/40 text-[10px] font-semibold text-white/70 transition-colors group-hover:text-white cursor-default"
-                  >
-                    i
-                  </div>
-
-                  <div
-                    className="
-                      absolute left-1/2 top-full z-[70] mt-3 w-80 -translate-x-1/2
-                      rounded-2xl border border-slate-700/80 bg-slate-950
-                      px-4 py-3 text-xs text-slate-100
-                      shadow-[0_18px_40px_rgba(15,23,42,0.95)]
-                      backdrop-blur-xl
-                      opacity-0 translate-y-0
-                      group-hover:opacity-100 group-hover:translate-y-1
-                      transition-all duration-200
-                      cursor-default select-none
-                      pointer-events-none
-                    "
-                  >
-                    <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
-                    <p className="mb-2">
-                      This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.
-                    </p>
-                    <p className="text-slate-400">
-                      The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
 
-            <p className="mt-2 text-xs text-slate-500">
-              1 XPOT ≈{' '}
-              <span
-                className={`
-                  font-mono transition-colors duration-200
-                  ${justPumped ? 'text-[#7CC8FF]' : 'text-slate-100'}
-                `}
-              >
-                {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
-              </span>{' '}
-              <span className="text-slate-500">(via Jupiter)</span>
-            </p>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+              <span>Auto-updates from Jupiter ticks</span>
+              <span className="font-mono text-slate-600">{observedLabel}</span>
+            </div>
+          </div>
 
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              {/* Sparkline */}
-              <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-                <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  <span>Observed momentum</span>
-                  <span className="text-slate-400">
-                    {spark && spark.max > spark.min
-                      ? `${(((spark.max - spark.min) / spark.min) * 100).toFixed(2)}%`
-                      : '0.00%'}
-                  </span>
-                </div>
+          {/* RIGHT: Signals (compact) */}
+          <div className="min-w-0 grid gap-3">
+            {/* Momentum */}
+            <div className="rounded-2xl border border-white/10 bg-black/22 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Momentum</span>
+                <span className="font-mono text-[11px] text-slate-300">{momentumPct}%</span>
+              </div>
 
+              <div className="mt-2">
                 {spark ? (
                   <>
-                    <svg
-                      width="100%"
-                      height="44"
-                      viewBox="0 0 220 36"
-                      className="block text-slate-400"
-                      aria-label="XPOT mini sparkline (observed)"
-                    >
+                    <svg width="100%" height="30" viewBox="0 0 220 26" className="block text-slate-400" aria-label="XPOT mini sparkline (observed)">
                       <polyline
                         fill="none"
                         stroke="currentColor"
@@ -693,113 +645,89 @@ export default function JackpotPanel({
                         opacity="0.9"
                       />
                     </svg>
-
                     <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
                       <span className="font-mono">min {spark.min.toFixed(8)}</span>
                       <span className="font-mono">max {spark.max.toFixed(8)}</span>
                     </div>
                   </>
                 ) : (
-                  <p className="mt-1 text-xs text-slate-500">Collecting ticks…</p>
+                  <p className="text-[11px] text-slate-500">Collecting ticks…</p>
                 )}
-              </div>
-
-              {/* Milestone progress */}
-              <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-                <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  <span>Milestone progress</span>
-                  <span className="text-slate-400">
-                    {jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'}
-                  </span>
-                </div>
-
-                <div className="relative h-3 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
-                  <div className="absolute inset-0 opacity-[0.55] bg-[radial-gradient(circle_at_20%_50%,rgba(124,200,255,0.28),transparent_55%),radial-gradient(circle_at_70%_50%,rgba(59,167,255,0.18),transparent_60%)]" />
-                  <div
-                    className="absolute left-0 top-0 h-full rounded-full bg-[linear-gradient(90deg,rgba(59,167,255,0.55),rgba(124,200,255,0.78))] shadow-[0_0_24px_rgba(59,167,255,0.28)]"
-                    style={{ width: `${Math.round((progressToNext ?? 0) * 100)}%` }}
-                  />
-                </div>
-
-                <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="font-mono text-slate-100">{formatUsd(prevMilestoneForBar ?? 0)}</span>
-                  <span className="font-mono text-slate-100">{nextMilestone ? formatUsd(nextMilestone) : '—'}</span>
-                </div>
               </div>
             </div>
 
-            <p className="mt-4 text-xs leading-relaxed text-slate-400">
-              Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD value tracks the live on-chain XPOT price from Jupiter and updates automatically.
-            </p>
-          </div>
-
-          {/* RIGHT: Context column (this is what removes the “empty right space” feeling) */}
-          <div className="min-w-0">
-            <div className="grid gap-3">
-              <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  XPOT price context
-                </p>
-
-                <div className="mt-2 grid gap-1 text-[11px]">
-                  {maxJackpotToday && (
-                    <p className="text-slate-400">
-                      Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
-                    </p>
-                  )}
-
-                  {reachedMilestone && (
-                    <p className="text-[#7CC8FF]">
-                      Milestone <span className="font-mono">{formatUsd(reachedMilestone)}</span>
-                    </p>
-                  )}
-
-                  {nextMilestone && (
-                    <p className="text-slate-500">
-                      Next <span className="font-mono">{formatUsd(nextMilestone)}</span>
-                    </p>
-                  )}
-
-                  {volPulse && (
-                    <p className={`mt-1 font-semibold ${volPulse === 'up' ? 'text-emerald-300' : 'text-rose-300'}`}>
-                      Volatility spike {volPulse === 'up' ? 'up' : 'down'}
-                    </p>
-                  )}
-                </div>
+            {/* Milestone */}
+            <div className="rounded-2xl border border-white/10 bg-black/22 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Milestone</span>
+                <span className="font-mono text-[11px] text-slate-300">
+                  {jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'}
+                </span>
               </div>
 
-              {range24h && (
-                <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      24h range (observed)
-                    </p>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                      {observedLabel}
-                    </span>
-                  </div>
+              <div className="mt-2 relative h-2.5 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
+                <div className="absolute inset-0 opacity-[0.55] bg-[radial-gradient(circle_at_20%_50%,rgba(124,200,255,0.26),transparent_55%),radial-gradient(circle_at_70%_50%,rgba(59,167,255,0.16),transparent_60%)]" />
+                <div
+                  className="absolute left-0 top-0 h-full rounded-full bg-[linear-gradient(90deg,rgba(59,167,255,0.55),rgba(124,200,255,0.78))] shadow-[0_0_24px_rgba(59,167,255,0.22)]"
+                  style={{ width: `${Math.round((progressToNext ?? 0) * 100)}%` }}
+                />
+              </div>
 
-                  <div className="mt-2 grid gap-1 text-[11px] text-slate-300">
-                    <p>
-                      <span className="text-slate-500">Low</span>{' '}
-                      <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span>
-                    </p>
-                    <p>
-                      <span className="text-slate-500">High</span>{' '}
-                      <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
-                    </p>
-                    <p className="mt-1 text-[10px] text-slate-500">
-                      Source <span className="font-mono text-slate-300">Jupiter ticks</span>
-                    </p>
-                  </div>
-                </div>
-              )}
+              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                <span className="font-mono text-slate-100">{formatUsd(prevMilestoneForBar ?? 0)}</span>
+                <span className="font-mono text-slate-100">{nextMilestone ? formatUsd(nextMilestone) : '—'}</span>
+              </div>
 
-              {showUnavailable && (
-                <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3">
-                  <p className="text-[11px] font-semibold text-amber-200">Live price not available yet.</p>
-                  <p className="mt-1 text-[11px] text-amber-200/80">This section auto-populates as soon as Jupiter price is live.</p>
-                </div>
+              <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-500">
+                <span className="font-mono text-slate-500">{reachedMilestone ? `Hit ${formatUsd(reachedMilestone)}` : ''}</span>
+                {volPulse ? (
+                  <span className={`font-semibold ${volPulse === 'up' ? 'text-emerald-300' : 'text-rose-300'}`}>
+                    Vol spike {volPulse === 'up' ? 'up' : 'down'}
+                  </span>
+                ) : (
+                  <span />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* BOTTOM STRIP: Context + range collapsed */}
+        <div className="rounded-2xl border border-white/10 bg-black/22 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
+              <span className="text-slate-500 uppercase tracking-[0.16em] text-[10px] font-semibold">Context</span>
+
+              <span>
+                Session peak{' '}
+                <span className="font-mono text-slate-100">{maxJackpotToday != null ? formatUsd(maxJackpotToday) : '—'}</span>
+              </span>
+
+              <span className="text-slate-600">•</span>
+
+              <span>
+                24h{' '}
+                <span className="font-mono text-slate-100">
+                  {range24h ? `${formatUsd(range24h.lowUsd)} - ${formatUsd(range24h.highUsd)}` : '—'}
+                </span>
+              </span>
+
+              <span className="text-slate-600">•</span>
+
+              <span className="font-mono text-slate-500">{observedLabel}</span>
+
+              <span className="text-slate-600">•</span>
+
+              <span className="text-slate-500">
+                Source <span className="font-mono text-slate-300">Jupiter ticks</span>
+              </span>
+            </div>
+
+            <div className="text-[11px] text-slate-500">
+              {showUnavailable ? (
+                <span className="text-amber-200/90">Live price not available yet - auto-populates when Jupiter is live.</span>
+              ) : (
+                <span className="text-slate-500">Paid in XPOT. USD is display only.</span>
               )}
             </div>
           </div>
