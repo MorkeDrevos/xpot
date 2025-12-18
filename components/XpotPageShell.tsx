@@ -1,7 +1,7 @@
 // components/XpotPageShell.tsx
 'use client';
 
-import { ReactNode, ComponentProps, useMemo } from 'react';
+import { ReactNode, ComponentProps, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 
 import PreLaunchBanner from '@/components/PreLaunchBanner';
@@ -79,11 +79,30 @@ export default function XpotPageShell({
 
   const resolvedPageTag = pageTag || inferredTag;
 
+  // ✅ IMPORTANT: your globals.css uses :root[data-xpot-page="..."]
+  // That attribute must live on <html>, not on a div.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const el = document.documentElement;
+
+    if (resolvedPageTag) el.setAttribute('data-xpot-page', resolvedPageTag);
+    else el.removeAttribute('data-xpot-page');
+
+    return () => {
+      // Don’t aggressively remove on unmount if another page sets it next,
+      // but safe cleanup is fine.
+      // (Leaving it can cause wrong background if navigating from tagged->untagged.)
+      if (!pageTag) {
+        // Only remove if this shell was responsible for setting it implicitly.
+        el.removeAttribute('data-xpot-page');
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedPageTag]);
+
   return (
-    <div
-      className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(' ')}
-      data-xpot-page={resolvedPageTag}
-    >
+    <div className={['relative min-h-screen text-slate-100', className].join(' ')}>
       {/* Banner is hidden on mobile inside PreLaunchBanner (hidden sm:block) */}
       <PreLaunchBanner />
 
@@ -136,9 +155,7 @@ export default function XpotPageShell({
 
             {rightSlot && (
               <div className="relative w-full justify-self-stretch sm:w-auto sm:justify-self-end">
-                <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-                  {rightSlot}
-                </div>
+                <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">{rightSlot}</div>
               </div>
             )}
           </div>
