@@ -774,13 +774,7 @@ export default function HomePage() {
                 </div>
 
                 <div className="mt-4">
-                  <JackpotPanel
-  variant="standalone"
-  badgeLabel="10+ year runway"
-  badgeTooltip={`Funded at launch: 3.75B XPOT is allocated to the Rewards Runway wallet.
-At 1,000,000 XPOT/day, that covers ~10.3 years of baseline rewards.
-Distribution remains on-chain and transparent.`}
-/>
+                  <JackpotPanel variant="standalone" />
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
