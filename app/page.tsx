@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
-  BadgeCheck,
   Blocks,
   Check,
   CheckCircle2,
@@ -22,6 +21,9 @@ import {
   Users,
   Wand2,
   Zap,
+  Activity,
+  Timer,
+  BadgeCheck,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -337,7 +339,7 @@ function RunwayBadge() {
 }
 
 /* ─────────────────────────────────────────────
-   Principles strip (img2 alignment fixes only)
+   Principles strip (img2 alignment fixes)
    ───────────────────────────────────────────── */
 
 function PrinciplesStrip() {
@@ -352,7 +354,6 @@ function PrinciplesStrip() {
         "
       />
 
-      {/* header row - tighter baseline + consistent vertical alignment */}
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500 leading-none">
@@ -365,9 +366,7 @@ function PrinciplesStrip() {
         </div>
       </div>
 
-      {/* equal-height cards + aligned label/value rhythm */}
       <div className="relative z-10 mt-4 grid gap-3 md:grid-cols-3 items-stretch">
-        {/* Qualification */}
         <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4 h-full">
           <div
             className="
@@ -375,25 +374,20 @@ function PrinciplesStrip() {
               bg-[radial-gradient(circle_at_20%_10%,rgba(16,185,129,0.20),transparent_55%)]
             "
           />
-
           <div className="relative flex items-start gap-3">
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-950/25">
               <ShieldCheck className="h-5 w-5 text-emerald-200" />
             </span>
-
             <div className="min-w-0 flex flex-col justify-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90 leading-none">
                 Qualification
               </p>
               <p className="mt-2 text-sm font-semibold text-slate-100 leading-snug">No purchases. No tickets.</p>
-              <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-                Holding XPOT is the requirement to enter.
-              </p>
+              <p className="mt-2 text-[12px] leading-relaxed text-slate-400">Holding XPOT is the requirement to enter.</p>
             </div>
           </div>
         </div>
 
-        {/* Identity */}
         <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4 h-full">
           <div
             className="
@@ -401,12 +395,10 @@ function PrinciplesStrip() {
               bg-[radial-gradient(circle_at_18%_10%,rgba(56,189,248,0.18),transparent_55%)]
             "
           />
-
           <div className="relative flex items-start gap-3">
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-950/20">
               <Users className="h-5 w-5 text-sky-200" />
             </span>
-
             <div className="min-w-0 flex flex-col justify-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200/90 leading-none">
                 Identity
@@ -419,7 +411,6 @@ function PrinciplesStrip() {
           </div>
         </div>
 
-        {/* Payout */}
         <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4 h-full">
           <div
             className="
@@ -427,12 +418,10 @@ function PrinciplesStrip() {
               bg-[radial-gradient(circle_at_20%_10%,rgba(245,158,11,0.14),transparent_55%)]
             "
           />
-
           <div className="relative flex items-start gap-3">
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-950/15">
               <Crown className="h-5 w-5 text-amber-200" />
             </span>
-
             <div className="min-w-0 flex flex-col justify-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90 leading-none">
                 Payout
@@ -638,89 +627,170 @@ export default function HomePage() {
             "
           />
 
-          <div className="relative z-10 grid gap-6 p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)] lg:p-8">
-            {/* LEFT */}
-            <div className="flex flex-col justify-between gap-6">
-              <div className="space-y-5">
-                {/* Top rail */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Pill tone="sky">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-                    Identity: @handle
-                  </Pill>
+          <div className="relative z-10 space-y-6 p-6 lg:p-8">
+            {/* Top rail */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Pill tone="sky">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
+                  Identity: @handle
+                </Pill>
 
-                  <Pill tone="violet">
-                    <span className="h-1.5 w-1.5 rounded-full bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
-                    Protocol layer
-                  </Pill>
+                <Pill tone="violet">
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
+                  Protocol layer
+                </Pill>
+
+                <Pill tone="emerald">
+                  <BadgeCheck className="h-3.5 w-3.5" />
+                  Auditable payouts
+                </Pill>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <RunwayBadge />
+                <Pill tone="sky">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
+                  Live
+                </Pill>
+              </div>
+            </div>
+
+            {/* ✅ Only H1 above Live XPOT Engine */}
+            <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/30 px-5 py-6 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:px-6">
+              <h1 className="text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
+                One protocol. One identity. <span className="text-emerald-300">One daily XPOT draw.</span>
+              </h1>
+            </div>
+
+            {/* ✅ Live XPOT engine - full width, landscaped */}
+            <PremiumCard className="p-5 sm:p-6" halo sheen>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
+                  <p className="mt-1 text-xs text-slate-400">Pool value and milestones (via Jupiter).</p>
                 </div>
 
-                {/* Hero block */}
-                <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                    NO TICKETS · JUST XPOT HOLDINGS
-                  </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone="emerald">
+                    <Activity className="h-3.5 w-3.5" />
+                    Price feed: Jupiter
+                  </Pill>
+                  <Pill tone="violet">
+                    <Timer className="h-3.5 w-3.5" />
+                    Updates automatically
+                  </Pill>
+                </div>
+              </div>
 
-                  <h1 className="mt-3 text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
-                    One protocol. One identity. <span className="text-emerald-300">One daily XPOT draw.</span>
-                  </h1>
+              <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
+                <div className="min-w-0">
+                  <JackpotPanel variant="standalone" />
+                </div>
 
-                  <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                    Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain. Built to scale into a rewards
-                    ecosystem for communities, creators and sponsors.
-                  </p>
+                <div className="grid gap-4">
+                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                    <MiniStat label="Mode" value="On-chain" tone="emerald" />
+                    <MiniStat label="Identity" value="@handle" tone="sky" />
+                    <MiniStat label="Proof" value="Solscan" tone="amber" />
+                  </div>
 
-                  {/* Runway badge + explicit explanation */}
-                  <div className="mt-4 rounded-[22px] border border-emerald-400/15 bg-emerald-500/5 px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <RunwayBadge />
+                  <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/50 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Control room</p>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">
+                        read-only
+                      </span>
                     </div>
-                    <p className="mt-2 text-[12px] text-slate-400">
-                      Baseline funded at launch: 1,000,000 XPOT/day from the Rewards Reserve.
-                    </p>
-                  </div>
 
-                  <div className="mt-4">
-                    <PrinciplesStrip />
-                  </div>
+                    <pre className="mt-3 max-h-44 overflow-hidden whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-emerald-100/90">
+{`> XPOT_PROTOCOL
+  primitive:  daily reward selection
+  identity:   X handle + wallet (self custody)
+  proof:      on-chain payout verification
 
-                  <div className="mt-5">
-                    <SectionDividerLabel label="Entry mechanics" />
-                  </div>
+> TODAY
+  pool_today: 1,000,000 XPOT`}
+                    </pre>
 
-                  {/* BONUS */}
-                  <div className="mt-3">
-                    <div className="relative">
-                      <div
-                        className="
-                          pointer-events-none absolute -inset-10 opacity-75 blur-2xl
-                          bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),
-                              radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]
-                        "
-                      />
-                      <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.12)]">
-                        <div className="mb-2 flex items-center justify-between px-2">
-                          <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
-                            <span className="relative flex h-2 w-2">
-                              <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
-                              <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-                            </span>
-                            Bonus XPOT
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                        Enter now
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                      <span className="text-[11px] text-slate-500">Watch live here. Claim entries in the hub.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </PremiumCard>
+
+            {/* ✅ Everything from img2 goes UNDER the Live XPOT Engine */}
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+              {/* LEFT (img2 content) */}
+              <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.50)] backdrop-blur-xl sm:p-6">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
+                  NO TICKETS · JUST XPOT HOLDINGS
+                </p>
+
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
+                  Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain. Built to scale into a rewards
+                  ecosystem for communities, creators and sponsors.
+                </p>
+
+                <div className="mt-4 rounded-[22px] border border-emerald-400/15 bg-emerald-500/5 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <RunwayBadge />
+                  </div>
+                  <p className="mt-2 text-[12px] text-slate-400">
+                    Baseline funded at launch: 1,000,000 XPOT/day from the Rewards Reserve.
+                  </p>
+                </div>
+
+                <div className="mt-4">
+                  <PrinciplesStrip />
+                </div>
+
+                <div className="mt-5">
+                  <SectionDividerLabel label="Entry mechanics" />
+                </div>
+
+                {/* BONUS */}
+                <div className="mt-3">
+                  <div className="relative">
+                    <div
+                      className="
+                        pointer-events-none absolute -inset-10 opacity-75 blur-2xl
+                        bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),
+                            radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]
+                      "
+                    />
+                    <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.12)]">
+                      <div className="mb-2 flex items-center justify-between px-2">
+                        <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
+                          <span className="relative flex h-2 w-2">
+                            <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
+                            <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
                           </span>
-                          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">same entry</span>
-                        </div>
-
-                        <BonusStrip variant="home" />
+                          Bonus XPOT
+                        </span>
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">same entry</span>
                       </div>
+
+                      <BonusStrip variant="home" />
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  {/* CA bar */}
-                  <div className="mt-4">
+              {/* RIGHT (entry actions + CA + live entries) */}
+              <div className="grid gap-4">
+                <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.50)] backdrop-blur-xl sm:p-6">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Official contract</p>
+                  <div className="mt-3">
                     <RoyalContractBar mint={mint} />
                   </div>
 
-                  {/* ✅ CTA row: only 3 buttons */}
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
                       Enter today&apos;s XPOT
@@ -743,127 +813,60 @@ export default function HomePage() {
                   <p className="mt-3 text-[11px] text-slate-500">
                     Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
                   </p>
+
+                  {/* small “new” excitement: proof note */}
+                  <div className="mt-4 rounded-[22px] border border-slate-900/70 bg-slate-950/50 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                      <p className="text-[12px] text-slate-300">
+                        Proof-first: payouts are on-chain and verifiable in the explorer.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expandable live entries */}
+                <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.50)] backdrop-blur-xl sm:p-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowLiveEntries(v => !v)}
+                    className="group inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-900/70 bg-slate-950/50 px-4 py-3 text-left shadow-[0_18px_60px_rgba(15,23,42,0.55)] transition hover:bg-slate-950/70"
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-70 animate-ping" />
+                        <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+                      </span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                        Live entries (X handles)
+                      </span>
+                      <span className="text-[11px] text-slate-500">Optional - expand to view</span>
+                    </span>
+
+                    <ChevronDown
+                      className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {showLiveEntries && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-3">
+                          <HandleTicker handles={marquee} />
+                          <p className="mt-2 text-[11px] text-slate-500">Handles are shown. Wallets stay self-custody.</p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                <MiniStat label="Mode" value="On-chain" tone="emerald" />
-                <MiniStat label="Identity" value="@handle" tone="sky" />
-                <MiniStat label="Layer" value="Rewards protocol" tone="violet" />
-              </div>
             </div>
-
-            {/* RIGHT */}
-            <div className="grid gap-4">
-              <PremiumCard className="p-5 sm:p-6" halo sheen>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
-                    <p className="mt-1 text-xs text-slate-400">Pool value and milestones (via Jupiter).</p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <RunwayBadge />
-                    <Pill tone="sky">
-                      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
-                      Live
-                    </Pill>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <JackpotPanel variant="standalone" />
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
-                    Enter now
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-
-                  <span className="text-[11px] text-slate-500">Watch live here. Claim entries in the hub.</span>
-                </div>
-              </PremiumCard>
-
-              <PremiumCard className="p-5 sm:p-6" halo={false}>
-                <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-emerald-200/80">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                    Control Room - session view
-                  </span>
-                  <span className="font-mono text-emerald-200/70">read-only</span>
-                </div>
-
-                <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
-                  <div
-                    className="
-                      pointer-events-none absolute -inset-24 opacity-70 blur-3xl
-                      bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.28),transparent_55%),
-                          radial-gradient(circle_at_90%_100%,rgba(139,92,246,0.10),transparent_60%)]
-                    "
-                  />
-
-                  <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
-{`> XPOT_PROTOCOL
-  primitive:       daily reward selection
-  identity:        X handle + wallet (self custody)
-  proof:           on-chain payout verification
-  composable:      modules can plug in later
-
-> TODAY
-  pool_today:      1,000,000 XPOT
-  pool_value_usd:  live via Jupiter
-  entries_today:   2,184
-
-> LAST_WINNERS
-  #2025-12-18  @DeWala_222222   1,000,000 XPOT
-  #2025-12-18  @SignalChaser    250,000 XPOT (bonus)
-  #2025-12-17  @NFAResearch     1,000,000 XPOT`}
-                  </pre>
-                </div>
-
-                <p className="mt-3 text-[12px] text-slate-400">Read-only cockpit view. Same panels as ops. Winners get access.</p>
-              </PremiumCard>
-            </div>
-          </div>
-
-          {/* Expandable live entries */}
-          <div className="relative z-10 border-t border-slate-900/70 px-6 py-4 lg:px-8">
-            <button
-              type="button"
-              onClick={() => setShowLiveEntries(v => !v)}
-              className="group inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-900/70 bg-slate-950/50 px-4 py-3 text-left shadow-[0_18px_60px_rgba(15,23,42,0.55)] transition hover:bg-slate-950/70"
-            >
-              <span className="flex items-center gap-3">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-70 animate-ping" />
-                  <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                </span>
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-                  Live entries (X handles)
-                </span>
-                <span className="text-[11px] text-slate-500">Optional - expand to view</span>
-              </span>
-
-              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`} />
-            </button>
-
-            <AnimatePresence initial={false}>
-              {showLiveEntries && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="overflow-hidden"
-                >
-                  <div className="mt-3">
-                    <HandleTicker handles={marquee} />
-                    <p className="mt-2 text-[11px] text-slate-500">Handles are shown. Wallets stay self-custody.</p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
       </section>
@@ -995,8 +998,8 @@ export default function HomePage() {
                 XPOT is a rewards protocol, not a one-off game.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                The daily draw is the primitive. Modules can reward participation, streaks and reputation over time.
-                That’s how XPOT becomes an ecosystem for communities, creators and sponsors.
+                The daily draw is the primitive. Modules can reward participation, streaks and reputation over time. That’s how
+                XPOT becomes an ecosystem for communities, creators and sponsors.
               </p>
             </div>
 
@@ -1093,7 +1096,9 @@ export default function HomePage() {
               Creators
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
-            <p className="mt-2 text-sm text-slate-300">One mechanic, transparent winners and a premium experience that doesn’t feel spammy.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              One mechanic, transparent winners and a premium experience that doesn’t feel spammy.
+            </p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1102,7 +1107,9 @@ export default function HomePage() {
               Sponsors
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              Sponsor pools and bonuses with visibility and provable distribution on-chain.
+            </p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1111,7 +1118,9 @@ export default function HomePage() {
               Communities
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              Your XPOT history travels with you and unlocks better rewards over time.
+            </p>
           </PremiumCard>
         </div>
       </section>
