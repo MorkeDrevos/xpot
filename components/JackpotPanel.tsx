@@ -8,11 +8,14 @@ const JACKPOT_XPOT = XPOT_POOL_SIZE;
 const PRICE_POLL_MS = 2000; // 2s - feels live without hammering Jupiter
 
 // 24h observed range via rolling samples (from Jupiter price ticks)
-// Store at most ~24h with sampling to avoid huge localStorage
 const RANGE_SAMPLE_MS = 10_000; // store one sample every 10s
 const RANGE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 const RANGE_STORAGE_KEY = 'xpot_price_samples_24h_v1';
 const RANGE_MAX_SAMPLES = Math.ceil(RANGE_WINDOW_MS / RANGE_SAMPLE_MS) + 120; // small buffer
+
+// Sparkline window
+const SPARK_WINDOW_MS = 6 * 60 * 60 * 1000; // 6h
+const SPARK_MAX_POINTS = 80;
 
 type JackpotPanelProps = {
   isLocked?: boolean;
@@ -50,6 +53,14 @@ function clamp(n: number, a: number, b: number) {
 
 function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
+}
+
+function formatCoverage(ms: number) {
+  const totalMin = Math.max(0, Math.floor(ms / 60_000));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h <= 0) return `${m}m`;
+  return `${h}h ${String(m).padStart(2, '0')}m`;
 }
 
 /**
@@ -112,12 +123,7 @@ function HeaderBadge({ label, tooltip }: { label: string; tooltip?: string }) {
   );
 }
 
-type JupiterParsed = {
-  priceUsd: number | null;
-};
-
 function readJupiterUsdPrice(payload: unknown, mint: string): number | null {
-  // Defensive parsing across likely shapes
   if (!payload || typeof payload !== 'object') return null;
   const p: any = payload;
 
@@ -150,6 +156,31 @@ function safeParseSamples(raw: string | null): PriceSample[] {
   } catch {
     return [];
   }
+}
+
+function buildSparklinePoints(samples: PriceSample[], width: number, height: number) {
+  if (samples.length < 2) return null;
+
+  let min = Infinity;
+  let max = -Infinity;
+  for (const s of samples) {
+    if (s.p < min) min = s.p;
+    if (s.p > max) max = s.p;
+  }
+
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  const span = Math.max(1e-12, max - min);
+
+  const n = samples.length;
+  const pts: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * width;
+    const yNorm = (samples[i].p - min) / span; // 0..1
+    const y = height - yNorm * height; // invert
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+
+  return { points: pts.join(' '), min, max };
 }
 
 export default function JackpotPanel({
@@ -185,7 +216,12 @@ export default function JackpotPanel({
   const samplesRef = useRef<PriceSample[]>([]);
   const lastSampleAtRef = useRef<number>(0);
   const lastPersistAtRef = useRef<number>(0);
+
   const [range24h, setRange24h] = useState<{ lowUsd: number; highUsd: number } | null>(null);
+  const [coverageMs, setCoverageMs] = useState<number>(0);
+
+  // Sparkline (last 6h)
+  const [spark, setSpark] = useState<{ points: string; min: number; max: number } | null>(null);
 
   // Session key for "highest this session" (22:00 Madrid cut)
   const sessionKey = useMemo(() => `xpot_max_session_usd_${getMadridSessionKey(22)}`, []);
@@ -203,21 +239,22 @@ export default function JackpotPanel({
     }
   }, [sessionKey]);
 
-  // Load rolling samples (for 24h range)
+  // Load rolling samples (for 24h range + sparkline)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const now = Date.now();
-    const cutoff = now - RANGE_WINDOW_MS;
+    const cutoff24 = now - RANGE_WINDOW_MS;
 
     const stored = safeParseSamples(window.localStorage.getItem(RANGE_STORAGE_KEY))
-      .filter(s => s.t >= cutoff)
+      .filter(s => s.t >= cutoff24)
       .slice(-RANGE_MAX_SAMPLES);
 
     samplesRef.current = stored;
     lastSampleAtRef.current = stored.length ? stored[stored.length - 1].t : 0;
 
     if (stored.length >= 2) {
+      // 24h range
       let low = Infinity;
       let high = -Infinity;
       for (const s of stored) {
@@ -226,6 +263,23 @@ export default function JackpotPanel({
       }
       if (Number.isFinite(low) && Number.isFinite(high)) {
         setRange24h({ lowUsd: low * JACKPOT_XPOT, highUsd: high * JACKPOT_XPOT });
+      }
+
+      // coverage
+      const oldest = stored[0].t;
+      setCoverageMs(clamp(now - oldest, 0, RANGE_WINDOW_MS));
+
+      // sparkline (6h)
+      const cutoffSpark = now - SPARK_WINDOW_MS;
+      const sparkRaw = stored.filter(s => s.t >= cutoffSpark);
+      if (sparkRaw.length >= 2) {
+        const step = Math.max(1, Math.floor(sparkRaw.length / SPARK_MAX_POINTS));
+        const down: PriceSample[] = [];
+        for (let i = 0; i < sparkRaw.length; i += step) down.push(sparkRaw[i]);
+        if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) down.push(sparkRaw[sparkRaw.length - 1]);
+
+        const built = buildSparklinePoints(down, 220, 36);
+        setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
       }
     }
   }, []);
@@ -252,12 +306,12 @@ export default function JackpotPanel({
         if (typeof price === 'number' && Number.isFinite(price)) {
           if (aborted) return;
 
-          // Volatility pulse: per-tick move (2s polling)
+          // Volatility pulse: per-tick move
           if (lastPriceUsd.current != null) {
             const prev = lastPriceUsd.current;
             const deltaPct = prev === 0 ? 0 : ((price - prev) / prev) * 100;
 
-            const THRESH_PCT = 0.6; // tune if you want
+            const THRESH_PCT = 0.6;
             if (Math.abs(deltaPct) >= THRESH_PCT) {
               setVolPulse(deltaPct > 0 ? 'up' : 'down');
               if (volPulseTimeout.current !== null) window.clearTimeout(volPulseTimeout.current);
@@ -322,7 +376,6 @@ export default function JackpotPanel({
     if (typeof onJackpotUsdChange === 'function') onJackpotUsdChange(jackpotUsd);
     if (jackpotUsd == null) return;
 
-    // Pump flash
     if (prevJackpot.current !== null && jackpotUsd > prevJackpot.current) {
       setJustPumped(true);
       if (pumpTimeout.current !== null) window.clearTimeout(pumpTimeout.current);
@@ -330,7 +383,6 @@ export default function JackpotPanel({
     }
     prevJackpot.current = jackpotUsd;
 
-    // Store highest XPOT USD value of the current session
     if (typeof window !== 'undefined') {
       setMaxJackpotToday(prev => {
         const next = prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
@@ -349,7 +401,6 @@ export default function JackpotPanel({
       return;
     }
 
-    // first paint
     if (displayJackpotUsd == null) {
       setDisplayJackpotUsd(jackpotUsd);
       return;
@@ -382,15 +433,14 @@ export default function JackpotPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jackpotUsd]);
 
-  // Update rolling 24h samples + compute real observed high/low
+  // Update rolling 24h samples + compute observed high/low + coverage + sparkline
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (priceUsd == null || !Number.isFinite(priceUsd)) return;
 
     const now = Date.now();
-    const cutoff = now - RANGE_WINDOW_MS;
+    const cutoff24 = now - RANGE_WINDOW_MS;
 
-    // Store sample at most every RANGE_SAMPLE_MS
     if (now - lastSampleAtRef.current >= RANGE_SAMPLE_MS) {
       const arr = samplesRef.current;
 
@@ -398,38 +448,59 @@ export default function JackpotPanel({
       lastSampleAtRef.current = now;
 
       // Trim by time
-      while (arr.length && arr[0].t < cutoff) arr.shift();
+      while (arr.length && arr[0].t < cutoff24) arr.shift();
 
-      // Hard cap (should rarely hit, but safe)
+      // Hard cap
       if (arr.length > RANGE_MAX_SAMPLES) {
         arr.splice(0, arr.length - RANGE_MAX_SAMPLES);
       }
 
-      // Compute observed high/low
+      // 24h range
       let low = Infinity;
       let high = -Infinity;
       for (const s of arr) {
         if (s.p < low) low = s.p;
         if (s.p > high) high = s.p;
       }
-
       if (Number.isFinite(low) && Number.isFinite(high)) {
         setRange24h({ lowUsd: low * JACKPOT_XPOT, highUsd: high * JACKPOT_XPOT });
       }
 
-      // Persist at most once per minute (avoids spamming localStorage)
+      // coverage (oldest sample age, capped to 24h)
+      if (arr.length >= 2) {
+        setCoverageMs(clamp(now - arr[0].t, 0, RANGE_WINDOW_MS));
+      } else {
+        setCoverageMs(0);
+      }
+
+      // sparkline (6h window, downsampled)
+      const cutoffSpark = now - SPARK_WINDOW_MS;
+      const sparkRaw = arr.filter(s => s.t >= cutoffSpark);
+      if (sparkRaw.length >= 2) {
+        const step = Math.max(1, Math.floor(sparkRaw.length / SPARK_MAX_POINTS));
+        const down: PriceSample[] = [];
+        for (let i = 0; i < sparkRaw.length; i += step) down.push(sparkRaw[i]);
+        if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) down.push(sparkRaw[sparkRaw.length - 1]);
+
+        const built = buildSparklinePoints(down, 220, 36);
+        setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
+      } else {
+        setSpark(null);
+      }
+
+      // Persist at most once per minute
       if (now - lastPersistAtRef.current >= 60_000) {
         lastPersistAtRef.current = now;
         try {
           window.localStorage.setItem(RANGE_STORAGE_KEY, JSON.stringify(arr));
         } catch {
-          // ignore storage failures
+          // ignore
         }
       }
     }
   }, [priceUsd]);
 
-  // Milestones (based on current live XPOT USD value)
+  // Milestones
   const reachedMilestone =
     jackpotUsd != null ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null : null;
 
@@ -478,6 +549,9 @@ export default function JackpotPanel({
       : volPulse === 'down'
         ? 'text-rose-100'
         : '';
+
+  const observedLabel =
+    coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -567,7 +641,6 @@ export default function JackpotPanel({
                   "
                 >
                   <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
-
                   <p className="mb-2">
                     This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.
                   </p>
@@ -591,6 +664,43 @@ export default function JackpotPanel({
             </span>{' '}
             <span className="text-slate-500">(via Jupiter)</span>
           </p>
+
+          {/* Mini sparkline (last 6h, observed) */}
+          {spark && (
+            <div className="mt-2 w-full max-w-[520px]">
+              <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                <span>Last 6h</span>
+                <span className="text-slate-400">
+                  {spark.max > spark.min ? `${((spark.max - spark.min) / spark.min * 100).toFixed(2)}%` : '0.00%'}
+                </span>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
+                <svg
+                  width="100%"
+                  height="44"
+                  viewBox="0 0 220 36"
+                  className="block text-slate-400"
+                  aria-label="XPOT mini sparkline (observed)"
+                >
+                  <polyline
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    points={spark.points}
+                    opacity="0.9"
+                  />
+                </svg>
+
+                <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+                  <span className="font-mono">min {spark.min.toFixed(8)}</span>
+                  <span className="font-mono">max {spark.max.toFixed(8)}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Milestone progress bar */}
           {jackpotUsd != null && progressToNext != null && nextMilestone != null && (
@@ -657,9 +767,15 @@ export default function JackpotPanel({
           {/* Real observed 24h High/Low (from rolling Jupiter samples) */}
           {range24h && (
             <div className="mt-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-right">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                24h range (observed)
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  24h range (observed)
+                </p>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  {observedLabel}
+                </span>
+              </div>
+
               <p className="mt-1 text-[11px] text-slate-300">
                 <span className="text-slate-500">Low</span>{' '}
                 <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span>
