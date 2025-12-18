@@ -310,13 +310,12 @@ function RoyalContractBar({ mint }: { mint: string }) {
 }
 
 function RunwayBadge() {
-  // Canonical, safe + explicit explanation for “10+ years”
   const tooltip =
     "Funded for 10+ years of daily XPOT rewards.\nSized from the Rewards Reserve at launch: 1,000,000 XPOT/day baseline for 10+ years.\nPaid in XPOT, on-chain, and auditable.";
 
   return (
-    <div className="relative group inline-flex">
-      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/35 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+    <div className="relative group inline-flex cursor-default select-none">
+      <span className="inline-flex cursor-default items-center gap-2 rounded-full border border-emerald-400/35 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
         10+ year runway
       </span>
@@ -324,7 +323,7 @@ function RunwayBadge() {
       <div
         className="
           pointer-events-none absolute left-1/2 top-full z-[80] mt-3 w-[320px]
-          -translate-x-1/2
+          -translate-x-1/2 cursor-default select-none
           rounded-2xl border border-slate-700/80 bg-slate-950
           px-4 py-3 text-[12px] leading-relaxed text-slate-100
           shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
