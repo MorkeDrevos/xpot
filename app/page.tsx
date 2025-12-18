@@ -256,11 +256,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
             <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
               Official CA
             </span>
-
-            {/* ✅ show only beginning + end */}
-            <span className="font-mono text-[12px] text-slate-100/90">
-              {shortenAddress(mint, 6, 6)}
-            </span>
+            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 6, 6)}</span>
           </span>
         </span>
 
@@ -341,13 +337,12 @@ function RunwayBadge() {
 }
 
 /* ─────────────────────────────────────────────
-   Principles strip (kept from your reference)
+   Principles strip (img2 alignment fixes only)
    ───────────────────────────────────────────── */
 
 function PrinciplesStrip() {
   return (
     <div className="relative overflow-hidden rounded-[26px] border border-slate-900/60 bg-slate-950/35 p-5 shadow-[0_26px_90px_rgba(0,0,0,0.42)] backdrop-blur">
-      {/* soft wash */}
       <div
         className="
           pointer-events-none absolute -inset-24 opacity-70 blur-3xl
@@ -357,19 +352,23 @@ function PrinciplesStrip() {
         "
       />
 
+      {/* header row - tighter baseline + consistent vertical alignment */}
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Principles</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500 leading-none">
+            Principles
+          </p>
           <span className="hidden sm:inline-block h-4 w-px bg-white/10" />
-          <p className="hidden sm:block text-[10px] uppercase tracking-[0.22em] text-slate-600">
+          <p className="hidden sm:block text-[10px] uppercase tracking-[0.22em] text-slate-600 leading-none">
             Small surface <span className="mx-2 text-white/15">•</span> Provable outcomes
           </p>
         </div>
       </div>
 
-      <div className="relative z-10 mt-4 grid gap-3 md:grid-cols-3">
+      {/* equal-height cards + aligned label/value rhythm */}
+      <div className="relative z-10 mt-4 grid gap-3 md:grid-cols-3 items-stretch">
         {/* Qualification */}
-        <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+        <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4 h-full">
           <div
             className="
               pointer-events-none absolute -inset-20 opacity-60 blur-3xl
@@ -382,12 +381,12 @@ function PrinciplesStrip() {
               <ShieldCheck className="h-5 w-5 text-emerald-200" />
             </span>
 
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">
+            <div className="min-w-0 flex flex-col justify-center">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90 leading-none">
                 Qualification
               </p>
-              <p className="mt-1 text-sm font-semibold text-slate-100">No purchases. No tickets.</p>
-              <p className="mt-1.5 text-[12px] leading-relaxed text-slate-400">
+              <p className="mt-2 text-sm font-semibold text-slate-100 leading-snug">No purchases. No tickets.</p>
+              <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
                 Holding XPOT is the requirement to enter.
               </p>
             </div>
@@ -395,7 +394,7 @@ function PrinciplesStrip() {
         </div>
 
         {/* Identity */}
-        <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+        <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4 h-full">
           <div
             className="
               pointer-events-none absolute -inset-20 opacity-60 blur-3xl
@@ -408,12 +407,12 @@ function PrinciplesStrip() {
               <Users className="h-5 w-5 text-sky-200" />
             </span>
 
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200/90">
+            <div className="min-w-0 flex flex-col justify-center">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200/90 leading-none">
                 Identity
               </p>
-              <p className="mt-1 text-sm font-semibold text-slate-100">Public by handle.</p>
-              <p className="mt-1.5 text-[12px] leading-relaxed text-slate-400">
+              <p className="mt-2 text-sm font-semibold text-slate-100 leading-snug">Public by handle.</p>
+              <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
                 Your X handle is public. Wallet stays self-custody.
               </p>
             </div>
@@ -421,7 +420,7 @@ function PrinciplesStrip() {
         </div>
 
         {/* Payout */}
-        <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+        <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4 h-full">
           <div
             className="
               pointer-events-none absolute -inset-20 opacity-55 blur-3xl
@@ -434,12 +433,12 @@ function PrinciplesStrip() {
               <Crown className="h-5 w-5 text-amber-200" />
             </span>
 
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90">
+            <div className="min-w-0 flex flex-col justify-center">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90 leading-none">
                 Payout
               </p>
-              <p className="mt-1 text-sm font-semibold text-slate-100">Paid on-chain in XPOT.</p>
-              <p className="mt-1.5 text-[12px] leading-relaxed text-slate-400">
+              <p className="mt-2 text-sm font-semibold text-slate-100 leading-snug">Paid on-chain in XPOT.</p>
+              <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
                 Winners verify the transaction. Proof stays public.
               </p>
             </div>
@@ -721,7 +720,7 @@ export default function HomePage() {
                     <RoyalContractBar mint={mint} />
                   </div>
 
-                  {/* ✅ CTA row: only 3 buttons (matches your image) */}
+                  {/* ✅ CTA row: only 3 buttons */}
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
                       Enter today&apos;s XPOT
@@ -741,7 +740,6 @@ export default function HomePage() {
                     </Link>
                   </div>
 
-                  {/* ✅ line under buttons */}
                   <p className="mt-3 text-[11px] text-slate-500">
                     Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
                   </p>
