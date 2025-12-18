@@ -5,13 +5,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
-const PRICE_POLL_MS = 2000; // 2s - feels live without hammering Jupiter
+const PRICE_POLL_MS = 2000; // 2s
 
-// 24h observed range via rolling samples (from Jupiter price ticks)
+// 24h observed range via rolling samples
 const RANGE_SAMPLE_MS = 10_000; // store one sample every 10s
 const RANGE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 const RANGE_STORAGE_KEY = 'xpot_price_samples_24h_v1';
-const RANGE_MAX_SAMPLES = Math.ceil(RANGE_WINDOW_MS / RANGE_SAMPLE_MS) + 120; // small buffer
+const RANGE_MAX_SAMPLES = Math.ceil(RANGE_WINDOW_MS / RANGE_SAMPLE_MS) + 120;
 
 // Sparkline window
 const SPARK_WINDOW_MS = 6 * 60 * 60 * 1000; // 6h
@@ -20,11 +20,16 @@ const SPARK_MAX_POINTS = 80;
 type JackpotPanelProps = {
   isLocked?: boolean;
   onJackpotUsdChange?: (value: number | null) => void;
+
+  // Visual variants
   variant?: 'standalone' | 'embedded';
 
   // Badge in header (eg "10+ year runway")
   badgeLabel?: string;
   badgeTooltip?: string;
+
+  // Layout
+  layout?: 'auto' | 'wide';
 };
 
 function formatUsd(value: number | null) {
@@ -64,8 +69,7 @@ function formatCoverage(ms: number) {
 }
 
 /**
- * "Session" key that flips at 22:00 Madrid time (your requirement).
- * DST-safe: read Madrid date/hour via Intl, then roll date if hour >= cutoff.
+ * "Session" key that flips at 22:00 Madrid time.
  */
 function getMadridSessionKey(cutoffHour = 22) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -95,8 +99,8 @@ function HeaderBadge({ label, tooltip }: { label: string; tooltip?: string }) {
   if (!label) return null;
 
   return (
-    <div className="relative group inline-flex">
-      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+    <div className="relative group inline-flex cursor-default select-none">
+      <span className="inline-flex cursor-default items-center gap-2 rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
         {label}
       </span>
@@ -113,6 +117,7 @@ function HeaderBadge({ label, tooltip }: { label: string; tooltip?: string }) {
             group-hover:opacity-100 group-hover:translate-y-1
             transition-all duration-200
             whitespace-pre-line
+            cursor-default select-none
           "
         >
           <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
@@ -175,8 +180,8 @@ function buildSparklinePoints(samples: PriceSample[], width: number, height: num
   const pts: string[] = [];
   for (let i = 0; i < n; i++) {
     const x = (i / (n - 1)) * width;
-    const yNorm = (samples[i].p - min) / span; // 0..1
-    const y = height - yNorm * height; // invert
+    const yNorm = (samples[i].p - min) / span;
+    const y = height - yNorm * height;
     pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
   }
 
@@ -189,6 +194,7 @@ export default function JackpotPanel({
   variant = 'standalone',
   badgeLabel,
   badgeTooltip,
+  layout = 'auto',
 }: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -254,7 +260,6 @@ export default function JackpotPanel({
     lastSampleAtRef.current = stored.length ? stored[stored.length - 1].t : 0;
 
     if (stored.length >= 2) {
-      // 24h range
       let low = Infinity;
       let high = -Infinity;
       for (const s of stored) {
@@ -265,11 +270,9 @@ export default function JackpotPanel({
         setRange24h({ lowUsd: low * JACKPOT_XPOT, highUsd: high * JACKPOT_XPOT });
       }
 
-      // coverage
       const oldest = stored[0].t;
       setCoverageMs(clamp(now - oldest, 0, RANGE_WINDOW_MS));
 
-      // sparkline (6h)
       const cutoffSpark = now - SPARK_WINDOW_MS;
       const sparkRaw = stored.filter(s => s.t >= cutoffSpark);
       if (sparkRaw.length >= 2) {
@@ -306,7 +309,6 @@ export default function JackpotPanel({
         if (typeof price === 'number' && Number.isFinite(price)) {
           if (aborted) return;
 
-          // Volatility pulse: per-tick move
           if (lastPriceUsd.current != null) {
             const prev = lastPriceUsd.current;
             const deltaPct = prev === 0 ? 0 : ((price - prev) / prev) * 100;
@@ -322,7 +324,6 @@ export default function JackpotPanel({
 
           setPriceUsd(price);
 
-          // tiny pulse when price updates
           setJustUpdated(true);
           if (updatePulseTimeout.current !== null) window.clearTimeout(updatePulseTimeout.current);
           updatePulseTimeout.current = window.setTimeout(() => setJustUpdated(false), 400);
@@ -447,15 +448,12 @@ export default function JackpotPanel({
       arr.push({ t: now, p: priceUsd });
       lastSampleAtRef.current = now;
 
-      // Trim by time
       while (arr.length && arr[0].t < cutoff24) arr.shift();
 
-      // Hard cap
       if (arr.length > RANGE_MAX_SAMPLES) {
         arr.splice(0, arr.length - RANGE_MAX_SAMPLES);
       }
 
-      // 24h range
       let low = Infinity;
       let high = -Infinity;
       for (const s of arr) {
@@ -466,14 +464,12 @@ export default function JackpotPanel({
         setRange24h({ lowUsd: low * JACKPOT_XPOT, highUsd: high * JACKPOT_XPOT });
       }
 
-      // coverage (oldest sample age, capped to 24h)
       if (arr.length >= 2) {
         setCoverageMs(clamp(now - arr[0].t, 0, RANGE_WINDOW_MS));
       } else {
         setCoverageMs(0);
       }
 
-      // sparkline (6h window, downsampled)
       const cutoffSpark = now - SPARK_WINDOW_MS;
       const sparkRaw = arr.filter(s => s.t >= cutoffSpark);
       if (sparkRaw.length >= 2) {
@@ -488,7 +484,6 @@ export default function JackpotPanel({
         setSpark(null);
       }
 
-      // Persist at most once per minute
       if (now - lastPersistAtRef.current >= 60_000) {
         lastPersistAtRef.current = now;
         try {
@@ -500,7 +495,6 @@ export default function JackpotPanel({
     }
   }, [priceUsd]);
 
-  // Milestones
   const reachedMilestone =
     jackpotUsd != null ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null : null;
 
@@ -533,8 +527,8 @@ export default function JackpotPanel({
 
   const panelChrome =
     variant === 'embedded'
-      ? 'rounded-2xl border border-slate-800/70 bg-slate-950/55 px-5 py-4 shadow-sm'
-      : 'rounded-2xl border border-slate-800 bg-slate-950/70 px-5 py-4 shadow-sm';
+      ? 'rounded-2xl border border-slate-800/70 bg-slate-950/45 px-5 py-4 shadow-sm'
+      : 'rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-4 shadow-sm';
 
   const volGlow =
     volPulse === 'up'
@@ -552,6 +546,8 @@ export default function JackpotPanel({
 
   const observedLabel =
     coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
+
+  const isWide = layout === 'wide';
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -595,218 +591,220 @@ export default function JackpotPanel({
         </div>
       </div>
 
-      {/* MAIN NUMBERS */}
-      <div className="relative z-10 mt-6 flex flex-wrap items-end justify-between gap-6">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <div
-              className={`
-                text-5xl sm:text-6xl font-semibold
-                tabular-nums
-                transition-transform transition-colors duration-200
-                ${justUpdated ? 'scale-[1.01]' : ''}
-                ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
-                ${volGlow} ${volText}
-              `}
-            >
-              {displayUsdText}
-            </div>
+      {/* WIDE BODY */}
+      <div className="relative z-10 mt-6 grid gap-6 lg:gap-8">
+        <div className={isWide ? 'grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start' : 'grid gap-6'}>
+          {/* LEFT: Big number + spark + milestone */}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-end gap-3">
+              <div
+                className={`
+                  text-5xl sm:text-6xl font-semibold tabular-nums
+                  transition-transform transition-colors duration-200
+                  ${justUpdated ? 'scale-[1.01]' : ''}
+                  ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
+                  ${volGlow} ${volText}
+                `}
+              >
+                {displayUsdText}
+              </div>
 
-            <div className="mt-2 flex items-center gap-2">
-              <span className="inline-flex items-center rounded-full border border-white/25 bg-black/40 px-2.5 py-[5px] text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">
-                USD estimate
-              </span>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full border border-white/25 bg-black/40 px-2.5 py-[5px] text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">
+                  USD estimate
+                </span>
 
-              <div className="relative group">
-                <button
-                  type="button"
-                  aria-label="USD estimate info"
-                  className="
-                    flex h-6 w-6 items-center justify-center rounded-full border border-white/25
-                    bg-black/40 text-[10px] font-semibold text-white/70
-                    transition-colors group-hover:text-white
-                    cursor-default select-none
-                  "
-                >
-                  i
-                </button>
+                {/* Tooltip - IMPORTANT: cursor-default so no hand cursor */}
+                <div className="relative group cursor-default select-none">
+                  <div
+                    aria-label="USD estimate info"
+                    className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-black/40 text-[10px] font-semibold text-white/70 transition-colors group-hover:text-white cursor-default"
+                  >
+                    i
+                  </div>
 
-                <div
-                  className="
-                    absolute left-1/2 top-full z-[70] mt-3 w-80 -translate-x-1/2
-                    rounded-2xl border border-slate-700/80
-                    bg-slate-950
-                    px-4 py-3
-                    text-xs text-slate-100
-                    shadow-[0_18px_40px_rgba(15,23,42,0.95)]
-                    backdrop-blur-xl
-                    opacity-0 translate-y-0
-                    group-hover:opacity-100 group-hover:translate-y-1
-                    transition-all duration-200
-                  "
-                >
-                  <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
-                  <p className="mb-2">
-                    This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.
-                  </p>
-                  <p className="text-slate-400">
-                    The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
-                  </p>
+                  <div
+                    className="
+                      absolute left-1/2 top-full z-[70] mt-3 w-80 -translate-x-1/2
+                      rounded-2xl border border-slate-700/80 bg-slate-950
+                      px-4 py-3 text-xs text-slate-100
+                      shadow-[0_18px_40px_rgba(15,23,42,0.95)]
+                      backdrop-blur-xl
+                      opacity-0 translate-y-0
+                      group-hover:opacity-100 group-hover:translate-y-1
+                      transition-all duration-200
+                      cursor-default select-none
+                      pointer-events-none
+                    "
+                  >
+                    <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
+                    <p className="mb-2">
+                      This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.
+                    </p>
+                    <p className="text-slate-400">
+                      The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <p className="mt-2 text-xs text-slate-500">
+              1 XPOT ≈{' '}
+              <span
+                className={`
+                  font-mono transition-colors duration-200
+                  ${justPumped ? 'text-[#7CC8FF]' : 'text-slate-100'}
+                `}
+              >
+                {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+              </span>{' '}
+              <span className="text-slate-500">(via Jupiter)</span>
+            </p>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {/* Sparkline */}
+              <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+                <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  <span>Observed momentum</span>
+                  <span className="text-slate-400">
+                    {spark && spark.max > spark.min
+                      ? `${(((spark.max - spark.min) / spark.min) * 100).toFixed(2)}%`
+                      : '0.00%'}
+                  </span>
+                </div>
+
+                {spark ? (
+                  <>
+                    <svg
+                      width="100%"
+                      height="44"
+                      viewBox="0 0 220 36"
+                      className="block text-slate-400"
+                      aria-label="XPOT mini sparkline (observed)"
+                    >
+                      <polyline
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                        points={spark.points}
+                        opacity="0.9"
+                      />
+                    </svg>
+
+                    <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+                      <span className="font-mono">min {spark.min.toFixed(8)}</span>
+                      <span className="font-mono">max {spark.max.toFixed(8)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">Collecting ticks…</p>
+                )}
+              </div>
+
+              {/* Milestone progress */}
+              <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+                <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  <span>Milestone progress</span>
+                  <span className="text-slate-400">
+                    {jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'}
+                  </span>
+                </div>
+
+                <div className="relative h-3 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
+                  <div className="absolute inset-0 opacity-[0.55] bg-[radial-gradient(circle_at_20%_50%,rgba(124,200,255,0.28),transparent_55%),radial-gradient(circle_at_70%_50%,rgba(59,167,255,0.18),transparent_60%)]" />
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-full bg-[linear-gradient(90deg,rgba(59,167,255,0.55),rgba(124,200,255,0.78))] shadow-[0_0_24px_rgba(59,167,255,0.28)]"
+                    style={{ width: `${Math.round((progressToNext ?? 0) * 100)}%` }}
+                  />
+                </div>
+
+                <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="font-mono text-slate-100">{formatUsd(prevMilestoneForBar ?? 0)}</span>
+                  <span className="font-mono text-slate-100">{nextMilestone ? formatUsd(nextMilestone) : '—'}</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-4 text-xs leading-relaxed text-slate-400">
+              Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD value tracks the live on-chain XPOT price from Jupiter and updates automatically.
+            </p>
           </div>
 
-          <p className="mt-1 text-xs text-slate-500">
-            1 XPOT ≈{' '}
-            <span
-              className={`
-                font-mono transition-colors duration-200
-                ${justPumped ? 'text-[#7CC8FF]' : 'text-slate-100'}
-              `}
-            >
-              {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
-            </span>{' '}
-            <span className="text-slate-500">(via Jupiter)</span>
-          </p>
-
-          {/* Mini sparkline (last 6h, observed) */}
-          {spark && (
-            <div className="mt-2 w-full max-w-[520px]">
-              <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                <span>Last 6h</span>
-                <span className="text-slate-400">
-                  {spark.max > spark.min ? `${((spark.max - spark.min) / spark.min * 100).toFixed(2)}%` : '0.00%'}
-                </span>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
-                <svg
-                  width="100%"
-                  height="44"
-                  viewBox="0 0 220 36"
-                  className="block text-slate-400"
-                  aria-label="XPOT mini sparkline (observed)"
-                >
-                  <polyline
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    points={spark.points}
-                    opacity="0.9"
-                  />
-                </svg>
-
-                <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
-                  <span className="font-mono">min {spark.min.toFixed(8)}</span>
-                  <span className="font-mono">max {spark.max.toFixed(8)}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Milestone progress bar */}
-          {jackpotUsd != null && progressToNext != null && nextMilestone != null && (
-            <div className="mt-3 w-full max-w-[520px]">
-              <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                <span>Milestone progress</span>
-                <span className="text-slate-400">{Math.round(progressToNext * 100)}%</span>
-              </div>
-
-              <div className="relative h-3 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
-                <div className="absolute inset-0 opacity-[0.55] bg-[radial-gradient(circle_at_20%_50%,rgba(124,200,255,0.28),transparent_55%),radial-gradient(circle_at_70%_50%,rgba(59,167,255,0.18),transparent_60%)]" />
-                <div
-                  className="absolute left-0 top-0 h-full rounded-full bg-[linear-gradient(90deg,rgba(59,167,255,0.55),rgba(124,200,255,0.78))] shadow-[0_0_24px_rgba(59,167,255,0.28)]"
-                  style={{ width: `${Math.round(progressToNext * 100)}%` }}
-                />
-                <div
-                  className="absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full border border-white/25 bg-slate-950 shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
-                  style={{ left: `calc(${Math.round(progressToNext * 100)}% - 10px)` }}
-                >
-                  <div className="absolute inset-1 rounded-full bg-[#7CC8FF]/70 blur-[2px]" />
-                </div>
-              </div>
-
-              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-                <span>
-                  <span className="text-slate-500">Prev</span>{' '}
-                  <span className="font-mono text-slate-100">{formatUsd(prevMilestoneForBar ?? 0)}</span>
-                </span>
-                <span>
-                  <span className="text-slate-500">Next</span>{' '}
-                  <span className="font-mono text-slate-100">{formatUsd(nextMilestone)}</span>
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col items-end gap-1 text-xs">
-          {(maxJackpotToday || reachedMilestone || nextMilestone || range24h) && (
-            <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-              XPOT price context
-            </p>
-          )}
-
-          {maxJackpotToday && (
-            <p className="text-[11px] text-slate-400">
-              Today&apos;s peak value{' '}
-              <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
-            </p>
-          )}
-
-          {reachedMilestone && (
-            <p className="text-[11px] text-[#7CC8FF]">
-              Milestone <span className="font-mono">{formatUsd(reachedMilestone)}</span>
-            </p>
-          )}
-
-          {nextMilestone && (
-            <p className="text-[11px] text-slate-500">
-              Next milestone <span className="font-mono">{formatUsd(nextMilestone)}</span>
-            </p>
-          )}
-
-          {/* Real observed 24h High/Low (from rolling Jupiter samples) */}
-          {range24h && (
-            <div className="mt-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-right">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  24h range (observed)
+          {/* RIGHT: Context column (this is what removes the “empty right space” feeling) */}
+          <div className="min-w-0">
+            <div className="grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  XPOT price context
                 </p>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  {observedLabel}
-                </span>
+
+                <div className="mt-2 grid gap-1 text-[11px]">
+                  {maxJackpotToday && (
+                    <p className="text-slate-400">
+                      Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+                    </p>
+                  )}
+
+                  {reachedMilestone && (
+                    <p className="text-[#7CC8FF]">
+                      Milestone <span className="font-mono">{formatUsd(reachedMilestone)}</span>
+                    </p>
+                  )}
+
+                  {nextMilestone && (
+                    <p className="text-slate-500">
+                      Next <span className="font-mono">{formatUsd(nextMilestone)}</span>
+                    </p>
+                  )}
+
+                  {volPulse && (
+                    <p className={`mt-1 font-semibold ${volPulse === 'up' ? 'text-emerald-300' : 'text-rose-300'}`}>
+                      Volatility spike {volPulse === 'up' ? 'up' : 'down'}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <p className="mt-1 text-[11px] text-slate-300">
-                <span className="text-slate-500">Low</span>{' '}
-                <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span>
-              </p>
-              <p className="text-[11px] text-slate-300">
-                <span className="text-slate-500">High</span>{' '}
-                <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
-              </p>
-              <p className="mt-1 text-[10px] text-slate-500">
-                Source <span className="font-mono text-slate-300">Jupiter ticks</span>
-              </p>
-            </div>
-          )}
+              {range24h && (
+                <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      24h range (observed)
+                    </p>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      {observedLabel}
+                    </span>
+                  </div>
 
-          {/* Volatility pulse label */}
-          {volPulse && (
-            <p className={`mt-2 text-[11px] font-semibold ${volPulse === 'up' ? 'text-emerald-300' : 'text-rose-300'}`}>
-              Volatility spike {volPulse === 'up' ? 'up' : 'down'}
-            </p>
-          )}
+                  <div className="mt-2 grid gap-1 text-[11px] text-slate-300">
+                    <p>
+                      <span className="text-slate-500">Low</span>{' '}
+                      <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span>
+                    </p>
+                    <p>
+                      <span className="text-slate-500">High</span>{' '}
+                      <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
+                    </p>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      Source <span className="font-mono text-slate-300">Jupiter ticks</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {showUnavailable && (
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3">
+                  <p className="text-[11px] font-semibold text-amber-200">Live price not available yet.</p>
+                  <p className="mt-1 text-[11px] text-amber-200/80">This section auto-populates as soon as Jupiter price is live.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-
-      <p className="mt-4 text-xs leading-relaxed text-slate-400">
-        Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD value tracks the live on-chain XPOT price from Jupiter and updates automatically.
-      </p>
     </section>
   );
 }
