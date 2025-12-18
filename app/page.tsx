@@ -765,11 +765,12 @@ export default function HomePage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-  <Pill tone="sky">
-    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
-    Live
-  </Pill>
-</div>
+                    <RunwayBadge />
+                    <Pill tone="sky">
+                      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
+                      Live
+                    </Pill>
+                  </div>
                 </div>
 
                 <div className="mt-4">
