@@ -335,6 +335,65 @@ function RunwayBadge() {
   );
 }
 
+function PrinciplesStack() {
+  return (
+    <div className="grid gap-3">
+      {/* Qualification */}
+      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+        <div className="pointer-events-none absolute -inset-20 opacity-55 blur-3xl bg-[radial-gradient(circle_at_20%_10%,rgba(16,185,129,0.18),transparent_55%)]" />
+        <div className="relative flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-950/25">
+            <ShieldCheck className="h-5 w-5 text-emerald-200" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90 leading-none">
+              Qualification
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-100 leading-snug">No purchases. No tickets.</p>
+            <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+              Holding XPOT is the requirement to enter.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Identity */}
+      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+        <div className="pointer-events-none absolute -inset-20 opacity-55 blur-3xl bg-[radial-gradient(circle_at_18%_10%,rgba(56,189,248,0.16),transparent_55%)]" />
+        <div className="relative flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-950/20">
+            <Users className="h-5 w-5 text-sky-200" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200/90 leading-none">Identity</p>
+            <p className="mt-2 text-sm font-semibold text-slate-100 leading-snug">Public by handle.</p>
+            <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+              Your X handle is public. Wallet stays self-custody.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Payout */}
+      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+        <div className="pointer-events-none absolute -inset-20 opacity-50 blur-3xl bg-[radial-gradient(circle_at_20%_10%,rgba(245,158,11,0.12),transparent_55%)]" />
+        <div className="relative flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-950/15">
+            <Crown className="h-5 w-5 text-amber-200" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/90 leading-none">Payout</p>
+            <p className="mt-2 text-sm font-semibold text-slate-100 leading-snug">Paid on-chain in XPOT.</p>
+            <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+              Winners verify the transaction. Proof stays public.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PrinciplesStrip() {
   return (
     <div className="relative overflow-hidden rounded-[26px] border border-slate-900/60 bg-slate-950/35 p-5 shadow-[0_26px_90px_rgba(0,0,0,0.42)] backdrop-blur">
@@ -652,9 +711,9 @@ export default function HomePage() {
                 </div>
 
                 <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)]">
-                  <div className="min-w-0">
-                    <JackpotPanel variant="standalone" />
-                  </div>
+  <div className="min-w-0">
+    <JackpotPanel variant="standalone" />
+  </div>
 
                   <div className="grid gap-3">
                     <MiniStat label="Mode" value="On-chain" tone="emerald" />
@@ -691,8 +750,19 @@ export default function HomePage() {
                 <p className="mt-2 text-[12px] text-slate-400">Baseline funded at launch: 1,000,000 XPOT/day from the Rewards Reserve.</p>
               </div>
 
-              {/* principles */}
-              <PrinciplesStrip />
+              {/* engine meta (moved under engine) */}
+<div className="grid gap-3 lg:grid-cols-4">
+  <MiniStat label="Mode" value="On-chain" tone="emerald" />
+  <MiniStat label="Identity" value="@handle" tone="sky" />
+  <MiniStat label="Proof" value="Explorer verifiable" tone="violet" />
+
+  <div className="rounded-2xl border border-slate-900/70 bg-slate-950/70 px-4 py-3 lg:col-span-1">
+    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Proof strip</p>
+    <p className="mt-1 text-[12px] leading-relaxed text-slate-300">
+      Payouts are on-chain. Winners verify the transaction. Proof stays public.
+    </p>
+  </div>
+</div>
 
               {/* entry mechanics label */}
               <div className="pt-1">
