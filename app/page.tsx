@@ -1,4 +1,4 @@
-// app/page.tsx
++// app/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -214,7 +214,6 @@ function getSolscanTokenUrl(mint: string) {
   const base = `https://solscan.io/token/${mint}`;
   if (!SOLANA_CLUSTER) return base;
   if (SOLANA_CLUSTER === 'devnet') return `${base}?cluster=devnet`;
-  // solscan defaults to mainnet; keep clean for mainnet-beta
   return base;
 }
 
@@ -233,7 +232,6 @@ function RoyalContractBar({ mint }: { mint: string }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* Main CA chip (royal + compact) */}
       <div
         className="
           relative inline-flex items-center gap-3
@@ -244,7 +242,6 @@ function RoyalContractBar({ mint }: { mint: string }) {
         "
         title={mint}
       >
-        {/* soft halo */}
         <div
           className="
             pointer-events-none absolute -inset-10 rounded-full opacity-60 blur-2xl
@@ -299,7 +296,6 @@ function RoyalContractBar({ mint }: { mint: string }) {
         </button>
       </div>
 
-      {/* Explorer chip */}
       <Link
         href={getSolscanTokenUrl(mint)}
         target="_blank"
@@ -342,18 +338,24 @@ function Bullet({
   );
 }
 
+/* ─────────────────────────────────────────────
+   STEP (fixed: no more repeating “PROOF-FIRST”)
+   ───────────────────────────────────────────── */
+
 function Step({
   n,
   title,
   desc,
   icon,
   tone = 'emerald',
+  tag,
 }: {
   n: string;
   title: string;
   desc: string;
   icon: React.ReactNode;
   tone?: 'emerald' | 'sky' | 'amber' | 'violet';
+  tag: string;
 }) {
   const ring =
     tone === 'sky'
@@ -364,42 +366,49 @@ function Step({
       ? 'border-violet-500/25 bg-violet-950/25'
       : 'border-emerald-500/25 bg-emerald-950/30';
 
-  const txt =
+  const tagTone =
     tone === 'sky'
-      ? 'text-sky-200'
+      ? 'text-sky-200 border-sky-500/25 bg-sky-500/10'
       : tone === 'amber'
-      ? 'text-amber-200'
+      ? 'text-amber-200 border-amber-500/25 bg-amber-500/10'
       : tone === 'violet'
-      ? 'text-violet-200'
-      : 'text-emerald-200';
+      ? 'text-violet-200 border-violet-500/25 bg-violet-500/10'
+      : 'text-emerald-200 border-emerald-500/25 bg-emerald-500/10';
 
   return (
-    <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-      <div className="flex items-center justify-between">
+    <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+      <div
+        className="
+          pointer-events-none absolute -inset-24 opacity-60 blur-3xl
+          bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.10),transparent_55%),
+              radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.10),transparent_55%)]
+        "
+      />
+
+      <div className="relative flex items-center justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Step {n}</span>
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-          Proof-first
+
+        <span
+          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${tagTone}`}
+        >
+          {tag}
         </span>
       </div>
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="relative mt-4 flex items-center gap-3">
         <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${ring}`}>
           {icon}
         </span>
         <div>
           <p className="text-sm font-semibold text-slate-100">{title}</p>
-          <p className={`text-xs ${txt}`}>{desc}</p>
+          <p className="mt-1 text-xs text-slate-400">{desc}</p>
         </div>
       </div>
     </div>
   );
 }
 
-function Accordion({
-  items,
-}: {
-  items: { q: string; a: string }[];
-}) {
+function Accordion({ items }: { items: { q: string; a: string }[] }) {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
@@ -408,10 +417,7 @@ function Accordion({
         const isOpen = open === idx;
 
         return (
-          <div
-            key={it.q}
-            className="overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/55"
-          >
+          <div key={it.q} className="overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/55">
             <button
               type="button"
               onClick={() => setOpen(v => (v === idx ? null : idx))}
@@ -451,23 +457,30 @@ export default function HomePage() {
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
 
+  // ✅ BonusStrip: refresh without page reload (remount every ~8s)
+  const [bonusTick, setBonusTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setBonusTick(v => v + 1), 8000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const faq = useMemo(
     () => [
       {
         q: 'Do I need to buy tickets to enter?',
-        a: 'No. XPOT is designed around holdings, identity and provable payouts. The hub handles eligibility and entry rules.',
+        a: 'No. Entry is holdings-based. The hub checks eligibility and handles the entry flow - the homepage stays calm and informational.',
       },
       {
         q: 'Is my wallet public on the site?',
-        a: 'The public identity is your X handle. Wallet remains self-custody and is not the headline identity.',
+        a: 'Your public identity is your X handle. Wallets stay self-custody and aren’t presented as your “profile”.',
       },
       {
         q: 'How do winners verify payouts?',
-        a: 'Payouts are on-chain. Winners can verify the transaction directly via explorer. Transparency is a feature, not a slogan.',
+        a: 'Payouts are on-chain. Winners can verify the transaction in an explorer. Proof is the product.',
       },
       {
         q: 'What happens after launch?',
-        a: 'The daily draw is the primitive. Modules like streaks, sponsor pools and creator drops can plug into the same protocol layer.',
+        a: 'The daily draw is the primitive. Additional modules (streaks, creator drops and sponsor-funded pools) can plug into the same protocol layer without changing the core mechanic.',
       },
     ],
     [],
@@ -514,11 +527,10 @@ export default function HomePage() {
                   </h1>
 
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                    Hold XPOT, connect X, claim your entry. One winner daily, paid on-chain.
+                    Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain.
                     Built to scale into a reward ecosystem for communities, creators and sponsors.
                   </p>
 
-                  {/* ✅ RESTORED: runway pill + baseline line */}
                   <div className="mt-3">
                     <Pill tone="emerald">
                       <ShieldCheck className="h-3.5 w-3.5" />
@@ -532,11 +544,11 @@ export default function HomePage() {
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <Pill tone="emerald">
                       <ShieldCheck className="h-3.5 w-3.5" />
-                      Transparent by design
+                      Proof-first transparency
                     </Pill>
                     <Pill tone="sky">
                       <Zap className="h-3.5 w-3.5" />
-                      Composable modules
+                      Calm UX, live data
                     </Pill>
                     <Pill tone="amber">
                       <BadgeCheck className="h-3.5 w-3.5" />
@@ -545,9 +557,30 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* BonusStrip */}
-                <div className="pt-1">
-                  <BonusStrip />
+                {/* ✅ BONUS XPOT SPOTLIGHT (more prominent + auto-refresh) */}
+                <div className="relative">
+                  <div
+                    className="
+                      pointer-events-none absolute -inset-8 opacity-70 blur-2xl
+                      bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.25),transparent_60%),
+                          radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_60%)]
+                    "
+                  />
+                  <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_80px_rgba(16,185,129,0.12)]">
+                    <div className="mb-2 flex items-center justify-between px-2">
+                      <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
+                          <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+                        </span>
+                        Bonus XPOT
+                      </span>
+                      <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">same entry</span>
+                    </div>
+
+                    {/* Remounting forces fetch-on-mount patterns to update without hard refresh */}
+                    <BonusStrip key={bonusTick} />
+                  </div>
                 </div>
 
                 {/* ✅ CA bar stays */}
@@ -592,17 +625,16 @@ export default function HomePage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
-                    <p className="mt-1 text-xs text-slate-400">Live pool value and milestones (via Jupiter).</p>
+                    <p className="mt-1 text-xs text-slate-400">Pool value and milestones (via Jupiter).</p>
                   </div>
 
                   <Pill tone="sky">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
-                    Live feed
+                    Live
                   </Pill>
                 </div>
 
                 <div className="mt-4">
-                  {/* ✅ RESTORED: runway badge */}
                   <JackpotPanel variant="standalone" badgeLabel="10+ year runway" />
                 </div>
 
@@ -654,7 +686,9 @@ export default function HomePage() {
                   </pre>
                 </div>
 
-                <p className="mt-3 text-[12px] text-slate-400">Read-only cockpit view. Same panels as ops. Winners get access.</p>
+                <p className="mt-3 text-[12px] text-slate-400">
+                  Read-only cockpit view. Same panels as ops. Winners get access.
+                </p>
               </PremiumCard>
             </div>
           </div>
@@ -671,11 +705,15 @@ export default function HomePage() {
                   <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-70 animate-ping" />
                   <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
                 </span>
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Live entries (X handles)</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                  Live entries (X handles)
+                </span>
                 <span className="text-[11px] text-slate-500">Optional - expand to view</span>
               </span>
 
-              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`}
+              />
             </button>
 
             <AnimatePresence initial={false}>
@@ -698,7 +736,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* NEW: HOW IT WORKS */}
+      {/* HOW IT WORKS (cleaner, “single system” feel) */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -709,10 +747,11 @@ export default function HomePage() {
               </Pill>
 
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                A daily on-chain reward primitive, wrapped in identity.
+                A daily reward primitive with provable outcomes.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT is built to feel premium and calm. Simple entry, provable outcomes and room for modules later.
+                XPOT keeps the surface area small: clear eligibility, public identity by handle and on-chain payout proof.
+                Everything else can plug in later.
               </p>
             </div>
 
@@ -732,34 +771,43 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <Step
-              n="01"
-              title="Hold XPOT"
-              desc="Eligibility is holdings-based"
-              icon={<ShieldCheck className="h-5 w-5 text-emerald-200" />}
-              tone="emerald"
-            />
-            <Step
-              n="02"
-              title="Connect X and wallet"
-              desc="Public handle, self-custody wallet"
-              icon={<Users className="h-5 w-5 text-sky-200" />}
-              tone="sky"
-            />
-            <Step
-              n="03"
-              title="Claim entry, verify payout"
-              desc="On-chain proof is the product"
-              icon={<Crown className="h-5 w-5 text-amber-200" />}
-              tone="amber"
-            />
+          <div className="relative mt-6">
+            {/* subtle connector line behind cards */}
+            <div className="pointer-events-none absolute inset-x-2 top-10 hidden h-px bg-white/10 lg:block" />
+            <div className="pointer-events-none absolute inset-x-2 top-10 hidden h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.35),rgba(16,185,129,0.25),rgba(245,158,11,0.18),transparent)] lg:block" />
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Step
+                n="01"
+                title="Hold XPOT"
+                desc="Holdings-based eligibility in the hub"
+                icon={<ShieldCheck className="h-5 w-5 text-emerald-200" />}
+                tone="emerald"
+                tag="Eligibility"
+              />
+              <Step
+                n="02"
+                title="Connect X and wallet"
+                desc="Public handle, self-custody wallet"
+                icon={<Users className="h-5 w-5 text-sky-200" />}
+                tone="sky"
+                tag="Identity"
+              />
+              <Step
+                n="03"
+                title="Claim entry, verify payout"
+                desc="Winners verify on-chain, instantly"
+                icon={<Crown className="h-5 w-5 text-amber-200" />}
+                tone="amber"
+                tag="Payout"
+              />
+            </div>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Designed for rewards, not for addiction loops.</p>
+              <p className="text-sm text-slate-300">Designed for rewards - not addiction loops.</p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -788,7 +836,7 @@ export default function HomePage() {
               Identity
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Public by handle.</p>
-            <p className="mt-2 text-sm text-slate-300">Your X handle is the public identity. Wallet stays private.</p>
+            <p className="mt-2 text-sm text-slate-300">Your X handle is public. Wallet stays self-custody.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -797,7 +845,7 @@ export default function HomePage() {
               Payout
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
-            <p className="mt-2 text-sm text-slate-300">Winner verifies the transaction. Transparency is the product.</p>
+            <p className="mt-2 text-sm text-slate-300">Winners verify the transaction. Proof stays public.</p>
           </PremiumCard>
         </div>
       </section>
@@ -816,7 +864,8 @@ export default function HomePage() {
                 XPOT is a rewards protocol, not a one-off game.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                The daily draw is the primitive. On top of it we can add modules that reward participation, streaks and reputation over time. That is how XPOT becomes an ecosystem for communities, creators and sponsors.
+                The daily draw is the primitive. On top of it we can add modules that reward participation, streaks and
+                reputation over time. That is how XPOT becomes an ecosystem for communities, creators and sponsors.
               </p>
             </div>
 
@@ -893,7 +942,7 @@ export default function HomePage() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">XPOT is designed for rewards, not for addiction loops.</p>
+              <p className="text-sm text-slate-300">XPOT is designed for rewards - not for addiction loops.</p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -913,7 +962,9 @@ export default function HomePage() {
               Creators
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
-            <p className="mt-2 text-sm text-slate-300">One link, one mechanic, transparent winners and a premium experience.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              One mechanic, transparent winners and a premium experience that doesn’t feel spammy.
+            </p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -922,7 +973,9 @@ export default function HomePage() {
               Sponsors
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              Sponsor pools and bonuses with visibility and provable distribution on-chain.
+            </p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -931,12 +984,14 @@ export default function HomePage() {
               Communities
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              Your XPOT history travels with you and unlocks better rewards over time.
+            </p>
           </PremiumCard>
         </div>
       </section>
 
-      {/* NEW: FAQ (premium trust section) */}
+      {/* FAQ */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo={false}>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -947,7 +1002,7 @@ export default function HomePage() {
               </Pill>
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                This page is intentionally calm. The real action is in the hub, the proof lives on-chain.
+                The homepage stays calm. The hub is where entries happen. Proof stays on-chain.
               </p>
             </div>
 
