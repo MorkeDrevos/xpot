@@ -621,7 +621,12 @@ export default function JackpotPanel({
                 <button
                   type="button"
                   aria-label="USD estimate info"
-                  className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-black/40 text-[10px] font-semibold text-white/70 transition-colors group-hover:text-white"
+                  className="
+                    flex h-6 w-6 items-center justify-center rounded-full border border-white/25
+                    bg-black/40 text-[10px] font-semibold text-white/70
+                    transition-colors group-hover:text-white
+                    cursor-default select-none
+                  "
                 >
                   i
                 </button>
