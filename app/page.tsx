@@ -726,7 +726,13 @@ export default function HomePage() {
                 </div>
 
                 <div className="mt-4">
-                  <JackpotPanel variant="standalone" />
+                  <JackpotPanel
+  variant="standalone"
+  badgeLabel="10+ year runway"
+  badgeTooltip={
+    "Funded for 10+ years of daily XPOT rewards.\nSized from the Rewards Reserve at launch: 1,000,000 XPOT/day baseline for 10+ years.\nPaid in XPOT, on-chain, and auditable."
+  }
+/>
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
