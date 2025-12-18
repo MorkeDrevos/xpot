@@ -1,7 +1,7 @@
-+// app/page.tsx
+// app/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
@@ -29,16 +29,14 @@ import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
 // ─────────────────────────────────────────────
-// Routes (fix broken links)
+// Routes
 // ─────────────────────────────────────────────
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
 const ROUTE_TERMS = '/terms';
 
 // ─────────────────────────────────────────────
-// Dynamic CA (no wiring changes)
-// - Set NEXT_PUBLIC_XPOT_MINT (or NEXT_PUBLIC_XPOT_CA) in Vercel envs
-// - Optional: NEXT_PUBLIC_SOLANA_CLUSTER=devnet to add Solscan cluster param
+// Dynamic CA
 // ─────────────────────────────────────────────
 const XPOT_CA =
   process.env.NEXT_PUBLIC_XPOT_MINT ||
@@ -76,7 +74,7 @@ function Pill({
   children,
   tone = 'slate',
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky' | 'violet';
 }) {
   const map: Record<string, string> = {
@@ -106,7 +104,7 @@ function PremiumCard({
   halo = true,
   sheen = false,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   halo?: boolean;
   sheen?: boolean;
@@ -143,7 +141,7 @@ function MiniStat({
   tone = 'slate',
 }: {
   label: string;
-  value: React.ReactNode;
+  value: ReactNode;
   tone?: 'slate' | 'emerald' | 'sky' | 'amber' | 'violet';
 }) {
   const toneCls =
@@ -318,7 +316,7 @@ function Bullet({
   children,
   tone = 'emerald',
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   tone?: 'emerald' | 'sky' | 'amber' | 'violet';
 }) {
   const dot =
@@ -339,7 +337,7 @@ function Bullet({
 }
 
 /* ─────────────────────────────────────────────
-   STEP (fixed: no more repeating “PROOF-FIRST”)
+   STEP (no repeating “PROOF-FIRST”)
    ───────────────────────────────────────────── */
 
 function Step({
@@ -353,7 +351,7 @@ function Step({
   n: string;
   title: string;
   desc: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   tone?: 'emerald' | 'sky' | 'amber' | 'violet';
   tag: string;
 }) {
@@ -453,22 +451,14 @@ export default function HomePage() {
   const marquee = useMemo(() => [...SAMPLE_HANDLES], []);
   const [showLiveEntries, setShowLiveEntries] = useState(false);
 
-  // keep client reactive if you ever swap env injection patterns later
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
-
-  // ✅ BonusStrip: refresh without page reload (remount every ~8s)
-  const [bonusTick, setBonusTick] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => setBonusTick(v => v + 1), 8000);
-    return () => window.clearInterval(id);
-  }, []);
 
   const faq = useMemo(
     () => [
       {
         q: 'Do I need to buy tickets to enter?',
-        a: 'No. Entry is holdings-based. The hub checks eligibility and handles the entry flow - the homepage stays calm and informational.',
+        a: 'No. Entry is holdings-based. The hub checks eligibility and handles the entry flow. The homepage stays calm and informational.',
       },
       {
         q: 'Is my wallet public on the site?',
@@ -480,7 +470,7 @@ export default function HomePage() {
       },
       {
         q: 'What happens after launch?',
-        a: 'The daily draw is the primitive. Additional modules (streaks, creator drops and sponsor-funded pools) can plug into the same protocol layer without changing the core mechanic.',
+        a: 'The daily draw is the primitive. Modules like streaks, creator drops and sponsor-funded pools can plug into the same protocol layer.',
       },
     ],
     [],
@@ -491,7 +481,6 @@ export default function HomePage() {
       {/* HERO */}
       <section className="mt-6">
         <div className="relative overflow-hidden rounded-[36px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
-          {/* Cinematic halo */}
           <div
             className="
               pointer-events-none absolute -inset-40 opacity-85 blur-3xl
@@ -528,7 +517,7 @@ export default function HomePage() {
 
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
                     Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain.
-                    Built to scale into a reward ecosystem for communities, creators and sponsors.
+                    Built to scale into a rewards ecosystem for communities, creators and sponsors.
                   </p>
 
                   <div className="mt-3">
@@ -557,16 +546,16 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* ✅ BONUS XPOT SPOTLIGHT (more prominent + auto-refresh) */}
+                {/* BONUS XPOT SPOTLIGHT */}
                 <div className="relative">
                   <div
                     className="
-                      pointer-events-none absolute -inset-8 opacity-70 blur-2xl
-                      bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.25),transparent_60%),
-                          radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_60%)]
+                      pointer-events-none absolute -inset-10 opacity-75 blur-2xl
+                      bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),
+                          radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]
                     "
                   />
-                  <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_80px_rgba(16,185,129,0.12)]">
+                  <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.12)]">
                     <div className="mb-2 flex items-center justify-between px-2">
                       <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
                         <span className="relative flex h-2 w-2">
@@ -578,12 +567,11 @@ export default function HomePage() {
                       <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">same entry</span>
                     </div>
 
-                    {/* Remounting forces fetch-on-mount patterns to update without hard refresh */}
-                    <BonusStrip key={bonusTick} />
+                    {/* BonusStrip now self-refreshes (poll + visibility refetch) */}
+                    <BonusStrip variant="home" />
                   </div>
                 </div>
 
-                {/* ✅ CA bar stays */}
                 <RoyalContractBar mint={mint} />
 
                 {/* CTAs */}
@@ -611,7 +599,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Mini stats */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <MiniStat label="Mode" value="On-chain" tone="emerald" />
                 <MiniStat label="Identity" value="@handle" tone="sky" />
@@ -727,7 +714,7 @@ export default function HomePage() {
                 >
                   <div className="mt-3">
                     <HandleTicker handles={marquee} />
-                    <p className="mt-2 text-[11px] text-slate-500">Handles are shown, wallets stay in self-custody.</p>
+                    <p className="mt-2 text-[11px] text-slate-500">Handles are shown. Wallets stay self-custody.</p>
                   </div>
                 </motion.div>
               )}
@@ -736,7 +723,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS (cleaner, “single system” feel) */}
+      {/* HOW IT WORKS */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -750,7 +737,7 @@ export default function HomePage() {
                 A daily reward primitive with provable outcomes.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT keeps the surface area small: clear eligibility, public identity by handle and on-chain payout proof.
+                XPOT keeps the surface area small: holdings-based eligibility, public identity by handle and on-chain payout proof.
                 Everything else can plug in later.
               </p>
             </div>
@@ -772,7 +759,6 @@ export default function HomePage() {
           </div>
 
           <div className="relative mt-6">
-            {/* subtle connector line behind cards */}
             <div className="pointer-events-none absolute inset-x-2 top-10 hidden h-px bg-white/10 lg:block" />
             <div className="pointer-events-none absolute inset-x-2 top-10 hidden h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.35),rgba(16,185,129,0.25),rgba(245,158,11,0.18),transparent)] lg:block" />
 
@@ -780,7 +766,7 @@ export default function HomePage() {
               <Step
                 n="01"
                 title="Hold XPOT"
-                desc="Holdings-based eligibility in the hub"
+                desc="Eligibility is checked in the hub"
                 icon={<ShieldCheck className="h-5 w-5 text-emerald-200" />}
                 tone="emerald"
                 tag="Eligibility"
@@ -788,7 +774,7 @@ export default function HomePage() {
               <Step
                 n="02"
                 title="Connect X and wallet"
-                desc="Public handle, self-custody wallet"
+                desc="Handle is public. Wallet stays self-custody"
                 icon={<Users className="h-5 w-5 text-sky-200" />}
                 tone="sky"
                 tag="Identity"
@@ -796,7 +782,7 @@ export default function HomePage() {
               <Step
                 n="03"
                 title="Claim entry, verify payout"
-                desc="Winners verify on-chain, instantly"
+                desc="One winner daily. Proof is on-chain"
                 icon={<Crown className="h-5 w-5 text-amber-200" />}
                 tone="amber"
                 tag="Payout"
@@ -807,7 +793,7 @@ export default function HomePage() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Designed for rewards - not addiction loops.</p>
+              <p className="text-sm text-slate-300">Designed for rewards, not addiction loops.</p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -827,7 +813,7 @@ export default function HomePage() {
               Qualification
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">No purchases. No tickets.</p>
-            <p className="mt-2 text-sm text-slate-300">Holding XPOT is the only requirement to enter.</p>
+            <p className="mt-2 text-sm text-slate-300">Holding XPOT is the requirement to enter.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -864,8 +850,8 @@ export default function HomePage() {
                 XPOT is a rewards protocol, not a one-off game.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                The daily draw is the primitive. On top of it we can add modules that reward participation, streaks and
-                reputation over time. That is how XPOT becomes an ecosystem for communities, creators and sponsors.
+                The daily draw is the primitive. Modules can reward participation, streaks and reputation over time.
+                That’s how XPOT becomes an ecosystem for communities, creators and sponsors.
               </p>
             </div>
 
@@ -915,7 +901,7 @@ export default function HomePage() {
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
-                <Bullet tone="sky">X handle is public, wallet stays self-custody</Bullet>
+                <Bullet tone="sky">X handle is public. Wallet stays self-custody</Bullet>
                 <Bullet tone="violet">History, streaks and wins become your profile</Bullet>
                 <Bullet tone="emerald">Anti-bot gravity without KYC vibes</Bullet>
               </ul>
@@ -928,7 +914,7 @@ export default function HomePage() {
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-slate-100">Fairness layer</p>
-                  <p className="text-xs text-slate-400">If XPOT picked it, it&apos;s fair</p>
+                  <p className="text-xs text-slate-400">If XPOT picked it, it’s fair</p>
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
@@ -942,7 +928,7 @@ export default function HomePage() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">XPOT is designed for rewards - not for addiction loops.</p>
+              <p className="text-sm text-slate-300">XPOT is designed for rewards, not addiction loops.</p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -1024,7 +1010,7 @@ export default function HomePage() {
         </PremiumCard>
       </section>
 
-      {/* Tiny footer */}
+      {/* Footer */}
       <footer className="mt-8 pb-10">
         <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
           <span className="inline-flex items-center gap-2">
