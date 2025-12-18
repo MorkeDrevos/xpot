@@ -256,7 +256,11 @@ function RoyalContractBar({ mint }: { mint: string }) {
             <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
               Official CA
             </span>
-            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 10, 10)}</span>
+
+            {/* ✅ show only beginning + end */}
+            <span className="font-mono text-[12px] text-slate-100/90">
+              {shortenAddress(mint, 6, 6)}
+            </span>
           </span>
         </span>
 
@@ -305,8 +309,40 @@ function RoyalContractBar({ mint }: { mint: string }) {
   );
 }
 
+function RunwayBadge() {
+  // Canonical, safe + explicit explanation for “10+ years”
+  const tooltip =
+    "Funded for 10+ years of daily XPOT rewards.\nSized from the Rewards Reserve at launch: 1,000,000 XPOT/day baseline for 10+ years.\nPaid in XPOT, on-chain, and auditable.";
+
+  return (
+    <div className="relative group inline-flex">
+      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/35 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+        10+ year runway
+      </span>
+
+      <div
+        className="
+          pointer-events-none absolute left-1/2 top-full z-[80] mt-3 w-[320px]
+          -translate-x-1/2
+          rounded-2xl border border-slate-700/80 bg-slate-950
+          px-4 py-3 text-[12px] leading-relaxed text-slate-100
+          shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
+          opacity-0 translate-y-0
+          group-hover:opacity-100 group-hover:translate-y-1
+          transition-all duration-200
+          whitespace-pre-line
+        "
+      >
+        <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
+        {tooltip}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────
-   New: Principles strip (replaces 3 value cards)
+   Principles strip (kept from your reference)
    ───────────────────────────────────────────── */
 
 function PrinciplesStrip() {
@@ -323,7 +359,6 @@ function PrinciplesStrip() {
       </div>
 
       <div className="mt-3 grid gap-2 md:grid-cols-3">
-        {/* Qualification */}
         <div className="group rounded-[20px] border border-emerald-500/15 bg-emerald-500/5 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-950/30">
@@ -337,7 +372,6 @@ function PrinciplesStrip() {
           <p className="mt-2 text-[12px] text-slate-400">Holding XPOT is the requirement to enter.</p>
         </div>
 
-        {/* Identity */}
         <div className="group rounded-[20px] border border-sky-500/15 bg-sky-500/5 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-950/25">
@@ -351,7 +385,6 @@ function PrinciplesStrip() {
           <p className="mt-2 text-[12px] text-slate-400">Your X handle is public. Wallet stays self-custody.</p>
         </div>
 
-        {/* Payout */}
         <div className="group rounded-[20px] border border-amber-500/15 bg-amber-500/5 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-950/20">
@@ -369,10 +402,6 @@ function PrinciplesStrip() {
   );
 }
 
-/* ─────────────────────────────────────────────
-   New: subtle divider label
-   ───────────────────────────────────────────── */
-
 function SectionDividerLabel({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 py-1">
@@ -389,10 +418,6 @@ function SectionDividerLabel({ label }: { label: string }) {
     </div>
   );
 }
-
-/* ─────────────────────────────────────────────
-   Existing helpers (unchanged)
-   ───────────────────────────────────────────── */
 
 function Bullet({
   children,
@@ -500,9 +525,7 @@ function Accordion({ items }: { items: { q: string; a: string }[] }) {
               className="group flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
             >
               <span className="text-sm font-semibold text-slate-100">{it.q}</span>
-              <ChevronDown
-                className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-              />
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             <AnimatePresence initial={false}>
@@ -583,10 +606,6 @@ export default function HomePage() {
                     <span className="h-1.5 w-1.5 rounded-full bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
                     Protocol layer
                   </Pill>
-
-                  <span className="ml-1 hidden sm:inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
-                    Proof-first
-                  </span>
                 </div>
 
                 {/* Hero block */}
@@ -604,31 +623,25 @@ export default function HomePage() {
                     ecosystem for communities, creators and sponsors.
                   </p>
 
-                  {/* Runway */}
+                  {/* Runway badge + explicit explanation */}
                   <div className="mt-4 rounded-[22px] border border-emerald-400/15 bg-emerald-500/5 px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Pill tone="emerald">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Built with a 10-year rewards runway at launch
-                      </Pill>
+                      <RunwayBadge />
                     </div>
-
                     <p className="mt-2 text-[12px] text-slate-400">
                       Baseline funded at launch: 1,000,000 XPOT/day from the Rewards Reserve.
                     </p>
                   </div>
 
-                  {/* ✅ Principles strip replaces the 3 value-pill cards */}
                   <div className="mt-4">
                     <PrinciplesStrip />
                   </div>
 
-                  {/* ✅ Divider label above Bonus + CA */}
                   <div className="mt-5">
                     <SectionDividerLabel label="Entry mechanics" />
                   </div>
 
-                  {/* BONUS XPOT SPOTLIGHT */}
+                  {/* BONUS */}
                   <div className="mt-3">
                     <div className="relative">
                       <div
@@ -660,8 +673,8 @@ export default function HomePage() {
                     <RoyalContractBar mint={mint} />
                   </div>
 
-                  {/* CTAs */}
-                  <div className="mt-5 grid gap-3 sm:grid-cols-[auto_auto_1fr] sm:items-center">
+                  {/* ✅ CTA row: only 3 buttons (matches your image) */}
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
                     <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
                       Enter today&apos;s XPOT
                       <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -671,20 +684,19 @@ export default function HomePage() {
                       Terms
                     </Link>
 
-                    <div className="flex flex-wrap items-center justify-start gap-3 sm:justify-end">
-                      <Link
-                        href={ROUTE_OPS}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-sm text-slate-200 hover:bg-slate-900 transition"
-                      >
-                        <Lock className="h-4 w-4 text-amber-200" />
-                        Operations Center
-                      </Link>
-
-                      <p className="text-[11px] text-slate-500">
-                        Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
-                      </p>
-                    </div>
+                    <Link
+                      href={ROUTE_OPS}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-5 py-3 text-sm text-slate-200 hover:bg-slate-900 transition"
+                    >
+                      <Lock className="h-4 w-4 text-amber-200" />
+                      Operations Center
+                    </Link>
                   </div>
+
+                  {/* ✅ line under buttons */}
+                  <p className="mt-3 text-[11px] text-slate-500">
+                    Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
+                  </p>
                 </div>
               </div>
 
@@ -704,14 +716,17 @@ export default function HomePage() {
                     <p className="mt-1 text-xs text-slate-400">Pool value and milestones (via Jupiter).</p>
                   </div>
 
-                  <Pill tone="sky">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
-                    Live
-                  </Pill>
+                  <div className="flex items-center gap-2">
+                    <RunwayBadge />
+                    <Pill tone="sky">
+                      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)] animate-pulse" />
+                      Live
+                    </Pill>
+                  </div>
                 </div>
 
                 <div className="mt-4">
-                  <JackpotPanel variant="standalone" badgeLabel="10+ year runway" />
+                  <JackpotPanel variant="standalone" />
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -762,9 +777,7 @@ export default function HomePage() {
                   </pre>
                 </div>
 
-                <p className="mt-3 text-[12px] text-slate-400">
-                  Read-only cockpit view. Same panels as ops. Winners get access.
-                </p>
+                <p className="mt-3 text-[12px] text-slate-400">Read-only cockpit view. Same panels as ops. Winners get access.</p>
               </PremiumCard>
             </div>
           </div>
@@ -787,9 +800,7 @@ export default function HomePage() {
                 <span className="text-[11px] text-slate-500">Optional - expand to view</span>
               </span>
 
-              <ChevronDown
-                className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`}
-              />
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`} />
             </button>
 
             <AnimatePresence initial={false}>
@@ -893,7 +904,7 @@ export default function HomePage() {
         </PremiumCard>
       </section>
 
-      {/* THE PROTOCOL STRIP */}
+      {/* THE PROTOCOL STRIP (kept) */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1037,9 +1048,7 @@ export default function HomePage() {
               Creators
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              One mechanic, transparent winners and a premium experience that doesn’t feel spammy.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">One mechanic, transparent winners and a premium experience that doesn’t feel spammy.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1048,9 +1057,7 @@ export default function HomePage() {
               Sponsors
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Sponsor pools and bonuses with visibility and provable distribution on-chain.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1059,9 +1066,7 @@ export default function HomePage() {
               Communities
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Your XPOT history travels with you and unlocks better rewards over time.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
           </PremiumCard>
         </div>
       </section>
