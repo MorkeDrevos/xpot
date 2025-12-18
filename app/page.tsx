@@ -311,7 +311,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
 
 function RunwayBadge() {
   const tooltip =
-    "Funded for 10+ years of daily XPOT rewards.\nSized from the Rewards Reserve at launch: 1,000,000 XPOT/day baseline for 10+ years.\nPaid in XPOT, on-chain, and auditable.";
+    "Funded for 10+ years of daily XPOT rewards.\nSeeded from the XPOT Rewards Reserve at launch: 1,000,000 XPOT/day baseline for 10+ years.\nPaid in XPOT, on-chain, and auditable.";
 
   return (
     <div className="relative group inline-flex cursor-default select-none">
