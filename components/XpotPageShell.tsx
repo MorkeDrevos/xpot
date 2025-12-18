@@ -1,7 +1,7 @@
 // components/XpotPageShell.tsx
 'use client';
 
-import { ReactNode, ComponentProps, useEffect, useMemo, useState } from 'react';
+import { ReactNode, ComponentProps, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 
 import PreLaunchBanner from '@/components/PreLaunchBanner';
@@ -24,105 +24,31 @@ type XpotPageShellProps = {
 
   showAtmosphere?: boolean;
 
-  // Keep your existing feature
-  showOpsThemeSwitcher?: boolean;
-
   // New feature: explicit page tag (used for styling, telemetry, theming hooks)
   pageTag?: string;
 };
 
-const THEME_KEY = 'xpot_ops_theme_v1';
-
-type ThemePreset = {
-  id: string;
-  label: string;
-  vars: Record<string, string>;
-};
-
-// Your requested anchors (blue -> violet -> magenta)
-const PRESETS: ThemePreset[] = [
-  {
-    id: 'nebula',
-    label: 'Nebula',
-    vars: {
-      '--xpot-accent-blue': '56 189 248',
-      '--xpot-accent-violet': '99 102 241',
-      '--xpot-accent-magenta': '236 72 153',
-      '--xpot-accent-emerald': '16 185 129',
-    },
-  },
-  {
-    id: 'icy',
-    label: 'Icy',
-    vars: {
-      '--xpot-accent-blue': '34 211 238',
-      '--xpot-accent-violet': '129 140 248',
-      '--xpot-accent-magenta': '244 114 182',
-      '--xpot-accent-emerald': '16 185 129',
-    },
-  },
-  {
-    id: 'royal',
-    label: 'Royal',
-    vars: {
-      '--xpot-accent-blue': '96 165 250',
-      '--xpot-accent-violet': '139 92 246',
-      '--xpot-accent-magenta': '236 72 153',
-      '--xpot-accent-emerald': '16 185 129',
-    },
-  },
-];
-
-function applyPreset(presetId: string) {
-  const preset = PRESETS.find(p => p.id === presetId) ?? PRESETS[0];
-  const root = document.documentElement;
-
-  for (const [k, v] of Object.entries(preset.vars)) {
-    root.style.setProperty(k, v);
-  }
-
-  // Keep compat with older name used in some places
-  root.style.setProperty('--xpot-accent-purple', `var(--xpot-accent-violet)`);
-
-  window.localStorage.setItem(THEME_KEY, preset.id);
-}
-
-function OpsThemeSwitcher() {
-  const [active, setActive] = useState<string>('nebula');
-
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null;
-    const initial = saved && PRESETS.some(p => p.id === saved) ? saved : 'nebula';
-    setActive(initial);
-    applyPreset(initial);
-  }, []);
-
+function Atmosphere() {
   return (
-    <div className="hidden sm:flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Theme</span>
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* base vignette */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.05),transparent_55%),radial-gradient(circle_at_50%_110%,rgba(0,0,0,0.75),transparent_60%)]" />
 
-      <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03] backdrop-blur">
-        {PRESETS.map(p => {
-          const isActive = p.id === active;
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => {
-                setActive(p.id);
-                applyPreset(p.id);
-              }}
-              className={[
-                'h-8 px-3 text-[11px] font-semibold transition',
-                isActive ? 'bg-white/[0.10] text-slate-50' : 'text-slate-300 hover:bg-white/[0.06]',
-              ].join(' ')}
-              title={`Apply ${p.label}`}
-            >
-              {p.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* soft nebula fields */}
+      <div
+        className="
+          absolute -inset-40 opacity-85 blur-3xl
+          bg-[radial-gradient(circle_at_12%_8%,rgba(16,185,129,0.14),transparent_55%),
+              radial-gradient(circle_at_86%_14%,rgba(139,92,246,0.16),transparent_58%),
+              radial-gradient(circle_at_78%_92%,rgba(56,189,248,0.12),transparent_60%)]
+        "
+      />
+
+      {/* subtle diagonal shimmer */}
+      <div className="absolute -inset-24 opacity-35 blur-2xl bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.06),transparent)]" />
+
+      {/* top glow line */}
+      <div className="absolute left-0 right-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.25),rgba(16,185,129,0.22),rgba(139,92,246,0.20),transparent)]" />
     </div>
   );
 }
@@ -140,7 +66,6 @@ export default function XpotPageShell({
   topBarClassName = '',
   topBarProps,
   showAtmosphere = true,
-  showOpsThemeSwitcher = true,
   pageTag,
 }: XpotPageShellProps) {
   const pathname = usePathname();
@@ -153,18 +78,6 @@ export default function XpotPageShell({
   }, [pathname]);
 
   const resolvedPageTag = pageTag || inferredTag;
-  const isOpsOrAdmin = resolvedPageTag === 'ops';
-
-  const mergedRightSlot = useMemo(() => {
-    if (!isOpsOrAdmin || !showOpsThemeSwitcher) return rightSlot ?? null;
-
-    return (
-      <>
-        <OpsThemeSwitcher />
-        {rightSlot ? <div className="ml-2">{rightSlot}</div> : null}
-      </>
-    );
-  }, [isOpsOrAdmin, rightSlot, showOpsThemeSwitcher]);
 
   return (
     <div
@@ -180,7 +93,7 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {showAtmosphere && <div aria-hidden className="xpot-atmosphere" />}
+      {showAtmosphere && <Atmosphere />}
 
       <div
         className={[
@@ -193,24 +106,38 @@ export default function XpotPageShell({
           containerClassName,
         ].join(' ')}
       >
-        {(title || subtitle || mergedRightSlot) && (
+        {(title || subtitle || rightSlot) && (
           <div
             className={[
-              'mb-6 rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur',
+              // less boxy: softer border + gradient + inner sheen
+              'relative mb-6 overflow-hidden rounded-[30px]',
+              'border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.02]',
+              'shadow-[0_28px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl',
               'px-5 py-5 sm:px-7 sm:py-6',
               'grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-center',
               headerClassName,
             ].join(' ')}
           >
-            <div className="min-w-0">
+            <div
+              aria-hidden
+              className="
+                pointer-events-none absolute -inset-24 opacity-70 blur-3xl
+                bg-[radial-gradient(circle_at_18%_12%,rgba(56,189,248,0.12),transparent_55%),
+                    radial-gradient(circle_at_82%_18%,rgba(139,92,246,0.12),transparent_58%),
+                    radial-gradient(circle_at_40%_120%,rgba(16,185,129,0.10),transparent_60%)]
+              "
+            />
+            <div aria-hidden className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
+
+            <div className="relative min-w-0">
               {title && <h1 className="text-[26px] font-semibold text-slate-50 sm:text-[30px]">{title}</h1>}
               {subtitle && <p className="mt-2 text-[14px] text-slate-400 sm:text-[15px]">{subtitle}</p>}
             </div>
 
-            {mergedRightSlot && (
-              <div className="w-full justify-self-stretch sm:w-auto sm:justify-self-end">
+            {rightSlot && (
+              <div className="relative w-full justify-self-stretch sm:w-auto sm:justify-self-end">
                 <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-                  {mergedRightSlot}
+                  {rightSlot}
                 </div>
               </div>
             )}
