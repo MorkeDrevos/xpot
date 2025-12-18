@@ -2,7 +2,8 @@
 'use client';
 
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
-
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title: 'Operations' };
 import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
