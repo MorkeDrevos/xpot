@@ -7,8 +7,12 @@ import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 const PRICE_POLL_MS = 2000; // 2s - feels live without hammering Jupiter
 
-// OHLC refresh (no need to be super live)
-const OHLC_POLL_MS = 60_000; // 60s
+// 24h observed range via rolling samples (from Jupiter price ticks)
+// Store at most ~24h with sampling to avoid huge localStorage
+const RANGE_SAMPLE_MS = 10_000; // store one sample every 10s
+const RANGE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
+const RANGE_STORAGE_KEY = 'xpot_price_samples_24h_v1';
+const RANGE_MAX_SAMPLES = Math.ceil(RANGE_WINDOW_MS / RANGE_SAMPLE_MS) + 120; // small buffer
 
 type JackpotPanelProps = {
   isLocked?: boolean;
@@ -50,7 +54,7 @@ function easeOutCubic(t: number) {
 
 /**
  * "Session" key that flips at 22:00 Madrid time (your requirement).
- * DST-safe: we read Madrid hour/date via Intl, then roll date if hour >= cutoff.
+ * DST-safe: read Madrid date/hour via Intl, then roll date if hour >= cutoff.
  */
 function getMadridSessionKey(cutoffHour = 22) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -67,15 +71,13 @@ function getMadridSessionKey(cutoffHour = 22) {
   const day = Number(parts.find(p => p.type === 'day')?.value ?? '1');
   const hour = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
 
-  // We construct a UTC date from Madrid Y/M/D then "advance day" when needed.
-  // We only need a stable session identifier, not an exact timestamp.
   const base = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
   if (hour >= cutoffHour) base.setUTCDate(base.getUTCDate() + 1);
 
   const y = base.getUTCFullYear();
   const m = String(base.getUTCMonth() + 1).padStart(2, '0');
   const d = String(base.getUTCDate()).padStart(2, '0');
-  return `${y}${m}${d}`; // e.g. 20251204
+  return `${y}${m}${d}`;
 }
 
 function HeaderBadge({ label, tooltip }: { label: string; tooltip?: string }) {
@@ -114,31 +116,40 @@ type JupiterParsed = {
   priceUsd: number | null;
 };
 
-function readJupiter(payload: unknown, mint: string): JupiterParsed {
-  if (!payload || typeof payload !== 'object') return { priceUsd: null };
+function readJupiterUsdPrice(payload: unknown, mint: string): number | null {
+  // Defensive parsing across likely shapes
+  if (!payload || typeof payload !== 'object') return null;
   const p: any = payload;
 
-  // handle common shapes
-  const direct = p?.[mint]?.usdPrice;
-  const nested = p?.data?.[mint]?.price ?? p?.data?.[mint]?.usdPrice;
+  const a = p?.[mint]?.usdPrice;
+  if (typeof a === 'number' && Number.isFinite(a)) return a;
 
-  const price =
-    (typeof direct === 'number' && Number.isFinite(direct) ? direct : null) ??
-    (typeof nested === 'number' && Number.isFinite(nested) ? nested : null);
+  const b = p?.data?.[mint]?.price;
+  if (typeof b === 'number' && Number.isFinite(b)) return b;
 
-  return { priceUsd: price };
+  const c = p?.data?.[mint]?.usdPrice;
+  if (typeof c === 'number' && Number.isFinite(c)) return c;
+
+  return null;
 }
 
-type Ohlc24h = {
-  lowUsd: number;
-  highUsd: number;
-  openUsd?: number;
-  closeUsd?: number;
-  source: 'birdeye';
-};
+type PriceSample = { t: number; p: number };
 
-function getUnixNow() {
-  return Math.floor(Date.now() / 1000);
+function safeParseSamples(raw: string | null): PriceSample[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!Array.isArray(v)) return [];
+    const out: PriceSample[] = [];
+    for (const item of v) {
+      const t = Number((item as any)?.t);
+      const p = Number((item as any)?.p);
+      if (Number.isFinite(t) && Number.isFinite(p)) out.push({ t, p });
+    }
+    return out;
+  } catch {
+    return [];
+  }
 }
 
 export default function JackpotPanel({
@@ -157,7 +168,7 @@ export default function JackpotPanel({
   // Soft drift animation for the big USD number
   const [displayJackpotUsd, setDisplayJackpotUsd] = useState<number | null>(null);
 
-  // "pumped" glow + update pulse
+  // Pump glow + update pulse
   const [justPumped, setJustPumped] = useState(false);
   const pumpTimeout = useRef<number | null>(null);
   const prevJackpot = useRef<number | null>(null);
@@ -165,19 +176,21 @@ export default function JackpotPanel({
   const [justUpdated, setJustUpdated] = useState(false);
   const updatePulseTimeout = useRef<number | null>(null);
 
-  // Volatility pulse (based on tick-to-tick price change)
+  // Volatility pulse (tick-to-tick)
   const [volPulse, setVolPulse] = useState<null | 'up' | 'down'>(null);
   const volPulseTimeout = useRef<number | null>(null);
   const lastPriceUsd = useRef<number | null>(null);
 
-  // Real 24h high/low (USD) from OHLCV
-  const [ohlc24h, setOhlc24h] = useState<Ohlc24h | null>(null);
-  const [ohlcError, setOhlcError] = useState(false);
+  // 24h observed range (from rolling samples)
+  const samplesRef = useRef<PriceSample[]>([]);
+  const lastSampleAtRef = useRef<number>(0);
+  const lastPersistAtRef = useRef<number>(0);
+  const [range24h, setRange24h] = useState<{ lowUsd: number; highUsd: number } | null>(null);
 
   // Session key for "highest this session" (22:00 Madrid cut)
   const sessionKey = useMemo(() => `xpot_max_session_usd_${getMadridSessionKey(22)}`, []);
 
-  // Load max XPOT USD value for *this* session from localStorage
+  // Load max XPOT USD value for this session from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(sessionKey);
@@ -189,6 +202,33 @@ export default function JackpotPanel({
       setMaxJackpotToday(null);
     }
   }, [sessionKey]);
+
+  // Load rolling samples (for 24h range)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const now = Date.now();
+    const cutoff = now - RANGE_WINDOW_MS;
+
+    const stored = safeParseSamples(window.localStorage.getItem(RANGE_STORAGE_KEY))
+      .filter(s => s.t >= cutoff)
+      .slice(-RANGE_MAX_SAMPLES);
+
+    samplesRef.current = stored;
+    lastSampleAtRef.current = stored.length ? stored[stored.length - 1].t : 0;
+
+    if (stored.length >= 2) {
+      let low = Infinity;
+      let high = -Infinity;
+      for (const s of stored) {
+        if (s.p < low) low = s.p;
+        if (s.p > high) high = s.p;
+      }
+      if (Number.isFinite(low) && Number.isFinite(high)) {
+        setRange24h({ lowUsd: low * JACKPOT_XPOT, highUsd: high * JACKPOT_XPOT });
+      }
+    }
+  }, []);
 
   // Live price from Jupiter
   useEffect(() => {
@@ -207,8 +247,7 @@ export default function JackpotPanel({
         if (!res.ok) throw new Error('Jupiter price fetch failed');
 
         const json = await res.json();
-        const parsed = readJupiter(json, TOKEN_MINT);
-        const price = parsed.priceUsd;
+        const price = readJupiterUsdPrice(json, TOKEN_MINT);
 
         if (typeof price === 'number' && Number.isFinite(price)) {
           if (aborted) return;
@@ -343,115 +382,52 @@ export default function JackpotPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jackpotUsd]);
 
-  // Real 24h OHLC high/low from Birdeye
+  // Update rolling 24h samples + compute real observed high/low
   useEffect(() => {
-    let timer: number | null = null;
-    let aborted = false;
-    const ctrl = new AbortController();
+    if (typeof window === 'undefined') return;
+    if (priceUsd == null || !Number.isFinite(priceUsd)) return;
 
-    async function fetchOhlc24h() {
-      // Needs a PUBLIC key (client-side). If you prefer server-side, we can move to an internal API route later.
-      const key =
-        process.env.NEXT_PUBLIC_BIRDEYE_API_KEY ||
-        process.env.NEXT_PUBLIC_BIRDEYE_KEY ||
-        '';
+    const now = Date.now();
+    const cutoff = now - RANGE_WINDOW_MS;
 
-      if (!key) {
-        setOhlc24h(null);
-        setOhlcError(false);
-        return;
+    // Store sample at most every RANGE_SAMPLE_MS
+    if (now - lastSampleAtRef.current >= RANGE_SAMPLE_MS) {
+      const arr = samplesRef.current;
+
+      arr.push({ t: now, p: priceUsd });
+      lastSampleAtRef.current = now;
+
+      // Trim by time
+      while (arr.length && arr[0].t < cutoff) arr.shift();
+
+      // Hard cap (should rarely hit, but safe)
+      if (arr.length > RANGE_MAX_SAMPLES) {
+        arr.splice(0, arr.length - RANGE_MAX_SAMPLES);
       }
 
-      try {
-        setOhlcError(false);
+      // Compute observed high/low
+      let low = Infinity;
+      let high = -Infinity;
+      for (const s of arr) {
+        if (s.p < low) low = s.p;
+        if (s.p > high) high = s.p;
+      }
 
-        const now = getUnixNow();
-        const from = now - 24 * 60 * 60;
+      if (Number.isFinite(low) && Number.isFinite(high)) {
+        setRange24h({ lowUsd: low * JACKPOT_XPOT, highUsd: high * JACKPOT_XPOT });
+      }
 
-        // Birdeye OHLCV - we request 1h candles for last 24h, then compute high/low.
-        // If Birdeye changes params, this will fail gracefully and just hide the band.
-        const url =
-          `https://public-api.birdeye.so/defi/v3/ohlcv` +
-          `?address=${encodeURIComponent(TOKEN_MINT)}` +
-          `&type=1H` +
-          `&time_from=${from}` +
-          `&time_to=${now}`;
-
-        const res = await fetch(url, {
-          signal: ctrl.signal,
-          cache: 'no-store',
-          headers: {
-            accept: 'application/json',
-            'X-API-KEY': key,
-          },
-        });
-
-        if (!res.ok) throw new Error(`Birdeye OHLCV failed (${res.status})`);
-
-        const json: any = await res.json();
-        if (aborted) return;
-
-        // Try common response shapes
-        const items: any[] =
-          (Array.isArray(json?.data?.items) ? json.data.items : null) ??
-          (Array.isArray(json?.data) ? json.data : null) ??
-          (Array.isArray(json?.items) ? json.items : null) ??
-          [];
-
-        if (!items.length) {
-          setOhlc24h(null);
-          return;
+      // Persist at most once per minute (avoids spamming localStorage)
+      if (now - lastPersistAtRef.current >= 60_000) {
+        lastPersistAtRef.current = now;
+        try {
+          window.localStorage.setItem(RANGE_STORAGE_KEY, JSON.stringify(arr));
+        } catch {
+          // ignore storage failures
         }
-
-        // Each candle commonly: { o, h, l, c, v, unixTime } (naming can vary)
-        const highs = items.map(i => Number(i?.h ?? i?.high)).filter(n => Number.isFinite(n));
-        const lows = items.map(i => Number(i?.l ?? i?.low)).filter(n => Number.isFinite(n));
-        const opens = items.map(i => Number(i?.o ?? i?.open)).filter(n => Number.isFinite(n));
-        const closes = items.map(i => Number(i?.c ?? i?.close)).filter(n => Number.isFinite(n));
-
-        if (!highs.length || !lows.length) {
-          setOhlc24h(null);
-          return;
-        }
-
-        const high = Math.max(...highs);
-        const low = Math.min(...lows);
-
-        setOhlc24h({
-          lowUsd: low * JACKPOT_XPOT,
-          highUsd: high * JACKPOT_XPOT,
-          openUsd: opens.length ? opens[0] * JACKPOT_XPOT : undefined,
-          closeUsd: closes.length ? closes[closes.length - 1] * JACKPOT_XPOT : undefined,
-          source: 'birdeye',
-        });
-      } catch (err) {
-        if ((err as any)?.name === 'AbortError') return;
-        console.error('[XPOT] Birdeye OHLCV error:', err);
-        if (aborted) return;
-        setOhlcError(true);
-        setOhlc24h(null);
       }
     }
-
-    function onVis() {
-      if (typeof document === 'undefined') return;
-      if (document.visibilityState === 'visible') fetchOhlc24h();
-    }
-
-    fetchOhlc24h();
-    timer = window.setInterval(fetchOhlc24h, OHLC_POLL_MS);
-
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', onVis);
-    }
-
-    return () => {
-      aborted = true;
-      ctrl.abort();
-      if (timer !== null) window.clearInterval(timer);
-      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
-    };
-  }, []);
+  }, [priceUsd]);
 
   // Milestones (based on current live XPOT USD value)
   const reachedMilestone =
@@ -653,7 +629,7 @@ export default function JackpotPanel({
         </div>
 
         <div className="flex flex-col items-end gap-1 text-xs">
-          {(maxJackpotToday || reachedMilestone || nextMilestone || ohlc24h) && (
+          {(maxJackpotToday || reachedMilestone || nextMilestone || range24h) && (
             <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
               XPOT price context
             </p>
@@ -678,30 +654,24 @@ export default function JackpotPanel({
             </p>
           )}
 
-          {/* Real 24h High/Low band */}
-          {ohlc24h && (
+          {/* Real observed 24h High/Low (from rolling Jupiter samples) */}
+          {range24h && (
             <div className="mt-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-right">
               <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                24h range (high/low)
+                24h range (observed)
               </p>
               <p className="mt-1 text-[11px] text-slate-300">
                 <span className="text-slate-500">Low</span>{' '}
-                <span className="font-mono text-slate-100">{formatUsd(ohlc24h.lowUsd)}</span>
+                <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span>
               </p>
               <p className="text-[11px] text-slate-300">
                 <span className="text-slate-500">High</span>{' '}
-                <span className="font-mono text-slate-100">{formatUsd(ohlc24h.highUsd)}</span>
+                <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
               </p>
               <p className="mt-1 text-[10px] text-slate-500">
-                Source <span className="font-mono text-slate-300">Birdeye OHLCV</span>
+                Source <span className="font-mono text-slate-300">Jupiter ticks</span>
               </p>
             </div>
-          )}
-
-          {ohlcError && (
-            <p className="mt-2 text-[11px] font-semibold text-amber-300">
-              24h range not available.
-            </p>
           )}
 
           {/* Volatility pulse label */}
