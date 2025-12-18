@@ -135,11 +135,12 @@ export default function MobileMenu({
     <AnimatePresence>
       {open ? (
         <motion.div
-  initial={{ opacity: 0, y: -10, scale: 0.98 }}
-  animate={{ opacity: 1, y: 0, scale: 1 }}
-  exit={{ opacity: 0, y: -10, scale: 0.98 }}
-  transition={{ duration: 0.25 }}
-/>
+          className="fixed inset-0 z-[90]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22 }}
+        >
           {/* Backdrop */}
           <button
             type="button"
@@ -151,10 +152,10 @@ export default function MobileMenu({
           {/* Panel */}
           <motion.aside
             className={`absolute right-0 top-0 h-full w-full ${maxWidthClassName} border-l border-white/10 bg-[linear-gradient(180deg,rgba(2,2,10,0.96),rgba(2,2,10,0.90))] shadow-[0_40px_120px_rgba(0,0,0,0.75)]`}
-            initial={{ x: 48, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 48, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+            initial={{ x: 64, opacity: 0, scale: 0.995 }}
+            animate={{ x: 0, opacity: 1, scale: 1 }}
+            exit={{ x: 64, opacity: 0, scale: 0.995 }}
+            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
             role="dialog"
             aria-modal="true"
           >
@@ -230,7 +231,7 @@ export default function MobileMenu({
             <div className="h-[calc(100%-72px)] overflow-y-auto px-5 py-5">
               <div className="space-y-4">
                 {sections.map((section, idx) => (
-                  <SectionBlock key={idx} section={section} onNavigate={onClose} />
+                  <SectionBlock key={`${section.title ?? 'section'}-${idx}`} section={section} onNavigate={onClose} />
                 ))}
               </div>
 
@@ -265,8 +266,8 @@ function SectionBlock({
         ) : null}
 
         <div className="px-2 pb-2">
-          {links.map(l => (
-            <MenuLink key={l.href + l.label} link={l} onNavigate={onNavigate} />
+          {links.map((l) => (
+            <MenuLink key={`${l.href}-${l.label}`} link={l} onNavigate={onNavigate} />
           ))}
         </div>
       </div>
@@ -277,7 +278,7 @@ function SectionBlock({
     <div className={shell}>
       <button
         type="button"
-        onClick={() => setOpen(v => !v)}
+        onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-3 px-4 py-4"
       >
         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/55">{title || 'Menu'}</p>
@@ -290,11 +291,12 @@ function SectionBlock({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
             <div className="px-2 pb-2">
-              {links.map(l => (
-                <MenuLink key={l.href + l.label} link={l} onNavigate={onNavigate} />
+              {links.map((l) => (
+                <MenuLink key={`${l.href}-${l.label}`} link={l} onNavigate={onNavigate} />
               ))}
             </div>
           </motion.div>
