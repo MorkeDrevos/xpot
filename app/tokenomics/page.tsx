@@ -261,7 +261,7 @@ function VaultGroupPanel({
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Live balances and recent owner wallet transactions (auditable).
+            Live balances and recent owner wallet activity (verifiable).
             {typeof data?.fetchedAt === 'number' ? (
               <span className="ml-2 text-slate-600">Updated {timeAgo(data.fetchedAt)}</span>
             ) : null}
@@ -368,7 +368,8 @@ function VaultGroupPanel({
 
                   {v.recentTx?.length ? (
                     <div className="mt-2 space-y-2">
-                      {v.recentTx.slice(0, 5).map(tx => {
+                      {/* ✅ limit to last 3 */}
+                      {v.recentTx.slice(0, 3).map(tx => {
                         const tsMs = typeof tx.blockTime === 'number' ? tx.blockTime * 1000 : null;
                         const hasErr = tx.err != null;
 
@@ -424,15 +425,37 @@ function DonutAllocation({
   items,
   selectedKey,
   onSelect,
+  openKey,
+  setOpenKey,
+  vaultData,
+  vaultLoading,
+  vaultError,
+  vaultGroupByAllocKey,
+  runwayTable,
+  yearsOfRunway,
+  distributionReserve,
 }: {
   items: Allocation[];
   selectedKey: string | null;
   onSelect: (key: string) => void;
+
+  openKey: string | null;
+  setOpenKey: (fn: (k: string | null) => string | null) => void;
+
+  vaultData: ApiVaultResponse | null;
+  vaultLoading: boolean;
+  vaultError: boolean;
+  vaultGroupByAllocKey: Record<string, string>;
+
+  runwayTable: { label: string; daily: number; highlight?: true }[];
+  yearsOfRunway: (daily: number) => number;
+  distributionReserve: number;
 }) {
   const reduceMotion = useReducedMotion();
 
-  const size = 230;
-  const r = 86;
+  // ✅ bigger circle
+  const size = 320;
+  const r = 124;
   const c = 2 * Math.PI * r;
 
   const segments = useMemo(() => {
@@ -472,7 +495,7 @@ function DonutAllocation({
       <div className="relative z-10 flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Allocation overview</p>
-          <p className="mt-1 text-xs text-slate-500">Click a slice for the breakdown. Expand cards below for vaults.</p>
+          <p className="mt-1 text-xs text-slate-500">Select a slice, then expand the matching card for details and vaults.</p>
         </div>
         <Pill tone="sky">
           <PieChart className="h-3.5 w-3.5" />
@@ -480,7 +503,8 @@ function DonutAllocation({
         </Pill>
       </div>
 
-      <div className="relative z-10 mt-5 grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
+      {/* ✅ give donut more room, tabs less width */}
+      <div className="relative z-10 mt-5 grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         <div className="flex items-center justify-center">
           <div className="relative">
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
@@ -501,7 +525,7 @@ function DonutAllocation({
                 r={r}
                 fill="none"
                 stroke="rgba(15,23,42,0.85)"
-                strokeWidth="18"
+                strokeWidth="20"
               />
 
               {/* segments */}
@@ -509,7 +533,6 @@ function DonutAllocation({
                 {segments.map(seg => {
                   const isActive = seg.key === (selected?.key ?? null);
                   const stroke = toneStroke(seg.tone);
-                  const glow = toneGlow(seg.tone);
 
                   return (
                     <motion.circle
@@ -519,7 +542,7 @@ function DonutAllocation({
                       r={r}
                       fill="none"
                       stroke={stroke}
-                      strokeWidth={isActive ? 20 : 18}
+                      strokeWidth={isActive ? 22 : 20}
                       strokeLinecap="round"
                       strokeDasharray={seg.dasharray}
                       strokeDashoffset={seg.dashoffset}
@@ -528,13 +551,7 @@ function DonutAllocation({
                         filter: isActive ? 'url(#xpotGlow)' : undefined,
                       }}
                       initial={false}
-                      animate={
-                        reduceMotion
-                          ? {}
-                          : {
-                              opacity: isActive ? 1 : 0.7,
-                            }
-                      }
+                      animate={reduceMotion ? {} : { opacity: isActive ? 1 : 0.7 }}
                       onClick={() => onSelect(seg.key)}
                       onMouseEnter={() => onSelect(seg.key)}
                     />
@@ -546,7 +563,7 @@ function DonutAllocation({
               <circle
                 cx={size / 2}
                 cy={size / 2}
-                r={r - 18}
+                r={r - 22}
                 fill="rgba(2,2,10,0.55)"
                 stroke="rgba(255,255,255,0.06)"
                 strokeWidth="1"
@@ -558,10 +575,10 @@ function DonutAllocation({
               <div className="text-center">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Selected</p>
                 <p className="mt-2 text-sm font-semibold text-slate-100">{selected?.label ?? '—'}</p>
-                <p className="mt-1 font-mono text-2xl font-semibold text-slate-100">
+                <p className="mt-1 font-mono text-3xl font-semibold text-slate-100">
                   {selected ? `${selected.pct}%` : '—'}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-500">Tap legend to switch</p>
+                <p className="mt-1 text-[11px] text-slate-500">Select any slice or card</p>
               </div>
             </div>
 
@@ -581,56 +598,129 @@ function DonutAllocation({
           </div>
         </div>
 
-        {/* ranked legend */}
-        <div className="grid gap-2">
-          {items.map((a, idx) => {
-            const active = a.key === (selected?.key ?? null);
+        {/* ✅ cards live here (no duplicate legend + cards) */}
+        <div className="grid gap-3">
+          {items.map(a => {
+            const active = openKey === a.key;
+            const isSelected = selected?.key === a.key;
+            const vaultGroupKey = vaultGroupByAllocKey[a.key] ?? a.key;
+
             return (
-              <button
+              <div
                 key={a.key}
-                type="button"
-                onClick={() => onSelect(a.key)}
                 className={[
-                  'group w-full rounded-2xl border px-4 py-3 text-left transition',
-                  active
-                    ? 'border-white/10 bg-white/[0.04]'
-                    : 'border-slate-900/70 bg-slate-950/45 hover:bg-slate-950/65',
+                  'rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
+                  isSelected ? 'border-white/12' : 'border-slate-900/70',
                 ].join(' ')}
               >
-                <div className="flex items-center gap-3">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      background: toneStroke(a.tone),
-                      boxShadow: `0 0 14px ${toneGlow(a.tone)}`,
-                    }}
-                  />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelect(a.key);
+                    setOpenKey(k => (k === a.key ? null : a.key));
+                  }}
+                  className="group w-full rounded-2xl px-4 py-3 text-left hover:bg-slate-950/65 transition"
+                >
+                  <div className="flex items-start gap-3">
+                    <span
+                      className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                      style={{
+                        background: toneStroke(a.tone),
+                        boxShadow: `0 0 14px ${toneGlow(a.tone)}`,
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="truncate text-sm font-semibold text-slate-100">{a.label}</p>
+                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[12px] text-slate-100">
+                          {a.pct}%
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-slate-500">{a.note}</p>
 
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-100">
-                      {idx + 1}. {a.label}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">{a.note}</p>
+                      <div className="mt-3 h-2 rounded-full bg-slate-900/70">
+                        <motion.div
+                          className="h-2 rounded-full"
+                          initial={false}
+                          animate={{ width: pctToBar(a.pct) }}
+                          transition={{ duration: 0.35 }}
+                          style={{
+                            background: `linear-gradient(90deg, ${toneStroke(a.tone)}, rgba(255,255,255,0.08))`,
+                            boxShadow: active ? `0 0 18px ${toneGlow(a.tone)}` : undefined,
+                          }}
+                        />
+                      </div>
+
+                      <p className="mt-2 text-[11px] text-slate-600">{active ? 'Tap to collapse' : 'Tap to expand'}</p>
+                    </div>
                   </div>
+                </button>
 
-                  <div className="ml-auto flex items-center gap-3">
-                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[12px] text-slate-100">
-                      {a.pct}%
-                    </span>
-                  </div>
-                </div>
+                <AnimatePresence initial={false}>
+                  {active && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 pb-4">
+                        <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                          <p className="text-sm text-slate-200">{a.note}</p>
+                          <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
 
-                <div className="mt-3 h-2 rounded-full bg-slate-900/70">
-                  <div
-                    className="h-2 rounded-full"
-                    style={{
-                      width: pctToBar(a.pct),
-                      background: `linear-gradient(90deg, ${toneStroke(a.tone)}, rgba(255,255,255,0.08))`,
-                      boxShadow: active ? `0 0 18px ${toneGlow(a.tone)}` : undefined,
-                    }}
-                  />
-                </div>
-              </button>
+                          {a.key === 'distribution' && (
+                            <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                                Distribution runway table
+                              </p>
+
+                              <div className="mt-3 space-y-2">
+                                {runwayTable.map(r => {
+                                  const years = yearsOfRunway(r.daily);
+                                  return (
+                                    <div
+                                      key={r.label}
+                                      className={[
+                                        'flex items-center justify-between rounded-lg px-3 py-2 text-xs',
+                                        r.highlight
+                                          ? 'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/30'
+                                          : 'bg-slate-950/60 text-slate-300',
+                                      ].join(' ')}
+                                    >
+                                      <span className="font-mono">{r.label}</span>
+                                      <span className="font-semibold">{years.toFixed(2)} years</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              <p className="mt-3 text-[11px] text-slate-500">
+                                Reserve size: {distributionReserve.toLocaleString('en-US')} XPOT (14% of supply). Daily
+                                distribution is fixed at {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Minting disabled. Unused
+                                reserve remains locked.
+                              </p>
+                            </div>
+                          )}
+
+                          <VaultGroupPanel
+                            title="Vaults (live)"
+                            groupKey={vaultGroupKey}
+                            data={vaultData}
+                            isLoading={vaultLoading}
+                            hadError={vaultError}
+                          />
+
+                          <p className="mt-3 text-[11px] text-slate-600">
+                            Design intent: dedicated vaults, timelocks and public wallets so this stays verifiable over time.
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             );
           })}
         </div>
@@ -672,7 +762,7 @@ export default function TokenomicsPage() {
         note: 'Pre-allocated XPOT reserved for long-term distribution.',
         detail: `Protocol rule: ${fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT per day. Exact 10-year requirement: ${TEN_YEARS_REQUIRED.toLocaleString(
           'en-US',
-        )} XPOT. No minting - unused reserve remains locked and auditable.`,
+        )} XPOT. No minting - unused reserve remains locked and verifiable.`,
         tone: 'emerald',
       },
       {
@@ -681,16 +771,16 @@ export default function TokenomicsPage() {
         pct: 26,
         note: 'LP depth, market resilience and controlled expansion.',
         detail:
-          'Used to seed and defend liquidity, reduce fragility and keep price discovery healthy. The goal is stability and trust, not hype.',
+          'Used to seed and support liquidity, reduce fragility and keep price discovery healthy. The goal is stability and trust, not noise.',
         tone: 'sky',
       },
       {
         key: 'treasury',
         label: 'Treasury and runway',
         pct: 23,
-        note: 'Operational runway for audits, infra, legal and long-horizon execution.',
+        note: 'Operational runway for audits, infrastructure, legal and long-horizon execution.',
         detail:
-          'This is operational runway (not the daily distribution runway). It funds security, infrastructure, compliance and long-term execution without touching the distribution reserve.',
+          'This is operational runway (separate from the daily distribution reserve). It funds security, infrastructure and long-term execution without touching distribution.',
         tone: 'slate',
       },
       {
@@ -717,7 +807,7 @@ export default function TokenomicsPage() {
         pct: 7,
         note: 'Streak rewards, referral boosts and reputation-based unlocks.',
         detail:
-          'Built for delight over farming: targeted incentives for real users and real momentum. Surprise rewards beat extractive grind loops.',
+          'Built for real users, not extraction. Incentives should reward participation, consistency and constructive momentum.',
         tone: 'emerald',
       },
       {
@@ -726,7 +816,7 @@ export default function TokenomicsPage() {
         pct: 13,
         note: 'Locked buffer for unknowns and future opportunities.',
         detail:
-          'This stays locked by default. If unlocked, it should be governed, transparent and reported with public wallets and clear purpose.',
+          'This stays locked by default. If it ever moves, it should be deliberate, transparent and reported with public wallets and a clear purpose.',
         tone: 'slate',
       },
     ],
@@ -752,9 +842,9 @@ export default function TokenomicsPage() {
   };
 
   // ✅ Nothing pre-opened
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [openKey, setOpenKeyRaw] = useState<string | null>(null);
 
-  // Donut selection can default to largest (visual only, not “opened”)
+  // Donut selection can default to largest (visual only)
   const [selectedKey, setSelectedKey] = useState<string | null>(sortedAllocation[0]?.key ?? null);
 
   useEffect(() => {
@@ -764,10 +854,15 @@ export default function TokenomicsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortedAllocation]);
 
+  // wrapper to match the DonutAllocation signature
+  const setOpenKey = (fn: (k: string | null) => string | null) => {
+    setOpenKeyRaw(prev => fn(prev));
+  };
+
   return (
     <XpotPageShell
       title="Tokenomics"
-      subtitle="XPOT is designed as a reward protocol with compounding network effects, not a one-off game."
+      subtitle="XPOT is built as a daily distribution protocol - transparent, repeatable, and verifiable."
       topBarProps={{
         pillText: 'TOKENOMICS',
         sloganRight: 'Protocol-grade distribution',
@@ -792,11 +887,11 @@ export default function TokenomicsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Pill tone="emerald">
                     <Sparkles className="h-3.5 w-3.5" />
-                    Reward protocol
+                    Daily distribution
                   </Pill>
                   <Pill tone="sky">
                     <ShieldCheck className="h-3.5 w-3.5" />
-                    Public by handle
+                    Verifiable by design
                   </Pill>
                   <Pill tone="amber">
                     <Lock className="h-3.5 w-3.5" />
@@ -805,14 +900,14 @@ export default function TokenomicsPage() {
                 </div>
 
                 <h1 className="text-balance text-3xl font-semibold leading-tight sm:text-4xl">
-                  A distribution designed to outlast hype.
+                  A distribution designed to outlast noise.
                   <span className="text-emerald-300"> Rewards come first.</span>
                 </h1>
 
                 <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-                  Traditional lottery and casino models extract value and hide it behind black boxes. XPOT flips the equation:
-                  rewards are the primitive, identity is public by handle and payouts are verifiable on-chain. Over time, this becomes
-                  infrastructure for creators, communities and sponsors to run daily rewards without becoming a casino.
+                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are
+                  public, and outcomes can be checked on-chain. Over time, this becomes infrastructure that communities, creators,
+                  and sponsors can plug into with confidence.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -824,7 +919,7 @@ export default function TokenomicsPage() {
                     Terms
                   </Link>
                   <span className="text-[11px] text-slate-500">
-                    Allocation prioritizes rewards, resilience and long-term execution.
+                    Allocation prioritizes distribution, resilience, and long-term execution.
                   </span>
                 </div>
 
@@ -850,81 +945,13 @@ export default function TokenomicsPage() {
                 </div>
               </div>
 
-              {/* RIGHT */}
-              <div className="lg:col-span-5">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
-                  <div className="sm:col-span-2 rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Current supply</p>
-                    <Money value={supply.toLocaleString('en-US')} suffix="XPOT" />
-                    <p className="mt-2 text-xs text-slate-500">
-                      Decimals: <span className="font-mono text-slate-200">{decimals}</span>
-                    </p>
-
-                    <div className="mt-4 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply integrity</p>
-
-                      <div className="mt-3 grid gap-2">
-                        <div className="flex items-center gap-2 text-xs text-slate-300">
-                          <Lock className="h-4 w-4 text-emerald-300" />
-                          Fixed supply - 50B minted, supply locked
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-300">
-                          <ShieldCheck className="h-4 w-4 text-sky-300" />
-                          Minting disabled - mint authority revoked
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-300">
-                          <BadgeCheck className="h-4 w-4 text-amber-200" />
-                          Metadata finalized - verifiable in explorer
-                        </div>
-                      </div>
-
-                      <p className="mt-3 text-[11px] text-slate-500">
-                        Everything above should be verifiable on-chain via Solscan and SPL tooling.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Core promise</p>
-                    <p className="mt-2 text-sm text-slate-200">Daily rewards that grow into an ecosystem</p>
-                    <div className="mt-3 grid gap-2">
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <BadgeCheck className="h-4 w-4 text-emerald-300" />
-                        On-chain payout verification
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <Users className="h-4 w-4 text-sky-300" />
-                        Public identity by X handle
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <Blocks className="h-4 w-4 text-amber-200" />
-                        Modules can plug in later
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">North star</p>
-                    <p className="mt-2 text-sm text-slate-200">Become the daily rewards layer for the internet</p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      Disruption comes from transparency, repeatability and sponsor-friendly distribution.
-                    </p>
-
-                    <div className="mt-4 rounded-xl border border-slate-900/70 bg-slate-950/55 p-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
-                      <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
-                      <p className="mt-2 text-xs text-slate-500">If it cannot be audited, it should not exist.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/* /right */}
+              {/* RIGHT (removed - duplicate section per your instruction) */}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ALLOCATION VISUAL + CARDS */}
+      {/* ALLOCATION VISUAL + EXPANDABLE CARDS */}
       <section className="mt-8">
         <div className={CARD}>
           <div
@@ -940,7 +967,7 @@ export default function TokenomicsPage() {
               <div>
                 <p className="text-lg font-semibold text-slate-100">Distribution map</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Visual first. Then expand cards for details and live vaults.
+                  Select a slice, then expand the matching card for the full breakdown and live vaults.
                 </p>
               </div>
               <Pill tone="sky">
@@ -950,250 +977,35 @@ export default function TokenomicsPage() {
             </div>
 
             <div className="mt-6">
-              <DonutAllocation items={sortedAllocation} selectedKey={selectedKey} onSelect={setSelectedKey} />
-            </div>
-
-            {/* Cards (details) */}
-            <div className="mt-6 grid gap-3 lg:grid-cols-2">
-              {sortedAllocation.map(a => {
-                const active = openKey === a.key;
-                const vaultGroupKey = VAULT_GROUP_BY_ALLOC_KEY[a.key] ?? a.key;
-
-                return (
-                  <div
-                    key={a.key}
-                    className="rounded-[26px] border border-slate-900/70 bg-slate-950/50 shadow-[0_20px_90px_rgba(0,0,0,0.40)]"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setOpenKey(k => (k === a.key ? null : a.key))}
-                      className="group w-full rounded-[26px] px-5 py-4 text-left hover:bg-slate-950/65 transition"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{
-                              background: toneStroke(a.tone),
-                              boxShadow: `0 0 14px ${toneGlow(a.tone)}`,
-                            }}
-                          />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-100">{a.label}</p>
-                            <p className="mt-0.5 text-xs text-slate-500">{a.note}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[12px] text-slate-100">
-                            {a.pct}%
-                          </span>
-                        </div>
-
-                        <div className="w-full">
-                          <div className="mt-1 h-2 rounded-full bg-slate-900/70">
-                            <motion.div
-                              className="h-2 rounded-full"
-                              initial={false}
-                              animate={{ width: pctToBar(a.pct) }}
-                              transition={{ duration: 0.35 }}
-                              style={{
-                                background: `linear-gradient(90deg, ${toneStroke(a.tone)}, rgba(255,255,255,0.08))`,
-                              }}
-                            />
-                          </div>
-                          <p className="mt-2 text-[11px] text-slate-600">
-                            {active ? 'Tap to collapse' : 'Tap to expand'}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {active && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.22 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-5 pb-5">
-                            <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                              <p className="text-sm text-slate-200">{a.note}</p>
-                              <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
-
-                              {a.key === 'distribution' && (
-                                <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
-                                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                                    Distribution runway table
-                                  </p>
-
-                                  <div className="mt-3 space-y-2">
-                                    {runwayTable.map(r => {
-                                      const years = yearsOfRunway(r.daily);
-                                      return (
-                                        <div
-                                          key={r.label}
-                                          className={[
-                                            'flex items-center justify-between rounded-lg px-3 py-2 text-xs',
-                                            r.highlight
-                                              ? 'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/30'
-                                              : 'bg-slate-950/60 text-slate-300',
-                                          ].join(' ')}
-                                        >
-                                          <span className="font-mono">{r.label}</span>
-                                          <span className="font-semibold">{years.toFixed(2)} years</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-
-                                  <p className="mt-3 text-[11px] text-slate-500">
-                                    Reserve size: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT (14% of supply). Daily
-                                    distribution is fixed at {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Minting disabled. Unused
-                                    reserve remains locked.
-                                  </p>
-                                </div>
-                              )}
-
-                              <VaultGroupPanel
-                                title="Vaults (live)"
-                                groupKey={vaultGroupKey}
-                                data={vaultData}
-                                isLoading={vaultLoading}
-                                hadError={vaultError}
-                              />
-
-                              <p className="mt-3 text-[11px] text-slate-600">
-                                Implementation: dedicated vaults, timelocks and public wallets so allocations stay auditable.
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              })}
+              <DonutAllocation
+                items={sortedAllocation}
+                selectedKey={selectedKey}
+                onSelect={setSelectedKey}
+                openKey={openKey}
+                setOpenKey={setOpenKey}
+                vaultData={vaultData}
+                vaultLoading={vaultLoading}
+                vaultError={vaultError}
+                vaultGroupByAllocKey={VAULT_GROUP_BY_ALLOC_KEY}
+                runwayTable={runwayTable}
+                yearsOfRunway={yearsOfRunway}
+                distributionReserve={DISTRIBUTION_RESERVE}
+              />
             </div>
           </div>
         </div>
       </section>
 
-      {/* UTILITY + LONG-TERM */}
-      <section className="mt-6 grid gap-4 lg:grid-cols-2">
-        <div className={CARD}>
-          <div
-            className="
-              pointer-events-none absolute -inset-44 opacity-75 blur-3xl
-              bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_60%),
-                  radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%)]
-            "
-          />
-          <div className="relative z-10 p-6 lg:p-8">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-100">Utility map</p>
-                <p className="mt-1 text-xs text-slate-400">Why hold XPOT when you could just watch?</p>
-              </div>
-              <Pill tone="emerald">
-                <TrendingUp className="h-3.5 w-3.5" />
-                Flywheel
-              </Pill>
-            </div>
-
-            <div className="mt-5 grid gap-3">
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                  <Gift className="h-4 w-4 text-emerald-300" />
-                  Eligibility
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Holding XPOT is the requirement to claim entry. No purchases, no ticket sales and no casino vibes.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                  <Crown className="h-4 w-4 text-amber-200" />
-                  Status and reputation
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Your handle becomes a public identity. Wins, streaks and participation can build a profile that unlocks future
-                  perks and sponsor drops.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                  <Flame className="h-4 w-4 text-sky-300" />
-                  Sponsor-funded rewards
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Brands buy XPOT to fund bonus drops. Holders get value, sponsors get measurable attention and the protocol grows
-                  without selling tickets.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                  Transparency edge
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Casinos win by opacity. XPOT wins by verifiability. Over time, that becomes a trust moat.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className={CARD}>
-          <div className="relative z-10 p-6 lg:p-8">
-            <p className="text-sm font-semibold text-slate-100">Long-term: why this can disrupt</p>
-            <p className="mt-2 text-sm leading-relaxed text-slate-300">
-              The endgame is not “a meme draw”. The endgame is a protocol that communities and brands plug into for daily rewards
-              with identity and transparency baked in.
-            </p>
-
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <Link href="/roadmap" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                View roadmap
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-
-              <a
-                href="https://solscan.io"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
-              >
-                Token explorer
-                <ExternalLink className="h-4 w-4 text-slate-500" />
-              </a>
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
-              <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
-              <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                Every distribution bucket can be mapped to wallets, ATAs and on-chain history. If it cannot be audited, it should
-                not exist.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* UTILITY + LONG-TERM (removed per your instruction: “remove all from img2”) */}
 
       {/* FOOTER */}
       <footer className="mt-10 pb-10">
         <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
           <span className="inline-flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-            Tokenomics is premium-first: simple, verifiable and sponsor-friendly.
+            Tokenomics is built to be clear, verifiable, and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v8</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v9</span>
         </div>
       </footer>
     </XpotPageShell>
