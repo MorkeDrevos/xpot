@@ -16,7 +16,8 @@ function cleanHandle(h: string) {
 // Public avatar provider (no auth). Swap later to your own cached proxy endpoint.
 function avatarFromHandle(handle: string) {
   const h = cleanHandle(handle);
-  return `https://unavatar.io/twitter/${encodeURIComponent(h)}`;
+  const minuteKey = Math.floor(Date.now() / 60000); // refresh at most once per minute
+return `https://unavatar.io/twitter/${encodeURIComponent(h)}?v=${minuteKey}`;
 }
 
 export default function LiveEntrantsLounge({
