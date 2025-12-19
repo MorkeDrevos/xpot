@@ -292,10 +292,7 @@ function VaultGroupPanel({
             const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
-              <div
-                key={`${groupKey}:${v.address}`}
-                className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3"
-              >
+              <div key={`${groupKey}:${v.address}`} className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-100">
@@ -347,9 +344,7 @@ function VaultGroupPanel({
                     <p className="mt-1 font-mono text-sm text-slate-100">
                       {ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}
                     </p>
-                    <p className="mt-1 text-[11px] text-slate-600">
-                      {decimals != null ? `Decimals: ${decimals}` : null}
-                    </p>
+                    <p className="mt-1 text-[11px] text-slate-600">{decimals != null ? `Decimals: ${decimals}` : null}</p>
                   </div>
                 </div>
 
@@ -379,11 +374,7 @@ function VaultGroupPanel({
                               </a>
 
                               <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                                {tsMs != null ? (
-                                  <span>{timeAgo(tsMs)}</span>
-                                ) : (
-                                  <span className="text-slate-700">—</span>
-                                )}
+                                {tsMs != null ? <span>{timeAgo(tsMs)}</span> : <span className="text-slate-700">—</span>}
                                 {hasErr ? (
                                   <span className="rounded-full border border-amber-400/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
                                     Error
@@ -446,7 +437,6 @@ function DonutAllocation({
 }) {
   const reduceMotion = useReducedMotion();
 
-  // Bigger donut (img 6)
   const size = 380;
   const r = 148;
   const c = 2 * Math.PI * r;
@@ -504,19 +494,12 @@ function DonutAllocation({
                 </filter>
               </defs>
 
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={r}
-                fill="none"
-                stroke="rgba(15,23,42,0.85)"
-                strokeWidth="22"
-              />
+              <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(15,23,42,0.85)" strokeWidth="22" />
 
               <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
                 {segments.map(seg => {
                   const isActive = seg.key === (selected?.key ?? null);
-                  const stroke = toneStroke(selected?.key === seg.key ? seg.tone : seg.tone);
+                  const stroke = toneStroke(seg.tone);
 
                   return (
                     <motion.circle
@@ -530,10 +513,7 @@ function DonutAllocation({
                       strokeLinecap="round"
                       strokeDasharray={seg.dasharray}
                       strokeDashoffset={seg.dashoffset}
-                      style={{
-                        cursor: 'pointer',
-                        filter: isActive ? 'url(#xpotGlow)' : undefined,
-                      }}
+                      style={{ cursor: 'pointer', filter: isActive ? 'url(#xpotGlow)' : undefined }}
                       initial={false}
                       animate={reduceMotion ? {} : { opacity: isActive ? 1 : 0.7 }}
                       onClick={() => onSelect(seg.key)}
@@ -557,18 +537,14 @@ function DonutAllocation({
               <div className="text-center">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Selected</p>
                 <p className="mt-2 text-sm font-semibold text-slate-100">{selected?.label ?? '—'}</p>
-                <p className="mt-1 font-mono text-3xl font-semibold text-slate-100">
-                  {selected ? `${selected.pct}%` : '—'}
-                </p>
+                <p className="mt-1 font-mono text-3xl font-semibold text-slate-100">{selected ? `${selected.pct}%` : '—'}</p>
                 <p className="mt-1 text-[11px] text-slate-500">Select any slice or card</p>
               </div>
             </div>
 
             <div
               className="pointer-events-none absolute inset-0 rounded-full"
-              style={{
-                boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 40px 120px rgba(0,0,0,0.55)`,
-              }}
+              style={{ boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 40px 120px rgba(0,0,0,0.55)` }}
             />
             <div
               className="pointer-events-none absolute -inset-7 rounded-full opacity-70 blur-2xl"
@@ -604,10 +580,7 @@ function DonutAllocation({
                   <div className="flex items-start gap-3">
                     <span
                       className="mt-1 h-2 w-2 shrink-0 rounded-full"
-                      style={{
-                        background: toneStroke(a.tone),
-                        boxShadow: `0 0 14px ${toneGlow(a.tone)}`,
-                      }}
+                      style={{ background: toneStroke(a.tone), boxShadow: `0 0 14px ${toneGlow(a.tone)}` }}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
@@ -654,9 +627,7 @@ function DonutAllocation({
 
                           {a.key === 'distribution' && (
                             <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                                Distribution runway table
-                              </p>
+                              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Distribution runway table</p>
 
                               <div className="mt-3 space-y-2">
                                 {runwayTable.map(r => {
@@ -679,9 +650,8 @@ function DonutAllocation({
                               </div>
 
                               <p className="mt-3 text-[11px] text-slate-500">
-                                Reserve size: {distributionReserve.toLocaleString('en-US')} XPOT (14% of supply). Daily
-                                distribution is fixed at {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Minting disabled. Unused
-                                reserve remains locked.
+                                Reserve size: {distributionReserve.toLocaleString('en-US')} XPOT (14% of supply). Daily distribution is fixed at{' '}
+                                {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Minting disabled. Unused reserve remains locked.
                               </p>
                             </div>
                           )}
@@ -806,7 +776,6 @@ export default function TokenomicsPage() {
     [],
   );
 
-  // Trust-first order
   const sortedAllocation = useMemo(() => {
     const order = ['distribution', 'treasury', 'liquidity', 'strategic', 'team', 'partners', 'community'];
     const idx = new Map(order.map((k, i) => [k, i]));
@@ -857,7 +826,6 @@ export default function TokenomicsPage() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      {/* HERO */}
       <section className="mt-6">
         <div className={CARD}>
           <div
@@ -906,12 +874,9 @@ export default function TokenomicsPage() {
                   <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
                     Terms
                   </Link>
-                  <span className="text-[11px] text-slate-500">
-                    Allocation prioritizes distribution, resilience and long-term execution.
-                  </span>
+                  <span className="text-[11px] text-slate-500">Allocation prioritizes distribution, resilience and long-term execution.</span>
                 </div>
 
-                {/* img 1 - restore 3 trust boxes */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply (fixed)</p>
@@ -930,30 +895,24 @@ export default function TokenomicsPage() {
 
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve runway</p>
-                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">
-                      {runwayFixedYears.toFixed(2)} years
-                    </p>
+                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">{runwayFixedYears.toFixed(2)} years</p>
                     <p className="mt-1 text-xs text-slate-500">at {fmtInt(DISTRIBUTION_DAILY_XPOT)}/day</p>
                   </div>
                 </div>
               </div>
 
-              {/* img 2 + img 3 removed: no right-side duplicate trust panel */}
               <div className="hidden lg:block lg:col-span-4" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* img 5 - brag card, clickable to open distribution */}
+      {/* UPDATED: tight reserve math line */}
       <section className="mt-6">
         <button
           type="button"
           onClick={openDistribution}
-          className={[
-            CARD,
-            'w-full text-left transition hover:brightness-[1.03] focus:outline-none',
-          ].join(' ')}
+          className={[CARD, 'w-full text-left transition hover:brightness-[1.03] focus:outline-none'].join(' ')}
         >
           <div
             className="
@@ -966,10 +925,16 @@ export default function TokenomicsPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Protocol guarantee</p>
-                <p className="mt-2 text-lg font-semibold text-slate-100">
-                  10+ years of rewards secured by reserve
-                </p>
+                <p className="mt-2 text-lg font-semibold text-slate-100">10+ years of rewards secured by reserve</p>
+
+                {/* ✅ new tight math line */}
                 <p className="mt-1 text-sm text-slate-400">
+                  <span className="font-mono text-slate-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</span> reserve ->{' '}
+                  <span className="font-mono text-emerald-200">{runwayFixedYears.toFixed(2)} years</span> at{' '}
+                  <span className="font-mono text-slate-200">{fmtInt(DISTRIBUTION_DAILY_XPOT)}</span>/day
+                </p>
+
+                <p className="mt-2 text-sm text-slate-400">
                   Click to jump to <span className="text-emerald-200">Protocol distribution reserve</span> and view the runway table and vaults.
                 </p>
               </div>
@@ -983,7 +948,6 @@ export default function TokenomicsPage() {
         </button>
       </section>
 
-      {/* img 4 - keep */}
       <section className="mt-8" ref={allocationRef}>
         <div className={CARD}>
           <div
@@ -1028,7 +992,7 @@ export default function TokenomicsPage() {
         </div>
       </section>
 
-      {/* UTILITY + LONG-TERM */}
+      {/* rest unchanged */}
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className={CARD}>
           <div
@@ -1141,7 +1105,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v12</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v13</span>
         </div>
       </footer>
     </XpotPageShell>
