@@ -240,20 +240,41 @@ function TooltipBubble({
   width?: number;
   children: React.ReactNode;
 }) {
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
+  const [h, setH] = useState<number>(220);
+
+  useEffect(() => {
+    if (!open) return;
+    const el = bubbleRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.height && Number.isFinite(r.height)) setH(r.height);
+  }, [open]);
+
   if (!open || !rect) return null;
   if (typeof window === 'undefined') return null;
 
   const pad = 14;
   const vw = window.innerWidth;
+  const vh = window.innerHeight;
 
   const anchorCenterX = rect.left + rect.width / 2;
+
   const left = clamp(anchorCenterX - width / 2, pad, Math.max(pad, vw - width - pad));
-  const top = rect.bottom + 12;
+
+  const belowTop = rect.bottom + 12;
+  const aboveTop = rect.top - 12 - h;
+
+  const fitsBelow = belowTop + h <= vh - pad;
+  const top = fitsBelow ? belowTop : clamp(aboveTop, pad, vh - h - pad);
 
   const arrowX = clamp(anchorCenterX - left, 26, width - 26);
 
+  const arrowIsTop = fitsBelow; // arrow on top edge when bubble is below anchor
+
   return (
     <div
+      ref={bubbleRef}
       className="
         pointer-events-none fixed z-[9999]
         rounded-2xl border border-slate-700/80 bg-slate-950
@@ -267,10 +288,17 @@ function TooltipBubble({
         transform: 'translateY(4px)',
       }}
     >
+      {/* Arrow */}
       <div
-        className="absolute -top-2 h-4 w-4 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]"
+        className={`
+          absolute h-4 w-4 rotate-45 bg-slate-950
+          shadow-[0_4px_10px_rgba(15,23,42,0.8)]
+          ${arrowIsTop ? '-top-2 border-l border-t' : '-bottom-2 border-r border-b'}
+          border-slate-700/80
+        `}
         style={{ left: arrowX - 8 }}
       />
+
       {children}
     </div>
   );
