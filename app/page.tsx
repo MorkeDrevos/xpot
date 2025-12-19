@@ -589,34 +589,31 @@ function formatCountdown(ms: number) {
 export default function HomePage() {
   const marquee = useMemo(() => [...SAMPLE_HANDLES], []);
   const [showLiveEntries, setShowLiveEntries] = useState(false);
-  export default function HomePage() {
-  const marquee = useMemo(() => [...SAMPLE_HANDLES], []);
-  const [showLiveEntries, setShowLiveEntries] = useState(false);
   const [liveEntries, setLiveEntries] = useState<{ handle: string }[]>([]);
 
   useEffect(() => {
-  if (!showLiveEntries) return;
+    if (!showLiveEntries) return;
 
-  let alive = true;
+    let alive = true;
 
-  fetch('/api/public/live-entries', { cache: 'no-store' })
-    .then(r => r.json())
-    .then(data => {
-      if (!alive) return;
+    fetch('/api/public/live-entries', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (!alive) return;
 
-      const raw = Array.isArray(data?.entries) ? data.entries : [];
-      const normalized: { handle: string }[] = raw
-        .map((x: any) => (typeof x === 'string' ? { handle: x } : x))
-        .filter((x: any) => x?.handle && typeof x.handle === 'string');
+        const raw = Array.isArray(data?.entries) ? data.entries : [];
+        const normalized: { handle: string }[] = raw
+          .map((x: any) => (typeof x === 'string' ? { handle: x } : x))
+          .filter((x: any) => x?.handle && typeof x.handle === 'string');
 
-      setLiveEntries(normalized);
-    })
-    .catch(() => {});
+        setLiveEntries(normalized);
+      })
+      .catch(() => {});
 
-  return () => {
-    alive = false;
-  };
-}, [showLiveEntries]);
+    return () => {
+      alive = false;
+    };
+  }, [showLiveEntries]);
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
