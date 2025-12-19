@@ -254,6 +254,7 @@ function TooltipBubble({
 
   if (!open || !rect) return null;
   if (typeof window === 'undefined') return null;
+  if (typeof document === 'undefined') return null;
 
   const pad = 14;
   const vw = window.innerWidth;
@@ -273,7 +274,7 @@ function TooltipBubble({
 
   const arrowIsTop = fitsBelow; // arrow on top edge when bubble is below anchor
 
-    return createPortal(
+  return createPortal(
     <div
       ref={bubbleRef}
       className="
@@ -283,6 +284,7 @@ function TooltipBubble({
       "
       style={{ left, top, width, opacity: 1, transform: 'translateY(4px)' }}
     >
+      {/* Arrow */}
       <div
         className={`
           absolute h-4 w-4 rotate-45 bg-slate-950
@@ -768,7 +770,8 @@ export default function JackpotPanel({
       : 'rounded-2xl border border-slate-800 bg-slate-950/60 px-6 py-6 shadow-sm';
 
   const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
-  const localSparkLabel = sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
+  const localSparkLabel =
+    sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
 
   const isWide = layout === 'wide';
 
