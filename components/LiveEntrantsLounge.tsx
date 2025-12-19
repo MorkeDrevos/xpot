@@ -7,7 +7,6 @@ export type LiveEntrant = {
   avatarUrl?: string; // must come from API
   followers?: number; // optional (for future UI)
   verified?: boolean; // optional
-  subtitle?: string;
 };
 
 function cleanHandle(h: string) {
@@ -30,10 +29,8 @@ function uniqByHandle(list: LiveEntrant[]) {
 
 export default function LiveEntrantsLounge({
   entrants,
-  subtitle = 'Optional - expand to view',
 }: {
   entrants: LiveEntrant[];
-  subtitle?: string;
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -62,8 +59,6 @@ export default function LiveEntrantsLounge({
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
             Live entries (X handles)
           </span>
-
-          <span className="text-[11px] text-slate-500">{subtitle}</span>
         </div>
 
         <span className="text-[11px] text-slate-500">Handles are shown, wallets stay self-custody.</span>
@@ -71,10 +66,8 @@ export default function LiveEntrantsLounge({
 
       {safeEntrants.length === 0 ? (
         <div className="relative z-10 rounded-[22px] border border-slate-900/70 bg-slate-950/40 px-4 py-5 text-sm text-slate-400">
-          <p className="font-semibold text-slate-200/90">No verified live entries right now.</p>
-          <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
-            Showing only real X accounts with 100+ followers and a non-default profile image.
-          </p>
+          <p className="font-semibold text-slate-200/90">No live entries right now.</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-slate-500">Check back in a moment.</p>
         </div>
       ) : (
         <div className="relative z-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -113,7 +106,7 @@ export default function LiveEntrantsLounge({
                 />
 
                 <div className="relative z-10 flex items-center gap-3">
-                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/10">
+                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/10 bg-slate-900/60">
                     <img
                       src={avatar}
                       alt={`@${handle}`}
@@ -121,7 +114,7 @@ export default function LiveEntrantsLounge({
                       loading="lazy"
                       referrerPolicy="no-referrer"
                       onError={ev => {
-                        // If an image fails, drop it (don’t replace with generic face)
+                        // If an image fails, hide the image only (keep layout clean)
                         (ev.currentTarget as HTMLImageElement).style.display = 'none';
                       }}
                     />
