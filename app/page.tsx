@@ -1,4 +1,5 @@
 // app/page.tsx
+// app/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -30,8 +31,7 @@ import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
 import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
-import type { LiveEntrant } from '@/lib/live-entrants';
-import { asLiveEntrant } from '@/lib/live-entrants';
+import { type LiveEntrant, asLiveEntrant } from '@/lib/live-entrants';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
