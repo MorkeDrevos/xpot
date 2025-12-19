@@ -89,6 +89,40 @@ function getMadridSessionKey(cutoffHour = 22) {
   return `${y}${m}${d}`;
 }
 
+// Returns the next cutoff moment (22:00 Madrid) as a real Date in local JS time
+function getNextMadridCutoff(cutoffHour = 22) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
+
+  const year = Number(parts.find(p => p.type === 'year')?.value ?? '0');
+  const month = Number(parts.find(p => p.type === 'month')?.value ?? '1');
+  const day = Number(parts.find(p => p.type === 'day')?.value ?? '1');
+  const hour = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
+
+  // Start with "today at cutoffHour" in Madrid, but represented in UTC by constructing a baseline date
+  // We compute this by taking the Madrid date components and using them as if UTC, then adjust day if already past cutoff.
+  const baseUtc = new Date(Date.UTC(year, month - 1, day, cutoffHour, 0, 0, 0));
+
+  // If Madrid hour is already >= cutoffHour, next cutoff is tomorrow
+  if (hour >= cutoffHour) baseUtc.setUTCDate(baseUtc.getUTCDate() + 1);
+
+  return baseUtc;
+}
+
+function formatCountdown(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
 // Milestone ladder for highlights (USD)
 const MILESTONES = [
   25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000, 7_500, 10_000, 15_000,
@@ -162,7 +196,6 @@ type DexMetrics = {
 };
 
 function readDexScreenerMetrics(payload: unknown): DexMetrics {
-  // https://api.dexscreener.com/latest/dex/tokens/<mint>
   if (!payload || typeof payload !== 'object') return { priceUsd: null, changeH1: null };
   const p: any = payload;
   const pairs = Array.isArray(p?.pairs) ? p.pairs : [];
@@ -199,7 +232,7 @@ function readDexScreenerMetrics(payload: unknown): DexMetrics {
 }
 
 /* -----------------------------
-   Fixed + clamped tooltips
+   Tooltips (clamped + normal width)
 ------------------------------ */
 
 function useAnchoredTooltip() {
@@ -233,7 +266,7 @@ function useAnchoredTooltip() {
 function TooltipBubble({
   open,
   rect,
-  width = 520,
+  width = 380,
   children,
 }: {
   open: boolean;
@@ -242,7 +275,7 @@ function TooltipBubble({
   children: React.ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement | null>(null);
-  const [h, setH] = useState<number>(220);
+  const [h, setH] = useState<number>(160);
 
   useEffect(() => {
     if (!open) return;
@@ -260,39 +293,39 @@ function TooltipBubble({
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
+  const maxW = Math.max(240, vw - pad * 2);
+  const w = clamp(width, 240, maxW);
+
   const anchorCenterX = rect.left + rect.width / 2;
+  const left = clamp(anchorCenterX - w / 2, pad, Math.max(pad, vw - w - pad));
 
-  const left = clamp(anchorCenterX - width / 2, pad, Math.max(pad, vw - width - pad));
-
-  const belowTop = rect.bottom + 12;
-  const aboveTop = rect.top - 12 - h;
+  const belowTop = rect.bottom + 10;
+  const aboveTop = rect.top - 10 - h;
 
   const fitsBelow = belowTop + h <= vh - pad;
   const top = fitsBelow ? belowTop : clamp(aboveTop, pad, vh - h - pad);
 
-  const arrowX = clamp(anchorCenterX - left, 26, width - 26);
-
-  const arrowIsTop = fitsBelow; // arrow on top edge when bubble is below anchor
+  const arrowX = clamp(anchorCenterX - left, 22, w - 22);
+  const arrowIsTop = fitsBelow;
 
   return createPortal(
     <div
       ref={bubbleRef}
       className="
         pointer-events-none fixed z-[9999]
-        rounded-2xl border border-slate-700/80 bg-slate-950
-        shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
+        rounded-2xl border border-slate-700/80 bg-slate-950/95
+        shadow-[0_18px_40px_rgba(15,23,42,0.92)] backdrop-blur-xl
       "
-      style={{ left, top, width, opacity: 1, transform: 'translateY(4px)' }}
+      style={{ left, top, width: w, opacity: 1, transform: 'translateY(4px)' }}
     >
-      {/* Arrow */}
       <div
         className={`
-          absolute h-4 w-4 rotate-45 bg-slate-950
-          shadow-[0_4px_10px_rgba(15,23,42,0.8)]
-          ${arrowIsTop ? '-top-2 border-l border-t' : '-bottom-2 border-r border-b'}
+          absolute h-3.5 w-3.5 rotate-45 bg-slate-950/95
+          shadow-[0_4px_10px_rgba(15,23,42,0.7)]
+          ${arrowIsTop ? '-top-1.5 border-l border-t' : '-bottom-1.5 border-r border-b'}
           border-slate-700/80
         `}
-        style={{ left: arrowX - 8 }}
+        style={{ left: arrowX - 7 }}
       />
       {children}
     </div>,
@@ -328,11 +361,13 @@ function UsdEstimateBadge() {
         <Info className="h-4 w-4 opacity-90" />
       </button>
 
-      <TooltipBubble open={t.open} rect={t.rect} width={560}>
-        <div className="px-6 py-5 text-[12px] leading-relaxed text-slate-100">
-          <p>This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.</p>
-          <p className="mt-3 text-slate-500">
-            The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
+      <TooltipBubble open={t.open} rect={t.rect} width={380}>
+        <div className="px-4 py-3 text-[12px] leading-snug text-slate-100">
+          <p className="text-slate-100">
+            Current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.
+          </p>
+          <p className="mt-2 text-slate-400">
+            Winner is paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
           </p>
         </div>
       </TooltipBubble>
@@ -384,8 +419,8 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
             <Info className="h-4 w-4 opacity-90" />
           </button>
 
-          <TooltipBubble open={t.open} rect={t.rect} width={420}>
-            <div className="px-4 py-3 text-[12px] leading-relaxed text-slate-100 whitespace-pre-line select-none">
+          <TooltipBubble open={t.open} rect={t.rect} width={340}>
+            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
               {tooltip}
             </div>
           </TooltipBubble>
@@ -440,6 +475,12 @@ export default function JackpotPanel({
   // Premium runway fade-in (after price loads)
   const [showRunway, setShowRunway] = useState(false);
 
+  // Sexy countdown
+  const [countdownMs, setCountdownMs] = useState<number>(() => {
+    const next = getNextMadridCutoff(22).getTime();
+    return Math.max(0, next - Date.now());
+  });
+
   // Session key for "highest this session" (22:00 Madrid cut)
   const sessionKey = useMemo(() => `xpot_max_session_usd_${getMadridSessionKey(22)}`, []);
 
@@ -455,6 +496,15 @@ export default function JackpotPanel({
       setMaxJackpotToday(null);
     }
   }, [sessionKey]);
+
+  // Countdown ticker
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      const next = getNextMadridCutoff(22).getTime();
+      setCountdownMs(Math.max(0, next - Date.now()));
+    }, 1000);
+    return () => window.clearInterval(t);
+  }, []);
 
   // Load rolling samples (for 24h range + local sparkline)
   useEffect(() => {
@@ -513,7 +563,6 @@ export default function JackpotPanel({
   }, [isLoading, priceUsd, displayJackpotUsd, showRunway]);
 
   // Live price: Jupiter primary, DexScreener fallback
-  // Also: always pull DexScreener global h1 % for consistent Momentum %
   useEffect(() => {
     let timer: number | null = null;
     let aborted = false;
@@ -774,15 +823,9 @@ export default function JackpotPanel({
 
   const isWide = layout === 'wide';
 
-  const topStatus = showUnavailable ? 'Price pending' : 'Live';
-  const topStatusTone = showUnavailable
-    ? 'border-amber-400/35 bg-amber-500/10 text-amber-200'
-    : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200';
-
   const globalMomentumText =
     momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '—' : `${momentumGlobalH1.toFixed(2)}%`;
 
-  // Fix the "$0.00" premium problem for the first bracket
   const leftMilestoneLabel =
     (nextMilestone === 25 && (prevMilestoneForBar ?? 0) === 0) || (prevMilestoneForBar ?? 0) === 0
       ? 'Under $25'
@@ -792,7 +835,6 @@ export default function JackpotPanel({
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
-      {/* Soft neon glow on pump */}
       <div
         className={`
           pointer-events-none absolute inset-0 rounded-2xl
@@ -803,7 +845,6 @@ export default function JackpotPanel({
         `}
       />
 
-      {/* RUNWAY PILL */}
       {!!badgeLabel && (
         <div
           className={`
@@ -823,6 +864,7 @@ export default function JackpotPanel({
           <p className="mt-1 text-xs text-slate-400">Pool value and telemetry (Jupiter + on-chain samples).</p>
         </div>
 
+        {/* ✅ keep only ONE live pill */}
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
             <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
@@ -850,12 +892,6 @@ export default function JackpotPanel({
                 Draw locked
               </span>
             )}
-
-            <span
-              className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}
-            >
-              {topStatus}
-            </span>
           </div>
         </div>
 
@@ -876,6 +912,17 @@ export default function JackpotPanel({
               `}
             >
               {displayUsdText}
+            </div>
+
+            {/* ✅ sexy countdown */}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                Next draw in
+              </span>
+              <span className="font-mono text-sm tracking-[0.22em] text-slate-100">
+                {formatCountdown(countdownMs)}
+              </span>
+              <span className="text-[11px] text-slate-600">22:00 Madrid</span>
             </div>
 
             <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
@@ -922,7 +969,7 @@ export default function JackpotPanel({
           </div>
         </div>
 
-        {/* Compact premium telemetry strip (replaces big Momentum + Milestone boxes) */}
+        {/* Compact premium telemetry strip */}
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {/* Pulse */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
@@ -939,7 +986,6 @@ export default function JackpotPanel({
               </span>
             </div>
 
-            {/* Tiny sparkline, low attention */}
             {spark ? (
               <div className="mt-2">
                 <svg
@@ -995,7 +1041,7 @@ export default function JackpotPanel({
             ) : null}
           </div>
 
-          {/* Next milestone - compact + premium labels */}
+          {/* Next milestone */}
           <div className="rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -1041,7 +1087,7 @@ export default function JackpotPanel({
         </div>
       </div>
 
-      {/* CONTEXT STRIP (smaller + calmer) */}
+      {/* CONTEXT STRIP */}
       <div className="relative z-10 mt-4 rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
           <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
