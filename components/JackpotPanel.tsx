@@ -14,8 +14,10 @@ const RANGE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 const RANGE_STORAGE_KEY = 'xpot_price_samples_24h_v1';
 const RANGE_MAX_SAMPLES = Math.ceil(RANGE_WINDOW_MS / RANGE_SAMPLE_MS) + 120;
 
-// Sparkline window
-const SPARK_WINDOW_MS = 6 * 60 * 60 * 1000; // 6h
+// Sparkline window (make consistent faster across devices)
+// NOTE: different devices start sampling at different times, so long windows can differ.
+// 1h converges much faster than 6h.
+const SPARK_WINDOW_MS = 60 * 60 * 1000; // 1h
 const SPARK_MAX_POINTS = 80;
 
 type JackpotPanelProps = {
@@ -35,6 +37,10 @@ type JackpotPanelProps = {
 
 type PriceSource = 'Jupiter' | 'DexScreener';
 
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
+}
+
 function formatUsd(value: number | null) {
   if (value === null || !Number.isFinite(value)) return '$0.00';
   return value.toLocaleString('en-US', {
@@ -43,17 +49,6 @@ function formatUsd(value: number | null) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-}
-
-// Milestone ladder for highlights (USD)
-const MILESTONES = [
-  25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000, 7_500, 10_000, 15_000,
-  20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000,
-  1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
-];
-
-function clamp(n: number, a: number, b: number) {
-  return Math.max(a, Math.min(b, n));
 }
 
 function easeOutCubic(t: number) {
@@ -95,112 +90,55 @@ function getMadridSessionKey(cutoffHour = 22) {
   return `${y}${m}${d}`;
 }
 
-function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
-  if (!label) return null;
+// Milestone ladder for highlights (USD)
+const MILESTONES = [
+  25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000, 7_500, 10_000, 15_000,
+  20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000,
+  1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
+];
 
-  return (
-    <div className="relative inline-flex items-center justify-center gap-2 group">
-      {/* Pill */}
-      <span
-        className="
-          inline-flex items-center gap-2 rounded-full
-          border border-emerald-400/30 bg-emerald-500/10
-          px-4 py-1.5
-          text-[9px] sm:text-[10px]
-          font-semibold uppercase tracking-[0.22em]
-          text-emerald-100
-          shadow-[0_0_0_1px_rgba(16,185,129,0.08)]
-          max-w-[92vw]
-          cursor-default select-none
-        "
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.85)]" />
-        <span className="truncate">{label}</span>
-      </span>
+type PriceSample = { t: number; p: number };
 
-      {!!tooltip && (
-        <>
-          <button
-            type="button"
-            aria-label="More info"
-            className="
-              inline-flex h-9 w-9 items-center justify-center rounded-full
-              border border-slate-700/80 bg-black/20
-              text-slate-200
-              hover:bg-slate-900/40 hover:text-white
-              transition
-            "
-          >
-            <Info className="h-4 w-4 opacity-90" />
-          </button>
-
-          {/* Tooltip (shows when hovering pill OR icon) */}
-          <div
-            className="
-              pointer-events-none absolute left-1/2 top-full z-[80] mt-3 w-[340px] max-w-[86vw]
-              -translate-x-1/2
-              rounded-2xl border border-slate-700/80 bg-slate-950
-              px-4 py-3 text-[12px] leading-relaxed text-slate-100
-              shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
-              opacity-0 translate-y-0
-              group-hover:opacity-100 group-hover:translate-y-1
-              transition-all duration-200
-              whitespace-pre-line
-              select-none
-            "
-          >
-            <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
-            {tooltip}
-          </div>
-        </>
-      )}
-    </div>
-  );
+function safeParseSamples(raw: string | null): PriceSample[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!Array.isArray(v)) return [];
+    const out: PriceSample[] = [];
+    for (const item of v) {
+      const t = Number((item as any)?.t);
+      const p = Number((item as any)?.p);
+      if (Number.isFinite(t) && Number.isFinite(p)) out.push({ t, p });
+    }
+    return out;
+  } catch {
+    return [];
+  }
 }
 
-function UsdEstimateBadge() {
-  return (
-    <div className="relative inline-flex items-center gap-2 group">
-      <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-        USD estimate
-      </span>
+function buildSparklinePoints(samples: PriceSample[], width: number, height: number) {
+  if (samples.length < 2) return null;
 
-      <button
-        type="button"
-        aria-label="USD estimate info"
-        className="
-          inline-flex h-9 w-9 items-center justify-center rounded-full
-          border border-slate-700/80 bg-black/20
-          text-slate-200
-          hover:bg-slate-900/40 hover:text-white
-          transition
-        "
-      >
-        <Info className="h-4 w-4 opacity-90" />
-      </button>
+  let min = Infinity;
+  let max = -Infinity;
+  for (const s of samples) {
+    if (s.p < min) min = s.p;
+    if (s.p > max) max = s.p;
+  }
 
-      <div
-        className="
-          pointer-events-none absolute left-1/2 top-full z-[80] mt-3 w-[520px] max-w-[92vw]
-          -translate-x-1/2
-          rounded-2xl border border-slate-700/80 bg-slate-950
-          px-6 py-5 text-[18px] leading-snug text-slate-100
-          shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
-          opacity-0 translate-y-0
-          group-hover:opacity-100 group-hover:translate-y-1
-          transition-all duration-200
-          select-none
-        "
-      >
-        <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  const span = Math.max(1e-12, max - min);
 
-        <p>This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.</p>
-        <p className="mt-4 text-slate-500">
-          The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
-        </p>
-      </div>
-    </div>
-  );
+  const n = samples.length;
+  const pts: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * width;
+    const yNorm = (samples[i].p - min) / span;
+    const y = height - yNorm * height;
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+
+  return { points: pts.join(' '), min, max };
 }
 
 function readJupiterUsdPrice(payload: unknown, mint: string): number | null {
@@ -248,48 +186,178 @@ function readDexScreenerUsdPrice(payload: unknown): number | null {
   return Number.isFinite(out) ? out : null;
 }
 
-type PriceSample = { t: number; p: number };
+/* -----------------------------
+   Fixed + clamped tooltips
+------------------------------ */
 
-function safeParseSamples(raw: string | null): PriceSample[] {
-  if (!raw) return [];
-  try {
-    const v = JSON.parse(raw) as unknown;
-    if (!Array.isArray(v)) return [];
-    const out: PriceSample[] = [];
-    for (const item of v) {
-      const t = Number((item as any)?.t);
-      const p = Number((item as any)?.p);
-      if (Number.isFinite(t) && Number.isFinite(p)) out.push({ t, p });
-    }
-    return out;
-  } catch {
-    return [];
-  }
+function useAnchoredTooltip() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+
+  const update = () => {
+    if (!ref.current) return;
+    setRect(ref.current.getBoundingClientRect());
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    update();
+
+    const onMove = () => update();
+    window.addEventListener('resize', onMove);
+    window.addEventListener('scroll', onMove, true);
+
+    return () => {
+      window.removeEventListener('resize', onMove);
+      window.removeEventListener('scroll', onMove, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  return { ref, open, setOpen, rect };
 }
 
-function buildSparklinePoints(samples: PriceSample[], width: number, height: number) {
-  if (samples.length < 2) return null;
+function TooltipBubble({
+  open,
+  rect,
+  width = 520,
+  children,
+}: {
+  open: boolean;
+  rect: DOMRect | null;
+  width?: number;
+  children: React.ReactNode;
+}) {
+  if (!open || !rect) return null;
+  if (typeof window === 'undefined') return null;
 
-  let min = Infinity;
-  let max = -Infinity;
-  for (const s of samples) {
-    if (s.p < min) min = s.p;
-    if (s.p > max) max = s.p;
-  }
+  const pad = 14;
+  const vw = window.innerWidth;
 
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-  const span = Math.max(1e-12, max - min);
+  const anchorCenterX = rect.left + rect.width / 2;
+  const left = clamp(anchorCenterX - width / 2, pad, Math.max(pad, vw - width - pad));
+  const top = rect.bottom + 12;
 
-  const n = samples.length;
-  const pts: string[] = [];
-  for (let i = 0; i < n; i++) {
-    const x = (i / (n - 1)) * width;
-    const yNorm = (samples[i].p - min) / span;
-    const y = height - yNorm * height;
-    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-  }
+  const arrowX = clamp(anchorCenterX - left, 26, width - 26);
 
-  return { points: pts.join(' '), min, max };
+  return (
+    <div
+      className="
+        pointer-events-none fixed z-[9999]
+        rounded-2xl border border-slate-700/80 bg-slate-950
+        shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
+      "
+      style={{
+        left,
+        top,
+        width,
+        opacity: 1,
+        transform: 'translateY(4px)',
+      }}
+    >
+      <div
+        className="absolute -top-2 h-4 w-4 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]"
+        style={{ left: arrowX - 8 }}
+      />
+      {children}
+    </div>
+  );
+}
+
+function UsdEstimateBadge() {
+  const t = useAnchoredTooltip();
+
+  return (
+    <div
+      ref={t.ref}
+      className="relative inline-flex items-center gap-2"
+      onMouseEnter={() => t.setOpen(true)}
+      onMouseLeave={() => t.setOpen(false)}
+    >
+      <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+        USD estimate
+      </span>
+
+      <button
+        type="button"
+        aria-label="USD estimate info"
+        className="
+          inline-flex h-9 w-9 items-center justify-center rounded-full
+          border border-slate-700/80 bg-black/20
+          text-slate-200
+          hover:bg-slate-900/40 hover:text-white
+          transition
+        "
+      >
+        <Info className="h-4 w-4 opacity-90" />
+      </button>
+
+      <TooltipBubble open={t.open} rect={t.rect} width={560}>
+        <div className="px-6 py-5 text-[18px] leading-snug text-slate-100">
+          <p>This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.</p>
+          <p className="mt-4 text-slate-500">
+            The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
+          </p>
+        </div>
+      </TooltipBubble>
+    </div>
+  );
+}
+
+function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
+  const t = useAnchoredTooltip();
+  if (!label) return null;
+
+  return (
+    <div
+      ref={t.ref}
+      className="relative inline-flex items-center justify-center gap-2"
+      onMouseEnter={() => t.setOpen(true)}
+      onMouseLeave={() => t.setOpen(false)}
+    >
+      <span
+        className="
+          inline-flex items-center gap-2 rounded-full
+          border border-emerald-400/30 bg-emerald-500/10
+          px-4 py-1.5
+          text-[9px] sm:text-[10px]
+          font-semibold uppercase tracking-[0.22em]
+          text-emerald-100
+          shadow-[0_0_0_1px_rgba(16,185,129,0.08)]
+          max-w-[92vw]
+          cursor-default select-none
+        "
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.85)]" />
+        <span className="truncate">{label}</span>
+      </span>
+
+      {!!tooltip && (
+        <>
+          <button
+            type="button"
+            aria-label="More info"
+            className="
+              inline-flex h-9 w-9 items-center justify-center rounded-full
+              border border-slate-700/80 bg-black/20
+              text-slate-200
+              hover:bg-slate-900/40 hover:text-white
+              transition
+            "
+          >
+            <Info className="h-4 w-4 opacity-90" />
+          </button>
+
+          <TooltipBubble open={t.open} rect={t.rect} width={420}>
+            <div className="px-4 py-3 text-[12px] leading-relaxed text-slate-100 whitespace-pre-line select-none">
+              {tooltip}
+            </div>
+          </TooltipBubble>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function JackpotPanel({
@@ -319,11 +387,6 @@ export default function JackpotPanel({
   const [justUpdated, setJustUpdated] = useState(false);
   const updatePulseTimeout = useRef<number | null>(null);
 
-  // Volatility pulse (tick-to-tick)
-  const [volPulse, setVolPulse] = useState<null | 'up' | 'down'>(null);
-  const volPulseTimeout = useRef<number | null>(null);
-  const lastPriceUsd = useRef<number | null>(null);
-
   // 24h observed range (from rolling samples)
   const samplesRef = useRef<PriceSample[]>([]);
   const lastSampleAtRef = useRef<number>(0);
@@ -332,22 +395,15 @@ export default function JackpotPanel({
   const [range24h, setRange24h] = useState<{ lowUsd: number; highUsd: number } | null>(null);
   const [coverageMs, setCoverageMs] = useState<number>(0);
 
-  // Sparkline (last 6h)
+  // Sparkline (last 1h)
   const [spark, setSpark] = useState<{ points: string; min: number; max: number } | null>(null);
+  const [sparkCoverageMs, setSparkCoverageMs] = useState<number>(0);
 
-  // Fade-in runway once price is ready
+  // Premium runway fade-in (after price loads)
   const [showRunway, setShowRunway] = useState(false);
 
   // Session key for "highest this session" (22:00 Madrid cut)
   const sessionKey = useMemo(() => `xpot_max_session_usd_${getMadridSessionKey(22)}`, []);
-
-  useEffect(() => {
-    if (!isLoading && priceUsd != null) {
-      const t = window.setTimeout(() => setShowRunway(true), 140);
-      return () => window.clearTimeout(t);
-    }
-    setShowRunway(false);
-  }, [isLoading, priceUsd]);
 
   // Load max XPOT USD value for this session from localStorage
   useEffect(() => {
@@ -400,9 +456,25 @@ export default function JackpotPanel({
 
         const built = buildSparklinePoints(down, 560, 54);
         setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
+
+        setSparkCoverageMs(clamp(now - sparkRaw[0].t, 0, SPARK_WINDOW_MS));
+      } else {
+        setSpark(null);
+        setSparkCoverageMs(0);
       }
     }
   }, []);
+
+  // Runway pill fades in only after we have a real USD value
+  useEffect(() => {
+    if (showRunway) return;
+    if (isLoading) return;
+    if (priceUsd == null) return;
+    if (displayJackpotUsd == null) return;
+
+    const t = window.setTimeout(() => setShowRunway(true), 320);
+    return () => window.clearTimeout(t);
+  }, [isLoading, priceUsd, displayJackpotUsd, showRunway]);
 
   // Live price: Jupiter primary, DexScreener fallback
   useEffect(() => {
@@ -451,20 +523,6 @@ export default function JackpotPanel({
         if (aborted) return;
 
         if (typeof price === 'number' && Number.isFinite(price)) {
-          // volatility pulse
-          if (lastPriceUsd.current != null) {
-            const prev = lastPriceUsd.current;
-            const deltaPct = prev === 0 ? 0 : ((price - prev) / prev) * 100;
-
-            const THRESH_PCT = 0.6;
-            if (Math.abs(deltaPct) >= THRESH_PCT) {
-              setVolPulse(deltaPct > 0 ? 'up' : 'down');
-              if (volPulseTimeout.current !== null) window.clearTimeout(volPulseTimeout.current);
-              volPulseTimeout.current = window.setTimeout(() => setVolPulse(null), 900);
-            }
-          }
-          lastPriceUsd.current = price;
-
           setPriceUsd(price);
           setPriceSource(src);
 
@@ -505,7 +563,6 @@ export default function JackpotPanel({
       if (timer !== null) window.clearInterval(timer);
       if (updatePulseTimeout.current !== null) window.clearTimeout(updatePulseTimeout.current);
       if (pumpTimeout.current !== null) window.clearTimeout(pumpTimeout.current);
-      if (volPulseTimeout.current !== null) window.clearTimeout(volPulseTimeout.current);
 
       if (typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', onVis);
@@ -612,6 +669,7 @@ export default function JackpotPanel({
 
       const cutoffSpark = now - SPARK_WINDOW_MS;
       const sparkRaw = arr.filter(s => s.t >= cutoffSpark);
+
       if (sparkRaw.length >= 2) {
         const step = Math.max(1, Math.floor(sparkRaw.length / SPARK_MAX_POINTS));
         const down: PriceSample[] = [];
@@ -620,8 +678,10 @@ export default function JackpotPanel({
 
         const built = buildSparklinePoints(down, 560, 54);
         setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
+        setSparkCoverageMs(clamp(now - sparkRaw[0].t, 0, SPARK_WINDOW_MS));
       } else {
         setSpark(null);
+        setSparkCoverageMs(0);
       }
 
       if (now - lastPersistAtRef.current >= 60_000) {
@@ -664,6 +724,8 @@ export default function JackpotPanel({
       : 'rounded-2xl border border-slate-800 bg-slate-950/60 px-6 py-6 shadow-sm';
 
   const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
+  const sparkObservedLabel =
+    sparkCoverageMs >= SPARK_WINDOW_MS ? 'Momentum: 1h' : `Momentum: ${formatCoverage(sparkCoverageMs)}`;
 
   const isWide = layout === 'wide';
 
@@ -671,6 +733,9 @@ export default function JackpotPanel({
   const topStatusTone = showUnavailable
     ? 'border-amber-400/35 bg-amber-500/10 text-amber-200'
     : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200';
+
+  const momentumPct =
+    spark && spark.max > spark.min && spark.min > 0 ? (((spark.max - spark.min) / spark.min) * 100).toFixed(2) : '0.00';
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -685,20 +750,20 @@ export default function JackpotPanel({
         `}
       />
 
-      {/* RUNWAY PILL (fade in after price loads) */}
+      {/* RUNWAY PILL (inside JackpotPanel, fades in after price loads) */}
       {!!badgeLabel && (
         <div
           className={`
             relative z-10 mb-4 flex justify-center
-            transition-all duration-700 ease-out
-            ${showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
+            transition-all duration-[900ms] ease-out
+            ${showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'}
           `}
         >
           <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
         </div>
       )}
 
-      {/* HEADER (matches your compact rail) */}
+      {/* HEADER */}
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
@@ -713,7 +778,7 @@ export default function JackpotPanel({
         </div>
       </div>
 
-      {/* MAIN SLAB (img2) */}
+      {/* MAIN SLAB */}
       <div className="relative z-10 mt-5 rounded-2xl border border-slate-800/80 bg-black/20 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -735,9 +800,7 @@ export default function JackpotPanel({
               </span>
             )}
 
-            <span
-              className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}
-            >
+            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}>
               {topStatus}
             </span>
           </div>
@@ -746,14 +809,14 @@ export default function JackpotPanel({
         {/* Value row */}
         <div className={isWide ? 'mt-5 grid gap-4 lg:grid-cols-[1fr_360px]' : 'mt-5 grid gap-4'}>
           {/* Big USD */}
-          <div className="rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
-            <div className="mb-3 flex items-center justify-between">
+          <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
+            <div className="flex items-center justify-between">
               <UsdEstimateBadge />
             </div>
 
             <div
               className={`
-                text-5xl sm:text-6xl font-semibold tabular-nums
+                mt-4 text-5xl sm:text-6xl font-semibold tabular-nums
                 transition-transform transition-colors duration-200
                 ${justUpdated ? 'scale-[1.01]' : ''}
                 ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
@@ -765,7 +828,7 @@ export default function JackpotPanel({
             <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
           </div>
 
-          {/* Right meta (USD VALUE + 1 XPOT + Observed) */}
+          {/* Right meta */}
           <div className="rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
             <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500 text-right">USD value</p>
 
@@ -790,15 +853,19 @@ export default function JackpotPanel({
         {/* Momentum */}
         <div className="rounded-2xl border border-slate-800/80 bg-black/20 px-5 py-4">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Momentum</p>
-            <p className="text-[11px] text-slate-300">
-              {spark && spark.max > spark.min ? `${(((spark.max - spark.min) / spark.min) * 100).toFixed(2)}%` : '0.00%'}
-            </p>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{sparkObservedLabel}</p>
+            <p className="text-[11px] text-slate-300">{momentumPct}%</p>
           </div>
 
           {spark ? (
             <>
-              <svg width="100%" height="70" viewBox="0 0 560 54" className="block text-slate-300" aria-label="XPOT momentum sparkline (observed)">
+              <svg
+                width="100%"
+                height="70"
+                viewBox="0 0 560 54"
+                className="block text-slate-300"
+                aria-label="XPOT momentum sparkline (observed)"
+              >
                 <polyline
                   fill="none"
                   stroke="currentColor"
@@ -824,9 +891,7 @@ export default function JackpotPanel({
         <div className="rounded-2xl border border-slate-800/80 bg-black/20 px-5 py-4">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Milestone</p>
-            <p className="text-[11px] text-slate-300">
-              {jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'}
-            </p>
+            <p className="text-[11px] text-slate-300">{jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'}</p>
           </div>
 
           <div className="relative h-3 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
@@ -848,7 +913,7 @@ export default function JackpotPanel({
         </div>
       </div>
 
-      {/* CONTEXT STRIP (img3) */}
+      {/* CONTEXT STRIP */}
       <div className="relative z-10 mt-4 rounded-2xl border border-slate-800/80 bg-black/20 px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
           <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
