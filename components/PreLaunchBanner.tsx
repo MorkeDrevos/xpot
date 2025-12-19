@@ -1,3 +1,4 @@
+// components/PreLaunchBanner.tsx
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -21,7 +22,7 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
       const el = ref.current;
       if (!el) return;
 
-      // offsetHeight is integer px (includes borders) - no subpixel weirdness
+      // If hidden on mobile (display:none), offsetHeight will be 0 - which is what we want.
       const h = el.offsetHeight || 0;
       root.style.setProperty('--xpot-banner-h', `${h}px`);
     }
@@ -50,19 +51,44 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
       ref={ref}
       className="
         fixed inset-x-0 top-0 z-[60]
+        hidden sm:block
         border-b border-white/10
         bg-gradient-to-r from-[#5b21b6] via-[#2e1065] to-[#111827]
       "
     >
       <div className="mx-auto max-w-[1440px] px-4">
-        {/* Lock banner height so it never “breathes” */}
         <div className="flex h-12 items-center justify-center">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.32em] text-white/80">
-            PRE-LAUNCH MODE <span className="mx-2 text-white/40">•</span> XPOT TOKEN NOT DEPLOYED{' '}
-            <span className="mx-2 text-white/40">•</span> BUILD v0.9.7
-          </p>
+          <div className="relative w-full">
+            <div
+              className="
+                pointer-events-none absolute inset-0
+                opacity-60
+                bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]
+                translate-x-[-60%]
+                animate-[xpotBannerSweep_5.5s_linear_infinite]
+              "
+            />
+
+            <div className="relative flex items-center justify-center">
+              <p className="text-center text-[12px] font-semibold uppercase tracking-[0.32em] text-white/80">
+                PRE-LAUNCH MODE <span className="mx-2 text-white/40">•</span> CONTRACT DEPLOYED{' '}
+                <span className="mx-2 text-white/40">•</span> TRADING NOT ACTIVE YET
+              </p>
+            </div>
+          </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes xpotBannerSweep {
+          0% {
+            transform: translateX(-60%);
+          }
+          100% {
+            transform: translateX(160%);
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+// app/hub/live/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -125,8 +126,6 @@ export default function HubLivePage() {
   return (
     <XpotPageShell
       topBarProps={{
-        pillText: 'XPOT LIVE',
-        sloganRight: 'Real-time reward flow',
         liveIsOpen,
       }}
     >

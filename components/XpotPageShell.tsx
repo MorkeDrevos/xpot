@@ -1,3 +1,4 @@
+// components/XpotPageShell.tsx
 'use client';
 
 import { ReactNode, ComponentProps, useEffect, useMemo, useState } from 'react';
@@ -12,6 +13,9 @@ type XpotPageShellProps = {
   rightSlot?: ReactNode;
   children: ReactNode;
 
+  // ✅ NEW: full-bleed content rendered above the normal container (edge-to-edge hero)
+  fullBleedTop?: ReactNode;
+
   maxWidthClassName?: string;
   className?: string;
   containerClassName?: string;
@@ -23,8 +27,11 @@ type XpotPageShellProps = {
 
   showAtmosphere?: boolean;
 
-  // ✅ Fix: was used but missing from type
+  // Keep your existing feature
   showOpsThemeSwitcher?: boolean;
+
+  // New feature: explicit page tag (used for styling, telemetry, theming hooks)
+  pageTag?: string;
 };
 
 const THEME_KEY = 'xpot_ops_theme_v1';
@@ -87,8 +94,7 @@ function OpsThemeSwitcher() {
   const [active, setActive] = useState<string>('nebula');
 
   useEffect(() => {
-    const saved =
-      typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null;
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null;
     const initial = saved && PRESETS.some(p => p.id === saved) ? saved : 'nebula';
     setActive(initial);
     applyPreset(initial);
@@ -96,9 +102,7 @@ function OpsThemeSwitcher() {
 
   return (
     <div className="hidden sm:flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-[0.22em] text-slate-400">
-        Theme
-      </span>
+      <span className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Theme</span>
 
       <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03] backdrop-blur">
         {PRESETS.map(p => {
@@ -113,9 +117,7 @@ function OpsThemeSwitcher() {
               }}
               className={[
                 'h-8 px-3 text-[11px] font-semibold transition',
-                isActive
-                  ? 'bg-white/[0.10] text-slate-50'
-                  : 'text-slate-300 hover:bg-white/[0.06]',
+                isActive ? 'bg-white/[0.10] text-slate-50' : 'text-slate-300 hover:bg-white/[0.06]',
               ].join(' ')}
               title={`Apply ${p.label}`}
             >
@@ -133,6 +135,8 @@ export default function XpotPageShell({
   subtitle,
   rightSlot,
   children,
+  fullBleedTop,
+
   maxWidthClassName = 'max-w-[1440px]',
   className = '',
   containerClassName = '',
@@ -142,15 +146,19 @@ export default function XpotPageShell({
   topBarProps,
   showAtmosphere = true,
   showOpsThemeSwitcher = true,
+  pageTag,
 }: XpotPageShellProps) {
   const pathname = usePathname();
 
-  const isOpsOrAdmin = useMemo(() => {
-    return (
-      typeof pathname === 'string' &&
-      (pathname.startsWith('/ops') || pathname.startsWith('/admin'))
-    );
+  const inferredTag = useMemo(() => {
+    if (typeof pathname !== 'string') return undefined;
+    if (pathname.startsWith('/ops') || pathname.startsWith('/admin')) return 'ops';
+    if (pathname.startsWith('/hub')) return 'hub';
+    return undefined;
   }, [pathname]);
+
+  const resolvedPageTag = pageTag || inferredTag;
+  const isOpsOrAdmin = resolvedPageTag === 'ops';
 
   const mergedRightSlot = useMemo(() => {
     if (!isOpsOrAdmin || !showOpsThemeSwitcher) return rightSlot ?? null;
@@ -165,11 +173,10 @@ export default function XpotPageShell({
 
   return (
     <div
-      className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(
-        ' ',
-      )}
-      data-xpot-page={isOpsOrAdmin ? 'ops' : undefined}
+      className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(' ')}
+      data-xpot-page={resolvedPageTag}
     >
+      {/* Banner is hidden on mobile inside PreLaunchBanner (hidden sm:block) */}
       <PreLaunchBanner />
 
       {showTopBar && (
@@ -178,15 +185,17 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* Atmosphere overlays are CSS-only now */}
       {showAtmosphere && <div aria-hidden className="xpot-atmosphere" />}
 
-      {/* Content */}
+      {/* ✅ Full-bleed content slot (edge-to-edge hero). No padding added here on purpose. */}
+      {fullBleedTop ? <div className="relative z-10 w-full">{fullBleedTop}</div> : null}
+
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
+          // ✅ use real measured topbar height (published by XpotTopBar.tsx)
           showTopBar
-            ? 'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)]'
+            ? 'pt-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+24px)]'
             : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]',
           'pb-6 sm:pb-8',
           maxWidthClassName,
@@ -203,16 +212,8 @@ export default function XpotPageShell({
             ].join(' ')}
           >
             <div className="min-w-0">
-              {title && (
-                <h1 className="text-[26px] sm:text-[30px] font-semibold text-slate-50">
-                  {title}
-                </h1>
-              )}
-              {subtitle && (
-                <p className="mt-2 text-[14px] sm:text-[15px] text-slate-400">
-                  {subtitle}
-                </p>
-              )}
+              {title && <h1 className="text-[26px] font-semibold text-slate-50 sm:text-[30px]">{title}</h1>}
+              {subtitle && <p className="mt-2 text-[14px] text-slate-400 sm:text-[15px]">{subtitle}</p>}
             </div>
 
             {mergedRightSlot && (
