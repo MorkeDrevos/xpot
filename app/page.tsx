@@ -674,10 +674,11 @@ export default function HomePage() {
         />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.10),rgba(0,0,0,0.55))]" />
 
-        {/* inner frame */}
-        <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 sm:px-6">
-          <div className="py-6 sm:py-8">
-            <div className="relative overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+        {/* inner frame - FULL BLEED */}
+<div className="relative z-10 w-full px-0">
+  <div className="py-6 sm:py-8">
+    <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+      ...
               <div
                 className="
                   pointer-events-none absolute -inset-40 opacity-85 blur-3xl
