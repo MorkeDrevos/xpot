@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
@@ -272,37 +273,37 @@ function TooltipBubble({
 
   const arrowIsTop = fitsBelow; // arrow on top edge when bubble is below anchor
 
-  return (
+  return createPortal(
+  <div
+    ref={bubbleRef}
+    className="
+      pointer-events-none fixed z-[9999]
+      rounded-2xl border border-slate-700/80 bg-slate-950
+      shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
+    "
+    style={{
+      left,
+      top,
+      width,
+      opacity: 1,
+      transform: 'translateY(4px)',
+    }}
+  >
+    {/* Arrow */}
     <div
-      ref={bubbleRef}
-      className="
-        pointer-events-none fixed z-[9999]
-        rounded-2xl border border-slate-700/80 bg-slate-950
-        shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
-      "
-      style={{
-        left,
-        top,
-        width,
-        opacity: 1,
-        transform: 'translateY(4px)',
-      }}
-    >
-      {/* Arrow */}
-      <div
-        className={`
-          absolute h-4 w-4 rotate-45 bg-slate-950
-          shadow-[0_4px_10px_rgba(15,23,42,0.8)]
-          ${arrowIsTop ? '-top-2 border-l border-t' : '-bottom-2 border-r border-b'}
-          border-slate-700/80
-        `}
-        style={{ left: arrowX - 8 }}
-      />
+      className={`
+        absolute h-4 w-4 rotate-45 bg-slate-950
+        shadow-[0_4px_10px_rgba(15,23,42,0.8)]
+        ${arrowIsTop ? '-top-2 border-l border-t' : '-bottom-2 border-r border-b'}
+        border-slate-700/80
+      `}
+      style={{ left: arrowX - 8 }}
+    />
 
-      {children}
-    </div>
-  );
-}
+    {children}
+  </div>,
+  document.body
+);
 
 function UsdEstimateBadge() {
   const t = useAnchoredTooltip();
