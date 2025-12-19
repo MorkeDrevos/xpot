@@ -569,7 +569,6 @@ export default function JackpotPanel({
     }
   }, [priceUsd]);
 
-  const reachedMilestone = jackpotUsd != null ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null : null;
   const nextMilestone = jackpotUsd != null ? MILESTONES.find(m => jackpotUsd < m) ?? null : null;
 
   const prevMilestoneForBar = useMemo(() => {
@@ -600,15 +599,22 @@ export default function JackpotPanel({
 
   const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
 
-  const isWide = layout === 'wide';
-
   const topStatus = showUnavailable ? 'Price pending' : 'Live';
   const topStatusTone = showUnavailable
     ? 'border-amber-400/35 bg-amber-500/10 text-amber-200'
     : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200';
 
-  const viaLabel =
-    priceSource === 'DexScreener' ? 'DexScreener (backup)' : 'Jupiter';
+  const viaLabel = priceSource === 'DexScreener' ? 'DexScreener (backup)' : 'Jupiter';
+
+  const tickTone =
+    volPulse === 'up'
+      ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+      : volPulse === 'down'
+      ? 'border-rose-400/30 bg-rose-500/10 text-rose-200'
+      : 'border-white/10 bg-white/[0.03] text-slate-300';
+
+  const tickGlyph = volPulse === 'up' ? '↑' : volPulse === 'down' ? '↓' : '·';
+  const tickLabel = volPulse === 'up' ? 'tick up' : volPulse === 'down' ? 'tick down' : 'stable';
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -623,7 +629,7 @@ export default function JackpotPanel({
         `}
       />
 
-      {/* HEADER (compact rail) */}
+      {/* HEADER (single status rail) */}
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
@@ -633,22 +639,31 @@ export default function JackpotPanel({
         <div className="flex items-center gap-2">
           {!!badgeLabel && <HeaderBadge label={badgeLabel} tooltip={badgeTooltip} />}
 
+          {/* single status pill (no more extra LIVE pills inside the panel) */}
           <span
-  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}
->
-  <span
-    className={`h-1.5 w-1.5 rounded-full ${
-      showUnavailable
-        ? 'bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.9)]'
-        : 'bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]'
-    }`}
-  />
-  {topStatus}
-</span>
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}
+            title={showUnavailable ? 'Waiting for price feed' : 'Live feed active'}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                showUnavailable ? 'bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.7)]' : 'bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.8)]'
+              }`}
+            />
+            {topStatus}
+          </span>
+
+          {/* tiny, premium tick indicator (quiet signal) */}
+          <span
+            className={`hidden sm:inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${tickTone}`}
+            title="Tick-to-tick direction (thresholded)"
+          >
+            <span className="font-mono text-[11px] leading-none">{tickGlyph}</span>
+            {tickLabel}
+          </span>
         </div>
       </div>
 
-      {/* MAIN SLAB (img2) */}
+      {/* MAIN SLAB */}
       <div className="relative z-10 mt-5 rounded-2xl border border-slate-800/80 bg-black/20 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -663,23 +678,18 @@ export default function JackpotPanel({
             <span className="text-xs text-slate-500">- via {viaLabel}</span>
           </div>
 
+          {/* only keep "Draw locked" here (no Live pill duplication) */}
           <div className="flex items-center gap-2">
             {isLocked && (
               <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
                 Draw locked
               </span>
             )}
-
-            <span
-              className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}
-            >
-              {topStatus}
-            </span>
           </div>
         </div>
 
         {/* Value row */}
-        <div className={isWide ? 'mt-5 grid gap-4 lg:grid-cols-[1fr_360px]' : 'mt-5 grid gap-4'}>
+        <div className={layout === 'wide' ? 'mt-5 grid gap-4 lg:grid-cols-[1fr_360px]' : 'mt-5 grid gap-4'}>
           {/* Big USD */}
           <div className="rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
             <div
@@ -729,13 +739,7 @@ export default function JackpotPanel({
 
           {spark ? (
             <>
-              <svg
-                width="100%"
-                height="70"
-                viewBox="0 0 560 54"
-                className="block text-slate-300"
-                aria-label="XPOT momentum sparkline (observed)"
-              >
+              <svg width="100%" height="70" viewBox="0 0 560 54" className="block text-slate-300" aria-label="XPOT momentum sparkline (observed)">
                 <polyline
                   fill="none"
                   stroke="currentColor"
@@ -785,7 +789,7 @@ export default function JackpotPanel({
         </div>
       </div>
 
-      {/* CONTEXT STRIP (img3) */}
+      {/* CONTEXT STRIP */}
       <div className="relative z-10 mt-4 rounded-2xl border border-slate-800/80 bg-black/20 px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
           <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
