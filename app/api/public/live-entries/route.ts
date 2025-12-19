@@ -1,62 +1,95 @@
 // app/api/public/live-entries/route.ts
+import { NextResponse } from 'next/server';
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-import { NextResponse } from 'next/server';
-
 const MIN_FOLLOWERS = 100;
 
-async function fetchFollowerCounts(handles: string[]) {
-  const usernames = handles
-    .map(h => h.replace(/^@/, '').trim())
-    .filter(Boolean)
-    .slice(0, 100); // X API batch limit for usernames
+function normalizeHandle(h: string) {
+  return (h || '').replace(/^@/, '').trim();
+}
 
-  if (!usernames.length) return new Map<string, number>();
-
+async function fetchFollowerCounts(usernames: string[]) {
   const token = process.env.XPOT_X_BEARER_TOKEN;
-  if (!token) return new Map<string, number>(); // fail closed or open - your choice
+  if (!token) return new Map<string, number>();
 
-  const url =
-    `https://api.x.com/2/users/by?usernames=${encodeURIComponent(usernames.join(','))}` +
-    `&user.fields=public_metrics`;
+  const clean = Array.from(
+    new Set(
+      usernames
+        .map(normalizeHandle)
+        .filter(Boolean)
+        .slice(0, 100), // X API usernames/by supports up to 100 per request
+    ),
+  );
 
-  const r = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
+  if (!clean.length) return new Map<string, number>();
+
+  const url = new URL('https://api.x.com/2/users/by');
+  url.searchParams.set('usernames', clean.join(','));
+  url.searchParams.set('user.fields', 'public_metrics');
+
+  const r = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     cache: 'no-store',
   });
 
-  if (!r.ok) return new Map<string, number>();
+  if (!r.ok) {
+    // If X is down / rate-limited, fail closed (return empty map so we filter everything out)
+    return new Map<string, number>();
+  }
 
   const json = await r.json();
 
-  const map = new Map<string, number>();
-  for (const u of json?.data ?? []) {
-    const username = String(u?.username ?? '').toLowerCase();
-    const followers = Number(u?.public_metrics?.followers_count ?? 0);
-    if (username) map.set(username, followers);
+  const out = new Map<string, number>();
+  const data = Array.isArray(json?.data) ? json.data : [];
+
+  for (const u of data) {
+    const username = typeof u?.username === 'string' ? u.username : '';
+    const followers =
+      typeof u?.public_metrics?.followers_count === 'number'
+        ? u.public_metrics.followers_count
+        : 0;
+
+    if (username) out.set(username.toLowerCase(), followers);
   }
-  return map;
+
+  return out;
 }
 
 export async function GET() {
-  // 1) get your raw entries from DB however you already do it
-  // Example: const rawHandles = await getLiveHandlesFromDb();
-  const rawHandles: string[] = []; // <-- replace with your existing source
+  // TEMP SOURCE (replace later with DB query)
+  const rawEntries = [
+    { handle: 'CryptoNox' },
+    { handle: 'XPOTMaxi' },
+    { handle: 'ChartHermit' },
+    { handle: 'SolanaSignals' },
+    { handle: 'LoopMode' },
+  ];
 
-  const clean = rawHandles
-    .map(h => h.replace(/^@/, '').trim())
-    .filter(Boolean);
+  const handles = rawEntries.map(e => normalizeHandle(e.handle)).filter(Boolean);
+  const followersMap = await fetchFollowerCounts(handles);
 
-  const counts = await fetchFollowerCounts(clean);
+  // Filter: must exist (returned by X) AND followers >= MIN_FOLLOWERS
+  const entries = rawEntries
+    .map(e => ({ handle: normalizeHandle(e.handle) }))
+    .filter(e => {
+      const followers = followersMap.get(e.handle.toLowerCase());
+      return typeof followers === 'number' && followers >= MIN_FOLLOWERS;
+    });
 
-  // 2) keep only “real” + >= 100 followers
-  const entries = clean
-    .map(h => {
-      const followers = counts.get(h.toLowerCase()) ?? 0;
-      return { handle: h, followers };
-    })
-    .filter(x => x.followers >= MIN_FOLLOWERS);
-
-  return NextResponse.json({ entries });
+  return NextResponse.json(
+    {
+      updatedAt: new Date().toISOString(),
+      minFollowers: MIN_FOLLOWERS,
+      entries,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    },
+  );
 }
