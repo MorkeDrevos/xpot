@@ -88,47 +88,81 @@ function pctToBar(pct: number) {
   return `${clamped}%`;
 }
 
+function fmtInt(n: number) {
+  return Math.round(n).toLocaleString('en-US');
+}
+
 export default function TokenomicsPage() {
-  // You can swap these later from env or DB without changing layout
-  const supply = 50_000_000_000; // 50B minted now (your screenshot)
+  // Supply
+  const supply = 50_000_000_000; // 50B minted
   const decimals = 6;
+
+  // ─────────────────────────────────────────────
+  // Distribution runway math (deterministic)
+  // ─────────────────────────────────────────────
+  // Requirement you stated: ~3.6B XPOT covers 10y daily
+  const DAILY_10Y_TOTAL = 3_600_000_000;
+  const YEARS_TARGET = 10;
+  const DAYS_PER_YEAR = 365;
+
+  const DAILY_XPOT_TARGET = Math.round(DAILY_10Y_TOTAL / (YEARS_TARGET * DAYS_PER_YEAR)); // ≈ 986,301
+
+  // Final locked allocation you chose
+  const DISTRIBUTION_RESERVE_PCT = 14;
+  const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100);
+
+  function yearsOfRunway(daily: number) {
+    if (!Number.isFinite(daily) || daily <= 0) return Infinity;
+    return DISTRIBUTION_RESERVE / (daily * DAYS_PER_YEAR);
+  }
+
+  const runwayTable = useMemo(
+    () => [
+      { label: '500,000 XPOT / day', daily: 500_000 },
+      { label: '750,000 XPOT / day', daily: 750_000 },
+      { label: `≈${fmtInt(DAILY_XPOT_TARGET)} XPOT / day (modeled)`, daily: DAILY_XPOT_TARGET, highlight: true },
+      { label: '1,250,000 XPOT / day', daily: 1_250_000 },
+      { label: '1,500,000 XPOT / day', daily: 1_500_000 },
+    ],
+    [DAILY_XPOT_TARGET],
+  );
 
   const allocation = useMemo<Allocation[]>(
     () => [
       {
-        key: 'daily',
-        label: 'Daily rewards pool',
-        pct: 40,
+        key: 'distribution',
+        label: 'Protocol distribution reserve',
+        pct: 14,
         note:
-          'Protocol-locked rewards that fund the daily main pot. This is the core primitive.',
+          'Pre-allocated XPOT reserved for long-term distribution. Released gradually via daily XPOT and future modules.',
         detail:
-          'Designed for longevity: dedicated payout vault(s), predictable emission rules, and verifiable distribution. This allocation is reserved for rewards - not ops.',
+          `Modeled baseline: ~${fmtInt(DAILY_XPOT_TARGET)} XPOT per day. This supports multi-year distribution without minting. Unused allocation remains locked.`,
         tone: 'emerald',
       },
       {
         key: 'liquidity',
         label: 'Liquidity + market ops',
-        pct: 20,
+        pct: 26,
         note:
-          'LP depth, market resilience, and controlled expansion across venues and pairs.',
+          'LP depth, market resilience and controlled expansion across venues and pairs.',
         detail:
-          'Used to seed and defend liquidity, reduce fragility, and keep price discovery healthy. The goal is stability and trust - not hype.',
+          'Used to seed and defend liquidity, reduce fragility and keep price discovery healthy. The goal is stability and trust, not hype.',
         tone: 'sky',
       },
       {
         key: 'treasury',
         label: 'Treasury + runway',
-        pct: 18,
+        pct: 23,
         note:
-          'Audits, infra, legal, and long-horizon ecosystem investment to survive every cycle.',
+          'Operational runway for audits, infra, legal and long-horizon execution.',
         detail:
-          'This is the safety buffer that lets XPOT operate like infrastructure. It funds reliability, security, and long-term execution without touching rewards.',
+          'Treasury is the project’s survival layer: security, infrastructure, compliance and sponsor operations so XPOT can ship for years without touching rewards.',
         tone: 'slate',
       },
       {
         key: 'team',
         label: 'Team + builders',
-        pct: 10,
+        pct: 9,
         note:
           'Vested, long horizon. Builders stay aligned with holders and protocol health.',
         detail:
@@ -138,28 +172,38 @@ export default function TokenomicsPage() {
       {
         key: 'partners',
         label: 'Partners + creators',
-        pct: 7,
+        pct: 8,
         note:
-          'Creator-gated drops, sponsor pools, and strategic distribution with accountability.',
+          'Creator-gated drops, sponsor pools and performance-based distribution with accountability.',
         detail:
-          'Reserved for performance-based collaborations: creators, brands, and integrations that measurably grow participation and sponsor demand.',
+          'Reserved for collaborations that measurably grow participation and sponsor demand. Distribution should be trackable and tied to outcomes.',
         tone: 'sky',
       },
       {
         key: 'community',
         label: 'Community incentives',
-        pct: 5,
+        pct: 7,
         note:
-          'Streak rewards, referral boosts, and reputation-based unlocks that feel earned.',
+          'Streak rewards, referral boosts and reputation-based unlocks that feel earned.',
         detail:
           'Built for delight over farming: targeted incentives for real users and real momentum. Surprise rewards beat extractive grind loops.',
         tone: 'emerald',
       },
+      {
+        key: 'strategic',
+        label: 'Strategic reserve',
+        pct: 13,
+        note:
+          'Locked buffer for unknowns: future opportunities, integrations and defensive planning.',
+        detail:
+          'This stays locked by default. If unlocked, it should be governed, transparent and reported with public wallets and clear purpose.',
+        tone: 'slate',
+      },
     ],
-    [],
+    [DAILY_XPOT_TARGET],
   );
 
-  const [openKey, setOpenKey] = useState<string | null>('daily');
+  const [openKey, setOpenKey] = useState<string | null>('distribution');
 
   return (
     <XpotPageShell
@@ -207,9 +251,9 @@ export default function TokenomicsPage() {
 
               <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
                 Traditional lottery and casino models extract value and hide it behind black boxes.
-                XPOT flips the equation: rewards are the primitive, identity is public by handle, and
+                XPOT flips the equation: rewards are the primitive, identity is public by handle and
                 payouts are verifiable on-chain. Over time, this becomes infrastructure for creators,
-                communities, and sponsors to run daily rewards without becoming a casino.
+                communities and sponsors to run daily rewards without becoming a casino.
               </p>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -221,7 +265,7 @@ export default function TokenomicsPage() {
                   Terms
                 </Link>
                 <span className="text-[11px] text-slate-500">
-                  Allocation is designed to prioritize rewards, resilience, and long-term execution.
+                  Allocation is designed to prioritize rewards, resilience and long-term execution.
                 </span>
               </div>
             </div>
@@ -237,7 +281,7 @@ export default function TokenomicsPage() {
                   Decimals: <span className="font-mono text-slate-200">{decimals}</span>
                 </p>
 
-                {/* Trust / confidence block (img2 upgrade) */}
+                {/* Trust / confidence block */}
                 <div className="mt-4 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
                     Supply integrity
@@ -295,7 +339,7 @@ export default function TokenomicsPage() {
                   Become the daily rewards layer for the internet
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
-                  Disruption comes from transparency, repeatability, and sponsor-friendly distribution.
+                  Disruption comes from transparency, repeatability and sponsor-friendly distribution.
                 </p>
               </div>
             </div>
@@ -320,7 +364,7 @@ export default function TokenomicsPage() {
                   Allocation design
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Built to reward holders first, sustain liquidity, and fund long-term execution.
+                  Locked in: reward runway, market resilience and long-term execution.
                 </p>
               </div>
               <Pill tone="sky">
@@ -379,8 +423,42 @@ export default function TokenomicsPage() {
                           <p className="mt-2 text-xs text-slate-500">
                             {a.detail}
                           </p>
+
+                          {/* Runway table for protocol distribution reserve */}
+                          {a.key === 'distribution' && (
+                            <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                                Distribution runway table
+                              </p>
+
+                              <div className="mt-3 space-y-2">
+                                {runwayTable.map(r => {
+                                  const years = yearsOfRunway(r.daily);
+                                  return (
+                                    <div
+                                      key={r.label}
+                                      className={[
+                                        'flex items-center justify-between rounded-lg px-3 py-2 text-xs',
+                                        r.highlight
+                                          ? 'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/30'
+                                          : 'bg-slate-950/60 text-slate-300',
+                                      ].join(' ')}
+                                    >
+                                      <span className="font-mono">{r.label}</span>
+                                      <span className="font-semibold">{years.toFixed(1)} years</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              <p className="mt-3 text-[11px] text-slate-500">
+                                Reserve size: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT (14% of supply). Fixed supply with minting disabled. Unused reserve remains locked.
+                              </p>
+                            </div>
+                          )}
+
                           <p className="mt-3 text-[11px] text-slate-600">
-                            Implementation: dedicated vaults, timelocks, and public wallets so allocations stay auditable.
+                            Implementation: dedicated vaults, timelocks and public wallets so allocations stay auditable.
                           </p>
                         </div>
                       </motion.div>
@@ -425,7 +503,7 @@ export default function TokenomicsPage() {
                     Eligibility
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Holding XPOT is the requirement to claim entry. No purchases, no ticket sales, no casino vibes.
+                    Holding XPOT is the requirement to claim entry. No purchases, no ticket sales and no casino vibes.
                   </p>
                 </div>
 
@@ -435,7 +513,7 @@ export default function TokenomicsPage() {
                     Status and reputation
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Your handle becomes a public identity. Wins, streaks, and participation can build a profile
+                    Your handle becomes a public identity. Wins, streaks and participation can build a profile
                     that unlocks future perks and sponsor drops.
                   </p>
                 </div>
@@ -446,7 +524,7 @@ export default function TokenomicsPage() {
                     Sponsor-funded rewards
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Brands buy XPOT to fund bonus drops. Holders get value, sponsors get measurable attention,
+                    Brands buy XPOT to fund bonus drops. Holders get value, sponsors get measurable attention
                     and the protocol grows without selling tickets.
                   </p>
                 </div>
@@ -471,7 +549,7 @@ export default function TokenomicsPage() {
               </p>
               <p className="mt-2 text-sm leading-relaxed text-slate-300">
                 The endgame is not “a meme draw”. The endgame is a protocol that communities
-                and brands plug into for daily rewards, with identity and transparency baked in.
+                and brands plug into for daily rewards with identity and transparency baked in.
               </p>
 
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -500,9 +578,9 @@ export default function TokenomicsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
           <span className="inline-flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-            Tokenomics is premium-first: simple, verifiable, and sponsor-friendly.
+            Tokenomics is premium-first: simple, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v2</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v3</span>
         </div>
       </footer>
     </XpotPageShell>
