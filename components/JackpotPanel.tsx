@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Info } from 'lucide-react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
@@ -56,7 +57,7 @@ function clamp(n: number, a: number, b: number) {
 }
 
 function easeOutCubic(t: number) {
-  return 1 - Math.pow(1 - t, 3);
+  return 1 - Math.pow(1 - t), 3);
 }
 
 function formatCoverage(ms: number) {
@@ -94,33 +95,62 @@ function getMadridSessionKey(cutoffHour = 22) {
   return `${y}${m}${d}`;
 }
 
-function HeaderBadge({ label, tooltip }: { label: string; tooltip?: string }) {
+function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
   if (!label) return null;
 
   return (
-    <div className="relative group inline-flex cursor-default select-none">
-      <span className="inline-flex cursor-default items-center gap-2 rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-        {label}
+    <div className="flex items-center justify-center gap-2">
+      {/* Pill (smaller like your screenshot) */}
+      <span
+        className="
+          inline-flex items-center gap-2 rounded-full
+          border border-emerald-400/30 bg-emerald-500/10
+          px-4 py-1.5
+          text-[9px] sm:text-[10px]
+          font-semibold uppercase tracking-[0.22em]
+          text-emerald-100
+          shadow-[0_0_0_1px_rgba(16,185,129,0.08)]
+          max-w-[92vw]
+        "
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.85)]" />
+        <span className="truncate">{label}</span>
       </span>
 
+      {/* Tooltip icon (hover/click target next to the pill, like you want) */}
       {!!tooltip && (
-        <div
-          className="
-            pointer-events-none absolute left-1/2 top-full z-[80] mt-3 w-[320px] max-w-[80vw]
-            -translate-x-1/2
-            rounded-2xl border border-slate-700/80 bg-slate-950
-            px-4 py-3 text-[12px] leading-relaxed text-slate-100
-            shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
-            opacity-0 translate-y-0
-            group-hover:opacity-100 group-hover:translate-y-1
-            transition-all duration-200
-            whitespace-pre-line
-            cursor-default select-none
-          "
-        >
-          <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
-          {tooltip}
+        <div className="relative group inline-flex">
+          <button
+            type="button"
+            aria-label="More info"
+            className="
+              inline-flex h-9 w-9 items-center justify-center rounded-full
+              border border-slate-700/80 bg-black/20
+              text-slate-200
+              hover:bg-slate-900/40 hover:text-white
+              transition
+            "
+          >
+            <Info className="h-4 w-4 opacity-90" />
+          </button>
+
+          <div
+            className="
+              pointer-events-none absolute left-1/2 top-full z-[80] mt-3 w-[340px] max-w-[86vw]
+              -translate-x-1/2
+              rounded-2xl border border-slate-700/80 bg-slate-950
+              px-4 py-3 text-[12px] leading-relaxed text-slate-100
+              shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
+              opacity-0 translate-y-0
+              group-hover:opacity-100 group-hover:translate-y-1
+              transition-all duration-200
+              whitespace-pre-line
+              select-none
+            "
+          >
+            <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
+            {tooltip}
+          </div>
         </div>
       )}
     </div>
@@ -599,6 +629,13 @@ export default function JackpotPanel({
         `}
       />
 
+      {/* RUNWAY PILL (moved inside JackpotPanel, smaller like your ref, tooltip icon next to it) */}
+      {!!badgeLabel && (
+        <div className="relative z-10 mb-4 flex justify-center">
+          <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
+        </div>
+      )}
+
       {/* HEADER (matches your compact rail) */}
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
@@ -607,8 +644,6 @@ export default function JackpotPanel({
         </div>
 
         <div className="flex items-center gap-2">
-          {!!badgeLabel && <HeaderBadge label={badgeLabel} tooltip={badgeTooltip} />}
-
           <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
             <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
             Live
@@ -638,7 +673,9 @@ export default function JackpotPanel({
               </span>
             )}
 
-            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}>
+            <span
+              className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}
+            >
               {topStatus}
             </span>
           </div>
@@ -695,7 +732,13 @@ export default function JackpotPanel({
 
           {spark ? (
             <>
-              <svg width="100%" height="70" viewBox="0 0 560 54" className="block text-slate-300" aria-label="XPOT momentum sparkline (observed)">
+              <svg
+                width="100%"
+                height="70"
+                viewBox="0 0 560 54"
+                className="block text-slate-300"
+                aria-label="XPOT momentum sparkline (observed)"
+              >
                 <polyline
                   fill="none"
                   stroke="currentColor"
@@ -721,7 +764,9 @@ export default function JackpotPanel({
         <div className="rounded-2xl border border-slate-800/80 bg-black/20 px-5 py-4">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Milestone</p>
-            <p className="text-[11px] text-slate-300">{jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'}</p>
+            <p className="text-[11px] text-slate-300">
+              {jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'}
+            </p>
           </div>
 
           <div className="relative h-3 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
@@ -770,9 +815,7 @@ export default function JackpotPanel({
         </div>
 
         {showUnavailable ? (
-          <p className="mt-3 text-[12px] text-amber-200">
-            Live price not available yet - auto-populates when Jupiter is live.
-          </p>
+          <p className="mt-3 text-[12px] text-amber-200">Live price not available yet - auto-populates when Jupiter is live.</p>
         ) : (
           <p className="mt-3 text-[12px] text-slate-500">
             Updates every {Math.round(PRICE_POLL_MS / 1000)}s. Fallback engages automatically if Jupiter is unavailable.
