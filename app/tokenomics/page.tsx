@@ -676,11 +676,6 @@ export default function TokenomicsPage() {
                       Disruption comes from transparency, repeatability and sponsor-friendly distribution.
                     </p>
 
-                    <div className="mt-4 rounded-xl border border-slate-900/70 bg-slate-950/55 p-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
-                      <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
-                      <p className="mt-2 text-xs text-slate-500">If it cannot be audited, it should not exist.</p>
-                    </div>
                   </div>
                 </div>
               </div>
