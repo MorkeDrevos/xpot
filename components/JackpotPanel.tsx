@@ -328,7 +328,7 @@ function TooltipBubble({
   );
 }
 
-function UsdEstimateBadge() {
+function UsdEstimateBadge({ compact }: { compact?: boolean }) {
   const t = useAnchoredTooltip();
 
   return (
@@ -338,23 +338,27 @@ function UsdEstimateBadge() {
       onMouseEnter={() => t.setOpen(true)}
       onMouseLeave={() => t.setOpen(false)}
     >
-      <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-        USD estimate
-      </span>
+      <span
+  className={
+    compact
+      ? 'inline-flex items-center rounded-full border border-slate-700/60 bg-black/20 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.20em] text-slate-200'
+      : 'inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200'
+  }
+>
+  USD estimate
+</span>
 
-      <button
-        type="button"
-        aria-label="USD estimate info"
-        className="
-          inline-flex h-9 w-9 items-center justify-center rounded-full
-          border border-slate-700/80 bg-black/20
-          text-slate-200
-          hover:bg-slate-900/40 hover:text-white
-          transition
-        "
-      >
-        <Info className="h-4 w-4 opacity-90" />
-      </button>
+<button
+  type="button"
+  aria-label="USD estimate info"
+  className={
+    compact
+      ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/70 bg-black/20 text-slate-200 hover:bg-slate-900/40 hover:text-white transition'
+      : 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/20 text-slate-200 hover:bg-slate-900/40 hover:text-white transition'
+  }
+>
+  <Info className={compact ? 'h-3.5 w-3.5 opacity-90' : 'h-4 w-4 opacity-90'} />
+</button>
 
       <TooltipBubble open={t.open} rect={t.rect} width={380}>
         <div className="px-4 py-3 text-[12px] leading-snug text-slate-100">
@@ -417,6 +421,81 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           </TooltipBubble>
         </>
       )}
+    </div>
+  );
+}
+
+function shortAddr(addr: string, left = 4, right = 4) {
+  if (!addr) return addr;
+  if (addr.length <= left + right + 3) return addr;
+  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
+}
+
+function ContractPill({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+  const t = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (t.current) window.clearTimeout(t.current);
+    };
+  }, []);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      if (t.current) window.clearTimeout(t.current);
+      t.current = window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      <div
+        className="
+          relative overflow-hidden rounded-2xl
+          border border-amber-300/20 bg-black/30
+          px-4 py-3
+          shadow-[0_0_0_1px_rgba(251,191,36,0.06),0_18px_50px_rgba(0,0,0,0.28)]
+        "
+      >
+        <div className="pointer-events-none absolute inset-0 opacity-70 bg-[radial-gradient(circle_at_15%_30%,rgba(251,191,36,0.14),transparent_55%),radial-gradient(circle_at_85%_20%,rgba(124,200,255,0.10),transparent_55%)]" />
+
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-300/20 bg-black/25">
+              {/* shield-ish vibe without importing new icons */}
+              <span className="h-2.5 w-2.5 rounded-sm rotate-45 bg-amber-200/80 shadow-[0_0_14px_rgba(251,191,36,0.35)]" />
+            </span>
+
+            <div className="min-w-0 leading-tight">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/90">
+                Official contract
+              </p>
+              <p className="mt-0.5 font-mono text-sm tracking-[0.14em] text-slate-100">
+                {shortAddr(address, 6, 5)}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onCopy}
+            className="
+              inline-flex shrink-0 items-center justify-center rounded-full
+              border border-slate-700/70 bg-black/25
+              px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em]
+              text-slate-200 hover:bg-slate-900/35 hover:text-white
+              transition
+            "
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -853,8 +932,8 @@ export default function JackpotPanel({
       {/* HEADER */}
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
-          <p className="mt-1 text-xs text-slate-400">Pool value and telemetry (Jupiter + on-chain samples).</p>
+          <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
+<p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
         </div>
 
         {/* ✅ keep only ONE live pill */}
@@ -894,29 +973,22 @@ export default function JackpotPanel({
         <div className={isWide ? 'mt-5 grid gap-4 lg:grid-cols-[1fr_360px]' : 'mt-5 grid gap-4'}>
           {/* Big USD */}
           <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
-            <div className="flex items-center justify-between">
-              <UsdEstimateBadge />
-            </div>
+            <div className="mt-4 flex items-end justify-between gap-3">
+  <div
+    className={`
+      text-5xl sm:text-6xl font-semibold tabular-nums
+      transition-transform transition-colors duration-200
+      ${justUpdated ? 'scale-[1.01]' : ''}
+      ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
+    `}
+  >
+    {displayUsdText}
+  </div>
 
-            {/* ✅ sexier USD number */}
-            <div className="relative mt-4">
-              <div
-                className={`
-                  text-5xl sm:text-6xl font-semibold tabular-nums
-                  transition-transform transition-colors duration-200
-                  ${justUpdated ? 'scale-[1.012]' : ''}
-                  ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
-                `}
-                style={{
-                  textShadow: justPumped
-                    ? '0 0 18px rgba(124,200,255,0.35), 0 0 50px rgba(59,167,255,0.18)'
-                    : '0 0 26px rgba(255,255,255,0.06)',
-                  filter: 'drop-shadow(0 18px 40px rgba(0,0,0,0.45))',
-                }}
-              >
-                {displayUsdText}
-              </div>
-
+  <div className="mb-1">
+    <UsdEstimateBadge compact />
+  </div>
+</div>
               {/* subtle premium sheen */}
               <div
                 className="pointer-events-none absolute -inset-x-2 -top-2 h-10 opacity-50"
@@ -955,6 +1027,8 @@ export default function JackpotPanel({
             </div>
 
             <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
+
+<ContractPill address={TOKEN_MINT} />
           </div>
 
           {/* Royal XPOT meta */}
