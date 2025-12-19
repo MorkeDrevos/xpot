@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -35,6 +35,9 @@ const BTN_UTILITY =
 
 const CARD =
   'relative overflow-hidden rounded-[30px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.55)] backdrop-blur-xl';
+
+// How often to refresh vault info
+const VAULT_POLL_MS = 20_000;
 
 function Pill({
   children,
@@ -92,6 +95,386 @@ function fmtInt(n: number) {
   return Math.round(n).toLocaleString('en-US');
 }
 
+function shortAddr(a: string) {
+  if (!a) return a;
+  if (a.length <= 10) return a;
+  return `${a.slice(0, 4)}…${a.slice(-4)}`;
+}
+
+function formatMaybeUsd(n: unknown) {
+  const v = typeof n === 'number' ? n : Number(n);
+  if (!Number.isFinite(v)) return null;
+  return v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+}
+
+function formatMaybeNumber(n: unknown) {
+  const v = typeof n === 'number' ? n : Number(n);
+  if (!Number.isFinite(v)) return null;
+  return v.toLocaleString('en-US', { maximumFractionDigits: 6 });
+}
+
+function timeAgo(ts: number) {
+  const now = Date.now();
+  const diff = Math.max(0, now - ts);
+  const s = Math.floor(diff / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+
+  if (d > 0) return `${d}d ago`;
+  if (h > 0) return `${h}h ago`;
+  if (m > 0) return `${m}m ago`;
+  return `${s}s ago`;
+}
+
+// ─────────────────────────────────────────────
+// Vault types (defensive: supports multiple API shapes)
+// ─────────────────────────────────────────────
+type VaultTx = {
+  signature: string;
+  ts?: number; // unix ms
+  slot?: number;
+  label?: string;
+  direction?: 'in' | 'out' | 'unknown';
+  amount?: number;
+  amountUsd?: number;
+};
+
+type VaultRow = {
+  id?: string;
+  category?: string; // distribution/liquidity/treasury/team/partners/community/strategic
+  name?: string;
+  address: string;
+
+  // balances (any of these may exist depending on your API)
+  xpot?: number;
+  balance?: number;
+  balanceXpot?: number;
+  uiAmount?: number;
+
+  usd?: number;
+  balanceUsd?: number;
+
+  // tx list (any key)
+  tx?: VaultTx[];
+  txs?: VaultTx[];
+  recentTx?: VaultTx[];
+};
+
+function normalizeVaults(payload: any): VaultRow[] {
+  if (!payload) return [];
+
+  // Common shapes:
+  // 1) { vaults: [...] }
+  // 2) { data: { vaults: [...] } }
+  // 3) [...] directly
+  const raw =
+    Array.isArray(payload) ? payload :
+    Array.isArray(payload?.vaults) ? payload.vaults :
+    Array.isArray(payload?.data?.vaults) ? payload.data.vaults :
+    [];
+
+  const out: VaultRow[] = [];
+
+  for (const v of raw) {
+    const address = (v?.address ?? v?.pubkey ?? v?.wallet ?? v?.account ?? '').toString();
+    if (!address) continue;
+
+    const txList = (Array.isArray(v?.tx) ? v.tx : Array.isArray(v?.txs) ? v.txs : Array.isArray(v?.recentTx) ? v.recentTx : []) as any[];
+
+    const normTx: VaultTx[] = txList
+      .map(t => ({
+        signature: (t?.signature ?? t?.sig ?? t?.txid ?? '').toString(),
+        ts:
+          typeof t?.ts === 'number' ? t.ts :
+          typeof t?.time === 'number' ? t.time :
+          typeof t?.blockTime === 'number' ? t.blockTime * 1000 :
+          undefined,
+        slot: typeof t?.slot === 'number' ? t.slot : undefined,
+        label: typeof t?.label === 'string' ? t.label : undefined,
+        direction:
+          t?.direction === 'in' || t?.direction === 'out' ? t.direction :
+          typeof t?.direction === 'string' ? 'unknown' :
+          undefined,
+        amount: typeof t?.amount === 'number' ? t.amount : (Number.isFinite(Number(t?.amount)) ? Number(t?.amount) : undefined),
+        amountUsd: typeof t?.amountUsd === 'number' ? t.amountUsd : (Number.isFinite(Number(t?.amountUsd)) ? Number(t?.amountUsd) : undefined),
+      }))
+      .filter(t => !!t.signature);
+
+    out.push({
+      id: typeof v?.id === 'string' ? v.id : undefined,
+      category: typeof v?.category === 'string' ? v.category : typeof v?.group === 'string' ? v.group : undefined,
+      name: typeof v?.name === 'string' ? v.name : undefined,
+      address,
+      xpot:
+        typeof v?.xpot === 'number' ? v.xpot :
+        typeof v?.balanceXpot === 'number' ? v.balanceXpot :
+        typeof v?.balance === 'number' ? v.balance :
+        typeof v?.uiAmount === 'number' ? v.uiAmount :
+        undefined,
+      balance:
+        typeof v?.balance === 'number' ? v.balance :
+        typeof v?.uiAmount === 'number' ? v.uiAmount :
+        undefined,
+      balanceXpot: typeof v?.balanceXpot === 'number' ? v.balanceXpot : undefined,
+      uiAmount: typeof v?.uiAmount === 'number' ? v.uiAmount : undefined,
+      usd:
+        typeof v?.usd === 'number' ? v.usd :
+        typeof v?.balanceUsd === 'number' ? v.balanceUsd :
+        undefined,
+      balanceUsd: typeof v?.balanceUsd === 'number' ? v.balanceUsd : undefined,
+      tx: normTx,
+    });
+  }
+
+  return out;
+}
+
+function useVaults() {
+  const [vaults, setVaults] = useState<VaultRow[]>([]);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hadError, setHadError] = useState(false);
+
+  useEffect(() => {
+    let timer: number | null = null;
+    let aborted = false;
+    const ctrl = new AbortController();
+
+    async function fetchVaults() {
+      try {
+        setHadError(false);
+
+        const res = await fetch('/api/vaults', {
+          signal: ctrl.signal,
+          cache: 'no-store',
+        });
+
+        if (!res.ok) throw new Error(`vaults http ${res.status}`);
+
+        const json = await res.json();
+        const norm = normalizeVaults(json);
+
+        if (aborted) return;
+
+        setVaults(norm);
+        setUpdatedAt(Date.now());
+      } catch (e) {
+        if ((e as any)?.name === 'AbortError') return;
+        console.error('[XPOT] vault fetch error:', e);
+        if (aborted) return;
+        setHadError(true);
+      } finally {
+        if (!aborted) setIsLoading(false);
+      }
+    }
+
+    function onVis() {
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState === 'visible') fetchVaults();
+    }
+
+    fetchVaults();
+    timer = window.setInterval(fetchVaults, VAULT_POLL_MS);
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVis);
+    }
+
+    return () => {
+      aborted = true;
+      ctrl.abort();
+      if (timer !== null) window.clearInterval(timer);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+
+  return { vaults, updatedAt, isLoading, hadError };
+}
+
+function VaultsPanel({
+  title,
+  category,
+  vaults,
+  updatedAt,
+  isLoading,
+  hadError,
+}: {
+  title: string;
+  category: string;
+  vaults: VaultRow[];
+  updatedAt: number | null;
+  isLoading: boolean;
+  hadError: boolean;
+}) {
+  const catVaults = useMemo(() => {
+    // We match by category if your API provides it.
+    // If not, we still show everything in a single fallback panel by returning all vaults when category === 'all'.
+    if (category === 'all') return vaults;
+    return vaults.filter(v => (v.category ?? '').toLowerCase() === category.toLowerCase());
+  }, [vaults, category]);
+
+  const hasAny = catVaults.length > 0;
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Live balances + recent transactions (auditable).
+            {updatedAt ? <span className="ml-2 text-slate-600">Updated {timeAgo(updatedAt)}</span> : null}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isLoading ? (
+            <span className="rounded-full border border-slate-700/70 bg-slate-950/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+              Loading
+            </span>
+          ) : hadError ? (
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
+              API issue
+            </span>
+          ) : (
+            <span className="rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+              Live
+            </span>
+          )}
+        </div>
+      </div>
+
+      {!hasAny ? (
+        <div className="mt-3 rounded-lg border border-slate-800/70 bg-slate-950/60 p-3">
+          <p className="text-xs text-slate-400">
+            No vaults found for <span className="font-mono text-slate-200">{category}</span>.
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Tip: ensure <span className="font-mono text-slate-200">/api/vaults</span> returns a <span className="font-mono text-slate-200">category</span> field per vault (distribution, liquidity, treasury, team, partners, community, strategic).
+          </p>
+        </div>
+      ) : (
+        <div className="mt-3 grid gap-3">
+          {catVaults.map(v => {
+            const xpot =
+              typeof v.xpot === 'number' ? v.xpot :
+              typeof v.balanceXpot === 'number' ? v.balanceXpot :
+              typeof v.balance === 'number' ? v.balance :
+              typeof v.uiAmount === 'number' ? v.uiAmount :
+              null;
+
+            const usd =
+              typeof v.usd === 'number' ? v.usd :
+              typeof v.balanceUsd === 'number' ? v.balanceUsd :
+              null;
+
+            const txs = (v.tx ?? v.txs ?? v.recentTx ?? []) as VaultTx[];
+            const txList = Array.isArray(txs) ? txs.slice(0, 5) : [];
+
+            return (
+              <div key={v.address} className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-100">
+                      {v.name ?? 'Vault'}
+                      <span className="ml-2 text-xs font-normal text-slate-500">
+                        {shortAddr(v.address)}
+                      </span>
+                    </p>
+
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <a
+                        href={`https://solscan.io/account/${v.address}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 hover:text-slate-300 transition"
+                      >
+                        View on Solscan <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => copy(v.address)}
+                        className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
+                        title="Copy address"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Balance</p>
+                    <p className="mt-1 font-mono text-sm text-slate-100">
+                      {xpot == null ? '—' : `${formatMaybeNumber(xpot) ?? '—'} XPOT`}
+                    </p>
+                    {usd != null ? (
+                      <p className="mt-1 text-[11px] text-slate-500">{formatMaybeUsd(usd) ?? null}</p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Recent transactions</p>
+
+                  {txList.length ? (
+                    <div className="mt-2 space-y-2">
+                      {txList.map(tx => (
+                        <div
+                          key={tx.signature}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/60 bg-black/25 px-2.5 py-2"
+                        >
+                          <div className="min-w-0">
+                            <a
+                              href={`https://solscan.io/tx/${tx.signature}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-mono text-[11px] text-slate-200 hover:text-white transition"
+                              title={tx.signature}
+                            >
+                              {shortAddr(tx.signature)}
+                            </a>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                              {typeof tx.ts === 'number' ? <span>{timeAgo(tx.ts)}</span> : null}
+                              {tx.label ? <span className="text-slate-400">{tx.label}</span> : null}
+                            </div>
+                          </div>
+
+                          <div className="text-right text-[11px] text-slate-400">
+                            {typeof tx.amount === 'number' ? (
+                              <span className="font-mono text-slate-200">{formatMaybeNumber(tx.amount)} XPOT</span>
+                            ) : (
+                              <span className="text-slate-600">—</span>
+                            )}
+                            {typeof tx.amountUsd === 'number' ? (
+                              <span className="ml-2 text-slate-500">{formatMaybeUsd(tx.amountUsd)}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500">No recent transactions available yet.</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TokenomicsPage() {
   // Supply
   const supply = 50_000_000_000; // 50B minted
@@ -100,14 +483,13 @@ export default function TokenomicsPage() {
   // ─────────────────────────────────────────────
   // Distribution runway math (deterministic)
   // ─────────────────────────────────────────────
-  // Requirement you stated: ~3.6B XPOT covers 10y daily
   const DAILY_10Y_TOTAL = 3_600_000_000;
   const YEARS_TARGET = 10;
   const DAYS_PER_YEAR = 365;
 
   const DAILY_XPOT_TARGET = Math.round(DAILY_10Y_TOTAL / (YEARS_TARGET * DAYS_PER_YEAR)); // ≈ 986,301
 
-  // Final locked allocation you chose
+  // Locked allocation set
   const DISTRIBUTION_RESERVE_PCT = 14;
   const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100);
 
@@ -127,6 +509,10 @@ export default function TokenomicsPage() {
     [DAILY_XPOT_TARGET],
   );
 
+  // Live vaults
+  const { vaults, updatedAt, isLoading: vaultLoading, hadError: vaultError } = useVaults();
+
+  // Allocation order + locked numbers
   const allocation = useMemo<Allocation[]>(
     () => [
       {
@@ -136,7 +522,7 @@ export default function TokenomicsPage() {
         note:
           'Pre-allocated XPOT reserved for long-term distribution. Released gradually via daily XPOT and future modules.',
         detail:
-          `Modeled baseline: ~${fmtInt(DAILY_XPOT_TARGET)} XPOT per day. This supports multi-year distribution without minting. Unused allocation remains locked.`,
+          `Modeled baseline: ~${fmtInt(DAILY_XPOT_TARGET)} XPOT per day. This supports multi-year distribution without minting. Unused reserve remains locked.`,
         tone: 'emerald',
       },
       {
@@ -156,7 +542,7 @@ export default function TokenomicsPage() {
         note:
           'Operational runway for audits, infra, legal and long-horizon execution.',
         detail:
-          'Treasury is the project’s survival layer: security, infrastructure, compliance and sponsor operations so XPOT can ship for years without touching rewards.',
+          'Treasury is the survival layer: security, infrastructure, compliance and sponsor operations so XPOT can ship for years without touching rewards.',
         tone: 'slate',
       },
       {
@@ -202,6 +588,18 @@ export default function TokenomicsPage() {
     ],
     [DAILY_XPOT_TARGET],
   );
+
+  // Map allocation keys to API vault categories
+  // IMPORTANT: Your /api/vaults should return vault.category matching these.
+  const categoryForKey: Record<string, string> = {
+    distribution: 'distribution',
+    liquidity: 'liquidity',
+    treasury: 'treasury',
+    team: 'team',
+    partners: 'partners',
+    community: 'community',
+    strategic: 'strategic',
+  };
 
   const [openKey, setOpenKey] = useState<string | null>('distribution');
 
@@ -273,9 +671,7 @@ export default function TokenomicsPage() {
             {/* STATS */}
             <div className="grid gap-3">
               <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                  Current supply
-                </p>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Current supply</p>
                 <Money value={supply.toLocaleString()} suffix="XPOT" />
                 <p className="mt-2 text-xs text-slate-500">
                   Decimals: <span className="font-mono text-slate-200">{decimals}</span>
@@ -283,9 +679,7 @@ export default function TokenomicsPage() {
 
                 {/* Trust / confidence block */}
                 <div className="mt-4 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                    Supply integrity
-                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply integrity</p>
 
                   <div className="mt-3 grid gap-2">
                     <div className="flex items-center gap-2 text-xs text-slate-300">
@@ -309,12 +703,8 @@ export default function TokenomicsPage() {
               </div>
 
               <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                  Core promise
-                </p>
-                <p className="mt-2 text-sm text-slate-200">
-                  Daily rewards that grow into an ecosystem
-                </p>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Core promise</p>
+                <p className="mt-2 text-sm text-slate-200">Daily rewards that grow into an ecosystem</p>
                 <div className="mt-3 grid gap-2">
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <BadgeCheck className="h-4 w-4 text-emerald-300" />
@@ -332,12 +722,8 @@ export default function TokenomicsPage() {
               </div>
 
               <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                  North star
-                </p>
-                <p className="mt-2 text-sm text-slate-200">
-                  Become the daily rewards layer for the internet
-                </p>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">North star</p>
+                <p className="mt-2 text-sm text-slate-200">Become the daily rewards layer for the internet</p>
                 <p className="mt-2 text-xs text-slate-500">
                   Disruption comes from transparency, repeatability and sponsor-friendly distribution.
                 </p>
@@ -360,9 +746,7 @@ export default function TokenomicsPage() {
           <div className="relative z-10 p-6 lg:p-8">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-100">
-                  Allocation design
-                </p>
+                <p className="text-sm font-semibold text-slate-100">Allocation design</p>
                 <p className="mt-1 text-xs text-slate-400">
                   Locked in: reward runway, market resilience and long-term execution.
                 </p>
@@ -388,12 +772,8 @@ export default function TokenomicsPage() {
                         {a.pct}%
                       </Pill>
                       <div>
-                        <p className="text-sm font-semibold text-slate-100">
-                          {a.label}
-                        </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          Tap to expand
-                        </p>
+                        <p className="text-sm font-semibold text-slate-100">{a.label}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">Tap to expand</p>
                       </div>
                     </div>
 
@@ -420,11 +800,9 @@ export default function TokenomicsPage() {
                       >
                         <div className="mt-3 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
                           <p className="text-sm text-slate-200">{a.note}</p>
-                          <p className="mt-2 text-xs text-slate-500">
-                            {a.detail}
-                          </p>
+                          <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
 
-                          {/* Runway table for protocol distribution reserve */}
+                          {/* Runway table for distribution */}
                           {a.key === 'distribution' && (
                             <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
                               <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
@@ -457,6 +835,16 @@ export default function TokenomicsPage() {
                             </div>
                           )}
 
+                          {/* Live vaults + tx (per category) */}
+                          <VaultsPanel
+                            title="Vaults (live)"
+                            category={categoryForKey[a.key] ?? 'all'}
+                            vaults={vaults}
+                            updatedAt={updatedAt}
+                            isLoading={vaultLoading}
+                            hadError={vaultError}
+                          />
+
                           <p className="mt-3 text-[11px] text-slate-600">
                             Implementation: dedicated vaults, timelocks and public wallets so allocations stay auditable.
                           </p>
@@ -483,12 +871,8 @@ export default function TokenomicsPage() {
             <div className="relative z-10 p-6 lg:p-8">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">
-                    Utility map
-                  </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Why hold XPOT when you could just watch?
-                  </p>
+                  <p className="text-sm font-semibold text-slate-100">Utility map</p>
+                  <p className="mt-1 text-xs text-slate-400">Why hold XPOT when you could just watch?</p>
                 </div>
                 <Pill tone="emerald">
                   <TrendingUp className="h-3.5 w-3.5" />
@@ -513,8 +897,7 @@ export default function TokenomicsPage() {
                     Status and reputation
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Your handle becomes a public identity. Wins, streaks and participation can build a profile
-                    that unlocks future perks and sponsor drops.
+                    Your handle becomes a public identity. Wins, streaks and participation can build a profile that unlocks future perks and sponsor drops.
                   </p>
                 </div>
 
@@ -524,8 +907,7 @@ export default function TokenomicsPage() {
                     Sponsor-funded rewards
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Brands buy XPOT to fund bonus drops. Holders get value, sponsors get measurable attention
-                    and the protocol grows without selling tickets.
+                    Brands buy XPOT to fund bonus drops. Holders get value, sponsors get measurable attention and the protocol grows without selling tickets.
                   </p>
                 </div>
 
@@ -544,12 +926,9 @@ export default function TokenomicsPage() {
 
           <div className={CARD}>
             <div className="relative z-10 p-6 lg:p-8">
-              <p className="text-sm font-semibold text-slate-100">
-                Long-term: why this can disrupt
-              </p>
+              <p className="text-sm font-semibold text-slate-100">Long-term: why this can disrupt</p>
               <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                The endgame is not “a meme draw”. The endgame is a protocol that communities
-                and brands plug into for daily rewards with identity and transparency baked in.
+                The endgame is not “a meme draw”. The endgame is a protocol that communities and brands plug into for daily rewards with identity and transparency baked in.
               </p>
 
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -580,7 +959,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is premium-first: simple, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v3</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v4</span>
         </div>
       </footer>
     </XpotPageShell>
