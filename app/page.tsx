@@ -867,9 +867,7 @@ export default function HomePage() {
                       className="overflow-hidden"
                     >
                       <div className="mt-3">
-  <LiveEntrantsLounge
-  entrants={liveEntries.length ? liveEntries : marquee.map(handle => ({ handle }))}
-/>
+  <LiveEntrantsLounge entrants={liveEntries} />
 </div>
                     </motion.div>
                   )}
