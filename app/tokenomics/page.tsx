@@ -38,6 +38,13 @@ const CARD =
 
 const VAULT_POLL_MS = 20_000;
 
+// ✅ Protocol rule (fixed)
+const DISTRIBUTION_DAILY_XPOT = 1_000_000;
+const DAYS_PER_YEAR = 365;
+
+// Exact 10y requirement at 1M/day
+const TEN_YEARS_REQUIRED = DISTRIBUTION_DAILY_XPOT * DAYS_PER_YEAR * 10; // 3,650,000,000
+
 function Pill({
   children,
   tone = 'slate',
@@ -239,7 +246,7 @@ function VaultGroupPanel({
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Live balances + recent owner wallet transactions (auditable).
+            Live balances and recent owner wallet transactions (auditable).
             {typeof data?.fetchedAt === 'number' ? (
               <span className="ml-2 text-slate-600">Updated {timeAgo(data.fetchedAt)}</span>
             ) : null}
@@ -280,7 +287,10 @@ function VaultGroupPanel({
             const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
-              <div key={`${groupKey}:${v.address}`} className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
+              <div
+                key={`${groupKey}:${v.address}`}
+                className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3"
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-100">
@@ -332,7 +342,9 @@ function VaultGroupPanel({
                     <p className="mt-1 font-mono text-sm text-slate-100">
                       {ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}
                     </p>
-                    <p className="mt-1 text-[11px] text-slate-600">{decimals != null ? `Decimals: ${decimals}` : null}</p>
+                    <p className="mt-1 text-[11px] text-slate-600">
+                      {decimals != null ? `Decimals: ${decimals}` : null}
+                    </p>
                   </div>
                 </div>
 
@@ -362,7 +374,11 @@ function VaultGroupPanel({
                               </a>
 
                               <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                                {tsMs != null ? <span>{timeAgo(tsMs)}</span> : <span className="text-slate-700">—</span>}
+                                {tsMs != null ? (
+                                  <span>{timeAgo(tsMs)}</span>
+                                ) : (
+                                  <span className="text-slate-700">—</span>
+                                )}
                                 {hasErr ? (
                                   <span className="rounded-full border border-amber-400/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
                                     Error
@@ -397,49 +413,44 @@ export default function TokenomicsPage() {
   const supply = 50_000_000_000;
   const decimals = 6;
 
-  // 10y model (your note: 3.6B total for daily XPOT over ~10 years)
-  const DAILY_10Y_TOTAL = 3_600_000_000;
-  const YEARS_TARGET = 10;
-  const DAYS_PER_YEAR = 365;
-
-  const DAILY_XPOT_TARGET = Math.round(DAILY_10Y_TOTAL / (YEARS_TARGET * DAYS_PER_YEAR)); // ~986,301/day
-
   // Locked allocation set (your locked-in numbers)
   const DISTRIBUTION_RESERVE_PCT = 14;
-  const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100);
+  const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100); // 7,000,000,000
 
   function yearsOfRunway(daily: number) {
     if (!Number.isFinite(daily) || daily <= 0) return Infinity;
     return DISTRIBUTION_RESERVE / (daily * DAYS_PER_YEAR);
   }
 
+  // ✅ Fixed, explicit table centered on 1,000,000/day
   const runwayTable = useMemo(
     () => [
       { label: '500,000 XPOT / day', daily: 500_000 },
       { label: '750,000 XPOT / day', daily: 750_000 },
-      { label: `≈${fmtInt(DAILY_XPOT_TARGET)} XPOT / day (modeled)`, daily: DAILY_XPOT_TARGET, highlight: true as const },
+      { label: '1,000,000 XPOT / day (fixed)', daily: 1_000_000, highlight: true as const },
       { label: '1,250,000 XPOT / day', daily: 1_250_000 },
       { label: '1,500,000 XPOT / day', daily: 1_500_000 },
     ],
-    [DAILY_XPOT_TARGET],
+    [],
   );
 
-  const allocation = useMemo<Allocation[]>(() => {
-    const items: Allocation[] = [
+  // ✅ Keep your order exactly (not sorted)
+  const allocation = useMemo<Allocation[]>(
+    () => [
       {
         key: 'distribution',
         label: 'Protocol distribution reserve',
         pct: 14,
         note:
           'Pre-allocated XPOT reserved for long-term distribution. Released gradually via daily XPOT and future modules.',
-        detail: `Modeled baseline: ~${fmtInt(
-          DAILY_XPOT_TARGET,
-        )} XPOT per day. This supports multi-year distribution without minting. Unused reserve remains locked.`,
+        detail: `Protocol rule: ${fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT per day. Exact 10-year requirement: ${TEN_YEARS_REQUIRED.toLocaleString(
+          'en-US',
+        )} XPOT. No minting - unused reserve remains locked and auditable.`,
         tone: 'emerald',
       },
       {
         key: 'liquidity',
-        label: 'Liquidity + market ops',
+        label: 'Liquidity and market ops',
         pct: 26,
         note: 'LP depth, market resilience and controlled expansion across venues and pairs.',
         detail:
@@ -448,25 +459,16 @@ export default function TokenomicsPage() {
       },
       {
         key: 'treasury',
-        label: 'Treasury + runway',
+        label: 'Treasury and runway',
         pct: 23,
         note: 'Operational runway for audits, infra, legal and long-horizon execution.',
         detail:
-          'Treasury is the survival layer: security, infrastructure, compliance and sponsor operations so XPOT can ship for years without touching rewards.',
-        tone: 'slate',
-      },
-      {
-        key: 'strategic',
-        label: 'Strategic reserve',
-        pct: 13,
-        note: 'Locked buffer for unknowns: future opportunities, integrations and defensive planning.',
-        detail:
-          'This stays locked by default. If unlocked, it should be governed, transparent and reported with public wallets and clear purpose.',
+          'This is operational runway (not the daily distribution runway). It funds security, infrastructure, compliance and long-term execution without touching the distribution reserve.',
         tone: 'slate',
       },
       {
         key: 'team',
-        label: 'Team + builders',
+        label: 'Team and builders',
         pct: 9,
         note: 'Vested, long horizon. Builders stay aligned with holders and protocol health.',
         detail:
@@ -475,7 +477,7 @@ export default function TokenomicsPage() {
       },
       {
         key: 'partners',
-        label: 'Partners + creators',
+        label: 'Partners and creators',
         pct: 8,
         note: 'Creator-gated drops, sponsor pools and performance-based distribution with accountability.',
         detail:
@@ -491,16 +493,33 @@ export default function TokenomicsPage() {
           'Built for delight over farming: targeted incentives for real users and real momentum. Surprise rewards beat extractive grind loops.',
         tone: 'emerald',
       },
-    ];
+      {
+        key: 'strategic',
+        label: 'Strategic reserve',
+        pct: 13,
+        note: 'Locked buffer for unknowns: future opportunities, integrations and defensive planning.',
+        detail:
+          'This stays locked by default. If unlocked, it should be governed, transparent and reported with public wallets and clear purpose.',
+        tone: 'slate',
+      },
+    ],
+    [],
+  );
 
-    // Bigger -> smaller (your request)
-    return [...items].sort((a, b) => b.pct - a.pct);
-  }, [DAILY_XPOT_TARGET]);
-
-  // Live vault groups (exact /api/vaults schema)
+  // Live vault groups
   const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
 
-  // Do NOT pre-open anything (your request)
+  // Allocation key -> /api/vaults group key
+  const VAULT_GROUP_BY_ALLOC_KEY: Record<string, string> = {
+    distribution: 'rewards',
+    liquidity: 'liquidityOps',
+    treasury: 'treasury',
+    team: 'team',
+    partners: 'partners',
+    community: 'community',
+    strategic: 'strategic',
+  };
+
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   return (
@@ -630,7 +649,7 @@ export default function TokenomicsPage() {
         </div>
       </section>
 
-      {/* DISTRIBUTION (PROMINENT, FULL WIDTH) */}
+      {/* DISTRIBUTION */}
       <section className="mt-8">
         <div className={CARD}>
           <div
@@ -645,7 +664,7 @@ export default function TokenomicsPage() {
               <div>
                 <p className="text-lg font-semibold text-slate-100">Distribution map</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Bigger allocations first. Tap any row to expand details and live vaults.
+                  Tap any row to expand details and live vaults.
                 </p>
               </div>
               <Pill tone="sky">
@@ -720,22 +739,22 @@ export default function TokenomicsPage() {
                                       ].join(' ')}
                                     >
                                       <span className="font-mono">{r.label}</span>
-                                      <span className="font-semibold">{years.toFixed(1)} years</span>
+                                      <span className="font-semibold">{years.toFixed(2)} years</span>
                                     </div>
                                   );
                                 })}
                               </div>
 
                               <p className="mt-3 text-[11px] text-slate-500">
-                                Reserve size: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT (14% of supply). Fixed supply
-                                with minting disabled. Unused reserve remains locked.
+                                Reserve size: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT (14% of supply). Daily distribution is fixed at{' '}
+                                {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Minting disabled. Unused reserve remains locked.
                               </p>
                             </div>
                           )}
 
                           <VaultGroupPanel
                             title="Vaults (live)"
-                            groupKey={a.key}
+                            groupKey={VAULT_GROUP_BY_ALLOC_KEY[a.key] ?? a.key}
                             data={vaultData}
                             isLoading={vaultLoading}
                             hadError={vaultError}
@@ -755,7 +774,7 @@ export default function TokenomicsPage() {
         </div>
       </section>
 
-      {/* UTILITY + LONG-TERM (NO EMPTY GAP) */}
+      {/* UTILITY + LONG-TERM */}
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className={CARD}>
           <div
@@ -867,7 +886,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is premium-first: simple, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v6</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v7</span>
         </div>
       </footer>
     </XpotPageShell>
