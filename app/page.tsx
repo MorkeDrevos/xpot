@@ -29,6 +29,8 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
+import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
+
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
 const ROUTE_TERMS = '/terms';
@@ -840,9 +842,8 @@ export default function HomePage() {
                       className="overflow-hidden"
                     >
                       <div className="mt-3">
-                        <HandleTicker handles={marquee} />
-                        <p className="mt-2 text-[11px] text-slate-500">Handles are shown. Wallets stay self-custody.</p>
-                      </div>
+  <LiveEntrantsLounge entrants={marquee.map(handle => ({ handle }))} />
+</div>
                     </motion.div>
                   )}
                 </AnimatePresence>
