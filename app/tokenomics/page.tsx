@@ -128,7 +128,6 @@ function timeAgo(tsMs: number) {
 }
 
 function toneStroke(tone: PillTone) {
-  // Premium subtle strokes (no Tailwind dependency for stroke)
   if (tone === 'emerald') return 'rgba(16,185,129,0.78)';
   if (tone === 'sky') return 'rgba(56,189,248,0.78)';
   if (tone === 'amber') return 'rgba(245,158,11,0.78)';
@@ -467,7 +466,6 @@ function DonutAllocation({
       const offset = (acc / total) * c;
       acc += pct;
 
-      // rotate so it starts at 12 o'clock
       return {
         key: it.key,
         label: it.label,
@@ -503,7 +501,6 @@ function DonutAllocation({
         </Pill>
       </div>
 
-      {/* ✅ give donut more room, tabs less width */}
       <div className="relative z-10 mt-5 grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         <div className="flex items-center justify-center">
           <div className="relative">
@@ -518,7 +515,6 @@ function DonutAllocation({
                 </filter>
               </defs>
 
-              {/* track */}
               <circle
                 cx={size / 2}
                 cy={size / 2}
@@ -528,7 +524,6 @@ function DonutAllocation({
                 strokeWidth="20"
               />
 
-              {/* segments */}
               <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
                 {segments.map(seg => {
                   const isActive = seg.key === (selected?.key ?? null);
@@ -559,7 +554,6 @@ function DonutAllocation({
                 })}
               </g>
 
-              {/* subtle inner ring */}
               <circle
                 cx={size / 2}
                 cy={size / 2}
@@ -570,7 +564,6 @@ function DonutAllocation({
               />
             </svg>
 
-            {/* center label */}
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Selected</p>
@@ -582,7 +575,6 @@ function DonutAllocation({
               </div>
             </div>
 
-            {/* outer glow */}
             <div
               className="pointer-events-none absolute inset-0 rounded-full"
               style={{
@@ -598,7 +590,6 @@ function DonutAllocation({
           </div>
         </div>
 
-        {/* ✅ cards live here (no duplicate legend + cards) */}
         <div className="grid gap-3">
           {items.map(a => {
             const active = openKey === a.key;
@@ -733,7 +724,6 @@ export default function TokenomicsPage() {
   const supply = 50_000_000_000;
   const decimals = 6;
 
-  // Locked allocation set (your locked-in numbers)
   const DISTRIBUTION_RESERVE_PCT = 14;
   const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100); // 7,000,000,000
 
@@ -827,10 +817,8 @@ export default function TokenomicsPage() {
     return [...allocation].sort((a, b) => b.pct - a.pct);
   }, [allocation]);
 
-  // Live vault groups
   const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
 
-  // Allocation key -> /api/vaults group key
   const VAULT_GROUP_BY_ALLOC_KEY: Record<string, string> = {
     distribution: 'rewards',
     liquidity: 'liquidityOps',
@@ -841,20 +829,15 @@ export default function TokenomicsPage() {
     strategic: 'strategic',
   };
 
-  // ✅ Nothing pre-opened
   const [openKey, setOpenKeyRaw] = useState<string | null>(null);
-
-  // Donut selection can default to largest (visual only)
   const [selectedKey, setSelectedKey] = useState<string | null>(sortedAllocation[0]?.key ?? null);
 
   useEffect(() => {
-    // keep selected valid if allocation changes
     if (!selectedKey && sortedAllocation[0]?.key) setSelectedKey(sortedAllocation[0].key);
     if (selectedKey && !sortedAllocation.find(x => x.key === selectedKey)) setSelectedKey(sortedAllocation[0]?.key ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortedAllocation]);
 
-  // wrapper to match the DonutAllocation signature
   const setOpenKey = (fn: (k: string | null) => string | null) => {
     setOpenKeyRaw(prev => fn(prev));
   };
@@ -882,7 +865,6 @@ export default function TokenomicsPage() {
 
           <div className="relative z-10 p-6 lg:p-8">
             <div className="grid gap-6 lg:grid-cols-12">
-              {/* LEFT */}
               <div className="space-y-5 lg:col-span-7">
                 <div className="flex flex-wrap items-center gap-2">
                   <Pill tone="emerald">
@@ -923,7 +905,6 @@ export default function TokenomicsPage() {
                   </span>
                 </div>
 
-                {/* QUICK METRICS */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
@@ -945,7 +926,7 @@ export default function TokenomicsPage() {
                 </div>
               </div>
 
-              {/* RIGHT (removed - duplicate section per your instruction) */}
+              {/* RIGHT column intentionally removed (duplicate section you flagged). */}
             </div>
           </div>
         </div>
@@ -996,7 +977,112 @@ export default function TokenomicsPage() {
         </div>
       </section>
 
-      {/* UTILITY + LONG-TERM (removed per your instruction: “remove all from img2”) */}
+      {/* UTILITY + LONG-TERM (RESTORED) */}
+      <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className={CARD}>
+          <div
+            className="
+              pointer-events-none absolute -inset-44 opacity-75 blur-3xl
+              bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_60%),
+                  radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%)]
+            "
+          />
+          <div className="relative z-10 p-6 lg:p-8">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Utility map</p>
+                <p className="mt-1 text-xs text-slate-400">Why hold XPOT, not just observe?</p>
+              </div>
+              <Pill tone="emerald">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Flywheel
+              </Pill>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Gift className="h-4 w-4 text-emerald-300" />
+                  Eligibility
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent,
+                  with clear rules and verifiable outcomes.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Crown className="h-4 w-4 text-amber-200" />
+                  Status and reputation
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that
+                  unlocks future perks and sponsor drops.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Flame className="h-4 w-4 text-sky-300" />
+                  Sponsor-funded rewards
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention,
+                  and the system scales without pay-to-enter mechanics.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                  Verifiability edge
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public
+                  wallets, and simple rules you can check.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={CARD}>
+          <div className="relative z-10 p-6 lg:p-8">
+            <p className="text-sm font-semibold text-slate-100">Long-term: why this can matter</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">
+              The endgame is a protocol that communities and brands can plug into for daily distributions, with identity and
+              verification built in from day one.
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Link href="/roadmap" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                View roadmap
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+
+              <a
+                href="https://solscan.io"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
+              >
+                Token explorer
+                <ExternalLink className="h-4 w-4 text-slate-500" />
+              </a>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
+              <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Every distribution bucket can be mapped to wallets, ATAs and on-chain history. If it cannot be verified, it
+                should not exist.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* FOOTER */}
       <footer className="mt-10 pb-10">
@@ -1005,7 +1091,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable, and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v9</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v10</span>
         </div>
       </footer>
     </XpotPageShell>
