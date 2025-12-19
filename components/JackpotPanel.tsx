@@ -1,3 +1,4 @@
+// components/JackpotPanel.tsx
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -16,6 +17,9 @@ type JackpotPanelProps = {
 
   // Optional: override tooltip copy if needed
   badgeTooltip?: string;
+
+  // ✅ NEW: layout support (fixes your build error)
+  layout?: 'auto' | 'wide';
 };
 
 function formatUsd(value: number | null) {
@@ -29,11 +33,13 @@ function formatUsd(value: number | null) {
 }
 
 const MILESTONES = [
-  25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000,
-  7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000,
-  300_000, 400_000, 500_000, 750_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
+  25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000, 7_500, 10_000, 15_000,
+  20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000,
+  1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
 ];
 
+// NOTE: kept as-is from your file (even though it’s a bit odd)
+// You can later swap to the more correct session key logic we had before.
 function getMadridSessionKey() {
   const now = new Date();
   const madridNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
@@ -44,13 +50,7 @@ function getMadridSessionKey() {
   return `${year}${month}${day}`;
 }
 
-function HeaderBadge({
-  label,
-  tooltip,
-}: {
-  label: string;
-  tooltip: string;
-}) {
+function HeaderBadge({ label, tooltip }: { label: string; tooltip: string }) {
   return (
     <div className="relative group inline-flex items-center">
       <span className="rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
@@ -82,6 +82,7 @@ export default function JackpotPanel({
   variant = 'standalone',
   badgeLabel,
   badgeTooltip,
+  layout = 'auto',
 }: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,6 +97,8 @@ export default function JackpotPanel({
   const updatePulseTimeout = useRef<number | null>(null);
 
   const sessionKey = `xpot_max_session_usd_${getMadridSessionKey()}`;
+
+  const isWide = layout === 'wide';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -115,7 +118,7 @@ export default function JackpotPanel({
       try {
         setHadError(false);
 
-        const res = await fetch(`https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`);
+        const res = await fetch(`https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`, { cache: 'no-store' });
         if (!res.ok) throw new Error('Jupiter price fetch failed');
 
         const json = (await res.json()) as Record<string, { usdPrice: number; priceChange24h?: number }>;
@@ -171,11 +174,8 @@ export default function JackpotPanel({
     }
   }, [jackpotUsd, sessionKey, onJackpotUsdChange]);
 
-  const reachedMilestone =
-    jackpotUsd != null ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null : null;
-
-  const nextMilestone =
-    jackpotUsd != null ? MILESTONES.find(m => jackpotUsd < m) ?? null : null;
+  const reachedMilestone = jackpotUsd != null ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null : null;
+  const nextMilestone = jackpotUsd != null ? MILESTONES.find(m => jackpotUsd < m) ?? null : null;
 
   const showUnavailable = !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
 
@@ -185,14 +185,13 @@ export default function JackpotPanel({
   const tooltipDefault =
     "Funded for 10+ years of daily XPOT rewards.\nSized at launch from the Rewards Reserve: 1,000,000 XPOT/day baseline.\nPaid in XPOT, on-chain, auditable.";
 
+  const chrome =
+    variant === 'embedded'
+      ? 'rounded-2xl border border-slate-800/70 bg-slate-950/55 px-5 py-5 shadow-sm'
+      : 'rounded-2xl border border-slate-800 bg-slate-950/70 px-5 py-4 shadow-sm';
+
   return (
-    <section
-      className={`
-        relative rounded-2xl border border-slate-800
-        bg-slate-950/70 px-5 py-4 shadow-sm
-        transition-colors duration-300
-      `}
-    >
+    <section className={`relative transition-colors duration-300 ${chrome}`}>
       <div
         className={`
           pointer-events-none absolute inset-0 rounded-2xl
@@ -215,12 +214,7 @@ export default function JackpotPanel({
         </div>
 
         <div className="flex flex-col items-end gap-1 text-xs">
-          {!!badgeLabel && (
-            <HeaderBadge
-              label={badgeLabel}
-              tooltip={badgeTooltip || tooltipDefault}
-            />
-          )}
+          {!!badgeLabel && <HeaderBadge label={badgeLabel} tooltip={badgeTooltip || tooltipDefault} />}
 
           {isLocked && (
             <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
@@ -228,102 +222,144 @@ export default function JackpotPanel({
             </span>
           )}
 
-          {showUnavailable && (
-            <span className="text-[11px] font-semibold text-amber-300">
-              Live price not available yet.
-            </span>
-          )}
+          {showUnavailable && <span className="text-[11px] font-semibold text-amber-300">Live price not available yet.</span>}
         </div>
       </div>
 
-      <div className="relative z-10 mt-6 flex flex-wrap items-end justify-between gap-6">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <div
-              className={`
-                text-5xl sm:text-6xl font-semibold tabular-nums
-                transition-transform transition-colors duration-200
-                ${justUpdated ? 'scale-[1.01]' : ''}
-                ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
-              `}
-            >
-              {displayUsd}
-            </div>
-
-            <div className="mt-2 flex items-center gap-2">
-              <span className="inline-flex items-center rounded-full border border-white/25 bg-black/40 px-2.5 py-[5px] text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">
-                USD estimate
-              </span>
-
-              <div className="relative group">
-                <button
-                  type="button"
-                  className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-black/40 text-[10px] font-semibold text-white/70 transition-colors group-hover:text-white"
-                >
-                  i
-                </button>
-
+      {/* MAIN CONTENT */}
+      <div className="relative z-10 mt-6">
+        <div className={isWide ? 'grid gap-4 lg:grid-cols-[1fr_340px]' : 'flex flex-wrap items-end justify-between gap-6'}>
+          {/* LEFT: Big USD */}
+          <div className={isWide ? 'rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4' : 'space-y-3'}>
+            <div className={isWide ? 'space-y-3' : 'space-y-3'}>
+              <div className="flex flex-wrap items-end gap-3">
                 <div
-                  className="
-                    absolute left-1/2 top-full z-[70] mt-3 w-80 -translate-x-1/2
-                    rounded-2xl border border-slate-700/80 bg-slate-950
-                    px-4 py-3 text-xs text-slate-100
-                    shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
-                    opacity-0 translate-y-0
-                    group-hover:opacity-100 group-hover:translate-y-1
-                    transition-all duration-200
-                  "
+                  className={`
+                    text-5xl sm:text-6xl font-semibold tabular-nums
+                    transition-transform transition-colors duration-200
+                    ${justUpdated ? 'scale-[1.01]' : ''}
+                    ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
+                  `}
                 >
-                  <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
-                  <p className="mb-2">
-                    This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.
-                  </p>
-                  <p className="text-slate-400">
-                    The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
-                  </p>
+                  {displayUsd}
+                </div>
+
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full border border-white/25 bg-black/40 px-2.5 py-[5px] text-[9px] font-semibold uppercase tracking-[0.18em] text-white/75">
+                    USD estimate
+                  </span>
+
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25 bg-black/40 text-[10px] font-semibold text-white/70 transition-colors group-hover:text-white"
+                    >
+                      i
+                    </button>
+
+                    <div
+                      className="
+                        absolute left-1/2 top-full z-[70] mt-3 w-80 -translate-x-1/2
+                        rounded-2xl border border-slate-700/80 bg-slate-950
+                        px-4 py-3 text-xs text-slate-100
+                        shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
+                        opacity-0 translate-y-0
+                        group-hover:opacity-100 group-hover:translate-y-1
+                        transition-all duration-200
+                      "
+                    >
+                      <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
+                      <p className="mb-2">
+                        This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.
+                      </p>
+                      <p className="text-slate-400">
+                        The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              <p className="mt-1 text-xs text-slate-500">
+                1 XPOT ≈{' '}
+                <span className={`font-mono transition-colors duration-200 ${justPumped ? 'text-[#7CC8FF]' : 'text-slate-100'}`}>
+                  {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+                </span>{' '}
+                <span className="text-slate-500">(via Jupiter)</span>
+              </p>
             </div>
           </div>
 
-          <p className="mt-1 text-xs text-slate-500">
-            1 XPOT ≈{' '}
-            <span className={`font-mono transition-colors duration-200 ${justPumped ? 'text-[#7CC8FF]' : 'text-slate-100'}`}>
-              {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
-            </span>{' '}
-            <span className="text-slate-500">(via Jupiter)</span>
-          </p>
-        </div>
+          {/* RIGHT: Context block (only in wide; otherwise your original right column stays below) */}
+          {isWide ? (
+            <div className="rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500 text-right">USD value</p>
 
-        <div className="flex flex-col items-end gap-1 text-xs">
-          {(maxJackpotToday || reachedMilestone || nextMilestone) && (
-            <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-              XPOT price context
-            </p>
-          )}
+              <div className="mt-2 text-right">
+                <p className="text-sm text-slate-300">
+                  1 XPOT ≈ <span className="font-mono text-slate-100">{priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}</span>
+                </p>
 
-          {maxJackpotToday && (
-            <p className="text-[11px] text-slate-400">
-              Today&apos;s peak value <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
-            </p>
-          )}
+                <p className="mt-2 text-[11px] text-slate-600">
+                  Source: <span className="font-mono text-slate-300">Jupiter</span>
+                </p>
+              </div>
 
-          {reachedMilestone && (
-            <p className="text-[11px] text-[#7CC8FF]">
-              Milestone <span className="font-mono">{formatUsd(reachedMilestone)}</span>
-            </p>
-          )}
+              <div className="mt-4 border-t border-white/10 pt-3 text-right">
+                {(maxJackpotToday || reachedMilestone || nextMilestone) && (
+                  <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">XPOT price context</p>
+                )}
 
-          {nextMilestone && (
-            <p className="text-[11px] text-slate-500">
-              Next milestone <span className="font-mono">{formatUsd(nextMilestone)}</span>
-            </p>
+                {maxJackpotToday && (
+                  <p className="text-[11px] text-slate-400">
+                    Today&apos;s peak value <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+                  </p>
+                )}
+
+                {reachedMilestone && (
+                  <p className="mt-1 text-[11px] text-[#7CC8FF]">
+                    Milestone <span className="font-mono">{formatUsd(reachedMilestone)}</span>
+                  </p>
+                )}
+
+                {nextMilestone && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Next milestone <span className="font-mono">{formatUsd(nextMilestone)}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-end gap-1 text-xs">
+              {(maxJackpotToday || reachedMilestone || nextMilestone) && (
+                <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">XPOT price context</p>
+              )}
+
+              {maxJackpotToday && (
+                <p className="text-[11px] text-slate-400">
+                  Today&apos;s peak value <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+                </p>
+              )}
+
+              {reachedMilestone && (
+                <p className="text-[11px] text-[#7CC8FF]">
+                  Milestone <span className="font-mono">{formatUsd(reachedMilestone)}</span>
+                </p>
+              )}
+
+              {nextMilestone && (
+                <p className="text-[11px] text-slate-500">
+                  Next milestone <span className="font-mono">{formatUsd(nextMilestone)}</span>
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
 
       <p className="mt-4 text-xs text-slate-400 leading-relaxed">
-        Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD value tracks the live on-chain XPOT price from Jupiter and updates automatically.
+        Today&apos;s XPOT round is fixed at 1,000,000 XPOT. Its USD value tracks the live on-chain XPOT price from Jupiter and updates
+        automatically.
       </p>
     </section>
   );
