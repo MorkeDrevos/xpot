@@ -2,8 +2,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
-import type { LiveEntrant } from '@/lib/live-entrants';
-import { cleanHandle } from '@/lib/live-entrants';
+import { cleanHandle, type LiveEntrant } from '@/lib/live-entrants';
 
 function uniqByHandle(list: LiveEntrant[]) {
   const seen = new Set<string>();
