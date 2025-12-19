@@ -269,7 +269,8 @@ function VaultGroupPanel({
             No vaults found for <span className="font-mono text-slate-200">{groupKey}</span>.
           </p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Add entries under <span className="font-mono text-slate-200">XPOT_VAULTS.{groupKey}</span> in <span className="font-mono text-slate-200">lib/xpotVaults.ts</span>.
+            Add entries under <span className="font-mono text-slate-200">XPOT_VAULTS.{groupKey}</span> in{' '}
+            <span className="font-mono text-slate-200">lib/xpotVaults.ts</span>.
           </p>
         </div>
       ) : (
@@ -331,9 +332,7 @@ function VaultGroupPanel({
                     <p className="mt-1 font-mono text-sm text-slate-100">
                       {ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}
                     </p>
-                    <p className="mt-1 text-[11px] text-slate-600">
-                      {decimals != null ? `Decimals: ${decimals}` : null}
-                    </p>
+                    <p className="mt-1 text-[11px] text-slate-600">{decimals != null ? `Decimals: ${decimals}` : null}</p>
                   </div>
                 </div>
 
@@ -376,9 +375,7 @@ function VaultGroupPanel({
                               </div>
                             </div>
 
-                            <div className="text-right text-[11px] text-slate-500">
-                              Owner wallet activity
-                            </div>
+                            <div className="text-right text-[11px] text-slate-500">Owner wallet activity</div>
                           </div>
                         );
                       })}
@@ -420,31 +417,31 @@ export default function TokenomicsPage() {
     () => [
       { label: '500,000 XPOT / day', daily: 500_000 },
       { label: '750,000 XPOT / day', daily: 750_000 },
-      { label: `≈${fmtInt(DAILY_XPOT_TARGET)} XPOT / day (modeled)`, daily: DAILY_XPOT_TARGET, highlight: true },
+      { label: `≈${fmtInt(DAILY_XPOT_TARGET)} XPOT / day (modeled)`, daily: DAILY_XPOT_TARGET, highlight: true as const },
       { label: '1,250,000 XPOT / day', daily: 1_250_000 },
       { label: '1,500,000 XPOT / day', daily: 1_500_000 },
     ],
     [DAILY_XPOT_TARGET],
   );
 
-  const allocation = useMemo<Allocation[]>(
-    () => [
+  const allocation = useMemo<Allocation[]>(() => {
+    const items: Allocation[] = [
       {
         key: 'distribution',
         label: 'Protocol distribution reserve',
         pct: 14,
         note:
           'Pre-allocated XPOT reserved for long-term distribution. Released gradually via daily XPOT and future modules.',
-        detail:
-          `Modeled baseline: ~${fmtInt(DAILY_XPOT_TARGET)} XPOT per day. This supports multi-year distribution without minting. Unused reserve remains locked.`,
+        detail: `Modeled baseline: ~${fmtInt(
+          DAILY_XPOT_TARGET,
+        )} XPOT per day. This supports multi-year distribution without minting. Unused reserve remains locked.`,
         tone: 'emerald',
       },
       {
         key: 'liquidity',
         label: 'Liquidity + market ops',
         pct: 26,
-        note:
-          'LP depth, market resilience and controlled expansion across venues and pairs.',
+        note: 'LP depth, market resilience and controlled expansion across venues and pairs.',
         detail:
           'Used to seed and defend liquidity, reduce fragility and keep price discovery healthy. The goal is stability and trust, not hype.',
         tone: 'sky',
@@ -453,18 +450,25 @@ export default function TokenomicsPage() {
         key: 'treasury',
         label: 'Treasury + runway',
         pct: 23,
-        note:
-          'Operational runway for audits, infra, legal and long-horizon execution.',
+        note: 'Operational runway for audits, infra, legal and long-horizon execution.',
         detail:
           'Treasury is the survival layer: security, infrastructure, compliance and sponsor operations so XPOT can ship for years without touching rewards.',
+        tone: 'slate',
+      },
+      {
+        key: 'strategic',
+        label: 'Strategic reserve',
+        pct: 13,
+        note: 'Locked buffer for unknowns: future opportunities, integrations and defensive planning.',
+        detail:
+          'This stays locked by default. If unlocked, it should be governed, transparent and reported with public wallets and clear purpose.',
         tone: 'slate',
       },
       {
         key: 'team',
         label: 'Team + builders',
         pct: 9,
-        note:
-          'Vested, long horizon. Builders stay aligned with holders and protocol health.',
+        note: 'Vested, long horizon. Builders stay aligned with holders and protocol health.',
         detail:
           'Credibility comes from structure: a long cliff and slow linear vesting. Builders earn upside by shipping, not by selling into early liquidity.',
         tone: 'amber',
@@ -473,8 +477,7 @@ export default function TokenomicsPage() {
         key: 'partners',
         label: 'Partners + creators',
         pct: 8,
-        note:
-          'Creator-gated drops, sponsor pools and performance-based distribution with accountability.',
+        note: 'Creator-gated drops, sponsor pools and performance-based distribution with accountability.',
         detail:
           'Reserved for collaborations that measurably grow participation and sponsor demand. Distribution should be trackable and tied to outcomes.',
         tone: 'sky',
@@ -483,30 +486,22 @@ export default function TokenomicsPage() {
         key: 'community',
         label: 'Community incentives',
         pct: 7,
-        note:
-          'Streak rewards, referral boosts and reputation-based unlocks that feel earned.',
+        note: 'Streak rewards, referral boosts and reputation-based unlocks that feel earned.',
         detail:
           'Built for delight over farming: targeted incentives for real users and real momentum. Surprise rewards beat extractive grind loops.',
         tone: 'emerald',
       },
-      {
-        key: 'strategic',
-        label: 'Strategic reserve',
-        pct: 13,
-        note:
-          'Locked buffer for unknowns: future opportunities, integrations and defensive planning.',
-        detail:
-          'This stays locked by default. If unlocked, it should be governed, transparent and reported with public wallets and clear purpose.',
-        tone: 'slate',
-      },
-    ],
-    [DAILY_XPOT_TARGET],
-  );
+    ];
+
+    // Bigger -> smaller (your request)
+    return [...items].sort((a, b) => b.pct - a.pct);
+  }, [DAILY_XPOT_TARGET]);
 
   // Live vault groups (exact /api/vaults schema)
   const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
 
-  const [openKey, setOpenKey] = useState<string | null>('distribution');
+  // Do NOT pre-open anything (your request)
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   return (
     <XpotPageShell
@@ -552,10 +547,9 @@ export default function TokenomicsPage() {
               </h1>
 
               <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-                Traditional lottery and casino models extract value and hide it behind black boxes.
-                XPOT flips the equation: rewards are the primitive, identity is public by handle and
-                payouts are verifiable on-chain. Over time, this becomes infrastructure for creators,
-                communities and sponsors to run daily rewards without becoming a casino.
+                Traditional lottery and casino models extract value and hide it behind black boxes. XPOT flips the equation:
+                rewards are the primitive, identity is public by handle and payouts are verifiable on-chain. Over time, this
+                becomes infrastructure for creators, communities and sponsors to run daily rewards without becoming a casino.
               </p>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -567,7 +561,7 @@ export default function TokenomicsPage() {
                   Terms
                 </Link>
                 <span className="text-[11px] text-slate-500">
-                  Allocation is designed to prioritize rewards, resilience and long-term execution.
+                  Allocation prioritizes rewards, resilience and long-term execution.
                 </span>
               </div>
             </div>
@@ -636,8 +630,8 @@ export default function TokenomicsPage() {
         </div>
       </section>
 
-      {/* ALLOCATION */}
-      <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      {/* DISTRIBUTION (PROMINENT, FULL WIDTH) */}
+      <section className="mt-8">
         <div className={CARD}>
           <div
             className="
@@ -649,9 +643,9 @@ export default function TokenomicsPage() {
           <div className="relative z-10 p-6 lg:p-8">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-100">Allocation design</p>
+                <p className="text-lg font-semibold text-slate-100">Distribution map</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Locked in: reward runway, market resilience and long-term execution.
+                  Bigger allocations first. Tap any row to expand details and live vaults.
                 </p>
               </div>
               <Pill tone="sky">
@@ -674,13 +668,14 @@ export default function TokenomicsPage() {
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
                         {a.pct}%
                       </Pill>
-                      <div>
+
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-100">{a.label}</p>
                         <p className="mt-0.5 text-xs text-slate-500">Tap to expand</p>
                       </div>
                     </div>
 
-                    <div className="w-full max-w-[220px]">
+                    <div className="w-full max-w-[260px]">
                       <div className="h-2 rounded-full bg-slate-900/70">
                         <motion.div
                           className="h-2 rounded-full bg-emerald-400/70"
@@ -719,7 +714,7 @@ export default function TokenomicsPage() {
                                       key={r.label}
                                       className={[
                                         'flex items-center justify-between rounded-lg px-3 py-2 text-xs',
-                                        (r as any).highlight
+                                        r.highlight
                                           ? 'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/30'
                                           : 'bg-slate-950/60 text-slate-300',
                                       ].join(' ')}
@@ -732,7 +727,8 @@ export default function TokenomicsPage() {
                               </div>
 
                               <p className="mt-3 text-[11px] text-slate-500">
-                                Reserve size: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT (14% of supply). Fixed supply with minting disabled. Unused reserve remains locked.
+                                Reserve size: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT (14% of supply). Fixed supply
+                                with minting disabled. Unused reserve remains locked.
                               </p>
                             </div>
                           )}
@@ -757,96 +753,108 @@ export default function TokenomicsPage() {
             </div>
           </div>
         </div>
+      </section>
 
-        {/* UTILITY */}
-        <div className="space-y-4">
-          <div className={CARD}>
-            <div
-              className="
-                pointer-events-none absolute -inset-44 opacity-75 blur-3xl
-                bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_60%),
-                    radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%)]
-              "
-            />
-            <div className="relative z-10 p-6 lg:p-8">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Utility map</p>
-                  <p className="mt-1 text-xs text-slate-400">Why hold XPOT when you could just watch?</p>
+      {/* UTILITY + LONG-TERM (NO EMPTY GAP) */}
+      <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className={CARD}>
+          <div
+            className="
+              pointer-events-none absolute -inset-44 opacity-75 blur-3xl
+              bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_60%),
+                  radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%)]
+            "
+          />
+          <div className="relative z-10 p-6 lg:p-8">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Utility map</p>
+                <p className="mt-1 text-xs text-slate-400">Why hold XPOT when you could just watch?</p>
+              </div>
+              <Pill tone="emerald">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Flywheel
+              </Pill>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Gift className="h-4 w-4 text-emerald-300" />
+                  Eligibility
                 </div>
-                <Pill tone="emerald">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  Flywheel
-                </Pill>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Holding XPOT is the requirement to claim entry. No purchases, no ticket sales and no casino vibes.
+                </p>
               </div>
 
-              <div className="mt-5 grid gap-3">
-                <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                    <Gift className="h-4 w-4 text-emerald-300" />
-                    Eligibility
-                  </div>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Holding XPOT is the requirement to claim entry. No purchases, no ticket sales and no casino vibes.
-                  </p>
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Crown className="h-4 w-4 text-amber-200" />
+                  Status and reputation
                 </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Your handle becomes a public identity. Wins, streaks and participation can build a profile that unlocks future
+                  perks and sponsor drops.
+                </p>
+              </div>
 
-                <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                    <Crown className="h-4 w-4 text-amber-200" />
-                    Status and reputation
-                  </div>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Your handle becomes a public identity. Wins, streaks and participation can build a profile that unlocks future perks and sponsor drops.
-                  </p>
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Flame className="h-4 w-4 text-sky-300" />
+                  Sponsor-funded rewards
                 </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Brands buy XPOT to fund bonus drops. Holders get value, sponsors get measurable attention and the protocol grows
+                  without selling tickets.
+                </p>
+              </div>
 
-                <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                    <Flame className="h-4 w-4 text-sky-300" />
-                    Sponsor-funded rewards
-                  </div>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Brands buy XPOT to fund bonus drops. Holders get value, sponsors get measurable attention and the protocol grows without selling tickets.
-                  </p>
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                  Transparency edge
                 </div>
-
-                <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                    Transparency edge
-                  </div>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Casinos win by opacity. XPOT wins by verifiability. Over time, that becomes a trust moat.
-                  </p>
-                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Casinos win by opacity. XPOT wins by verifiability. Over time, that becomes a trust moat.
+                </p>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className={CARD}>
-            <div className="relative z-10 p-6 lg:p-8">
-              <p className="text-sm font-semibold text-slate-100">Long-term: why this can disrupt</p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                The endgame is not “a meme draw”. The endgame is a protocol that communities and brands plug into for daily rewards with identity and transparency baked in.
+        <div className={CARD}>
+          <div className="relative z-10 p-6 lg:p-8">
+            <p className="text-sm font-semibold text-slate-100">Long-term: why this can disrupt</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">
+              The endgame is not “a meme draw”. The endgame is a protocol that communities and brands plug into for daily rewards
+              with identity and transparency baked in.
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Link href="/roadmap" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                View roadmap
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+
+              <a
+                href="https://solscan.io"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
+              >
+                Token explorer
+                <ExternalLink className="h-4 w-4 text-slate-500" />
+              </a>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
+              <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Every distribution bucket can be mapped to wallets, ATAs and on-chain history. If it cannot be audited, it should
+                not exist.
               </p>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Link href="/roadmap" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                  View roadmap
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-
-                <a
-                  href="https://solscan.io"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
-                >
-                  Token explorer
-                  <ExternalLink className="h-4 w-4 text-slate-500" />
-                </a>
-              </div>
             </div>
           </div>
         </div>
@@ -859,7 +867,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is premium-first: simple, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v5</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v6</span>
         </div>
       </footer>
     </XpotPageShell>
