@@ -13,7 +13,7 @@ type XpotPageShellProps = {
   rightSlot?: ReactNode;
   children: ReactNode;
 
-  // NEW: full-bleed section that can render edge-to-edge (eg homepage hero)
+  // ✅ NEW: full-bleed content rendered above the normal container (edge-to-edge hero)
   fullBleedTop?: ReactNode;
 
   maxWidthClassName?: string;
@@ -135,7 +135,6 @@ export default function XpotPageShell({
   subtitle,
   rightSlot,
   children,
-
   fullBleedTop,
 
   maxWidthClassName = 'max-w-[1440px]',
@@ -172,11 +171,6 @@ export default function XpotPageShell({
     );
   }, [isOpsOrAdmin, rightSlot, showOpsThemeSwitcher]);
 
-  // Keep the original top padding for the normal (boxed) content
-  const contentTopPad = showTopBar
-    ? 'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)]'
-    : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]';
-
   return (
     <div
       className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(' ')}
@@ -193,18 +187,15 @@ export default function XpotPageShell({
 
       {showAtmosphere && <div aria-hidden className="xpot-atmosphere" />}
 
-      {/* NEW: full-bleed content lives above the boxed container */}
-      {fullBleedTop ? (
-        <div className={['relative z-10 w-full', contentTopPad].join(' ')}>
-          {fullBleedTop}
-        </div>
-      ) : null}
+      {/* ✅ Full-bleed content slot (edge-to-edge hero). No padding added here on purpose. */}
+      {fullBleedTop ? <div className="relative z-10 w-full">{fullBleedTop}</div> : null}
 
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
-          // If we rendered a full-bleed top, we already applied the top padding there.
-          fullBleedTop ? 'pt-6 sm:pt-8' : contentTopPad,
+          showTopBar
+            ? 'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)]'
+            : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]',
           'pb-6 sm:pb-8',
           maxWidthClassName,
           containerClassName,
