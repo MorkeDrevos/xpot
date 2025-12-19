@@ -57,7 +57,7 @@ function clamp(n: number, a: number, b: number) {
 }
 
 function easeOutCubic(t: number) {
-  return 1 - Math.pow(1 - t, 3);
+  return 1 - Math.pow(1 - t), 3);
 }
 
 function formatCoverage(ms: number) {
