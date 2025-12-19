@@ -835,8 +835,6 @@ export default function JackpotPanel({
             <span className="inline-flex items-baseline rounded-xl bg-black/40 px-4 py-2 font-mono text-lg tracking-[0.16em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
               {poolLabel}
             </span>
-
-            <span className="text-xs text-slate-500">- via Jupiter</span>
           </div>
 
           <div className="flex items-center gap-2">
