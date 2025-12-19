@@ -842,7 +842,10 @@ export default function HomePage() {
                       className="overflow-hidden"
                     >
                       <div className="mt-3">
-                        <LiveEntrantsLounge entrants={liveEntries} subtitle="Optional - expand to view" />
+                        <LiveEntrantsLounge
+  entrants={liveEntries}
+  hint="Optional - expand to view"
+/>
                       </div>
                     </motion.div>
                   )}
