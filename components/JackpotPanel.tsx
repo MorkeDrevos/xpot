@@ -329,12 +329,12 @@ function UsdEstimateBadge() {
       </button>
 
       <TooltipBubble open={t.open} rect={t.rect} width={560}>
-        <div className="px-6 py-5 text-[18px] leading-snug text-slate-100">
-          <p>This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.</p>
-          <p className="mt-4 text-slate-500">
-            The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
-          </p>
-        </div>
+        <div className="px-6 py-5 text-[12px] leading-relaxed text-slate-100">
+  <p>This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.</p>
+  <p className="mt-3 text-slate-500">
+    The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
+  </p>
+</div>
       </TooltipBubble>
     </div>
   );
