@@ -42,29 +42,11 @@ const XPOT_CA =
 
 const SOLANA_CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || '';
 
-const SAMPLE_HANDLES = [
-  'DeWala_222222',
-  'CryptoNox',
-  'XPOTMaxi',
-  'ChartHermit',
-  'SolanaSignals',
-  'LoopMode',
-  'BlockByBlock',
-  'FlowStateTrader',
-  'HypeEngineer',
-  'LatencyLord',
-  'AlphaSmith',
-  'CandleChaser',
-];
-
 const BTN_PRIMARY =
   'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_GREEN =
   'inline-flex items-center justify-center rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition';
-
-const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition';
 
 function Pill({
   children,
@@ -182,45 +164,6 @@ function MiniStat({
     <div className="rounded-2xl border border-slate-900/70 bg-slate-950/70 px-4 py-3">
       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <div className={`mt-1 font-mono text-sm ${toneCls}`}>{value}</div>
-    </div>
-  );
-}
-
-function HandleTicker({ handles }: { handles: string[] }) {
-  const reduceMotion = useReducedMotion();
-
-  return (
-    <div className="relative overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/55 px-2 py-2 shadow-[0_18px_60px_rgba(15,23,42,0.65)]">
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[#02020a] via-[#02020a]/80 to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-[#02020a] via-[#02020a]/80 to-transparent" />
-
-      <motion.div
-        className="flex gap-2 pr-10"
-        animate={reduceMotion ? undefined : { x: ['0%', '-50%'] }}
-        transition={reduceMotion ? undefined : { duration: 34, ease: 'linear', repeat: Infinity }}
-      >
-        {[0, 1].map(loop => (
-          <div key={loop} className="flex gap-2">
-            {handles.map(handle => {
-              const clean = handle.replace(/^@/, '');
-              const initial = clean.charAt(0).toUpperCase();
-
-              return (
-                <div
-                  key={`${loop}-${handle}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-100/90 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]"
-                >
-                  <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-slate-100">
-                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
-                    {initial}
-                  </span>
-                  <span className="font-mono text-[11px] opacity-80">@{clean}</span>
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </motion.div>
     </div>
   );
 }
@@ -580,10 +523,27 @@ function formatCountdown(ms: number) {
   return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
 }
 
-export default function HomePage() {
-  // kept (even if unused elsewhere)
-  const marquee = useMemo(() => [...SAMPLE_HANDLES], []);
+function normalizeLiveEntrant(x: any): LiveEntrant | null {
+  if (!x) return null;
 
+  // allow string handles as shorthand
+  if (typeof x === 'string') return { handle: x };
+
+  if (typeof x?.handle !== 'string' || !x.handle.trim()) return null;
+
+  const out: LiveEntrant = {
+    handle: x.handle,
+  };
+
+  if (typeof x?.avatarUrl === 'string' && x.avatarUrl.trim()) out.avatarUrl = x.avatarUrl.trim();
+  if (typeof x?.followers === 'number') out.followers = x.followers;
+  if (typeof x?.verified === 'boolean') out.verified = x.verified;
+  if (typeof x?.subtitle === 'string' && x.subtitle.trim()) out.subtitle = x.subtitle.trim();
+
+  return out;
+}
+
+export default function HomePage() {
   const [showLiveEntries, setShowLiveEntries] = useState(false);
   const [liveEntries, setLiveEntries] = useState<LiveEntrant[]>([]);
 
@@ -592,37 +552,19 @@ export default function HomePage() {
 
     let alive = true;
 
-    const load = async () => {
-      try {
-        const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
-        const data = await r.json();
+    fetch('/api/public/live-entries', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
         if (!alive) return;
 
         const raw = Array.isArray(data?.entries) ? data.entries : [];
-        const normalized: LiveEntrant[] = raw
-          .map((x: any) => (typeof x === 'string' ? { handle: x } : x))
-          .filter((x: any) => x?.handle && typeof x.handle === 'string')
-          .map((x: any) => ({
-            handle: String(x.handle),
-            avatarUrl: typeof x.avatarUrl === 'string' ? x.avatarUrl : undefined,
-            followers: typeof x.followers === 'number' ? x.followers : undefined,
-            verified: typeof x.verified === 'boolean' ? x.verified : undefined,
-            subtitle: typeof x.subtitle === 'string' ? x.subtitle : undefined,
-          }));
-
+        const normalized = raw.map(normalizeLiveEntrant).filter(Boolean) as LiveEntrant[];
         setLiveEntries(normalized);
-      } catch {
-        // ignore
-      }
-    };
-
-    // load immediately, then keep fresh while expanded
-    load();
-    const t = window.setInterval(load, 15000);
+      })
+      .catch(() => {});
 
     return () => {
       alive = false;
-      window.clearInterval(t);
     };
   }, [showLiveEntries]);
 
@@ -744,7 +686,6 @@ export default function HomePage() {
                         <SectionDividerLabel label="Entry mechanics" />
                       </div>
 
-                      {/* BONUS */}
                       <div className="mt-3">
                         <div className="relative">
                           <div className="pointer-events-none absolute -inset-10 opacity-75 blur-2xl bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]" />
@@ -871,7 +812,8 @@ export default function HomePage() {
                       className="overflow-hidden"
                     >
                       <div className="mt-3">
-                        <LiveEntrantsLounge entrants={liveEntries} subtitle="Optional - expand to view" />
+                        {/* FIX: LiveEntrantsLounge does not accept a `subtitle` prop */}
+                        <LiveEntrantsLounge entrants={liveEntries} />
                       </div>
                     </motion.div>
                   )}
@@ -969,7 +911,7 @@ export default function HomePage() {
         </PremiumCard>
       </section>
 
-      {/* THE PROTOCOL STRIP (kept) */}
+      {/* THE PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1015,8 +957,8 @@ export default function HomePage() {
                 XPOT is a rewards protocol, not a one-off game.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                The daily draw is the primitive. Modules can reward participation, streaks and reputation over time.
-                That’s how XPOT becomes an ecosystem for communities, creators and sponsors.
+                The daily draw is the primitive. Modules can reward participation, streaks and reputation over time. That’s how XPOT
+                becomes an ecosystem for communities, creators and sponsors.
               </p>
             </div>
 
