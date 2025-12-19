@@ -1,3 +1,4 @@
+// app/api/vaults/route.ts
 import { NextResponse } from 'next/server';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
@@ -13,50 +14,65 @@ const RPC =
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
   'https://api.mainnet-beta.solana.com';
 
-function clean(s: string) {
-  return (s ?? '').trim();
-}
+type VaultTx = {
+  signature: string;
+  blockTime: number | null;
+  err: unknown | null;
+};
 
-function pk(label: string, value: string) {
-  try {
-    return new PublicKey(clean(value));
-  } catch (e: any) {
-    // Return a very explicit error
-    throw new Error(`${label} is not a valid base58 pubkey: "${value}"`);
-  }
+type VaultEntry = {
+  name: string;
+  address: string; // owner wallet address
+  ata: string; // XPOT associated token account for owner
+  balance: {
+    amount: string; // raw (integer as string)
+    uiAmount: number; // float
+    decimals: number;
+  } | null;
+  recentTx: VaultTx[];
+};
+
+type VaultResponse = {
+  mint: string;
+  fetchedAt: number;
+  groups: Record<string, VaultEntry[]>;
+};
+
+function uniq<T>(arr: T[]) {
+  return Array.from(new Set(arr));
 }
 
 export async function GET() {
   try {
     const conn = new Connection(RPC, 'confirmed');
+    const mint = new PublicKey(TOKEN_MINT);
 
-    // ✅ This will now tell you if TOKEN_MINT is the bad one
-    const mint = pk('TOKEN_MINT', TOKEN_MINT);
-
-    const groups: any = {};
+    const groups: VaultResponse['groups'] = {};
 
     for (const [groupKey, vaults] of Object.entries(XPOT_VAULTS)) {
-      const out: any[] = [];
+      const out: VaultEntry[] = [];
 
       for (const v of vaults) {
-        // ✅ This will now tell you exactly which vault address is bad
-        const owner = pk(`Vault address (${groupKey} - ${v.name})`, v.address);
-
+        const owner = new PublicKey(v.address);
         const ata = getAssociatedTokenAddressSync(mint, owner, true);
 
-        let balance = null;
+        // Balance
+        let balance: VaultEntry['balance'] = null;
         try {
           const bal = await conn.getTokenAccountBalance(ata);
+          const ui = typeof bal.value.uiAmount === 'number' ? bal.value.uiAmount : 0;
           balance = {
             amount: bal.value.amount,
-            uiAmount: typeof bal.value.uiAmount === 'number' ? bal.value.uiAmount : 0,
+            uiAmount: ui,
             decimals: bal.value.decimals,
           };
         } catch {
+          // account may not exist yet - keep null
           balance = null;
         }
 
-        let recentTx: any[] = [];
+        // Recent tx (for the OWNER wallet, not ATA - easier to understand)
+        let recentTx: VaultTx[] = [];
         try {
           const sigs = await conn.getSignaturesForAddress(owner, { limit: 5 });
           recentTx = sigs.map(s => ({
@@ -70,7 +86,7 @@ export async function GET() {
 
         out.push({
           name: v.name,
-          address: owner.toBase58(),
+          address: v.address,
           ata: ata.toBase58(),
           balance,
           recentTx,
@@ -80,12 +96,13 @@ export async function GET() {
       groups[groupKey] = out;
     }
 
-    return NextResponse.json({
-      ok: true,
-      mint: mint.toBase58(),
+    const body: VaultResponse = {
+      mint: TOKEN_MINT,
       fetchedAt: Date.now(),
       groups,
-    });
+    };
+
+    return NextResponse.json(body);
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message ?? 'Failed to load vaults' },
