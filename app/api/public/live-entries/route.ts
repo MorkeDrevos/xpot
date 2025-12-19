@@ -11,16 +11,15 @@ function normalizeHandle(h: string) {
 }
 
 function upgradeAvatar(url: string) {
-  // X often returns ..._normal.jpg - bump quality
-  return url.replace('_normal', '_400x400');
+  // X commonly returns ..._normal.* (or sometimes _bigger.*). Upgrade if possible.
+  return url.replace('_normal', '_400x400').replace('_bigger', '_400x400');
 }
 
 function isDefaultAvatar(url?: string) {
   if (!url) return true;
-
   const u = url.toLowerCase();
 
-  // Common default avatar patterns on X/Twitter CDN
+  // X/Twitter default avatars commonly live under these paths/names
   if (u.includes('default_profile_images/')) return true;
   if (u.includes('default_profile_normal')) return true;
   if (u.includes('default_profile_')) return true;
@@ -29,35 +28,35 @@ function isDefaultAvatar(url?: string) {
 }
 
 type XUser = {
-  username: string;
+  username?: string;
   public_metrics?: { followers_count?: number };
   profile_image_url?: string;
 };
 
 type XError = {
-  value?: string; // username string we requested
+  value?: string; // username we requested
   title?: string;
   detail?: string;
   type?: string;
 };
 
 async function fetchXUsers(usernames: string[]) {
-  const token = process.env.XPOT_X_BEARER_TOKEN;
-  if (!token) {
-    return {
-      meta: new Map<string, { followers: number; avatar?: string }>(),
-      blocked: new Set<string>(),
-    };
-  }
+  // Support either env var name (to avoid silent empties)
+  const token =
+    process.env.XPOT_X_BEARER_TOKEN ||
+    process.env.XPOT_X_BEARER ||
+    process.env.X_BEARER_TOKEN;
+
+  const empty = {
+    meta: new Map<string, { followers: number; avatar?: string }>(),
+    blocked: new Set<string>(),
+    status: 0,
+  };
+
+  if (!token) return empty;
 
   const clean = Array.from(new Set(usernames.map(normalizeHandle).filter(Boolean))).slice(0, 100);
-
-  if (!clean.length) {
-    return {
-      meta: new Map<string, { followers: number; avatar?: string }>(),
-      blocked: new Set<string>(),
-    };
-  }
+  if (!clean.length) return empty;
 
   const url = new URL('https://api.x.com/2/users/by');
   url.searchParams.set('usernames', clean.join(','));
@@ -68,16 +67,12 @@ async function fetchXUsers(usernames: string[]) {
     cache: 'no-store',
   });
 
-  if (!r.ok) {
-    return {
-      meta: new Map<string, { followers: number; avatar?: string }>(),
-      blocked: new Set<string>(),
-    };
-  }
+  // If X rejects/limits us, return empty but keep status so we can introspect.
+  if (!r.ok) return { ...empty, status: r.status };
 
   const json = await r.json();
 
-  // Anything in errors is not acceptable (suspended, not found, etc.)
+  // Anything in `errors` is not acceptable (suspended, not found, etc.)
   const blocked = new Set<string>();
   const errors: XError[] = Array.isArray(json?.errors) ? json.errors : [];
   for (const e of errors) {
@@ -101,7 +96,7 @@ async function fetchXUsers(usernames: string[]) {
     meta.set(username.toLowerCase(), { followers, avatar });
   }
 
-  return { meta, blocked };
+  return { meta, blocked, status: r.status };
 }
 
 export async function GET() {
@@ -115,9 +110,18 @@ export async function GET() {
   ];
 
   const handles = rawEntries.map(e => normalizeHandle(e.handle)).filter(Boolean);
-  const { meta, blocked } = await fetchXUsers(handles);
+  const { meta, blocked, status } = await fetchXUsers(handles);
 
-  const entries = rawEntries
+  // Counters to quickly tell WHY you got 0 results (safe to expose)
+  const reasons = {
+    blocked: 0,
+    underMinFollowers: 0,
+    missingAvatar: 0,
+    defaultAvatar: 0,
+    ok: 0,
+  };
+
+  const cleaned = rawEntries
     .map(e => {
       const handle = normalizeHandle(e.handle);
       const key = handle.toLowerCase();
@@ -130,19 +134,38 @@ export async function GET() {
         _blocked: blocked.has(key),
       };
     })
-    .filter(e => !e._blocked) // suspended / not found / etc.
-    .filter(e => e.followers >= MIN_FOLLOWERS)
-    .filter(e => !!e.avatarUrl) // must have an avatar URL
-    .filter(e => !isDefaultAvatar(e.avatarUrl)); // must not be the default “same face” avatar
+    .filter(e => {
+      if (e._blocked) {
+        reasons.blocked += 1;
+        return false;
+      }
+      if (e.followers < MIN_FOLLOWERS) {
+        reasons.underMinFollowers += 1;
+        return false;
+      }
+      if (!e.avatarUrl) {
+        reasons.missingAvatar += 1;
+        return false;
+      }
+      if (isDefaultAvatar(e.avatarUrl)) {
+        reasons.defaultAvatar += 1;
+        return false;
+      }
 
-  // strip internal field
-  const cleaned = entries.map(({ _blocked, ...rest }) => rest);
+      reasons.ok += 1;
+      return true;
+    })
+    .map(({ _blocked, ...rest }) => rest);
 
   return NextResponse.json(
     {
       updatedAt: new Date().toISOString(),
       minFollowers: MIN_FOLLOWERS,
       entries: cleaned,
+
+      // Safe debug info (no token). Helps explain "why empty".
+      xStatus: status, // 0 = token missing, 401/403/429 etc possible
+      reasons,
     },
     { headers: { 'Cache-Control': 'no-store, max-age=0' } },
   );
