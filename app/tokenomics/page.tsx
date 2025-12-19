@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -38,7 +38,7 @@ const CARD =
 
 const VAULT_POLL_MS = 20_000;
 
-// Protocol rule (fixed)
+// ✅ Protocol rule (fixed)
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
 
@@ -125,6 +125,104 @@ function timeAgo(tsMs: number) {
   if (h > 0) return `${h}h ago`;
   if (m > 0) return `${m}m ago`;
   return `${s}s ago`;
+}
+
+function toneToStroke(tone: PillTone) {
+  // No hardcoded colors in charts - but we still need deterministic stroke colors.
+  // We use currentColor via CSS classes on each segment wrapper.
+  // This helper exists only for clarity.
+  return tone;
+}
+
+function toneClass(tone: PillTone) {
+  switch (tone) {
+    case 'emerald':
+      return 'text-emerald-300';
+    case 'sky':
+      return 'text-sky-300';
+    case 'amber':
+      return 'text-amber-200';
+    default:
+      return 'text-slate-300';
+  }
+}
+
+function AllocationDonut({
+  items,
+  size = 220,
+  stroke = 18,
+  selectedKey,
+  onSelect,
+}: {
+  items: Allocation[];
+  size?: number;
+  stroke?: number;
+  selectedKey: string | null;
+  onSelect: (key: string) => void;
+}) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+
+  // Start at top
+  let offset = c * 0.25;
+
+  return (
+    <div className="relative">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
+        {/* track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth={stroke}
+        />
+
+        {items.map(it => {
+          const len = (it.pct / 100) * c;
+          const dash = `${len} ${Math.max(0, c - len)}`;
+          const thisOffset = offset;
+          offset -= len;
+
+          const isSel = selectedKey === it.key;
+
+          return (
+            <g
+              key={it.key}
+              className={toneClass(toneToStroke(it.tone))}
+              onClick={() => onSelect(it.key)}
+              style={{ cursor: 'pointer' }}
+              role="button"
+              aria-label={`Select ${it.label}`}
+            >
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={r}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={stroke}
+                strokeLinecap="round"
+                strokeDasharray={dash}
+                strokeDashoffset={thisOffset}
+                opacity={isSel ? 0.95 : 0.75}
+              />
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* center */}
+      <div className="pointer-events-none absolute inset-0 grid place-items-center">
+        <div className="rounded-[22px] border border-slate-900/70 bg-slate-950/60 px-4 py-3 backdrop-blur">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Allocation</p>
+          <p className="mt-1 font-mono text-lg font-semibold text-slate-100">100%</p>
+          <p className="mt-1 text-[11px] text-slate-500">Fixed buckets</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -413,6 +511,7 @@ export default function TokenomicsPage() {
   const supply = 50_000_000_000;
   const decimals = 6;
 
+  // Locked allocation set
   const DISTRIBUTION_RESERVE_PCT = 14;
   const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100); // 7,000,000,000
 
@@ -421,6 +520,7 @@ export default function TokenomicsPage() {
     return DISTRIBUTION_RESERVE / (daily * DAYS_PER_YEAR);
   }
 
+  // ✅ Table centered on 1,000,000/day
   const runwayTable = useMemo(
     () => [
       { label: '500,000 XPOT / day', daily: 500_000 },
@@ -503,13 +603,10 @@ export default function TokenomicsPage() {
     [],
   );
 
-  // Render order: bigger -> smaller (as requested)
-  const allocationSorted = useMemo(() => {
-    return [...allocation].sort((a, b) => b.pct - a.pct);
-  }, [allocation]);
-
+  // Live vault groups
   const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
 
+  // Allocation key -> /api/vaults group key
   const VAULT_GROUP_BY_ALLOC_KEY: Record<string, string> = {
     distribution: 'rewards',
     liquidity: 'liquidityOps',
@@ -520,8 +617,23 @@ export default function TokenomicsPage() {
     strategic: 'strategic',
   };
 
-  // First tab NOT pre-opened
+  // ✅ Start closed (no pre-open)
   const [openKey, setOpenKey] = useState<string | null>(null);
+
+  const detailsRef = useRef<HTMLDivElement | null>(null);
+
+  // ✅ Sort big -> small for overview + cards
+  const allocationSorted = useMemo(() => {
+    return [...allocation].sort((a, b) => b.pct - a.pct);
+  }, [allocation]);
+
+  function selectKey(key: string) {
+    setOpenKey(prev => (prev === key ? null : key));
+    // soft scroll toward details area (nice on wide screens)
+    window.setTimeout(() => {
+      if (detailsRef.current) detailsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 40);
+  }
 
   return (
     <XpotPageShell
@@ -569,10 +681,9 @@ export default function TokenomicsPage() {
                 </h1>
 
                 <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-                  Traditional lottery and casino models extract value and hide it behind black boxes. XPOT flips the
-                  equation: rewards are the primitive, identity is public by handle and payouts are verifiable on-chain.
-                  Over time, this becomes infrastructure for creators, communities and sponsors to run daily rewards
-                  without becoming a casino.
+                  Traditional lottery and casino models extract value and hide it behind black boxes. XPOT flips the equation:
+                  rewards are the primitive, identity is public by handle and payouts are verifiable on-chain. Over time, this
+                  becomes infrastructure for creators, communities and sponsors to run daily rewards without becoming a casino.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -592,14 +703,12 @@ export default function TokenomicsPage() {
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
-                    <p className="mt-2 font-mono text-lg font-semibold text-slate-100">
-                      {supply.toLocaleString('en-US')}
-                    </p>
+                    <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
                     <p className="mt-1 text-xs text-slate-500">XPOT</p>
                   </div>
 
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Distribution rule</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Daily rule</p>
                     <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">
                       {fmtInt(DISTRIBUTION_DAILY_XPOT)}
                     </p>
@@ -607,16 +716,16 @@ export default function TokenomicsPage() {
                   </div>
 
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">10y requirement</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">10y required</p>
                     <p className="mt-2 font-mono text-lg font-semibold text-slate-100">
                       {TEN_YEARS_REQUIRED.toLocaleString('en-US')}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">XPOT total</p>
+                    <p className="mt-1 text-xs text-slate-500">XPOT</p>
                   </div>
                 </div>
               </div>
 
-              {/* RIGHT - MOSAIC */}
+              {/* RIGHT MOSAIC */}
               <div className="lg:col-span-5">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
                   <div className="sm:col-span-2 rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
@@ -676,6 +785,11 @@ export default function TokenomicsPage() {
                       Disruption comes from transparency, repeatability and sponsor-friendly distribution.
                     </p>
 
+                    <div className="mt-4 rounded-xl border border-slate-900/70 bg-slate-950/55 p-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
+                      <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
+                      <p className="mt-2 text-xs text-slate-500">If it cannot be audited, it should not exist.</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -684,7 +798,7 @@ export default function TokenomicsPage() {
         </div>
       </section>
 
-      {/* DISTRIBUTION (more prominent name + bigger->smaller order) */}
+      {/* DISTRIBUTION (REDESIGNED: donut + legend + 2-col cards) */}
       <section className="mt-8">
         <div className={CARD}>
           <div
@@ -698,7 +812,9 @@ export default function TokenomicsPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-100">Distribution map</p>
-                <p className="mt-1 text-xs text-slate-400">Tap any row to expand details and live vaults.</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Visual overview first. Tap a slice or label to open details, runway table and live vaults.
+                </p>
               </div>
               <Pill tone="sky">
                 <PieChart className="h-3.5 w-3.5" />
@@ -706,103 +822,207 @@ export default function TokenomicsPage() {
               </Pill>
             </div>
 
-            <div className="mt-6 space-y-3">
-              {allocationSorted.map(a => (
-                <button
-                  key={a.key}
-                  type="button"
-                  onClick={() => setOpenKey(k => (k === a.key ? null : a.key))}
-                  className="group w-full rounded-2xl border border-slate-900/70 bg-slate-950/55 px-4 py-4 text-left hover:bg-slate-950/70 transition"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Pill tone={a.tone}>
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-                        {a.pct}%
-                      </Pill>
-
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-100">{a.label}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">Tap to expand</p>
-                      </div>
-                    </div>
-
-                    <div className="w-full max-w-[260px]">
-                      <div className="h-2 rounded-full bg-slate-900/70">
-                        <motion.div
-                          className="h-2 rounded-full bg-emerald-400/70"
-                          initial={false}
-                          animate={{ width: pctToBar(a.pct) }}
-                          transition={{ duration: 0.4 }}
-                        />
-                      </div>
-                    </div>
+            <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              {/* Donut */}
+              <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Allocation overview</p>
+                    <p className="mt-2 text-sm text-slate-200">Buckets sized by percentage</p>
                   </div>
+                  <span className="rounded-full border border-slate-800/70 bg-slate-950/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                    tap to focus
+                  </span>
+                </div>
 
-                  <AnimatePresence initial={false}>
-                    {openKey === a.key && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.22 }}
-                        className="overflow-hidden"
+                <div className="mt-5 grid place-items-center">
+                  <AllocationDonut
+                    items={allocationSorted}
+                    selectedKey={openKey}
+                    onSelect={selectKey}
+                    size={240}
+                    stroke={18}
+                  />
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Rule</p>
+                  <p className="mt-2 text-sm text-slate-200">
+                    Daily distribution is fixed at <span className="font-mono text-emerald-200">{fmtInt(DISTRIBUTION_DAILY_XPOT)}</span> XPOT.
+                  </p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    10-year requirement at 1M/day: <span className="font-mono text-slate-200">{TEN_YEARS_REQUIRED.toLocaleString('en-US')}</span> XPOT.
+                  </p>
+                </div>
+              </div>
+
+              {/* Legend / mini-bars */}
+              <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Buckets</p>
+                <p className="mt-2 text-sm text-slate-200">
+                  Click any row to open the detailed card below.
+                </p>
+
+                <div className="mt-4 grid gap-2">
+                  {allocationSorted.map(it => {
+                    const isSel = openKey === it.key;
+                    return (
+                      <button
+                        key={it.key}
+                        type="button"
+                        onClick={() => selectKey(it.key)}
+                        className={[
+                          'group w-full rounded-2xl border px-4 py-3 text-left transition',
+                          isSel
+                            ? 'border-white/10 bg-white/[0.04]'
+                            : 'border-slate-900/70 bg-slate-950/45 hover:bg-slate-950/70',
+                        ].join(' ')}
                       >
-                        <div className="mt-3 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
-                          <p className="text-sm text-slate-200">{a.note}</p>
-                          <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
+                        <div className="flex items-center gap-3">
+                          <span className={['h-2.5 w-2.5 rounded-full', toneClass(it.tone)].join(' ')} style={{ background: 'currentColor' }} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="truncate text-sm font-semibold text-slate-100">{it.label}</p>
+                              <p className="shrink-0 font-mono text-sm font-semibold text-slate-200">{it.pct}%</p>
+                            </div>
 
-                          {a.key === 'distribution' && (
-                            <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                                Distribution runway table
-                              </p>
+                            <div className="mt-2 h-2 rounded-full bg-slate-900/70">
+                              <motion.div
+                                className="h-2 rounded-full"
+                                style={{
+                                  background:
+                                    it.tone === 'emerald'
+                                      ? 'rgba(16,185,129,0.65)'
+                                      : it.tone === 'sky'
+                                        ? 'rgba(56,189,248,0.55)'
+                                        : it.tone === 'amber'
+                                          ? 'rgba(245,158,11,0.55)'
+                                          : 'rgba(148,163,184,0.45)',
+                                }}
+                                initial={false}
+                                animate={{ width: pctToBar(it.pct) }}
+                                transition={{ duration: 0.35 }}
+                              />
+                            </div>
 
-                              <div className="mt-3 space-y-2">
-                                {runwayTable.map(r => {
-                                  const years = yearsOfRunway(r.daily);
-                                  return (
-                                    <div
-                                      key={r.label}
-                                      className={[
-                                        'flex items-center justify-between rounded-lg px-3 py-2 text-xs',
-                                        r.highlight
-                                          ? 'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/30'
-                                          : 'bg-slate-950/60 text-slate-300',
-                                      ].join(' ')}
-                                    >
-                                      <span className="font-mono">{r.label}</span>
-                                      <span className="font-semibold">{years.toFixed(2)} years</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                            <p className="mt-2 text-xs text-slate-500 line-clamp-1">{it.note}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
 
-                              <p className="mt-3 text-[11px] text-slate-500">
-                                Reserve size: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT (14% of supply). Daily
-                                distribution is fixed at {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Minting disabled. Unused
-                                reserve remains locked.
+            {/* Detail cards (2-col, not ultra-wide) */}
+            <div ref={detailsRef} className="mt-6">
+              <div className="grid gap-3 lg:grid-cols-2">
+                {allocationSorted.map(a => {
+                  const isOpen = openKey === a.key;
+                  return (
+                    <div
+                      key={a.key}
+                      className={[
+                        'rounded-[26px] border bg-slate-950/55 p-4 transition',
+                        isOpen ? 'border-white/10' : 'border-slate-900/70',
+                      ].join(' ')}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOpenKey(k => (k === a.key ? null : a.key))}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <Pill tone={a.tone}>
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                              {a.pct}%
+                            </Pill>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-slate-100">{a.label}</p>
+                              <p className="mt-0.5 text-xs text-slate-500">{isOpen ? 'Tap to collapse' : 'Tap to expand'}</p>
+                            </div>
+                          </div>
+
+                          <div className="w-[140px] shrink-0">
+                            <div className="h-2 rounded-full bg-slate-900/70">
+                              <motion.div
+                                className="h-2 rounded-full bg-emerald-400/70"
+                                initial={false}
+                                animate={{ width: pctToBar(a.pct) }}
+                                transition={{ duration: 0.35 }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.22 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="mt-3 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
+                              <p className="text-sm text-slate-200">{a.note}</p>
+                              <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
+
+                              {a.key === 'distribution' && (
+                                <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
+                                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                                    Distribution runway table
+                                  </p>
+
+                                  <div className="mt-3 space-y-2">
+                                    {runwayTable.map(r => {
+                                      const years = yearsOfRunway(r.daily);
+                                      return (
+                                        <div
+                                          key={r.label}
+                                          className={[
+                                            'flex items-center justify-between rounded-lg px-3 py-2 text-xs',
+                                            r.highlight
+                                              ? 'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/30'
+                                              : 'bg-slate-950/60 text-slate-300',
+                                          ].join(' ')}
+                                        >
+                                          <span className="font-mono">{r.label}</span>
+                                          <span className="font-semibold">{years.toFixed(2)} years</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  <p className="mt-3 text-[11px] text-slate-500">
+                                    Reserve size: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT (14% of supply). Daily distribution is fixed at{' '}
+                                    {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Minting disabled. Unused reserve remains locked.
+                                  </p>
+                                </div>
+                              )}
+
+                              <VaultGroupPanel
+                                title="Vaults (live)"
+                                groupKey={VAULT_GROUP_BY_ALLOC_KEY[a.key] ?? a.key}
+                                data={vaultData}
+                                isLoading={vaultLoading}
+                                hadError={vaultError}
+                              />
+
+                              <p className="mt-3 text-[11px] text-slate-600">
+                                Implementation: dedicated vaults, timelocks and public wallets so allocations stay auditable.
                               </p>
                             </div>
-                          )}
-
-                          <VaultGroupPanel
-                            title="Vaults (live)"
-                            groupKey={VAULT_GROUP_BY_ALLOC_KEY[a.key] ?? a.key}
-                            data={vaultData}
-                            isLoading={vaultLoading}
-                            hadError={vaultError}
-                          />
-
-                          <p className="mt-3 text-[11px] text-slate-600">
-                            Implementation: dedicated vaults, timelocks and public wallets so allocations stay auditable.
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </button>
-              ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -847,8 +1067,7 @@ export default function TokenomicsPage() {
                   Status and reputation
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Your handle becomes a public identity. Wins, streaks and participation can build a profile that unlocks
-                  future perks and sponsor drops.
+                  Your handle becomes a public identity. Wins, streaks and participation can build a profile that unlocks future perks and sponsor drops.
                 </p>
               </div>
 
@@ -858,8 +1077,7 @@ export default function TokenomicsPage() {
                   Sponsor-funded rewards
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Brands buy XPOT to fund bonus drops. Holders get value, sponsors get measurable attention and the
-                  protocol grows without selling tickets.
+                  Brands buy XPOT to fund bonus drops. Holders get value, sponsors get measurable attention and the protocol grows without selling tickets.
                 </p>
               </div>
 
@@ -880,8 +1098,7 @@ export default function TokenomicsPage() {
           <div className="relative z-10 p-6 lg:p-8">
             <p className="text-sm font-semibold text-slate-100">Long-term: why this can disrupt</p>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
-              The endgame is not “a meme draw”. The endgame is a protocol that communities and brands plug into for daily
-              rewards with identity and transparency baked in.
+              The endgame is not “a meme draw”. The endgame is a protocol that communities and brands plug into for daily rewards with identity and transparency baked in.
             </p>
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -905,8 +1122,7 @@ export default function TokenomicsPage() {
               <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
               <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
               <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                Every distribution bucket can be mapped to wallets, ATAs and on-chain history. If it cannot be audited,
-                it should not exist.
+                Every distribution bucket can be mapped to wallets, ATAs and on-chain history. If it cannot be audited, it should not exist.
               </p>
             </div>
           </div>
