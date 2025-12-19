@@ -1,7 +1,7 @@
 // components/JackpotPanel.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Info } from 'lucide-react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
@@ -14,8 +14,7 @@ const RANGE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 const RANGE_STORAGE_KEY = 'xpot_price_samples_24h_v1';
 const RANGE_MAX_SAMPLES = Math.ceil(RANGE_WINDOW_MS / RANGE_SAMPLE_MS) + 120;
 
-// Sparkline window (local sampling, can differ per device)
-// We'll make the % itself global-consistent (DexScreener), while keeping the local sparkline.
+// Sparkline window (local ticks)
 const SPARK_WINDOW_MS = 60 * 60 * 1000; // 1h
 const SPARK_MAX_POINTS = 80;
 
@@ -156,17 +155,21 @@ function readJupiterUsdPrice(payload: unknown, mint: string): number | null {
   return null;
 }
 
-function pickBestDexPair(payload: unknown): any | null {
-  if (!payload || typeof payload !== 'object') return null;
+type DexMetrics = {
+  priceUsd: number | null;
+  changeH1: number | null;
+};
+
+function readDexScreenerMetrics(payload: unknown): DexMetrics {
+  // https://api.dexscreener.com/latest/dex/tokens/<mint>
+  if (!payload || typeof payload !== 'object') return { priceUsd: null, changeH1: null };
   const p: any = payload;
   const pairs = Array.isArray(p?.pairs) ? p.pairs : [];
-  if (!pairs.length) return null;
+  if (!pairs.length) return { priceUsd: null, changeH1: null };
 
-  // Prefer Solana + highest liquidity, fallback to first valid priced pair
+  // Prefer Solana + highest liquidity
   let best: any = null;
   for (const pair of pairs) {
-    const chainOk = (pair?.chainId ?? '').toString().toLowerCase() === 'solana';
-    const liqUsd = Number(pair?.liquidity?.usd ?? 0);
     const priceUsd = Number(pair?.priceUsd ?? NaN);
     if (!Number.isFinite(priceUsd)) continue;
 
@@ -175,26 +178,23 @@ function pickBestDexPair(payload: unknown): any | null {
       continue;
     }
 
+    const chainOk = (pair?.chainId ?? '').toString().toLowerCase() === 'solana';
+    const bestChainOk = (best?.chainId ?? '').toString().toLowerCase() === 'solana';
+
+    const liqUsd = Number(pair?.liquidity?.usd ?? 0);
     const bestLiq = Number(best?.liquidity?.usd ?? 0);
-    const better = (chainOk && (best?.chainId ?? '').toString().toLowerCase() !== 'solana') || liqUsd > bestLiq;
+
+    const better = (chainOk && !bestChainOk) || liqUsd > bestLiq;
     if (better) best = pair;
   }
 
-  return best;
-}
+  const outPrice = Number(best?.priceUsd ?? NaN);
+  const outChange = Number(best?.priceChange?.h1 ?? NaN);
 
-function readDexScreenerUsdPrice(payload: unknown): number | null {
-  const best = pickBestDexPair(payload);
-  if (!best) return null;
-  const out = Number(best?.priceUsd ?? NaN);
-  return Number.isFinite(out) ? out : null;
-}
-
-function readDexScreenerPriceChangePct(payload: unknown, window: '1h' | '6h' | '24h' = '1h'): number | null {
-  const best = pickBestDexPair(payload);
-  if (!best) return null;
-  const v = Number(best?.priceChange?.[window] ?? NaN);
-  return Number.isFinite(v) ? v : null;
+  return {
+    priceUsd: Number.isFinite(outPrice) ? outPrice : null,
+    changeH1: Number.isFinite(outChange) ? outChange : null,
+  };
 }
 
 /* -----------------------------
@@ -238,7 +238,7 @@ function TooltipBubble({
   open: boolean;
   rect: DOMRect | null;
   width?: number;
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   if (!open || !rect) return null;
   if (typeof window === 'undefined') return null;
@@ -398,6 +398,9 @@ export default function JackpotPanel({
   const [justUpdated, setJustUpdated] = useState(false);
   const updatePulseTimeout = useRef<number | null>(null);
 
+  // GLOBAL momentum (DexScreener priceChange.h1)
+  const [momentumGlobalH1, setMomentumGlobalH1] = useState<number | null>(null);
+
   // 24h observed range (from rolling samples)
   const samplesRef = useRef<PriceSample[]>([]);
   const lastSampleAtRef = useRef<number>(0);
@@ -406,13 +409,9 @@ export default function JackpotPanel({
   const [range24h, setRange24h] = useState<{ lowUsd: number; highUsd: number } | null>(null);
   const [coverageMs, setCoverageMs] = useState<number>(0);
 
-  // Sparkline (last 1h) - local samples
+  // Sparkline (local ticks, last 1h)
   const [spark, setSpark] = useState<{ points: string; min: number; max: number } | null>(null);
   const [sparkCoverageMs, setSparkCoverageMs] = useState<number>(0);
-
-  // Global-consistent momentum (DexScreener priceChange)
-  const [momentumPctGlobal, setMomentumPctGlobal] = useState<number | null>(null);
-  const [momentumWindowLabel] = useState<'1h'>('1h');
 
   // Premium runway fade-in (after price loads)
   const [showRunway, setShowRunway] = useState(false);
@@ -433,7 +432,7 @@ export default function JackpotPanel({
     }
   }, [sessionKey]);
 
-  // Load rolling samples (for 24h range + sparkline)
+  // Load rolling samples (for 24h range + local sparkline)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -458,8 +457,7 @@ export default function JackpotPanel({
         setRange24h({ lowUsd: low * JACKPOT_XPOT, highUsd: high * JACKPOT_XPOT });
       }
 
-      const oldest = stored[0].t;
-      setCoverageMs(clamp(now - oldest, 0, RANGE_WINDOW_MS));
+      setCoverageMs(clamp(now - stored[0].t, 0, RANGE_WINDOW_MS));
 
       const cutoffSpark = now - SPARK_WINDOW_MS;
       const sparkRaw = stored.filter(s => s.t >= cutoffSpark);
@@ -491,24 +489,11 @@ export default function JackpotPanel({
   }, [isLoading, priceUsd, displayJackpotUsd, showRunway]);
 
   // Live price: Jupiter primary, DexScreener fallback
-  // PLUS: global-consistent momentum % from DexScreener (1h) every tick
+  // Also: always pull DexScreener global h1 % for consistent Momentum %
   useEffect(() => {
     let timer: number | null = null;
     let aborted = false;
     const ctrl = new AbortController();
-
-    async function fetchDexBundle(): Promise<{ price: number | null; change1h: number | null }> {
-      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${TOKEN_MINT}`, {
-        signal: ctrl.signal,
-        cache: 'no-store',
-      });
-      if (!res.ok) return { price: null, change1h: null };
-      const json = await res.json();
-      return {
-        price: readDexScreenerUsdPrice(json),
-        change1h: readDexScreenerPriceChangePct(json, '1h'),
-      };
-    }
 
     async function fetchFromJupiter(): Promise<number | null> {
       const res = await fetch(`https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`, {
@@ -520,34 +505,41 @@ export default function JackpotPanel({
       return readJupiterUsdPrice(json, TOKEN_MINT);
     }
 
+    async function fetchFromDexScreener(): Promise<DexMetrics> {
+      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${TOKEN_MINT}`, {
+        signal: ctrl.signal,
+        cache: 'no-store',
+      });
+      if (!res.ok) return { priceUsd: null, changeH1: null };
+      const json = await res.json();
+      return readDexScreenerMetrics(json);
+    }
+
     async function fetchPrice() {
       try {
         setHadError(false);
 
-        // Start DexScreener in parallel (for global momentum + possible fallback price)
-        const dexP = fetchDexBundle().catch(() => ({ price: null, change1h: null }));
+        // Fetch both in parallel (Dex is used for momentum% even if price comes from Jupiter)
+        const [jup, dex] = await Promise.allSettled([fetchFromJupiter(), fetchFromDexScreener()]);
+
+        const jupPrice = jup.status === 'fulfilled' ? jup.value : null;
+        const dexMetrics = dex.status === 'fulfilled' ? dex.value : { priceUsd: null, changeH1: null };
+
+        if (!aborted) {
+          if (dexMetrics.changeH1 != null) setMomentumGlobalH1(dexMetrics.changeH1);
+        }
 
         let price: number | null = null;
         let src: PriceSource = 'Jupiter';
 
-        price = await fetchFromJupiter();
-
-        // Await Dex bundle (so momentum stays global-consistent across devices)
-        const dex = await dexP;
-
-        if (!aborted) {
-          if (typeof dex.change1h === 'number' && Number.isFinite(dex.change1h)) {
-            setMomentumPctGlobal(dex.change1h);
-          }
-        }
-
-        if (!(typeof price === 'number' && Number.isFinite(price))) {
-          if (typeof dex.price === 'number' && Number.isFinite(dex.price)) {
-            price = dex.price;
-            src = 'DexScreener';
-          } else {
-            price = null;
-          }
+        if (typeof jupPrice === 'number' && Number.isFinite(jupPrice)) {
+          price = jupPrice;
+          src = 'Jupiter';
+        } else if (typeof dexMetrics.priceUsd === 'number' && Number.isFinite(dexMetrics.priceUsd)) {
+          price = dexMetrics.priceUsd;
+          src = 'DexScreener';
+        } else {
+          price = null;
         }
 
         if (aborted) return;
@@ -664,7 +656,7 @@ export default function JackpotPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jackpotUsd]);
 
-  // Update rolling 24h samples + compute observed high/low + coverage + sparkline
+  // Update rolling 24h samples + compute observed high/low + coverage + local sparkline
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (priceUsd == null || !Number.isFinite(priceUsd)) return;
@@ -754,8 +746,7 @@ export default function JackpotPanel({
       : 'rounded-2xl border border-slate-800 bg-slate-950/60 px-6 py-6 shadow-sm';
 
   const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
-  const sparkObservedLabel =
-    sparkCoverageMs >= SPARK_WINDOW_MS ? 'Momentum (local 1h)' : `Momentum (local ${formatCoverage(sparkCoverageMs)})`;
+  const localSparkLabel = sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
 
   const isWide = layout === 'wide';
 
@@ -764,7 +755,8 @@ export default function JackpotPanel({
     ? 'border-amber-400/35 bg-amber-500/10 text-amber-200'
     : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200';
 
-  const momentumPctDisplay = momentumPctGlobal == null ? '—' : `${momentumPctGlobal.toFixed(2)}%`;
+  const globalMomentumText =
+    momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '—' : `${momentumGlobalH1.toFixed(2)}%`;
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -779,7 +771,7 @@ export default function JackpotPanel({
         `}
       />
 
-      {/* RUNWAY PILL (inside JackpotPanel, fades in after price loads) */}
+      {/* RUNWAY PILL */}
       {!!badgeLabel && (
         <div
           className={`
@@ -884,10 +876,8 @@ export default function JackpotPanel({
         {/* Momentum */}
         <div className="rounded-2xl border border-slate-800/80 bg-black/20 px-5 py-4">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
-              Momentum (global {momentumWindowLabel})
-            </p>
-            <p className="text-[11px] text-slate-300">{momentumPctDisplay}</p>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Momentum (global 1h)</p>
+            <p className="text-[11px] text-slate-300">{globalMomentumText}</p>
           </div>
 
           {spark ? (
@@ -897,7 +887,7 @@ export default function JackpotPanel({
                 height="70"
                 viewBox="0 0 560 54"
                 className="block text-slate-300"
-                aria-label="XPOT momentum sparkline (local observed)"
+                aria-label="XPOT momentum sparkline (local ticks)"
               >
                 <polyline
                   fill="none"
@@ -915,7 +905,7 @@ export default function JackpotPanel({
                 <span className="font-mono">max {spark.max.toFixed(8)}</span>
               </div>
 
-              <div className="mt-2 text-[11px] text-slate-600">{sparkObservedLabel}</div>
+              <p className="mt-2 text-[11px] text-slate-600">{localSparkLabel}</p>
             </>
           ) : (
             <p className="mt-2 text-xs text-slate-500">Collecting ticks…</p>
