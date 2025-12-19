@@ -29,7 +29,7 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
-import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
+import LiveEntrantsLounge, { type LiveEntrant } from '@/components/LiveEntrantsLounge';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
@@ -94,13 +94,7 @@ function Pill({
   );
 }
 
-function TinyTooltip({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function TinyTooltip({ label, children }: { label: string; children: ReactNode }) {
   return (
     <span className="relative inline-flex items-center">
       <span className="group relative inline-flex items-center">
@@ -587,31 +581,48 @@ function formatCountdown(ms: number) {
 }
 
 export default function HomePage() {
+  // kept (even if unused elsewhere)
   const marquee = useMemo(() => [...SAMPLE_HANDLES], []);
+
   const [showLiveEntries, setShowLiveEntries] = useState(false);
-  const [liveEntries, setLiveEntries] = useState<{ handle: string }[]>([]);
+  const [liveEntries, setLiveEntries] = useState<LiveEntrant[]>([]);
 
   useEffect(() => {
     if (!showLiveEntries) return;
 
     let alive = true;
 
-    fetch('/api/public/live-entries', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(data => {
+    const load = async () => {
+      try {
+        const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
+        const data = await r.json();
         if (!alive) return;
 
         const raw = Array.isArray(data?.entries) ? data.entries : [];
-        const normalized: { handle: string }[] = raw
+        const normalized: LiveEntrant[] = raw
           .map((x: any) => (typeof x === 'string' ? { handle: x } : x))
-          .filter((x: any) => x?.handle && typeof x.handle === 'string');
+          .filter((x: any) => x?.handle && typeof x.handle === 'string')
+          .map((x: any) => ({
+            handle: String(x.handle),
+            avatarUrl: typeof x.avatarUrl === 'string' ? x.avatarUrl : undefined,
+            followers: typeof x.followers === 'number' ? x.followers : undefined,
+            verified: typeof x.verified === 'boolean' ? x.verified : undefined,
+            subtitle: typeof x.subtitle === 'string' ? x.subtitle : undefined,
+          }));
 
         setLiveEntries(normalized);
-      })
-      .catch(() => {});
+      } catch {
+        // ignore
+      }
+    };
+
+    // load immediately, then keep fresh while expanded
+    load();
+    const t = window.setInterval(load, 15000);
 
     return () => {
       alive = false;
+      window.clearInterval(t);
     };
   }, [showLiveEntries]);
 
@@ -652,11 +663,7 @@ export default function HomePage() {
 
   const hero = (
     <section className="relative">
-      {/* ✅ FIX: full-bleed hero sits ABOVE the normal container padding, so we add a spacer equal to banner + topbar height */}
-      <div
-        aria-hidden
-        className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+18px)]"
-      />
+      <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+18px)]" />
 
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/30 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
         <div
@@ -720,7 +727,6 @@ export default function HomePage() {
                         ecosystem for communities, creators and sponsors.
                       </p>
 
-                      {/* ✅ runway pill + tooltip */}
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <RunwayPill />
                         <TinyTooltip label="Runway = the rewards pool is designed to sustain daily payouts at launch. Exact mechanics can evolve, but payouts remain verifiable on-chain.">
@@ -730,7 +736,6 @@ export default function HomePage() {
                         </TinyTooltip>
                       </div>
 
-                      {/* ✅ bring back the strip so the section doesn’t look broken */}
                       <div className="mt-4">
                         <PrinciplesStrip />
                       </div>
@@ -760,7 +765,6 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* ✅ gold CA bar */}
                       <div className="mt-4">
                         <RoyalContractBar mint={mint} />
                       </div>
@@ -867,8 +871,8 @@ export default function HomePage() {
                       className="overflow-hidden"
                     >
                       <div className="mt-3">
-  <LiveEntrantsLounge entrants={liveEntries} />
-</div>
+                        <LiveEntrantsLounge entrants={liveEntries} subtitle="Optional - expand to view" />
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
