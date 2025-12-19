@@ -193,8 +193,9 @@ export default function XpotPageShell({
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
+          // ✅ use real measured topbar height (published by XpotTopBar.tsx)
           showTopBar
-            ? 'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)]'
+            ? 'pt-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+24px)]'
             : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]',
           'pb-6 sm:pb-8',
           maxWidthClassName,
