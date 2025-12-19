@@ -99,8 +99,8 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
   if (!label) return null;
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      {/* Pill (smaller like your screenshot) */}
+    <div className="relative inline-flex items-center justify-center gap-2 group">
+      {/* Pill */}
       <span
         className="
           inline-flex items-center gap-2 rounded-full
@@ -111,15 +111,15 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           text-emerald-100
           shadow-[0_0_0_1px_rgba(16,185,129,0.08)]
           max-w-[92vw]
+          cursor-default select-none
         "
       >
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.85)]" />
         <span className="truncate">{label}</span>
       </span>
 
-      {/* Tooltip icon (hover/click target next to the pill, like you want) */}
       {!!tooltip && (
-        <div className="relative group inline-flex">
+        <>
           <button
             type="button"
             aria-label="More info"
@@ -134,6 +134,7 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
             <Info className="h-4 w-4 opacity-90" />
           </button>
 
+          {/* Tooltip (shows when hovering pill OR icon) */}
           <div
             className="
               pointer-events-none absolute left-1/2 top-full z-[80] mt-3 w-[340px] max-w-[86vw]
@@ -151,8 +152,53 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
             <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
             {tooltip}
           </div>
-        </div>
+        </>
       )}
+    </div>
+  );
+}
+
+function UsdEstimateBadge() {
+  return (
+    <div className="relative inline-flex items-center gap-2 group">
+      <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+        USD estimate
+      </span>
+
+      <button
+        type="button"
+        aria-label="USD estimate info"
+        className="
+          inline-flex h-9 w-9 items-center justify-center rounded-full
+          border border-slate-700/80 bg-black/20
+          text-slate-200
+          hover:bg-slate-900/40 hover:text-white
+          transition
+        "
+      >
+        <Info className="h-4 w-4 opacity-90" />
+      </button>
+
+      <div
+        className="
+          pointer-events-none absolute left-1/2 top-full z-[80] mt-3 w-[520px] max-w-[92vw]
+          -translate-x-1/2
+          rounded-2xl border border-slate-700/80 bg-slate-950
+          px-6 py-5 text-[18px] leading-snug text-slate-100
+          shadow-[0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-xl
+          opacity-0 translate-y-0
+          group-hover:opacity-100 group-hover:translate-y-1
+          transition-all duration-200
+          select-none
+        "
+      >
+        <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-slate-950 border-l border-t border-slate-700/80 shadow-[0_4px_10px_rgba(15,23,42,0.8)]" />
+
+        <p>This is the current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.</p>
+        <p className="mt-4 text-slate-500">
+          The winner is always paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
+        </p>
+      </div>
     </div>
   );
 }
@@ -289,8 +335,19 @@ export default function JackpotPanel({
   // Sparkline (last 6h)
   const [spark, setSpark] = useState<{ points: string; min: number; max: number } | null>(null);
 
+  // Fade-in runway once price is ready
+  const [showRunway, setShowRunway] = useState(false);
+
   // Session key for "highest this session" (22:00 Madrid cut)
   const sessionKey = useMemo(() => `xpot_max_session_usd_${getMadridSessionKey(22)}`, []);
+
+  useEffect(() => {
+    if (!isLoading && priceUsd != null) {
+      const t = window.setTimeout(() => setShowRunway(true), 140);
+      return () => window.clearTimeout(t);
+    }
+    setShowRunway(false);
+  }, [isLoading, priceUsd]);
 
   // Load max XPOT USD value for this session from localStorage
   useEffect(() => {
@@ -578,7 +635,6 @@ export default function JackpotPanel({
     }
   }, [priceUsd]);
 
-  const reachedMilestone = jackpotUsd != null ? MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0] ?? null : null;
   const nextMilestone = jackpotUsd != null ? MILESTONES.find(m => jackpotUsd < m) ?? null : null;
 
   const prevMilestoneForBar = useMemo(() => {
@@ -629,9 +685,15 @@ export default function JackpotPanel({
         `}
       />
 
-      {/* RUNWAY PILL (moved inside JackpotPanel, smaller like your ref, tooltip icon next to it) */}
+      {/* RUNWAY PILL (fade in after price loads) */}
       {!!badgeLabel && (
-        <div className="relative z-10 mb-4 flex justify-center">
+        <div
+          className={`
+            relative z-10 mb-4 flex justify-center
+            transition-all duration-700 ease-out
+            ${showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
+          `}
+        >
           <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
         </div>
       )}
@@ -685,6 +747,10 @@ export default function JackpotPanel({
         <div className={isWide ? 'mt-5 grid gap-4 lg:grid-cols-[1fr_360px]' : 'mt-5 grid gap-4'}>
           {/* Big USD */}
           <div className="rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
+            <div className="mb-3 flex items-center justify-between">
+              <UsdEstimateBadge />
+            </div>
+
             <div
               className={`
                 text-5xl sm:text-6xl font-semibold tabular-nums
@@ -732,13 +798,7 @@ export default function JackpotPanel({
 
           {spark ? (
             <>
-              <svg
-                width="100%"
-                height="70"
-                viewBox="0 0 560 54"
-                className="block text-slate-300"
-                aria-label="XPOT momentum sparkline (observed)"
-              >
+              <svg width="100%" height="70" viewBox="0 0 560 54" className="block text-slate-300" aria-label="XPOT momentum sparkline (observed)">
                 <polyline
                   fill="none"
                   stroke="currentColor"
