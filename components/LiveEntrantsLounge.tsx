@@ -1,13 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
-
-export type LiveEntrant = {
-  handle: string;
-  avatarUrl?: string; // must come from API
-  followers?: number; // optional (for future UI)
-  verified?: boolean; // optional
-};
+import type { LiveEntrant } from '@/lib/live-entrants';
 
 function cleanHandle(h: string) {
   return (h || '').replace(/^@/, '').trim();
@@ -29,8 +23,10 @@ function uniqByHandle(list: LiveEntrant[]) {
 
 export default function LiveEntrantsLounge({
   entrants,
+  subtitle,
 }: {
   entrants: LiveEntrant[];
+  subtitle?: string;
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -59,6 +55,8 @@ export default function LiveEntrantsLounge({
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
             Live entries (X handles)
           </span>
+
+          {!!subtitle && <span className="text-[11px] text-slate-500">{subtitle}</span>}
         </div>
 
         <span className="text-[11px] text-slate-500">Handles are shown, wallets stay self-custody.</span>
@@ -114,7 +112,6 @@ export default function LiveEntrantsLounge({
                       loading="lazy"
                       referrerPolicy="no-referrer"
                       onError={ev => {
-                        // If an image fails, hide the image only (keep layout clean)
                         (ev.currentTarget as HTMLImageElement).style.display = 'none';
                       }}
                     />
