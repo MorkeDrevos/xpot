@@ -65,13 +65,7 @@ function Pill({
   );
 }
 
-function Money({
-  value,
-  suffix,
-}: {
-  value: string;
-  suffix?: string;
-}) {
+function Money({ value, suffix }: { value: string; suffix?: string }) {
   return (
     <div className="font-mono text-2xl font-semibold text-slate-100 sm:text-3xl">
       {value}
@@ -86,6 +80,7 @@ type Allocation = {
   pct: number;
   note: string;
   tone: PillTone;
+  detail: string;
 };
 
 function pctToBar(pct: number) {
@@ -103,9 +98,11 @@ export default function TokenomicsPage() {
       {
         key: 'daily',
         label: 'Daily rewards pool',
-        pct: 35,
+        pct: 40,
         note:
-          'The core primitive. Funds the daily main pot and keeps the protocol alive.',
+          'Protocol-locked rewards that fund the daily main pot. This is the core primitive.',
+        detail:
+          'Designed for longevity: dedicated payout vault(s), predictable emission rules, and verifiable distribution. This allocation is reserved for rewards - not ops.',
         tone: 'emerald',
       },
       {
@@ -113,31 +110,39 @@ export default function TokenomicsPage() {
         label: 'Liquidity + market ops',
         pct: 20,
         note:
-          'LP depth, market resilience, and controlled expansion of venues and pairs.',
+          'LP depth, market resilience, and controlled expansion across venues and pairs.',
+        detail:
+          'Used to seed and defend liquidity, reduce fragility, and keep price discovery healthy. The goal is stability and trust - not hype.',
         tone: 'sky',
       },
       {
         key: 'treasury',
         label: 'Treasury + runway',
-        pct: 20,
+        pct: 18,
         note:
-          'Sponsorship ops, audits, infra, legal, and long-term ecosystem investment.',
+          'Audits, infra, legal, and long-horizon ecosystem investment to survive every cycle.',
+        detail:
+          'This is the safety buffer that lets XPOT operate like infrastructure. It funds reliability, security, and long-term execution without touching rewards.',
         tone: 'slate',
       },
       {
         key: 'team',
         label: 'Team + builders',
-        pct: 12,
+        pct: 10,
         note:
           'Vested, long horizon. Builders stay aligned with holders and protocol health.',
+        detail:
+          'Credibility comes from structure: a long cliff and slow linear vesting. Builders earn upside by shipping, not by selling into early liquidity.',
         tone: 'amber',
       },
       {
         key: 'partners',
         label: 'Partners + creators',
-        pct: 8,
+        pct: 7,
         note:
-          'Creator-gated drops, sponsor pools, and strategic partnerships.',
+          'Creator-gated drops, sponsor pools, and strategic distribution with accountability.',
+        detail:
+          'Reserved for performance-based collaborations: creators, brands, and integrations that measurably grow participation and sponsor demand.',
         tone: 'sky',
       },
       {
@@ -145,7 +150,9 @@ export default function TokenomicsPage() {
         label: 'Community incentives',
         pct: 5,
         note:
-          'Streak rewards, referral boosts, and reputation-based unlocks.',
+          'Streak rewards, referral boosts, and reputation-based unlocks that feel earned.',
+        detail:
+          'Built for delight over farming: targeted incentives for real users and real momentum. Surprise rewards beat extractive grind loops.',
         tone: 'emerald',
       },
     ],
@@ -194,15 +201,15 @@ export default function TokenomicsPage() {
               </div>
 
               <h1 className="text-balance text-3xl font-semibold leading-tight sm:text-4xl">
-                A token designed to outlast hype.
-                <span className="text-emerald-300"> Built to compound.</span>
+                A distribution designed to outlast hype.
+                <span className="text-emerald-300"> Rewards come first.</span>
               </h1>
 
               <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-                Traditional lottery and casino models extract value and hide it behind
-                black boxes. XPOT flips the equation: rewards are the primitive, identity is public by
-                handle, and payouts are verifiable on-chain. Over time, this becomes infrastructure
-                for creators, communities, and sponsors to run daily rewards without becoming a casino.
+                Traditional lottery and casino models extract value and hide it behind black boxes.
+                XPOT flips the equation: rewards are the primitive, identity is public by handle, and
+                payouts are verifiable on-chain. Over time, this becomes infrastructure for creators,
+                communities, and sponsors to run daily rewards without becoming a casino.
               </p>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -214,7 +221,7 @@ export default function TokenomicsPage() {
                   Terms
                 </Link>
                 <span className="text-[11px] text-slate-500">
-                  Tokenomics is a living spec. Final percentages can be tuned as the ecosystem matures.
+                  Allocation is designed to prioritize rewards, resilience, and long-term execution.
                 </span>
               </div>
             </div>
@@ -229,6 +236,32 @@ export default function TokenomicsPage() {
                 <p className="mt-2 text-xs text-slate-500">
                   Decimals: <span className="font-mono text-slate-200">{decimals}</span>
                 </p>
+
+                {/* Trust / confidence block (img2 upgrade) */}
+                <div className="mt-4 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                    Supply integrity
+                  </p>
+
+                  <div className="mt-3 grid gap-2">
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                      <Lock className="h-4 w-4 text-emerald-300" />
+                      Fixed supply - 50B minted, supply locked
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                      <ShieldCheck className="h-4 w-4 text-sky-300" />
+                      Minting disabled - mint authority revoked
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                      <BadgeCheck className="h-4 w-4 text-amber-200" />
+                      Metadata finalized - verifiable in explorer
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-[11px] text-slate-500">
+                    Everything above should be verifiable on-chain via Solscan and SPL tooling.
+                  </p>
+                </div>
               </div>
 
               <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
@@ -287,7 +320,7 @@ export default function TokenomicsPage() {
                   Allocation design
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Built to reward holders, sustain liquidity, and fund long-term growth.
+                  Built to reward holders first, sustain liquidity, and fund long-term execution.
                 </p>
               </div>
               <Pill tone="sky">
@@ -344,8 +377,10 @@ export default function TokenomicsPage() {
                         <div className="mt-3 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
                           <p className="text-sm text-slate-200">{a.note}</p>
                           <p className="mt-2 text-xs text-slate-500">
-                            Implementation detail: vaults and vesting schedules can be visible and verifiable,
-                            so distribution stays credible.
+                            {a.detail}
+                          </p>
+                          <p className="mt-3 text-[11px] text-slate-600">
+                            Implementation: dedicated vaults, timelocks, and public wallets so allocations stay auditable.
                           </p>
                         </div>
                       </motion.div>
@@ -467,7 +502,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is premium-first: simple, verifiable, and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v1</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v2</span>
         </div>
       </footer>
     </XpotPageShell>
