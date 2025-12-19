@@ -929,7 +929,7 @@ export default function TokenomicsPage() {
 
                 {/* ✅ new tight math line */}
                 <p className="mt-1 text-sm text-slate-400">
-                  <span className="font-mono text-slate-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</span> reserve ->{' '}
+                  <span className="font-mono text-slate-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</span> reserve <span className="text-slate-500">→</span>{' '}
                   <span className="font-mono text-emerald-200">{runwayFixedYears.toFixed(2)} years</span> at{' '}
                   <span className="font-mono text-slate-200">{fmtInt(DISTRIBUTION_DAILY_XPOT)}</span>/day
                 </p>
