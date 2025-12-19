@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight,
   Blocks,
@@ -29,7 +29,9 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
-import LiveEntrantsLounge, { type LiveEntrant } from '@/components/LiveEntrantsLounge';
+import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
+import type { LiveEntrant } from '@/lib/live-entrants';
+import { asLiveEntrant } from '@/lib/live-entrants';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
@@ -523,20 +525,45 @@ function formatCountdown(ms: number) {
   return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
 }
 
+function cleanHandle(h: string) {
+  return (h || '').replace(/^@/, '').trim();
+}
+
 function normalizeLiveEntrant(x: any): LiveEntrant | null {
   if (!x) return null;
 
-  if (typeof x === 'string') return { handle: x };
+  // API may return strings
+  if (typeof x === 'string') {
+    const h = cleanHandle(x);
+    if (!h) return null;
+    return asLiveEntrant({ handle: h });
+  }
 
-  if (typeof x?.handle !== 'string' || !x.handle.trim()) return null;
+  if (typeof x?.handle !== 'string') return null;
+  const handle = cleanHandle(x.handle);
+  if (!handle) return null;
 
-  const out: LiveEntrant = { handle: x.handle };
+  const avatarUrl =
+    typeof x?.avatarUrl === 'string' && x.avatarUrl.trim() ? x.avatarUrl.trim() : undefined;
 
-  if (typeof x?.avatarUrl === 'string' && x.avatarUrl.trim()) out.avatarUrl = x.avatarUrl.trim();
-  if (typeof x?.followers === 'number') out.followers = x.followers;
-  if (typeof x?.verified === 'boolean') out.verified = x.verified;
-  if (typeof x?.subtitle === 'string' && x.subtitle.trim()) out.subtitle = x.subtitle.trim();
+  const followers = typeof x?.followers === 'number' ? x.followers : undefined;
+  const verified = typeof x?.verified === 'boolean' ? x.verified : undefined;
 
+  // IMPORTANT: subtitle is NOT part of LiveEntrant anymore (locked).
+  return asLiveEntrant({ handle, avatarUrl, followers, verified });
+}
+
+function uniqByHandle(list: LiveEntrant[]) {
+  const seen = new Set<string>();
+  const out: LiveEntrant[] = [];
+  for (const e of list || []) {
+    const h = cleanHandle(e?.handle || '');
+    if (!h) continue;
+    const key = h.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...e, handle: h });
+  }
   return out;
 }
 
@@ -556,7 +583,7 @@ export default function HomePage() {
 
         const raw = Array.isArray(data?.entries) ? data.entries : [];
         const normalized = raw.map(normalizeLiveEntrant).filter(Boolean) as LiveEntrant[];
-        setLiveEntries(normalized);
+        setLiveEntries(uniqByHandle(normalized));
       })
       .catch(() => {});
 
@@ -775,7 +802,9 @@ export default function HomePage() {
                       </pre>
                     </div>
 
-                    <p className="mt-3 text-[12px] text-slate-400">Read-only cockpit view. Same panels as ops. Winners get access.</p>
+                    <p className="mt-3 text-[12px] text-slate-400">
+                      Read-only cockpit view. Same panels as ops. Winners get access.
+                    </p>
                   </PremiumCard>
                 </div>
               </div>
@@ -798,7 +827,9 @@ export default function HomePage() {
                     <span className="text-[11px] text-slate-500">Optional - expand to view</span>
                   </span>
 
-                  <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`}
+                  />
                 </button>
 
                 <AnimatePresence initial={false}>
@@ -1053,9 +1084,7 @@ export default function HomePage() {
               Creators
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              One mechanic, transparent winners and a premium experience that doesn’t feel spammy.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">One mechanic, transparent winners and a premium experience that doesn’t feel spammy.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1075,7 +1104,9 @@ export default function HomePage() {
               Communities
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              Your XPOT history travels with you and unlocks better rewards over time.
+            </p>
           </PremiumCard>
         </div>
       </section>
