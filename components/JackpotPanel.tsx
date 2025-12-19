@@ -105,13 +105,8 @@ function getNextMadridCutoff(cutoffHour = 22) {
   const day = Number(parts.find(p => p.type === 'day')?.value ?? '1');
   const hour = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
 
-  // Start with "today at cutoffHour" in Madrid, but represented in UTC by constructing a baseline date
-  // We compute this by taking the Madrid date components and using them as if UTC, then adjust day if already past cutoff.
   const baseUtc = new Date(Date.UTC(year, month - 1, day, cutoffHour, 0, 0, 0));
-
-  // If Madrid hour is already >= cutoffHour, next cutoff is tomorrow
   if (hour >= cutoffHour) baseUtc.setUTCDate(baseUtc.getUTCDate() + 1);
-
   return baseUtc;
 }
 
@@ -123,11 +118,11 @@ function formatCountdown(ms: number) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
 }
 
-// Milestone ladder for highlights (USD)
+// Milestone ladder for highlights (USD) - start at $5
 const MILESTONES = [
-  25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000, 7_500, 10_000, 15_000,
-  20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000,
-  1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
+  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000, 7_500,
+  10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 500_000,
+  750_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
 ];
 
 type PriceSample = { t: number; p: number };
@@ -363,9 +358,7 @@ function UsdEstimateBadge() {
 
       <TooltipBubble open={t.open} rect={t.rect} width={380}>
         <div className="px-4 py-3 text-[12px] leading-snug text-slate-100">
-          <p className="text-slate-100">
-            Current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.
-          </p>
+          <p className="text-slate-100">Current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.</p>
           <p className="mt-2 text-slate-400">
             Winner is paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
           </p>
@@ -420,9 +413,7 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           </button>
 
           <TooltipBubble open={t.open} rect={t.rect} width={340}>
-            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
-              {tooltip}
-            </div>
+            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">{tooltip}</div>
           </TooltipBubble>
         </>
       )}
@@ -481,10 +472,12 @@ export default function JackpotPanel({
     return Math.max(0, next - Date.now());
   });
 
+  // Micro pulse on every countdown tick (for premium “alive” feel)
+  const [countPulse, setCountPulse] = useState(false);
+
   // Session key for "highest this session" (22:00 Madrid cut)
   const sessionKey = useMemo(() => `xpot_max_session_usd_${getMadridSessionKey(22)}`, []);
 
-  // Load max XPOT USD value for this session from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(sessionKey);
@@ -502,6 +495,7 @@ export default function JackpotPanel({
     const t = window.setInterval(() => {
       const next = getNextMadridCutoff(22).getTime();
       setCountdownMs(Math.max(0, next - Date.now()));
+      setCountPulse(p => !p);
     }, 1000);
     return () => window.clearInterval(t);
   }, []);
@@ -551,7 +545,6 @@ export default function JackpotPanel({
     }
   }, []);
 
-  // Runway pill fades in only after we have a real USD value
   useEffect(() => {
     if (showRunway) return;
     if (isLoading) return;
@@ -622,7 +615,7 @@ export default function JackpotPanel({
 
           setJustUpdated(true);
           if (updatePulseTimeout.current !== null) window.clearTimeout(updatePulseTimeout.current);
-          updatePulseTimeout.current = window.setTimeout(() => setJustUpdated(false), 400);
+          updatePulseTimeout.current = window.setTimeout(() => setJustUpdated(false), 420);
         } else {
           setPriceUsd(null);
           setHadError(true);
@@ -666,7 +659,6 @@ export default function JackpotPanel({
 
   const jackpotUsd = priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
 
-  // Track pumps and "highest this session" + notify parent
   useEffect(() => {
     if (typeof onJackpotUsdChange === 'function') onJackpotUsdChange(jackpotUsd);
     if (jackpotUsd == null) return;
@@ -827,14 +819,15 @@ export default function JackpotPanel({
     momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '—' : `${momentumGlobalH1.toFixed(2)}%`;
 
   const leftMilestoneLabel =
-    (nextMilestone === 25 && (prevMilestoneForBar ?? 0) === 0) || (prevMilestoneForBar ?? 0) === 0
-      ? 'Under $25'
+    (nextMilestone === 5 && (prevMilestoneForBar ?? 0) === 0) || (prevMilestoneForBar ?? 0) === 0
+      ? 'Under $5'
       : formatUsd(prevMilestoneForBar ?? 0);
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '—';
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
+      {/* Soft neon glow on pump */}
       <div
         className={`
           pointer-events-none absolute inset-0 rounded-2xl
@@ -881,8 +874,10 @@ export default function JackpotPanel({
               Today&apos;s XPOT
             </span>
 
-            <span className="inline-flex items-baseline rounded-xl bg-black/40 px-4 py-2 font-mono text-lg tracking-[0.16em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
-              {poolLabel}
+            {/* ✅ more royal 1,000,000 XPOT pill */}
+            <span className="relative inline-flex items-baseline rounded-2xl border border-amber-300/20 bg-black/45 px-5 py-2 font-mono text-lg tracking-[0.20em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_20px_60px_rgba(0,0,0,0.35)]">
+              <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 bg-[radial-gradient(circle_at_20%_30%,rgba(251,191,36,0.16),transparent_55%),radial-gradient(circle_at_80%_20%,rgba(124,200,255,0.10),transparent_55%)]" />
+              <span className="relative">{poolLabel}</span>
             </span>
           </div>
 
@@ -903,25 +898,59 @@ export default function JackpotPanel({
               <UsdEstimateBadge />
             </div>
 
-            <div
-              className={`
-                mt-4 text-5xl sm:text-6xl font-semibold tabular-nums
-                transition-transform transition-colors duration-200
-                ${justUpdated ? 'scale-[1.01]' : ''}
-                ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
-              `}
-            >
-              {displayUsdText}
+            {/* ✅ sexier USD number */}
+            <div className="relative mt-4">
+              <div
+                className={`
+                  text-5xl sm:text-6xl font-semibold tabular-nums
+                  transition-transform transition-colors duration-200
+                  ${justUpdated ? 'scale-[1.012]' : ''}
+                  ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
+                `}
+                style={{
+                  textShadow: justPumped
+                    ? '0 0 18px rgba(124,200,255,0.35), 0 0 50px rgba(59,167,255,0.18)'
+                    : '0 0 26px rgba(255,255,255,0.06)',
+                  filter: 'drop-shadow(0 18px 40px rgba(0,0,0,0.45))',
+                }}
+              >
+                {displayUsdText}
+              </div>
+
+              {/* subtle premium sheen */}
+              <div
+                className="pointer-events-none absolute -inset-x-2 -top-2 h-10 opacity-50"
+                style={{
+                  background:
+                    'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
+                }}
+              />
             </div>
 
             {/* ✅ sexy countdown */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+              <span
+                className={`
+                  inline-flex items-center rounded-full border border-white/10 bg-white/[0.03]
+                  px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300
+                  ${countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_18px_rgba(59,167,255,0.10)]' : ''}
+                  transition-shadow
+                `}
+              >
                 Next draw in
               </span>
-              <span className="font-mono text-sm tracking-[0.22em] text-slate-100">
+
+              <span
+                className={`
+                  font-mono text-sm tracking-[0.26em] text-slate-100
+                  ${countPulse ? 'text-white' : 'text-slate-100'}
+                  transition-colors
+                `}
+                style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
+              >
                 {formatCountdown(countdownMs)}
               </span>
+
               <span className="text-[11px] text-slate-600">22:00 Madrid</span>
             </div>
 
@@ -934,12 +963,14 @@ export default function JackpotPanel({
             <div className="relative">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-300/25 bg-black/25">
+                  {/* ✅ force true circle */}
+                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-amber-300/25 bg-black/25">
                     <Crown className="h-4 w-4 text-amber-200 opacity-90" />
                   </span>
                   <div className="leading-tight">
                     <p className="text-[10px] uppercase tracking-[0.24em] text-amber-200/90">XPOT token</p>
-                    <p className="text-xs text-slate-300">Winners paid in XPOT on-chain</p>
+                    {/* ✅ removed "on-chain" */}
+                    <p className="text-xs text-slate-300">Winners paid in XPOT</p>
                   </div>
                 </div>
 
@@ -961,7 +992,6 @@ export default function JackpotPanel({
                   <span className="text-slate-700">•</span>
                   <span>
                     Source <span className="font-mono text-slate-200">{priceSource}</span>
-                    {priceSource === 'DexScreener' ? <span className="text-slate-600"> (backup)</span> : null}
                   </span>
                 </div>
               </div>
@@ -988,13 +1018,7 @@ export default function JackpotPanel({
 
             {spark ? (
               <div className="mt-2">
-                <svg
-                  width="100%"
-                  height="34"
-                  viewBox="0 0 560 54"
-                  className="block text-slate-300/70"
-                  aria-label="XPOT pulse sparkline (local ticks)"
-                >
+                <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70" aria-label="XPOT pulse sparkline (local ticks)">
                   <polyline
                     fill="none"
                     stroke="currentColor"
@@ -1019,8 +1043,7 @@ export default function JackpotPanel({
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
                 {range24h ? (
                   <p className="mt-1 text-sm text-slate-100">
-                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
-                    <span className="text-slate-600">-</span>{' '}
+                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span> <span className="text-slate-600">-</span>{' '}
                     <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
                   </p>
                 ) : (
@@ -1080,7 +1103,7 @@ export default function JackpotPanel({
               </div>
 
               <p className="mt-2 text-[11px] text-slate-600">
-                Today&apos;s XPOT is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT on-chain.
+                Today&apos;s XPOT is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT.
               </p>
             </div>
           </div>
@@ -1109,7 +1132,6 @@ export default function JackpotPanel({
 
           <span className="text-slate-500">
             Source <span className="font-mono text-slate-200">{priceSource}</span>
-            {priceSource === 'DexScreener' ? <span className="text-slate-600"> (backup)</span> : null}
           </span>
         </div>
 
