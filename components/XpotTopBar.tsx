@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
@@ -83,6 +83,8 @@ export default function XpotTopBar({
   const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
+  const headerRef = useRef<HTMLElement | null>(null);
+
   // Close menus on route change
   useEffect(() => {
     setMobileOpen(false);
@@ -98,8 +100,45 @@ export default function XpotTopBar({
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // ✅ Publish real topbar height to CSS var for perfect page offsets
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const root = document.documentElement;
+
+    const measure = () => {
+      const el = headerRef.current;
+      if (!el) return;
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      // Only write if valid
+      if (h > 0) root.style.setProperty('--xpot-topbar-h', `${h}px`);
+    };
+
+    // Measure now + after layout settles
+    measure();
+    const raf1 = window.requestAnimationFrame(measure);
+    const raf2 = window.requestAnimationFrame(measure);
+
+    // Resize + font/image/layout changes
+    window.addEventListener('resize', measure);
+
+    // Observe element size changes (more reliable than guessing breakpoints)
+    let ro: ResizeObserver | null = null;
+    if ('ResizeObserver' in window) {
+      ro = new ResizeObserver(() => measure());
+      if (headerRef.current) ro.observe(headerRef.current);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+      window.removeEventListener('resize', measure);
+      if (ro) ro.disconnect();
+    };
+  }, [pathname, hasBanner]);
+
   return (
-    <header className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
+    <header ref={headerRef} className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
       <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
           <div className="flex min-h-[104px] items-center gap-4">
@@ -138,11 +177,7 @@ export default function XpotTopBar({
               {isHub ? (
                 <HubNavCenter liveIsOpen={liveIsOpen} />
               ) : (
-                <PublicNavCenter
-                  liveIsOpen={liveIsOpen}
-                  learnOpen={learnOpen}
-                  setLearnOpen={setLearnOpen}
-                />
+                <PublicNavCenter liveIsOpen={liveIsOpen} learnOpen={learnOpen} setLearnOpen={setLearnOpen} />
               )}
             </div>
 
@@ -155,9 +190,7 @@ export default function XpotTopBar({
                   onOpenWalletModal={onOpenWalletModal}
                 />
               ) : (
-                <>
-                  {rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}
-                </>
+                <>{rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}</>
               )}
 
               {/* Mobile menu button */}
@@ -226,12 +259,7 @@ function NavLink({
   const base =
     'inline-flex items-center gap-2 text-[13px] font-semibold text-slate-200/80 hover:text-white transition';
   return (
-    <Link
-      href={href}
-      title={title}
-      className={`${base} ${className}`}
-      target={external ? '_blank' : undefined}
-    >
+    <Link href={href} title={title} className={`${base} ${className}`} target={external ? '_blank' : undefined}>
       {children}
     </Link>
   );
@@ -566,7 +594,10 @@ function MobileMenu({
         </div>
 
         <div className="space-y-2 px-5 py-5">
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href="/hub"
+          >
             Hub
           </Link>
 
@@ -581,21 +612,30 @@ function MobileMenu({
             <Radio className="h-4 w-4 text-emerald-300" />
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={TOKENOMICS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <PieChart className="h-4 w-4 text-emerald-300" />
               Tokenomics
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={ROADMAP_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Map className="h-4 w-4 text-sky-300" />
               Roadmap
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={WINNERS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-300" />
               Winners
