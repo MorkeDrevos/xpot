@@ -689,7 +689,6 @@ export default function TokenomicsPage() {
     </div>
   </div>
 </section>
-
       {/* DISTRIBUTION */}
       <section className="mt-8">
         <div className={CARD}>
