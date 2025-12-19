@@ -532,122 +532,163 @@ export default function TokenomicsPage() {
       }}
     >
       {/* HERO */}
-      <section className="mt-6">
-        <div className={CARD}>
-          <div
-            className="
-              pointer-events-none absolute -inset-48 opacity-85 blur-3xl
-              bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.22),transparent_55%),
-                  radial-gradient(circle_at_85%_15%,rgba(56,189,248,0.22),transparent_55%),
-                  radial-gradient(circle_at_80%_90%,rgba(245,158,11,0.16),transparent_60%)]
-            "
-          />
+<section className="mt-6">
+  <div className={CARD}>
+    <div
+      className="
+        pointer-events-none absolute -inset-48 opacity-85 blur-3xl
+        bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.22),transparent_55%),
+            radial-gradient(circle_at_85%_15%,rgba(56,189,248,0.22),transparent_55%),
+            radial-gradient(circle_at_80%_90%,rgba(245,158,11,0.16),transparent_60%)]
+      "
+    />
 
-          <div className="relative z-10 grid gap-6 p-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:p-8">
-            <div className="space-y-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Pill tone="emerald">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Reward protocol
-                </Pill>
-                <Pill tone="sky">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Public by handle
-                </Pill>
-                <Pill tone="amber">
-                  <Lock className="h-3.5 w-3.5" />
-                  Self-custody
-                </Pill>
-              </div>
+    <div className="relative z-10 p-6 lg:p-8">
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* LEFT */}
+        <div className="space-y-5 lg:col-span-7">
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill tone="emerald">
+              <Sparkles className="h-3.5 w-3.5" />
+              Reward protocol
+            </Pill>
+            <Pill tone="sky">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Public by handle
+            </Pill>
+            <Pill tone="amber">
+              <Lock className="h-3.5 w-3.5" />
+              Self-custody
+            </Pill>
+          </div>
 
-              <h1 className="text-balance text-3xl font-semibold leading-tight sm:text-4xl">
-                A distribution designed to outlast hype.
-                <span className="text-emerald-300"> Rewards come first.</span>
-              </h1>
+          <h1 className="text-balance text-3xl font-semibold leading-tight sm:text-4xl">
+            A distribution designed to outlast hype.
+            <span className="text-emerald-300"> Rewards come first.</span>
+          </h1>
 
-              <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-                Traditional lottery and casino models extract value and hide it behind black boxes. XPOT flips the equation:
-                rewards are the primitive, identity is public by handle and payouts are verifiable on-chain. Over time, this
-                becomes infrastructure for creators, communities and sponsors to run daily rewards without becoming a casino.
+          <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
+            Traditional lottery and casino models extract value and hide it behind black boxes. XPOT flips the equation:
+            rewards are the primitive, identity is public by handle and payouts are verifiable on-chain. Over time, this
+            becomes infrastructure for creators, communities and sponsors to run daily rewards without becoming a casino.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+              Enter today&apos;s XPOT
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+            <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+              Terms
+            </Link>
+            <span className="text-[11px] text-slate-500">
+              Allocation prioritizes rewards, resilience and long-term execution.
+            </span>
+          </div>
+
+          {/* QUICK METRICS - fills the “empty” feel */}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
+              <p className="mt-2 font-mono text-lg font-semibold text-slate-100">
+                {supply.toLocaleString('en-US')}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">XPOT</p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Decimals</p>
+              <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{decimals}</p>
+              <p className="mt-1 text-xs text-slate-500">SPL standard</p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Modeled daily</p>
+              <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">
+                {fmtInt(DAILY_XPOT_TARGET)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">XPOT / day</p>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT - MOSAIC (no tall empty gaps) */}
+        <div className="lg:col-span-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+            {/* Supply - full width */}
+            <div className="sm:col-span-2 rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Current supply</p>
+              <Money value={supply.toLocaleString('en-US')} suffix="XPOT" />
+              <p className="mt-2 text-xs text-slate-500">
+                Decimals: <span className="font-mono text-slate-200">{decimals}</span>
               </p>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
-                  Enter today&apos;s XPOT
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-                <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                  Terms
-                </Link>
-                <span className="text-[11px] text-slate-500">
-                  Allocation prioritizes rewards, resilience and long-term execution.
-                </span>
+              <div className="mt-4 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply integrity</p>
+
+                <div className="mt-3 grid gap-2">
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <Lock className="h-4 w-4 text-emerald-300" />
+                    Fixed supply - 50B minted, supply locked
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <ShieldCheck className="h-4 w-4 text-sky-300" />
+                    Minting disabled - mint authority revoked
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <BadgeCheck className="h-4 w-4 text-amber-200" />
+                    Metadata finalized - verifiable in explorer
+                  </div>
+                </div>
+
+                <p className="mt-3 text-[11px] text-slate-500">
+                  Everything above should be verifiable on-chain via Solscan and SPL tooling.
+                </p>
               </div>
             </div>
 
-            {/* STATS */}
-            <div className="grid gap-3">
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Current supply</p>
-                <Money value={supply.toLocaleString()} suffix="XPOT" />
-                <p className="mt-2 text-xs text-slate-500">
-                  Decimals: <span className="font-mono text-slate-200">{decimals}</span>
-                </p>
-
-                <div className="mt-4 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply integrity</p>
-
-                  <div className="mt-3 grid gap-2">
-                    <div className="flex items-center gap-2 text-xs text-slate-300">
-                      <Lock className="h-4 w-4 text-emerald-300" />
-                      Fixed supply - 50B minted, supply locked
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-300">
-                      <ShieldCheck className="h-4 w-4 text-sky-300" />
-                      Minting disabled - mint authority revoked
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-300">
-                      <BadgeCheck className="h-4 w-4 text-amber-200" />
-                      Metadata finalized - verifiable in explorer
-                    </div>
-                  </div>
-
-                  <p className="mt-3 text-[11px] text-slate-500">
-                    Everything above should be verifiable on-chain via Solscan and SPL tooling.
-                  </p>
+            {/* Core promise */}
+            <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Core promise</p>
+              <p className="mt-2 text-sm text-slate-200">Daily rewards that grow into an ecosystem</p>
+              <div className="mt-3 grid gap-2">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <BadgeCheck className="h-4 w-4 text-emerald-300" />
+                  On-chain payout verification
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <Users className="h-4 w-4 text-sky-300" />
+                  Public identity by X handle
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <Blocks className="h-4 w-4 text-amber-200" />
+                  Modules can plug in later
                 </div>
               </div>
+            </div>
 
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Core promise</p>
-                <p className="mt-2 text-sm text-slate-200">Daily rewards that grow into an ecosystem</p>
-                <div className="mt-3 grid gap-2">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <BadgeCheck className="h-4 w-4 text-emerald-300" />
-                    On-chain payout verification
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <Users className="h-4 w-4 text-sky-300" />
-                    Public identity by X handle
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <Blocks className="h-4 w-4 text-amber-200" />
-                    Modules can plug in later
-                  </div>
-                </div>
-              </div>
+            {/* North star */}
+            <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">North star</p>
+              <p className="mt-2 text-sm text-slate-200">Become the daily rewards layer for the internet</p>
+              <p className="mt-2 text-xs text-slate-500">
+                Disruption comes from transparency, repeatability and sponsor-friendly distribution.
+              </p>
 
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/60 p-4">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">North star</p>
-                <p className="mt-2 text-sm text-slate-200">Become the daily rewards layer for the internet</p>
+              <div className="mt-4 rounded-xl border border-slate-900/70 bg-slate-950/55 p-3">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
+                <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
                 <p className="mt-2 text-xs text-slate-500">
-                  Disruption comes from transparency, repeatability and sponsor-friendly distribution.
+                  If it cannot be audited, it should not exist.
                 </p>
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+    </div>
+  </div>
+</section>
 
       {/* DISTRIBUTION */}
       <section className="mt-8">
