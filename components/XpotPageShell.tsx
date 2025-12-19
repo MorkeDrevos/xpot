@@ -13,6 +13,9 @@ type XpotPageShellProps = {
   rightSlot?: ReactNode;
   children: ReactNode;
 
+  // ✅ NEW: true full-bleed slot rendered outside the max-width container
+  fullBleedTop?: ReactNode;
+
   maxWidthClassName?: string;
   className?: string;
   containerClassName?: string;
@@ -58,6 +61,7 @@ export default function XpotPageShell({
   subtitle,
   rightSlot,
   children,
+  fullBleedTop,
   maxWidthClassName = 'max-w-[1440px]',
   className = '',
   containerClassName = '',
@@ -90,16 +94,16 @@ export default function XpotPageShell({
     else el.removeAttribute('data-xpot-page');
 
     return () => {
-      // Don’t aggressively remove on unmount if another page sets it next,
-      // but safe cleanup is fine.
-      // (Leaving it can cause wrong background if navigating from tagged->untagged.)
       if (!pageTag) {
-        // Only remove if this shell was responsible for setting it implicitly.
         el.removeAttribute('data-xpot-page');
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedPageTag]);
+
+  const topPad = showTopBar
+    ? 'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)]'
+    : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]';
 
   return (
     <div className={['relative min-h-screen text-slate-100', className].join(' ')}>
@@ -114,12 +118,14 @@ export default function XpotPageShell({
 
       {showAtmosphere && <Atmosphere />}
 
+      {/* ✅ TRUE FULL-BLEED AREA (outside max-width) */}
+      {fullBleedTop && <div className={['relative z-10', topPad].join(' ')}>{fullBleedTop}</div>}
+
+      {/* Main container (max-width) */}
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
-          showTopBar
-            ? 'pt-[calc(var(--xpot-banner-h,56px)+112px+24px)]'
-            : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]',
+          fullBleedTop ? 'pt-6 sm:pt-8' : topPad,
           'pb-6 sm:pb-8',
           maxWidthClassName,
           containerClassName,
@@ -128,7 +134,6 @@ export default function XpotPageShell({
         {(title || subtitle || rightSlot) && (
           <div
             className={[
-              // less boxy: softer border + gradient + inner sheen
               'relative mb-6 overflow-hidden rounded-[30px]',
               'border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.02]',
               'shadow-[0_28px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl',
