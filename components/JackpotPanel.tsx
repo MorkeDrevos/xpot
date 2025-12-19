@@ -633,10 +633,18 @@ export default function JackpotPanel({
         <div className="flex items-center gap-2">
           {!!badgeLabel && <HeaderBadge label={badgeLabel} tooltip={badgeTooltip} />}
 
-          <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
-            <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-            Live
-          </span>
+          <span
+  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${topStatusTone}`}
+>
+  <span
+    className={`h-1.5 w-1.5 rounded-full ${
+      showUnavailable
+        ? 'bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.9)]'
+        : 'bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]'
+    }`}
+  />
+  {topStatus}
+</span>
         </div>
       </div>
 
