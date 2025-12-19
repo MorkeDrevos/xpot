@@ -36,7 +36,6 @@ const BTN_UTILITY =
 const CARD =
   'relative overflow-hidden rounded-[30px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.55)] backdrop-blur-xl';
 
-// How often to refresh vault info
 const VAULT_POLL_MS = 20_000;
 
 function Pill({
@@ -101,21 +100,15 @@ function shortAddr(a: string) {
   return `${a.slice(0, 4)}…${a.slice(-4)}`;
 }
 
-function formatMaybeUsd(n: unknown) {
-  const v = typeof n === 'number' ? n : Number(n);
-  if (!Number.isFinite(v)) return null;
-  return v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
-}
-
 function formatMaybeNumber(n: unknown) {
   const v = typeof n === 'number' ? n : Number(n);
   if (!Number.isFinite(v)) return null;
   return v.toLocaleString('en-US', { maximumFractionDigits: 6 });
 }
 
-function timeAgo(ts: number) {
+function timeAgo(tsMs: number) {
   const now = Date.now();
-  const diff = Math.max(0, now - ts);
+  const diff = Math.max(0, now - tsMs);
   const s = Math.floor(diff / 1000);
   const m = Math.floor(s / 60);
   const h = Math.floor(m / 60);
@@ -128,111 +121,36 @@ function timeAgo(ts: number) {
 }
 
 // ─────────────────────────────────────────────
-// Vault types (defensive: supports multiple API shapes)
+// /api/vaults exact schema
 // ─────────────────────────────────────────────
-type VaultTx = {
+type ApiVaultTx = {
   signature: string;
-  ts?: number; // unix ms
-  slot?: number;
-  label?: string;
-  direction?: 'in' | 'out' | 'unknown';
-  amount?: number;
-  amountUsd?: number;
+  blockTime: number | null; // seconds
+  err: unknown | null;
 };
 
-type VaultRow = {
-  id?: string;
-  category?: string; // distribution/liquidity/treasury/team/partners/community/strategic
-  name?: string;
-  address: string;
-
-  // balances (any of these may exist depending on your API)
-  xpot?: number;
-  balance?: number;
-  balanceXpot?: number;
-  uiAmount?: number;
-
-  usd?: number;
-  balanceUsd?: number;
-
-  // tx list (any key)
-  tx?: VaultTx[];
-  txs?: VaultTx[];
-  recentTx?: VaultTx[];
+type ApiVaultEntry = {
+  name: string;
+  address: string; // owner wallet
+  ata: string; // XPOT ATA
+  balance:
+    | {
+        amount: string;
+        uiAmount: number;
+        decimals: number;
+      }
+    | null;
+  recentTx: ApiVaultTx[];
 };
 
-function normalizeVaults(payload: any): VaultRow[] {
-  if (!payload) return [];
+type ApiVaultResponse = {
+  mint: string;
+  fetchedAt: number;
+  groups: Record<string, ApiVaultEntry[]>;
+};
 
-  // Common shapes:
-  // 1) { vaults: [...] }
-  // 2) { data: { vaults: [...] } }
-  // 3) [...] directly
-  const raw =
-    Array.isArray(payload) ? payload :
-    Array.isArray(payload?.vaults) ? payload.vaults :
-    Array.isArray(payload?.data?.vaults) ? payload.data.vaults :
-    [];
-
-  const out: VaultRow[] = [];
-
-  for (const v of raw) {
-    const address = (v?.address ?? v?.pubkey ?? v?.wallet ?? v?.account ?? '').toString();
-    if (!address) continue;
-
-    const txList = (Array.isArray(v?.tx) ? v.tx : Array.isArray(v?.txs) ? v.txs : Array.isArray(v?.recentTx) ? v.recentTx : []) as any[];
-
-    const normTx: VaultTx[] = txList
-      .map(t => ({
-        signature: (t?.signature ?? t?.sig ?? t?.txid ?? '').toString(),
-        ts:
-          typeof t?.ts === 'number' ? t.ts :
-          typeof t?.time === 'number' ? t.time :
-          typeof t?.blockTime === 'number' ? t.blockTime * 1000 :
-          undefined,
-        slot: typeof t?.slot === 'number' ? t.slot : undefined,
-        label: typeof t?.label === 'string' ? t.label : undefined,
-        direction:
-          t?.direction === 'in' || t?.direction === 'out' ? t.direction :
-          typeof t?.direction === 'string' ? 'unknown' :
-          undefined,
-        amount: typeof t?.amount === 'number' ? t.amount : (Number.isFinite(Number(t?.amount)) ? Number(t?.amount) : undefined),
-        amountUsd: typeof t?.amountUsd === 'number' ? t.amountUsd : (Number.isFinite(Number(t?.amountUsd)) ? Number(t?.amountUsd) : undefined),
-      }))
-      .filter(t => !!t.signature);
-
-    out.push({
-      id: typeof v?.id === 'string' ? v.id : undefined,
-      category: typeof v?.category === 'string' ? v.category : typeof v?.group === 'string' ? v.group : undefined,
-      name: typeof v?.name === 'string' ? v.name : undefined,
-      address,
-      xpot:
-        typeof v?.xpot === 'number' ? v.xpot :
-        typeof v?.balanceXpot === 'number' ? v.balanceXpot :
-        typeof v?.balance === 'number' ? v.balance :
-        typeof v?.uiAmount === 'number' ? v.uiAmount :
-        undefined,
-      balance:
-        typeof v?.balance === 'number' ? v.balance :
-        typeof v?.uiAmount === 'number' ? v.uiAmount :
-        undefined,
-      balanceXpot: typeof v?.balanceXpot === 'number' ? v.balanceXpot : undefined,
-      uiAmount: typeof v?.uiAmount === 'number' ? v.uiAmount : undefined,
-      usd:
-        typeof v?.usd === 'number' ? v.usd :
-        typeof v?.balanceUsd === 'number' ? v.balanceUsd :
-        undefined,
-      balanceUsd: typeof v?.balanceUsd === 'number' ? v.balanceUsd : undefined,
-      tx: normTx,
-    });
-  }
-
-  return out;
-}
-
-function useVaults() {
-  const [vaults, setVaults] = useState<VaultRow[]>([]);
-  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+function useVaultGroups() {
+  const [data, setData] = useState<ApiVaultResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hadError, setHadError] = useState(false);
 
@@ -252,13 +170,10 @@ function useVaults() {
 
         if (!res.ok) throw new Error(`vaults http ${res.status}`);
 
-        const json = await res.json();
-        const norm = normalizeVaults(json);
-
+        const json = (await res.json()) as ApiVaultResponse;
         if (aborted) return;
 
-        setVaults(norm);
-        setUpdatedAt(Date.now());
+        setData(json);
       } catch (e) {
         if ((e as any)?.name === 'AbortError') return;
         console.error('[XPOT] vault fetch error:', e);
@@ -289,32 +204,26 @@ function useVaults() {
     };
   }, []);
 
-  return { vaults, updatedAt, isLoading, hadError };
+  return { data, isLoading, hadError };
 }
 
-function VaultsPanel({
+function VaultGroupPanel({
   title,
-  category,
-  vaults,
-  updatedAt,
+  groupKey,
+  data,
   isLoading,
   hadError,
 }: {
   title: string;
-  category: string;
-  vaults: VaultRow[];
-  updatedAt: number | null;
+  groupKey: string;
+  data: ApiVaultResponse | null;
   isLoading: boolean;
   hadError: boolean;
 }) {
-  const catVaults = useMemo(() => {
-    // We match by category if your API provides it.
-    // If not, we still show everything in a single fallback panel by returning all vaults when category === 'all'.
-    if (category === 'all') return vaults;
-    return vaults.filter(v => (v.category ?? '').toLowerCase() === category.toLowerCase());
-  }, [vaults, category]);
-
-  const hasAny = catVaults.length > 0;
+  const entries = useMemo(() => {
+    const g = data?.groups?.[groupKey];
+    return Array.isArray(g) ? g : [];
+  }, [data, groupKey]);
 
   async function copy(text: string) {
     try {
@@ -330,8 +239,10 @@ function VaultsPanel({
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Live balances + recent transactions (auditable).
-            {updatedAt ? <span className="ml-2 text-slate-600">Updated {timeAgo(updatedAt)}</span> : null}
+            Live balances + recent owner wallet transactions (auditable).
+            {typeof data?.fetchedAt === 'number' ? (
+              <span className="ml-2 text-slate-600">Updated {timeAgo(data.fetchedAt)}</span>
+            ) : null}
           </p>
         </div>
 
@@ -352,42 +263,28 @@ function VaultsPanel({
         </div>
       </div>
 
-      {!hasAny ? (
+      {!entries.length ? (
         <div className="mt-3 rounded-lg border border-slate-800/70 bg-slate-950/60 p-3">
           <p className="text-xs text-slate-400">
-            No vaults found for <span className="font-mono text-slate-200">{category}</span>.
+            No vaults found for <span className="font-mono text-slate-200">{groupKey}</span>.
           </p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Tip: ensure <span className="font-mono text-slate-200">/api/vaults</span> returns a <span className="font-mono text-slate-200">category</span> field per vault (distribution, liquidity, treasury, team, partners, community, strategic).
+            Add entries under <span className="font-mono text-slate-200">XPOT_VAULTS.{groupKey}</span> in <span className="font-mono text-slate-200">lib/xpotVaults.ts</span>.
           </p>
         </div>
       ) : (
         <div className="mt-3 grid gap-3">
-          {catVaults.map(v => {
-            const xpot =
-              typeof v.xpot === 'number' ? v.xpot :
-              typeof v.balanceXpot === 'number' ? v.balanceXpot :
-              typeof v.balance === 'number' ? v.balance :
-              typeof v.uiAmount === 'number' ? v.uiAmount :
-              null;
-
-            const usd =
-              typeof v.usd === 'number' ? v.usd :
-              typeof v.balanceUsd === 'number' ? v.balanceUsd :
-              null;
-
-            const txs = (v.tx ?? v.txs ?? v.recentTx ?? []) as VaultTx[];
-            const txList = Array.isArray(txs) ? txs.slice(0, 5) : [];
+          {entries.map(v => {
+            const ui = typeof v.balance?.uiAmount === 'number' ? v.balance.uiAmount : null;
+            const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
-              <div key={v.address} className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
+              <div key={`${groupKey}:${v.address}`} className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-100">
-                      {v.name ?? 'Vault'}
-                      <span className="ml-2 text-xs font-normal text-slate-500">
-                        {shortAddr(v.address)}
-                      </span>
+                      {v.name}
+                      <span className="ml-2 text-xs font-normal text-slate-500">{shortAddr(v.address)}</span>
                     </p>
 
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
@@ -397,73 +294,97 @@ function VaultsPanel({
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 hover:text-slate-300 transition"
                       >
-                        View on Solscan <ExternalLink className="h-3.5 w-3.5" />
+                        Owner <ExternalLink className="h-3.5 w-3.5" />
                       </a>
-
                       <button
                         type="button"
                         onClick={() => copy(v.address)}
                         className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
-                        title="Copy address"
+                        title="Copy owner address"
                       >
-                        Copy
+                        Copy owner
+                      </button>
+
+                      <span className="text-slate-700">•</span>
+
+                      <a
+                        href={`https://solscan.io/account/${v.ata}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 hover:text-slate-300 transition"
+                      >
+                        ATA <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => copy(v.ata)}
+                        className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
+                        title="Copy token account (ATA)"
+                      >
+                        Copy ATA
                       </button>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Balance</p>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">XPOT balance</p>
                     <p className="mt-1 font-mono text-sm text-slate-100">
-                      {xpot == null ? '—' : `${formatMaybeNumber(xpot) ?? '—'} XPOT`}
+                      {ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}
                     </p>
-                    {usd != null ? (
-                      <p className="mt-1 text-[11px] text-slate-500">{formatMaybeUsd(usd) ?? null}</p>
-                    ) : null}
+                    <p className="mt-1 text-[11px] text-slate-600">
+                      {decimals != null ? `Decimals: ${decimals}` : null}
+                    </p>
                   </div>
                 </div>
 
                 <div className="mt-3">
                   <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Recent transactions</p>
 
-                  {txList.length ? (
+                  {v.recentTx?.length ? (
                     <div className="mt-2 space-y-2">
-                      {txList.map(tx => (
-                        <div
-                          key={tx.signature}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/60 bg-black/25 px-2.5 py-2"
-                        >
-                          <div className="min-w-0">
-                            <a
-                              href={`https://solscan.io/tx/${tx.signature}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-mono text-[11px] text-slate-200 hover:text-white transition"
-                              title={tx.signature}
-                            >
-                              {shortAddr(tx.signature)}
-                            </a>
+                      {v.recentTx.slice(0, 5).map(tx => {
+                        const tsMs = typeof tx.blockTime === 'number' ? tx.blockTime * 1000 : null;
+                        const hasErr = tx.err != null;
 
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                              {typeof tx.ts === 'number' ? <span>{timeAgo(tx.ts)}</span> : null}
-                              {tx.label ? <span className="text-slate-400">{tx.label}</span> : null}
+                        return (
+                          <div
+                            key={tx.signature}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/60 bg-black/25 px-2.5 py-2"
+                          >
+                            <div className="min-w-0">
+                              <a
+                                href={`https://solscan.io/tx/${tx.signature}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-mono text-[11px] text-slate-200 hover:text-white transition"
+                                title={tx.signature}
+                              >
+                                {shortAddr(tx.signature)}
+                              </a>
+
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                                {tsMs != null ? <span>{timeAgo(tsMs)}</span> : <span className="text-slate-700">—</span>}
+                                {hasErr ? (
+                                  <span className="rounded-full border border-amber-400/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
+                                    Error
+                                  </span>
+                                ) : (
+                                  <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+                                    OK
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="text-right text-[11px] text-slate-500">
+                              Owner wallet activity
                             </div>
                           </div>
-
-                          <div className="text-right text-[11px] text-slate-400">
-                            {typeof tx.amount === 'number' ? (
-                              <span className="font-mono text-slate-200">{formatMaybeNumber(tx.amount)} XPOT</span>
-                            ) : (
-                              <span className="text-slate-600">—</span>
-                            )}
-                            {typeof tx.amountUsd === 'number' ? (
-                              <span className="ml-2 text-slate-500">{formatMaybeUsd(tx.amountUsd)}</span>
-                            ) : null}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
-                    <p className="mt-2 text-xs text-slate-500">No recent transactions available yet.</p>
+                    <p className="mt-2 text-xs text-slate-500">No recent transactions available.</p>
                   )}
                 </div>
               </div>
@@ -476,20 +397,17 @@ function VaultsPanel({
 }
 
 export default function TokenomicsPage() {
-  // Supply
-  const supply = 50_000_000_000; // 50B minted
+  const supply = 50_000_000_000;
   const decimals = 6;
 
-  // ─────────────────────────────────────────────
-  // Distribution runway math (deterministic)
-  // ─────────────────────────────────────────────
+  // 10y model (your note: 3.6B total for daily XPOT over ~10 years)
   const DAILY_10Y_TOTAL = 3_600_000_000;
   const YEARS_TARGET = 10;
   const DAYS_PER_YEAR = 365;
 
-  const DAILY_XPOT_TARGET = Math.round(DAILY_10Y_TOTAL / (YEARS_TARGET * DAYS_PER_YEAR)); // ≈ 986,301
+  const DAILY_XPOT_TARGET = Math.round(DAILY_10Y_TOTAL / (YEARS_TARGET * DAYS_PER_YEAR)); // ~986,301/day
 
-  // Locked allocation set
+  // Locked allocation set (your locked-in numbers)
   const DISTRIBUTION_RESERVE_PCT = 14;
   const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100);
 
@@ -509,10 +427,6 @@ export default function TokenomicsPage() {
     [DAILY_XPOT_TARGET],
   );
 
-  // Live vaults
-  const { vaults, updatedAt, isLoading: vaultLoading, hadError: vaultError } = useVaults();
-
-  // Allocation order + locked numbers
   const allocation = useMemo<Allocation[]>(
     () => [
       {
@@ -589,17 +503,8 @@ export default function TokenomicsPage() {
     [DAILY_XPOT_TARGET],
   );
 
-  // Map allocation keys to API vault categories
-  // IMPORTANT: Your /api/vaults should return vault.category matching these.
-  const categoryForKey: Record<string, string> = {
-    distribution: 'distribution',
-    liquidity: 'liquidity',
-    treasury: 'treasury',
-    team: 'team',
-    partners: 'partners',
-    community: 'community',
-    strategic: 'strategic',
-  };
+  // Live vault groups (exact /api/vaults schema)
+  const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
 
   const [openKey, setOpenKey] = useState<string | null>('distribution');
 
@@ -615,7 +520,6 @@ export default function TokenomicsPage() {
       {/* HERO */}
       <section className="mt-6">
         <div className={CARD}>
-          {/* Halo */}
           <div
             className="
               pointer-events-none absolute -inset-48 opacity-85 blur-3xl
@@ -677,7 +581,6 @@ export default function TokenomicsPage() {
                   Decimals: <span className="font-mono text-slate-200">{decimals}</span>
                 </p>
 
-                {/* Trust / confidence block */}
                 <div className="mt-4 rounded-2xl border border-slate-900/70 bg-slate-950/50 p-4">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply integrity</p>
 
@@ -802,7 +705,6 @@ export default function TokenomicsPage() {
                           <p className="text-sm text-slate-200">{a.note}</p>
                           <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
 
-                          {/* Runway table for distribution */}
                           {a.key === 'distribution' && (
                             <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
                               <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
@@ -817,7 +719,7 @@ export default function TokenomicsPage() {
                                       key={r.label}
                                       className={[
                                         'flex items-center justify-between rounded-lg px-3 py-2 text-xs',
-                                        r.highlight
+                                        (r as any).highlight
                                           ? 'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/30'
                                           : 'bg-slate-950/60 text-slate-300',
                                       ].join(' ')}
@@ -835,12 +737,10 @@ export default function TokenomicsPage() {
                             </div>
                           )}
 
-                          {/* Live vaults + tx (per category) */}
-                          <VaultsPanel
+                          <VaultGroupPanel
                             title="Vaults (live)"
-                            category={categoryForKey[a.key] ?? 'all'}
-                            vaults={vaults}
-                            updatedAt={updatedAt}
+                            groupKey={a.key}
+                            data={vaultData}
                             isLoading={vaultLoading}
                             hadError={vaultError}
                           />
@@ -959,7 +859,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is premium-first: simple, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v4</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v5</span>
         </div>
       </footer>
     </XpotPageShell>
