@@ -1,15 +1,14 @@
+// components/LiveEntrantsLounge.tsx
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
 import type { LiveEntrant } from '@/lib/live-entrants';
-
-function cleanHandle(h: string) {
-  return (h || '').replace(/^@/, '').trim();
-}
+import { cleanHandle } from '@/lib/live-entrants';
 
 function uniqByHandle(list: LiveEntrant[]) {
   const seen = new Set<string>();
   const out: LiveEntrant[] = [];
+
   for (const e of list || []) {
     const h = cleanHandle(e?.handle || '');
     if (!h) continue;
@@ -18,20 +17,20 @@ function uniqByHandle(list: LiveEntrant[]) {
     seen.add(key);
     out.push({ ...e, handle: h });
   }
+
   return out;
 }
 
 export default function LiveEntrantsLounge({
   entrants,
-  subtitle,
+  hint = 'Optional - expand to view',
 }: {
   entrants: LiveEntrant[];
-  subtitle?: string;
+  hint?: string; // header hint only (NOT per-entrant subtitle)
 }) {
   const reduceMotion = useReducedMotion();
 
-  // IMPORTANT: do NOT generate avatars on the client.
-  // We only show entries that already passed server-side checks.
+  // Only show entries that already passed server-side checks.
   const safeEntrants = uniqByHandle(entrants).filter(e => !!e.avatarUrl);
 
   return (
@@ -56,7 +55,7 @@ export default function LiveEntrantsLounge({
             Live entries (X handles)
           </span>
 
-          {!!subtitle && <span className="text-[11px] text-slate-500">{subtitle}</span>}
+          <span className="text-[11px] text-slate-500">{hint}</span>
         </div>
 
         <span className="text-[11px] text-slate-500">Handles are shown, wallets stay self-custody.</span>
@@ -72,6 +71,7 @@ export default function LiveEntrantsLounge({
           {safeEntrants.map((e, i) => {
             const handle = cleanHandle(e.handle);
             const avatar = e.avatarUrl!;
+            const badge = (e.subtitle || '').trim();
 
             return (
               <motion.a
@@ -120,7 +120,12 @@ export default function LiveEntrantsLounge({
 
                   <div className="min-w-0">
                     <p className="truncate font-mono text-[12px] text-slate-100/90">@{handle}</p>
-                    <p className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-slate-500">Identity</p>
+
+                    {badge ? (
+                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-slate-400">{badge}</p>
+                    ) : (
+                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-slate-500">Identity</p>
+                    )}
                   </div>
 
                   <div className="ml-auto flex items-center gap-2">
