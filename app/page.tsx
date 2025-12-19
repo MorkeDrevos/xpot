@@ -22,6 +22,7 @@ import {
   Wand2,
   Zap,
   Timer,
+  Info,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -91,6 +92,35 @@ function Pill({
   );
 }
 
+function TinyTooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="relative inline-flex items-center">
+      <span className="group relative inline-flex items-center">
+        {children}
+        <span
+          className="
+            pointer-events-none absolute left-1/2 top-full z-[70] mt-2 w-[260px] -translate-x-1/2
+            rounded-2xl border border-white/10 bg-black/85 px-3 py-2
+            text-[11px] leading-relaxed text-slate-200
+            shadow-[0_30px_100px_rgba(0,0,0,0.65)]
+            opacity-0 translate-y-1
+            transition
+            group-hover:opacity-100 group-hover:translate-y-0
+          "
+        >
+          {label}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 function PremiumCard({
   children,
   className = '',
@@ -125,7 +155,6 @@ function PremiumCard({
         />
       )}
 
-      {/* subtle royal top rail */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,158,11,0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
 
       <div className="relative z-10">{children}</div>
@@ -213,9 +242,6 @@ function getSolscanTokenUrl(mint: string) {
   return base;
 }
 
-/**
- * ✅ Royal / gold CA bar (replaces the older emerald look)
- */
 function RoyalContractBar({ mint }: { mint: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -314,9 +340,6 @@ function RoyalContractBar({ mint }: { mint: string }) {
   );
 }
 
-/**
- * ✅ Replaces the old "10+ YEAR RUNWAY" pill copy with your img4 line
- */
 function RunwayPill() {
   return (
     <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.16)]">
@@ -325,6 +348,33 @@ function RunwayPill() {
       </span>
       BUILT WITH A 10-YEAR REWARDS RUNWAY AT LAUNCH
     </span>
+  );
+}
+
+function PrinciplesStrip() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.12),transparent_60%)]" />
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Eligibility</p>
+        <p className="mt-1 text-sm font-semibold text-slate-100">Hold XPOT</p>
+        <p className="mt-1 text-[12px] text-slate-400">No tickets, no purchase flow</p>
+      </div>
+
+      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.12),transparent_62%)]" />
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Identity</p>
+        <p className="mt-1 text-sm font-semibold text-slate-100">@handle</p>
+        <p className="mt-1 text-[12px] text-slate-400">Public by X, wallet stays yours</p>
+      </div>
+
+      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_100%_0%,rgba(245,158,11,0.12),transparent_62%)]" />
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Proof</p>
+        <p className="mt-1 text-sm font-semibold text-slate-100">On-chain</p>
+        <p className="mt-1 text-[12px] text-slate-400">Verify payouts in explorer</p>
+      </div>
+    </div>
   );
 }
 
@@ -575,6 +625,12 @@ export default function HomePage() {
 
   const hero = (
     <section className="relative">
+      {/* ✅ FIX: full-bleed hero sits ABOVE the normal container padding, so we add a spacer equal to banner + topbar height */}
+      <div
+        aria-hidden
+        className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+18px)]"
+      />
+
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/30 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
         <div
           className="
@@ -637,13 +693,20 @@ export default function HomePage() {
                         ecosystem for communities, creators and sponsors.
                       </p>
 
-                      {/* ✅ replaced runway pill text (img4) */}
-                      <div className="mt-4">
+                      {/* ✅ runway pill + tooltip */}
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
                         <RunwayPill />
+                        <TinyTooltip label="Runway = the rewards pool is designed to sustain daily payouts at launch. Exact mechanics can evolve, but payouts remain verifiable on-chain.">
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition">
+                            <Info className="h-4 w-4" />
+                          </span>
+                        </TinyTooltip>
                       </div>
 
-                      {/* ❌ removed: img1 runway box + principles strip */}
-                      {/* ❌ removed: principles divider header that belonged to removed cards */}
+                      {/* ✅ bring back the strip so the section doesn’t look broken */}
+                      <div className="mt-4">
+                        <PrinciplesStrip />
+                      </div>
 
                       <div className="mt-5">
                         <SectionDividerLabel label="Entry mechanics" />
@@ -670,12 +733,11 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* ✅ gold CA bar (img5 but royal) */}
+                      {/* ✅ gold CA bar */}
                       <div className="mt-4">
                         <RoyalContractBar mint={mint} />
                       </div>
 
-                      {/* ❌ removed: Terms + Ops buttons (img6) */}
                       <div className="mt-5 flex flex-wrap items-center gap-3">
                         <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
                           Enter today&apos;s XPOT
@@ -699,8 +761,6 @@ export default function HomePage() {
                 {/* RIGHT */}
                 <div className="grid gap-4">
                   <PremiumCard className="p-5 sm:p-6" halo sheen>
-                    {/* ❌ removed duplicated header block (img2) */}
-
                     <div className="mt-0">
                       <JackpotPanel variant="standalone" layout="wide" />
                     </div>
@@ -833,7 +893,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* ✅ img7 polish: move connector line to align visually */}
           <div className="relative mt-6">
             <div className="pointer-events-none absolute inset-x-2 top-[34px] hidden h-px bg-white/10 lg:block" />
             <div className="pointer-events-none absolute inset-x-2 top-[34px] hidden h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.35),rgba(16,185,129,0.25),rgba(245,158,11,0.18),transparent)] lg:block" />
@@ -914,7 +973,6 @@ export default function HomePage() {
 
       {/* ECOSYSTEM LAYER */}
       <section className="mt-8">
-        {/* unchanged below */}
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
