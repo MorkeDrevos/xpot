@@ -2,17 +2,27 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, X, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useSignIn } from '@clerk/nextjs';
 
-import XpotLogoLottie from '@/components/XpotLogoLottie';
+import Modal from '@/components/Modal';
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex w-full items-center justify-center rounded-full bg-sky-500/90 text-black font-semibold shadow-[0_18px_60px_rgba(56,189,248,0.22)] hover:brightness-[1.03] transition disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-200 hover:bg-slate-800 transition';
+  'inline-flex w-full items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition';
+
+function AccessPill() {
+  return (
+    <div className="mx-auto inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2">
+      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.10)]" />
+      <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-200">
+        XPOT ACCESS
+      </span>
+    </div>
+  );
+}
 
 export default function HubLockOverlay({
   open,
@@ -36,112 +46,55 @@ export default function HubLockOverlay({
   }
 
   return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          className="fixed inset-0 z-[80] flex items-center justify-center px-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+    <Modal
+      open={open}
+      onClose={() => {}}
+      tone="xpot-light"
+      maxWidthClassName="max-w-[760px]"
+      hideClose
+      closeOnBackdrop={false}
+      closeOnEsc={false}
+      containerClassName="rounded-[40px]"
+      contentClassName="pt-5"
+    >
+      <div className="text-center">
+        <AccessPill />
+
+        <h2 className="mt-6 text-[40px] font-semibold leading-tight text-slate-100">
+          Sign in to enter today’s draw
+        </h2>
+
+        <p className="mx-auto mt-4 max-w-[52ch] text-lg leading-relaxed text-slate-300/80">
+          One ticket per X account per draw. Your identity is your entry.
+          <br />
+          No posting required.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleContinueWithX}
+          disabled={!isLoaded}
+          className={`${BTN_PRIMARY} mt-10 h-16 text-xl`}
         >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-2xl" />
+          {showLinkX ? 'Link X to continue' : 'Sign in with X'}
+          <ArrowRight className="ml-3 h-5 w-5" />
+        </button>
 
-          {/* Glow */}
-          <div className="pointer-events-none absolute inset-0 opacity-60">
-            <div className="absolute left-1/2 top-[38%] h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-500/10 blur-3xl" />
-            <div className="absolute left-[20%] top-[55%] h-[420px] w-[420px] rounded-full bg-amber-500/10 blur-3xl" />
-          </div>
+        <div className="mt-4">
+          <Link href="/" className={`${BTN_UTILITY} h-12 text-sm`}>
+            Back to homepage
+          </Link>
+        </div>
 
-          {/* Card */}
-          <motion.div
-            initial={{ y: 18, scale: 0.985, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 10, scale: 0.99, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-            className="
-              relative w-full max-w-[520px]
-              rounded-[32px] border border-white/10
-              bg-gradient-to-b from-slate-950/80 to-slate-950/55
-              shadow-[0_30px_120px_rgba(0,0,0,0.75)]
-              backdrop-blur-xl
-              overflow-hidden
-            "
-          >
-            {/* Subtle ambient */}
-            <div className="pointer-events-none absolute -top-24 left-1/2 h-[340px] w-[340px] -translate-x-1/2 rounded-full bg-purple-500/10 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 left-[18%] h-[300px] w-[300px] rounded-full bg-amber-500/10 blur-3xl" />
+        <p className="mt-5 text-sm text-slate-500">
+          Want a different X account? Switch on x.com first then come back here.
+        </p>
 
-            <div className="relative px-6 py-6 sm:px-7 sm:py-7">
-              {/* XPOT brand row (logo + chips) */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <XpotLogoLottie className="h-8 w-auto" height={32} />
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                    XPOT
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                    <Lock className="h-4 w-4 text-amber-200" />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                      Access restricted
-                    </span>
-                  </div>
-
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                    <X className="h-4 w-4 text-slate-200" />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                      X-powered identity
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <h2 className="mt-5 text-[28px] font-semibold leading-tight text-slate-100">
-                Holder Dashboard is locked
-              </h2>
-              <p className="mt-2 text-sm text-slate-300">{reason}</p>
-
-              <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-                <p className="text-xs text-slate-300">XPOT ties each entry to:</p>
-                <ul className="mt-2 space-y-1 text-xs text-slate-300">
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400/90" />
-                    Your X handle
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400/90" />
-                    Your Solana wallet
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <button
-                  type="button"
-                  onClick={handleContinueWithX}
-                  disabled={!isLoaded}
-                  className={`${BTN_PRIMARY} h-12 px-6 text-sm`}
-                >
-                  {showLinkX ? 'Link X to continue' : 'Continue with X'}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </button>
-
-                <Link href="/" className={`${BTN_UTILITY} h-12 px-6 text-sm`}>
-                  Back to homepage
-                </Link>
-              </div>
-
-              <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
-                Pre-launch note: this lock is UI-first, but all sensitive actions stay protected on the
-                server.
-              </p>
-            </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+        {/* optional: keep your “reason” for debugging */}
+        {reason ? (
+          <p className="mt-3 text-[11px] text-slate-600">{reason}</p>
+        ) : null}
+      </div>
+    </Modal>
   );
 }
