@@ -6,17 +6,14 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
-  BadgeCheck,
   Crown,
   ExternalLink,
   Flame,
   Gift,
   Lock,
-  PieChart,
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  Users,
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
@@ -61,15 +58,6 @@ function Pill({ children, tone = 'slate' }: { children: ReactNode; tone?: PillTo
     >
       {children}
     </span>
-  );
-}
-
-function Money({ value, suffix }: { value: string; suffix?: string }) {
-  return (
-    <div className="font-mono text-2xl font-semibold text-slate-100 sm:text-3xl">
-      {value}
-      {suffix ? <span className="ml-2 text-sm text-slate-400">{suffix}</span> : null}
-    </div>
   );
 }
 
@@ -415,6 +403,8 @@ function DonutAllocation({
   runwayTable,
   yearsOfRunway,
   distributionReserve,
+  getCardRef,
+  scrollToCard,
 }: {
   items: Allocation[];
   selectedKey: string | null;
@@ -431,6 +421,9 @@ function DonutAllocation({
   runwayTable: { label: string; daily: number; highlight?: true }[];
   yearsOfRunway: (daily: number) => number;
   distributionReserve: number;
+
+  getCardRef: (key: string) => (el: HTMLDivElement | null) => void;
+  scrollToCard: (key: string) => void;
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -561,6 +554,7 @@ function DonutAllocation({
             return (
               <div
                 key={a.key}
+                ref={getCardRef(a.key)}
                 className={[
                   'rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
                   isSelected ? 'border-slate-700/50' : 'border-slate-900/70',
@@ -570,7 +564,16 @@ function DonutAllocation({
                   type="button"
                   onClick={() => {
                     onSelect(a.key);
+                    const willOpen = openKey !== a.key;
+
                     setOpenKey(k => (k === a.key ? null : a.key));
+
+                    if (willOpen) {
+                      // Scroll AFTER the DOM updates/animates so the expanded content is right in front of you.
+                      window.requestAnimationFrame(() => {
+                        window.setTimeout(() => scrollToCard(a.key), 60);
+                      });
+                    }
                   }}
                   className="group w-full rounded-2xl px-4 py-3 text-left hover:bg-slate-950/65 transition outline-none"
                 >
@@ -680,7 +683,6 @@ function DonutAllocation({
 
 export default function TokenomicsPage() {
   const supply = 50_000_000_000;
-  const decimals = 6;
 
   const DISTRIBUTION_RESERVE_PCT = 14;
   const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100); // 7,000,000,000
@@ -804,14 +806,36 @@ export default function TokenomicsPage() {
     setOpenKeyRaw(prev => fn(prev));
   };
 
+  // --- NEW: per-card refs + scroll helper so expand always presents itself in front of you
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const getCardRef = (key: string) => (el: HTMLDivElement | null) => {
+    cardRefs.current[key] = el;
+  };
+
+  const scrollToCard = (key: string) => {
+    const el = cardRefs.current[key];
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  // --- /NEW
+
   const allocationRef = useRef<HTMLDivElement | null>(null);
 
   const openDistribution = () => {
     setSelectedKey('distribution');
     setOpenKeyRaw('distribution');
-    window.setTimeout(() => {
-      allocationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 30);
+
+    // Scroll to the actual expanded card (not just the section)
+    window.requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        if (!cardRefs.current['distribution']) {
+          allocationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+        scrollToCard('distribution');
+      }, 70);
+    });
   };
 
   return (
@@ -906,7 +930,6 @@ export default function TokenomicsPage() {
         </div>
       </section>
 
-      {/* UPDATED: tight reserve math line */}
       <section className="mt-6">
         <button
           type="button"
@@ -965,8 +988,6 @@ export default function TokenomicsPage() {
                   Select a slice, then expand the matching card for the full breakdown and live vaults.
                 </p>
               </div>
-
-              {/* Removed the extra "Distribution" pill (it was half-open and breaking JSX) */}
             </div>
 
             <div className="mt-6">
@@ -983,13 +1004,14 @@ export default function TokenomicsPage() {
                 runwayTable={runwayTable}
                 yearsOfRunway={yearsOfRunway}
                 distributionReserve={DISTRIBUTION_RESERVE}
+                getCardRef={getCardRef}
+                scrollToCard={scrollToCard}
               />
             </div>
           </div>
         </div>
       </section>
 
-      {/* rest unchanged */}
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className={CARD}>
           <div
@@ -1101,7 +1123,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v13</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v14</span>
         </div>
       </footer>
     </XpotPageShell>
