@@ -273,40 +273,6 @@ export default function HistoryClient() {
 
   return (
     <XpotPageShell title="History" subtitle="Recent XPOT winners and your past entries">
-      {/* Header row */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <Image src="/img/xpot-logo-light.png" alt="XPOT" width={132} height={36} priority />
-          </Link>
-
-          <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-            History
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-
-          <WalletMultiButton className="!h-10 !rounded-full !px-4 !text-sm" />
-
-          <SignOutButton redirectUrl="/dashboard">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-            >
-              <LogOut className="h-4 w-4" />
-              Log out
-            </button>
-          </SignOutButton>
-        </div>
-      </header>
 
       <WalletStatusHint />
 
