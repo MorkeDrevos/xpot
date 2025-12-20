@@ -59,12 +59,11 @@ export default function PremiumWalletModal({
 
   return (
     <Modal
-      open={open}
-      onClose={onClose}
-      title="Select wallet"
-      tone="xpot-light"
-      maxWidthClassName="max-w-2xl"
-    >
+  open={open}
+  onClose={onClose}
+  title="Select wallet"
+  size="xl"
+>
       {/* XPOT subtle header */}
       <div className="mb-5">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
