@@ -19,8 +19,12 @@ export const metadata: Metadata = {
   applicationName: 'XPOT',
 
   icons: {
-    icon: [{ url: '/icon', type: 'image/png' }],
-    apple: [{ url: '/apple-icon', type: 'image/png' }],
+    // You currently have: public/img/favicon.png
+    icon: [{ url: '/img/favicon.png', type: 'image/png' }],
+
+    // Only keep this if you actually have an apple icon file.
+    // If you don’t, delete this to avoid 404 spam.
+    // apple: [{ url: '/img/apple-icon.png', type: 'image/png' }],
   },
 
   openGraph: {
