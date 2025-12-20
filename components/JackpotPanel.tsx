@@ -1004,22 +1004,21 @@ export default function JackpotPanel({
               <div className="pt-2 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   {/* XPOT icon circle in vault gold */}
-                  <span
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/25"
-                    style={{
-                      border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)`,
-                      boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
-                    }}
-                  >
-                    <span
-  className="inline-flex"
+                 <span
+  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/25"
   style={{
-    filter: `sepia(1) saturate(2.2) hue-rotate(350deg) brightness(0.98) contrast(1.1) drop-shadow(0 0 10px rgba(${VAULT_GOLD.rgb} / 0.18))`,
+    border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)`,
+    boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
   }}
 >
-  <XpotLogo variant="mark" width={18} height={18} />
+  <XpotLogo
+    variant="mark"
+    width={24}
+    height={24}
+    tone="gold"
+    priority
+  />
 </span>
-                  </span>
 
                   <div className="leading-tight">
                     <p
