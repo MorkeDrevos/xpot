@@ -4,7 +4,7 @@
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
+import { Info, Sparkles, TrendingUp } from 'lucide-react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
@@ -325,7 +325,7 @@ function TooltipBubble({
       />
       {children}
     </div>,
-    document.body,
+    document.body
   );
 }
 
@@ -363,7 +363,9 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
 
       <TooltipBubble open={t.open} rect={t.rect} width={380}>
         <div className="px-4 py-3 text-[12px] leading-snug text-slate-100">
-          <p className="text-slate-100">Current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.</p>
+          <p className="text-slate-100">
+            Current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.
+          </p>
           <p className="mt-2 text-slate-400">
             Winner is paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
           </p>
@@ -418,7 +420,9 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           </button>
 
           <TooltipBubble open={t.open} rect={t.rect} width={340}>
-            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">{tooltip}</div>
+            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
+              {tooltip}
+            </div>
           </TooltipBubble>
         </>
       )}
@@ -472,8 +476,12 @@ function ContractPill({ address }: { address: string }) {
             </span>
 
             <div className="min-w-0 leading-tight">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/90">Official contract</p>
-              <p className="mt-0.5 font-mono text-sm tracking-[0.14em] text-slate-100">{shortAddr(address, 6, 5)}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/90">
+                Official contract
+              </p>
+              <p className="mt-0.5 font-mono text-sm tracking-[0.14em] text-slate-100">
+                {shortAddr(address, 6, 5)}
+              </p>
             </div>
           </div>
 
@@ -1021,8 +1029,6 @@ export default function JackpotPanel({
             </div>
 
             <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
-
-            <ContractPill address={TOKEN_MINT} />
           </div>
 
           {/* Royal XPOT meta */}
@@ -1063,6 +1069,13 @@ export default function JackpotPanel({
                     {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
                   </span>
                 </p>
+
+                {/* ✅ CA moved into this box */}
+                <div className="mt-3 flex justify-end">
+                  <div className="w-full max-w-[360px]">
+                    <ContractPill address={TOKEN_MINT} />
+                  </div>
+                </div>
 
                 <div className="mt-2 flex items-center justify-end gap-2 text-[11px] text-slate-500">
                   <span>{observedLabel}</span>
@@ -1137,7 +1150,7 @@ export default function JackpotPanel({
               </div>
 
               <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
-                <Info className="h-4 w-4 text-slate-200/70" />
+                <TrendingUp className="h-4 w-4 text-slate-200/70" />
               </span>
             </div>
 
@@ -1168,7 +1181,7 @@ export default function JackpotPanel({
               </div>
 
               <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-amber-300/20 bg-black/25">
-                <Crown className="h-4 w-4 text-amber-200/80" />
+                <span className="h-2.5 w-2.5 rotate-45 rounded-sm bg-amber-200/80 shadow-[0_0_14px_rgba(251,191,36,0.25)]" />
               </span>
             </div>
 
@@ -1220,9 +1233,7 @@ export default function JackpotPanel({
         </div>
 
         {showUnavailable ? (
-          <p className="mt-3 text-[12px] text-amber-200">
-            Live price not available yet - auto-populates when Jupiter is live.
-          </p>
+          <p className="mt-3 text-[12px] text-amber-200">Live price not available yet - auto-populates when Jupiter is live.</p>
         ) : (
           <p className="mt-3 text-[12px] text-slate-600">
             Updates every {Math.round(PRICE_POLL_MS / 1000)}s. Fallback engages automatically if Jupiter is unavailable.
