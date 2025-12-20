@@ -1,7 +1,15 @@
 // app/page.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode, createContext, useContext } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  createContext,
+  useContext,
+} from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -105,8 +113,14 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const nextDrawUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(nowMs)), [nowMs]);
-  const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
+  const nextDrawUtcMs = useMemo(
+    () => getNextMadridCutoffUtcMs(22, new Date(nowMs)),
+    [nowMs],
+  );
+  const countdown = useMemo(
+    () => formatCountdown(nextDrawUtcMs - nowMs),
+    [nextDrawUtcMs, nowMs],
+  );
 
   // Broadcast to the rest of the app (JackpotPanel / TopBar can subscribe without prop drilling)
   useEffect(() => {
@@ -123,7 +137,11 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
     [nowMs, nextDrawUtcMs, countdown],
   );
 
-  return <NextDrawContext.Provider value={value}>{children}</NextDrawContext.Provider>;
+  return (
+    <NextDrawContext.Provider value={value}>
+      {children}
+    </NextDrawContext.Provider>
+  );
 }
 
 function Pill({
@@ -343,7 +361,9 @@ function RoyalContractBar({ mint }: { mint: string }) {
               Official contract
             </span>
 
-            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 6, 6)}</span>
+            <span className="font-mono text-[12px] text-slate-100/90">
+              {shortenAddress(mint, 6, 6)}
+            </span>
           </span>
         </span>
 
@@ -509,7 +529,9 @@ function Step({
       <div className="pointer-events-none absolute -inset-24 opacity-60 blur-3xl bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.10),transparent_55%)]" />
 
       <div className="relative flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Step {n}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+          Step {n}
+        </span>
 
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${tagTone}`}
@@ -519,7 +541,9 @@ function Step({
       </div>
 
       <div className="relative mt-4 flex items-center gap-3">
-        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${ring}`}>{icon}</span>
+        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${ring}`}>
+          {icon}
+        </span>
         <div>
           <p className="text-sm font-semibold text-slate-100">{title}</p>
           <p className="mt-1 text-xs text-slate-400">{desc}</p>
@@ -585,7 +609,8 @@ function getMadridParts(date = new Date()) {
     hourCycle: 'h23',
   }).formatToParts(date);
 
-  const get = (type: string, fallback = '0') => Number(parts.find(p => p.type === type)?.value ?? fallback);
+  const get = (type: string, fallback = '0') =>
+    Number(parts.find(p => p.type === type)?.value ?? fallback);
 
   return {
     y: get('year', '0'),
@@ -607,7 +632,14 @@ function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
   const p = getMadridParts(now);
   const offsetMs = getMadridOffsetMs(now);
 
-  const mkUtcFromMadridWallClock = (yy: number, mm: number, dd: number, hh: number, mi: number, ss: number) => {
+  const mkUtcFromMadridWallClock = (
+    yy: number,
+    mm: number,
+    dd: number,
+    hh: number,
+    mi: number,
+    ss: number,
+  ) => {
     const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
     return asUtc - offsetMs;
   };
@@ -676,6 +708,68 @@ function uniqByHandle(list: LiveEntrant[]) {
   }
 
   return out;
+}
+
+function XLiveLobbyInline({
+  entrants,
+  hint = 'Live lobby - updates automatically',
+}: {
+  entrants: LiveEntrant[];
+  hint?: string;
+}) {
+  const shown = useMemo(() => (entrants || []).slice(0, 10), [entrants]);
+  const count = entrants?.length || 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.02] p-4 backdrop-blur">
+      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_10%_10%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_90%_20%,rgba(139,92,246,0.14),transparent_65%),radial-gradient(circle_at_55%_100%,rgba(16,185,129,0.12),transparent_62%)]" />
+
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-black/30 text-slate-200">
+            <span className="text-[12px] font-bold tracking-tight">X</span>
+          </span>
+
+          <div className="leading-tight">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              X live lobby
+            </p>
+            <p className="mt-0.5 text-[12px] text-slate-300">
+              {hint}
+              {count > 0 ? (
+                <span className="text-slate-500"> • {count} today</span>
+              ) : null}
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href={ROUTE_HUB}
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+        >
+          View in hub
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+
+      <div className="relative z-10 mt-3 flex flex-wrap items-center gap-2">
+        {shown.length ? (
+          shown.map(e => (
+            <span
+              key={e.handle}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-[11px] text-slate-200"
+              title={`@${e.handle}`}
+            >
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+              @{e.handle}
+            </span>
+          ))
+        ) : (
+          <span className="text-[12px] text-slate-400">Waiting for the first entries…</span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function HomePageInner() {
@@ -897,7 +991,7 @@ function HomePageInner() {
                       </TinyTooltip>
                     </div>
 
-                    {/* Upgraded cockpit feel (effects only, no content removed) */}
+                    {/* PREMIUM UPGRADE: left hero module now includes a live X lobby strip */}
                     <div className="xpot-hero-cockpit rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
                       <div className="xpot-hero-hudgrid rounded-[30px]" />
                       <div className="xpot-hero-scanlines rounded-[30px]" />
@@ -908,7 +1002,6 @@ function HomePageInner() {
                         NO TICKETS · JUST XPOT HOLDINGS
                       </p>
 
-                      {/* Headline glow (effects only) */}
                       <div className="relative z-10 mt-3">
                         <div
                           className="pointer-events-none absolute -inset-8 opacity-75 blur-2xl"
@@ -918,13 +1011,14 @@ function HomePageInner() {
                           }}
                         />
                         <h1 className="relative text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
-                          One protocol. One identity. <span className="text-emerald-300">One daily XPOT draw.</span>
+                          One protocol. One identity.{' '}
+                          <span className="text-emerald-300">One daily XPOT draw.</span>
                         </h1>
                       </div>
 
                       <p className="relative z-10 mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                        Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain. Built to scale into a rewards
-                        ecosystem for communities, creators and sponsors.
+                        Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain.
+                        Built to scale into a rewards ecosystem for communities, creators and sponsors.
                       </p>
 
                       <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
@@ -938,6 +1032,11 @@ function HomePageInner() {
 
                       <div className="relative z-10 mt-4">
                         <PrinciplesStrip />
+                      </div>
+
+                      {/* NEW: X Live Lobby module INSIDE the left hero card */}
+                      <div className="relative z-10 mt-4">
+                        <XLiveLobbyInline entrants={liveEntries} />
                       </div>
 
                       <div className="relative z-10 mt-5">
@@ -974,6 +1073,14 @@ function HomePageInner() {
                         <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
                           Enter today&apos;s XPOT
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                        </Link>
+
+                        <Link
+                          href={ROUTE_TERMS}
+                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm text-slate-200 hover:bg-white/[0.06] transition"
+                        >
+                          Terms
+                          <ExternalLink className="h-4 w-4 text-slate-400" />
                         </Link>
                       </div>
 
@@ -1036,12 +1143,14 @@ function HomePageInner() {
                       </pre>
                     </div>
 
-                    <p className="mt-3 text-[12px] text-slate-400">Read-only cockpit view. Same panels as ops. Winners get access.</p>
+                    <p className="mt-3 text-[12px] text-slate-400">
+                      Read-only cockpit view. Same panels as ops. Winners get access.
+                    </p>
                   </PremiumCard>
                 </div>
               </div>
 
-              {/* Live entries (always-on) */}
+              {/* Live entries (always-on) - kept */}
               <div className="relative z-10 border-t border-slate-900/70 px-6 py-5 lg:px-8">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(16,185,129,0.28),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)] opacity-70" />
 
