@@ -26,13 +26,13 @@
   --xpot-accent-glow: 236 72 153; /* magenta */
   --xpot-accent-success: 16 185 129; /* emerald */
 
-  /* =============================================================
-     VAULT GOLD (premium - replaces "yellow/amber" brand accents)
-     NOTE: these are space-separated RGB values for Tailwind rgb(var(...) / <alpha-value>)
-  ============================================================= */
-  --xpot-gold: 214 176 79;      /* base */
-  --xpot-gold-2: 242 214 128;   /* highlight */
-  --xpot-gold-ink: 18 12 2;     /* text on gold */
+  /* -------------------------------------------------------------
+     Vault gold (premium - replaces "yellow/amber" brand accents)
+     Use these tokens in components, gradients, borders, glows
+  ------------------------------------------------------------- */
+  --xpot-gold: 214 176 79; /* base */
+  --xpot-gold-2: 242 214 128; /* highlight */
+  --xpot-gold-ink: 18 12 2; /* text on gold */
 
   --xpot-glow-gold:
     0 0 0 1px rgba(var(--xpot-gold), 0.22),
@@ -90,8 +90,9 @@
 
   /* Focus ring */
   --xpot-ring: 0 0 0 3px rgba(var(--xpot-accent-primary), 0.25);
+  --xpot-ring-gold: 0 0 0 3px rgba(var(--xpot-gold), 0.26);
 
-  /* Top strip */
+  /* Top strip (your banner uses its own styling - keep this available) */
   --xpot-strip: linear-gradient(
     90deg,
     rgba(88, 28, 135, 0.96),
@@ -120,15 +121,18 @@
 
   /* DEFAULT page bg */
   --xpot-bg-page:
-    radial-gradient(1000px 700px at 18% 18%,
+    radial-gradient(
+      1000px 700px at 18% 18%,
       rgba(var(--xpot-accent-primary), 0.16),
       transparent 62%
     ),
-    radial-gradient(980px 680px at 82% 20%,
+    radial-gradient(
+      980px 680px at 82% 20%,
       rgba(var(--xpot-accent-glow), 0.12),
       transparent 64%
     ),
-    radial-gradient(900px 650px at 56% 28%,
+    radial-gradient(
+      900px 650px at 56% 28%,
       rgba(var(--xpot-accent-secondary), 0.10),
       transparent 66%
     ),
@@ -142,21 +146,25 @@
 :root[data-xpot-page="ops"],
 :root[data-xpot-page="admin"] {
   --xpot-bg-page:
-    radial-gradient(1400px 900px at 12% 22%,
+    radial-gradient(
+      1400px 900px at 12% 22%,
       rgba(var(--xpot-accent-primary), 0.40),
       rgba(var(--xpot-accent-primary), 0.14) 38%,
       transparent 68%
     ),
-    radial-gradient(1200px 820px at 54% 18%,
+    radial-gradient(
+      1200px 820px at 54% 18%,
       rgba(var(--xpot-accent-secondary), 0.22),
       transparent 66%
     ),
-    radial-gradient(1500px 980px at 92% 26%,
+    radial-gradient(
+      1500px 980px at 92% 26%,
       rgba(var(--xpot-accent-glow), 0.34),
       rgba(var(--xpot-accent-glow), 0.12) 42%,
       transparent 72%
     ),
-    radial-gradient(1200px 900px at 52% 120%,
+    radial-gradient(
+      1200px 900px at 52% 120%,
       rgba(16, 185, 129, 0.06),
       transparent 60%
     ),
@@ -172,17 +180,21 @@
   --xpot-border: rgba(148, 163, 184, 0.20);
 }
 
+/* Optional: slightly calmer wash for hub */
 :root[data-xpot-page="hub"] {
   --xpot-bg-page:
-    radial-gradient(1200px 800px at 18% 18%,
+    radial-gradient(
+      1200px 800px at 18% 18%,
       rgba(var(--xpot-accent-primary), 0.22),
       transparent 66%
     ),
-    radial-gradient(1200px 900px at 80% 22%,
+    radial-gradient(
+      1200px 900px at 80% 22%,
       rgba(var(--xpot-accent-glow), 0.16),
       transparent 70%
     ),
-    radial-gradient(1100px 820px at 55% 18%,
+    radial-gradient(
+      1100px 820px at 55% 18%,
       rgba(var(--xpot-accent-secondary), 0.14),
       transparent 70%
     ),
@@ -207,8 +219,8 @@ body {
 }
 
 ::selection {
-  background: rgba(var(--xpot-accent-primary), 0.25);
-  color: rgba(255, 255, 255, 0.95);
+  background: rgba(var(--xpot-gold), 0.28);
+  color: rgba(0, 0, 0, 0.92);
 }
 
 a {
@@ -359,16 +371,8 @@ select {
 }
 
 /* =============================================================
-   VAULT GOLD HELPERS (optional utility classes)
-============================================================= */
-
-.xpot-gold-text { color: rgb(var(--xpot-gold)); }
-.xpot-gold-border { border-color: rgba(var(--xpot-gold), 0.28); }
-.xpot-gold-bg { background: rgba(var(--xpot-gold), 0.10); }
-.xpot-gold-glow { box-shadow: var(--xpot-glow-gold); }
-
-/* =============================================================
-   CSS-ONLY ATMOSPHERE (stars + vignette)
+   CSS-ONLY ATMOSPHERE (NO STARS)
+   Keeps premium depth/vignette without any star pixels.
 ============================================================= */
 
 .xpot-atmosphere {
@@ -382,15 +386,11 @@ select {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.60;
-  mix-blend-mode: screen;
-  background-image:
-    radial-gradient(1px 1px at 12px 18px, rgba(255,255,255,0.95) 99%, transparent 100%),
-    radial-gradient(1px 1px at 42px 58px, rgba(255,255,255,0.70) 99%, transparent 100%),
-    radial-gradient(1px 1px at 88px 24px, rgba(255,255,255,0.55) 99%, transparent 100%);
-  background-size: 140px 140px;
-  background-position: 0 0;
-  filter: drop-shadow(0 0 6px rgba(255,255,255,0.12));
+  opacity: 0.55;
+  background:
+    radial-gradient(1200px 900px at 20% 12%, rgba(255, 255, 255, 0.045), transparent 60%),
+    radial-gradient(1100px 800px at 80% 18%, rgba(255, 255, 255, 0.035), transparent 64%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.018), transparent 45%);
 }
 
 .xpot-atmosphere::after {
@@ -400,18 +400,9 @@ select {
   background: radial-gradient(
     circle at center,
     transparent 0%,
-    rgba(0,0,0,0.65) 72%,
-    rgba(0,0,0,0.85) 100%
+    rgba(0, 0, 0, 0.65) 72%,
+    rgba(0, 0, 0, 0.85) 100%
   );
-}
-
-/* Animations used by your top bar logo */
-@keyframes xpotStarFlash {
-  0% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
-  45% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
-  50% { filter: brightness(1.35) drop-shadow(0 0 18px rgba(255, 255, 255, 0.28)); }
-  55% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
-  100% { filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
 }
 
 /* =============================================================
@@ -419,7 +410,7 @@ select {
 ============================================================= */
 
 @keyframes xpotBannerSweep {
-  0%   { transform: translateX(-60%); }
+  0% { transform: translateX(-60%); }
   100% { transform: translateX(160%); }
 }
 
@@ -427,7 +418,30 @@ select {
   * {
     scroll-behavior: auto !important;
   }
-  .xpot-atmosphere::before {
-    filter: none !important;
-  }
+}
+
+/* =============================================================
+   VAULT GOLD HELPERS (use anywhere)
+============================================================= */
+
+.xpot-gold-text { color: rgb(var(--xpot-gold)); }
+.xpot-gold-border { border-color: rgba(var(--xpot-gold), 0.28); }
+.xpot-gold-bg { background: rgba(var(--xpot-gold), 0.10); }
+.xpot-gold-glow { box-shadow: var(--xpot-glow-gold); }
+
+.xpot-focus-gold:focus-visible {
+  outline: none;
+  box-shadow: var(--xpot-ring-gold);
+  border-color: rgba(var(--xpot-gold), 0.34);
+}
+
+.xpot-btn-vault {
+  background: var(--xpot-gold-grad);
+  color: rgb(var(--xpot-gold-ink));
+  border: 1px solid rgba(var(--xpot-gold), 0.34);
+  box-shadow: var(--xpot-glow-gold);
+}
+
+.xpot-btn-vault:hover {
+  filter: brightness(1.03) saturate(1.02);
 }
