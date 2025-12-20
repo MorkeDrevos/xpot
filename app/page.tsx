@@ -1,7 +1,7 @@
 // app/page.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -60,6 +60,69 @@ const GOLD_BG_WASH_2 = 'bg-[rgba(var(--xpot-gold),0.08)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
 const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
 
+// ─────────────────────────────────────────────
+// Shared countdown context (single source of truth)
+// ─────────────────────────────────────────────
+
+type NextDrawState = {
+  nowMs: number;
+  nextDrawUtcMs: number;
+  countdown: string;
+  cutoffLabel: string; // "Madrid 22:00"
+};
+
+const NextDrawContext = createContext<NextDrawState | null>(null);
+
+function useNextDraw() {
+  const ctx = useContext(NextDrawContext);
+  if (!ctx) throw new Error('useNextDraw must be used within NextDrawProvider');
+  return ctx;
+}
+
+function NextDrawProvider({ children }: { children: ReactNode }) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  // Tick on the exact second boundary (prevents drift / jitter)
+  useEffect(() => {
+    let interval: number | null = null;
+
+    const start = () => {
+      interval = window.setInterval(() => setNowMs(Date.now()), 1000);
+    };
+
+    const msToNextSecond = 1000 - (Date.now() % 1000);
+    const t = window.setTimeout(() => {
+      setNowMs(Date.now());
+      start();
+    }, msToNextSecond);
+
+    return () => {
+      window.clearTimeout(t);
+      if (interval) window.clearInterval(interval);
+    };
+  }, []);
+
+  const nextDrawUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(nowMs)), [nowMs]);
+  const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
+
+  // Broadcast to the rest of the app (JackpotPanel / TopBar can subscribe without prop drilling)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(
+      new CustomEvent('xpot:next-draw', {
+        detail: { nowMs, nextDrawUtcMs, countdown, cutoffLabel: 'Madrid 22:00' },
+      }),
+    );
+  }, [nowMs, nextDrawUtcMs, countdown]);
+
+  const value = useMemo<NextDrawState>(
+    () => ({ nowMs, nextDrawUtcMs, countdown, cutoffLabel: 'Madrid 22:00' }),
+    [nowMs, nextDrawUtcMs, countdown],
+  );
+
+  return <NextDrawContext.Provider value={value}>{children}</NextDrawContext.Provider>;
+}
+
 function Pill({
   children,
   tone = 'slate',
@@ -72,7 +135,6 @@ function Pill({
       'border-slate-700/70 bg-slate-900/70 text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
     emerald:
       'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
-    // IMPORTANT: "amber" tone is now vault-gold (readable)
     amber: `${GOLD_BORDER} ${GOLD_BG_WASH} ${GOLD_TEXT} ${GOLD_RING_SHADOW}`,
     sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
     violet:
@@ -578,7 +640,6 @@ function cleanHandle(h: string) {
 function normalizeLiveEntrant(x: any): LiveEntrant | null {
   if (!x) return null;
 
-  // API may return strings
   if (typeof x === 'string') {
     const h = cleanHandle(x);
     if (!h) return null;
@@ -590,11 +651,9 @@ function normalizeLiveEntrant(x: any): LiveEntrant | null {
   if (!handle) return null;
 
   const avatarUrl = typeof x?.avatarUrl === 'string' && x.avatarUrl.trim() ? x.avatarUrl.trim() : undefined;
-
   const followers = typeof x?.followers === 'number' ? x.followers : undefined;
   const verified = typeof x?.verified === 'boolean' ? x.verified : undefined;
 
-  // IMPORTANT: subtitle is NOT part of LiveEntrant anymore (locked).
   return asLiveEntrant({ handle, avatarUrl, followers, verified });
 }
 
@@ -616,7 +675,7 @@ function uniqByHandle(list: LiveEntrant[]) {
   return out;
 }
 
-export default function HomePage() {
+function HomePageInner() {
   const [liveEntries, setLiveEntries] = useState<LiveEntrant[]>([]);
 
   useEffect(() => {
@@ -625,8 +684,6 @@ export default function HomePage() {
     async function load() {
       try {
         const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
-
-        // If the route sometimes returns HTML/errors, avoid crashing
         const data = (await r.json().catch(() => null)) as any;
         if (!alive) return;
 
@@ -653,26 +710,10 @@ export default function HomePage() {
     };
   }, []);
 
-  // ─────────────────────────────────────────────
-  // Time + draw state (required for countdown)
-  // ─────────────────────────────────────────────
-
   const [mint, setMint] = useState(XPOT_CA);
+  useEffect(() => setMint(XPOT_CA), []);
 
-  useEffect(() => {
-    setMint(XPOT_CA);
-  }, []);
-
-  const [nowMs, setNowMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    const t = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-
-  const nextDrawUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(nowMs)), [nowMs]);
-
-  const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
+  const { countdown, cutoffLabel } = useNextDraw();
 
   const faq = useMemo(
     () => [
@@ -862,7 +903,7 @@ export default function HomePage() {
   composable:      modules can plug in later
 
 > NEXT_DRAW
-  in:             ${countdown}  (Madrid 22:00)
+  in:             ${countdown}  (${cutoffLabel})
 
 > LAST_WINNERS
   #2025-12-18  @DeWala_222222   1,000,000 XPOT
@@ -871,9 +912,7 @@ export default function HomePage() {
                       </pre>
                     </div>
 
-                    <p className="mt-3 text-[12px] text-slate-400">
-                      Read-only cockpit view. Same panels as ops. Winners get access.
-                    </p>
+                    <p className="mt-3 text-[12px] text-slate-400">Read-only cockpit view. Same panels as ops. Winners get access.</p>
                   </PremiumCard>
                 </div>
               </div>
@@ -1203,5 +1242,13 @@ export default function HomePage() {
         </div>
       </footer>
     </XpotPageShell>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <NextDrawProvider>
+      <HomePageInner />
+    </NextDrawProvider>
   );
 }
