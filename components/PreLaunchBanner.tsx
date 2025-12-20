@@ -11,6 +11,8 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const root = document.documentElement;
 
     if (hidden) {
@@ -18,32 +20,35 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
       return;
     }
 
-    function setVar() {
+    const setVar = () => {
       const el = ref.current;
       if (!el) return;
 
       // If hidden on mobile (display:none), offsetHeight will be 0 - which is what we want.
       const h = el.offsetHeight || 0;
       root.style.setProperty('--xpot-banner-h', `${h}px`);
-    }
+    };
 
     setVar();
 
+    // Optional RO (guards old browsers / edge envs)
     let ro: ResizeObserver | null = null;
+    if ('ResizeObserver' in window) {
+      ro = new ResizeObserver(() => setVar());
+      if (ref.current) ro.observe(ref.current);
+    }
 
-if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
-  ro = new ResizeObserver(() => setVar());
-  if (ref.current) ro.observe(ref.current);
-}
+    window.addEventListener('resize', setVar);
 
-window.addEventListener('resize', setVar);
-...
-return () => {
-  window.removeEventListener('resize', setVar);
-  window.clearTimeout(t1);
-  window.clearTimeout(t2);
-  if (ro) ro.disconnect();
-};
+    const t1 = window.setTimeout(setVar, 0);
+    const t2 = window.setTimeout(setVar, 120);
+
+    return () => {
+      window.removeEventListener('resize', setVar);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      if (ro) ro.disconnect();
+    };
   }, [hidden]);
 
   if (hidden) return null;
