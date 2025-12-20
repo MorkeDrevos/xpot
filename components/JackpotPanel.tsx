@@ -1,11 +1,10 @@
 // components/JackpotPanel.tsx
 'use client';
-
-import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
+import XpotLogo from '@/components/XpotLogo';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 const PRICE_POLL_MS = 2000; // 2s
@@ -1012,18 +1011,14 @@ export default function JackpotPanel({
                       boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
                     }}
                   >
-                    <span className="relative h-4 w-4">
-                      <Image
-  src="/xpot-mark.png"
-  alt="XPOT"
-  fill
-  sizes="16px"
-  className="object-contain opacity-95"
+                    <span
+  className="inline-flex"
   style={{
     filter: `sepia(1) saturate(2.2) hue-rotate(350deg) brightness(0.98) contrast(1.1) drop-shadow(0 0 10px rgba(${VAULT_GOLD.rgb} / 0.18))`,
   }}
-/>
-                    </span>
+>
+  <XpotLogo variant="mark" width={18} height={18} />
+</span>
                   </span>
 
                   <div className="leading-tight">
