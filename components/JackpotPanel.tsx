@@ -1,7 +1,8 @@
 // components/JackpotPanel.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
@@ -267,7 +268,7 @@ function TooltipBubble({
   open: boolean;
   rect: DOMRect | null;
   width?: number;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement | null>(null);
   const [h, setH] = useState<number>(160);
@@ -324,11 +325,11 @@ function TooltipBubble({
       />
       {children}
     </div>,
-    document.body
+    document.body,
   );
 }
 
-function UsdEstimateBadge() {
+function UsdEstimateBadge({ compact }: { compact?: boolean }) {
   const t = useAnchoredTooltip();
 
   return (
@@ -338,22 +339,26 @@ function UsdEstimateBadge() {
       onMouseEnter={() => t.setOpen(true)}
       onMouseLeave={() => t.setOpen(false)}
     >
-      <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+      <span
+        className={
+          compact
+            ? 'inline-flex items-center rounded-full border border-slate-700/60 bg-black/20 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.20em] text-slate-200'
+            : 'inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200'
+        }
+      >
         USD estimate
       </span>
 
       <button
         type="button"
         aria-label="USD estimate info"
-        className="
-          inline-flex h-9 w-9 items-center justify-center rounded-full
-          border border-slate-700/80 bg-black/20
-          text-slate-200
-          hover:bg-slate-900/40 hover:text-white
-          transition
-        "
+        className={
+          compact
+            ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/70 bg-black/20 text-slate-200 hover:bg-slate-900/40 hover:text-white transition'
+            : 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/20 text-slate-200 hover:bg-slate-900/40 hover:text-white transition'
+        }
       >
-        <Info className="h-4 w-4 opacity-90" />
+        <Info className={compact ? 'h-3.5 w-3.5 opacity-90' : 'h-4 w-4 opacity-90'} />
       </button>
 
       <TooltipBubble open={t.open} rect={t.rect} width={380}>
@@ -472,7 +477,7 @@ export default function JackpotPanel({
     return Math.max(0, next - Date.now());
   });
 
-  // Micro pulse on every countdown tick (for premium “alive” feel)
+  // Micro pulse on every countdown tick
   const [countPulse, setCountPulse] = useState(false);
 
   // Session key for "highest this session" (22:00 Madrid cut)
@@ -802,7 +807,7 @@ export default function JackpotPanel({
   const poolLabel = `${JACKPOT_XPOT.toLocaleString()} XPOT`;
 
   const displayUsdText =
-    displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd) ? '—' : formatUsd(displayJackpotUsd);
+    displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd) ? '-' : formatUsd(displayJackpotUsd);
 
   const panelChrome =
     variant === 'embedded'
@@ -816,14 +821,14 @@ export default function JackpotPanel({
   const isWide = layout === 'wide';
 
   const globalMomentumText =
-    momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '—' : `${momentumGlobalH1.toFixed(2)}%`;
+    momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '-' : `${momentumGlobalH1.toFixed(2)}%`;
 
   const leftMilestoneLabel =
     (nextMilestone === 5 && (prevMilestoneForBar ?? 0) === 0) || (prevMilestoneForBar ?? 0) === 0
       ? 'Under $5'
       : formatUsd(prevMilestoneForBar ?? 0);
 
-  const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '—';
+  const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -853,11 +858,11 @@ export default function JackpotPanel({
       {/* HEADER */}
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-slate-100">Live XPOT engine</p>
-          <p className="mt-1 text-xs text-slate-400">Pool value and telemetry (Jupiter + on-chain samples).</p>
+          <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
+          <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
         </div>
 
-        {/* ✅ keep only ONE live pill */}
+        {/* keep only ONE live pill */}
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
             <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
@@ -874,7 +879,6 @@ export default function JackpotPanel({
               Today&apos;s XPOT
             </span>
 
-            {/* ✅ more royal 1,000,000 XPOT pill */}
             <span className="relative inline-flex items-baseline rounded-2xl border border-amber-300/20 bg-black/45 px-5 py-2 font-mono text-lg tracking-[0.20em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_20px_60px_rgba(0,0,0,0.35)]">
               <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 bg-[radial-gradient(circle_at_20%_30%,rgba(251,191,36,0.16),transparent_55%),radial-gradient(circle_at_80%_20%,rgba(124,200,255,0.10),transparent_55%)]" />
               <span className="relative">{poolLabel}</span>
@@ -894,40 +898,32 @@ export default function JackpotPanel({
         <div className={isWide ? 'mt-5 grid gap-4 lg:grid-cols-[1fr_360px]' : 'mt-5 grid gap-4'}>
           {/* Big USD */}
           <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
-            <div className="flex items-center justify-between">
-              <UsdEstimateBadge />
-            </div>
-
-            {/* ✅ sexier USD number */}
-            <div className="relative mt-4">
+            <div className="mt-4 flex items-end justify-between gap-3">
               <div
                 className={`
                   text-5xl sm:text-6xl font-semibold tabular-nums
                   transition-transform transition-colors duration-200
-                  ${justUpdated ? 'scale-[1.012]' : ''}
+                  ${justUpdated ? 'scale-[1.01]' : ''}
                   ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
                 `}
-                style={{
-                  textShadow: justPumped
-                    ? '0 0 18px rgba(124,200,255,0.35), 0 0 50px rgba(59,167,255,0.18)'
-                    : '0 0 26px rgba(255,255,255,0.06)',
-                  filter: 'drop-shadow(0 18px 40px rgba(0,0,0,0.45))',
-                }}
               >
                 {displayUsdText}
               </div>
 
-              {/* subtle premium sheen */}
-              <div
-                className="pointer-events-none absolute -inset-x-2 -top-2 h-10 opacity-50"
-                style={{
-                  background:
-                    'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
-                }}
-              />
+              <div className="mb-1">
+                <UsdEstimateBadge compact />
+              </div>
             </div>
 
-            {/* ✅ sexy countdown */}
+            {/* subtle premium sheen */}
+            <div
+              className="pointer-events-none absolute -inset-x-2 -top-2 h-10 opacity-50"
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
+              }}
+            />
+
+            {/* sexy countdown */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <span
                 className={`
@@ -942,7 +938,7 @@ export default function JackpotPanel({
 
               <span
                 className={`
-                  font-mono text-sm tracking-[0.26em] text-slate-100
+                  font-mono text-sm tracking-[0.26em]
                   ${countPulse ? 'text-white' : 'text-slate-100'}
                   transition-colors
                 `}
@@ -957,19 +953,40 @@ export default function JackpotPanel({
             <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
           </div>
 
-          {/* Royal XPOT meta */}
-          <div className="relative overflow-hidden rounded-2xl border border-amber-400/20 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(15,23,42,0.0))] px-5 py-4">
+          {/* Royal XPOT meta (credit card feel + XPOT icon in gold) */}
+          <div className="relative overflow-hidden rounded-2xl border border-amber-400/20 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(15,23,42,0.0))] px-5 py-4 min-h-[170px]">
             <div className="pointer-events-none absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_18%_20%,rgba(251,191,36,0.14),transparent_55%),radial-gradient(circle_at_80%_18%,rgba(236,72,153,0.08),transparent_60%),radial-gradient(circle_at_60%_75%,rgba(59,167,255,0.09),transparent_55%)]" />
-            <div className="relative">
-              <div className="flex items-center justify-between gap-3">
+
+            {/* little "card sheen" */}
+            <div
+              className="pointer-events-none absolute -inset-x-10 -top-10 h-28 rotate-[-8deg] opacity-[0.35]"
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
+              }}
+            />
+
+            <div className="relative flex h-full flex-col">
+              {/* Top row (nudged down, like a card) */}
+              <div className="pt-2 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  {/* ✅ force true circle */}
+                  {/* XPOT icon circle in gold */}
                   <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-amber-300/25 bg-black/25">
-                    <Crown className="h-4 w-4 text-amber-200 opacity-90" />
+                    <span className="relative h-4 w-4">
+                      <Image
+                        src="/xpot-mark.png"
+                        alt="XPOT"
+                        fill
+                        sizes="16px"
+                        className="object-contain opacity-95 drop-shadow-[0_0_12px_rgba(251,191,36,0.22)]"
+                        style={{
+                          filter: 'sepia(1) saturate(4) hue-rotate(345deg) brightness(1.08) contrast(1.05)',
+                        }}
+                      />
+                    </span>
                   </span>
+
                   <div className="leading-tight">
                     <p className="text-[10px] uppercase tracking-[0.24em] text-amber-200/90">XPOT token</p>
-                    {/* ✅ removed "on-chain" */}
                     <p className="text-xs text-slate-300">Winners paid in XPOT</p>
                   </div>
                 </div>
@@ -980,7 +997,8 @@ export default function JackpotPanel({
                 </span>
               </div>
 
-              <div className="mt-4 text-right">
+              {/* Bottom block (moved down, fills space like a credit card) */}
+              <div className="mt-auto pb-1 text-right">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
                 <p className="mt-1 text-sm text-slate-300">
                   1 XPOT ≈{' '}
@@ -1018,7 +1036,13 @@ export default function JackpotPanel({
 
             {spark ? (
               <div className="mt-2">
-                <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70" aria-label="XPOT pulse sparkline (local ticks)">
+                <svg
+                  width="100%"
+                  height="34"
+                  viewBox="0 0 560 54"
+                  className="block text-slate-300/70"
+                  aria-label="XPOT pulse sparkline (local ticks)"
+                >
                   <polyline
                     fill="none"
                     stroke="currentColor"
@@ -1043,11 +1067,12 @@ export default function JackpotPanel({
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
                 {range24h ? (
                   <p className="mt-1 text-sm text-slate-100">
-                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span> <span className="text-slate-600">-</span>{' '}
+                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
+                    <span className="text-slate-600">-</span>{' '}
                     <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
                   </p>
                 ) : (
-                  <p className="mt-1 text-sm text-slate-100">—</p>
+                  <p className="mt-1 text-sm text-slate-100">-</p>
                 )}
                 <p className="mt-2 text-[11px] text-slate-600">{observedLabel}</p>
               </div>
@@ -1074,11 +1099,11 @@ export default function JackpotPanel({
                     <>
                       <span className="font-mono">{rightMilestoneLabel}</span>{' '}
                       <span className="text-[11px] text-slate-500">
-                        ({jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '—'})
+                        ({jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '-'})
                       </span>
                     </>
                   ) : (
-                    '—'
+                    '-'
                   )}
                 </p>
               </div>
