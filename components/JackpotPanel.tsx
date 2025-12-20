@@ -3,14 +3,15 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
+
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 import XpotLogo from '@/components/XpotLogo';
-import Link from 'next/link';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 
-// DexScreener can rate-limit too - keep this a bit calmer than 2s
+// DexScreener can rate-limit too - keep this calmer than 2s
 const PRICE_POLL_MS = 4000; // 4s
 
 // 24h observed range via rolling samples
@@ -116,7 +117,8 @@ function getMadridParts(date = new Date()) {
     hourCycle: 'h23',
   }).formatToParts(date);
 
-  const get = (type: string, fallback = '0') => Number(parts.find(p => p.type === type)?.value ?? fallback);
+  const get = (type: string, fallback = '0') =>
+    Number(parts.find(p => p.type === type)?.value ?? fallback);
 
   return {
     y: get('year', '0'),
@@ -129,8 +131,6 @@ function getMadridParts(date = new Date()) {
 }
 
 function getMadridOffsetMs(now = new Date()) {
-  // Convert Madrid wall-clock parts back to UTC ms and compare to actual now.
-  // The difference is the tz offset in ms (handles DST correctly).
   const p = getMadridParts(now);
   const asUtc = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss);
   return asUtc - now.getTime();
@@ -140,7 +140,14 @@ function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
   const p = getMadridParts(now);
   const offsetMs = getMadridOffsetMs(now);
 
-  const mkUtcFromMadridWallClock = (yy: number, mm: number, dd: number, hh: number, mi: number, ss: number) => {
+  const mkUtcFromMadridWallClock = (
+    yy: number,
+    mm: number,
+    dd: number,
+    hh: number,
+    mi: number,
+    ss: number,
+  ) => {
     const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
     return asUtc - offsetMs;
   };
@@ -164,14 +171,18 @@ function formatCountdown(ms: number) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const ss = s % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(
+    2,
+    '0',
+  )}:${String(ss).padStart(2, '0')}`;
 }
 
 // Milestone ladder for highlights (USD) - start at $5
 const MILESTONES = [
-  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000, 7_500,
-  10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 500_000,
-  750_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
+  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
+  3_000, 4_000, 5_000, 7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000,
+  100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000, 1_500_000,
+  2_000_000, 3_000_000, 5_000_000, 10_000_000,
 ];
 
 type PriceSample = { t: number; p: number };
@@ -339,20 +350,14 @@ function TooltipBubble({
   return createPortal(
     <div
       ref={bubbleRef}
-      className="
-        pointer-events-none fixed z-[9999]
-        rounded-2xl border border-slate-700/80 bg-slate-950/95
-        shadow-[0_18px_40px_rgba(15,23,42,0.92)] backdrop-blur-xl
-      "
+      className="pointer-events-none fixed z-[9999] rounded-2xl border border-slate-700/80 bg-slate-950/95 shadow-[0_18px_40px_rgba(15,23,42,0.92)] backdrop-blur-xl"
       style={{ left, top, width: w, opacity: 1, transform: 'translateY(4px)' }}
     >
       <div
-        className={`
-          absolute h-3.5 w-3.5 rotate-45 bg-slate-950/95
-          shadow-[0_4px_10px_rgba(15,23,42,0.7)]
-          ${arrowIsTop ? '-top-1.5 border-l border-t' : '-bottom-1.5 border-r border-b'}
-          border-slate-700/80
-        `}
+        className={[
+          'absolute h-3.5 w-3.5 rotate-45 bg-slate-950/95 shadow-[0_4px_10px_rgba(15,23,42,0.7)] border-slate-700/80',
+          arrowIsTop ? '-top-1.5 border-l border-t' : '-bottom-1.5 border-r border-b',
+        ].join(' ')}
         style={{ left: arrowX - 7 }}
       />
       {children}
@@ -374,8 +379,8 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
       <span
         className={
           compact
-            ? 'inline-flex items-center rounded-full border border-slate-700/60 bg-black/20 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.20em] text-slate-200'
-            : 'inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200'
+            ? 'inline-flex items-center rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.20em] text-slate-200'
+            : 'inline-flex items-center rounded-full border border-slate-700/70 bg-black/25 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200'
         }
       >
         USD estimate
@@ -386,8 +391,8 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
         aria-label="USD estimate info"
         className={
           compact
-            ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/70 bg-black/20 text-slate-200 hover:bg-slate-900/40 hover:text-white transition'
-            : 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/20 text-slate-200 hover:bg-slate-900/40 hover:text-white transition'
+            ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/70 bg-black/25 text-slate-200 hover:bg-slate-900/50 hover:text-white transition'
+            : 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/25 text-slate-200 hover:bg-slate-900/50 hover:text-white transition'
         }
       >
         <Info className={compact ? 'h-3.5 w-3.5 opacity-90' : 'h-4 w-4 opacity-90'} />
@@ -418,20 +423,8 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
       onMouseEnter={() => t.setOpen(true)}
       onMouseLeave={() => t.setOpen(false)}
     >
-      <span
-        className="
-          inline-flex items-center gap-2 rounded-full
-          border border-emerald-400/30 bg-emerald-500/10
-          px-4 py-1.5
-          text-[9px] sm:text-[10px]
-          font-semibold uppercase tracking-[0.22em]
-          text-emerald-100
-          shadow-[0_0_0_1px_rgba(16,185,129,0.08)]
-          max-w-[92vw]
-          cursor-default select-none
-        "
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.85)]" />
+      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-100 max-w-[92vw] cursor-default select-none">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.45)]" />
         <span className="truncate">{label}</span>
       </span>
 
@@ -440,13 +433,7 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           <button
             type="button"
             aria-label="More info"
-            className="
-              inline-flex h-9 w-9 items-center justify-center rounded-full
-              border border-slate-700/80 bg-black/20
-              text-slate-200
-              hover:bg-slate-900/40 hover:text-white
-              transition
-            "
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/25 text-slate-200 hover:bg-slate-900/50 hover:text-white transition"
           >
             <Info className="h-4 w-4 opacity-90" />
           </button>
@@ -530,7 +517,7 @@ export default function JackpotPanel({
     setSessionKey(`xpot_max_session_usd_${getMadridSessionKey(22)}`);
   }, []);
 
-  // AUTO responsive wide switching (fixes ResizeObserver thrash -> React error)
+  // AUTO responsive wide switching (Layout "auto")
   const slabRef = useRef<HTMLDivElement | null>(null);
   const [autoWide, setAutoWide] = useState(false);
   const autoWideRef = useRef(false);
@@ -547,7 +534,7 @@ export default function JackpotPanel({
 
     let raf = 0;
 
-    // hysteresis: once wide, don’t turn off until narrower than OFF; once not wide, don’t turn on until wider than ON
+    // hysteresis
     const WIDE_ON = 900;
     const WIDE_OFF = 840;
 
@@ -568,7 +555,6 @@ export default function JackpotPanel({
 
     ro.observe(el);
 
-    // initial
     const initial = el.getBoundingClientRect().width;
     applyWidth(initial);
 
@@ -593,7 +579,7 @@ export default function JackpotPanel({
     }
   }, [sessionKey, mounted]);
 
-  // Listen for the shared countdown broadcast (from app/page.tsx NextDrawProvider)
+  // Listen for shared countdown broadcast (optional)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -611,7 +597,7 @@ export default function JackpotPanel({
     return () => window.removeEventListener('xpot:next-draw', onNextDraw as any);
   }, []);
 
-  // Countdown ticker (second-aligned) using stored nextDrawUtcMs.
+  // Countdown ticker
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!mounted) return;
@@ -675,7 +661,9 @@ export default function JackpotPanel({
         const step = Math.max(1, Math.floor(sparkRaw.length / SPARK_MAX_POINTS));
         const down: PriceSample[] = [];
         for (let i = 0; i < sparkRaw.length; i += step) down.push(sparkRaw[i]);
-        if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) down.push(sparkRaw[sparkRaw.length - 1]);
+        if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) {
+          down.push(sparkRaw[sparkRaw.length - 1]);
+        }
 
         const built = buildSparklinePoints(down, 560, 54);
         setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
@@ -724,7 +712,9 @@ export default function JackpotPanel({
         }
 
         const price =
-          typeof dexMetrics.priceUsd === 'number' && Number.isFinite(dexMetrics.priceUsd) ? dexMetrics.priceUsd : null;
+          typeof dexMetrics.priceUsd === 'number' && Number.isFinite(dexMetrics.priceUsd)
+            ? dexMetrics.priceUsd
+            : null;
 
         if (aborted) return;
 
@@ -785,7 +775,7 @@ export default function JackpotPanel({
     if (prevJackpot.current !== null && jackpotUsd > prevJackpot.current) {
       setJustPumped(true);
       if (pumpTimeout.current !== null) window.clearTimeout(pumpTimeout.current);
-      pumpTimeout.current = window.setTimeout(() => setJustPumped(false), 1600);
+      pumpTimeout.current = window.setTimeout(() => setJustPumped(false), 1200);
     }
     prevJackpot.current = jackpotUsd;
 
@@ -801,7 +791,7 @@ export default function JackpotPanel({
     }
   }, [jackpotUsd, sessionKey, onJackpotUsdChange, mounted]);
 
-  // Soft USD drift animation for the big number (stale-safe)
+  // Soft USD drift animation (stale-safe)
   const displayRef = useRef<number | null>(null);
   useEffect(() => {
     displayRef.current = displayJackpotUsd;
@@ -810,7 +800,6 @@ export default function JackpotPanel({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // If live USD is missing, clear display
     if (jackpotUsd == null) {
       setDisplayJackpotUsd(null);
       displayRef.current = null;
@@ -819,7 +808,6 @@ export default function JackpotPanel({
 
     const from = displayRef.current;
 
-    // First time we get a value: set instantly (no animation)
     if (from == null || !Number.isFinite(from)) {
       setDisplayJackpotUsd(jackpotUsd);
       displayRef.current = jackpotUsd;
@@ -829,7 +817,6 @@ export default function JackpotPanel({
     const to = jackpotUsd;
     const delta = Math.abs(to - from);
 
-    // Tiny changes: snap
     if (!Number.isFinite(delta) || delta < 0.01) {
       setDisplayJackpotUsd(to);
       displayRef.current = to;
@@ -897,7 +884,9 @@ export default function JackpotPanel({
         const step = Math.max(1, Math.floor(sparkRaw.length / SPARK_MAX_POINTS));
         const down: PriceSample[] = [];
         for (let i = 0; i < sparkRaw.length; i += step) down.push(sparkRaw[i]);
-        if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) down.push(sparkRaw[sparkRaw.length - 1]);
+        if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) {
+          down.push(sparkRaw[sparkRaw.length - 1]);
+        }
 
         const built = buildSparklinePoints(down, 560, 54);
         setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
@@ -943,8 +932,8 @@ export default function JackpotPanel({
 
   const panelChrome =
     variant === 'embedded'
-      ? 'rounded-2xl border border-slate-800/70 bg-slate-950/45 px-5 py-5 shadow-sm'
-      : 'rounded-2xl border border-slate-800 bg-slate-950/60 px-6 py-6 shadow-sm';
+      ? 'rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
+      : 'rounded-2xl border border-slate-800 bg-slate-950/70 px-6 py-6 shadow-sm';
 
   const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
   const localSparkLabel =
@@ -964,24 +953,12 @@ export default function JackpotPanel({
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
-      {/* Soft neon glow on pump */}
-      <div
-        className={`
-          pointer-events-none absolute inset-0 rounded-2xl
-          border border-[#3BA7FF]/40
-          shadow-[0_0_40px_rgba(59,167,255,0.45)]
-          opacity-0 transition-opacity duration-500
-          ${justPumped ? 'opacity-100' : ''}
-        `}
-      />
-
       {!!badgeLabel && (
         <div
-          className={`
-            relative z-10 mb-4 flex justify-center
-            transition-all duration-[900ms] ease-out
-            ${showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'}
-          `}
+          className={[
+            'relative z-10 mb-4 flex justify-center transition-all duration-[900ms] ease-out',
+            showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
+          ].join(' ')}
         >
           <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
         </div>
@@ -996,67 +973,90 @@ export default function JackpotPanel({
 
         {/* keep only ONE live pill */}
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
-            <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
+          <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
             Live
           </span>
         </div>
       </div>
 
       {/* MAIN SLAB */}
-<div ref={slabRef} className="...">
-  <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-  <div className="flex flex-wrap items-center gap-3">
-    {/* Marketing label */}
-    <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
-      XPOT supply for today
-    </span>
+      <div
+        ref={slabRef}
+        className="relative z-10 mt-5 overflow-hidden rounded-2xl border border-slate-800/80 bg-black/25 p-5"
+      >
+        {/* Marketing row */}
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/30 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.45)]" />
+              XPOT supply for today
+            </span>
 
-    {/* Currency-style amount */}
-    <span
-      className="relative inline-flex items-baseline rounded-2xl bg-black/45 px-6 py-2 font-mono text-xl tracking-[0.22em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_20px_60px_rgba(0,0,0,0.35)]"
-      style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` }}
-    >
-      <span
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-60"
-        style={{
-          background: `
-            radial-gradient(circle_at_20%_30%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 56%),
-            radial-gradient(circle_at_80%_20%, rgba(124,200,255,0.08), transparent 58%)
-          `,
-        }}
-      />
-      <span className="relative">{poolLabel}</span>
-    </span>
+            <span
+              className="relative inline-flex items-baseline rounded-2xl bg-black/55 px-6 py-2 font-mono text-xl tracking-[0.22em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_18px_50px_rgba(0,0,0,0.40)]"
+              style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any }}
+            >
+              <span
+                className="pointer-events-none absolute inset-0 rounded-2xl opacity-60"
+                style={{
+                  background:
+                    'radial-gradient(circle_at_20%_30%, rgba(201,162,74,0.10), transparent 56%), radial-gradient(circle_at_80%_20%, rgba(124,200,255,0.06), transparent 58%)',
+                }}
+              />
+              <span className="relative">{poolLabel}</span>
+            </span>
 
-    <span className="text-[11px] text-slate-500">
-      Daily issuance - consistent supply, predictable protocol economics.
-    </span>
-  </div>
+            <div className="relative flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-300/25" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-300 shadow-[0_0_14px_rgba(56,189,248,0.25)]" />
+              </span>
+              <p className="min-w-0 text-xs text-slate-300">
+                <span className="font-semibold text-slate-100">Daily issuance</span>{' '}
+                <span className="text-slate-500">-</span>{' '}
+                <span className="text-slate-300">steady, scalable, sponsor-ready</span>
+              </p>
+            </div>
+          </div>
 
-  <div className="flex items-center gap-2">
-    {isLocked && (
-      <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
-        Draw locked
-      </span>
-    )}
-  </div>
-</div>
+          <div className="flex items-center gap-2">
+            {isLocked && (
+              <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+                Draw locked
+              </span>
+            )}
+          </div>
+        </div>
 
         {/* Value row */}
-        <div className={isWide ? 'mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]' : 'mt-5 grid gap-4'}>
+        <div
+          className={
+            isWide
+              ? 'relative mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]'
+              : 'relative mt-5 grid gap-4'
+          }
+        >
           {/* Big USD */}
-          <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
+          <div
+            className={[
+              'relative overflow-visible rounded-2xl border bg-black/30 px-5 py-4',
+              justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
+              justPumped ? 'shadow-[0_0_28px_rgba(56,189,248,0.10)]' : 'shadow-none',
+            ].join(' ')}
+            style={{
+              background:
+                'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.06), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.04), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
+            }}
+          >
             <div className="mt-4 flex items-end justify-between gap-3">
               <div
-                className={`
-                  text-5xl sm:text-6xl font-semibold tabular-nums
-                  transition-transform transition-colors duration-200
-                  ${justUpdated ? 'scale-[1.01]' : ''}
-                  ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
-                `}
+                className={[
+                  'text-5xl sm:text-6xl font-semibold tabular-nums transition-transform transition-colors duration-200',
+                  justUpdated ? 'scale-[1.01]' : '',
+                  justPumped ? 'text-[#7CC8FF]' : 'text-white',
+                ].join(' ')}
+                style={{ textShadow: '0 0 22px rgba(124,200,255,0.08)' }}
               >
                 {displayUsdText}
               </div>
@@ -1066,34 +1066,25 @@ export default function JackpotPanel({
               </div>
             </div>
 
-            {/* subtle premium sheen */}
-            <div
-              className="pointer-events-none absolute -inset-x-2 -top-2 h-10 opacity-50"
-              style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
-              }}
-            />
-
-            {/* sexy countdown */}
+            {/* countdown */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <span
-                className={`
-                  inline-flex items-center rounded-full border border-white/10 bg-white/[0.03]
-                  px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300
-                  ${countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_18px_rgba(59,167,255,0.10)]' : ''}
-                  transition-shadow
-                `}
+                className={[
+                  'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
+                  countPulse
+                    ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]'
+                    : '',
+                ].join(' ')}
               >
                 Next draw in
               </span>
 
               <span
-                className={`
-                  font-mono text-sm tracking-[0.26em]
-                  ${countPulse ? 'text-white' : 'text-slate-100'}
-                  transition-colors
-                `}
-                style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
+                className={[
+                  'font-mono text-sm tracking-[0.26em] transition-colors',
+                  countPulse ? 'text-white' : 'text-slate-100',
+                ].join(' ')}
+                style={{ textShadow: '0 0 18px rgba(124,200,255,0.08)' }}
               >
                 {mounted ? formatCountdown(countdownMs) : '00:00:00'}
               </span>
@@ -1104,42 +1095,24 @@ export default function JackpotPanel({
             <p className="mt-2 text-xs text-slate-500">Auto-updates from DexScreener ticks</p>
           </div>
 
-          {/* Royal XPOT meta (credit card feel + private-vault gold) */}
+          {/* Royal XPOT meta */}
           <div
-            className="relative overflow-hidden rounded-2xl bg-[linear-gradient(180deg,rgba(2,6,23,0.35),rgba(15,23,42,0.0))] px-5 py-4 min-h-[170px]"
+            className="relative overflow-hidden rounded-2xl px-5 py-4 min-h-[170px]"
             style={{
-              border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)`,
-              boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.02)`,
+              border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` as any,
+              background:
+                'radial-gradient(circle_at_18%_18%, rgba(201,162,74,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.04), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02)',
             }}
           >
-            <div
-              className="pointer-events-none absolute inset-0 opacity-70"
-              style={{
-                background: `
-                  radial-gradient(circle_at_18%_18%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 58%),
-                  radial-gradient(circle_at_82%_22%, rgba(236,72,153,0.06), transparent 62%),
-                  radial-gradient(circle_at_60%_78%, rgba(59,167,255,0.07), transparent 58%)
-                `,
-              }}
-            />
-
-            {/* card sheen (dialed down) */}
-            <div
-              className="pointer-events-none absolute -inset-x-10 -top-10 h-28 rotate-[-8deg] opacity-[0.22]"
-              style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
-              }}
-            />
-
             <div className="relative flex h-full flex-col">
-              {/* Top row */}
               <div className="pt-2 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/25"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30"
                     style={{
-                      border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)`,
-                      boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
+                      border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
+                      boxShadow: '0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)',
                     }}
                   >
                     <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
@@ -1148,7 +1121,7 @@ export default function JackpotPanel({
                   <div className="leading-tight">
                     <p
                       className="text-[10px] uppercase tracking-[0.24em]"
-                      style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.85)` }}
+                      style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.85)` as any }}
                     >
                       XPOT token
                     </p>
@@ -1157,10 +1130,10 @@ export default function JackpotPanel({
                 </div>
 
                 <span
-                  className="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                  className="inline-flex items-center gap-2 rounded-full bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
                   style={{
-                    border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)`,
-                    color: `rgba(${VAULT_GOLD.rgb} / 0.86)`,
+                    border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
+                    color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
                   }}
                 >
                   <Sparkles className="h-3.5 w-3.5 opacity-90" />
@@ -1168,7 +1141,6 @@ export default function JackpotPanel({
                 </span>
               </div>
 
-              {/* Bottom */}
               <div className="mt-auto pb-1 text-right">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
                 <p className="mt-1 text-sm text-slate-300">
@@ -1234,7 +1206,7 @@ export default function JackpotPanel({
           </div>
 
           {/* 24h range */}
-          <div className="rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
@@ -1263,7 +1235,7 @@ export default function JackpotPanel({
           </div>
 
           {/* Next milestone */}
-          <div className="rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
@@ -1283,28 +1255,19 @@ export default function JackpotPanel({
 
               <span
                 className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25"
-                style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` }}
+                style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` as any }}
               >
-                <Crown className="h-4 w-4 opacity-90" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.78)` }} />
+                <Crown className="h-4 w-4 opacity-90" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.78)` as any }} />
               </span>
             </div>
 
             <div className="mt-3">
               <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
                 <div
-                  className="absolute inset-0 opacity-[0.45]"
-                  style={{
-                    background: `
-                      radial-gradient(circle_at_20%_50%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 56%),
-                      radial-gradient(circle_at_70%_50%, rgba(59,167,255,0.12), transparent 62%)
-                    `,
-                  }}
-                />
-                <div
-                  className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.16)]"
+                  className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.10)]"
                   style={{
                     width: `${Math.round((progressToNext ?? 0) * 100)}%`,
-                    background: `linear-gradient(90deg, rgba(${VAULT_GOLD.rgb} / 0.38), rgba(124,200,255,0.66))`,
+                    background: 'linear-gradient(90deg, rgba(201,162,74,0.34), rgba(124,200,255,0.55))',
                   }}
                 />
               </div>
@@ -1322,10 +1285,9 @@ export default function JackpotPanel({
         </div>
       </div>
 
-           {/* CONTEXT STRIP */}
-      <div className="relative z-10 mt-4 rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4">
+      {/* CONTEXT STRIP */}
+      <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* LEFT: context info */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
             <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
 
@@ -1349,17 +1311,9 @@ export default function JackpotPanel({
             </span>
           </div>
 
-          {/* RIGHT: CTA */}
           <Link
             href="/hub"
-            className="
-              shrink-0 inline-flex items-center gap-2
-              rounded-full border border-emerald-400/30 bg-emerald-400/10
-              px-4 py-2 text-sm font-semibold text-emerald-200
-              hover:bg-emerald-400/20 hover:text-emerald-100
-              shadow-[0_10px_30px_rgba(0,0,0,0.35)]
-              transition
-            "
+            className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition"
           >
             Enter now →
           </Link>
