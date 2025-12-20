@@ -569,7 +569,6 @@ function DonutAllocation({
                     setOpenKey(k => (k === a.key ? null : a.key));
 
                     if (willOpen) {
-                      // Scroll AFTER the DOM updates/animates so the expanded content is right in front of you.
                       window.requestAnimationFrame(() => {
                         window.setTimeout(() => scrollToCard(a.key), 60);
                       });
@@ -693,6 +692,7 @@ export default function TokenomicsPage() {
   }
 
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), []);
+  const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
 
   const runwayTable = useMemo(
     () => [
@@ -806,7 +806,6 @@ export default function TokenomicsPage() {
     setOpenKeyRaw(prev => fn(prev));
   };
 
-  // --- NEW: per-card refs + scroll helper so expand always presents itself in front of you
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const getCardRef = (key: string) => (el: HTMLDivElement | null) => {
@@ -818,7 +817,6 @@ export default function TokenomicsPage() {
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
-  // --- /NEW
 
   const allocationRef = useRef<HTMLDivElement | null>(null);
 
@@ -826,7 +824,6 @@ export default function TokenomicsPage() {
     setSelectedKey('distribution');
     setOpenKeyRaw('distribution');
 
-    // Scroll to the actual expanded card (not just the section)
     window.requestAnimationFrame(() => {
       window.setTimeout(() => {
         if (!cardRefs.current['distribution']) {
@@ -907,10 +904,13 @@ export default function TokenomicsPage() {
 
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Minting</p>
-                    <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-100">
+
+                    {/* ✅ updated sizing so "Disabled" aligns with the big numbers */}
+                    <p className="mt-2 flex items-center gap-2 font-mono text-lg font-semibold leading-none text-slate-100">
                       <ShieldCheck className="h-4 w-4 text-sky-300" />
                       Disabled
                     </p>
+
                     <p className="mt-1 text-xs text-slate-500">Mint authority revoked</p>
                   </div>
 
@@ -924,7 +924,91 @@ export default function TokenomicsPage() {
                 </div>
               </div>
 
-              <div className="hidden lg:block lg:col-span-4" />
+              {/* ✅ NEW: fill the empty right side with a premium "Protocol snapshot" */}
+              <div className="hidden lg:block lg:col-span-4">
+                <div className="h-full">
+                  <div className="relative h-full rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur">
+                    <div
+                      className="
+                        pointer-events-none absolute -inset-24 opacity-75 blur-3xl
+                        bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.16),transparent_55%),
+                            radial-gradient(circle_at_80%_70%,rgba(16,185,129,0.16),transparent_60%)]
+                      "
+                    />
+
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Protocol snapshot</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">Proof-first economics</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            The three numbers that matter for trust.
+                          </p>
+                        </div>
+
+                        <Pill tone="emerald">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          Verified
+                        </Pill>
+                      </div>
+
+                      <div className="mt-5 grid gap-3">
+                        <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Daily distribution</p>
+                          <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
+                            {fmtInt(DISTRIBUTION_DAILY_XPOT)}
+                            <span className="ml-2 text-sm font-semibold text-slate-500">/ day</span>
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">Protocol rule (fixed)</p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reserve coverage</p>
+                          <p className="mt-2 font-mono text-2xl font-semibold text-emerald-200">
+                            {runwayFixedYears.toFixed(2)}
+                            <span className="ml-2 text-sm font-semibold text-slate-500">years</span>
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Backed by {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT reserve ({runwayFixedDays.toLocaleString('en-US')} days)
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">10-year requirement</p>
+                          <p className="mt-2 font-mono text-xl font-semibold text-slate-100">
+                            {TEN_YEARS_REQUIRED.toLocaleString('en-US')}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">Exact at 1,000,000/day</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={openDistribution}
+                          className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+                        >
+                          View reserve
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </button>
+
+                        <Link
+                          href={ROUTE_HUB}
+                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+                        >
+                          Enter today
+                          <ArrowRight className="ml-2 h-4 w-4 text-slate-400" />
+                        </Link>
+                      </div>
+
+                      <p className="mt-4 text-[11px] text-slate-600">
+                        Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* ✅ /NEW */}
             </div>
           </div>
         </div>
@@ -1123,7 +1207,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v14</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v15</span>
         </div>
       </footer>
     </XpotPageShell>
