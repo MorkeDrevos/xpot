@@ -5,10 +5,11 @@ import Link from 'next/link';
 import XpotLogo from '@/components/XpotLogo';
 import { ReactNode, useEffect, useRef, useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
+import { createPortal } from 'react-dom';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { WalletReadyState, type WalletName } from '@solana/wallet-adapter-base';
 
 import {
   ChevronDown,
@@ -26,6 +27,8 @@ import {
   Copy,
   Check,
   ShieldCheck,
+  ChevronRight,
+  Loader2,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -52,7 +55,10 @@ type XpotTopBarProps = {
 
   // Hub enhancements
   hubWalletStatus?: HubWalletStatus;
+
+  // Optional override hook (if you want to open another modal elsewhere)
   onOpenWalletModal?: () => void;
+
   liveIsOpen?: boolean;
 
   // Banner
@@ -86,21 +92,30 @@ export default function XpotTopBar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [learnOpen, setLearnOpen] = useState(false);
 
+  // ✅ NEW: lightweight wallet popup (simple, “light”)
+  const [walletOpen, setWalletOpen] = useState(false);
+
   const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   const headerRef = useRef<HTMLElement | null>(null);
 
+  const openWallet = () => (onOpenWalletModal ? onOpenWalletModal() : setWalletOpen(true));
+
   // Close menus on route change
   useEffect(() => {
     setMobileOpen(false);
     setLearnOpen(false);
+    setWalletOpen(false);
   }, [pathname]);
 
   // Close learn dropdown on escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setLearnOpen(false);
+      if (e.key === 'Escape') {
+        setLearnOpen(false);
+        setWalletOpen(false);
+      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -140,97 +155,102 @@ export default function XpotTopBar({
   }, [pathname, hasBanner]);
 
   return (
-    <header ref={headerRef} className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
-      {/* Topbar block ABOVE the divider so dropdown always wins stacking */}
-      <div className="relative z-[80] border-b border-white/5 bg-black/70 backdrop-blur-md">
-        <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
-          <div className="flex min-h-[104px] items-center gap-4">
-            {/* LEFT: Logo + optional pill */}
-            <div className="flex min-w-0 items-center gap-4">
-              <Link href={logoHref} className="flex shrink-0 items-center gap-3">
-                <XpotLogo
-                  variant="light"
-                  width={460}
-                  height={120}
-                  priority
-                  className="h-[92px] max-h-[92px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
-                />
-              </Link>
+    <>
+      <header ref={headerRef} className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
+        {/* Topbar block ABOVE the divider so dropdown always wins stacking */}
+        <div className="relative z-[80] border-b border-white/5 bg-black/70 backdrop-blur-md">
+          <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
+            <div className="flex min-h-[104px] items-center gap-4">
+              {/* LEFT: Logo + optional pill */}
+              <div className="flex min-w-0 items-center gap-4">
+                <Link href={logoHref} className="flex shrink-0 items-center gap-3">
+                  <XpotLogo
+                    variant="light"
+                    width={460}
+                    height={120}
+                    priority
+                    className="h-[92px] max-h-[92px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
+                  />
+                </Link>
 
-              {/* Optional pill/slogan (public only) */}
-              {!isHub && (
-                <div className="hidden min-w-0 items-center gap-3 lg:flex">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
-                    <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
-                    <span className="truncate opacity-85">{pillText}</span>
-                  </span>
-
-                  {sloganRight && (
-                    <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 2xl:inline-flex">
-                      {sloganRight}
+                {/* Optional pill/slogan (public only) */}
+                {!isHub && (
+                  <div className="hidden min-w-0 items-center gap-3 lg:flex">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
+                      <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                      <span className="truncate opacity-85">{pillText}</span>
                     </span>
-                  )}
-                </div>
-              )}
-            </div>
 
-            {/* CENTER: Nav (desktop) */}
-            <div className="hidden flex-1 items-center justify-center gap-8 xl:flex">
-              {isHub ? (
-                <HubNavCenter liveIsOpen={liveIsOpen} />
-              ) : (
-                <PublicNavCenter liveIsOpen={liveIsOpen} learnOpen={learnOpen} setLearnOpen={setLearnOpen} />
-              )}
-            </div>
+                    {sloganRight && (
+                      <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 2xl:inline-flex">
+                        {sloganRight}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
 
-            {/* RIGHT: Actions */}
-            <div className="ml-auto flex items-center gap-3">
-              {!isHub && (
-                <div className="hidden xl:flex">
-                  <OfficialCAChip />
-                </div>
-              )}
+              {/* CENTER: Nav (desktop) */}
+              <div className="hidden flex-1 items-center justify-center gap-8 xl:flex">
+                {isHub ? (
+                  <HubNavCenter liveIsOpen={liveIsOpen} />
+                ) : (
+                  <PublicNavCenter liveIsOpen={liveIsOpen} learnOpen={learnOpen} setLearnOpen={setLearnOpen} />
+                )}
+              </div>
 
-              {isHub ? (
-                <HubRight
-                  clerkEnabled={clerkEnabled}
-                  hubWalletStatus={hubWalletStatus}
-                  onOpenWalletModal={onOpenWalletModal}
-                />
-              ) : (
-                <>{rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}</>
-              )}
+              {/* RIGHT: Actions */}
+              <div className="ml-auto flex items-center gap-3">
+                {!isHub && (
+                  <div className="hidden xl:flex">
+                    <OfficialCAChip />
+                  </div>
+                )}
 
-              {/* Mobile menu button */}
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] xl:hidden"
-                onClick={() => setMobileOpen(true)}
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
+                {isHub ? (
+                  <HubRight
+                    clerkEnabled={clerkEnabled}
+                    hubWalletStatus={hubWalletStatus}
+                    onOpenWalletModal={openWallet}
+                  />
+                ) : (
+                  <>{rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}</>
+                )}
+
+                {/* Mobile menu button */}
+                <button
+                  type="button"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] xl:hidden"
+                  onClick={() => setMobileOpen(true)}
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Premium divider - LOWER z so it never draws above dropdown */}
-      <div className="relative z-[10] h-[1px] w-full overflow-hidden">
-        <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.10),rgba(56,189,248,0.55),rgba(56,189,248,0.10))]" />
-      </div>
+        {/* Premium divider - LOWER z so it never draws above dropdown */}
+        <div className="relative z-[10] h-[1px] w-full overflow-hidden">
+          <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.10),rgba(56,189,248,0.55),rgba(56,189,248,0.10))]" />
+        </div>
 
-      {/* Mobile drawer */}
-      <MobileMenu
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        isHub={isHub}
-        liveIsOpen={liveIsOpen}
-        clerkEnabled={clerkEnabled}
-        hubWalletStatus={hubWalletStatus}
-        onOpenWalletModal={onOpenWalletModal}
-      />
-    </header>
+        {/* Mobile drawer */}
+        <MobileMenu
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          isHub={isHub}
+          liveIsOpen={liveIsOpen}
+          clerkEnabled={clerkEnabled}
+          hubWalletStatus={hubWalletStatus}
+          onOpenWalletModal={openWallet}
+        />
+      </header>
+
+      {/* ✅ SIMPLE “LIGHT” CONNECT WALLET POPUP */}
+      <LightWalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
+    </>
   );
 }
 
@@ -292,7 +312,7 @@ function OfficialCAChip() {
         <span className="mt-1 font-mono text-[12px] text-slate-100/95">{addrShort}</span>
       </div>
 
-      {/* Between CA + copy: new subtle “verified capsule” instead of a divider line */}
+      {/* Between CA + copy: subtle capsule */}
       <span
         className="
           relative z-10 inline-flex items-center
@@ -355,7 +375,6 @@ function NavLink({
   title?: string;
   external?: boolean;
 }) {
-  // ✅ Add consistent vertical rhythm so "Learn" matches Hub/Live baseline
   const base =
     'inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition';
   return (
@@ -423,18 +442,16 @@ function PublicNavCenter({
         </button>
 
         {learnOpen && (
-  <>
-    {/* Outside click catcher (must be ABOVE page chrome) */}
-    <button
-      type="button"
-      aria-label="Close learn menu"
-      className="fixed inset-0 z-[90] cursor-default"
-      onMouseDown={() => setLearnOpen(false)}
-    />
+          <>
+            <button
+              type="button"
+              aria-label="Close learn menu"
+              className="fixed inset-0 z-[90] cursor-default"
+              onMouseDown={() => setLearnOpen(false)}
+            />
 
-    {/* Menu */}
-    <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
-      <div className="p-2">
+            <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+              <div className="p-2">
                 <Link
                   href={TOKENOMICS_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
@@ -582,7 +599,6 @@ function HubWalletMenuInline({
   hubWalletStatus?: HubWalletStatus;
   onOpenWalletModal?: () => void;
 }) {
-  const { setVisible } = useWalletModal();
   const { publicKey, connected } = useWallet();
 
   const addr = connected && publicKey ? publicKey.toBase58() : null;
@@ -601,11 +617,9 @@ function HubWalletMenuInline({
     <Wallet className="h-4 w-4" />
   );
 
-  const open = () => (onOpenWalletModal ? onOpenWalletModal() : setVisible(true));
-
   return (
     <button
-      onClick={open}
+      onClick={onOpenWalletModal}
       className={`group rounded-full border border-white/10 px-5 py-2.5 ring-1 ${toneRing(tone)} hover:opacity-95`}
       title={addr ?? undefined}
     >
@@ -622,6 +636,220 @@ function HubWalletMenuInline({
 
 function shortWallet(addr: string) {
   return addr ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : '';
+}
+
+/* ---------------- LightWalletModal (simple, premium, “light”) ---------------- */
+
+function LightWalletModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { wallets, wallet, connected, publicKey, select, connect, disconnect, connecting } = useWallet();
+
+  const [err, setErr] = useState<string | null>(null);
+  const [busyName, setBusyName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setErr(null);
+      setBusyName(null);
+    }
+  }, [open]);
+
+  const addr = connected && publicKey ? publicKey.toBase58() : null;
+
+  const visibleWallets = useMemo(() => {
+    // “simple light” - only show usable wallets first
+    const ranked = [...wallets].sort((a, b) => {
+      const ra = a.readyState === WalletReadyState.Installed ? 0 : a.readyState === WalletReadyState.Loadable ? 1 : 2;
+      const rb = b.readyState === WalletReadyState.Installed ? 0 : b.readyState === WalletReadyState.Loadable ? 1 : 2;
+      return ra - rb;
+    });
+    return ranked;
+  }, [wallets]);
+
+  async function onPick(name: WalletName) {
+    setErr(null);
+    setBusyName(String(name));
+    try {
+      select(name);
+      await connect();
+      onClose();
+    } catch (e: any) {
+      setErr(e?.message || 'Could not connect wallet');
+    } finally {
+      setBusyName(null);
+    }
+  }
+
+  async function onDisconnect() {
+    setErr(null);
+    setBusyName('disconnect');
+    try {
+      await disconnect();
+    } catch (e: any) {
+      setErr(e?.message || 'Could not disconnect');
+    } finally {
+      setBusyName(null);
+    }
+  }
+
+  if (!open) return null;
+
+  return createPortal(
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-[200] bg-black/55 backdrop-blur-sm"
+        onMouseDown={onClose}
+        aria-label="Close wallet popup"
+      />
+
+      <div className="fixed left-1/2 top-1/2 z-[201] w-[92vw] max-w-[520px] -translate-x-1/2 -translate-y-1/2">
+        <div
+          className="
+            relative overflow-hidden rounded-3xl
+            border border-white/10
+            bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.12),rgba(255,255,255,0.02)_45%,rgba(0,0,0,0.30)_100%)]
+            shadow-[0_30px_120px_rgba(0,0,0,0.75)]
+          "
+        >
+          {/* top sheen */}
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent_35%)]" />
+
+          <div className="relative p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-200/70">Connect wallet</p>
+                <h3 className="mt-2 text-lg font-semibold text-white">Select a wallet to enter XPOT</h3>
+                <p className="mt-1 text-sm text-slate-300/80">
+                  Fast, simple, and clean. You can change it anytime.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onMouseDown={onClose}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-slate-100 hover:bg-white/[0.10]"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* connected status */}
+            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-100">
+                    {connected ? 'Wallet connected' : 'No wallet connected'}
+                  </p>
+                  <p className="mt-1 truncate font-mono text-xs text-slate-300/80">
+                    {connected ? shortWallet(addr || '') : 'Choose a wallet below'}
+                  </p>
+                </div>
+
+                {connected && (
+                  <button
+                    type="button"
+                    onClick={onDisconnect}
+                    disabled={busyName === 'disconnect'}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.10] disabled:opacity-50"
+                  >
+                    {busyName === 'disconnect' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Disconnect
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {err && (
+              <div className="mt-4 rounded-2xl border border-rose-400/15 bg-rose-500/10 px-4 py-3 text-sm text-rose-100/90">
+                {err}
+              </div>
+            )}
+
+            <div className="mt-5 grid gap-2">
+              {visibleWallets.map((w) => {
+                const name = w.adapter.name;
+                const isInstalled = w.readyState === WalletReadyState.Installed;
+                const isLoadable = w.readyState === WalletReadyState.Loadable;
+                const isUnsupported = w.readyState === WalletReadyState.Unsupported;
+                const isSelected = wallet?.adapter?.name === name;
+
+                const disabled = isUnsupported || (!isInstalled && !isLoadable);
+                const busy = busyName === String(name) || (connecting && isSelected);
+
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => onPick(name)}
+                    disabled={disabled || busy}
+                    className="
+                      group flex items-center justify-between
+                      rounded-2xl border border-white/10
+                      bg-white/[0.04] px-4 py-3
+                      text-left
+                      hover:bg-white/[0.07]
+                      disabled:opacity-45 disabled:hover:bg-white/[0.04]
+                    "
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/25">
+                        {w.adapter.icon ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={w.adapter.icon} alt="" className="h-6 w-6" />
+                        ) : (
+                          <Wallet className="h-5 w-5 text-slate-200" />
+                        )}
+                      </span>
+
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-white">{name}</p>
+                        <p className="mt-0.5 text-xs text-slate-300/70">
+                          {isUnsupported
+                            ? 'Unsupported'
+                            : isInstalled
+                              ? 'Installed'
+                              : isLoadable
+                                ? 'Available'
+                                : 'Not detected'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {busy ? (
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-100">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Connecting
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-100">
+                          Connect
+                          <ChevronRight className="h-4 w-4 opacity-80 group-hover:translate-x-0.5 transition" />
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 flex items-center justify-between gap-3 text-xs text-slate-300/70">
+              <span className="inline-flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-200/90" />
+                We never see your seed phrase.
+              </span>
+              <span className="inline-flex items-center gap-2">
+                {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {connecting ? 'Waiting for wallet approval…' : ' '}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body,
+  );
 }
 
 /* ---------------- Mobile menu ---------------- */
