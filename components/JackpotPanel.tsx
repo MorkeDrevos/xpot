@@ -1014,17 +1014,15 @@ export default function JackpotPanel({
                   >
                     <span className="relative h-4 w-4">
                       <Image
-                        src="/xpot-mark.png"
-                        alt="XPOT"
-                        fill
-                        sizes="16px"
-                        className="object-contain opacity-95"
-                        style={{
-                          // "brushed vault" tint: less saturated, heavier, warmer
-                          filter: 'sepia(1) saturate(2.2) hue-rotate(350deg) brightness(0.98) contrast(1.1)',
-                          dropShadow: `0 0 10px rgba(${VAULT_GOLD.rgb} / 0.18)`,
-                        }}
-                      />
+  src="/xpot-mark.png"
+  alt="XPOT"
+  fill
+  sizes="16px"
+  className="object-contain opacity-95"
+  style={{
+    filter: `sepia(1) saturate(2.2) hue-rotate(350deg) brightness(0.98) contrast(1.1) drop-shadow(0 0 10px rgba(${VAULT_GOLD.rgb} / 0.18))`,
+  }}
+/>
                     </span>
                   </span>
 
