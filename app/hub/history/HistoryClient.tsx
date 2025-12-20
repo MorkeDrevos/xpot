@@ -111,11 +111,8 @@ function WalletStatusHint() {
     );
   }
 
-  return (
-    <p className="mt-2 text-xs text-slate-500">
-      Click “Select Wallet” and choose your wallet to connect.
-    </p>
-  );
+  // Wallet detected but not connected → show nothing
+  return null;
 }
 
 // ─────────────────────────────────────────────
