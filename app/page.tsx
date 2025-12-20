@@ -44,6 +44,9 @@ const XPOT_CA =
 
 const SOLANA_CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || '';
 
+// XPOT denomination glyph (use for token-native amounts, keep $ only for USD)
+const XPOT_SIGN = '✕';
+
 const BTN_PRIMARY =
   'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
 
@@ -739,6 +742,104 @@ function HomePageInner() {
 
   const hero = (
     <section className="relative">
+      {/* Local-only “spaceship cockpit” effects (CSS only, no layout changes) */}
+      <style jsx global>{`
+        @keyframes xpotHeroSweep {
+          0% { transform: translateX(-20%) rotate(8deg); opacity: 0.0; }
+          10% { opacity: 0.28; }
+          45% { opacity: 0.18; }
+          100% { transform: translateX(140%) rotate(8deg); opacity: 0.0; }
+        }
+        @keyframes xpotHeroDrift {
+          0% { transform: translate3d(-2%, -1%, 0); }
+          50% { transform: translate3d(2%, 1%, 0); }
+          100% { transform: translate3d(-2%, -1%, 0); }
+        }
+        @keyframes xpotHeroGrid {
+          0% { background-position: 0px 0px, 0px 0px; opacity: 0.11; }
+          50% { background-position: 120px 80px, -90px 60px; opacity: 0.07; }
+          100% { background-position: 0px 0px, 0px 0px; opacity: 0.11; }
+        }
+        .xpot-hero-cockpit {
+          position: relative;
+        }
+        .xpot-hero-cockpit::before {
+          content: "";
+          pointer-events: none;
+          position: absolute;
+          inset: -36px;
+          opacity: 0.75;
+          filter: blur(40px);
+          animation: xpotHeroDrift 12s ease-in-out infinite;
+          background:
+            radial-gradient(circle at 18% 22%, rgba(56,189,248,0.22), transparent 58%),
+            radial-gradient(circle at 82% 18%, rgba(139,92,246,0.22), transparent 60%),
+            radial-gradient(circle at 60% 86%, rgba(16,185,129,0.18), transparent 60%),
+            radial-gradient(circle at 55% -10%, rgba(var(--xpot-gold),0.16), transparent 60%);
+        }
+        .xpot-hero-hudgrid {
+          pointer-events: none;
+          position: absolute;
+          inset: 0;
+          opacity: 0.10;
+          animation: xpotHeroGrid 16s ease-in-out infinite;
+          background-image:
+            linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+          background-size: 44px 44px, 44px 44px;
+          mask-image: radial-gradient(circle at 40% 35%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.0) 70%);
+        }
+        .xpot-hero-sweep {
+          pointer-events: none;
+          position: absolute;
+          top: -28%;
+          left: -40%;
+          width: 55%;
+          height: 220%;
+          opacity: 0;
+          transform: rotate(8deg);
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,0.10),
+            rgba(124,200,255,0.10),
+            rgba(var(--xpot-gold),0.10),
+            transparent
+          );
+          animation: xpotHeroSweep 5.8s ease-in-out infinite;
+          mix-blend-mode: screen;
+        }
+        .xpot-hero-scanlines {
+          pointer-events: none;
+          position: absolute;
+          inset: 0;
+          opacity: 0.08;
+          background: repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,0.04),
+            rgba(255,255,255,0.04) 1px,
+            transparent 1px,
+            transparent 7px
+          );
+          mask-image: radial-gradient(circle at 48% 30%, rgba(0,0,0,1), rgba(0,0,0,0.0) 72%);
+        }
+        .xpot-hero-edgeglow {
+          pointer-events: none;
+          position: absolute;
+          inset: 0;
+          border-radius: 30px;
+          opacity: 0.0;
+          transition: opacity 400ms ease;
+          box-shadow:
+            0 0 0 1px rgba(255,255,255,0.05),
+            0 0 28px rgba(59,167,255,0.10),
+            0 0 42px rgba(var(--xpot-gold),0.08);
+        }
+        .xpot-hero-cockpit:hover .xpot-hero-edgeglow {
+          opacity: 1;
+        }
+      `}</style>
+
       <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+18px)]" />
 
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/30 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
@@ -787,23 +888,46 @@ function HomePageInner() {
                         <Timer className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
                         Next draw {countdown}
                       </Pill>
+
+                      <TinyTooltip label="XPOT amounts are token-native. $ is shown only for USD estimates.">
+                        <Pill tone="slate">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white/35 shadow-[0_0_10px_rgba(255,255,255,0.22)]" />
+                          {XPOT_SIGN} = XPOT
+                        </Pill>
+                      </TinyTooltip>
                     </div>
 
-                    <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
+                    {/* Upgraded cockpit feel (effects only, no content removed) */}
+                    <div className="xpot-hero-cockpit rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
+                      <div className="xpot-hero-hudgrid rounded-[30px]" />
+                      <div className="xpot-hero-scanlines rounded-[30px]" />
+                      <div className="xpot-hero-sweep" />
+                      <div className="xpot-hero-edgeglow" />
+
+                      <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
                         NO TICKETS · JUST XPOT HOLDINGS
                       </p>
 
-                      <h1 className="mt-3 text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
-                        One protocol. One identity. <span className="text-emerald-300">One daily XPOT draw.</span>
-                      </h1>
+                      {/* Headline glow (effects only) */}
+                      <div className="relative z-10 mt-3">
+                        <div
+                          className="pointer-events-none absolute -inset-8 opacity-75 blur-2xl"
+                          style={{
+                            background:
+                              'radial-gradient(circle at 20% 45%, rgba(56,189,248,0.16), transparent 58%), radial-gradient(circle at 70% 35%, rgba(16,185,129,0.16), transparent 60%), radial-gradient(circle at 55% -10%, rgba(var(--xpot-gold),0.12), transparent 60%)',
+                          }}
+                        />
+                        <h1 className="relative text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
+                          One protocol. One identity. <span className="text-emerald-300">One daily XPOT draw.</span>
+                        </h1>
+                      </div>
 
-                      <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
+                      <p className="relative z-10 mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
                         Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain. Built to scale into a rewards
                         ecosystem for communities, creators and sponsors.
                       </p>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
                         <RunwayPill />
                         <TinyTooltip label="Runway = the rewards pool is designed to sustain daily payouts at launch. Exact mechanics can evolve, but payouts remain verifiable on-chain.">
                           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition">
@@ -812,16 +936,16 @@ function HomePageInner() {
                         </TinyTooltip>
                       </div>
 
-                      <div className="mt-4">
+                      <div className="relative z-10 mt-4">
                         <PrinciplesStrip />
                       </div>
 
-                      <div className="mt-5">
+                      <div className="relative z-10 mt-5">
                         <SectionDividerLabel label="Entry mechanics" />
                       </div>
 
                       {/* BONUS */}
-                      <div className="mt-3">
+                      <div className="relative z-10 mt-3">
                         <div className="relative">
                           <div className="pointer-events-none absolute -inset-10 opacity-75 blur-2xl bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]" />
                           <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.12)]">
@@ -842,18 +966,18 @@ function HomePageInner() {
                       </div>
 
                       {/* CA bar */}
-                      <div className="mt-4">
+                      <div className="relative z-10 mt-4">
                         <RoyalContractBar mint={mint} />
                       </div>
 
-                      <div className="mt-5 flex flex-wrap items-center gap-3">
+                      <div className="relative z-10 mt-5 flex flex-wrap items-center gap-3">
                         <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
                           Enter today&apos;s XPOT
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
                       </div>
 
-                      <p className="mt-3 text-[11px] text-slate-500">
+                      <p className="relative z-10 mt-3 text-[11px] text-slate-500">
                         Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
                       </p>
                     </div>
@@ -906,9 +1030,9 @@ function HomePageInner() {
   in:             ${countdown}  (${cutoffLabel})
 
 > LAST_WINNERS
-  #2025-12-18  @DeWala_222222   1,000,000 XPOT
-  #2025-12-18  @SignalChaser    250,000 XPOT (bonus)
-  #2025-12-17  @NFAResearch     1,000,000 XPOT`}
+  #2025-12-18  @DeWala_222222   ${XPOT_SIGN}1,000,000
+  #2025-12-18  @SignalChaser    ${XPOT_SIGN}250,000 (bonus)
+  #2025-12-17  @NFAResearch     ${XPOT_SIGN}1,000,000`}
                       </pre>
                     </div>
 
