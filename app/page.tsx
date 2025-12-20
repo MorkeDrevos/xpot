@@ -1,5 +1,4 @@
 // app/page.tsx
-// app/page.tsx
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
