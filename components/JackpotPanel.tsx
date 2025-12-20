@@ -1139,7 +1139,7 @@ export default function JackpotPanel({
                       boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
                     }}
                   >
-                    <XpotLogo variant="mark" width={22} height={22} tone="gold" priority />
+                    <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
                   </span>
 
                   <div className="leading-tight">
