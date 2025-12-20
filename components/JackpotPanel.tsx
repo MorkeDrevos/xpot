@@ -379,7 +379,7 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
       <span
         className={
           compact
-            ? 'inline-flex items-center rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.20em] text-slate-200'
+  ? 'inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/50 bg-black/20 text-slate-400 hover:text-slate-200 transition'
             : 'inline-flex items-center rounded-full border border-slate-700/70 bg-black/25 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200'
         }
       >
@@ -391,7 +391,7 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
         aria-label="USD estimate info"
         className={
           compact
-            ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/70 bg-black/25 text-slate-200 hover:bg-slate-900/50 hover:text-white transition'
+  ? 'inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/50 bg-black/20 text-slate-400 hover:text-slate-200 transition'
             : 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/25 text-slate-200 hover:bg-slate-900/50 hover:text-white transition'
         }
       >
@@ -988,10 +988,10 @@ export default function JackpotPanel({
         {/* Marketing row */}
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/30 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.45)]" />
-              XPOT supply for today
-            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
+  Today’s XPOT
+</span>
 
             <span
               className="relative inline-flex items-baseline rounded-2xl bg-black/55 px-6 py-2 font-mono text-xl tracking-[0.22em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_18px_50px_rgba(0,0,0,0.40)]"
@@ -1007,17 +1007,6 @@ export default function JackpotPanel({
               <span className="relative">{poolLabel}</span>
             </span>
 
-            <div className="relative flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2">
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-300/25" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-300 shadow-[0_0_14px_rgba(56,189,248,0.25)]" />
-              </span>
-              <p className="min-w-0 text-xs text-slate-300">
-                <span className="font-semibold text-slate-100">Daily issuance</span>{' '}
-                <span className="text-slate-500">-</span>{' '}
-                <span className="text-slate-300">steady, scalable, sponsor-ready</span>
-              </p>
-            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1061,9 +1050,12 @@ export default function JackpotPanel({
                 {displayUsdText}
               </div>
 
-              <div className="mb-1">
-                <UsdEstimateBadge compact />
-              </div>
+              <div className="mb-2 flex items-center gap-2">
+  <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
+    USD estimate
+  </span>
+  <UsdEstimateBadge compact />
+</div>
             </div>
 
             {/* countdown */}
