@@ -29,19 +29,21 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
 
     setVar();
 
-    const ro = new ResizeObserver(() => setVar());
-    if (ref.current) ro.observe(ref.current);
+    let ro: ResizeObserver | null = null;
 
-    window.addEventListener('resize', setVar);
-    const t1 = window.setTimeout(setVar, 0);
-    const t2 = window.setTimeout(setVar, 120);
+if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
+  ro = new ResizeObserver(() => setVar());
+  if (ref.current) ro.observe(ref.current);
+}
 
-    return () => {
-      window.removeEventListener('resize', setVar);
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      ro.disconnect();
-    };
+window.addEventListener('resize', setVar);
+...
+return () => {
+  window.removeEventListener('resize', setVar);
+  window.clearTimeout(t1);
+  window.clearTimeout(t2);
+  if (ro) ro.disconnect();
+};
   }, [hidden]);
 
   if (hidden) return null;
