@@ -11,7 +11,7 @@ import XpotLogo from '@/components/XpotLogo';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 
-// DexScreener can rate-limit too - keep this calmer than 2s
+// DexScreener can rate-limit too - keep this a bit calmer than 2s
 const PRICE_POLL_MS = 4000; // 4s
 
 // 24h observed range via rolling samples
@@ -170,9 +170,9 @@ function formatCountdown(ms: number) {
 
 // Milestone ladder for highlights (USD) - start at $5
 const MILESTONES = [
-  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000,
-  7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000,
-  500_000, 750_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
+  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000, 7_500,
+  10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000, 500_000,
+  750_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
 ];
 
 type PriceSample = { t: number; p: number };
@@ -396,9 +396,7 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
 
       <TooltipBubble open={t.open} rect={t.rect} width={380}>
         <div className="px-4 py-3 text-[12px] leading-snug text-slate-100">
-          <p className="text-slate-100">
-            Current USD value of today&apos;s XPOT, based on the live XPOT price from DexScreener.
-          </p>
+          <p className="text-slate-100">Current USD value of today&apos;s XPOT, based on the live XPOT price from DexScreener.</p>
           <p className="mt-2 text-slate-400">
             Winner is paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
           </p>
@@ -453,9 +451,7 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           </button>
 
           <TooltipBubble open={t.open} rect={t.rect} width={340}>
-            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
-              {tooltip}
-            </div>
+            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">{tooltip}</div>
           </TooltipBubble>
         </>
       )}
@@ -531,7 +527,7 @@ export default function JackpotPanel({
     setSessionKey(`xpot_max_session_usd_${getMadridSessionKey(22)}`);
   }, []);
 
-  // AUTO responsive wide switching (Layout "auto")
+  // AUTO responsive wide switching (fixes ResizeObserver thrash -> React error)
   const slabRef = useRef<HTMLDivElement | null>(null);
   const [autoWide, setAutoWide] = useState(false);
   const autoWideRef = useRef(false);
@@ -548,7 +544,7 @@ export default function JackpotPanel({
 
     let raf = 0;
 
-    // hysteresis
+    // hysteresis: once wide, don’t turn off until narrower than OFF; once not wide, don’t turn on until wider than ON
     const WIDE_ON = 900;
     const WIDE_OFF = 840;
 
@@ -569,6 +565,7 @@ export default function JackpotPanel({
 
     ro.observe(el);
 
+    // initial
     const initial = el.getBoundingClientRect().width;
     applyWidth(initial);
 
@@ -593,7 +590,7 @@ export default function JackpotPanel({
     }
   }, [sessionKey, mounted]);
 
-  // Listen for shared countdown broadcast (optional)
+  // Listen for the shared countdown broadcast (from app/page.tsx NextDrawProvider)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -611,7 +608,7 @@ export default function JackpotPanel({
     return () => window.removeEventListener('xpot:next-draw', onNextDraw as any);
   }, []);
 
-  // Countdown ticker
+  // Countdown ticker (second-aligned) using stored nextDrawUtcMs.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!mounted) return;
@@ -801,7 +798,7 @@ export default function JackpotPanel({
     }
   }, [jackpotUsd, sessionKey, onJackpotUsdChange, mounted]);
 
-  // Soft USD drift animation (stale-safe)
+  // Soft USD drift animation for the big number (stale-safe)
   const displayRef = useRef<number | null>(null);
   useEffect(() => {
     displayRef.current = displayJackpotUsd;
@@ -810,6 +807,7 @@ export default function JackpotPanel({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // If live USD is missing, clear display
     if (jackpotUsd == null) {
       setDisplayJackpotUsd(null);
       displayRef.current = null;
@@ -818,6 +816,7 @@ export default function JackpotPanel({
 
     const from = displayRef.current;
 
+    // First time we get a value: set instantly (no animation)
     if (from == null || !Number.isFinite(from)) {
       setDisplayJackpotUsd(jackpotUsd);
       displayRef.current = jackpotUsd;
@@ -827,6 +826,7 @@ export default function JackpotPanel({
     const to = jackpotUsd;
     const delta = Math.abs(to - from);
 
+    // Tiny changes: snap
     if (!Number.isFinite(delta) || delta < 0.01) {
       setDisplayJackpotUsd(to);
       displayRef.current = to;
@@ -961,17 +961,10 @@ export default function JackpotPanel({
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
-      {/* extra premium border aura */}
-      <div className="pointer-events-none absolute -inset-[1px] rounded-2xl opacity-70 xpot-ship-borderAura" />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.35] xpot-ship-aurora" />
-
       {/* spaceship FX (panel) */}
       <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.45] xpot-ship-panel" />
       <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.25] xpot-ship-stars" />
-      <div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 xpot-ship-pumpRing"
-        style={{ opacity: justPumped ? 1 : 0 }}
-      />
+      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 xpot-ship-pumpRing" style={{ opacity: justPumped ? 1 : 0 }} />
 
       {/* Soft neon glow on pump */}
       <div
@@ -1046,19 +1039,7 @@ export default function JackpotPanel({
               <span className="relative">{poolLabel}</span>
             </span>
 
-            {/* upgraded excitement strip */}
-            <div className="relative flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2">
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.35] xpot-ship-sheenSoft" />
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-300/35" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-300 shadow-[0_0_14px_rgba(56,189,248,0.35)]" />
-              </span>
-              <p className="min-w-0 text-xs text-slate-300">
-                <span className="font-semibold text-slate-100">Daily issuance</span>{' '}
-                <span className="text-slate-500">-</span>{' '}
-                <span className="text-slate-300">steady, scalable, sponsor-ready</span>
-              </p>
-            </div>
+            <span className="text-[11px] text-slate-500">Daily issuance - consistent supply, predictable protocol economics.</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1071,13 +1052,12 @@ export default function JackpotPanel({
         </div>
 
         {/* Value row */}
-        <div
-          className={
-            isWide
-              ? 'relative mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]'
-              : 'relative mt-5 grid gap-4'
-          }
-        >
+        <div className={isWide ? 'relative mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]' : 'relative mt-5 grid gap-4'}>
+          {/* Big USD */}
+          <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
+            {/* cockpit glow */}
+            <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.20] xpot-ship-cockpit" />
+            <div className={`pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 ${justUpdated ? 'opacity-100' : ''} xpot-ship-flash`} />
 
             <div className="mt-4 flex items-end justify-between gap-3">
               <div
@@ -1098,7 +1078,12 @@ export default function JackpotPanel({
             </div>
 
             {/* subtle premium sheen */}
-            <div className="pointer-events-none absolute -inset-x-2 -top-2 h-10 opacity-50 xpot-ship-sheenLine" />
+            <div
+              className="pointer-events-none absolute -inset-x-2 -top-2 h-10 opacity-50"
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
+              }}
+            />
 
             {/* countdown */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -1138,8 +1123,24 @@ export default function JackpotPanel({
               boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.02)`,
             }}
           >
-            <div className="pointer-events-none absolute inset-0 opacity-70 xpot-ship-cardAura" />
-            <div className="pointer-events-none absolute -inset-x-10 -top-10 h-28 rotate-[-8deg] opacity-[0.22] xpot-ship-cardSheen" />
+            <div
+              className="pointer-events-none absolute inset-0 opacity-70"
+              style={{
+                background: `
+                  radial-gradient(circle_at_18%_18%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 58%),
+                  radial-gradient(circle_at_82%_22%, rgba(236,72,153,0.06), transparent 62%),
+                  radial-gradient(circle_at_60%_78%, rgba(59,167,255,0.07), transparent 58%)
+                `,
+              }}
+            />
+
+            {/* card sheen */}
+            <div
+              className="pointer-events-none absolute -inset-x-10 -top-10 h-28 rotate-[-8deg] opacity-[0.22]"
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
+              }}
+            />
 
             <div className="relative flex h-full flex-col">
               <div className="pt-2 flex items-start justify-between gap-3">
@@ -1155,10 +1156,7 @@ export default function JackpotPanel({
                   </span>
 
                   <div className="leading-tight">
-                    <p
-                      className="text-[10px] uppercase tracking-[0.24em]"
-                      style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.85)` }}
-                    >
+                    <p className="text-[10px] uppercase tracking-[0.24em]" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.85)` }}>
                       XPOT token
                     </p>
                     <p className="text-xs text-slate-300">Winners paid in XPOT</p>
@@ -1180,8 +1178,7 @@ export default function JackpotPanel({
               <div className="mt-auto pb-1 text-right">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
                 <p className="mt-1 text-sm text-slate-300">
-                  1 XPOT ≈{' '}
-                  <span className="font-mono text-slate-100">{priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}</span>
+                  1 XPOT ≈ <span className="font-mono text-slate-100">{priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}</span>
                 </p>
 
                 <div className="mt-2 flex items-center justify-end gap-2 text-[11px] text-slate-500">
@@ -1200,7 +1197,6 @@ export default function JackpotPanel({
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {/* Pulse */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="pointer-events-none absolute inset-0 opacity-[0.18] xpot-ship-tileAuraA" />
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Pulse (global 1h)</p>
@@ -1216,13 +1212,7 @@ export default function JackpotPanel({
 
             {spark ? (
               <div className="mt-2">
-                <svg
-                  width="100%"
-                  height="34"
-                  viewBox="0 0 560 54"
-                  className="block text-slate-300/70"
-                  aria-label="XPOT pulse sparkline (local ticks)"
-                >
+                <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70" aria-label="XPOT pulse sparkline (local ticks)">
                   <polyline
                     fill="none"
                     stroke="currentColor"
@@ -1241,15 +1231,13 @@ export default function JackpotPanel({
           </div>
 
           {/* 24h range */}
-          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="pointer-events-none absolute inset-0 opacity-[0.18] xpot-ship-tileAuraB" />
+          <div className="rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
                 {range24h ? (
                   <p className="mt-1 text-sm text-slate-100">
-                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
-                    <span className="text-slate-600">-</span>{' '}
+                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span> <span className="text-slate-600">-</span>{' '}
                     <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
                   </p>
                 ) : (
@@ -1271,8 +1259,7 @@ export default function JackpotPanel({
           </div>
 
           {/* Next milestone */}
-          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="pointer-events-none absolute inset-0 opacity-[0.18] xpot-ship-tileAuraC" />
+          <div className="rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
@@ -1290,17 +1277,22 @@ export default function JackpotPanel({
                 </p>
               </div>
 
-              <span
-                className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25"
-                style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` }}
-              >
+              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25" style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` }}>
                 <Crown className="h-4 w-4 opacity-90" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.78)` }} />
               </span>
             </div>
 
             <div className="mt-3">
               <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
-                <div className="absolute inset-0 opacity-[0.45] xpot-ship-progressGlow" />
+                <div
+                  className="absolute inset-0 opacity-[0.45]"
+                  style={{
+                    background: `
+                      radial-gradient(circle_at_20%_50%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 56%),
+                      radial-gradient(circle_at_70%_50%, rgba(59,167,255,0.12), transparent 62%)
+                    `,
+                  }}
+                />
                 <div
                   className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.16)]"
                   style={{
@@ -1324,8 +1316,7 @@ export default function JackpotPanel({
       </div>
 
       {/* CONTEXT STRIP */}
-      <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.18] xpot-ship-contextAura" />
+      <div className="relative z-10 mt-4 rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
             <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
@@ -1374,50 +1365,15 @@ export default function JackpotPanel({
         )}
       </div>
 
-      {/* FX keyframes + textures (scoped) */}
+      {/* FX keyframes + textures (scoped by classes) */}
       <style jsx>{`
-        .xpot-ship-borderAura {
-          background: linear-gradient(
-            120deg,
-            rgba(56, 189, 248, 0.18),
-            rgba(99, 102, 241, 0.10),
-            rgba(236, 72, 153, 0.10),
-            rgba(${VAULT_GOLD.rgb} / 0.10),
-            rgba(56, 189, 248, 0.16)
-          );
-          filter: blur(0.2px);
-          mask-image: radial-gradient(circle at 50% 40%, black 70%, transparent 92%);
-          opacity: 0.7;
-        }
-
-        .xpot-ship-aurora {
-          background:
-            radial-gradient(circle at 14% 18%, rgba(56, 189, 248, 0.16), transparent 58%),
-            radial-gradient(circle at 74% 14%, rgba(236, 72, 153, 0.10), transparent 62%),
-            radial-gradient(circle at 62% 78%, rgba(${VAULT_GOLD.rgb} / 0.10), transparent 60%);
-          mix-blend-mode: screen;
-          animation: xpotAurora 10s ease-in-out infinite;
-        }
-
-        @keyframes xpotAurora {
-          0%,
-          100% {
-            transform: translate3d(0, 0, 0);
-            opacity: 0.32;
-          }
-          50% {
-            transform: translate3d(-8px, 6px, 0);
-            opacity: 0.46;
-          }
-        }
-
         .xpot-ship-panel {
           background:
             radial-gradient(circle at 18% 22%, rgba(59, 167, 255, 0.18), transparent 55%),
             radial-gradient(circle at 78% 18%, rgba(236, 72, 153, 0.10), transparent 60%),
             radial-gradient(circle at 60% 78%, rgba(${VAULT_GOLD.rgb} / 0.10), transparent 58%),
             linear-gradient(180deg, rgba(2, 6, 23, 0.15), rgba(0, 0, 0, 0));
-          filter: saturate(1.1);
+          filter: saturate(1.08);
         }
 
         .xpot-ship-stars {
@@ -1480,66 +1436,6 @@ export default function JackpotPanel({
 
         .xpot-ship-flash {
           background: radial-gradient(circle at 40% 40%, rgba(124, 200, 255, 0.20), transparent 62%);
-          mix-blend-mode: screen;
-        }
-
-        .xpot-ship-sheenLine {
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
-        }
-
-        .xpot-ship-sheenSoft {
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
-          mask-image: linear-gradient(90deg, transparent, black 20%, black 80%, transparent);
-          animation: xpotSheen 5.5s ease-in-out infinite;
-          opacity: 0.35;
-        }
-
-        @keyframes xpotSheen {
-          0%,
-          100% {
-            transform: translateX(-10%);
-            opacity: 0.22;
-          }
-          50% {
-            transform: translateX(10%);
-            opacity: 0.40;
-          }
-        }
-
-        .xpot-ship-cardAura {
-          background:
-            radial-gradient(circle at 18% 18%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 58%),
-            radial-gradient(circle at 82% 22%, rgba(236, 72, 153, 0.06), transparent 62%),
-            radial-gradient(circle at 60% 78%, rgba(59, 167, 255, 0.07), transparent 58%);
-        }
-
-        .xpot-ship-cardSheen {
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-        }
-
-        .xpot-ship-tileAuraA {
-          background: radial-gradient(circle at 20% 30%, rgba(56, 189, 248, 0.14), transparent 62%);
-          mix-blend-mode: screen;
-        }
-
-        .xpot-ship-tileAuraB {
-          background: radial-gradient(circle at 74% 26%, rgba(99, 102, 241, 0.12), transparent 62%);
-          mix-blend-mode: screen;
-        }
-
-        .xpot-ship-tileAuraC {
-          background: radial-gradient(circle at 60% 78%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 62%);
-          mix-blend-mode: screen;
-        }
-
-        .xpot-ship-progressGlow {
-          background:
-            radial-gradient(circle at 20% 50%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 56%),
-            radial-gradient(circle at 70% 50%, rgba(59, 167, 255, 0.12), transparent 62%);
-        }
-
-        .xpot-ship-contextAura {
-          background: radial-gradient(circle at 18% 50%, rgba(56, 189, 248, 0.10), transparent 62%);
           mix-blend-mode: screen;
         }
 
