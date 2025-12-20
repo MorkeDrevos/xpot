@@ -10,14 +10,16 @@ type XpotLogoProps = {
   height?: number;
   className?: string;
   priority?: boolean;
+  tone?: 'default' | 'gold'; // NEW
 };
 
 export default function XpotLogo({
   variant = 'light',
   width,
   height,
-  className,
+  className = '',
   priority = false,
+  tone = 'default',
 }: XpotLogoProps) {
   // Animated version
   if (variant === 'animated') {
@@ -30,7 +32,7 @@ export default function XpotLogo({
     );
   }
 
-  // Static fallback (IMPORTANT: Next serves from /public, so src starts at /img/...)
+  // Static assets (served from /public/img)
   const src =
     variant === 'dark'
       ? '/img/xpot-black.png'
@@ -38,8 +40,18 @@ export default function XpotLogo({
       ? '/img/xpot-mark.png'
       : '/img/xpot-logo-light.png';
 
-  const w = width ?? (variant === 'mark' ? 28 : 180);
-  const h = height ?? (variant === 'mark' ? 28 : 50);
+  /**
+   * IMPORTANT:
+   * The mark must be visually larger than its raw pixel size,
+   * otherwise it looks smaller than the blue icon.
+   */
+  const w = width ?? (variant === 'mark' ? 24 : 180);
+  const h = height ?? (variant === 'mark' ? 24 : 50);
+
+  const goldFilter =
+    tone === 'gold'
+      ? 'sepia(1) saturate(2.3) hue-rotate(350deg) brightness(0.98) contrast(1.1)'
+      : undefined;
 
   return (
     <Image
@@ -47,8 +59,11 @@ export default function XpotLogo({
       alt="XPOT"
       width={w}
       height={h}
-      className={className}
       priority={priority}
+      className={className}
+      style={{
+        filter: goldFilter,
+      }}
     />
   );
 }
