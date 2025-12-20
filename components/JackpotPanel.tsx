@@ -37,6 +37,12 @@ type JackpotPanelProps = {
 
 type PriceSource = 'Jupiter' | 'DexScreener';
 
+// Private-vault gold (muted, heavier, less neon)
+const VAULT_GOLD = {
+  rgb: '201 162 74', // bronze-gold
+  rgbSoft: '173 138 58', // deeper bronze for borders/shadows
+};
+
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
@@ -879,8 +885,22 @@ export default function JackpotPanel({
               Today&apos;s XPOT
             </span>
 
-            <span className="relative inline-flex items-baseline rounded-2xl border border-amber-300/20 bg-black/45 px-5 py-2 font-mono text-lg tracking-[0.20em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_20px_60px_rgba(0,0,0,0.35)]">
-              <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 bg-[radial-gradient(circle_at_20%_30%,rgba(251,191,36,0.16),transparent_55%),radial-gradient(circle_at_80%_20%,rgba(124,200,255,0.10),transparent_55%)]" />
+            {/* vault gold tuning */}
+            <span
+              className="relative inline-flex items-baseline rounded-2xl bg-black/45 px-5 py-2 font-mono text-lg tracking-[0.20em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_20px_60px_rgba(0,0,0,0.35)]"
+              style={{
+                border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.18)`,
+              }}
+            >
+              <span
+                className="pointer-events-none absolute inset-0 rounded-2xl opacity-60"
+                style={{
+                  background: `
+                    radial-gradient(circle_at_20%_30%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 56%),
+                    radial-gradient(circle_at_80%_20%, rgba(124,200,255,0.08), transparent 58%)
+                  `,
+                }}
+              />
               <span className="relative">{poolLabel}</span>
             </span>
           </div>
@@ -953,13 +973,28 @@ export default function JackpotPanel({
             <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
           </div>
 
-          {/* Royal XPOT meta (credit card feel + XPOT icon in gold) */}
-          <div className="relative overflow-hidden rounded-2xl border border-amber-400/20 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(15,23,42,0.0))] px-5 py-4 min-h-[170px]">
-            <div className="pointer-events-none absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_18%_20%,rgba(251,191,36,0.14),transparent_55%),radial-gradient(circle_at_80%_18%,rgba(236,72,153,0.08),transparent_60%),radial-gradient(circle_at_60%_75%,rgba(59,167,255,0.09),transparent_55%)]" />
-
-            {/* little "card sheen" */}
+          {/* Royal XPOT meta (credit card feel + private-vault gold) */}
+          <div
+            className="relative overflow-hidden rounded-2xl bg-[linear-gradient(180deg,rgba(2,6,23,0.35),rgba(15,23,42,0.0))] px-5 py-4 min-h-[170px]"
+            style={{
+              border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)`,
+              boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.02)`,
+            }}
+          >
             <div
-              className="pointer-events-none absolute -inset-x-10 -top-10 h-28 rotate-[-8deg] opacity-[0.35]"
+              className="pointer-events-none absolute inset-0 opacity-70"
+              style={{
+                background: `
+                  radial-gradient(circle_at_18%_18%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 58%),
+                  radial-gradient(circle_at_82%_22%, rgba(236,72,153,0.06), transparent 62%),
+                  radial-gradient(circle_at_60%_78%, rgba(59,167,255,0.07), transparent 58%)
+                `,
+              }}
+            />
+
+            {/* card sheen (dialed down) */}
+            <div
+              className="pointer-events-none absolute -inset-x-10 -top-10 h-28 rotate-[-8deg] opacity-[0.22]"
               style={{
                 background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
               }}
@@ -969,29 +1004,48 @@ export default function JackpotPanel({
               {/* Top row (nudged down, like a card) */}
               <div className="pt-2 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  {/* XPOT icon circle in gold */}
-                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-amber-300/25 bg-black/25">
+                  {/* XPOT icon circle in vault gold */}
+                  <span
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/25"
+                    style={{
+                      border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)`,
+                      boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
+                    }}
+                  >
                     <span className="relative h-4 w-4">
                       <Image
                         src="/xpot-mark.png"
                         alt="XPOT"
                         fill
                         sizes="16px"
-                        className="object-contain opacity-95 drop-shadow-[0_0_12px_rgba(251,191,36,0.22)]"
+                        className="object-contain opacity-95"
                         style={{
-                          filter: 'sepia(1) saturate(4) hue-rotate(345deg) brightness(1.08) contrast(1.05)',
+                          // "brushed vault" tint: less saturated, heavier, warmer
+                          filter: 'sepia(1) saturate(2.2) hue-rotate(350deg) brightness(0.98) contrast(1.1)',
+                          dropShadow: `0 0 10px rgba(${VAULT_GOLD.rgb} / 0.18)`,
                         }}
                       />
                     </span>
                   </span>
 
                   <div className="leading-tight">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-amber-200/90">XPOT token</p>
+                    <p
+                      className="text-[10px] uppercase tracking-[0.24em]"
+                      style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.85)` }}
+                    >
+                      XPOT token
+                    </p>
                     <p className="text-xs text-slate-300">Winners paid in XPOT</p>
                   </div>
                 </div>
 
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-black/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+                <span
+                  className="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                  style={{
+                    border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)`,
+                    color: `rgba(${VAULT_GOLD.rgb} / 0.86)`,
+                  }}
+                >
                   <Sparkles className="h-3.5 w-3.5 opacity-90" />
                   Verified
                 </span>
@@ -1108,17 +1162,31 @@ export default function JackpotPanel({
                 </p>
               </div>
 
-              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-amber-300/20 bg-black/25">
-                <Crown className="h-4 w-4 text-amber-200/80" />
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25"
+                style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` }}
+              >
+                <Crown className="h-4 w-4 opacity-90" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.78)` }} />
               </span>
             </div>
 
             <div className="mt-3">
               <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
-                <div className="absolute inset-0 opacity-[0.50] bg-[radial-gradient(circle_at_20%_50%,rgba(251,191,36,0.16),transparent_55%),radial-gradient(circle_at_70%_50%,rgba(59,167,255,0.14),transparent_60%)]" />
                 <div
-                  className="absolute left-0 top-0 h-full rounded-full bg-[linear-gradient(90deg,rgba(251,191,36,0.45),rgba(124,200,255,0.70))] shadow-[0_0_18px_rgba(59,167,255,0.18)]"
-                  style={{ width: `${Math.round((progressToNext ?? 0) * 100)}%` }}
+                  className="absolute inset-0 opacity-[0.45]"
+                  style={{
+                    background: `
+                      radial-gradient(circle_at_20%_50%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 56%),
+                      radial-gradient(circle_at_70%_50%, rgba(59,167,255,0.12), transparent 62%)
+                    `,
+                  }}
+                />
+                <div
+                  className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.16)]"
+                  style={{
+                    width: `${Math.round((progressToNext ?? 0) * 100)}%`,
+                    background: `linear-gradient(90deg, rgba(${VAULT_GOLD.rgb} / 0.38), rgba(124,200,255,0.66))`,
+                  }}
                 />
               </div>
 
