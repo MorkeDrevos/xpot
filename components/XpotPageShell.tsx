@@ -25,6 +25,10 @@ type XpotPageShellProps = {
   topBarClassName?: string;
   topBarProps?: ComponentProps<typeof XpotTopBar>;
 
+  /**
+   * Deprecated: previously rendered the "xpot-atmosphere" overlay (stars).
+   * We keep the prop so existing call sites don't break, but the stars layer is removed.
+   */
   showAtmosphere?: boolean;
 
   // Keep your existing feature
@@ -144,10 +148,16 @@ export default function XpotPageShell({
   showTopBar = true,
   topBarClassName = '',
   topBarProps,
-  showAtmosphere = true,
+
+  // keep prop for compatibility (no longer renders stars)
+  showAtmosphere,
+
   showOpsThemeSwitcher = true,
   pageTag,
 }: XpotPageShellProps) {
+  // "showAtmosphere" kept only so existing callers don't break
+  void showAtmosphere;
+
   const pathname = usePathname();
 
   const inferredTag = useMemo(() => {
@@ -185,7 +195,7 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {showAtmosphere && <div aria-hidden className="xpot-atmosphere" />}
+      {/* ✅ Atmosphere (stars) removed */}
 
       {/* ✅ Full-bleed content slot (edge-to-edge hero). No padding added here on purpose. */}
       {fullBleedTop ? <div className="relative z-10 w-full">{fullBleedTop}</div> : null}
