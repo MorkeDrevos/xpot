@@ -164,7 +164,7 @@ function Pill({
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${map[tone]}`}
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 leading-none text-[10px] font-semibold uppercase tracking-[0.18em] ${map[tone]}`}
     >
       {children}
     </span>
@@ -305,11 +305,9 @@ function shortenAddress(addr: string, left = 6, right = 6) {
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
 
-function getSolscanTokenUrl(mint: string) {
-  const base = `https://solscan.io/token/${mint}`;
-  if (!SOLANA_CLUSTER) return base;
-  if (SOLANA_CLUSTER === 'devnet') return `${base}?cluster=devnet`;
-  return base;
+function getJupiterSwapUrl(mint: string) {
+  // Jupiter is mainnet-focused. If you're on devnet, you can still keep this as a "future ready" CTA.
+  return `https://jup.ag/swap/SOL-${mint}`;
 }
 
 function RoyalContractBar({ mint }: { mint: string }) {
@@ -395,31 +393,22 @@ function RoyalContractBar({ mint }: { mint: string }) {
       </div>
 
       <Link
-        href={getSolscanTokenUrl(mint)}
+        href={getJupiterSwapUrl(mint)}
         target="_blank"
         className={`
           inline-flex items-center gap-2 rounded-full
-          border border-[rgba(var(--xpot-gold),0.18)] bg-slate-950/55
-          px-3.5 py-2 text-[11px] text-slate-200
-          hover:bg-slate-900/60 transition
+          border border-emerald-400/25 bg-emerald-500/10
+          px-3.5 py-2 text-[11px] font-semibold text-emerald-200
+          hover:bg-emerald-500/15 hover:text-emerald-100
+          shadow-[0_18px_60px_rgba(16,185,129,0.14)]
+          transition
         `}
-        title="Open in Solscan"
+        title="Buy XPOT on Jupiter"
       >
-        Explorer
-        <ExternalLink className={`h-4 w-4 text-[rgba(var(--xpot-gold-2),0.70)]`} />
+        Buy XPOT
+        <ExternalLink className="h-4 w-4 text-emerald-200/80" />
       </Link>
     </div>
-  );
-}
-
-function RunwayPill() {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.16)]">
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10">
-        <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
-      </span>
-      BUILT WITH A 10-YEAR REWARDS RUNWAY AT LAUNCH
-    </span>
   );
 }
 
@@ -854,9 +843,7 @@ function HomePageInner() {
           50% { background-position: 120px 80px, -90px 60px; opacity: 0.07; }
           100% { background-position: 0px 0px, 0px 0px; opacity: 0.11; }
         }
-        .xpot-hero-cockpit {
-          position: relative;
-        }
+        .xpot-hero-cockpit { position: relative; }
         .xpot-hero-cockpit::before {
           content: "";
           pointer-events: none;
@@ -929,9 +916,7 @@ function HomePageInner() {
             0 0 28px rgba(59,167,255,0.10),
             0 0 42px rgba(var(--xpot-gold),0.08);
         }
-        .xpot-hero-cockpit:hover .xpot-hero-edgeglow {
-          opacity: 1;
-        }
+        .xpot-hero-cockpit:hover .xpot-hero-edgeglow { opacity: 1; }
       `}</style>
 
       <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+18px)]" />
@@ -967,6 +952,7 @@ function HomePageInner() {
                 {/* LEFT */}
                 <div className="flex flex-col justify-between gap-6">
                   <div className="space-y-5">
+                    {/* Pills: reduced to 3 (cleaner, premium) */}
                     <div className="flex flex-wrap items-center gap-2">
                       <Pill tone="sky">
                         <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
@@ -982,13 +968,14 @@ function HomePageInner() {
                         <Timer className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
                         Next draw {countdown}
                       </Pill>
+                    </div>
 
-                      <TinyTooltip label="XPOT amounts are token-native. $ is shown only for USD estimates.">
-                        <Pill tone="slate">
-                          <span className="h-1.5 w-1.5 rounded-full bg-white/35 shadow-[0_0_10px_rgba(255,255,255,0.22)]" />
-                          {XPOT_SIGN} = XPOT
-                        </Pill>
-                      </TinyTooltip>
+                    {/* Tiny legend (replaces the extra pill that looked off-height) */}
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <span className="font-mono text-slate-300">{XPOT_SIGN}</span>
+                      <span>denotes XPOT amounts (USD shown only for estimates)</span>
+                      <span className="text-slate-700">•</span>
+                      <span className="text-slate-600">{cutoffLabel}</span>
                     </div>
 
                     {/* PREMIUM UPGRADE: left hero module now includes a live X lobby strip */}
@@ -1021,10 +1008,19 @@ function HomePageInner() {
                         Built to scale into a rewards ecosystem for communities, creators and sponsors.
                       </p>
 
+                      {/* Runway: no big pill (cleaner). Keep info tooltip. */}
                       <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
-                        <RunwayPill />
+                        <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-400/15 bg-emerald-500/5 px-4 py-2">
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-400/20 bg-emerald-500/10">
+                            <ShieldCheck className="h-4 w-4 text-emerald-200" />
+                          </span>
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.20em] text-emerald-200/80">
+                            Built with a 10-year rewards runway at launch
+                          </span>
+                        </div>
+
                         <TinyTooltip label="Runway = the rewards pool is designed to sustain daily payouts at launch. Exact mechanics can evolve, but payouts remain verifiable on-chain.">
-                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition">
+                          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition">
                             <Info className="h-4 w-4" />
                           </span>
                         </TinyTooltip>
@@ -1043,11 +1039,11 @@ function HomePageInner() {
                         <SectionDividerLabel label="Entry mechanics" />
                       </div>
 
-                      {/* BONUS */}
+                      {/* BONUS (aligned + more premium) */}
                       <div className="relative z-10 mt-3">
                         <div className="relative">
                           <div className="pointer-events-none absolute -inset-10 opacity-75 blur-2xl bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]" />
-                          <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.12)]">
+                          <div className="relative rounded-[28px] border border-emerald-400/18 bg-slate-950/55 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.10)]">
                             <div className="mb-2 flex items-center justify-between px-2">
                               <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
                                 <span className="relative flex h-2 w-2">
@@ -1056,7 +1052,10 @@ function HomePageInner() {
                                 </span>
                                 Bonus XPOT
                               </span>
-                              <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">same entry</span>
+
+                              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                                Same entry
+                              </span>
                             </div>
 
                             <BonusStrip variant="home" />
@@ -1064,7 +1063,7 @@ function HomePageInner() {
                         </div>
                       </div>
 
-                      {/* CA bar */}
+                      {/* CA bar (now: Copy + Buy XPOT on Jupiter) */}
                       <div className="relative z-10 mt-4">
                         <RoyalContractBar mint={mint} />
                       </div>
@@ -1073,14 +1072,6 @@ function HomePageInner() {
                         <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
                           Enter today&apos;s XPOT
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                        </Link>
-
-                        <Link
-                          href={ROUTE_TERMS}
-                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm text-slate-200 hover:bg-white/[0.06] transition"
-                        >
-                          Terms
-                          <ExternalLink className="h-4 w-4 text-slate-400" />
                         </Link>
                       </div>
 
@@ -1467,6 +1458,14 @@ function HomePageInner() {
             >
               <Lock className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
               Ops
+              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+            </Link>
+
+            <Link
+              href={ROUTE_TERMS}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
+            >
+              Terms
               <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
             </Link>
 
