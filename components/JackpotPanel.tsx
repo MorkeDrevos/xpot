@@ -588,16 +588,19 @@ export default function JackpotPanel({
   }, [layout]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem(sessionKey);
-    if (stored) {
-      const num = Number(stored);
-      if (!Number.isNaN(num)) setMaxJackpotToday(num);
-      else setMaxJackpotToday(null);
-    } else {
-      setMaxJackpotToday(null);
-    }
-  }, [sessionKey]);
+  if (typeof window === 'undefined') return;
+  if (!mounted) return;
+  if (sessionKey.endsWith('_boot')) return;
+
+  const stored = window.localStorage.getItem(sessionKey);
+  if (stored) {
+    const num = Number(stored);
+    if (!Number.isNaN(num)) setMaxJackpotToday(num);
+    else setMaxJackpotToday(null);
+  } else {
+    setMaxJackpotToday(null);
+  }
+}, [sessionKey, mounted]);
 
   // Listen for the shared countdown broadcast (from app/page.tsx NextDrawProvider)
   useEffect(() => {
@@ -828,7 +831,7 @@ export default function JackpotPanel({
     return next;
   });
 }
-  }, [jackpotUsd, sessionKey, onJackpotUsdChange]);
+  }, [jackpotUsd, sessionKey, onJackpotUsdChange, mounted]);
 
   // Soft USD drift animation for the big number (stale-safe)
 const displayRef = useRef<number | null>(null);
