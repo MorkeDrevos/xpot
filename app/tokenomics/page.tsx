@@ -126,6 +126,13 @@ function toneGlow(tone: PillTone) {
   return 'rgba(148,163,184,0.16)';
 }
 
+function toneRing(tone: PillTone) {
+  if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
+  if (tone === 'sky') return 'rgba(56,189,248,0.20)';
+  if (tone === 'amber') return 'rgba(245,158,11,0.20)';
+  return 'rgba(148,163,184,0.18)';
+}
+
 // /api/vaults exact schema
 type ApiVaultTx = {
   signature: string;
@@ -348,7 +355,9 @@ function VaultGroupPanel({
 
                   <div className="text-right">
                     <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">XPOT balance</p>
-                    <p className="mt-1 font-mono text-sm text-slate-100">{ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}</p>
+                    <p className="mt-1 font-mono text-sm text-slate-100">
+                      {ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}
+                    </p>
                     <p className="mt-1 text-[11px] text-slate-600">{decimals != null ? `Decimals: ${decimals}` : null}</p>
                   </div>
                 </div>
@@ -607,14 +616,15 @@ function DonutAllocation({
                 key={a.key}
                 ref={getCardRef(a.key)}
                 className={[
-                  'scroll-mt-28 rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
-                  // ✅ stronger selected border (img1)
-                  isSelected ? 'border-white/15 ring-1 ring-white/10' : 'border-slate-900/70',
+                  // ✅ "opens in front of you": scroll margin + we scroll with block:start
+                  'scroll-mt-32 rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
+                  // ✅ chosen tab border more obvious (tone-aware)
+                  isSelected ? 'border-white/20 ring-1 ring-white/10' : 'border-slate-900/70',
                 ].join(' ')}
                 style={
                   isSelected
                     ? {
-                        boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 18px 70px rgba(0,0,0,0.35), 0 0 28px ${glow}`,
+                        boxShadow: `0 0 0 1px rgba(255,255,255,0.10), 0 18px 70px rgba(0,0,0,0.35), 0 0 36px ${toneRing(a.tone)}`,
                       }
                     : undefined
                 }
@@ -868,11 +878,11 @@ export default function TokenomicsPage() {
     cardRefs.current[key] = el;
   };
 
+  // ✅ "opens in front of you" (no extra jumpy scrollBy hacks)
   const scrollToCard = (key: string) => {
     const el = cardRefs.current[key];
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.setTimeout(() => window.scrollBy({ top: -18, behavior: 'smooth' }), 50);
   };
 
   // ✅ scroll only when the intended panel is actually open
@@ -942,9 +952,8 @@ export default function TokenomicsPage() {
                 </h1>
 
                 <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and
-                  outcomes can be checked on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into
-                  with confidence.
+                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes
+                  can be checked on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into with confidence.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -958,49 +967,60 @@ export default function TokenomicsPage() {
                   <span className="text-[11px] text-slate-500">Allocation prioritises distribution, resilience and long-term execution.</span>
                 </div>
 
+                {/* ✅ less messy: three clean tiles, and “Token controls” becomes 3 mini-boxes */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply (fixed)</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
                     <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
-                    <p className="mt-1 text-xs text-slate-500">XPOT minted</p>
+                    <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
                   </div>
 
-                  {/* ✅ add freeze authority line + clearer grouping */}
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
-
-                    <p className="mt-2 flex items-center gap-2 font-mono text-lg font-semibold leading-none text-slate-100">
-                      <ShieldCheck className="h-4 w-4 text-sky-300" />
-                      Authority revoked
-                    </p>
-
-                    <div className="mt-2 space-y-1.5 text-xs text-slate-500">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-slate-500">Mint</span>
-                        <span className="font-medium text-slate-300">Revoked</span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
+                        <p className="mt-2 flex items-center gap-2 font-mono text-lg font-semibold leading-none text-slate-100">
+                          <ShieldCheck className="h-4 w-4 text-sky-300" />
+                          Authority revoked
+                        </p>
                       </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-slate-500">Freeze</span>
-                        <span className="font-medium text-slate-300">Revoked</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-slate-500">Supply</span>
-                        <span className="font-medium text-slate-300">Fixed</span>
-                      </div>
+                      <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200">
+                        Locked
+                      </span>
                     </div>
 
-                    <p className="mt-2 text-xs text-slate-500">No further supply can be minted or frozen</p>
+                    {/* ✅ 3 boxes (Mint / Freeze / Supply) */}
+                    <div className="mt-3 grid gap-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Freeze</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-200">Fixed</p>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-500">No further supply can be minted or frozen</p>
+                    </div>
                   </div>
 
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve (designated)</p>
-                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</p>
-                    <p className="mt-1 text-xs text-slate-500">Held in the protocol reserve wallet</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve</p>
+                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">
+                      {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">Designated reserve wallet</p>
                   </div>
                 </div>
               </div>
 
-              {/* Right side snapshot (improved “belongs to what” clarity) */}
+              {/* Right side snapshot (clear “belongs to what”) */}
               <div className="hidden lg:block lg:col-span-4">
                 <div className="h-full">
                   <div className="relative h-full rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur">
@@ -1157,8 +1177,8 @@ export default function TokenomicsPage() {
                   Eligibility
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent, with clear rules
-                  and verifiable outcomes.
+                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent, with clear rules and
+                  verifiable outcomes.
                 </p>
               </div>
 
@@ -1168,8 +1188,8 @@ export default function TokenomicsPage() {
                   Status and reputation
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future
-                  perks and sponsor drops.
+                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future perks
+                  and sponsor drops.
                 </p>
               </div>
 
@@ -1179,8 +1199,8 @@ export default function TokenomicsPage() {
                   Sponsor-funded rewards
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system
-                  scales without pay-to-enter mechanics.
+                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales
+                  without pay-to-enter mechanics.
                 </p>
               </div>
 
@@ -1190,8 +1210,8 @@ export default function TokenomicsPage() {
                   Verifiability edge
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public wallets and simple
-                  rules you can check.
+                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public wallets and simple rules
+                  you can check.
                 </p>
               </div>
             </div>
@@ -1202,8 +1222,8 @@ export default function TokenomicsPage() {
           <div className="relative z-10 p-6 lg:p-8">
             <p className="text-sm font-semibold text-slate-100">Long-term: why this can matter</p>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
-              The endgame is a protocol that communities and brands can plug into for daily distributions, with identity and verification built
-              in from day one.
+              The endgame is a protocol that communities and brands can plug into for daily distributions, with identity and verification built in from
+              day one.
             </p>
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -1240,7 +1260,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v17</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v18</span>
         </div>
       </footer>
     </XpotPageShell>
