@@ -423,17 +423,18 @@ function PublicNavCenter({
         </button>
 
         {learnOpen && (
-          <>
-            {/* Backdrop under the menu, over the divider */}
-            <button
-              type="button"
-              aria-label="Close"
-              className="fixed inset-0 z-[75] cursor-default"
-              onClick={() => setLearnOpen(false)}
-            />
-            {/* Menu above everything in the header (incl divider) */}
-            <div className="absolute left-1/2 z-[76] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
-              <div className="p-2">
+  <>
+    {/* Outside click catcher (must be ABOVE page chrome) */}
+    <button
+      type="button"
+      aria-label="Close learn menu"
+      className="fixed inset-0 z-[90] cursor-default"
+      onMouseDown={() => setLearnOpen(false)}
+    />
+
+    {/* Menu */}
+    <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+      <div className="p-2">
                 <Link
                   href={TOKENOMICS_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
