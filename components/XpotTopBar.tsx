@@ -141,20 +141,21 @@ export default function XpotTopBar({
 
   return (
     <header ref={headerRef} className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
-      <div className="border-b border-white/5 bg-black/70 backdrop-blur-md">
+      {/* Topbar block ABOVE the divider so dropdown always wins stacking */}
+      <div className="relative z-[80] border-b border-white/5 bg-black/70 backdrop-blur-md">
         <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
           <div className="flex min-h-[104px] items-center gap-4">
             {/* LEFT: Logo + optional pill */}
             <div className="flex min-w-0 items-center gap-4">
               <Link href={logoHref} className="flex shrink-0 items-center gap-3">
-  <XpotLogo
-    variant="light"
-    width={460}
-    height={120}
-    priority
-    className="h-[92px] max-h-[92px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
-  />
-</Link>
+                <XpotLogo
+                  variant="light"
+                  width={460}
+                  height={120}
+                  priority
+                  className="h-[92px] max-h-[92px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
+                />
+              </Link>
 
               {/* Optional pill/slogan (public only) */}
               {!isHub && (
@@ -178,11 +179,7 @@ export default function XpotTopBar({
               {isHub ? (
                 <HubNavCenter liveIsOpen={liveIsOpen} />
               ) : (
-                <PublicNavCenter
-                  liveIsOpen={liveIsOpen}
-                  learnOpen={learnOpen}
-                  setLearnOpen={setLearnOpen}
-                />
+                <PublicNavCenter liveIsOpen={liveIsOpen} learnOpen={learnOpen} setLearnOpen={setLearnOpen} />
               )}
             </div>
 
@@ -218,8 +215,8 @@ export default function XpotTopBar({
         </div>
       </div>
 
-      {/* Premium divider */}
-      <div className="relative h-[1px] w-full overflow-hidden">
+      {/* Premium divider - LOWER z so it never draws above dropdown */}
+      <div className="relative z-[10] h-[1px] w-full overflow-hidden">
         <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.10),rgba(56,189,248,0.55),rgba(56,189,248,0.10))]" />
       </div>
 
@@ -291,12 +288,8 @@ function OfficialCAChip() {
 
       {/* Label + CA */}
       <div className="relative z-10 flex flex-col leading-none pr-1">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">
-          OFFICIAL CA
-        </span>
-        <span className="mt-1 font-mono text-[12px] text-slate-100/95">
-          {addrShort}
-        </span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">OFFICIAL CA</span>
+        <span className="mt-1 font-mono text-[12px] text-slate-100/95">{addrShort}</span>
       </div>
 
       {/* Between CA + copy: new subtle “verified capsule” instead of a divider line */}
@@ -362,15 +355,11 @@ function NavLink({
   title?: string;
   external?: boolean;
 }) {
+  // ✅ Add consistent vertical rhythm so "Learn" matches Hub/Live baseline
   const base =
-    'inline-flex items-center gap-2 text-[13px] font-semibold text-slate-200/80 hover:text-white transition';
+    'inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition';
   return (
-    <Link
-      href={href}
-      title={title}
-      className={`${base} ${className}`}
-      target={external ? '_blank' : undefined}
-    >
+    <Link href={href} title={title} className={`${base} ${className}`} target={external ? '_blank' : undefined}>
       {children}
     </Link>
   );
@@ -425,7 +414,7 @@ function PublicNavCenter({
         <button
           type="button"
           onClick={() => setLearnOpen(!learnOpen)}
-          className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-200/80 hover:text-white transition"
+          className="inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition"
           aria-haspopup="menu"
           aria-expanded={learnOpen}
         >
@@ -435,13 +424,15 @@ function PublicNavCenter({
 
         {learnOpen && (
           <>
+            {/* Backdrop under the menu, over the divider */}
             <button
               type="button"
               aria-label="Close"
-              className="fixed inset-0 z-[60] cursor-default"
+              className="fixed inset-0 z-[75] cursor-default"
               onClick={() => setLearnOpen(false)}
             />
-            <div className="absolute left-1/2 z-[61] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+            {/* Menu above everything in the header (incl divider) */}
+            <div className="absolute left-1/2 z-[76] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
               <div className="p-2">
                 <Link
                   href={TOKENOMICS_HREF}
@@ -505,10 +496,7 @@ function PublicRight({ liveIsOpen }: { liveIsOpen: boolean }) {
         Live
       </NavPill>
 
-      <Link
-        href="/hub"
-        className="rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-black hover:bg-slate-200"
-      >
+      <Link href="/hub" className="rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-black hover:bg-slate-200">
         Enter today&apos;s XPOT →
       </Link>
     </div>
@@ -706,11 +694,17 @@ function MobileMenu({
         </div>
 
         <div className="space-y-2 px-5 py-5">
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href="/hub"
+          >
             Hub
           </Link>
 
-          <Link className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub/live">
+          <Link
+            className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href="/hub/live"
+          >
             <span className="inline-flex items-center gap-2">
               <LiveDot isOpen={liveIsOpen} />
               Live
@@ -718,28 +712,41 @@ function MobileMenu({
             <Radio className="h-4 w-4 text-emerald-300" />
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={TOKENOMICS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <PieChart className="h-4 w-4 text-emerald-300" />
               Tokenomics
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={ROADMAP_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Map className="h-4 w-4 text-sky-300" />
               Roadmap
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={WINNERS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-300" />
               Winners
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={XPOT_X_POST} target="_blank">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={XPOT_X_POST}
+            target="_blank"
+          >
             <span className="inline-flex items-center gap-2">
               <ExternalLink className="h-4 w-4" />
               Official X
@@ -766,7 +773,10 @@ function MobileMenu({
           )}
 
           <div className="pt-3">
-            <Link href="/hub" className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200">
+            <Link
+              href="/hub"
+              className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
+            >
               Enter today&apos;s XPOT →
             </Link>
           </div>
