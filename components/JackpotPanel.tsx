@@ -171,10 +171,7 @@ function formatCountdown(ms: number) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const ss = s % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(
-    2,
-    '0',
-  )}:${String(ss).padStart(2, '0')}`;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
 }
 
 // Milestone ladder for highlights (USD) - start at $5
@@ -372,30 +369,21 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
   return (
     <div
       ref={t.ref}
-      className="relative inline-flex items-center gap-2"
+      className="relative inline-flex items-center"
       onMouseEnter={() => t.setOpen(true)}
       onMouseLeave={() => t.setOpen(false)}
     >
-      <span
-        className={
-          compact
-  ? 'inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/50 bg-black/20 text-slate-400 hover:text-slate-200 transition'
-            : 'inline-flex items-center rounded-full border border-slate-700/70 bg-black/25 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200'
-        }
-      >
-        USD estimate
-      </span>
-
       <button
         type="button"
         aria-label="USD estimate info"
         className={
           compact
-  ? 'inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/50 bg-black/20 text-slate-400 hover:text-slate-200 transition'
-            : 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/25 text-slate-200 hover:bg-slate-900/50 hover:text-white transition'
+            ? 'inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/50 bg-black/20 text-slate-400 hover:text-slate-200 transition'
+            : 'inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 hover:bg-slate-900/40 transition'
         }
       >
         <Info className={compact ? 'h-3.5 w-3.5 opacity-90' : 'h-4 w-4 opacity-90'} />
+        {!compact && <span>USD estimate</span>}
       </button>
 
       <TooltipBubble open={t.open} rect={t.rect} width={380}>
@@ -952,7 +940,13 @@ export default function JackpotPanel({
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
   return (
-    <section className={`relative transition-colors duration-300 ${panelChrome}`}>
+    <section className={`relative overflow-hidden transition-colors duration-300 ${panelChrome}`}>
+      {/* subtle “breathing” atmosphere behind everything */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="xpot-breathe-a absolute inset-0 opacity-70" />
+        <div className="xpot-breathe-b absolute inset-0 opacity-55" />
+      </div>
+
       {!!badgeLabel && (
         <div
           className={[
@@ -988,10 +982,11 @@ export default function JackpotPanel({
         {/* Marketing row */}
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
+            {/* ✅ FIXED: proper closing tags */}
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
-  Today’s XPOT
-</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
+              Today&apos;s XPOT
+            </span>
 
             <span
               className="relative inline-flex items-baseline rounded-2xl bg-black/55 px-6 py-2 font-mono text-xl tracking-[0.22em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_18px_50px_rgba(0,0,0,0.40)]"
@@ -1006,7 +1001,6 @@ export default function JackpotPanel({
               />
               <span className="relative">{poolLabel}</span>
             </span>
-
           </div>
 
           <div className="flex items-center gap-2">
@@ -1051,11 +1045,9 @@ export default function JackpotPanel({
               </div>
 
               <div className="mb-2 flex items-center gap-2">
-  <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
-    USD estimate
-  </span>
-  <UsdEstimateBadge compact />
-</div>
+                <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">USD estimate</span>
+                <UsdEstimateBadge compact />
+              </div>
             </div>
 
             {/* countdown */}
@@ -1316,11 +1308,69 @@ export default function JackpotPanel({
             Live price not available yet - auto-populates when DexScreener sees a pair.
           </p>
         ) : (
-          <p className="mt-3 text-[11px] text-slate-500">
-            Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s
-          </p>
+          <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes xpotBreathA {
+          0% {
+            transform: translate3d(-2%, -2%, 0) scale(1);
+            opacity: 0.55;
+            filter: blur(26px);
+          }
+          50% {
+            transform: translate3d(2%, 1%, 0) scale(1.05);
+            opacity: 0.78;
+            filter: blur(30px);
+          }
+          100% {
+            transform: translate3d(-2%, -2%, 0) scale(1);
+            opacity: 0.55;
+            filter: blur(26px);
+          }
+        }
+
+        @keyframes xpotBreathB {
+          0% {
+            transform: translate3d(2%, 1%, 0) scale(1);
+            opacity: 0.45;
+            filter: blur(32px);
+          }
+          50% {
+            transform: translate3d(-1%, -2%, 0) scale(1.06);
+            opacity: 0.7;
+            filter: blur(36px);
+          }
+          100% {
+            transform: translate3d(2%, 1%, 0) scale(1);
+            opacity: 0.45;
+            filter: blur(32px);
+          }
+        }
+
+        .xpot-breathe-a {
+          background: radial-gradient(circle at 20% 25%, rgba(56, 189, 248, 0.14), transparent 55%),
+            radial-gradient(circle at 70% 30%, rgba(236, 72, 153, 0.1), transparent 60%),
+            radial-gradient(circle at 45% 80%, rgba(201, 162, 74, 0.08), transparent 62%);
+          animation: xpotBreathA 9.5s ease-in-out infinite;
+        }
+
+        .xpot-breathe-b {
+          background: radial-gradient(circle at 80% 40%, rgba(56, 189, 248, 0.1), transparent 60%),
+            radial-gradient(circle at 30% 65%, rgba(236, 72, 153, 0.08), transparent 62%),
+            radial-gradient(circle at 55% 20%, rgba(201, 162, 74, 0.07), transparent 58%);
+          animation: xpotBreathB 12.5s ease-in-out infinite;
+          mix-blend-mode: screen;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-breathe-a,
+          .xpot-breathe-b {
+            animation: none;
+          }
+        }
+      `}</style>
     </section>
   );
 }
