@@ -1,5 +1,6 @@
 // components/JackpotPanel.tsx
 'use client';
+
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
@@ -68,9 +69,41 @@ function formatCoverage(ms: number) {
   return `${h}h ${String(m).padStart(2, '0')}m`;
 }
 
+function formatCountdown(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
 /**
- * "Session" key that flips at 22:00 Madrid time.
+ * Madrid helpers
+ * - Session key flips at 22:00 Madrid.
+ * - Countdown must respect Madrid DST (CET/CEST).
  */
+
+function madridOffsetMinutesFor(utcMs: number) {
+  // Produces a "GMT+1" / "GMT+2" style token we can parse.
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Madrid',
+    timeZoneName: 'shortOffset',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(utcMs));
+
+  const tz = parts.find(p => p.type === 'timeZoneName')?.value ?? 'GMT';
+  // Examples: "GMT+1", "GMT+02:00", "UTC+1"
+  const m = tz.match(/([+-])(\d{1,2})(?::?(\d{2}))?/i);
+  if (!m) return 0;
+
+  const sign = m[1] === '-' ? -1 : 1;
+  const hh = Number(m[2] ?? 0);
+  const mm = Number(m[3] ?? 0);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return 0;
+  return sign * (hh * 60 + mm);
+}
+
 function getMadridSessionKey(cutoffHour = 22) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Madrid',
@@ -86,6 +119,7 @@ function getMadridSessionKey(cutoffHour = 22) {
   const day = Number(parts.find(p => p.type === 'day')?.value ?? '1');
   const hour = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
 
+  // Session "day" base is Madrid's calendar day; flip after cutoffHour.
   const base = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
   if (hour >= cutoffHour) base.setUTCDate(base.getUTCDate() + 1);
 
@@ -95,8 +129,9 @@ function getMadridSessionKey(cutoffHour = 22) {
   return `${y}${m}${d}`;
 }
 
-// Returns the next cutoff moment (22:00 Madrid) as a real Date in local JS time
 function getNextMadridCutoff(cutoffHour = 22) {
+  const now = Date.now();
+
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Madrid',
     year: 'numeric',
@@ -104,24 +139,33 @@ function getNextMadridCutoff(cutoffHour = 22) {
     day: '2-digit',
     hour: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(new Date());
+  }).formatToParts(new Date(now));
 
   const year = Number(parts.find(p => p.type === 'year')?.value ?? '0');
   const month = Number(parts.find(p => p.type === 'month')?.value ?? '1');
   const day = Number(parts.find(p => p.type === 'day')?.value ?? '1');
   const hour = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
 
-  const baseUtc = new Date(Date.UTC(year, month - 1, day, cutoffHour, 0, 0, 0));
-  if (hour >= cutoffHour) baseUtc.setUTCDate(baseUtc.getUTCDate() + 1);
-  return baseUtc;
-}
+  // Target Madrid calendar day = today unless we already passed cutoffHour in Madrid.
+  const targetDayUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  if (hour >= cutoffHour) targetDayUtc.setUTCDate(targetDayUtc.getUTCDate() + 1);
 
-function formatCountdown(ms: number) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  // We want "targetDay at cutoffHour in Madrid", converted to a real UTC instant.
+  // Start with a naive UTC ms and subtract Madrid offset at that instant.
+  const naiveUtcMs = Date.UTC(
+    targetDayUtc.getUTCFullYear(),
+    targetDayUtc.getUTCMonth(),
+    targetDayUtc.getUTCDate(),
+    cutoffHour,
+    0,
+    0,
+    0,
+  );
+
+  const offMin = madridOffsetMinutesFor(naiveUtcMs);
+  const utcMs = naiveUtcMs - offMin * 60_000;
+
+  return new Date(utcMs);
 }
 
 // Milestone ladder for highlights (USD) - start at $5
@@ -423,7 +467,9 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           </button>
 
           <TooltipBubble open={t.open} rect={t.rect} width={340}>
-            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">{tooltip}</div>
+            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
+              {tooltip}
+            </div>
           </TooltipBubble>
         </>
       )}
@@ -476,7 +522,7 @@ export default function JackpotPanel({
   // Premium runway fade-in (after price loads)
   const [showRunway, setShowRunway] = useState(false);
 
-  // Sexy countdown
+  // Countdown to next 22:00 Madrid (DST-correct)
   const [countdownMs, setCountdownMs] = useState<number>(() => {
     const next = getNextMadridCutoff(22).getTime();
     return Math.max(0, next - Date.now());
@@ -484,6 +530,29 @@ export default function JackpotPanel({
 
   // Micro pulse on every countdown tick
   const [countPulse, setCountPulse] = useState(false);
+
+  // Responsive "auto" layout -> wide at lg breakpoint
+  const [autoWide, setAutoWide] = useState(false);
+
+  useEffect(() => {
+    if (layout !== 'auto') return;
+    if (typeof window === 'undefined') return;
+
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const apply = () => setAutoWide(!!mq.matches);
+    apply();
+
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', apply);
+      return () => mq.removeEventListener('change', apply);
+    }
+
+    // Safari fallback
+    mq.addListener(apply);
+    return () => mq.removeListener(apply);
+  }, [layout]);
+
+  const isWide = layout === 'wide' || (layout === 'auto' && autoWide);
 
   // Session key for "highest this session" (22:00 Madrid cut)
   const sessionKey = useMemo(() => `xpot_max_session_usd_${getMadridSessionKey(22)}`, []);
@@ -823,8 +892,6 @@ export default function JackpotPanel({
   const localSparkLabel =
     sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
 
-  const isWide = layout === 'wide';
-
   const globalMomentumText =
     momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '-' : `${momentumGlobalH1.toFixed(2)}%`;
 
@@ -887,9 +954,7 @@ export default function JackpotPanel({
             {/* vault gold tuning */}
             <span
               className="relative inline-flex items-baseline rounded-2xl bg-black/45 px-5 py-2 font-mono text-lg tracking-[0.20em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_20px_60px_rgba(0,0,0,0.35)]"
-              style={{
-                border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.18)`,
-              }}
+              style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.18)` }}
             >
               <span
                 className="pointer-events-none absolute inset-0 rounded-2xl opacity-60"
@@ -937,12 +1002,10 @@ export default function JackpotPanel({
             {/* subtle premium sheen */}
             <div
               className="pointer-events-none absolute -inset-x-2 -top-2 h-10 opacity-50"
-              style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
-              }}
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)' }}
             />
 
-            {/* sexy countdown */}
+            {/* countdown */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <span
                 className={`
@@ -972,9 +1035,9 @@ export default function JackpotPanel({
             <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
           </div>
 
-          {/* Royal XPOT meta (credit card feel + private-vault gold) */}
+          {/* Royal XPOT meta */}
           <div
-            className="relative overflow-hidden rounded-2xl bg-[linear-gradient(180deg,rgba(2,6,23,0.35),rgba(15,23,42,0.0))] px-5 py-4 min-h-[170px]"
+            className="relative min-h-[170px] overflow-hidden rounded-2xl bg-[linear-gradient(180deg,rgba(2,6,23,0.35),rgba(15,23,42,0.0))] px-5 py-4"
             style={{
               border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)`,
               boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.02)`,
@@ -991,28 +1054,23 @@ export default function JackpotPanel({
               }}
             />
 
-            {/* card sheen (dialed down) */}
             <div
               className="pointer-events-none absolute -inset-x-10 -top-10 h-28 rotate-[-8deg] opacity-[0.22]"
-              style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
-              }}
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }}
             />
 
             <div className="relative flex h-full flex-col">
-              {/* Top row (nudged down, like a card) */}
-              <div className="pt-2 flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-3 pt-2">
                 <div className="flex items-center gap-2">
-                  {/* XPOT icon circle in vault gold */}
-                 <span
-  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/25"
-  style={{
-    border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)`,
-    boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
-  }}
->
-  <XpotLogo variant="mark" width={22} height={22} tone="gold" priority />
-</span>
+                  <span
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/25"
+                    style={{
+                      border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)`,
+                      boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
+                    }}
+                  >
+                    <XpotLogo variant="mark" width={26} height={26} tone="gold" priority />
+                  </span>
 
                   <div className="leading-tight">
                     <p
@@ -1037,7 +1095,6 @@ export default function JackpotPanel({
                 </span>
               </div>
 
-              {/* Bottom block (moved down, fills space like a credit card) */}
               <div className="mt-auto pb-1 text-right">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
                 <p className="mt-1 text-sm text-slate-300">
@@ -1057,7 +1114,7 @@ export default function JackpotPanel({
           </div>
         </div>
 
-        {/* Compact premium telemetry strip */}
+        {/* Compact telemetry strip */}
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {/* Pulse */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
