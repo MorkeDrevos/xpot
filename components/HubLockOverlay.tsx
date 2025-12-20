@@ -3,8 +3,14 @@
 
 import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, X } from 'lucide-react';
 import { useSignIn } from '@clerk/nextjs';
+
+const BTN_PRIMARY =
+  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
+
+const BTN_GHOST =
+  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 export default function HubLockOverlay({
   open,
@@ -42,8 +48,8 @@ export default function HubLockOverlay({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Backdrop (DO NOT close on click - keep it “locked”) */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-2xl" />
+          {/* Backdrop (locked) */}
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-2xl" />
 
           {/* Card */}
           <motion.div
@@ -51,58 +57,58 @@ export default function HubLockOverlay({
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 10, scale: 0.99, opacity: 0 }}
             transition={
-              reduce
-                ? { duration: 0.15 }
-                : { type: 'spring', stiffness: 260, damping: 26 }
+              reduce ? { duration: 0.15 } : { type: 'spring', stiffness: 260, damping: 26 }
             }
             className="
               relative w-full max-w-[420px]
-              overflow-hidden
-              rounded-[28px]
-              border border-white/10
-              bg-[radial-gradient(circle_at_20%_0%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(circle_at_80%_20%,rgba(236,72,153,0.10),transparent_55%),linear-gradient(to_bottom,rgba(2,6,23,0.88),rgba(2,6,23,0.66))]
+              rounded-[26px] border border-white/10
+              bg-[linear-gradient(to_bottom,rgba(2,6,23,0.88),rgba(2,6,23,0.62))]
               shadow-[0_30px_120px_rgba(0,0,0,0.78)]
-              backdrop-blur-xl
+              overflow-hidden
             "
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* subtle highlight line */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
-            />
+            {/* Ambient glows (match wallet modal vibe) */}
+            <div className="pointer-events-none absolute -top-24 left-1/2 h-[320px] w-[320px] -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-28 left-[18%] h-[320px] w-[320px] rounded-full bg-fuchsia-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
 
-            <div className="relative p-6">
-              <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-400/90 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-200">
-                  XPOT access
-                </span>
+            <div className="relative p-5">
+              {/* Top row */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400/90 shadow-[0_0_0_4px_rgba(16,185,129,0.10)]" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-200">
+                    XPOT access
+                  </span>
+                </div>
+
+                {/* optional close - keep locked by default, but harmless */}
+                <button
+                  type="button"
+                  aria-label="Close"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+                  onClick={() => {
+                    // intentionally do nothing (locked overlay)
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
 
-              <h2 className="mt-4 text-center text-2xl font-semibold text-slate-100">
-                {title}
-              </h2>
+              {/* Title */}
+              <div className="mt-4">
+                <h2 className="text-[18px] font-semibold text-slate-100">{title}</h2>
+                <p className="mt-1 text-[12px] leading-relaxed text-slate-400">{sub}</p>
+              </div>
 
-              <p className="mx-auto mt-2 max-w-sm text-center text-sm text-slate-300">
-                {sub}
-              </p>
-
+              {/* Actions */}
               <div className="mt-5 space-y-3">
                 <button
                   type="button"
                   onClick={handleContinueWithX}
                   disabled={!isLoaded}
-                  className="
-                    w-full
-                    inline-flex items-center justify-center
-                    rounded-full
-                    bg-sky-500/90
-                    px-5 py-3
-                    text-sm font-semibold text-slate-900
-                    shadow-[0_18px_70px_rgba(56,189,248,0.25)]
-                    hover:bg-sky-500
-                    disabled:opacity-40
-                  "
+                  className={`${BTN_PRIMARY} h-11 w-full px-5 text-[13px]`}
                 >
                   {showLinkX ? 'Link X' : 'Sign in with X'}
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -110,16 +116,7 @@ export default function HubLockOverlay({
 
                 <Link
                   href="/"
-                  className="
-                    w-full
-                    inline-flex items-center justify-center
-                    rounded-full
-                    border border-white/10
-                    bg-white/[0.04]
-                    px-5 py-3
-                    text-sm font-semibold text-slate-200
-                    hover:bg-white/[0.08]
-                  "
+                  className={`${BTN_GHOST} h-11 w-full px-5 text-[13px]`}
                 >
                   Back to homepage
                 </Link>
