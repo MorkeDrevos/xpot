@@ -4,7 +4,24 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ArrowRight, Crown, ExternalLink, Flame, Gift, Lock, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
+import {
+  ArrowRight,
+  Crown,
+  ExternalLink,
+  Flame,
+  Gift,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  ListChecks,
+  Copy,
+  Wallet,
+  Hash,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
 
@@ -14,7 +31,7 @@ const ROUTE_HUB = '/hub';
 const ROUTE_TERMS = '/terms';
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-opacity-40 disabled:opacity-40';
+  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition';
@@ -118,7 +135,7 @@ type ApiVaultTx = {
 
 type ApiVaultEntry = {
   name: string;
-  address: string; // owner wallet
+  address: string; // wallet
   ata: string; // XPOT ATA
   balance:
     | {
@@ -221,12 +238,12 @@ function VaultGroupPanel({
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
+    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Live balances and recent owner wallet activity (verifiable).
+            Live balances plus latest on-chain transactions for this vault.
             {typeof data?.fetchedAt === 'number' ? (
               <span className="ml-2 text-slate-600">Updated {timeAgo(data.fetchedAt)}</span>
             ) : null}
@@ -251,7 +268,7 @@ function VaultGroupPanel({
       </div>
 
       {!entries.length ? (
-        <div className="mt-3 rounded-lg border border-slate-800/70 bg-slate-950/60 p-3">
+        <div className="mt-3 rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
           <p className="text-xs text-slate-400">
             No vaults found for <span className="font-mono text-slate-200">{groupKey}</span>.
           </p>
@@ -267,33 +284,46 @@ function VaultGroupPanel({
             const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
-              <div key={`${groupKey}:${v.address}`} className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <div key={`${groupKey}:${v.address}`} className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-100">
                       {v.name}
                       <span className="ml-2 text-xs font-normal text-slate-500">{shortAddr(v.address)}</span>
                     </p>
 
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                    {/* Wallet + ATA row (clear, not “Owner”) */}
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                        <Wallet className="h-3.5 w-3.5 text-slate-400" />
+                        Wallet
+                      </span>
+
                       <a
                         href={`https://solscan.io/account/${v.address}`}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 hover:text-slate-300 transition"
                       >
-                        Owner <ExternalLink className="h-3.5 w-3.5" />
+                        View <ExternalLink className="h-3.5 w-3.5" />
                       </a>
+
                       <button
                         type="button"
                         onClick={() => copy(v.address)}
-                        className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
-                        title="Copy owner address"
+                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
+                        title="Copy wallet address"
                       >
-                        Copy owner
+                        <Copy className="h-3.5 w-3.5 text-slate-400" />
+                        Copy
                       </button>
 
                       <span className="text-slate-700">•</span>
+
+                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                        <Hash className="h-3.5 w-3.5 text-slate-400" />
+                        Token account (ATA)
+                      </span>
 
                       <a
                         href={`https://solscan.io/account/${v.ata}`}
@@ -301,15 +331,17 @@ function VaultGroupPanel({
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 hover:text-slate-300 transition"
                       >
-                        ATA <ExternalLink className="h-3.5 w-3.5" />
+                        View <ExternalLink className="h-3.5 w-3.5" />
                       </a>
+
                       <button
                         type="button"
                         onClick={() => copy(v.ata)}
-                        className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
+                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
                         title="Copy token account (ATA)"
                       >
-                        Copy ATA
+                        <Copy className="h-3.5 w-3.5 text-slate-400" />
+                        Copy
                       </button>
                     </div>
                   </div>
@@ -321,52 +353,80 @@ function VaultGroupPanel({
                   </div>
                 </div>
 
-                <div className="mt-3">
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Recent transactions</p>
+                {/* TX section redesigned */}
+                <div className="mt-4 rounded-2xl border border-slate-800/60 bg-black/25 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.03]">
+                        <ListChecks className="h-4 w-4 text-slate-300" />
+                      </span>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Transactions</p>
+                        <p className="text-[11px] text-slate-500">Most recent on-chain signatures (Solscan)</p>
+                      </div>
+                    </div>
+
+                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                      TX
+                    </span>
+                  </div>
 
                   {v.recentTx?.length ? (
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-3 grid gap-2">
                       {v.recentTx.slice(0, 3).map(tx => {
                         const tsMs = typeof tx.blockTime === 'number' ? tx.blockTime * 1000 : null;
                         const hasErr = tx.err != null;
 
                         return (
-                          <div
+                          <a
                             key={tx.signature}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/60 bg-black/25 px-2.5 py-2"
+                            href={`https://solscan.io/tx/${tx.signature}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={[
+                              'group flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 transition',
+                              'border-slate-800/70 bg-slate-950/45 hover:bg-slate-950/60',
+                            ].join(' ')}
+                            title={tx.signature}
                           >
                             <div className="min-w-0">
-                              <a
-                                href={`https://solscan.io/tx/${tx.signature}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="font-mono text-[11px] text-slate-200 hover:text-white transition"
-                                title={tx.signature}
-                              >
-                                {shortAddr(tx.signature)}
-                              </a>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[11px] text-slate-200 group-hover:text-white transition">
+                                  {shortAddr(tx.signature)}
+                                </span>
+                                <ExternalLink className="h-3.5 w-3.5 text-slate-500 group-hover:text-slate-300 transition" />
+                              </div>
 
                               <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                                {tsMs != null ? <span>{timeAgo(tsMs)}</span> : <span className="text-slate-700">—</span>}
+                                <span className="inline-flex items-center gap-1">
+                                  <Clock className="h-3.5 w-3.5 text-slate-500" />
+                                  {tsMs != null ? timeAgo(tsMs) : '—'}
+                                </span>
+
                                 {hasErr ? (
-                                  <span className="rounded-full border border-amber-400/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
+                                    <AlertTriangle className="h-3.5 w-3.5" />
                                     Error
                                   </span>
                                 ) : (
-                                  <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
                                     OK
                                   </span>
                                 )}
                               </div>
                             </div>
 
-                            <div className="text-right text-[11px] text-slate-500">Owner wallet activity</div>
-                          </div>
+                            <div className="text-right text-[11px] text-slate-500">
+                              Opens on Solscan
+                              <div className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-slate-600">Signature</div>
+                            </div>
+                          </a>
                         );
                       })}
                     </div>
                   ) : (
-                    <p className="mt-2 text-xs text-slate-500">No recent transactions available.</p>
+                    <p className="mt-3 text-xs text-slate-500">No recent transactions available.</p>
                   )}
                 </div>
               </div>
@@ -539,14 +599,25 @@ function DonutAllocation({
             const isSelected = selected?.key === a.key;
             const vaultGroupKey = vaultGroupByAllocKey[a.key] ?? a.key;
 
+            const stroke = toneStroke(a.tone);
+            const glow = toneGlow(a.tone);
+
             return (
               <div
                 key={a.key}
                 ref={getCardRef(a.key)}
                 className={[
-                  'rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
-                  isSelected ? 'border-slate-700/50' : 'border-slate-900/70',
+                  'scroll-mt-28 rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
+                  // ✅ stronger selected border (img1)
+                  isSelected ? 'border-white/15 ring-1 ring-white/10' : 'border-slate-900/70',
                 ].join(' ')}
+                style={
+                  isSelected
+                    ? {
+                        boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 18px 70px rgba(0,0,0,0.35), 0 0 28px ${glow}`,
+                      }
+                    : undefined
+                }
               >
                 <button
                   type="button"
@@ -562,7 +633,7 @@ function DonutAllocation({
                   <div className="flex items-start gap-3">
                     <span
                       className="mt-[6px] h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ background: toneStroke(a.tone), boxShadow: `0 0 14px ${toneGlow(a.tone)}` }}
+                      style={{ background: stroke, boxShadow: `0 0 14px ${glow}` }}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
@@ -581,8 +652,8 @@ function DonutAllocation({
                           animate={{ width: pctToBar(a.pct) }}
                           transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
                           style={{
-                            background: `linear-gradient(90deg, ${toneStroke(a.tone)}, rgba(255,255,255,0.08))`,
-                            boxShadow: active ? `0 0 16px ${toneGlow(a.tone)}` : undefined,
+                            background: `linear-gradient(90deg, ${stroke}, rgba(255,255,255,0.08))`,
+                            boxShadow: active ? `0 0 16px ${glow}` : undefined,
                           }}
                         />
                       </div>
@@ -608,7 +679,7 @@ function DonutAllocation({
                           <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
 
                           {a.key === 'distribution' && (
-                            <div className="mt-4 rounded-xl border border-slate-800/70 bg-black/30 p-3">
+                            <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
                               <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Distribution runway table</p>
 
                               <div className="mt-3 space-y-2">
@@ -618,7 +689,7 @@ function DonutAllocation({
                                     <div
                                       key={r.label}
                                       className={[
-                                        'flex items-center justify-between rounded-lg px-3 py-2 text-xs',
+                                        'flex items-center justify-between rounded-xl px-3 py-2 text-xs',
                                         r.highlight
                                           ? 'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/30'
                                           : 'bg-slate-950/60 text-slate-300',
@@ -778,7 +849,7 @@ export default function TokenomicsPage() {
   const [openKey, setOpenKeyRaw] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(sortedAllocation[0]?.key ?? null);
 
-  // ✅ fixes "img3/img4": only scroll once React has actually opened the target panel
+  // ✅ only scroll once React has actually opened the target panel
   const [pendingScrollKey, setPendingScrollKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -800,7 +871,8 @@ export default function TokenomicsPage() {
   const scrollToCard = (key: string) => {
     const el = cardRefs.current[key];
     if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => window.scrollBy({ top: -18, behavior: 'smooth' }), 50);
   };
 
   // ✅ scroll only when the intended panel is actually open
@@ -822,7 +894,6 @@ export default function TokenomicsPage() {
     setOpenKeyRaw('distribution');
     setPendingScrollKey('distribution');
 
-    // If refs aren't ready for any reason, still jump toward the section
     window.requestAnimationFrame(() => {
       if (!cardRefs.current['distribution']) allocationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -884,7 +955,7 @@ export default function TokenomicsPage() {
                   <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
                     Terms
                   </Link>
-                  <span className="text-[11px] text-slate-500">Allocation prioritizes distribution, resilience and long-term execution.</span>
+                  <span className="text-[11px] text-slate-500">Allocation prioritises distribution, resilience and long-term execution.</span>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -894,15 +965,31 @@ export default function TokenomicsPage() {
                     <p className="mt-1 text-xs text-slate-500">XPOT minted</p>
                   </div>
 
+                  {/* ✅ add freeze authority line + clearer grouping */}
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Minting</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
 
-                    {/* ✅ larger + more "final" than just "Disabled" */}
                     <p className="mt-2 flex items-center gap-2 font-mono text-lg font-semibold leading-none text-slate-100">
                       <ShieldCheck className="h-4 w-4 text-sky-300" />
                       Authority revoked
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">No further supply can be minted</p>
+
+                    <div className="mt-2 space-y-1.5 text-xs text-slate-500">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-slate-500">Mint</span>
+                        <span className="font-medium text-slate-300">Revoked</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-slate-500">Freeze</span>
+                        <span className="font-medium text-slate-300">Revoked</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-slate-500">Supply</span>
+                        <span className="font-medium text-slate-300">Fixed</span>
+                      </div>
+                    </div>
+
+                    <p className="mt-2 text-xs text-slate-500">No further supply can be minted or frozen</p>
                   </div>
 
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
@@ -913,7 +1000,7 @@ export default function TokenomicsPage() {
                 </div>
               </div>
 
-              {/* Right side snapshot stays (no duplicate 19.18 section elsewhere) */}
+              {/* Right side snapshot (improved “belongs to what” clarity) */}
               <div className="hidden lg:block lg:col-span-4">
                 <div className="h-full">
                   <div className="relative h-full rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur">
@@ -930,7 +1017,7 @@ export default function TokenomicsPage() {
                         <div>
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Protocol snapshot</p>
                           <p className="mt-1 text-sm font-semibold text-slate-100">Proof-first economics</p>
-                          <p className="mt-1 text-xs text-slate-500">The three numbers that matter for trust.</p>
+                          <p className="mt-1 text-xs text-slate-500">Each block is one rule with its own proof target.</p>
                         </div>
 
                         <Pill tone="emerald">
@@ -941,27 +1028,30 @@ export default function TokenomicsPage() {
 
                       <div className="mt-5 grid gap-3">
                         <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Daily distribution</p>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rule</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">Daily distribution</p>
                           <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
                             {fmtInt(DISTRIBUTION_DAILY_XPOT)}
                             <span className="ml-2 text-sm font-semibold text-slate-500">/ day</span>
                           </p>
-                          <p className="mt-1 text-xs text-slate-500">Protocol rule (fixed)</p>
+                          <p className="mt-1 text-xs text-slate-500">Proof: outcomes can be checked on-chain</p>
                         </div>
 
                         <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reserve coverage</p>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Backing</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">Reserve coverage</p>
                           <p className="mt-2 font-mono text-2xl font-semibold text-emerald-200">
                             {runwayFixedYears.toFixed(2)}
                             <span className="ml-2 text-sm font-semibold text-slate-500">years</span>
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
-                            Backed by {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT ({runwayFixedDays.toLocaleString('en-US')} days)
+                            Proof: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT ({runwayFixedDays.toLocaleString('en-US')} days) in the reserve wallet
                           </p>
                         </div>
 
                         <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">10-year requirement</p>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Constraint</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">10-year requirement</p>
                           <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{TEN_YEARS_REQUIRED.toLocaleString('en-US')}</p>
                           <p className="mt-1 text-xs text-slate-500">Exact at 1,000,000/day</p>
                         </div>
@@ -998,8 +1088,6 @@ export default function TokenomicsPage() {
           </div>
         </div>
       </section>
-
-      {/* ✅ Removed the duplicate bottom "19.18 years" guarantee card entirely */}
 
       <section className="mt-8" ref={allocationRef}>
         <div className={CARD}>
@@ -1152,7 +1240,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v16</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v17</span>
         </div>
       </footer>
     </XpotPageShell>
