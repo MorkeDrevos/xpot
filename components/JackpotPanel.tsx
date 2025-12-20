@@ -1012,12 +1012,12 @@ export default function JackpotPanel({
   }}
 >
   <XpotLogo
-    variant="mark"
-    width={24}
-    height={24}
-    tone="gold"
-    priority
-  />
+  variant="mark"
+  width={30}
+  height={30}
+  className="scale-[1.12] origin-center"
+  priority
+/>
 </span>
 
                   <div className="leading-tight">
