@@ -2,7 +2,7 @@
 // app/page.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -91,12 +91,7 @@ function TinyTooltip({ label, children }: { label: string; children: ReactNode }
       const el = anchorRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-
-      // Center under the anchor, slight offset down
-      setPos({
-        left: r.left + r.width / 2,
-        top: r.bottom + 10,
-      });
+      setPos({ left: r.left + r.width / 2, top: r.bottom + 10 });
     };
 
     update();
@@ -140,7 +135,7 @@ function TinyTooltip({ label, children }: { label: string; children: ReactNode }
           )
         : null}
     </span>
-    );
+  );
 }
 
 function PremiumCard({
@@ -649,6 +644,28 @@ export default function HomePage() {
       window.clearInterval(t);
     };
   }, []);
+
+    // ─────────────────────────────────────────────
+  // Time + draw state (required for countdown)
+  // ─────────────────────────────────────────────
+
+  const [mint, setMint] = useState(XPOT_CA);
+
+  useEffect(() => {
+    setMint(XPOT_CA);
+  }, []);
+
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const nextDrawUtcMs = useMemo(
+    () => getNextMadridCutoffUtcMs(22, new Date(nowMs)),
+    [nowMs],
+  );
 
   const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
 
