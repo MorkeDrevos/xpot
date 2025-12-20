@@ -32,6 +32,7 @@ import XpotPageShell from '@/components/XpotPageShell';
 
 import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
 import { type LiveEntrant, asLiveEntrant } from '@/lib/live-entrants';
+import { createPortal } from 'react-dom';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
@@ -79,27 +80,68 @@ function Pill({
 }
 
 function TinyTooltip({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const anchorRef = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const update = () => {
+      const el = anchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+
+      // Center under the anchor, slight offset down
+      setPos({
+        left: r.left + r.width / 2,
+        top: r.bottom + 10,
+      });
+    };
+
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open]);
+
   return (
     <span className="relative inline-flex items-center">
-      <span className="group relative inline-flex items-center">
+      <span
+        ref={anchorRef}
+        className="group inline-flex items-center"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+      >
         {children}
-        <span
-          className="
-            pointer-events-none absolute left-1/2 top-full z-[70] mt-2 w-[260px] -translate-x-1/2
-            rounded-2xl border border-white/10 bg-black/85 px-3 py-2
-            text-[11px] leading-relaxed text-slate-200
-            shadow-[0_30px_100px_rgba(0,0,0,0.65)]
-            opacity-0 translate-y-1
-            transition
-            group-hover:opacity-100 group-hover:translate-y-0
-          "
-        >
-          {label}
-        </span>
       </span>
+
+      {open && pos
+        ? createPortal(
+            <div
+              className="
+                fixed z-[9999]
+                -translate-x-1/2
+                rounded-2xl border border-white/10 bg-black/85 px-3 py-2
+                text-[11px] leading-relaxed text-slate-200
+                shadow-[0_30px_100px_rgba(0,0,0,0.65)]
+              "
+              style={{ left: pos.left, top: pos.top }}
+              role="tooltip"
+            >
+              {label}
+            </div>,
+            document.body,
+          )
+        : null}
     </span>
   );
-}
+}}
 
 function PremiumCard({
   children,
