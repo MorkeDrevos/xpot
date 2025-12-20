@@ -30,7 +30,7 @@ import {
 // ─────────────────────────────────────────────
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
@@ -89,19 +89,20 @@ function StatusPill({
   children: React.ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky';
 }) {
+  // NOTE: "amber" now maps to vault-gold pill styling (readable on dark UI)
   const cls =
     tone === 'emerald'
-      ? 'bg-emerald-500/10 text-emerald-300'
+      ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]'
       : tone === 'amber'
-      ? 'bg-amber-500/10 text-amber-200'
+      ? 'xpot-pill-gold border shadow-[0_0_0_1px_rgba(255,255,255,0.03)] bg-white/[0.02]'
       : tone === 'sky'
-      ? 'bg-sky-500/10 text-sky-200'
-      : 'bg-slate-800/70 text-slate-200';
+      ? 'border-sky-400/30 bg-sky-500/10 text-sky-200 shadow-[0_0_0_1px_rgba(56,189,248,0.12)]'
+      : 'border-white/10 bg-slate-800/70 text-slate-200 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]';
 
   return (
     <span
       className={[
-        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+        'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
         cls,
       ].join(' ')}
     >
@@ -135,7 +136,7 @@ function WalletStatusHint() {
 
   if (!anyDetected) {
     return (
-      <p className="mt-2 text-xs text-amber-300">
+      <p className="mt-2 text-xs xpot-gold-text">
         No Solana wallet detected. Install Phantom or Solflare to continue.
       </p>
     );
@@ -877,7 +878,7 @@ export default function DashboardClient() {
                     </button>
 
                     {claimError && (
-                      <p className="mt-3 text-xs text-amber-300">{claimError}</p>
+                      <p className="mt-3 text-xs xpot-gold-text">{claimError}</p>
                     )}
 
                     {typeof xpotBalance === 'number' && !hasRequiredXpot && (
@@ -959,7 +960,7 @@ export default function DashboardClient() {
                     {loadingTickets ? (
                       <p className="text-xs text-slate-500">Loading…</p>
                     ) : ticketsError ? (
-                      <p className="text-xs text-amber-300">{ticketsError}</p>
+                      <p className="text-xs xpot-gold-text">{ticketsError}</p>
                     ) : myTickets.length === 0 ? (
                       <p className="text-xs text-slate-500">No entries yet.</p>
                     ) : (
@@ -1018,7 +1019,7 @@ export default function DashboardClient() {
                   {loadingWinners ? (
                     <p className="text-xs text-slate-500">Loading…</p>
                   ) : winnersError ? (
-                    <p className="text-xs text-amber-300">{winnersError}</p>
+                    <p className="text-xs xpot-gold-text">{winnersError}</p>
                   ) : recentWinners.length === 0 ? (
                     <p className="text-xs text-slate-500">
                       No completed draws yet.
@@ -1091,7 +1092,7 @@ export default function DashboardClient() {
                   ) : loadingHistory ? (
                     <p className="text-xs text-slate-500">Loading…</p>
                   ) : historyError ? (
-                    <p className="text-xs text-amber-300">{historyError}</p>
+                    <p className="text-xs xpot-gold-text">{historyError}</p>
                   ) : historyEntries.length === 0 ? (
                     <p className="text-xs text-slate-500">No history yet.</p>
                   ) : (
