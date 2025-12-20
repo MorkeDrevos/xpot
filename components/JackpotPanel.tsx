@@ -8,7 +8,9 @@ import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 import XpotLogo from '@/components/XpotLogo';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
-const PRICE_POLL_MS = 2000; // 2s
+
+// DexScreener can rate-limit too - keep this a bit calmer than 2s
+const PRICE_POLL_MS = 4000; // 4s
 
 // 24h observed range via rolling samples
 const RANGE_SAMPLE_MS = 10_000; // store one sample every 10s
@@ -35,7 +37,7 @@ type JackpotPanelProps = {
   layout?: 'auto' | 'wide';
 };
 
-type PriceSource = 'Jupiter' | 'DexScreener';
+type PriceSource = 'DexScreener';
 
 // Private-vault gold (muted, heavier, less neon)
 const VAULT_GOLD = {
@@ -215,22 +217,6 @@ function buildSparklinePoints(samples: PriceSample[], width: number, height: num
   return { points: pts.join(' '), min, max };
 }
 
-function readJupiterUsdPrice(payload: unknown, mint: string): number | null {
-  if (!payload || typeof payload !== 'object') return null;
-  const p: any = payload;
-
-  const a = p?.[mint]?.usdPrice;
-  if (typeof a === 'number' && Number.isFinite(a)) return a;
-
-  const b = p?.data?.[mint]?.price;
-  if (typeof b === 'number' && Number.isFinite(b)) return b;
-
-  const c = p?.data?.[mint]?.usdPrice;
-  if (typeof c === 'number' && Number.isFinite(c)) return c;
-
-  return null;
-}
-
 type DexMetrics = {
   priceUsd: number | null;
   changeH1: number | null;
@@ -408,7 +394,9 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
 
       <TooltipBubble open={t.open} rect={t.rect} width={380}>
         <div className="px-4 py-3 text-[12px] leading-snug text-slate-100">
-          <p className="text-slate-100">Current USD value of today&apos;s XPOT, based on the live XPOT price from Jupiter.</p>
+          <p className="text-slate-100">
+            Current USD value of today&apos;s XPOT, based on the live XPOT price from DexScreener.
+          </p>
           <p className="mt-2 text-slate-400">
             Winner is paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
           </p>
@@ -463,7 +451,9 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           </button>
 
           <TooltipBubble open={t.open} rect={t.rect} width={340}>
-            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">{tooltip}</div>
+            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
+              {tooltip}
+            </div>
           </TooltipBubble>
         </>
       )}
@@ -480,7 +470,7 @@ export default function JackpotPanel({
   layout = 'auto',
 }: JackpotPanelProps) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
-  const [priceSource, setPriceSource] = useState<PriceSource>('Jupiter');
+  const [priceSource, setPriceSource] = useState<PriceSource>('DexScreener');
 
   const [isLoading, setIsLoading] = useState(true);
   const [hadError, setHadError] = useState(false);
@@ -520,20 +510,20 @@ export default function JackpotPanel({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-    // Countdown - hydration safe (no Date() in initial render)
+  // Countdown - hydration safe (no Date() in initial render)
   const [nextDrawUtcMs, setNextDrawUtcMs] = useState<number>(0);
   const [countdownMs, setCountdownMs] = useState<number>(0);
   const [countPulse, setCountPulse] = useState(false);
 
   // After mount, compute the real cutoff once (DST-safe)
   useEffect(() => {
-  if (!mounted) return;
-  const nd = getNextMadridCutoffUtcMs(22, new Date());
-  setNextDrawUtcMs(nd);
-  setCountdownMs(Math.max(0, nd - Date.now()));
-}, [mounted]);
+    if (!mounted) return;
+    const nd = getNextMadridCutoffUtcMs(22, new Date());
+    setNextDrawUtcMs(nd);
+    setCountdownMs(Math.max(0, nd - Date.now()));
+  }, [mounted]);
 
-    // Hydration-safe session key (avoid Date() during first render)
+  // Hydration-safe session key (avoid Date() during first render)
   const [sessionKey, setSessionKey] = useState('xpot_max_session_usd_boot');
   useEffect(() => {
     setSessionKey(`xpot_max_session_usd_${getMadridSessionKey(22)}`);
@@ -588,19 +578,19 @@ export default function JackpotPanel({
   }, [layout]);
 
   useEffect(() => {
-  if (typeof window === 'undefined') return;
-  if (!mounted) return;
-  if (sessionKey.endsWith('_boot')) return;
+    if (typeof window === 'undefined') return;
+    if (!mounted) return;
+    if (sessionKey.endsWith('_boot')) return;
 
-  const stored = window.localStorage.getItem(sessionKey);
-  if (stored) {
-    const num = Number(stored);
-    if (!Number.isNaN(num)) setMaxJackpotToday(num);
-    else setMaxJackpotToday(null);
-  } else {
-    setMaxJackpotToday(null);
-  }
-}, [sessionKey, mounted]);
+    const stored = window.localStorage.getItem(sessionKey);
+    if (stored) {
+      const num = Number(stored);
+      if (!Number.isNaN(num)) setMaxJackpotToday(num);
+      else setMaxJackpotToday(null);
+    } else {
+      setMaxJackpotToday(null);
+    }
+  }, [sessionKey, mounted]);
 
   // Listen for the shared countdown broadcast (from app/page.tsx NextDrawProvider)
   useEffect(() => {
@@ -622,34 +612,34 @@ export default function JackpotPanel({
 
   // Countdown ticker (second-aligned) using stored nextDrawUtcMs.
   useEffect(() => {
-  if (typeof window === 'undefined') return;
-  if (!mounted) return;
+    if (typeof window === 'undefined') return;
+    if (!mounted) return;
 
-  let interval: number | null = null;
+    let interval: number | null = null;
 
-  const tick = () => {
-    const nd = nextDrawUtcMs || getNextMadridCutoffUtcMs(22, new Date());
-    const now = Date.now();
-    setCountdownMs(Math.max(0, nd - now));
-    setCountPulse(p => !p);
+    const tick = () => {
+      const nd = nextDrawUtcMs || getNextMadridCutoffUtcMs(22, new Date());
+      const now = Date.now();
+      setCountdownMs(Math.max(0, nd - now));
+      setCountPulse(p => !p);
 
-    if (now >= nd) {
-      const next = getNextMadridCutoffUtcMs(22, new Date());
-      setNextDrawUtcMs(next);
-    }
-  };
+      if (now >= nd) {
+        const next = getNextMadridCutoffUtcMs(22, new Date());
+        setNextDrawUtcMs(next);
+      }
+    };
 
-  const msToNextSecond = 1000 - (Date.now() % 1000);
-  const t = window.setTimeout(() => {
-    tick();
-    interval = window.setInterval(tick, 1000);
-  }, msToNextSecond);
+    const msToNextSecond = 1000 - (Date.now() % 1000);
+    const t = window.setTimeout(() => {
+      tick();
+      interval = window.setInterval(tick, 1000);
+    }, msToNextSecond);
 
-  return () => {
-    window.clearTimeout(t);
-    if (interval) window.clearInterval(interval);
-  };
-}, [nextDrawUtcMs, mounted]);
+    return () => {
+      window.clearTimeout(t);
+      if (interval) window.clearInterval(interval);
+    };
+  }, [nextDrawUtcMs, mounted]);
 
   // Load rolling samples (for 24h range + local sparkline)
   useEffect(() => {
@@ -706,21 +696,11 @@ export default function JackpotPanel({
     return () => window.clearTimeout(t);
   }, [isLoading, priceUsd, displayJackpotUsd, showRunway]);
 
-  // Live price: Jupiter primary, DexScreener fallback
+  // Live price: DexScreener only
   useEffect(() => {
     let timer: number | null = null;
     let aborted = false;
     const ctrl = new AbortController();
-
-    async function fetchFromJupiter(): Promise<number | null> {
-      const res = await fetch(`https://lite-api.jup.ag/price/v3?ids=${TOKEN_MINT}`, {
-        signal: ctrl.signal,
-        cache: 'no-store',
-      });
-      if (!res.ok) return null;
-      const json = await res.json();
-      return readJupiterUsdPrice(json, TOKEN_MINT);
-    }
 
     async function fetchFromDexScreener(): Promise<DexMetrics> {
       const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${TOKEN_MINT}`, {
@@ -736,33 +716,20 @@ export default function JackpotPanel({
       try {
         setHadError(false);
 
-        const [jup, dex] = await Promise.allSettled([fetchFromJupiter(), fetchFromDexScreener()]);
-
-        const jupPrice = jup.status === 'fulfilled' ? jup.value : null;
-        const dexMetrics = dex.status === 'fulfilled' ? dex.value : { priceUsd: null, changeH1: null };
+        const dexMetrics = await fetchFromDexScreener();
 
         if (!aborted) {
           if (dexMetrics.changeH1 != null) setMomentumGlobalH1(dexMetrics.changeH1);
         }
 
-        let price: number | null = null;
-        let src: PriceSource = 'Jupiter';
-
-        if (typeof jupPrice === 'number' && Number.isFinite(jupPrice)) {
-          price = jupPrice;
-          src = 'Jupiter';
-        } else if (typeof dexMetrics.priceUsd === 'number' && Number.isFinite(dexMetrics.priceUsd)) {
-          price = dexMetrics.priceUsd;
-          src = 'DexScreener';
-        } else {
-          price = null;
-        }
+        const price =
+          typeof dexMetrics.priceUsd === 'number' && Number.isFinite(dexMetrics.priceUsd) ? dexMetrics.priceUsd : null;
 
         if (aborted) return;
 
-        if (typeof price === 'number' && Number.isFinite(price)) {
+        if (price != null) {
           setPriceUsd(price);
-          setPriceSource(src);
+          setPriceSource('DexScreener');
 
           setJustUpdated(true);
           if (updatePulseTimeout.current !== null) window.clearTimeout(updatePulseTimeout.current);
@@ -773,7 +740,7 @@ export default function JackpotPanel({
         }
       } catch (err) {
         if ((err as any)?.name === 'AbortError') return;
-        console.error('[XPOT] price error:', err);
+        console.error('[XPOT] DexScreener price error:', err);
         if (aborted) return;
         setPriceUsd(null);
         setHadError(true);
@@ -822,72 +789,72 @@ export default function JackpotPanel({
     prevJackpot.current = jackpotUsd;
 
     if (typeof window !== 'undefined') {
-  if (!mounted) return;
-  if (sessionKey.endsWith('_boot')) return;
+      if (!mounted) return;
+      if (sessionKey.endsWith('_boot')) return;
 
-  setMaxJackpotToday(prev => {
-    const next = prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
-    window.localStorage.setItem(sessionKey, String(next));
-    return next;
-  });
-}
+      setMaxJackpotToday(prev => {
+        const next = prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
+        window.localStorage.setItem(sessionKey, String(next));
+        return next;
+      });
+    }
   }, [jackpotUsd, sessionKey, onJackpotUsdChange, mounted]);
 
   // Soft USD drift animation for the big number (stale-safe)
-const displayRef = useRef<number | null>(null);
-useEffect(() => {
-  displayRef.current = displayJackpotUsd;
-}, [displayJackpotUsd]);
+  const displayRef = useRef<number | null>(null);
+  useEffect(() => {
+    displayRef.current = displayJackpotUsd;
+  }, [displayJackpotUsd]);
 
-useEffect(() => {
-  if (typeof window === 'undefined') return;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-  // If live USD is missing, clear display
-  if (jackpotUsd == null) {
-    setDisplayJackpotUsd(null);
-    displayRef.current = null;
-    return;
-  }
+    // If live USD is missing, clear display
+    if (jackpotUsd == null) {
+      setDisplayJackpotUsd(null);
+      displayRef.current = null;
+      return;
+    }
 
-  const from = displayRef.current;
+    const from = displayRef.current;
 
-  // First time we get a value: set instantly (no animation)
-  if (from == null || !Number.isFinite(from)) {
-    setDisplayJackpotUsd(jackpotUsd);
-    displayRef.current = jackpotUsd;
-    return;
-  }
+    // First time we get a value: set instantly (no animation)
+    if (from == null || !Number.isFinite(from)) {
+      setDisplayJackpotUsd(jackpotUsd);
+      displayRef.current = jackpotUsd;
+      return;
+    }
 
-  const to = jackpotUsd;
-  const delta = Math.abs(to - from);
+    const to = jackpotUsd;
+    const delta = Math.abs(to - from);
 
-  // Tiny changes: snap
-  if (!Number.isFinite(delta) || delta < 0.01) {
-    setDisplayJackpotUsd(to);
-    displayRef.current = to;
-    return;
-  }
+    // Tiny changes: snap
+    if (!Number.isFinite(delta) || delta < 0.01) {
+      setDisplayJackpotUsd(to);
+      displayRef.current = to;
+      return;
+    }
 
-  const DURATION_MS = 650;
-  const start = performance.now();
-  let raf = 0;
+    const DURATION_MS = 650;
+    const start = performance.now();
+    let raf = 0;
 
-  const tick = (now: number) => {
-    const t = clamp((now - start) / DURATION_MS, 0, 1);
-    const eased = easeOutCubic(t);
-    const next = from + (to - from) * eased;
+    const tick = (now: number) => {
+      const t = clamp((now - start) / DURATION_MS, 0, 1);
+      const eased = easeOutCubic(t);
+      const next = from + (to - from) * eased;
 
-    setDisplayJackpotUsd(next);
-    displayRef.current = next;
+      setDisplayJackpotUsd(next);
+      displayRef.current = next;
 
-    if (t < 1) raf = window.requestAnimationFrame(tick);
-  };
+      if (t < 1) raf = window.requestAnimationFrame(tick);
+    };
 
-  raf = window.requestAnimationFrame(tick);
-  return () => {
-    if (raf) window.cancelAnimationFrame(raf);
-  };
-}, [jackpotUsd]);
+    raf = window.requestAnimationFrame(tick);
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [jackpotUsd]);
 
   // Update rolling 24h samples + compute observed high/low + coverage + local sparkline
   useEffect(() => {
@@ -1073,13 +1040,7 @@ useEffect(() => {
         </div>
 
         {/* Value row */}
-        <div
-          className={
-            isWide
-              ? 'mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]'
-              : 'mt-5 grid gap-4'
-          }
-        >
+        <div className={isWide ? 'mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]' : 'mt-5 grid gap-4'}>
           {/* Big USD */}
           <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
             <div className="mt-4 flex items-end justify-between gap-3">
@@ -1134,7 +1095,7 @@ useEffect(() => {
               <span className="text-[11px] text-slate-600">22:00 Madrid</span>
             </div>
 
-            <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
+            <p className="mt-2 text-xs text-slate-500">Auto-updates from DexScreener ticks</p>
           </div>
 
           {/* Royal XPOT meta (credit card feel + private-vault gold) */}
@@ -1206,7 +1167,9 @@ useEffect(() => {
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
                 <p className="mt-1 text-sm text-slate-300">
                   1 XPOT ≈{' '}
-                  <span className="font-mono text-slate-100">{priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}</span>
+                  <span className="font-mono text-slate-100">
+                    {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+                  </span>
                 </p>
 
                 <div className="mt-2 flex items-center justify-end gap-2 text-[11px] text-slate-500">
@@ -1379,10 +1342,10 @@ useEffect(() => {
         </div>
 
         {showUnavailable ? (
-          <p className="mt-3 text-[12px] text-amber-200">Live price not available yet - auto-populates when Jupiter is live.</p>
+          <p className="mt-3 text-[12px] text-amber-200">Live price not available yet - auto-populates when DexScreener sees a pair.</p>
         ) : (
           <p className="mt-3 text-[12px] text-slate-600">
-            Updates every {Math.round(PRICE_POLL_MS / 1000)}s. Fallback engages automatically if Jupiter is unavailable.
+            Updates every {Math.round(PRICE_POLL_MS / 1000)}s.
           </p>
         )}
       </div>
