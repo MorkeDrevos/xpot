@@ -4,15 +4,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState, type WalletName } from '@solana/wallet-adapter-base';
-import { ChevronRight, ExternalLink, Shield, Wallet } from 'lucide-react';
+import { ExternalLink, Shield, Wallet, ChevronRight } from 'lucide-react';
 
 import Modal from '@/components/Modal';
+import XpotLogoLottie from '@/components/XpotLogoLottie';
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 px-5 py-2 text-sm font-semibold text-black hover:brightness-105 transition';
+  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-slate-700 px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 transition';
+  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition';
 
 function shortAddr(a: string) {
   if (!a) return a;
@@ -26,9 +27,7 @@ export default function PremiumWalletModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const { wallets, wallet, publicKey, connected, connecting, disconnect, select } =
-    useWallet();
-
+  const { wallets, wallet, publicKey, connected, connecting, disconnect, select } = useWallet();
   const [busy, setBusy] = useState<string | null>(null);
 
   const detected = useMemo(() => {
@@ -51,7 +50,7 @@ export default function PremiumWalletModal({
       setBusy(String(name));
       select(name);
     } finally {
-      setTimeout(() => setBusy(null), 300);
+      setTimeout(() => setBusy(null), 350);
     }
   }
 
@@ -59,77 +58,116 @@ export default function PremiumWalletModal({
 
   return (
     <Modal
-  open={open}
-  onClose={onClose}
-  title="Select wallet"
-  size="xl"
->
-      {/* XPOT subtle header */}
-      <div className="mb-5">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
-          <Shield className="h-4 w-4 text-emerald-300" />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-            Secure wallet connection
+      open={open}
+      onClose={onClose}
+      tone="xpot-light"
+      maxWidthClassName="max-w-3xl"
+      hideHeader
+      ariaLabel="Select wallet"
+    >
+      {/* Header row (custom, lighter than the old banner) */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <XpotLogoLottie className="h-8 w-auto" height={32} />
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+            XPOT
+          </span>
+          <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+            <Shield className="h-4 w-4 text-emerald-200" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+              Secure connection
+            </span>
           </span>
         </div>
 
-        <p className="mt-3 text-sm text-slate-400">
-          Connect a Solana wallet to check XPOT eligibility and claim today’s entry.
-        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10"
+        >
+          Close
+        </button>
+      </div>
+
+      <div className="mt-5 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-[28px] font-semibold leading-tight text-slate-100">
+            Select wallet
+          </h3>
+          <p className="mt-2 text-sm text-slate-300">
+            Connect a Solana wallet to check XPOT eligibility and claim today’s entry.
+          </p>
+        </div>
       </div>
 
       {/* Current wallet */}
-      <div className="mb-5 rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          Current wallet
-        </p>
+      <div className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-5 py-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Current wallet
+          </p>
 
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-100">
-              {wallet?.adapter?.name ?? 'No wallet selected'}
-            </p>
-            <p className="mt-1 font-mono text-xs text-slate-400">
-              {address ? shortAddr(address) : 'Not connected'}
-            </p>
-          </div>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-100">
+                {wallet?.adapter?.name ?? 'No wallet selected'}
+              </p>
+              <p className="mt-1 font-mono text-xs text-slate-400">
+                {address ? shortAddr(address) : 'Not connected'}
+              </p>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {connected && (
+            <div className="flex items-center gap-2">
+              {connected && (
+                <button
+                  type="button"
+                  onClick={() => disconnect().catch(() => {})}
+                  className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                >
+                  Disconnect
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => disconnect().catch(() => {})}
-                className={BTN_UTILITY}
+                onClick={onClose}
+                className={`${BTN_PRIMARY} h-10 px-4 text-xs`}
               >
-                Disconnect
+                Done
               </button>
-            )}
-            <button type="button" onClick={onClose} className={BTN_PRIMARY}>
-              Done
-            </button>
+            </div>
           </div>
+
+          {connecting && (
+            <p className="mt-2 text-xs text-amber-300">
+              Waiting for wallet approval…
+            </p>
+          )}
         </div>
 
-        {connecting && (
-          <p className="mt-2 text-xs text-amber-300">
-            Waiting for wallet approval…
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-5 py-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Tip
           </p>
-        )}
+          <p className="mt-2 text-xs leading-relaxed text-slate-300">
+            You’ll need a small SOL balance for network fees. XPOT eligibility is checked on-chain.
+          </p>
+        </div>
       </div>
 
       {/* Wallet list */}
-      <div>
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="mt-6">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
           Available wallets
         </p>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {detected.map(w => {
             const name = w.adapter.name as WalletName;
             const rs = w.readyState;
+            const isSelected = wallet?.adapter?.name === String(name);
+
             const installed =
-              rs === WalletReadyState.Installed ||
-              rs === WalletReadyState.Loadable;
+              rs === WalletReadyState.Installed || rs === WalletReadyState.Loadable;
 
             return (
               <button
@@ -137,16 +175,17 @@ export default function PremiumWalletModal({
                 type="button"
                 onClick={() => handlePick(name)}
                 className="
-                  group text-left
-                  rounded-2xl border border-white/10
-                  bg-black/30 px-4 py-4
-                  hover:border-white/20 hover:bg-white/[0.06]
+                  group relative overflow-hidden text-left
+                  rounded-3xl border border-white/10
+                  bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05),rgba(0,0,0,0.22))]
+                  px-5 py-4
+                  hover:border-white/20 hover:bg-white/10
                   transition
                 "
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-black/40">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
                       <Wallet className="h-5 w-5 text-slate-200" />
                     </div>
 
@@ -156,23 +195,26 @@ export default function PremiumWalletModal({
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
                         {installed ? 'Detected' : 'Not installed'}
+                        {isSelected ? ' · selected' : ''}
                       </p>
                     </div>
                   </div>
 
-                  {busy === String(name) ? (
-                    <span className="text-xs text-slate-400">Opening…</span>
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-slate-200" />
-                  )}
+                  <div className="flex items-center gap-2">
+                    {busy === String(name) ? (
+                      <span className="text-xs text-slate-400">Opening…</span>
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-slate-200" />
+                    )}
+                  </div>
                 </div>
 
                 {!installed && (
-                  <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/40 px-3 py-2">
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                     <span className="text-xs text-slate-300">
-                      Install to use
+                      Install to use this wallet
                     </span>
-                    <span className="inline-flex items-center gap-1 text-xs text-amber-200">
+                    <span className="inline-flex items-center gap-2 text-xs text-amber-200">
                       <ExternalLink className="h-4 w-4" />
                       Extension / App
                     </span>
@@ -184,7 +226,7 @@ export default function PremiumWalletModal({
         </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-between text-[11px] text-slate-500">
+      <div className="mt-6 flex items-center justify-between gap-3 text-[11px] text-slate-500">
         <span>XPOT never takes custody of funds.</span>
         <span className="hidden sm:inline">Solana mainnet</span>
       </div>
