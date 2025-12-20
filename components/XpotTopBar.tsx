@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
+import XpotLogo from '@/components/XpotLogo';
 import { ReactNode, useEffect, useRef, useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 
@@ -147,15 +147,14 @@ export default function XpotTopBar({
             {/* LEFT: Logo + optional pill */}
             <div className="flex min-w-0 items-center gap-4">
               <Link href={logoHref} className="flex shrink-0 items-center gap-3">
-                <Image
-                  src="/img/xpot-logo-light.png"
-                  alt="XPOT"
-                  width={460}
-                  height={120}
-                  priority
-                  className="h-[92px] max-h-[92px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
-                />
-              </Link>
+  <XpotLogo
+    variant="light"
+    width={460}
+    height={120}
+    priority
+    className="h-[92px] max-h-[92px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
+  />
+</Link>
 
               {/* Optional pill/slogan (public only) */}
               {!isHub && (
