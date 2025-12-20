@@ -46,12 +46,9 @@ const TEN_YEARS_REQUIRED = DISTRIBUTION_DAILY_XPOT * DAYS_PER_YEAR * 10; // 3,65
 
 function Pill({ children, tone = 'slate' }: { children: ReactNode; tone?: PillTone }) {
   const map: Record<PillTone, string> = {
-    slate:
-      'border-slate-800/70 bg-slate-900/60 text-slate-200 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
-    emerald:
-      'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
-    amber:
-      'border-amber-400/50 bg-amber-500/10 text-amber-200 shadow-[0_0_0_1px_rgba(245,158,11,0.16)]',
+    slate: 'border-slate-800/70 bg-slate-900/60 text-slate-200 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
+    emerald: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
+    amber: 'border-amber-400/50 bg-amber-500/10 text-amber-200 shadow-[0_0_0_1px_rgba(245,158,11,0.16)]',
     sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
   };
 
@@ -579,9 +576,9 @@ function DonutAllocation({
                 >
                   <div className="flex items-start gap-3">
                     <span
-  className="mt-[6px] h-2 w-2 shrink-0 rounded-full"
-  style={{ background: toneStroke(a.tone), boxShadow: `0 0 14px ${toneGlow(a.tone)}` }}
-/>
+                      className="mt-[6px] h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: toneStroke(a.tone), boxShadow: `0 0 14px ${toneGlow(a.tone)}` }}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
                         <p className="truncate text-sm font-semibold text-slate-100">{a.label}</p>
@@ -861,9 +858,7 @@ export default function TokenomicsPage() {
                 </h1>
 
                 <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are
-                  public, and outcomes can be checked on-chain. Over time, this becomes infrastructure that communities, creators,
-                  and sponsors can plug into with confidence.
+                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes can be checked on-chain. Over time, this becomes infrastructure that communities, creators, and sponsors can plug into with confidence.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -874,7 +869,9 @@ export default function TokenomicsPage() {
                   <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
                     Terms
                   </Link>
-                  <span className="text-[11px] text-slate-500">Allocation prioritizes distribution, resilience and long-term execution.</span>
+                  <span className="text-[11px] text-slate-500">
+                    Allocation prioritizes distribution, resilience and long-term execution.
+                  </span>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -894,11 +891,11 @@ export default function TokenomicsPage() {
                   </div>
 
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve runway</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve (locked)</p>
                     <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">
-  {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT
-</p>
-<p className="mt-1 text-xs text-slate-500">protocol distribution reserve</p>
+                      {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">protocol distribution reserve</p>
                   </div>
                 </div>
               </div>
@@ -929,9 +926,9 @@ export default function TokenomicsPage() {
                 <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Protocol guarantee</p>
                 <p className="mt-2 text-lg font-semibold text-slate-100">10+ years of rewards secured by reserve</p>
 
-                {/* ✅ new tight math line */}
                 <p className="mt-1 text-sm text-slate-400">
-                  <span className="font-mono text-slate-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</span> reserve <span className="text-slate-500">→</span>{' '}
+                  <span className="font-mono text-slate-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</span> reserve{' '}
+                  <span className="text-slate-500">→</span>{' '}
                   <span className="font-mono text-emerald-200">{runwayFixedYears.toFixed(2)} years</span> at{' '}
                   <span className="font-mono text-slate-200">{fmtInt(DISTRIBUTION_DAILY_XPOT)}</span>/day
                 </p>
@@ -942,9 +939,9 @@ export default function TokenomicsPage() {
               </div>
 
               <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200">
-  View reserve
-  <ArrowRight className="h-4 w-4" />
-</span>
+                View reserve
+                <ArrowRight className="h-4 w-4" />
+              </span>
             </div>
           </div>
         </button>
@@ -968,7 +965,8 @@ export default function TokenomicsPage() {
                   Select a slice, then expand the matching card for the full breakdown and live vaults.
                 </p>
               </div>
-              <Pill tone="sky">
+
+              {/* Removed the extra "Distribution" pill (it was half-open and breaking JSX) */}
             </div>
 
             <div className="mt-6">
@@ -1090,8 +1088,7 @@ export default function TokenomicsPage() {
               <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
               <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
               <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                Every distribution bucket can be mapped to wallets, ATAs and on-chain history. If it cannot be verified, it
-                should not exist.
+                Every distribution bucket can be mapped to wallets, ATAs and on-chain history. If it cannot be verified, it should not exist.
               </p>
             </div>
           </div>
