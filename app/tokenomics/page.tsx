@@ -579,9 +579,9 @@ function DonutAllocation({
                 >
                   <div className="flex items-start gap-3">
                     <span
-                      className="mt-1 h-2 w-2 shrink-0 rounded-full"
-                      style={{ background: toneStroke(a.tone), boxShadow: `0 0 14px ${toneGlow(a.tone)}` }}
-                    />
+  className="mt-[6px] h-2 w-2 shrink-0 rounded-full"
+  style={{ background: toneStroke(a.tone), boxShadow: `0 0 14px ${toneGlow(a.tone)}` }}
+/>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
                         <p className="truncate text-sm font-semibold text-slate-100">{a.label}</p>
@@ -895,8 +895,10 @@ export default function TokenomicsPage() {
 
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve runway</p>
-                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">{runwayFixedYears.toFixed(2)} years</p>
-                    <p className="mt-1 text-xs text-slate-500">at {fmtInt(DISTRIBUTION_DAILY_XPOT)}/day</p>
+                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">
+  {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT
+</p>
+<p className="mt-1 text-xs text-slate-500">protocol distribution reserve</p>
                   </div>
                 </div>
               </div>
@@ -940,9 +942,9 @@ export default function TokenomicsPage() {
               </div>
 
               <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200">
-                {runwayFixedYears.toFixed(2)} years
-                <ArrowRight className="h-4 w-4" />
-              </span>
+  View reserve
+  <ArrowRight className="h-4 w-4" />
+</span>
             </div>
           </div>
         </button>
@@ -967,9 +969,6 @@ export default function TokenomicsPage() {
                 </p>
               </div>
               <Pill tone="sky">
-                <PieChart className="h-3.5 w-3.5" />
-                Distribution
-              </Pill>
             </div>
 
             <div className="mt-6">
