@@ -50,6 +50,16 @@ const BTN_PRIMARY =
 const BTN_GREEN =
   'inline-flex items-center justify-center rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition';
 
+// Vault-gold helpers (avoid tailwind amber mapping issues)
+const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
+const GOLD_TEXT_DIM = 'text-[rgba(var(--xpot-gold-2),0.85)]';
+const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
+const GOLD_BORDER_SOFT = 'border-[rgba(var(--xpot-gold),0.25)]';
+const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
+const GOLD_BG_WASH_2 = 'bg-[rgba(var(--xpot-gold),0.08)]';
+const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
+const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
+
 function Pill({
   children,
   tone = 'slate',
@@ -62,8 +72,8 @@ function Pill({
       'border-slate-700/70 bg-slate-900/70 text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
     emerald:
       'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
-    amber:
-      'border-amber-400/50 bg-amber-500/10 text-amber-200 shadow-[0_0_0_1px_rgba(245,158,11,0.16)]',
+    // IMPORTANT: "amber" tone is now vault-gold (readable)
+    amber: `${GOLD_BORDER} ${GOLD_BG_WASH} ${GOLD_TEXT} ${GOLD_RING_SHADOW}`,
     sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
     violet:
       'border-violet-400/45 bg-violet-500/10 text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.16)]',
@@ -165,13 +175,13 @@ function PremiumCard({
             bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.26),transparent_55%),
                 radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.22),transparent_58%),
                 radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.16),transparent_58%),
-                radial-gradient(circle_at_50%_-10%,rgba(245,158,11,0.10),transparent_60%)]
+                radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.10),transparent_60%)]
             opacity-85
           "
         />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,158,11,0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
 
       <div className="relative z-10">{children}</div>
     </section>
@@ -193,7 +203,7 @@ function MiniStat({
       : tone === 'sky'
       ? 'text-sky-200'
       : tone === 'amber'
-      ? 'text-amber-200'
+      ? `text-[rgb(var(--xpot-gold-2))]`
       : tone === 'violet'
       ? 'text-violet-200'
       : 'text-slate-200';
@@ -235,36 +245,36 @@ function RoyalContractBar({ mint }: { mint: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div
-        className="
+        className={`
           relative inline-flex items-center gap-3
-          rounded-full border border-amber-400/30 bg-slate-950/55
+          rounded-full border ${GOLD_BORDER_SOFT} bg-slate-950/55
           px-3.5 py-2
-          shadow-[0_22px_90px_rgba(245,158,11,0.12)]
+          shadow-[0_22px_90px_rgba(var(--xpot-gold),0.12)]
           backdrop-blur-md
-        "
+        `}
         title={mint}
       >
         <div
           className="
             pointer-events-none absolute -inset-10 rounded-full opacity-70 blur-2xl
-            bg-[radial-gradient(circle_at_18%_30%,rgba(245,158,11,0.22),transparent_60%),
+            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
                 radial-gradient(circle_at_85%_35%,rgba(255,255,255,0.06),transparent_62%)]
           "
         />
 
         <span className="relative z-10 inline-flex items-center gap-2">
           <span
-            className="
+            className={`
               inline-flex h-7 w-7 items-center justify-center rounded-full
-              border border-amber-400/25 bg-amber-500/10
-              shadow-[0_0_22px_rgba(245,158,11,0.22)]
-            "
+              border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH_2}
+              shadow-[0_0_22px_rgba(var(--xpot-gold),0.22)]
+            `}
           >
-            <ShieldCheck className="h-4 w-4 text-amber-200" />
+            <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
           </span>
 
           <span className="flex flex-col leading-tight">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200/90">
+            <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
               Official contract
             </span>
 
@@ -287,7 +297,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
         >
           {copied ? (
             <>
-              <Check className="h-3.5 w-3.5 text-amber-300" />
+              <Check className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
               Copied
             </>
           ) : (
@@ -302,16 +312,16 @@ function RoyalContractBar({ mint }: { mint: string }) {
       <Link
         href={getSolscanTokenUrl(mint)}
         target="_blank"
-        className="
+        className={`
           inline-flex items-center gap-2 rounded-full
-          border border-amber-400/18 bg-slate-950/55
+          border border-[rgba(var(--xpot-gold),0.18)] bg-slate-950/55
           px-3.5 py-2 text-[11px] text-slate-200
           hover:bg-slate-900/60 transition
-        "
+        `}
         title="Open in Solscan"
       >
         Explorer
-        <ExternalLink className="h-4 w-4 text-amber-200/70" />
+        <ExternalLink className={`h-4 w-4 text-[rgba(var(--xpot-gold-2),0.70)]`} />
       </Link>
     </div>
   );
@@ -346,7 +356,7 @@ function PrinciplesStrip() {
       </div>
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
-        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_100%_0%,rgba(245,158,11,0.12),transparent_62%)]" />
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_100%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Proof</p>
         <p className="mt-1 text-sm font-semibold text-slate-100">On-chain</p>
         <p className="mt-1 text-[12px] text-slate-400">Verify payouts in explorer</p>
@@ -383,7 +393,7 @@ function Bullet({
     tone === 'sky'
       ? 'bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]'
       : tone === 'amber'
-      ? 'bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.9)]'
+      ? `bg-[rgb(var(--xpot-gold-2))] ${GOLD_GLOW_SHADOW}`
       : tone === 'violet'
       ? 'bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]'
       : 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]';
@@ -415,7 +425,7 @@ function Step({
     tone === 'sky'
       ? 'border-sky-500/25 bg-sky-950/25'
       : tone === 'amber'
-      ? 'border-amber-500/25 bg-amber-950/20'
+      ? `border-[rgba(var(--xpot-gold),0.25)] bg-[rgba(var(--xpot-gold),0.06)]`
       : tone === 'violet'
       ? 'border-violet-500/25 bg-violet-950/25'
       : 'border-emerald-500/25 bg-emerald-950/30';
@@ -424,7 +434,7 @@ function Step({
     tone === 'sky'
       ? 'text-sky-200 border-sky-500/25 bg-sky-500/10'
       : tone === 'amber'
-      ? 'text-amber-200 border-amber-500/25 bg-amber-500/10'
+      ? `${GOLD_TEXT} ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`
       : tone === 'violet'
       ? 'text-violet-200 border-violet-500/25 bg-violet-500/10'
       : 'text-emerald-200 border-emerald-500/25 bg-emerald-500/10';
@@ -579,14 +589,13 @@ function normalizeLiveEntrant(x: any): LiveEntrant | null {
   const handle = cleanHandle(x.handle);
   if (!handle) return null;
 
-  const avatarUrl =
-    typeof x?.avatarUrl === 'string' && x.avatarUrl.trim() ? x.avatarUrl.trim() : undefined;
+  const avatarUrl = typeof x?.avatarUrl === 'string' && x.avatarUrl.trim() ? x.avatarUrl.trim() : undefined;
 
   const followers = typeof x?.followers === 'number' ? x.followers : undefined;
   const verified = typeof x?.verified === 'boolean' ? x.verified : undefined;
 
- // IMPORTANT: subtitle is NOT part of LiveEntrant anymore (locked).
-return asLiveEntrant({ handle, avatarUrl, followers, verified });
+  // IMPORTANT: subtitle is NOT part of LiveEntrant anymore (locked).
+  return asLiveEntrant({ handle, avatarUrl, followers, verified });
 }
 
 function uniqByHandle(list: LiveEntrant[]) {
@@ -644,7 +653,7 @@ export default function HomePage() {
     };
   }, []);
 
-    // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
   // Time + draw state (required for countdown)
   // ─────────────────────────────────────────────
 
@@ -661,10 +670,7 @@ export default function HomePage() {
     return () => window.clearInterval(t);
   }, []);
 
-  const nextDrawUtcMs = useMemo(
-    () => getNextMadridCutoffUtcMs(22, new Date(nowMs)),
-    [nowMs],
-  );
+  const nextDrawUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(nowMs)), [nowMs]);
 
   const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
 
@@ -702,7 +708,7 @@ export default function HomePage() {
                 radial-gradient(circle_at_60%_0%,rgba(56,189,248,0.18),transparent_60%),
                 radial-gradient(circle_at_92%_14%,rgba(139,92,246,0.22),transparent_62%),
                 radial-gradient(circle_at_82%_92%,rgba(236,72,153,0.12),transparent_66%),
-                radial-gradient(circle_at_50%_-10%,rgba(245,158,11,0.14),transparent_60%)]
+                radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.14),transparent_60%)]
           "
         />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.10),rgba(0,0,0,0.55))]" />
@@ -710,14 +716,14 @@ export default function HomePage() {
         <div className="relative z-10 w-full px-0">
           <div className="py-6 sm:py-8">
             <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,158,11,0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
               <div
                 className="
                   pointer-events-none absolute -inset-40 opacity-85 blur-3xl
                   bg-[radial-gradient(circle_at_12%_10%,rgba(16,185,129,0.20),transparent_55%),
                       radial-gradient(circle_at_86%_16%,rgba(139,92,246,0.22),transparent_58%),
                       radial-gradient(circle_at_82%_92%,rgba(56,189,248,0.16),transparent_60%),
-                      radial-gradient(circle_at_55%_0%,rgba(245,158,11,0.12),transparent_58%)]
+                      radial-gradient(circle_at_55%_0%,rgba(var(--xpot-gold),0.12),transparent_58%)]
                 "
               />
 
@@ -737,7 +743,7 @@ export default function HomePage() {
                       </Pill>
 
                       <Pill tone="amber">
-                        <Timer className="h-3.5 w-3.5 text-amber-200" />
+                        <Timer className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
                         Next draw {countdown}
                       </Pill>
                     </div>
@@ -873,13 +879,13 @@ export default function HomePage() {
               </div>
 
               {/* Live entries (always-on) */}
-<div className="relative z-10 border-t border-slate-900/70 px-6 py-5 lg:px-8">
-  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(16,185,129,0.28),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)] opacity-70" />
+              <div className="relative z-10 border-t border-slate-900/70 px-6 py-5 lg:px-8">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(16,185,129,0.28),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)] opacity-70" />
 
-  <div className="relative">
-    <LiveEntrantsLounge entrants={liveEntries} hint="Live lobby - updates automatically" />
-  </div>
-</div>
+                <div className="relative">
+                  <LiveEntrantsLounge entrants={liveEntries} hint="Live lobby - updates automatically" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -928,7 +934,7 @@ export default function HomePage() {
 
           <div className="relative mt-6">
             <div className="pointer-events-none absolute inset-x-2 top-[34px] hidden h-px bg-white/10 lg:block" />
-            <div className="pointer-events-none absolute inset-x-2 top-[34px] hidden h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.35),rgba(16,185,129,0.25),rgba(245,158,11,0.18),transparent)] lg:block" />
+            <div className="pointer-events-none absolute inset-x-2 top-[34px] hidden h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.35),rgba(16,185,129,0.25),rgba(var(--xpot-gold),0.18),transparent)] lg:block" />
 
             <div className="grid gap-4 lg:grid-cols-3">
               <Step
@@ -951,7 +957,7 @@ export default function HomePage() {
                 n="03"
                 title="Claim entry, verify payout"
                 desc="One winner daily. Proof is on-chain"
-                icon={<Crown className="h-5 w-5 text-amber-200" />}
+                icon={<Crown className={`h-5 w-5 ${GOLD_TEXT}`} />}
                 tone="amber"
                 tag="Payout"
               />
@@ -995,7 +1001,7 @@ export default function HomePage() {
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
             <Pill tone="amber">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+              <span className={`h-1.5 w-1.5 rounded-full bg-[rgb(var(--xpot-gold-2))] ${GOLD_GLOW_SHADOW}`} />
               Payout
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
@@ -1077,8 +1083,8 @@ export default function HomePage() {
 
             <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-950/20">
-                  <ShieldCheck className="h-5 w-5 text-amber-200" />
+                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
+                  <ShieldCheck className={`h-5 w-5 ${GOLD_TEXT}`} />
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-slate-100">Fairness layer</p>
@@ -1116,7 +1122,9 @@ export default function HomePage() {
               Creators
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
-            <p className="mt-2 text-sm text-slate-300">One mechanic, transparent winners and a premium experience that doesn’t feel spammy.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              One mechanic, transparent winners and a premium experience that doesn’t feel spammy.
+            </p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1125,9 +1133,7 @@ export default function HomePage() {
               Sponsors
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Sponsor pools and bonuses with visibility and provable distribution on-chain.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1136,9 +1142,7 @@ export default function HomePage() {
               Communities
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Your XPOT history travels with you and unlocks better rewards over time.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
           </PremiumCard>
         </div>
       </section>
@@ -1189,7 +1193,7 @@ export default function HomePage() {
               href={ROUTE_OPS}
               className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
             >
-              <Lock className="h-3.5 w-3.5 text-amber-200" />
+              <Lock className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
               Ops
               <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
             </Link>
