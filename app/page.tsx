@@ -2,7 +2,7 @@
 // app/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -140,8 +140,8 @@ function TinyTooltip({ label, children }: { label: string; children: ReactNode }
           )
         : null}
     </span>
-  );
-}}
+    );
+}
 
 function PremiumCard({
   children,
@@ -591,21 +591,25 @@ function normalizeLiveEntrant(x: any): LiveEntrant | null {
   const followers = typeof x?.followers === 'number' ? x.followers : undefined;
   const verified = typeof x?.verified === 'boolean' ? x.verified : undefined;
 
-  // IMPORTANT: subtitle is NOT part of LiveEntrant anymore (locked).
-  return asLiveEntrant({ handle, avatarUrl, followers, verified });
+ // IMPORTANT: subtitle is NOT part of LiveEntrant anymore (locked).
+return asLiveEntrant({ handle, avatarUrl, followers, verified });
 }
 
 function uniqByHandle(list: LiveEntrant[]) {
   const seen = new Set<string>();
   const out: LiveEntrant[] = [];
+
   for (const e of list || []) {
     const h = cleanHandle(e?.handle || '');
     if (!h) continue;
+
     const key = h.toLowerCase();
     if (seen.has(key)) continue;
+
     seen.add(key);
     out.push({ ...e, handle: h });
   }
+
   return out;
 }
 
@@ -613,29 +617,38 @@ export default function HomePage() {
   const [liveEntries, setLiveEntries] = useState<LiveEntrant[]>([]);
 
   useEffect(() => {
-  let alive = true;
+    let alive = true;
 
-  async function load() {
-    try {
-      const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
-      const data = await r.json();
+    async function load() {
+      try {
+        const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
 
-      if (!alive) return;
-      const raw = Array.isArray(data?.entries) ? data.entries : [];
-      const normalized = raw.map(normalizeLiveEntrant).filter(Boolean) as LiveEntrant[];
-      setLiveEntries(uniqByHandle(normalized));
-    } catch {
-      // ignore
+        // If the route sometimes returns HTML/errors, avoid crashing
+        const data = (await r.json().catch(() => null)) as any;
+        if (!alive) return;
+
+        const raw: any[] = Array.isArray(data?.entries) ? data.entries : [];
+        const normalized: LiveEntrant[] = [];
+
+        for (const item of raw) {
+          const e = normalizeLiveEntrant(item);
+          if (e) normalized.push(e);
+        }
+
+        setLiveEntries(uniqByHandle(normalized));
+      } catch {
+        // ignore
+      }
     }
-  }
 
-  load();
-  const t = window.setInterval(load, 12_000);
-  return () => {
-    alive = false;
-    window.clearInterval(t);
-  };
-}, []);
+    load();
+    const t = window.setInterval(load, 12_000);
+
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, []);
 
   const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
 
