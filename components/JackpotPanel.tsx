@@ -1078,15 +1078,6 @@ export default function JackpotPanel({
               : 'relative mt-5 grid gap-4'
           }
         >
-          {/* Big USD */}
-          <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
-            {/* cockpit glow */}
-            <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.20] xpot-ship-cockpit" />
-            <div
-              className={`pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 ${
-                justUpdated ? 'opacity-100' : ''
-              } xpot-ship-flash`}
-            />
 
             <div className="mt-4 flex items-end justify-between gap-3">
               <div
