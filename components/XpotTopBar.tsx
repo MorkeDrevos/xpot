@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   XCircle,
   Loader2,
+  ChevronRight,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -260,7 +261,6 @@ function shortenAddress(addr: string, left = 6, right = 6) {
 
 function OfficialCAChip() {
   const [copied, setCopied] = useState(false);
-
   const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 6, 6), []);
 
   async function onCopy() {
@@ -277,10 +277,8 @@ function OfficialCAChip() {
     <div
       className="
         relative inline-flex items-center gap-3
-        rounded-full
-        px-4 py-1.5
-        border border-white/10
-        bg-white/[0.03]
+        rounded-full px-4 py-1.5
+        border border-white/10 bg-white/[0.03]
         backdrop-blur-xl
         shadow-[0_18px_60px_rgba(0,0,0,0.55)]
       "
@@ -291,8 +289,7 @@ function OfficialCAChip() {
       <span
         className="
           relative z-10 inline-flex h-8 w-8 items-center justify-center
-          rounded-full
-          border border-emerald-400/15
+          rounded-full border border-emerald-400/15
           bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.18),rgba(0,0,0,0.35))]
           shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_14px_40px_rgba(0,0,0,0.55)]
         "
@@ -308,8 +305,8 @@ function OfficialCAChip() {
       <span
         className="
           relative z-10 inline-flex items-center
-          rounded-full border border-white/10
-          bg-black/30 px-2.5 py-1
+          rounded-full border border-white/10 bg-black/30
+          px-2.5 py-1
           text-[10px] font-semibold uppercase tracking-[0.22em]
           text-slate-200/80
         "
@@ -323,8 +320,7 @@ function OfficialCAChip() {
         className="
           relative z-10 inline-flex items-center justify-center
           h-8 w-8 rounded-full
-          border border-white/10
-          bg-white/[0.04]
+          border border-white/10 bg-white/[0.04]
           hover:bg-white/[0.07]
         "
         aria-label="Copy official CA"
@@ -573,13 +569,20 @@ function HubRight({
   );
 }
 
-/* ---------------- Wallet button ---------------- */
+/* ---------------- Wallet button (premium + royal) ---------------- */
 
 function toneRing(tone: HubWalletTone) {
-  if (tone === 'emerald') return 'ring-emerald-400/20 bg-emerald-500/5';
-  if (tone === 'amber') return 'ring-amber-400/20 bg-amber-500/5';
-  if (tone === 'sky') return 'ring-sky-400/20 bg-sky-500/5';
-  return 'ring-white/10 bg-white/[0.03]';
+  if (tone === 'emerald') return 'ring-emerald-400/20';
+  if (tone === 'amber') return 'ring-amber-400/20';
+  if (tone === 'sky') return 'ring-sky-400/20';
+  return 'ring-white/10';
+}
+
+function toneGlow(tone: HubWalletTone) {
+  if (tone === 'emerald') return 'from-emerald-400/20 via-emerald-300/10 to-transparent';
+  if (tone === 'amber') return 'from-amber-400/22 via-amber-300/10 to-transparent';
+  if (tone === 'sky') return 'from-sky-400/22 via-violet-400/10 to-transparent';
+  return 'from-white/12 via-white/8 to-transparent';
 }
 
 function HubWalletMenuInline({
@@ -590,7 +593,6 @@ function HubWalletMenuInline({
   onOpenWalletModal?: () => void;
 }) {
   const { publicKey, connected } = useWallet();
-
   const addr = connected && publicKey ? publicKey.toBase58() : null;
 
   const label = hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Select wallet');
@@ -600,28 +602,81 @@ function HubWalletMenuInline({
     hubWalletStatus?.winner ? 'sky' : hubWalletStatus?.claimed ? 'emerald' : connected ? 'sky' : 'amber';
 
   const microIcon = hubWalletStatus?.winner ? (
-    <Crown className="h-4 w-4" />
+    <Crown className="h-4 w-4 text-amber-200" />
   ) : hubWalletStatus?.claimed ? (
-    <Ticket className="h-4 w-4" />
+    <Ticket className="h-4 w-4 text-emerald-200" />
   ) : (
-    <Wallet className="h-4 w-4" />
+    <Wallet className="h-4 w-4 text-slate-200" />
   );
-
-  const open = () => onOpenWalletModal?.();
 
   return (
     <button
-      onClick={open}
-      className={`group rounded-full border border-white/10 px-5 py-2.5 ring-1 ${toneRing(tone)} hover:opacity-95`}
+      onClick={() => onOpenWalletModal?.()}
+      className={`
+        group relative overflow-hidden
+        rounded-full
+        border border-white/10
+        px-5 py-2.5
+        ring-1 ${toneRing(tone)}
+        bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))]
+        shadow-[0_18px_60px_rgba(0,0,0,0.55)]
+        hover:brightness-[1.04]
+        transition
+      `}
       title={addr ?? undefined}
     >
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30">
+      {/* royal sweep */}
+      <span
+        aria-hidden
+        className={`
+          pointer-events-none absolute inset-0 opacity-70
+          bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.10),transparent_45%)]
+        `}
+      />
+      <span
+        aria-hidden
+        className={`
+          pointer-events-none absolute -left-10 top-0 h-full w-40
+          bg-gradient-to-r ${toneGlow(tone)}
+          blur-xl opacity-60
+          group-hover:opacity-80
+          transition
+        `}
+      />
+      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/35" />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)]"
+      />
+
+      <div className="relative flex items-center gap-3">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/35 shadow-[0_10px_30px_rgba(0,0,0,0.55)]">
           {microIcon}
         </span>
-        <span className="text-[13px] font-semibold">{label}</span>
+
+        <div className="min-w-0 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-semibold text-slate-100">{label}</span>
+            {hubWalletStatus?.winner && (
+              <span className="hidden sm:inline-flex items-center rounded-full border border-amber-400/15 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-amber-100">
+                WINNER
+              </span>
+            )}
+            {hubWalletStatus?.claimed && !hubWalletStatus?.winner && (
+              <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-400/15 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-emerald-100">
+                TICKET
+              </span>
+            )}
+          </div>
+          <div className="mt-0.5 flex items-center gap-2">
+            <span className="text-[11px] text-slate-300/70">{sublabel}</span>
+          </div>
+        </div>
+
+        <span className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200/80 group-hover:bg-white/[0.07] group-hover:text-slate-100 transition">
+          <ChevronRight className="h-4 w-4" />
+        </span>
       </div>
-      <div className="mt-1 text-[11px] text-slate-400">{sublabel}</div>
     </button>
   );
 }
@@ -633,16 +688,7 @@ function shortWallet(addr: string) {
 /* ---------------- ✅ Light connect wallet popup ---------------- */
 
 function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const {
-    wallets,
-    select,
-    connect,
-    connecting,
-    connected,
-    disconnect,
-    publicKey,
-    wallet: activeWallet,
-  } = useWallet();
+  const { wallets, select, connect, connecting, connected, disconnect, publicKey, wallet: activeWallet } = useWallet();
 
   const [mounted, setMounted] = useState(false);
   const [attempted, setAttempted] = useState(false); // ✅ controls error visibility
@@ -653,10 +699,17 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
 
   useEffect(() => {
     if (!open) return;
+
     // reset each time you open (prevents “red message too early”)
     setAttempted(false);
     setErrorMsg(null);
     setBusyName(null);
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [open]);
 
   // Close on escape
@@ -677,11 +730,21 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
 
   async function handlePick(name: WalletName) {
     try {
+      // If already connected with that wallet, just close
+      if (connected && activeWallet?.adapter?.name === String(name)) {
+        onClose();
+        return;
+      }
+
       setAttempted(true);
       setErrorMsg(null);
       setBusyName(String(name));
 
       select(name);
+
+      // Give adapters a tick to switch (prevents occasional race)
+      await new Promise((r) => setTimeout(r, 50));
+
       await connect();
 
       // success
@@ -753,12 +816,8 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-100">
-                    {connected ? 'Wallet connected' : 'No wallet connected'}
-                  </p>
-                  <p className="mt-1 truncate text-xs text-slate-300/70">
-                    {connected ? addr : 'Choose a wallet below'}
-                  </p>
+                  <p className="text-sm font-semibold text-slate-100">{connected ? 'Wallet connected' : 'No wallet connected'}</p>
+                  <p className="mt-1 truncate text-xs text-slate-300/70">{connected ? addr : 'Choose a wallet below'}</p>
                 </div>
 
                 {connected && (
@@ -782,11 +841,10 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
 
             <div className="mt-4 space-y-2">
               {usableWallets.map((w) => {
-                const name = w.adapter.name;
+                const name = w.adapter.name as WalletName;
                 const ready = w.readyState;
-                const isInstalled = ready === WalletReadyState.Installed;
-                const isActive = activeWallet?.adapter?.name === name;
-
+                const isInstalled = ready === WalletReadyState.Installed || ready === WalletReadyState.Loadable;
+                const isActive = activeWallet?.adapter?.name === String(name);
                 const isBusy = connecting && busyName === String(name);
 
                 return (
@@ -806,11 +864,11 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         {/* icon */}
-                        {w.adapter.icon ? (
+                        {(w.adapter as any).icon ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={w.adapter.icon}
-                            alt={`${name} icon`}
+                            src={(w.adapter as any).icon}
+                            alt={`${String(name)} icon`}
                             className="h-9 w-9 rounded-xl border border-white/10 bg-black/30"
                           />
                         ) : (
@@ -820,7 +878,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
                         )}
 
                         <div className="min-w-0 text-left">
-                          <p className="truncate text-sm font-semibold text-slate-100">{name}</p>
+                          <p className="truncate text-sm font-semibold text-slate-100">{String(name)}</p>
                           <p className="mt-0.5 text-xs text-slate-300/70">
                             {isActive && connected ? 'Active' : isInstalled ? 'Installed' : 'Available'}
                           </p>
