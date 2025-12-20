@@ -28,11 +28,10 @@
 
   /* -------------------------------------------------------------
      Vault gold (premium - replaces "yellow/amber" brand accents)
-     Use these tokens in components, gradients, borders, glows
   ------------------------------------------------------------- */
   --xpot-gold: 214 176 79; /* base */
-  --xpot-gold-2: 242 214 128; /* highlight */
-  --xpot-gold-ink: 18 12 2; /* text on gold */
+  --xpot-gold-2: 242 214 128; /* highlight (use for text on dark) */
+  --xpot-gold-ink: 18 12 2; /* text on gold background */
 
   --xpot-glow-gold:
     0 0 0 1px rgba(var(--xpot-gold), 0.22),
@@ -92,7 +91,7 @@
   --xpot-ring: 0 0 0 3px rgba(var(--xpot-accent-primary), 0.25);
   --xpot-ring-gold: 0 0 0 3px rgba(var(--xpot-gold), 0.26);
 
-  /* Top strip (your banner uses its own styling - keep this available) */
+  /* Top strip */
   --xpot-strip: linear-gradient(
     90deg,
     rgba(88, 28, 135, 0.96),
@@ -372,7 +371,6 @@ select {
 
 /* =============================================================
    CSS-ONLY ATMOSPHERE (NO STARS)
-   Keeps premium depth/vignette without any star pixels.
 ============================================================= */
 
 .xpot-atmosphere {
@@ -421,10 +419,11 @@ select {
 }
 
 /* =============================================================
-   VAULT GOLD HELPERS (use anywhere)
+   VAULT GOLD HELPERS
 ============================================================= */
 
 .xpot-gold-text { color: rgb(var(--xpot-gold)); }
+.xpot-gold-text-hi { color: rgb(var(--xpot-gold-2)); } /* ✅ readable on dark */
 .xpot-gold-border { border-color: rgba(var(--xpot-gold), 0.28); }
 .xpot-gold-bg { background: rgba(var(--xpot-gold), 0.10); }
 .xpot-gold-glow { box-shadow: var(--xpot-glow-gold); }
@@ -435,6 +434,7 @@ select {
   border-color: rgba(var(--xpot-gold), 0.34);
 }
 
+/* CTA button (gold surface) */
 .xpot-btn-vault {
   background: var(--xpot-gold-grad);
   color: rgb(var(--xpot-gold-ink));
@@ -445,12 +445,14 @@ select {
 .xpot-btn-vault:hover {
   filter: brightness(1.03) saturate(1.02);
 }
+
 /* =============================================================
    GOLD PILLS / BADGES (READABLE ON DARK UI)
 ============================================================= */
 
+/* Gold outline pill sitting on dark glass */
 .xpot-pill-gold {
-  color: rgb(var(--xpot-gold-2)); /* highlight gold for text */
+  color: rgb(var(--xpot-gold-2)); /* ✅ highlight gold for text */
   border-color: rgba(var(--xpot-gold), 0.35);
 }
 
