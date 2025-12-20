@@ -4,10 +4,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
-import Link from 'next/link';
-
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 import XpotLogo from '@/components/XpotLogo';
+import Link from 'next/link';
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 
@@ -396,7 +395,9 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
 
       <TooltipBubble open={t.open} rect={t.rect} width={380}>
         <div className="px-4 py-3 text-[12px] leading-snug text-slate-100">
-          <p className="text-slate-100">Current USD value of today&apos;s XPOT, based on the live XPOT price from DexScreener.</p>
+          <p className="text-slate-100">
+            Current USD value of today&apos;s XPOT, based on the live XPOT price from DexScreener.
+          </p>
           <p className="mt-2 text-slate-400">
             Winner is paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
           </p>
@@ -451,7 +452,9 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           </button>
 
           <TooltipBubble open={t.open} rect={t.rect} width={340}>
-            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">{tooltip}</div>
+            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
+              {tooltip}
+            </div>
           </TooltipBubble>
         </>
       )}
@@ -961,11 +964,6 @@ export default function JackpotPanel({
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
-      {/* spaceship FX (panel) */}
-      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.45] xpot-ship-panel" />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.25] xpot-ship-stars" />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 xpot-ship-pumpRing" style={{ opacity: justPumped ? 1 : 0 }} />
-
       {/* Soft neon glow on pump */}
       <div
         className={`
@@ -1006,59 +1004,51 @@ export default function JackpotPanel({
       </div>
 
       {/* MAIN SLAB */}
-      <div
-        ref={slabRef}
-        className="relative z-10 mt-5 overflow-hidden rounded-2xl border border-slate-800/80 bg-black/20 p-5"
-      >
-        {/* spaceship FX (slab) */}
-        <div className="pointer-events-none absolute inset-0 opacity-[0.55] xpot-ship-slab" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.25] xpot-ship-scan" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.12] xpot-ship-noise" />
+<div ref={slabRef} className="...">
+  <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+  <div className="flex flex-wrap items-center gap-3">
+    {/* Marketing label */}
+    <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
+      XPOT supply for today
+    </span>
 
-        {/* Marketing row */}
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
-              XPOT supply for today
-            </span>
+    {/* Currency-style amount */}
+    <span
+      className="relative inline-flex items-baseline rounded-2xl bg-black/45 px-6 py-2 font-mono text-xl tracking-[0.22em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_20px_60px_rgba(0,0,0,0.35)]"
+      style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` }}
+    >
+      <span
+        className="pointer-events-none absolute inset-0 rounded-2xl opacity-60"
+        style={{
+          background: `
+            radial-gradient(circle_at_20%_30%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 56%),
+            radial-gradient(circle_at_80%_20%, rgba(124,200,255,0.08), transparent 58%)
+          `,
+        }}
+      />
+      <span className="relative">{poolLabel}</span>
+    </span>
 
-            <span
-              className="relative inline-flex items-baseline rounded-2xl bg-black/45 px-6 py-2 font-mono text-xl tracking-[0.22em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_20px_60px_rgba(0,0,0,0.35)]"
-              style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` }}
-            >
-              <span
-                className="pointer-events-none absolute inset-0 rounded-2xl opacity-60"
-                style={{
-                  background: `
-                    radial-gradient(circle_at_20%_30%, rgba(${VAULT_GOLD.rgb} / 0.12), transparent 56%),
-                    radial-gradient(circle_at_80%_20%, rgba(124,200,255,0.08), transparent 58%)
-                  `,
-                }}
-              />
-              <span className="relative">{poolLabel}</span>
-            </span>
+    <span className="text-[11px] text-slate-500">
+      Daily issuance - consistent supply, predictable protocol economics.
+    </span>
+  </div>
 
-            <span className="text-[11px] text-slate-500">Daily issuance - consistent supply, predictable protocol economics.</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {isLocked && (
-              <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
-                Draw locked
-              </span>
-            )}
-          </div>
-        </div>
+  <div className="flex items-center gap-2">
+    {isLocked && (
+      <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+        Draw locked
+      </span>
+    )}
+  </div>
+</div>
 
         {/* Value row */}
-        <div className={isWide ? 'relative mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]' : 'relative mt-5 grid gap-4'}>
+        <div className={isWide ? 'mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]' : 'mt-5 grid gap-4'}>
           {/* Big USD */}
           <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
-            {/* cockpit glow */}
-            <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.20] xpot-ship-cockpit" />
-            <div className={`pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 ${justUpdated ? 'opacity-100' : ''} xpot-ship-flash`} />
-
             <div className="mt-4 flex items-end justify-between gap-3">
               <div
                 className={`
@@ -1067,7 +1057,6 @@ export default function JackpotPanel({
                   ${justUpdated ? 'scale-[1.01]' : ''}
                   ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
                 `}
-                style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
               >
                 {displayUsdText}
               </div>
@@ -1085,7 +1074,7 @@ export default function JackpotPanel({
               }}
             />
 
-            {/* countdown */}
+            {/* sexy countdown */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <span
                 className={`
@@ -1115,7 +1104,7 @@ export default function JackpotPanel({
             <p className="mt-2 text-xs text-slate-500">Auto-updates from DexScreener ticks</p>
           </div>
 
-          {/* Royal XPOT meta */}
+          {/* Royal XPOT meta (credit card feel + private-vault gold) */}
           <div
             className="relative overflow-hidden rounded-2xl bg-[linear-gradient(180deg,rgba(2,6,23,0.35),rgba(15,23,42,0.0))] px-5 py-4 min-h-[170px]"
             style={{
@@ -1134,7 +1123,7 @@ export default function JackpotPanel({
               }}
             />
 
-            {/* card sheen */}
+            {/* card sheen (dialed down) */}
             <div
               className="pointer-events-none absolute -inset-x-10 -top-10 h-28 rotate-[-8deg] opacity-[0.22]"
               style={{
@@ -1143,6 +1132,7 @@ export default function JackpotPanel({
             />
 
             <div className="relative flex h-full flex-col">
+              {/* Top row */}
               <div className="pt-2 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span
@@ -1156,7 +1146,10 @@ export default function JackpotPanel({
                   </span>
 
                   <div className="leading-tight">
-                    <p className="text-[10px] uppercase tracking-[0.24em]" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.85)` }}>
+                    <p
+                      className="text-[10px] uppercase tracking-[0.24em]"
+                      style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.85)` }}
+                    >
                       XPOT token
                     </p>
                     <p className="text-xs text-slate-300">Winners paid in XPOT</p>
@@ -1175,10 +1168,14 @@ export default function JackpotPanel({
                 </span>
               </div>
 
+              {/* Bottom */}
               <div className="mt-auto pb-1 text-right">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
                 <p className="mt-1 text-sm text-slate-300">
-                  1 XPOT ≈ <span className="font-mono text-slate-100">{priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}</span>
+                  1 XPOT ≈{' '}
+                  <span className="font-mono text-slate-100">
+                    {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+                  </span>
                 </p>
 
                 <div className="mt-2 flex items-center justify-end gap-2 text-[11px] text-slate-500">
@@ -1212,7 +1209,13 @@ export default function JackpotPanel({
 
             {spark ? (
               <div className="mt-2">
-                <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70" aria-label="XPOT pulse sparkline (local ticks)">
+                <svg
+                  width="100%"
+                  height="34"
+                  viewBox="0 0 560 54"
+                  className="block text-slate-300/70"
+                  aria-label="XPOT pulse sparkline (local ticks)"
+                >
                   <polyline
                     fill="none"
                     stroke="currentColor"
@@ -1237,7 +1240,8 @@ export default function JackpotPanel({
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
                 {range24h ? (
                   <p className="mt-1 text-sm text-slate-100">
-                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span> <span className="text-slate-600">-</span>{' '}
+                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
+                    <span className="text-slate-600">-</span>{' '}
                     <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
                   </p>
                 ) : (
@@ -1277,7 +1281,10 @@ export default function JackpotPanel({
                 </p>
               </div>
 
-              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25" style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` }}>
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25"
+                style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` }}
+              >
                 <Crown className="h-4 w-4 opacity-90" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.78)` }} />
               </span>
             </div>
@@ -1315,9 +1322,10 @@ export default function JackpotPanel({
         </div>
       </div>
 
-      {/* CONTEXT STRIP */}
+           {/* CONTEXT STRIP */}
       <div className="relative z-10 mt-4 rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* LEFT: context info */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
             <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
 
@@ -1341,6 +1349,7 @@ export default function JackpotPanel({
             </span>
           </div>
 
+          {/* RIGHT: CTA */}
           <Link
             href="/hub"
             className="
@@ -1361,157 +1370,11 @@ export default function JackpotPanel({
             Live price not available yet - auto-populates when DexScreener sees a pair.
           </p>
         ) : (
-          <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
+          <p className="mt-3 text-[11px] text-slate-500">
+            Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s
+          </p>
         )}
       </div>
-
-      {/* FX keyframes + textures (scoped by classes) */}
-      <style jsx>{`
-        .xpot-ship-panel {
-          background:
-            radial-gradient(circle at 18% 22%, rgba(59, 167, 255, 0.18), transparent 55%),
-            radial-gradient(circle at 78% 18%, rgba(236, 72, 153, 0.10), transparent 60%),
-            radial-gradient(circle at 60% 78%, rgba(${VAULT_GOLD.rgb} / 0.10), transparent 58%),
-            linear-gradient(180deg, rgba(2, 6, 23, 0.15), rgba(0, 0, 0, 0));
-          filter: saturate(1.08);
-        }
-
-        .xpot-ship-stars {
-          background:
-            radial-gradient(circle at 12% 32%, rgba(255, 255, 255, 0.20) 1px, transparent 2px),
-            radial-gradient(circle at 28% 72%, rgba(255, 255, 255, 0.16) 1px, transparent 2px),
-            radial-gradient(circle at 66% 28%, rgba(255, 255, 255, 0.14) 1px, transparent 2px),
-            radial-gradient(circle at 82% 62%, rgba(255, 255, 255, 0.12) 1px, transparent 2px),
-            radial-gradient(circle at 44% 48%, rgba(255, 255, 255, 0.10) 1px, transparent 2px);
-          background-size: 220px 220px, 260px 260px, 240px 240px, 300px 300px, 280px 280px;
-          animation: xpotStarsDrift 14s linear infinite;
-          mix-blend-mode: screen;
-        }
-
-        .xpot-ship-pumpRing {
-          background:
-            radial-gradient(circle at 50% 50%, rgba(124, 200, 255, 0.18), transparent 60%),
-            radial-gradient(circle at 50% 50%, rgba(${VAULT_GOLD.rgb} / 0.10), transparent 68%);
-          filter: blur(0.2px);
-          animation: xpotPumpBreath 1.6s ease-out infinite;
-        }
-
-        .xpot-ship-slab {
-          background:
-            conic-gradient(
-              from 90deg,
-              rgba(59, 167, 255, 0.00),
-              rgba(59, 167, 255, 0.14),
-              rgba(236, 72, 153, 0.06),
-              rgba(${VAULT_GOLD.rgb} / 0.10),
-              rgba(59, 167, 255, 0.00)
-            );
-          animation: xpotGyro 9s linear infinite;
-          transform-origin: 50% 50%;
-          mix-blend-mode: screen;
-        }
-
-        .xpot-ship-scan {
-          background: linear-gradient(90deg, transparent, rgba(124, 200, 255, 0.16), transparent);
-          animation: xpotScan 3.8s ease-in-out infinite;
-          filter: blur(0.2px);
-          opacity: 0.22;
-        }
-
-        .xpot-ship-noise {
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.28'/%3E%3C/svg%3E");
-          background-size: 140px 140px;
-          mix-blend-mode: overlay;
-          animation: xpotNoise 7s steps(8) infinite;
-        }
-
-        .xpot-ship-cockpit {
-          background:
-            radial-gradient(circle at 18% 30%, rgba(59, 167, 255, 0.12), transparent 55%),
-            radial-gradient(circle at 78% 26%, rgba(236, 72, 153, 0.06), transparent 60%),
-            radial-gradient(circle at 52% 88%, rgba(${VAULT_GOLD.rgb} / 0.08), transparent 65%);
-          mix-blend-mode: screen;
-          animation: xpotFloat 6.5s ease-in-out infinite;
-        }
-
-        .xpot-ship-flash {
-          background: radial-gradient(circle at 40% 40%, rgba(124, 200, 255, 0.20), transparent 62%);
-          mix-blend-mode: screen;
-        }
-
-        @keyframes xpotGyro {
-          0% {
-            transform: rotate(0deg) scale(1.08);
-          }
-          100% {
-            transform: rotate(360deg) scale(1.08);
-          }
-        }
-
-        @keyframes xpotScan {
-          0% {
-            transform: translateX(-22%);
-          }
-          50% {
-            transform: translateX(22%);
-          }
-          100% {
-            transform: translateX(-22%);
-          }
-        }
-
-        @keyframes xpotStarsDrift {
-          0% {
-            transform: translate3d(0, 0, 0);
-          }
-          50% {
-            transform: translate3d(-10px, 8px, 0);
-          }
-          100% {
-            transform: translate3d(0, 0, 0);
-          }
-        }
-
-        @keyframes xpotNoise {
-          0% {
-            transform: translate3d(0, 0, 0);
-            opacity: 0.10;
-          }
-          50% {
-            transform: translate3d(8px, -6px, 0);
-            opacity: 0.14;
-          }
-          100% {
-            transform: translate3d(0, 0, 0);
-            opacity: 0.10;
-          }
-        }
-
-        @keyframes xpotFloat {
-          0%,
-          100% {
-            transform: translate3d(0, 0, 0);
-          }
-          50% {
-            transform: translate3d(0, -3px, 0);
-          }
-        }
-
-        @keyframes xpotPumpBreath {
-          0% {
-            transform: scale(0.985);
-            opacity: 0.55;
-          }
-          60% {
-            transform: scale(1.02);
-            opacity: 0.85;
-          }
-          100% {
-            transform: scale(1.01);
-            opacity: 0.25;
-          }
-        }
-      `}</style>
     </section>
   );
 }
