@@ -2,9 +2,8 @@
 'use client';
 
 import { ReactNode, useEffect, useId, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 
-export type ModalTone = 'default' | 'xpot-light' | 'xpot-dark';
+type ModalTone = 'default' | 'xpot-light' | 'xpot-dark';
 
 type ModalProps = {
   open: boolean;
@@ -13,37 +12,18 @@ type ModalProps = {
   title?: string;
   children: ReactNode;
 
+  // ✅ NEW
   tone?: ModalTone;
-  maxWidthClassName?: string;
+  maxWidthClassName?: string; // e.g. "max-w-2xl"
+  showClose?: boolean;
+  closeLabel?: string;
 
-  /** Optional: hide the default header row completely */
-  hideHeader?: boolean;
+  // If you want to keep it open on backdrop click
+  closeOnBackdrop?: boolean;
 
-  /** Optional: custom right-side header content */
+  // Optional header content on the right (chips, status pill, etc.)
   headerRightSlot?: ReactNode;
-
-  /** Optional: aria label override (when title not provided) */
-  ariaLabel?: string;
 };
-
-function useBodyScrollLock(locked: boolean) {
-  useEffect(() => {
-    if (!locked) return;
-
-    const prevOverflow = document.body.style.overflow;
-    const prevPaddingRight = document.body.style.paddingRight;
-
-    // Prevent layout shift when scrollbar disappears
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.overflow = 'hidden';
-    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.paddingRight = prevPaddingRight;
-    };
-  }, [locked]);
-}
 
 export default function Modal({
   open,
@@ -52,145 +32,183 @@ export default function Modal({
   children,
   tone = 'default',
   maxWidthClassName = 'max-w-md',
-  hideHeader = false,
+  showClose = true,
+  closeLabel = 'Close',
+  closeOnBackdrop = true,
   headerRightSlot,
-  ariaLabel,
 }: ModalProps) {
   const headingId = useId();
-  useBodyScrollLock(open);
 
+  // Scroll lock + Escape close
   useEffect(() => {
     if (!open) return;
+
+    const prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
 
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
 
     window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      document.documentElement.style.overflow = prevOverflow;
+    };
   }, [open, onClose]);
 
-  const ui = useMemo(() => {
-    if (!open) return null;
+  const toneClasses = useMemo(() => {
+    // “Light” in XPOT terms = lighter glass + cleaner borders + warm gold micro highlights
+    if (tone === 'xpot-light') {
+      return {
+        backdrop: 'bg-black/65 backdrop-blur-2xl',
+        panel:
+          'border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-slate-100 shadow-[0_40px_160px_rgba(0,0,0,0.75)]',
+        header: 'border-b border-white/10',
+        title: 'text-[13px] font-semibold text-slate-100 tracking-[0.02em]',
+        close:
+          'border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]',
+      };
+    }
 
-    const shell =
-      tone === 'xpot-light'
-        ? {
-            backdrop:
-              'bg-black/55 backdrop-blur-xl',
-            panel:
-              [
-                'rounded-[28px] border border-white/10',
-                'bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.08),transparent_58%),linear-gradient(to_bottom,rgba(2,6,23,0.72),rgba(2,6,23,0.56))]',
-                'shadow-[0_40px_160px_rgba(0,0,0,0.78)]',
-                'backdrop-blur-xl',
-              ].join(' '),
-            ambient:
-              [
-                'pointer-events-none absolute -top-24 left-1/2 h-[380px] w-[380px] -translate-x-1/2 rounded-full blur-3xl',
-                'bg-[radial-gradient(circle,rgba(168,85,247,0.18),transparent_60%)]',
-              ].join(' '),
-            ambient2:
-              [
-                'pointer-events-none absolute -bottom-28 left-[18%] h-[340px] w-[340px] rounded-full blur-3xl',
-                'bg-[radial-gradient(circle,rgba(245,158,11,0.14),transparent_60%)]',
-              ].join(' '),
-            closeBtn:
-              'rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10',
-            title:
-              'text-sm font-semibold text-slate-100',
-          }
-        : tone === 'xpot-dark'
-        ? {
-            backdrop: 'bg-black/70 backdrop-blur-2xl',
-            panel:
-              'rounded-2xl border border-slate-800 bg-slate-950 shadow-[0_30px_120px_rgba(0,0,0,0.85)]',
-            ambient: '',
-            ambient2: '',
-            closeBtn:
-              'rounded-full px-2 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-100',
-            title:
-              'text-sm font-semibold text-slate-100',
-          }
-        : {
-            backdrop: 'bg-black/60 backdrop-blur-sm',
-            panel:
-              'rounded-2xl border border-slate-800 bg-slate-950 shadow-xl',
-            ambient: '',
-            ambient2: '',
-            closeBtn:
-              'rounded-full px-2 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-slate-100',
-            title:
-              'text-sm font-semibold text-slate-100',
-          };
+    if (tone === 'xpot-dark') {
+      return {
+        backdrop: 'bg-black/70 backdrop-blur-xl',
+        panel:
+          'border border-white/10 bg-gradient-to-b from-slate-950/85 to-slate-950/55 text-slate-100 shadow-[0_40px_160px_rgba(0,0,0,0.80)]',
+        header: 'border-b border-white/10',
+        title: 'text-[13px] font-semibold text-slate-100 tracking-[0.02em]',
+        close:
+          'border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]',
+      };
+    }
 
-    return (
-      <div
-        className="fixed inset-0 z-[90] flex items-center justify-center px-4"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={title ? headingId : undefined}
-        aria-label={!title ? ariaLabel || 'Modal' : undefined}
-      >
-        {/* Backdrop */}
-        <button
-          type="button"
-          aria-label="Close modal"
-          onClick={onClose}
-          className={`absolute inset-0 ${shell.backdrop}`}
-        />
-
-        {/* Panel */}
-        <div
-          className={[
-            'relative w-full',
-            maxWidthClassName,
-            shell.panel,
-            'overflow-hidden',
-          ].join(' ')}
-        >
-          {tone === 'xpot-light' && (
-            <>
-              <div aria-hidden className={shell.ambient} />
-              <div aria-hidden className={shell.ambient2} />
-              {/* tiny highlight line */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
-              />
-            </>
-          )}
-
-          {!hideHeader && (
-            <div className="relative flex items-center justify-between gap-3 px-5 pt-5">
-              <div className="min-w-0">
-                {title ? (
-                  <h2 id={headingId} className={shell.title}>
-                    {title}
-                  </h2>
-                ) : null}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {headerRightSlot}
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className={shell.closeBtn}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="relative px-5 pb-5 pt-4">{children}</div>
-        </div>
-      </div>
-    );
-  }, [open, onClose, title, children, tone, maxWidthClassName, hideHeader, headerRightSlot, ariaLabel, headingId]);
+    // default = your old look but slightly nicer
+    return {
+      backdrop: 'bg-black/60 backdrop-blur-sm',
+      panel:
+        'border border-slate-800 bg-slate-950 text-slate-100 shadow-xl',
+      header: 'border-b border-white/5',
+      title: 'text-sm font-semibold text-slate-100',
+      close: 'text-slate-400 hover:bg-slate-800 hover:text-slate-100',
+    };
+  }, [tone]);
 
   if (!open) return null;
 
-  return createPortal(ui, document.body);
+  return (
+    <div
+      className={`fixed inset-0 z-[90] flex items-center justify-center px-4 ${toneClasses.backdrop}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={title ? headingId : undefined}
+      onMouseDown={e => {
+        if (!closeOnBackdrop) return;
+        // Only close when clicking the backdrop, not the panel
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      {/* XPOT “breathing” ambience for light tone */}
+      {tone === 'xpot-light' ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="xpot-modal-breath xpot-modal-breath-a" />
+          <div className="xpot-modal-breath xpot-modal-breath-b" />
+          <div className="xpot-modal-grain" />
+        </div>
+      ) : null}
+
+      <div
+        className={[
+          'relative w-full',
+          maxWidthClassName,
+          'rounded-[28px] overflow-hidden',
+          toneClasses.panel,
+        ].join(' ')}
+        onMouseDown={e => e.stopPropagation()}
+      >
+        {(title || showClose || headerRightSlot) && (
+          <div className={`flex items-center justify-between gap-3 px-5 py-4 ${toneClasses.header}`}>
+            <div className="min-w-0">
+              {title ? (
+                <h2 id={headingId} className={`${toneClasses.title} truncate`}>
+                  {title}
+                </h2>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {headerRightSlot ? <div className="hidden sm:block">{headerRightSlot}</div> : null}
+
+              {showClose ? (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={[
+                    'inline-flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold transition',
+                    tone === 'default' ? '' : 'backdrop-blur',
+                    toneClasses.close,
+                  ].join(' ')}
+                  aria-label={closeLabel}
+                >
+                  {tone === 'default' ? '✕' : closeLabel}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        <div className="relative px-5 py-5">{children}</div>
+      </div>
+
+      {/* styled-jsx for the breathing/glow (self-contained, no globals needed) */}
+      <style jsx>{`
+        .xpot-modal-breath {
+          position: absolute;
+          width: 520px;
+          height: 520px;
+          border-radius: 9999px;
+          filter: blur(60px);
+          opacity: 0.20;
+          animation: xpotBreath 7.5s ease-in-out infinite;
+          transform: translate3d(0, 0, 0);
+        }
+        .xpot-modal-breath-a {
+          left: 50%;
+          top: 38%;
+          transform: translate(-50%, -50%);
+          background: radial-gradient(circle at 30% 30%, rgba(236, 72, 153, 0.55), transparent 60%),
+            radial-gradient(circle at 70% 70%, rgba(99, 102, 241, 0.45), transparent 62%);
+        }
+        .xpot-modal-breath-b {
+          left: 22%;
+          top: 62%;
+          width: 460px;
+          height: 460px;
+          background: radial-gradient(circle at 30% 30%, rgba(251, 191, 36, 0.40), transparent 62%),
+            radial-gradient(circle at 70% 70%, rgba(56, 189, 248, 0.30), transparent 64%);
+          animation-delay: -2.5s;
+        }
+        .xpot-modal-grain {
+          position: absolute;
+          inset: 0;
+          opacity: 0.08;
+          background-image:
+            radial-gradient(circle at 18% 42%, rgba(255,255,255,0.22) 0px, transparent 1.6px),
+            radial-gradient(circle at 72% 34%, rgba(255,255,255,0.18) 0px, transparent 1.5px),
+            radial-gradient(circle at 46% 78%, rgba(255,255,255,0.16) 0px, transparent 1.4px),
+            radial-gradient(circle at 88% 66%, rgba(255,255,255,0.14) 0px, transparent 1.4px);
+          background-size: 520px 120px;
+          animation: xpotDrift 10s linear infinite;
+        }
+        @keyframes xpotBreath {
+          0%, 100% { transform: translate(-50%, -50%) scale(0.98); opacity: 0.18; }
+          50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.26; }
+        }
+        @keyframes xpotDrift {
+          0% { background-position: 0px 0px; }
+          100% { background-position: 520px 0px; }
+        }
+      `}</style>
+    </div>
+  );
 }
