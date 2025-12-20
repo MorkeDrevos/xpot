@@ -8,25 +8,14 @@ import { useSignIn } from '@clerk/nextjs';
 import Modal from '@/components/Modal';
 
 const BTN_PRIMARY =
-  'inline-flex w-full items-center justify-center rounded-full bg-sky-500/90 text-black font-semibold shadow-[0_18px_60px_rgba(56,189,248,0.22)] hover:brightness-[1.03] transition disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_UTILITY =
-  'inline-flex w-full items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition';
-
-function AccessPill() {
-  return (
-    <div className="mx-auto inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2">
-      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.10)]" />
-      <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-200">
-        XPOT ACCESS
-      </span>
-    </div>
-  );
-}
+  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 export default function HubLockOverlay({
   open,
-  reason = 'Sign in with X to access the Holder Dashboard.',
+  reason,
   showLinkX = false,
 }: {
   open: boolean;
@@ -45,56 +34,61 @@ export default function HubLockOverlay({
     });
   }
 
+  const headline = showLinkX ? 'Link X to unlock the Hub' : 'Sign in to unlock the Hub';
+
+  const sub =
+    reason ||
+    (showLinkX
+      ? 'Your account is signed in but X is not linked yet.'
+      : 'One verified X identity per draw. No posting required.');
+
   return (
     <Modal
       open={open}
       onClose={() => {}}
       tone="xpot-light"
-      maxWidthClassName="max-w-[760px]"
+      maxWidthClassName="max-w-[440px]"
       hideClose
       closeOnBackdrop={false}
       closeOnEsc={false}
-      containerClassName="rounded-[40px]"
-      contentClassName="pt-5"
+      ariaLabel="XPOT access"
+      contentClassName="px-6 pb-6 pt-6 sm:px-7 sm:pb-7 sm:pt-7"
     >
-      <div className="text-center">
-        <AccessPill />
+      {/* Small pill */}
+      <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
+        <span className="h-2 w-2 rounded-full bg-emerald-400/90 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]" />
+        <span className="text-[11px] font-semibold uppercase tracking-[0.36em] text-slate-200">
+          XPOT ACCESS
+        </span>
+      </div>
 
-        <h2 className="mt-6 text-[40px] font-semibold leading-tight text-slate-100">
-          Sign in to enter today’s draw
-        </h2>
+      <h2 className="mt-5 text-center text-[26px] font-semibold leading-tight text-slate-100">
+        {headline}
+      </h2>
 
-        <p className="mx-auto mt-4 max-w-[52ch] text-lg leading-relaxed text-slate-300/80">
-          One ticket per X account per draw. Your identity is your entry.
-          <br />
-          No posting required.
-        </p>
+      <p className="mx-auto mt-2 max-w-[34ch] text-center text-sm text-slate-300">
+        {sub}
+      </p>
 
+      <div className="mt-5 grid gap-3">
         <button
           type="button"
           onClick={handleContinueWithX}
           disabled={!isLoaded}
-          className={`${BTN_PRIMARY} mt-10 h-16 text-xl`}
+          className={`${BTN_PRIMARY} h-12 px-6 text-sm`}
         >
-          {showLinkX ? 'Link X to continue' : 'Sign in with X'}
-          <ArrowRight className="ml-3 h-5 w-5" />
+          {showLinkX ? 'Link X' : 'Continue with X'}
+          <ArrowRight className="ml-2 h-4 w-4" />
         </button>
 
-        <div className="mt-4">
-          <Link href="/" className={`${BTN_UTILITY} h-12 text-sm`}>
-            Back to homepage
-          </Link>
-        </div>
-
-        <p className="mt-5 text-sm text-slate-500">
-          Want a different X account? Switch on x.com first then come back here.
-        </p>
-
-        {/* optional: keep your “reason” for debugging */}
-        {reason ? (
-          <p className="mt-3 text-[11px] text-slate-600">{reason}</p>
-        ) : null}
+        <Link href="/" className={`${BTN_UTILITY} h-12 px-6 text-sm`}>
+          Back to homepage
+        </Link>
       </div>
+
+      <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-500">
+        Tip: to switch X accounts, change it on x.com first then come back here.
+      </p>
     </Modal>
   );
 }
