@@ -10,7 +10,6 @@ type XpotLogoProps = {
   height?: number;
   className?: string;
   priority?: boolean;
-  tone?: 'default' | 'gold';
 };
 
 export default function XpotLogo({
@@ -19,7 +18,6 @@ export default function XpotLogo({
   height,
   className,
   priority = false,
-  tone = 'default',
 }: XpotLogoProps) {
   if (variant === 'animated') {
     return <XpotLogoLottie className={className} width={width ?? 180} height={height ?? 50} />;
@@ -29,13 +27,11 @@ export default function XpotLogo({
     variant === 'dark'
       ? '/img/xpot-black.png'
       : variant === 'mark'
-        ? tone === 'gold'
-          ? '/img/xpot-mark-gold.png'
-          : '/img/xpot-mark.png'
+        ? '/img/xpot-mark.png'
         : '/img/xpot-logo-light.png';
 
-  const w = width ?? (variant === 'mark' ? 28 : 180);
-  const h = height ?? (variant === 'mark' ? 28 : 50);
+  const w = width ?? (variant === 'mark' ? 22 : 180);
+  const h = height ?? (variant === 'mark' ? 22 : 50);
 
   return (
     <Image
