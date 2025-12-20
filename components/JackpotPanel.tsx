@@ -360,7 +360,7 @@ function TooltipBubble({
   );
 }
 
-function UsdEstimateBadge({ compact }: { compact?: boolean }) {
+function UsdEstimateBadge({ compact, tiny }: { compact?: boolean; tiny?: boolean }) {
   const t = useAnchoredTooltip();
 
   return (
@@ -371,26 +371,30 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
       onMouseLeave={() => t.setOpen(false)}
     >
       <span
-        className={
-          compact
-            ? 'inline-flex items-center rounded-full border border-slate-700/60 bg-black/20 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.20em] text-slate-200'
-            : 'inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200'
-        }
-      >
-        USD estimate
-      </span>
+  className={
+    tiny
+      ? 'inline-flex items-center rounded-full border border-slate-700/50 bg-black/30 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.18em] text-slate-300'
+      : compact
+      ? 'inline-flex items-center rounded-full border border-slate-700/60 bg-black/20 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.20em] text-slate-200'
+      : 'inline-flex items-center rounded-full border border-slate-700/70 bg-black/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200'
+  }
+>
+  USD EST
+</span>
 
       <button
-        type="button"
-        aria-label="USD estimate info"
-        className={
-          compact
-            ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/70 bg-black/20 text-slate-200 hover:bg-slate-900/40 hover:text-white transition'
-            : 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/20 text-slate-200 hover:bg-slate-900/40 hover:text-white transition'
-        }
-      >
-        <Info className={compact ? 'h-3.5 w-3.5 opacity-90' : 'h-4 w-4 opacity-90'} />
-      </button>
+  type="button"
+  aria-label="USD estimate info"
+  className={
+    tiny
+      ? 'inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/50 bg-black/30 text-slate-300 hover:text-white transition'
+      : compact
+      ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/70 bg-black/20 text-slate-200 hover:text-white transition'
+      : 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/20 text-slate-200 hover:text-white transition'
+  }
+>
+  <Info className={tiny ? 'h-3 w-3' : compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+</button>
 
       <TooltipBubble open={t.open} rect={t.rect} width={380}>
         <div className="px-4 py-3 text-[12px] leading-snug text-slate-100">
@@ -1043,22 +1047,21 @@ export default function JackpotPanel({
         <div className={isWide ? 'mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]' : 'mt-5 grid gap-4'}>
           {/* Big USD */}
           <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
-            <div className="mt-4 flex items-end justify-between gap-3">
-              <div
-                className={`
-                  text-5xl sm:text-6xl font-semibold tabular-nums
-                  transition-transform transition-colors duration-200
-                  ${justUpdated ? 'scale-[1.01]' : ''}
-                  ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
-                `}
-              >
-                {displayUsdText}
-              </div>
+            <div className="mt-4 flex items-baseline gap-3">
+  <div
+    className={`
+      text-5xl sm:text-6xl font-semibold tabular-nums
+      transition-transform transition-colors duration-200
+      ${justUpdated ? 'scale-[1.01]' : ''}
+      ${justPumped ? 'text-[#7CC8FF]' : 'text-white'}
+    `}
+  >
+    {displayUsdText}
+  </div>
 
-              <div className="mb-1">
-                <UsdEstimateBadge compact />
-              </div>
-            </div>
+  {/* tooltip sits immediately after value */}
+  <UsdEstimateBadge tiny />
+</div>
 
             {/* subtle premium sheen */}
             <div
