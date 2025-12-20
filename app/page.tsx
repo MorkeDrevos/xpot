@@ -45,7 +45,7 @@ const XPOT_CA =
 const SOLANA_CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || '';
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_GREEN =
   'inline-flex items-center justify-center rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition';
