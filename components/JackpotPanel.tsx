@@ -69,41 +69,9 @@ function formatCoverage(ms: number) {
   return `${h}h ${String(m).padStart(2, '0')}m`;
 }
 
-function formatCountdown(ms: number) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-}
-
 /**
- * Madrid helpers
- * - Session key flips at 22:00 Madrid.
- * - Countdown must respect Madrid DST (CET/CEST).
+ * "Session" key that flips at 22:00 Madrid time.
  */
-
-function madridOffsetMinutesFor(utcMs: number) {
-  // Produces a "GMT+1" / "GMT+2" style token we can parse.
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/Madrid',
-    timeZoneName: 'shortOffset',
-    hour: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date(utcMs));
-
-  const tz = parts.find(p => p.type === 'timeZoneName')?.value ?? 'GMT';
-  // Examples: "GMT+1", "GMT+02:00", "UTC+1"
-  const m = tz.match(/([+-])(\d{1,2})(?::?(\d{2}))?/i);
-  if (!m) return 0;
-
-  const sign = m[1] === '-' ? -1 : 1;
-  const hh = Number(m[2] ?? 0);
-  const mm = Number(m[3] ?? 0);
-  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return 0;
-  return sign * (hh * 60 + mm);
-}
-
 function getMadridSessionKey(cutoffHour = 22) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Madrid',
@@ -119,7 +87,6 @@ function getMadridSessionKey(cutoffHour = 22) {
   const day = Number(parts.find(p => p.type === 'day')?.value ?? '1');
   const hour = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
 
-  // Session "day" base is Madrid's calendar day; flip after cutoffHour.
   const base = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
   if (hour >= cutoffHour) base.setUTCDate(base.getUTCDate() + 1);
 
@@ -129,9 +96,8 @@ function getMadridSessionKey(cutoffHour = 22) {
   return `${y}${m}${d}`;
 }
 
+// Returns the next cutoff moment (22:00 Madrid) as a real Date in local JS time
 function getNextMadridCutoff(cutoffHour = 22) {
-  const now = Date.now();
-
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Madrid',
     year: 'numeric',
@@ -139,33 +105,24 @@ function getNextMadridCutoff(cutoffHour = 22) {
     day: '2-digit',
     hour: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(new Date(now));
+  }).formatToParts(new Date());
 
   const year = Number(parts.find(p => p.type === 'year')?.value ?? '0');
   const month = Number(parts.find(p => p.type === 'month')?.value ?? '1');
   const day = Number(parts.find(p => p.type === 'day')?.value ?? '1');
   const hour = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
 
-  // Target Madrid calendar day = today unless we already passed cutoffHour in Madrid.
-  const targetDayUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-  if (hour >= cutoffHour) targetDayUtc.setUTCDate(targetDayUtc.getUTCDate() + 1);
+  const baseUtc = new Date(Date.UTC(year, month - 1, day, cutoffHour, 0, 0, 0));
+  if (hour >= cutoffHour) baseUtc.setUTCDate(baseUtc.getUTCDate() + 1);
+  return baseUtc;
+}
 
-  // We want "targetDay at cutoffHour in Madrid", converted to a real UTC instant.
-  // Start with a naive UTC ms and subtract Madrid offset at that instant.
-  const naiveUtcMs = Date.UTC(
-    targetDayUtc.getUTCFullYear(),
-    targetDayUtc.getUTCMonth(),
-    targetDayUtc.getUTCDate(),
-    cutoffHour,
-    0,
-    0,
-    0,
-  );
-
-  const offMin = madridOffsetMinutesFor(naiveUtcMs);
-  const utcMs = naiveUtcMs - offMin * 60_000;
-
-  return new Date(utcMs);
+function formatCountdown(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
 }
 
 // Milestone ladder for highlights (USD) - start at $5
@@ -467,9 +424,7 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           </button>
 
           <TooltipBubble open={t.open} rect={t.rect} width={340}>
-            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
-              {tooltip}
-            </div>
+            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">{tooltip}</div>
           </TooltipBubble>
         </>
       )}
@@ -522,7 +477,7 @@ export default function JackpotPanel({
   // Premium runway fade-in (after price loads)
   const [showRunway, setShowRunway] = useState(false);
 
-  // Countdown to next 22:00 Madrid (DST-correct)
+  // Sexy countdown
   const [countdownMs, setCountdownMs] = useState<number>(() => {
     const next = getNextMadridCutoff(22).getTime();
     return Math.max(0, next - Date.now());
@@ -530,29 +485,6 @@ export default function JackpotPanel({
 
   // Micro pulse on every countdown tick
   const [countPulse, setCountPulse] = useState(false);
-
-  // Responsive "auto" layout -> wide at lg breakpoint
-  const [autoWide, setAutoWide] = useState(false);
-
-  useEffect(() => {
-    if (layout !== 'auto') return;
-    if (typeof window === 'undefined') return;
-
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const apply = () => setAutoWide(!!mq.matches);
-    apply();
-
-    if (typeof mq.addEventListener === 'function') {
-      mq.addEventListener('change', apply);
-      return () => mq.removeEventListener('change', apply);
-    }
-
-    // Safari fallback
-    mq.addListener(apply);
-    return () => mq.removeListener(apply);
-  }, [layout]);
-
-  const isWide = layout === 'wide' || (layout === 'auto' && autoWide);
 
   // Session key for "highest this session" (22:00 Madrid cut)
   const sessionKey = useMemo(() => `xpot_max_session_usd_${getMadridSessionKey(22)}`, []);
@@ -892,6 +824,8 @@ export default function JackpotPanel({
   const localSparkLabel =
     sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
 
+  const isWide = layout === 'wide';
+
   const globalMomentumText =
     momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '-' : `${momentumGlobalH1.toFixed(2)}%`;
 
@@ -929,13 +863,13 @@ export default function JackpotPanel({
 
       {/* HEADER */}
       <div className="relative z-10 flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
           <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
         </div>
 
         {/* keep only ONE live pill */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
             <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
             Live
@@ -946,7 +880,7 @@ export default function JackpotPanel({
       {/* MAIN SLAB */}
       <div className="relative z-10 mt-5 rounded-2xl border border-slate-800/80 bg-black/20 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 min-w-0">
             <span className="inline-flex rounded-full bg-[rgba(59,167,255,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7CC8FF]">
               Today&apos;s XPOT
             </span>
@@ -954,7 +888,9 @@ export default function JackpotPanel({
             {/* vault gold tuning */}
             <span
               className="relative inline-flex items-baseline rounded-2xl bg-black/45 px-5 py-2 font-mono text-lg tracking-[0.20em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_20px_60px_rgba(0,0,0,0.35)]"
-              style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.18)` }}
+              style={{
+                border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.18)`,
+              }}
             >
               <span
                 className="pointer-events-none absolute inset-0 rounded-2xl opacity-60"
@@ -969,7 +905,7 @@ export default function JackpotPanel({
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {isLocked && (
               <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
                 Draw locked
@@ -979,10 +915,16 @@ export default function JackpotPanel({
         </div>
 
         {/* Value row */}
-        <div className={isWide ? 'mt-5 grid gap-4 lg:grid-cols-[1fr_360px]' : 'mt-5 grid gap-4'}>
+        <div
+          className={
+            isWide
+              ? 'mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]'
+              : 'mt-5 grid gap-4'
+          }
+        >
           {/* Big USD */}
-          <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4">
-            <div className="mt-4 flex items-end justify-between gap-3">
+          <div className="relative overflow-visible rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4 min-w-0">
+            <div className="mt-4 flex items-end justify-between gap-3 min-w-0">
               <div
                 className={`
                   text-5xl sm:text-6xl font-semibold tabular-nums
@@ -994,7 +936,7 @@ export default function JackpotPanel({
                 {displayUsdText}
               </div>
 
-              <div className="mb-1">
+              <div className="mb-1 shrink-0">
                 <UsdEstimateBadge compact />
               </div>
             </div>
@@ -1002,10 +944,12 @@ export default function JackpotPanel({
             {/* subtle premium sheen */}
             <div
               className="pointer-events-none absolute -inset-x-2 -top-2 h-10 opacity-50"
-              style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)' }}
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
+              }}
             />
 
-            {/* countdown */}
+            {/* sexy countdown */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <span
                 className={`
@@ -1035,9 +979,9 @@ export default function JackpotPanel({
             <p className="mt-2 text-xs text-slate-500">Auto-updates from Jupiter ticks</p>
           </div>
 
-          {/* Royal XPOT meta */}
+          {/* Royal XPOT meta (credit card feel + private-vault gold) */}
           <div
-            className="relative min-h-[170px] overflow-hidden rounded-2xl bg-[linear-gradient(180deg,rgba(2,6,23,0.35),rgba(15,23,42,0.0))] px-5 py-4"
+            className="relative overflow-hidden rounded-2xl bg-[linear-gradient(180deg,rgba(2,6,23,0.35),rgba(15,23,42,0.0))] px-5 py-4 min-h-[170px] min-w-0"
             style={{
               border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)`,
               boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.02)`,
@@ -1054,14 +998,18 @@ export default function JackpotPanel({
               }}
             />
 
+            {/* card sheen (dialed down) */}
             <div
               className="pointer-events-none absolute -inset-x-10 -top-10 h-28 rotate-[-8deg] opacity-[0.22]"
-              style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }}
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
+              }}
             />
 
-            <div className="relative flex h-full flex-col">
-              <div className="flex items-start justify-between gap-3 pt-2">
-                <div className="flex items-center gap-2">
+            <div className="relative flex h-full flex-col min-w-0">
+              {/* Top row */}
+              <div className="pt-2 flex items-start justify-between gap-3 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <span
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/25"
                     style={{
@@ -1069,22 +1017,25 @@ export default function JackpotPanel({
                       boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
                     }}
                   >
-                    <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
+                    <XpotLogo variant="mark" width={22} height={22} tone="gold" priority />
                   </span>
 
-                  <div className="leading-tight">
+                  <div className="leading-tight min-w-0">
                     <p
-                      className="text-[10px] uppercase tracking-[0.24em]"
+                      className="text-[10px] uppercase tracking-[0.24em] truncate"
                       style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.85)` }}
+                      title="XPOT token"
                     >
                       XPOT token
                     </p>
-                    <p className="text-xs text-slate-300">Winners paid in XPOT</p>
+                    <p className="text-xs text-slate-300 truncate" title="Winners paid in XPOT">
+                      Winners paid in XPOT
+                    </p>
                   </div>
                 </div>
 
                 <span
-                  className="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                  className="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] shrink-0"
                   style={{
                     border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)`,
                     color: `rgba(${VAULT_GOLD.rgb} / 0.86)`,
@@ -1095,17 +1046,22 @@ export default function JackpotPanel({
                 </span>
               </div>
 
-              <div className="mt-auto pb-1 text-right">
+              {/* Bottom block */}
+              <div className="mt-auto pb-1 text-right min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
-                <p className="mt-1 text-sm text-slate-300">
+
+                <p className="mt-1 text-sm text-slate-300 min-w-0">
                   1 XPOT ≈{' '}
-                  <span className="font-mono text-slate-100">{priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}</span>
+                  <span className="font-mono text-slate-100 break-all">
+                    {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+                  </span>
                 </p>
 
-                <div className="mt-2 flex items-center justify-end gap-2 text-[11px] text-slate-500">
-                  <span>{observedLabel}</span>
+                {/* THIS LINE was the usual culprit: no shrink/wrap -> clips on the right */}
+                <div className="mt-2 flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-[11px] text-slate-500 min-w-0">
+                  <span className="whitespace-nowrap">{observedLabel}</span>
                   <span className="text-slate-700">•</span>
-                  <span>
+                  <span className="min-w-0">
                     Source <span className="font-mono text-slate-200">{priceSource}</span>
                   </span>
                 </div>
@@ -1114,19 +1070,19 @@ export default function JackpotPanel({
           </div>
         </div>
 
-        {/* Compact telemetry strip */}
+        {/* Compact premium telemetry strip */}
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {/* Pulse */}
-          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3 min-w-0">
+            <div className="flex items-start justify-between gap-3 min-w-0">
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Pulse (global 1h)</p>
-                <div className="mt-1 flex items-baseline gap-2">
+                <div className="mt-1 flex items-baseline gap-2 min-w-0">
                   <span className="text-sm font-semibold text-slate-100">{globalMomentumText}</span>
-                  <span className="text-[11px] text-slate-500">DexScreener</span>
+                  <span className="text-[11px] text-slate-500 truncate">DexScreener</span>
                 </div>
               </div>
-              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25 shrink-0">
                 <TrendingUp className="h-4 w-4 text-slate-200/80" />
               </span>
             </div>
@@ -1158,12 +1114,12 @@ export default function JackpotPanel({
           </div>
 
           {/* 24h range */}
-          <div className="rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+          <div className="rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3 min-w-0">
+            <div className="flex items-start justify-between gap-3 min-w-0">
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
                 {range24h ? (
-                  <p className="mt-1 text-sm text-slate-100">
+                  <p className="mt-1 text-sm text-slate-100 min-w-0">
                     <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
                     <span className="text-slate-600">-</span>{' '}
                     <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
@@ -1174,7 +1130,7 @@ export default function JackpotPanel({
                 <p className="mt-2 text-[11px] text-slate-600">{observedLabel}</p>
               </div>
 
-              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25 shrink-0">
                 <Info className="h-4 w-4 text-slate-200/70" />
               </span>
             </div>
@@ -1187,9 +1143,9 @@ export default function JackpotPanel({
           </div>
 
           {/* Next milestone */}
-          <div className="rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+          <div className="rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3 min-w-0">
+            <div className="flex items-start justify-between gap-3 min-w-0">
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
                 <p className="mt-1 text-sm text-slate-100">
                   {nextMilestone ? (
@@ -1206,7 +1162,7 @@ export default function JackpotPanel({
               </div>
 
               <span
-                className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25"
+                className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25 shrink-0"
                 style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` }}
               >
                 <Crown className="h-4 w-4 opacity-90" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.78)` }} />
@@ -1247,8 +1203,8 @@ export default function JackpotPanel({
       </div>
 
       {/* CONTEXT STRIP */}
-      <div className="relative z-10 mt-4 rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
+      <div className="relative z-10 mt-4 rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4 min-w-0">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400 min-w-0">
           <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
 
           {maxJackpotToday != null ? (
