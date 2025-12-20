@@ -516,13 +516,28 @@ export default function JackpotPanel({
   // Premium runway fade-in (after price loads)
   const [showRunway, setShowRunway] = useState(false);
 
-  // Countdown - unified with page provider via window event, DST-safe fallback
-  const [nextDrawUtcMs, setNextDrawUtcMs] = useState<number>(() => getNextMadridCutoffUtcMs(22, new Date()));
-  const [countdownMs, setCountdownMs] = useState<number>(() => Math.max(0, nextDrawUtcMs - Date.now()));
+  // Hydration-safe: only render time-based UI after mount
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+    // Countdown - hydration safe (no Date() in initial render)
+  const [nextDrawUtcMs, setNextDrawUtcMs] = useState<number>(0);
+  const [countdownMs, setCountdownMs] = useState<number>(0);
   const [countPulse, setCountPulse] = useState(false);
 
-  // Session key for "highest this session" (22:00 Madrid cut)
-  const sessionKey = useMemo(() => `xpot_max_session_usd_${getMadridSessionKey(22)}`, []);
+  // After mount, compute the real cutoff once (DST-safe)
+  useEffect(() => {
+  if (!mounted) return;
+  const nd = getNextMadridCutoffUtcMs(22, new Date());
+  setNextDrawUtcMs(nd);
+  setCountdownMs(Math.max(0, nd - Date.now()));
+}, [mounted]);
+
+    // Hydration-safe session key (avoid Date() during first render)
+  const [sessionKey, setSessionKey] = useState('xpot_max_session_usd_boot');
+  useEffect(() => {
+    setSessionKey(`xpot_max_session_usd_${getMadridSessionKey(22)}`);
+  }, []);
 
   // AUTO responsive wide switching (fixes ResizeObserver thrash -> React error)
   const slabRef = useRef<HTMLDivElement | null>(null);
@@ -603,36 +618,35 @@ export default function JackpotPanel({
   }, []);
 
   // Countdown ticker (second-aligned) using stored nextDrawUtcMs.
-  // If the page provider exists, it will keep nudging the state too, but this keeps it smooth everywhere.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
+  if (!mounted) return;
 
-    let interval: number | null = null;
+  let interval: number | null = null;
 
-    const tick = () => {
-      const nd = nextDrawUtcMs || getNextMadridCutoffUtcMs(22, new Date());
-      const now = Date.now();
-      setCountdownMs(Math.max(0, nd - now));
-      setCountPulse(p => !p);
+  const tick = () => {
+    const nd = nextDrawUtcMs || getNextMadridCutoffUtcMs(22, new Date());
+    const now = Date.now();
+    setCountdownMs(Math.max(0, nd - now));
+    setCountPulse(p => !p);
 
-      // safety: if we passed the cutoff, compute the next one (DST-safe)
-      if (now >= nd) {
-        const next = getNextMadridCutoffUtcMs(22, new Date());
-        setNextDrawUtcMs(next);
-      }
-    };
+    if (now >= nd) {
+      const next = getNextMadridCutoffUtcMs(22, new Date());
+      setNextDrawUtcMs(next);
+    }
+  };
 
-    const msToNextSecond = 1000 - (Date.now() % 1000);
-    const t = window.setTimeout(() => {
-      tick();
-      interval = window.setInterval(tick, 1000);
-    }, msToNextSecond);
+  const msToNextSecond = 1000 - (Date.now() % 1000);
+  const t = window.setTimeout(() => {
+    tick();
+    interval = window.setInterval(tick, 1000);
+  }, msToNextSecond);
 
-    return () => {
-      window.clearTimeout(t);
-      if (interval) window.clearInterval(interval);
-    };
-  }, [nextDrawUtcMs]);
+  return () => {
+    window.clearTimeout(t);
+    if (interval) window.clearInterval(interval);
+  };
+}, [nextDrawUtcMs, mounted]);
 
   // Load rolling samples (for 24h range + local sparkline)
   useEffect(() => {
@@ -805,54 +819,72 @@ export default function JackpotPanel({
     prevJackpot.current = jackpotUsd;
 
     if (typeof window !== 'undefined') {
-      setMaxJackpotToday(prev => {
-        const next = prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
-        window.localStorage.setItem(sessionKey, String(next));
-        return next;
-      });
-    }
+  if (!mounted) return;
+  if (sessionKey.endsWith('_boot')) return;
+
+  setMaxJackpotToday(prev => {
+    const next = prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
+    window.localStorage.setItem(sessionKey, String(next));
+    return next;
+  });
+}
   }, [jackpotUsd, sessionKey, onJackpotUsdChange]);
 
-  // Soft USD drift animation for the big number
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  // Soft USD drift animation for the big number (stale-safe)
+const displayRef = useRef<number | null>(null);
+useEffect(() => {
+  displayRef.current = displayJackpotUsd;
+}, [displayJackpotUsd]);
 
-    if (jackpotUsd == null) {
-      setDisplayJackpotUsd(null);
-      return;
-    }
+useEffect(() => {
+  if (typeof window === 'undefined') return;
 
-    if (displayJackpotUsd == null) {
-      setDisplayJackpotUsd(jackpotUsd);
-      return;
-    }
+  // If live USD is missing, clear display
+  if (jackpotUsd == null) {
+    setDisplayJackpotUsd(null);
+    displayRef.current = null;
+    return;
+  }
 
-    const from = displayJackpotUsd;
-    const to = jackpotUsd;
+  const from = displayRef.current;
 
-    const delta = Math.abs(to - from);
-    if (!Number.isFinite(delta) || delta < 0.01) {
-      setDisplayJackpotUsd(to);
-      return;
-    }
+  // First time we get a value: set instantly (no animation)
+  if (from == null || !Number.isFinite(from)) {
+    setDisplayJackpotUsd(jackpotUsd);
+    displayRef.current = jackpotUsd;
+    return;
+  }
 
-    const DURATION_MS = 650;
-    const start = performance.now();
-    let raf = 0;
+  const to = jackpotUsd;
+  const delta = Math.abs(to - from);
 
-    const tick = (now: number) => {
-      const t = clamp((now - start) / DURATION_MS, 0, 1);
-      const eased = easeOutCubic(t);
-      setDisplayJackpotUsd(from + (to - from) * eased);
-      if (t < 1) raf = window.requestAnimationFrame(tick);
-    };
+  // Tiny changes: snap
+  if (!Number.isFinite(delta) || delta < 0.01) {
+    setDisplayJackpotUsd(to);
+    displayRef.current = to;
+    return;
+  }
 
-    raf = window.requestAnimationFrame(tick);
-    return () => {
-      if (raf) window.cancelAnimationFrame(raf);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jackpotUsd]);
+  const DURATION_MS = 650;
+  const start = performance.now();
+  let raf = 0;
+
+  const tick = (now: number) => {
+    const t = clamp((now - start) / DURATION_MS, 0, 1);
+    const eased = easeOutCubic(t);
+    const next = from + (to - from) * eased;
+
+    setDisplayJackpotUsd(next);
+    displayRef.current = next;
+
+    if (t < 1) raf = window.requestAnimationFrame(tick);
+  };
+
+  raf = window.requestAnimationFrame(tick);
+  return () => {
+    if (raf) window.cancelAnimationFrame(raf);
+  };
+}, [jackpotUsd]);
 
   // Update rolling 24h samples + compute observed high/low + coverage + local sparkline
   useEffect(() => {
@@ -1093,7 +1125,7 @@ export default function JackpotPanel({
                 `}
                 style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
               >
-                {formatCountdown(countdownMs)}
+                {mounted ? formatCountdown(countdownMs) : '00:00:00'}
               </span>
 
               <span className="text-[11px] text-slate-600">22:00 Madrid</span>
