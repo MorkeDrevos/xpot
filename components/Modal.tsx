@@ -3,9 +3,9 @@
 
 import { ReactNode, useEffect, useMemo } from 'react';
 
-type ModalTone = 'dark' | 'xpot-light' | 'glass';
+export type ModalTone = 'dark' | 'xpot-light';
 
-type ModalProps = {
+export type ModalProps = {
   open: boolean;
   onClose: () => void;
 
@@ -14,19 +14,20 @@ type ModalProps = {
 
   children: ReactNode;
 
-  // ✅ NEW (fixes your build error + lets us do XPOT light)
+  // Visual + layout
   tone?: ModalTone;
   maxWidthClassName?: string;
+  containerClassName?: string;
+  contentClassName?: string;
+
+  // Header/Footer slots
+  headerRightSlot?: ReactNode;
+  footerSlot?: ReactNode;
 
   // Behavior
   closeOnEsc?: boolean;
   closeOnBackdrop?: boolean;
-
-  // Layout
-  hideCloseButton?: boolean;
-  headerRightSlot?: ReactNode;
-  footerSlot?: ReactNode;
-  contentClassName?: string;
+  hideClose?: boolean;
 };
 
 export default function Modal({
@@ -37,26 +38,18 @@ export default function Modal({
   children,
   tone = 'dark',
   maxWidthClassName = 'max-w-md',
-  closeOnEsc = true,
-  closeOnBackdrop = true,
-  hideCloseButton = false,
+  containerClassName = '',
+  contentClassName = '',
   headerRightSlot,
   footerSlot,
-  contentClassName = '',
+  closeOnEsc = true,
+  closeOnBackdrop = true,
+  hideClose = false,
 }: ModalProps) {
   useEffect(() => {
-    if (!open || !closeOnEsc) return;
-
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [open, closeOnEsc, onClose]);
-
-  useEffect(() => {
     if (!open) return;
+
+    // lock scroll (simple + reliable)
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
@@ -64,98 +57,84 @@ export default function Modal({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    function handleKey(e: KeyboardEvent) {
+      if (!closeOnEsc) return;
+      if (e.key === 'Escape') onClose();
+    }
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [open, onClose, closeOnEsc]);
+
   const styles = useMemo(() => {
     if (tone === 'xpot-light') {
       return {
-        backdrop: 'bg-black/70 backdrop-blur-2xl',
-        shell:
-          [
-            'border border-white/10',
-            'bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.08),transparent_58%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0.25))]',
-            'shadow-[0_40px_140px_rgba(0,0,0,0.78)]',
-          ].join(' '),
-        title: 'text-slate-50',
-        subtitle: 'text-slate-300',
-        close:
-          'text-slate-300 hover:text-white hover:bg-white/10 border border-white/10 bg-white/5',
-        topGlow:
-          'bg-[radial-gradient(circle_at_50%_0%,rgba(56,189,248,0.16),transparent_56%)]',
-        bottomGlow:
-          'bg-[radial-gradient(circle_at_30%_100%,rgba(245,158,11,0.14),transparent_60%)]',
-      };
-    }
-
-    if (tone === 'glass') {
-      return {
-        backdrop: 'bg-black/60 backdrop-blur-xl',
-        shell:
-          'border border-white/10 bg-white/[0.04] shadow-[0_30px_120px_rgba(0,0,0,0.70)]',
+        backdrop: 'bg-black/65 backdrop-blur-2xl',
+        shell: [
+          'border border-white/10',
+          'bg-[radial-gradient(circle_at_18%_8%,rgba(56,189,248,0.10),transparent_52%),radial-gradient(circle_at_82%_0%,rgba(99,102,241,0.12),transparent_56%),linear-gradient(to_bottom,rgba(15,23,42,0.62),rgba(2,6,23,0.82))]',
+          'shadow-[0_40px_140px_rgba(0,0,0,0.80)]',
+          'backdrop-blur-xl',
+          'rounded-[34px]',
+        ].join(' '),
         title: 'text-slate-100',
         subtitle: 'text-slate-300',
-        close:
-          'text-slate-200 hover:text-white hover:bg-white/10 border border-white/10 bg-white/5',
-        topGlow: 'bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]',
-        bottomGlow: 'bg-[radial-gradient(circle_at_40%_100%,rgba(255,255,255,0.06),transparent_64%)]',
-      };
+        closeBtn:
+          'border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10',
+      } as const;
     }
 
-    // dark (default)
     return {
       backdrop: 'bg-black/60 backdrop-blur-sm',
-      shell: 'border border-slate-800 bg-slate-950 shadow-xl',
+      shell:
+        'rounded-2xl border border-slate-800 bg-slate-950 shadow-xl backdrop-blur-xl',
       title: 'text-slate-100',
       subtitle: 'text-slate-400',
-      close: 'text-slate-400 hover:text-slate-100 hover:bg-slate-800',
-      topGlow: '',
-      bottomGlow: '',
-    };
+      closeBtn:
+        'hover:bg-slate-800 text-slate-400 hover:text-slate-100',
+    } as const;
   }, [tone]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center px-4">
-      {/* Backdrop */}
+    <div className={`fixed inset-0 z-[90] flex items-center justify-center px-4 ${styles.backdrop}`}>
+      {/* backdrop click catcher */}
       <button
         type="button"
         aria-label="Close modal"
-        className={`absolute inset-0 w-full ${styles.backdrop}`}
         onClick={closeOnBackdrop ? onClose : undefined}
+        className="absolute inset-0 cursor-default"
       />
 
-      {/* Card */}
       <div
-        className={[
-          'relative w-full overflow-hidden rounded-[28px] backdrop-blur-xl',
-          maxWidthClassName,
-          styles.shell,
-        ].join(' ')}
         role="dialog"
         aria-modal="true"
+        className={[
+          'relative w-full overflow-hidden',
+          maxWidthClassName,
+          styles.shell,
+          containerClassName,
+        ].join(' ')}
       >
-        {/* XPOT subtle ambient (only meaningful on xpot-light / glass) */}
-        {tone !== 'dark' && (
-          <>
-            <div aria-hidden className={`pointer-events-none absolute inset-0 ${styles.topGlow}`} />
-            <div aria-hidden className={`pointer-events-none absolute inset-0 ${styles.bottomGlow}`} />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
-            />
-          </>
-        )}
+        {/* subtle XPOT glow (cheap + effective) */}
+        <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-purple-500/10 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-28 left-[18%] h-[380px] w-[380px] rounded-full bg-amber-500/10 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-        {/* Header */}
-        {(title || !hideCloseButton || headerRightSlot) && (
-          <div className="relative flex items-start justify-between gap-3 px-5 pb-3 pt-5">
+        {(title || subtitle || headerRightSlot || !hideClose) && (
+          <div className="relative flex items-start justify-between gap-3 px-6 pb-3 pt-5">
             <div className="min-w-0">
               {title && (
-                <h2 className={`truncate text-base font-semibold ${styles.title}`}>
+                <h2 className={`text-sm font-semibold ${styles.title}`}>
                   {title}
                 </h2>
               )}
               {subtitle && (
-                <p className={`mt-1 text-sm ${styles.subtitle}`}>
+                <p className={`mt-1 text-xs ${styles.subtitle}`}>
                   {subtitle}
                 </p>
               )}
@@ -163,11 +142,14 @@ export default function Modal({
 
             <div className="flex items-center gap-2">
               {headerRightSlot}
-              {!hideCloseButton && (
+              {!hideClose && (
                 <button
                   type="button"
                   onClick={onClose}
-                  className={`rounded-full px-3 py-2 text-xs font-semibold transition ${styles.close}`}
+                  className={[
+                    'rounded-full px-3 py-2 text-xs font-semibold transition',
+                    styles.closeBtn,
+                  ].join(' ')}
                 >
                   Close
                 </button>
@@ -176,17 +158,13 @@ export default function Modal({
           </div>
         )}
 
-        {/* Content */}
-        <div className={['relative px-5 pb-5', contentClassName].join(' ')}>
+        <div className={['relative px-6 pb-6', contentClassName].join(' ')}>
           {children}
-        </div>
 
-        {/* Footer */}
-        {footerSlot && (
-          <div className="relative border-t border-white/10 px-5 py-4">
-            {footerSlot}
-          </div>
-        )}
+          {footerSlot ? (
+            <div className="mt-5">{footerSlot}</div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
