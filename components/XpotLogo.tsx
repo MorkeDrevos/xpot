@@ -9,6 +9,7 @@ type XpotLogoProps = {
   width?: number;
   height?: number;
   className?: string;
+  priority?: boolean;
 };
 
 export default function XpotLogo({
@@ -16,6 +17,7 @@ export default function XpotLogo({
   width,
   height,
   className,
+  priority = false,
 }: XpotLogoProps) {
   // Animated version
   if (variant === 'animated') {
@@ -28,13 +30,25 @@ export default function XpotLogo({
     );
   }
 
-  // Static fallback
-  let src = '/img/xpot-logo-light.png';
-  if (variant === 'dark') src = '/img/xpot-black.png';
-  if (variant === 'mark') src = '/img/xpot-mark.png';
+  // Static fallback (IMPORTANT: Next serves from /public, so src starts at /img/...)
+  const src =
+    variant === 'dark'
+      ? '/img/xpot-black.png'
+      : variant === 'mark'
+      ? '/img/xpot-mark.png'
+      : '/img/xpot-logo-light.png';
 
   const w = width ?? (variant === 'mark' ? 28 : 180);
   const h = height ?? (variant === 'mark' ? 28 : 50);
 
-  return <Image src={src} alt="XPOT" width={w} height={h} className={className} />;
+  return (
+    <Image
+      src={src}
+      alt="XPOT"
+      width={w}
+      height={h}
+      className={className}
+      priority={priority}
+    />
+  );
 }
