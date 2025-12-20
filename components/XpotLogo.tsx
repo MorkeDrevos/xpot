@@ -10,47 +10,39 @@ type XpotLogoProps = {
   height?: number;
   className?: string;
   priority?: boolean;
-  tone?: 'default' | 'gold'; // NEW
+
+  // Optional tone treatment (used for the vault gold badge)
+  tone?: 'default' | 'gold';
 };
 
 export default function XpotLogo({
   variant = 'light',
   width,
   height,
-  className = '',
+  className,
   priority = false,
   tone = 'default',
 }: XpotLogoProps) {
   // Animated version
   if (variant === 'animated') {
-    return (
-      <XpotLogoLottie
-        className={className}
-        width={width ?? 180}
-        height={height ?? 50}
-      />
-    );
+    return <XpotLogoLottie className={className} width={width ?? 180} height={height ?? 50} />;
   }
 
-  // Static assets (served from /public/img)
+  // Static fallback (served from /public)
   const src =
     variant === 'dark'
       ? '/img/xpot-black.png'
       : variant === 'mark'
-      ? '/img/xpot-mark.png'
-      : '/img/xpot-logo-light.png';
+        ? '/img/xpot-mark.png'
+        : '/img/xpot-logo-light.png';
 
-  /**
-   * IMPORTANT:
-   * The mark must be visually larger than its raw pixel size,
-   * otherwise it looks smaller than the blue icon.
-   */
-  const w = width ?? (variant === 'mark' ? 24 : 180);
-  const h = height ?? (variant === 'mark' ? 24 : 50);
+  const w = width ?? (variant === 'mark' ? 28 : 180);
+  const h = height ?? (variant === 'mark' ? 28 : 50);
 
   const goldFilter =
-    tone === 'gold'
-      ? 'sepia(1) saturate(2.3) hue-rotate(350deg) brightness(0.98) contrast(1.1)'
+    tone === 'gold' && variant === 'mark'
+      ? // Warm gold tint + subtle glow (matches your VAULT_GOLD vibe)
+        'sepia(1) saturate(2.2) hue-rotate(350deg) brightness(0.98) contrast(1.1) drop-shadow(0 0 10px rgba(201,162,74,0.18))'
       : undefined;
 
   return (
@@ -59,11 +51,9 @@ export default function XpotLogo({
       alt="XPOT"
       width={w}
       height={h}
-      priority={priority}
       className={className}
-      style={{
-        filter: goldFilter,
-      }}
+      priority={priority}
+      style={goldFilter ? { filter: goldFilter } : undefined}
     />
   );
 }
