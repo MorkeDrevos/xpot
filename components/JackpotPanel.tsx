@@ -268,11 +268,11 @@ function readDexScreenerMetrics(payload: unknown): DexMetrics {
 }
 
 /* -----------------------------
-   Tooltips (clamped + normal width)
+   Tooltips (anchored + edge-smart)
 ------------------------------ */
 
-function useAnchoredTooltip() {
-  const ref = useRef<HTMLDivElement | null>(null);
+function useAnchoredTooltip<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
@@ -296,7 +296,7 @@ function useAnchoredTooltip() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  return { ref, open, setOpen, rect };
+  return { ref, open, setOpen, rect, update };
 }
 
 function TooltipBubble({
@@ -333,7 +333,21 @@ function TooltipBubble({
   const w = clamp(width, 240, maxW);
 
   const anchorCenterX = rect.left + rect.width / 2;
-  const left = clamp(anchorCenterX - w / 2, pad, Math.max(pad, vw - w - pad));
+
+  // If we are close to screen edges, align the bubble to the icon (not centered).
+  const EDGE_ZONE = 220;
+
+  let left = 0;
+  if (anchorCenterX > vw - EDGE_ZONE) {
+    // right-align bubble with the anchor (feels correct on "USD ESTIMATE" at far right)
+    left = clamp(rect.right - w, pad, vw - w - pad);
+  } else if (anchorCenterX < EDGE_ZONE) {
+    // left-align bubble with the anchor
+    left = clamp(rect.left, pad, vw - w - pad);
+  } else {
+    // center default
+    left = clamp(anchorCenterX - w / 2, pad, vw - w - pad);
+  }
 
   const belowTop = rect.bottom + 10;
   const aboveTop = rect.top - 10 - h;
@@ -364,16 +378,16 @@ function TooltipBubble({
 }
 
 function UsdEstimateBadge({ compact }: { compact?: boolean }) {
-  const t = useAnchoredTooltip();
+  const t = useAnchoredTooltip<HTMLButtonElement>();
 
   return (
     <div
-      ref={t.ref}
       className="relative inline-flex items-center"
       onMouseEnter={() => t.setOpen(true)}
       onMouseLeave={() => t.setOpen(false)}
     >
       <button
+        ref={t.ref}
         type="button"
         aria-label="USD estimate info"
         className={
@@ -401,7 +415,7 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
 }
 
 function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
-  const t = useAnchoredTooltip();
+  const t = useAnchoredTooltip<HTMLDivElement>();
   if (!label) return null;
 
   return (
@@ -566,24 +580,6 @@ export default function JackpotPanel({
       setMaxJackpotToday(null);
     }
   }, [sessionKey, mounted]);
-
-  // Listen for shared countdown broadcast (optional)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const onNextDraw = (e: Event) => {
-      const ce = e as CustomEvent<any>;
-      const nd = Number(ce?.detail?.nextDrawUtcMs);
-      const now = Number(ce?.detail?.nowMs);
-      if (!Number.isFinite(nd) || !Number.isFinite(now)) return;
-
-      setNextDrawUtcMs(nd);
-      setCountdownMs(Math.max(0, nd - now));
-    };
-
-    window.addEventListener('xpot:next-draw', onNextDraw as any);
-    return () => window.removeEventListener('xpot:next-draw', onNextDraw as any);
-  }, []);
 
   // Countdown ticker
   useEffect(() => {
@@ -940,13 +936,7 @@ export default function JackpotPanel({
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
   return (
-    <section className={`relative overflow-hidden transition-colors duration-300 ${panelChrome}`}>
-      {/* subtle “breathing” atmosphere behind everything */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="xpot-breathe-a absolute inset-0 opacity-70" />
-        <div className="xpot-breathe-b absolute inset-0 opacity-55" />
-      </div>
-
+    <section className={`relative transition-colors duration-300 ${panelChrome}`}>
       {!!badgeLabel && (
         <div
           className={[
@@ -982,10 +972,10 @@ export default function JackpotPanel({
         {/* Marketing row */}
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* ✅ FIXED: proper closing tags */}
+            {/* FIXED: pill markup */}
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
               <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
-              Today&apos;s XPOT
+              <span className="relative">Today&apos;s XPOT</span>
             </span>
 
             <span
@@ -1311,66 +1301,6 @@ export default function JackpotPanel({
           <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes xpotBreathA {
-          0% {
-            transform: translate3d(-2%, -2%, 0) scale(1);
-            opacity: 0.55;
-            filter: blur(26px);
-          }
-          50% {
-            transform: translate3d(2%, 1%, 0) scale(1.05);
-            opacity: 0.78;
-            filter: blur(30px);
-          }
-          100% {
-            transform: translate3d(-2%, -2%, 0) scale(1);
-            opacity: 0.55;
-            filter: blur(26px);
-          }
-        }
-
-        @keyframes xpotBreathB {
-          0% {
-            transform: translate3d(2%, 1%, 0) scale(1);
-            opacity: 0.45;
-            filter: blur(32px);
-          }
-          50% {
-            transform: translate3d(-1%, -2%, 0) scale(1.06);
-            opacity: 0.7;
-            filter: blur(36px);
-          }
-          100% {
-            transform: translate3d(2%, 1%, 0) scale(1);
-            opacity: 0.45;
-            filter: blur(32px);
-          }
-        }
-
-        .xpot-breathe-a {
-          background: radial-gradient(circle at 20% 25%, rgba(56, 189, 248, 0.14), transparent 55%),
-            radial-gradient(circle at 70% 30%, rgba(236, 72, 153, 0.1), transparent 60%),
-            radial-gradient(circle at 45% 80%, rgba(201, 162, 74, 0.08), transparent 62%);
-          animation: xpotBreathA 9.5s ease-in-out infinite;
-        }
-
-        .xpot-breathe-b {
-          background: radial-gradient(circle at 80% 40%, rgba(56, 189, 248, 0.1), transparent 60%),
-            radial-gradient(circle at 30% 65%, rgba(236, 72, 153, 0.08), transparent 62%),
-            radial-gradient(circle at 55% 20%, rgba(201, 162, 74, 0.07), transparent 58%);
-          animation: xpotBreathB 12.5s ease-in-out infinite;
-          mix-blend-mode: screen;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .xpot-breathe-a,
-          .xpot-breathe-b {
-            animation: none;
-          }
-        }
-      `}</style>
     </section>
   );
 }
