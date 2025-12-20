@@ -445,3 +445,18 @@ select {
 .xpot-btn-vault:hover {
   filter: brightness(1.03) saturate(1.02);
 }
+/* =============================================================
+   GOLD PILLS / BADGES (READABLE ON DARK UI)
+============================================================= */
+
+.xpot-pill-gold {
+  color: rgb(var(--xpot-gold-2)); /* highlight gold for text */
+  border-color: rgba(var(--xpot-gold), 0.35);
+}
+
+/* When the pill itself is gold */
+.xpot-pill-gold-solid {
+  background: var(--xpot-gold-grad);
+  color: rgb(var(--xpot-gold-ink));
+  border-color: rgba(var(--xpot-gold), 0.45);
+}
