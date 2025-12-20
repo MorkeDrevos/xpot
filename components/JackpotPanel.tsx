@@ -1011,13 +1011,7 @@ export default function JackpotPanel({
     boxShadow: `0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)`,
   }}
 >
-  <XpotLogo
-  variant="mark"
-  width={30}
-  height={30}
-  className="scale-[1.12] origin-center"
-  priority
-/>
+  <XpotLogo variant="mark" width={22} height={22} tone="gold" priority />
 </span>
 
                   <div className="leading-tight">
