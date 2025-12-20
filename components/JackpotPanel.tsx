@@ -96,25 +96,64 @@ function getMadridSessionKey(cutoffHour = 22) {
   return `${y}${m}${d}`;
 }
 
-// Returns the next cutoff moment (22:00 Madrid) as a real Date in local JS time
-function getNextMadridCutoff(cutoffHour = 22) {
+/* ─────────────────────────────────────────────
+   Madrid cutoff: correct UTC ms for "22:00 Europe/Madrid"
+   (DST-safe, no UTC/Madrid drift)
+───────────────────────────────────────────── */
+
+function getMadridParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Madrid',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(new Date());
+  }).formatToParts(date);
 
-  const year = Number(parts.find(p => p.type === 'year')?.value ?? '0');
-  const month = Number(parts.find(p => p.type === 'month')?.value ?? '1');
-  const day = Number(parts.find(p => p.type === 'day')?.value ?? '1');
-  const hour = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
+  const get = (type: string, fallback = '0') => Number(parts.find(p => p.type === type)?.value ?? fallback);
 
-  const baseUtc = new Date(Date.UTC(year, month - 1, day, cutoffHour, 0, 0, 0));
-  if (hour >= cutoffHour) baseUtc.setUTCDate(baseUtc.getUTCDate() + 1);
-  return baseUtc;
+  return {
+    y: get('year', '0'),
+    m: get('month', '1'),
+    d: get('day', '1'),
+    hh: get('hour', '0'),
+    mm: get('minute', '0'),
+    ss: get('second', '0'),
+  };
+}
+
+function getMadridOffsetMs(now = new Date()) {
+  // Convert Madrid wall-clock parts back to UTC ms and compare to actual now.
+  // The difference is the tz offset in ms (handles DST correctly).
+  const p = getMadridParts(now);
+  const asUtc = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss);
+  return asUtc - now.getTime();
+}
+
+function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
+  const p = getMadridParts(now);
+  const offsetMs = getMadridOffsetMs(now);
+
+  const mkUtcFromMadridWallClock = (yy: number, mm: number, dd: number, hh: number, mi: number, ss: number) => {
+    const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
+    return asUtc - offsetMs;
+  };
+
+  let targetUtc = mkUtcFromMadridWallClock(p.y, p.m, p.d, cutoffHour, 0, 0);
+
+  if (now.getTime() >= targetUtc) {
+    const base = new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
+    base.setUTCDate(base.getUTCDate() + 1);
+    const yy = base.getUTCFullYear();
+    const mm = base.getUTCMonth() + 1;
+    const dd = base.getUTCDate();
+    targetUtc = mkUtcFromMadridWallClock(yy, mm, dd, cutoffHour, 0, 0);
+  }
+
+  return targetUtc;
 }
 
 function formatCountdown(ms: number) {
@@ -477,13 +516,9 @@ export default function JackpotPanel({
   // Premium runway fade-in (after price loads)
   const [showRunway, setShowRunway] = useState(false);
 
-  // Sexy countdown
-  const [countdownMs, setCountdownMs] = useState<number>(() => {
-    const next = getNextMadridCutoff(22).getTime();
-    return Math.max(0, next - Date.now());
-  });
-
-  // Micro pulse on every countdown tick
+  // Countdown - unified with page provider via window event, DST-safe fallback
+  const [nextDrawUtcMs, setNextDrawUtcMs] = useState<number>(() => getNextMadridCutoffUtcMs(22, new Date()));
+  const [countdownMs, setCountdownMs] = useState<number>(() => Math.max(0, nextDrawUtcMs - Date.now()));
   const [countPulse, setCountPulse] = useState(false);
 
   // Session key for "highest this session" (22:00 Madrid cut)
@@ -549,15 +584,55 @@ export default function JackpotPanel({
     }
   }, [sessionKey]);
 
-  // Countdown ticker
+  // Listen for the shared countdown broadcast (from app/page.tsx NextDrawProvider)
   useEffect(() => {
-    const t = window.setInterval(() => {
-      const next = getNextMadridCutoff(22).getTime();
-      setCountdownMs(Math.max(0, next - Date.now()));
-      setCountPulse(p => !p);
-    }, 1000);
-    return () => window.clearInterval(t);
+    if (typeof window === 'undefined') return;
+
+    const onNextDraw = (e: Event) => {
+      const ce = e as CustomEvent<any>;
+      const nd = Number(ce?.detail?.nextDrawUtcMs);
+      const now = Number(ce?.detail?.nowMs);
+      if (!Number.isFinite(nd) || !Number.isFinite(now)) return;
+
+      setNextDrawUtcMs(nd);
+      setCountdownMs(Math.max(0, nd - now));
+    };
+
+    window.addEventListener('xpot:next-draw', onNextDraw as any);
+    return () => window.removeEventListener('xpot:next-draw', onNextDraw as any);
   }, []);
+
+  // Countdown ticker (second-aligned) using stored nextDrawUtcMs.
+  // If the page provider exists, it will keep nudging the state too, but this keeps it smooth everywhere.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let interval: number | null = null;
+
+    const tick = () => {
+      const nd = nextDrawUtcMs || getNextMadridCutoffUtcMs(22, new Date());
+      const now = Date.now();
+      setCountdownMs(Math.max(0, nd - now));
+      setCountPulse(p => !p);
+
+      // safety: if we passed the cutoff, compute the next one (DST-safe)
+      if (now >= nd) {
+        const next = getNextMadridCutoffUtcMs(22, new Date());
+        setNextDrawUtcMs(next);
+      }
+    };
+
+    const msToNextSecond = 1000 - (Date.now() % 1000);
+    const t = window.setTimeout(() => {
+      tick();
+      interval = window.setInterval(tick, 1000);
+    }, msToNextSecond);
+
+    return () => {
+      window.clearTimeout(t);
+      if (interval) window.clearInterval(interval);
+    };
+  }, [nextDrawUtcMs]);
 
   // Load rolling samples (for 24h range + local sparkline)
   useEffect(() => {
