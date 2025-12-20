@@ -462,3 +462,109 @@ select {
   color: rgb(var(--xpot-gold-ink));
   border-color: rgba(var(--xpot-gold), 0.45);
 }
+
+/* =============================================================
+   XPOT CONTROLS (buttons, inputs, halos)
+============================================================= */
+
+/* Base button */
+.xpot-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.75rem 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+
+  color: rgba(226, 232, 240, 0.92);
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 10px 32px rgba(0, 0, 0, 0.45);
+
+  transition: transform 180ms ease, filter 180ms ease, background 180ms ease,
+    border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.xpot-btn:hover {
+  background: rgba(2, 6, 23, 0.68);
+  border-color: rgba(148, 163, 184, 0.30);
+  filter: brightness(1.02);
+}
+
+.xpot-btn:active {
+  transform: translateY(0.5px) scale(0.99);
+}
+
+.xpot-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+/* Utility variant (kept compatible with your BTN_UTILITY usage) */
+.xpot-btn-utility {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(148, 163, 184, 0.20);
+}
+
+/* Danger button */
+.xpot-btn-danger {
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.32);
+  color: rgba(254, 202, 202, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(244, 63, 94, 0.10),
+    0 16px 60px rgba(244, 63, 94, 0.12);
+}
+
+.xpot-btn-danger:hover {
+  background: rgba(244, 63, 94, 0.10);
+  border-color: rgba(244, 63, 94, 0.42);
+}
+
+/* Input */
+.xpot-input {
+  width: 100%;
+  border-radius: 18px;
+  padding: 0.75rem 1rem;
+
+  color: rgba(226, 232, 240, 0.94);
+  background: rgba(2, 6, 23, 0.60);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 10px 30px rgba(0, 0, 0, 0.40);
+
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.xpot-input::placeholder {
+  color: rgba(148, 163, 184, 0.45);
+}
+
+.xpot-input:focus {
+  border-color: rgba(var(--xpot-accent-primary), 0.55);
+  box-shadow: var(--xpot-ring);
+  background: rgba(2, 6, 23, 0.72);
+}
+
+/* Nebula halo overlay used in ops cards */
+.xpot-nebula-halo {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.9;
+  background:
+    radial-gradient(900px 260px at 20% 0%, rgba(var(--xpot-accent-primary), 0.14), transparent 62%),
+    radial-gradient(860px 260px at 78% 0%, rgba(var(--xpot-accent-glow), 0.12), transparent 62%),
+    radial-gradient(820px 260px at 52% 0%, rgba(var(--xpot-accent-secondary), 0.10), transparent 62%);
+  filter: blur(0px);
+}
