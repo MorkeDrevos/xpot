@@ -568,40 +568,32 @@ function uniqByHandle(list: LiveEntrant[]) {
 }
 
 export default function HomePage() {
-  const [showLiveEntries, setShowLiveEntries] = useState(false);
   const [liveEntries, setLiveEntries] = useState<LiveEntrant[]>([]);
 
   useEffect(() => {
-    if (!showLiveEntries) return;
+  let alive = true;
 
-    let alive = true;
+  async function load() {
+    try {
+      const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
+      const data = await r.json();
 
-    fetch('/api/public/live-entries', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(data => {
-        if (!alive) return;
+      if (!alive) return;
+      const raw = Array.isArray(data?.entries) ? data.entries : [];
+      const normalized = raw.map(normalizeLiveEntrant).filter(Boolean) as LiveEntrant[];
+      setLiveEntries(uniqByHandle(normalized));
+    } catch {
+      // ignore
+    }
+  }
 
-        const raw = Array.isArray(data?.entries) ? data.entries : [];
-        const normalized = raw.map(normalizeLiveEntrant).filter(Boolean) as LiveEntrant[];
-        setLiveEntries(uniqByHandle(normalized));
-      })
-      .catch(() => {});
-
-    return () => {
-      alive = false;
-    };
-  }, [showLiveEntries]);
-
-  const [mint, setMint] = useState(XPOT_CA);
-  useEffect(() => setMint(XPOT_CA), []);
-
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  const nextDrawUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(nowMs)), [nowMs]);
-
-  useEffect(() => {
-    const t = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
+  load();
+  const t = window.setInterval(load, 12_000);
+  return () => {
+    alive = false;
+    window.clearInterval(t);
+  };
+}, []);
 
   const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
 
@@ -809,48 +801,14 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Expandable live entries */}
-              <div className="relative z-10 border-t border-slate-900/70 px-6 py-4 lg:px-8">
-                <button
-                  type="button"
-                  onClick={() => setShowLiveEntries(v => !v)}
-                  className="group inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-900/70 bg-slate-950/50 px-4 py-3 text-left shadow-[0_18px_60px_rgba(15,23,42,0.55)] transition hover:bg-slate-950/70"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-70 animate-ping" />
-                      <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                    </span>
-                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-                      Live entries (X handles)
-                    </span>
-                    <span className="text-[11px] text-slate-500">Optional - expand to view</span>
-                  </span>
+              {/* Live entries (always-on) */}
+<div className="relative z-10 border-t border-slate-900/70 px-6 py-5 lg:px-8">
+  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(16,185,129,0.28),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)] opacity-70" />
 
-                  <ChevronDown
-                    className={`h-4 w-4 text-slate-400 transition-transform ${showLiveEntries ? 'rotate-180' : ''}`}
-                  />
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {showLiveEntries && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-3">
-                        <LiveEntrantsLounge
-  entrants={liveEntries}
-  hint="Optional - expand to view"
-/>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+  <div className="relative">
+    <LiveEntrantsLounge entrants={liveEntries} hint="Live lobby - updates automatically" />
+  </div>
+</div>
             </div>
           </div>
         </div>
