@@ -85,6 +85,7 @@ export default function XpotPageShell({
     else root.removeAttribute('data-xpot-page');
 
     return () => {
+      // Only remove if we set it (prevents clobbering other pages during fast nav)
       if (!resolvedPageTag) return;
       if (root.getAttribute('data-xpot-page') === resolvedPageTag) {
         root.removeAttribute('data-xpot-page');
@@ -93,19 +94,6 @@ export default function XpotPageShell({
   }, [resolvedPageTag]);
 
   const mergedRightSlot = useMemo(() => rightSlot ?? null, [rightSlot]);
-
-  // Header height (banner + topbar). Keep your existing fallbacks.
-  const headerOffset = showTopBar
-    ? 'calc(var(--xpot-banner-h,56px) + var(--xpot-topbar-h,112px))'
-    : 'var(--xpot-banner-h,56px)';
-
-  // If we render a full-bleed hero, we offset THAT hero by header height
-  // and we do NOT repeat the header offset again on the main container.
-  const containerPaddingTop = fullBleedTop
-    ? '24px'
-    : showTopBar
-      ? 'calc(var(--xpot-banner-h,56px) + var(--xpot-topbar-h,112px) + 24px)'
-      : 'calc(var(--xpot-banner-h,56px) + 24px)';
 
   return (
     <div className={['relative min-h-screen text-slate-100', className].join(' ')}>
@@ -120,21 +108,19 @@ export default function XpotPageShell({
 
       {/* ✅ Atmosphere (stars) removed */}
 
-      {/* ✅ Full-bleed hero: offset it by the fixed header height */}
-      {fullBleedTop ? (
-        <div className="relative z-10 w-full" style={{ paddingTop: headerOffset }}>
-          {fullBleedTop}
-        </div>
-      ) : null}
+      {/* ✅ Full-bleed slot (edge-to-edge hero). No padding here on purpose. */}
+      {fullBleedTop ? <div className="relative z-10 w-full">{fullBleedTop}</div> : null}
 
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
+          showTopBar
+            ? 'pt-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+24px)]'
+            : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]',
           'pb-6 sm:pb-8',
           maxWidthClassName,
           containerClassName,
         ].join(' ')}
-        style={{ paddingTop: containerPaddingTop }}
       >
         {(title || subtitle || mergedRightSlot) && (
           <div
