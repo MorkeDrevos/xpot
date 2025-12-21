@@ -30,14 +30,15 @@ function StatusPill({
   children: React.ReactNode;
   tone?: PillTone;
 }) {
+  // NOTE: "amber" maps to vault-gold pill styling (readable + consistent with homepage)
   const cls =
     tone === 'emerald'
-      ? 'bg-emerald-500/10 text-emerald-300 border-emerald-400/20'
+      ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300'
       : tone === 'amber'
-      ? 'bg-amber-500/10 text-amber-300 border-amber-400/20'
+      ? 'xpot-pill-gold border bg-white/[0.02] shadow-[0_0_0_1px_rgba(255,255,255,0.03)]'
       : tone === 'sky'
-      ? 'bg-sky-500/10 text-sky-300 border-sky-400/20'
-      : 'bg-slate-800/60 text-slate-200 border-white/10';
+      ? 'border-sky-400/20 bg-sky-500/10 text-sky-300'
+      : 'border-white/10 bg-slate-800/60 text-slate-200';
 
   return (
     <span
@@ -157,7 +158,7 @@ export default function HubLivePage() {
             </div>
 
             {error ? (
-              <p className="mt-6 text-sm text-amber-300">{error}</p>
+              <p className="mt-6 text-sm xpot-gold-text">{error}</p>
             ) : loading || !draw ? (
               <p className="mt-6 text-sm text-slate-400">Loading live draw…</p>
             ) : (
@@ -215,7 +216,7 @@ export default function HubLivePage() {
               <p className="mt-1 text-xs text-slate-400">Extra reward drops today</p>
             </div>
 
-            <Zap className="h-5 w-5 text-amber-300" />
+            <Zap className="h-5 w-5 xpot-gold-text" />
           </div>
 
           <div className="mt-4 space-y-3">

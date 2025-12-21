@@ -2,27 +2,26 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, X, ArrowRight } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ArrowRight, ShieldCheck, X as XIcon } from 'lucide-react';
 import { useSignIn } from '@clerk/nextjs';
 
-import XpotLogoLottie from '@/components/XpotLogoLottie';
-
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex w-full items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold px-5 py-3 text-sm font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
 
-const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-200 hover:bg-slate-800 transition';
+const BTN_GHOST =
+  'inline-flex w-full items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10';
 
 export default function HubLockOverlay({
   open,
-  reason = 'Sign in with X to access the Holder Dashboard.',
+  reason,
   showLinkX = false,
 }: {
   open: boolean;
   reason?: string;
   showLinkX?: boolean;
 }) {
+  const reduce = useReducedMotion();
   const { isLoaded, signIn } = useSignIn();
 
   async function handleContinueWithX() {
@@ -35,108 +34,93 @@ export default function HubLockOverlay({
     });
   }
 
+  const title = showLinkX ? 'Link X to continue' : 'Sign in to enter today’s draw';
+  const sub =
+    reason ??
+    'One entry per X account per draw. Your identity is your entry. No posting required.';
+
   return (
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-[80] flex items-center justify-center px-4"
+          className="fixed inset-0 z-[95] flex items-center justify-center px-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Backdrop */}
+          {/* Backdrop (locked) */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-2xl" />
-
-          {/* Glow */}
-          <div className="pointer-events-none absolute inset-0 opacity-60">
-            <div className="absolute left-1/2 top-[38%] h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-500/10 blur-3xl" />
-            <div className="absolute left-[20%] top-[55%] h-[420px] w-[420px] rounded-full bg-amber-500/10 blur-3xl" />
-          </div>
 
           {/* Card */}
           <motion.div
-            initial={{ y: 18, scale: 0.985, opacity: 0 }}
+            initial={{ y: 14, scale: 0.99, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 10, scale: 0.99, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            transition={
+              reduce
+                ? { duration: 0.15 }
+                : { type: 'spring', stiffness: 260, damping: 26 }
+            }
             className="
-              relative w-full max-w-[520px]
-              rounded-[32px] border border-white/10
-              bg-gradient-to-b from-slate-950/80 to-slate-950/55
-              shadow-[0_30px_120px_rgba(0,0,0,0.75)]
-              backdrop-blur-xl
+              relative w-full max-w-[420px]
+              rounded-[26px] border border-white/10
+              bg-[linear-gradient(to_bottom,rgba(2,6,23,0.88),rgba(2,6,23,0.62))]
+              shadow-[0_30px_120px_rgba(0,0,0,0.78)]
               overflow-hidden
             "
           >
-            {/* Subtle ambient */}
-            <div className="pointer-events-none absolute -top-24 left-1/2 h-[340px] w-[340px] -translate-x-1/2 rounded-full bg-purple-500/10 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 left-[18%] h-[300px] w-[300px] rounded-full bg-amber-500/10 blur-3xl" />
+            {/* Ambient glows (same vibe as PremiumWalletModal) */}
+            <div className="pointer-events-none absolute -top-24 left-1/2 h-[320px] w-[320px] -translate-x-1/2 rounded-full bg-sky-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-28 left-[18%] h-[320px] w-[320px] rounded-full bg-fuchsia-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
 
-            <div className="relative px-6 py-6 sm:px-7 sm:py-7">
-              {/* XPOT brand row (logo + chips) */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <XpotLogoLottie className="h-8 w-auto" height={32} />
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                    XPOT
+            <div className="relative p-5">
+              {/* Top row */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400/90 shadow-[0_0_0_4px_rgba(16,185,129,0.10)]" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-200">
+                    XPOT access
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                    <Lock className="h-4 w-4 text-amber-200" />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                      Access restricted
-                    </span>
-                  </div>
-
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                    <X className="h-4 w-4 text-slate-200" />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                      X-powered identity
-                    </span>
-                  </div>
+                {/* (Optional) “locked” hint badge */}
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-200" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                    Secure
+                  </span>
                 </div>
               </div>
 
-              <h2 className="mt-5 text-[28px] font-semibold leading-tight text-slate-100">
-                Holder Dashboard is locked
-              </h2>
-              <p className="mt-2 text-sm text-slate-300">{reason}</p>
-
-              <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-                <p className="text-xs text-slate-300">XPOT ties each entry to:</p>
-                <ul className="mt-2 space-y-1 text-xs text-slate-300">
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400/90" />
-                    Your X handle
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400/90" />
-                    Your Solana wallet
-                  </li>
-                </ul>
+              {/* Title */}
+              <div className="mt-4">
+                <h2 className="text-[18px] font-semibold text-slate-100">{title}</h2>
+                <p className="mt-1 text-[12px] leading-relaxed text-slate-400">{sub}</p>
               </div>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+              {/* Actions */}
+              <div className="mt-5 space-y-3">
                 <button
                   type="button"
                   onClick={handleContinueWithX}
                   disabled={!isLoaded}
-                  className={`${BTN_PRIMARY} h-12 px-6 text-sm`}
+                  className={BTN_PRIMARY}
                 >
-                  {showLinkX ? 'Link X to continue' : 'Continue with X'}
+                  <span className="inline-flex items-center gap-2">
+                    <XIcon className="h-4 w-4" />
+                    {showLinkX ? 'Link X' : 'Sign in with X'}
+                  </span>
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </button>
 
-                <Link href="/" className={`${BTN_UTILITY} h-12 px-6 text-sm`}>
+                <Link href="/" className={BTN_GHOST}>
                   Back to homepage
                 </Link>
               </div>
 
-              <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
-                Pre-launch note: this lock is UI-first, but all sensitive actions stay protected on the
-                server.
+              <p className="mt-4 text-center text-[11px] text-slate-500">
+                Want a different X account? Switch on x.com first then come back here.
               </p>
             </div>
           </motion.div>

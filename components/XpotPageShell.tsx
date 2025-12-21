@@ -1,7 +1,7 @@
 // components/XpotPageShell.tsx
 'use client';
 
-import { ReactNode, ComponentProps, useEffect, useMemo, useState } from 'react';
+import { ReactNode, ComponentProps, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 
 import PreLaunchBanner from '@/components/PreLaunchBanner';
@@ -13,7 +13,7 @@ type XpotPageShellProps = {
   rightSlot?: ReactNode;
   children: ReactNode;
 
-  // ✅ NEW: full-bleed content rendered above the normal container (edge-to-edge hero)
+  // ✅ full-bleed content rendered above the normal container (edge-to-edge hero)
   fullBleedTop?: ReactNode;
 
   maxWidthClassName?: string;
@@ -25,110 +25,18 @@ type XpotPageShellProps = {
   topBarClassName?: string;
   topBarProps?: ComponentProps<typeof XpotTopBar>;
 
+  /**
+   * Deprecated: previously rendered the "xpot-atmosphere" overlay (stars).
+   * Kept so existing call sites don't break, but stars layer is removed.
+   */
   showAtmosphere?: boolean;
 
-  // Keep your existing feature
+  // Deprecated UI feature: no longer used (NO THEME SWITCHING)
   showOpsThemeSwitcher?: boolean;
 
-  // New feature: explicit page tag (used for styling, telemetry, theming hooks)
+  // Explicit page tag used for styling hooks (ops, hub etc)
   pageTag?: string;
 };
-
-const THEME_KEY = 'xpot_ops_theme_v1';
-
-type ThemePreset = {
-  id: string;
-  label: string;
-  vars: Record<string, string>;
-};
-
-// Your requested anchors (blue -> violet -> magenta)
-const PRESETS: ThemePreset[] = [
-  {
-    id: 'nebula',
-    label: 'Nebula',
-    vars: {
-      '--xpot-accent-blue': '56 189 248',
-      '--xpot-accent-violet': '99 102 241',
-      '--xpot-accent-magenta': '236 72 153',
-      '--xpot-accent-emerald': '16 185 129',
-    },
-  },
-  {
-    id: 'icy',
-    label: 'Icy',
-    vars: {
-      '--xpot-accent-blue': '34 211 238',
-      '--xpot-accent-violet': '129 140 248',
-      '--xpot-accent-magenta': '244 114 182',
-      '--xpot-accent-emerald': '16 185 129',
-    },
-  },
-  {
-    id: 'royal',
-    label: 'Royal',
-    vars: {
-      '--xpot-accent-blue': '96 165 250',
-      '--xpot-accent-violet': '139 92 246',
-      '--xpot-accent-magenta': '236 72 153',
-      '--xpot-accent-emerald': '16 185 129',
-    },
-  },
-];
-
-function applyPreset(presetId: string) {
-  const preset = PRESETS.find(p => p.id === presetId) ?? PRESETS[0];
-  const root = document.documentElement;
-
-  for (const [k, v] of Object.entries(preset.vars)) {
-    root.style.setProperty(k, v);
-  }
-
-  // Keep compat with older name used in some places
-  root.style.setProperty('--xpot-accent-purple', `var(--xpot-accent-violet)`);
-
-  window.localStorage.setItem(THEME_KEY, preset.id);
-}
-
-function OpsThemeSwitcher() {
-  const [active, setActive] = useState<string>('nebula');
-
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null;
-    const initial = saved && PRESETS.some(p => p.id === saved) ? saved : 'nebula';
-    setActive(initial);
-    applyPreset(initial);
-  }, []);
-
-  return (
-    <div className="hidden sm:flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Theme</span>
-
-      <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03] backdrop-blur">
-        {PRESETS.map(p => {
-          const isActive = p.id === active;
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => {
-                setActive(p.id);
-                applyPreset(p.id);
-              }}
-              className={[
-                'h-8 px-3 text-[11px] font-semibold transition',
-                isActive ? 'bg-white/[0.10] text-slate-50' : 'text-slate-300 hover:bg-white/[0.06]',
-              ].join(' ')}
-              title={`Apply ${p.label}`}
-            >
-              {p.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 export default function XpotPageShell({
   title,
@@ -144,10 +52,18 @@ export default function XpotPageShell({
   showTopBar = true,
   topBarClassName = '',
   topBarProps,
-  showAtmosphere = true,
-  showOpsThemeSwitcher = true,
+
+  // kept only so existing callers don't break
+  showAtmosphere,
+
+  // kept for compatibility (NO THEME SWITCHING - ignored)
+  showOpsThemeSwitcher,
+
   pageTag,
 }: XpotPageShellProps) {
+  void showAtmosphere;
+  void showOpsThemeSwitcher;
+
   const pathname = usePathname();
 
   const inferredTag = useMemo(() => {
@@ -158,24 +74,29 @@ export default function XpotPageShell({
   }, [pathname]);
 
   const resolvedPageTag = pageTag || inferredTag;
-  const isOpsOrAdmin = resolvedPageTag === 'ops';
 
-  const mergedRightSlot = useMemo(() => {
-    if (!isOpsOrAdmin || !showOpsThemeSwitcher) return rightSlot ?? null;
+  // ✅ IMPORTANT: set data-xpot-page on <html> (so :root[data-xpot-page="ops"] works)
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
 
-    return (
-      <>
-        <OpsThemeSwitcher />
-        {rightSlot ? <div className="ml-2">{rightSlot}</div> : null}
-      </>
-    );
-  }, [isOpsOrAdmin, rightSlot, showOpsThemeSwitcher]);
+    const root = document.documentElement;
+
+    if (resolvedPageTag) root.setAttribute('data-xpot-page', resolvedPageTag);
+    else root.removeAttribute('data-xpot-page');
+
+    return () => {
+      // Only remove if we set it (prevents clobbering other pages during fast nav)
+      if (!resolvedPageTag) return;
+      if (root.getAttribute('data-xpot-page') === resolvedPageTag) {
+        root.removeAttribute('data-xpot-page');
+      }
+    };
+  }, [resolvedPageTag]);
+
+  const mergedRightSlot = useMemo(() => rightSlot ?? null, [rightSlot]);
 
   return (
-    <div
-      className={['relative min-h-screen bg-[#02020a] text-slate-100', className].join(' ')}
-      data-xpot-page={resolvedPageTag}
-    >
+    <div className={['relative min-h-screen text-slate-100', className].join(' ')}>
       {/* Banner is hidden on mobile inside PreLaunchBanner (hidden sm:block) */}
       <PreLaunchBanner />
 
@@ -185,15 +106,14 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {showAtmosphere && <div aria-hidden className="xpot-atmosphere" />}
+      {/* ✅ Atmosphere (stars) removed */}
 
-      {/* ✅ Full-bleed content slot (edge-to-edge hero). No padding added here on purpose. */}
+      {/* ✅ Full-bleed slot (edge-to-edge hero). No padding here on purpose. */}
       {fullBleedTop ? <div className="relative z-10 w-full">{fullBleedTop}</div> : null}
 
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
-          // ✅ use real measured topbar height (published by XpotTopBar.tsx)
           showTopBar
             ? 'pt-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+24px)]'
             : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]',

@@ -71,18 +71,14 @@ type RecentWinner = {
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
 
-function StatusPill({
-  status,
-}: {
-  status: EntryStatus;
-}) {
+function StatusPill({ status }: { status: EntryStatus }) {
   const tone =
     status === 'won' || status === 'claimed'
       ? 'bg-emerald-500/10 text-emerald-300'
       : status === 'in-draw'
       ? 'bg-sky-500/10 text-sky-200'
       : status === 'expired'
-      ? 'bg-amber-500/10 text-amber-200'
+      ? 'bg-amber-500/10 xpot-gold-text'
       : 'bg-slate-800/70 text-slate-200';
 
   const label = status.replace('-', ' ').toUpperCase();
@@ -109,17 +105,14 @@ function WalletStatusHint() {
 
   if (!anyDetected) {
     return (
-      <p className="mt-2 text-xs text-amber-300">
-        No Solana wallet detected. Install Phantom or Jupiter to continue.
+      <p className="mt-2 text-xs xpot-gold-text">
+        No Solana wallet detected. Install Phantom, Solflare or Backpack to continue.
       </p>
     );
   }
 
-  return (
-    <p className="mt-2 text-xs text-slate-500">
-      Click “Select Wallet” and choose Phantom or Jupiter to connect.
-    </p>
-  );
+  // Wallet detected but not connected → show nothing
+  return null;
 }
 
 // ─────────────────────────────────────────────
@@ -277,46 +270,6 @@ export default function HistoryClient() {
 
   return (
     <XpotPageShell title="History" subtitle="Recent XPOT winners and your past entries">
-      {/* Header row */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <Image
-              src="/img/xpot-logo-light.png"
-              alt="XPOT"
-              width={132}
-              height={36}
-              priority
-            />
-          </Link>
-
-          <span className="rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-            History
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-
-          <WalletMultiButton className="!h-10 !rounded-full !px-4 !text-sm" />
-
-          <SignOutButton redirectUrl="/dashboard">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
-            >
-              <LogOut className="h-4 w-4" />
-              Log out
-            </button>
-          </SignOutButton>
-        </div>
-      </header>
 
       <WalletStatusHint />
 
@@ -378,9 +331,7 @@ export default function HistoryClient() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-100">Your past entries</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Entries linked to your connected wallet.
-                </p>
+                <p className="mt-1 text-xs text-slate-400">Entries linked to your connected wallet.</p>
               </div>
 
               <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
@@ -396,13 +347,9 @@ export default function HistoryClient() {
                 </p>
               )}
 
-              {connected && loadingHistory && (
-                <p className="text-xs text-slate-500">Loading history…</p>
-              )}
+              {connected && loadingHistory && <p className="text-xs text-slate-500">Loading history…</p>}
 
-              {connected && historyError && (
-                <p className="text-xs text-amber-300">{historyError}</p>
-              )}
+              {connected && historyError && <p className="text-xs xpot-gold-text">{historyError}</p>}
 
               {connected && !loadingHistory && !historyError && myHistory.length === 0 && (
                 <p className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3 text-xs text-slate-500">
@@ -456,7 +403,7 @@ export default function HistoryClient() {
 
             <div className="mt-4 space-y-2">
               {loadingWinners && <p className="text-xs text-slate-500">Loading winners…</p>}
-              {winnersError && <p className="text-xs text-amber-300">{winnersError}</p>}
+              {winnersError && <p className="text-xs xpot-gold-text">{winnersError}</p>}
 
               {!loadingWinners && !winnersError && recentWinners.length === 0 && (
                 <p className="rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3 text-xs text-slate-500">
@@ -464,7 +411,7 @@ export default function HistoryClient() {
                 </p>
               )}
 
-              {!loadingWinners && !winnersError && recentWinners.length > 0 && (
+              {!loadingWinners && !winnersError && recentWinners.length > 0 &&
                 recentWinners.map(w => (
                   <div
                     key={w.id}
@@ -481,12 +428,9 @@ export default function HistoryClient() {
                       </p>
                     </div>
 
-                    <p className="mt-1 font-mono text-sm text-slate-100">
-                      {w.ticketCode}
-                    </p>
+                    <p className="mt-1 font-mono text-sm text-slate-100">{w.ticketCode}</p>
                   </div>
-                ))
-              )}
+                ))}
             </div>
 
             <div className="mt-4 flex items-center justify-between border-t border-slate-800/70 pt-3 text-xs text-slate-500">

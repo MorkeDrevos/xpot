@@ -1,22 +1,13 @@
+// components/LiveEntrantsLounge.tsx
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
-
-export type LiveEntrant = {
-  handle: string;
-  avatarUrl?: string; // must come from API
-  followers?: number; // optional (for future UI)
-  verified?: boolean; // optional
-  subtitle?: string;
-};
-
-function cleanHandle(h: string) {
-  return (h || '').replace(/^@/, '').trim();
-}
+import { cleanHandle, type LiveEntrant } from '@/lib/live-entrants';
 
 function uniqByHandle(list: LiveEntrant[]) {
   const seen = new Set<string>();
   const out: LiveEntrant[] = [];
+
   for (const e of list || []) {
     const h = cleanHandle(e?.handle || '');
     if (!h) continue;
@@ -25,20 +16,36 @@ function uniqByHandle(list: LiveEntrant[]) {
     seen.add(key);
     out.push({ ...e, handle: h });
   }
+
   return out;
+}
+
+function GhostRow({ count = 16 }: { count?: number }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="relative h-7 w-7 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]"
+        >
+          <div className="pointer-events-none absolute inset-0 opacity-70 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.12),transparent_55%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-40 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.06),transparent)]" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function LiveEntrantsLounge({
   entrants,
-  subtitle = 'Optional - expand to view',
+  hint = 'Live lobby - updates automatically',
 }: {
   entrants: LiveEntrant[];
-  subtitle?: string;
+  hint?: string; // header hint only (NOT per-entrant subtitle)
 }) {
   const reduceMotion = useReducedMotion();
 
-  // IMPORTANT: do NOT generate avatars on the client.
-  // We only show entries that already passed server-side checks.
+  // Only show entries that already passed server-side checks.
   const safeEntrants = uniqByHandle(entrants).filter(e => !!e.avatarUrl);
 
   return (
@@ -63,24 +70,45 @@ export default function LiveEntrantsLounge({
             Live entries (X handles)
           </span>
 
-          <span className="text-[11px] text-slate-500">{subtitle}</span>
+          <span className="text-[11px] text-slate-500">{hint}</span>
         </div>
 
-        <span className="text-[11px] text-slate-500">Handles are shown, wallets stay self-custody.</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-slate-500">Handles are shown, wallets stay self-custody.</span>
+
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+            {safeEntrants.length} live
+          </span>
+        </div>
       </div>
 
       {safeEntrants.length === 0 ? (
-        <div className="relative z-10 rounded-[22px] border border-slate-900/70 bg-slate-950/40 px-4 py-5 text-sm text-slate-400">
-          <p className="font-semibold text-slate-200/90">No verified live entries right now.</p>
-          <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
-            Showing only real X accounts with 100+ followers and a non-default profile image.
-          </p>
+        <div className="relative z-10 overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/40 px-4 py-4">
+          <div className="pointer-events-none absolute -inset-24 opacity-60 blur-3xl bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.12),transparent_60%),radial-gradient(circle_at_100%_0%,rgba(16,185,129,0.10),transparent_62%)]" />
+
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-100/90">No live entries right now.</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
+                Check back in a moment. When entries are live, you’ll see avatars and handles here.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-end gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-600">
+                Preview
+              </span>
+              <GhostRow count={18} />
+            </div>
+          </div>
         </div>
       ) : (
         <div className="relative z-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {safeEntrants.map((e, i) => {
             const handle = cleanHandle(e.handle);
             const avatar = e.avatarUrl!;
+            const badge = (e.subtitle || '').trim();
 
             return (
               <motion.a
@@ -113,7 +141,7 @@ export default function LiveEntrantsLounge({
                 />
 
                 <div className="relative z-10 flex items-center gap-3">
-                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/10">
+                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/10 bg-slate-900/60">
                     <img
                       src={avatar}
                       alt={`@${handle}`}
@@ -121,7 +149,6 @@ export default function LiveEntrantsLounge({
                       loading="lazy"
                       referrerPolicy="no-referrer"
                       onError={ev => {
-                        // If an image fails, drop it (don’t replace with generic face)
                         (ev.currentTarget as HTMLImageElement).style.display = 'none';
                       }}
                     />
@@ -130,7 +157,12 @@ export default function LiveEntrantsLounge({
 
                   <div className="min-w-0">
                     <p className="truncate font-mono text-[12px] text-slate-100/90">@{handle}</p>
-                    <p className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-slate-500">Identity</p>
+
+                    {badge ? (
+                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-slate-400">{badge}</p>
+                    ) : (
+                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-slate-500">Identity</p>
+                    )}
                   </div>
 
                   <div className="ml-auto flex items-center gap-2">

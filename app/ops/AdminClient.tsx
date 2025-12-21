@@ -188,13 +188,13 @@ function Badge({
   tone = 'slate',
 }: {
   children: ReactNode;
-  tone?: 'slate' | 'emerald' | 'amber' | 'sky' | 'red';
+  tone?: 'slate' | 'emerald' | 'gold' | 'sky' | 'red';
 }) {
   const cls =
     tone === 'emerald'
       ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
-      : tone === 'amber'
-      ? 'border-amber-400/40 bg-amber-500/10 text-amber-200'
+      : tone === 'gold'
+      ? 'xpot-pill-gold border bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
       : tone === 'sky'
       ? 'border-sky-400/40 bg-sky-500/10 text-sky-100'
       : tone === 'red'
@@ -248,17 +248,17 @@ function CopyableWallet({ address }: { address: string }) {
 }
 
 // ─────────────────────────────────────────────
-// Button styles (now driven by globals.css)
+// Button styles (driven by globals.css)
+// Fix: gold CTAs now use vault gold tokens
 // ─────────────────────────────────────────────
 
 const BTN = 'xpot-btn';
-const BTN_PRIMARY = 'xpot-btn xpot-btn-primary';
+const BTN_VAULT = 'xpot-btn xpot-btn-vault';
 const BTN_UTILITY = 'xpot-btn';
 const BTN_DANGER = 'xpot-btn xpot-btn-danger';
 
-// Keep the signature ops "crown" button look (amber/gold) but slimmer
-const BTN_CROWN =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
+// Keep the signature ops "crown" look, but route through vault gold
+const BTN_CROWN = BTN_VAULT;
 
 // ─────────────────────────────────────────────
 // Page
@@ -294,8 +294,6 @@ export default function AdminPage() {
   const [winnersLoading, setWinnersLoading] = useState(true);
 
   const [isDevHost, setIsDevHost] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [seedMsg, setSeedMsg] = useState<string | null>(null);
 
   const [txInputs, setTxInputs] = useState<Record<string, string>>({});
   const [savingPaidId, setSavingPaidId] = useState<string | null>(null);
@@ -304,8 +302,14 @@ export default function AdminPage() {
   const [visibleTicketCount, setVisibleTicketCount] = useState(MAX_TODAY_TICKETS);
   const [visibleWinnerCount, setVisibleWinnerCount] = useState(MAX_RECENT_WINNERS);
 
-  const visibleTickets = useMemo(() => tickets.slice(0, visibleTicketCount), [tickets, visibleTicketCount]);
-  const visibleWinners = useMemo(() => winners.slice(0, visibleWinnerCount), [winners, visibleWinnerCount]);
+  const visibleTickets = useMemo(
+    () => tickets.slice(0, visibleTicketCount),
+    [tickets, visibleTicketCount],
+  );
+  const visibleWinners = useMemo(
+    () => winners.slice(0, visibleWinnerCount),
+    [winners, visibleWinnerCount],
+  );
 
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
 
@@ -426,43 +430,6 @@ export default function AdminPage() {
     }
   }
 
-  async function handleSeedDemoData(force = false) {
-    setSeedMsg(null);
-
-    if (!adminToken) {
-      setSeedMsg('Admin key missing. Unlock admin first.');
-      return;
-    }
-
-    setIsSeeding(true);
-    try {
-      const url = force ? '/api/admin/dev-seed?force=1' : '/api/admin/dev-seed';
-      const data = await authedFetch(url, { method: 'POST' });
-
-      if ((data as any)?.skipped) {
-        setSeedMsg((data as any)?.message || 'Seed skipped (DB not empty).');
-      } else {
-        setSeedMsg('Seed complete. Reloading ops data...');
-      }
-
-      const todayData = await authedFetch('/api/admin/today');
-      setTodayDraw((todayData as any).today ?? null);
-
-      const ticketsData = await authedFetch('/api/admin/tickets');
-      setTickets((ticketsData as any).tickets ?? []);
-
-      const winnersData = await authedFetch('/api/admin/winners');
-      setWinners((winnersData as any).winners ?? []);
-
-      await refreshUpcomingDrops();
-    } catch (err: any) {
-      console.error('[ADMIN] seed error', err);
-      setSeedMsg(err?.message || 'Seed failed');
-    } finally {
-      setIsSeeding(false);
-    }
-  }
-
   // ── Manually create today’s draw (dev) ──────
   async function handleCreateTodayDraw() {
     setTodayDrawError(null);
@@ -475,7 +442,8 @@ export default function AdminPage() {
     setCreatingDraw(true);
     try {
       const data = await authedFetch('/api/admin/create-today-draw', { method: 'POST' });
-      if (!data || (data as any).ok === false) throw new Error((data as any)?.error || 'Failed to create today’s draw');
+      if (!data || (data as any).ok === false)
+        throw new Error((data as any)?.error || 'Failed to create today’s draw');
       window.location.reload();
     } catch (err: any) {
       console.error('[XPOT] create today draw error:', err);
@@ -531,7 +499,9 @@ export default function AdminPage() {
 
       const drop = data?.drop;
       setBonusSuccess(
-        drop ? `Scheduled ${drop.label} · ${drop.amountXpot.toLocaleString()} XPOT.` : `Scheduled bonus XPOT.`,
+        drop
+          ? `Scheduled ${drop.label} · ${drop.amountXpot.toLocaleString()} XPOT.`
+          : `Scheduled bonus XPOT.`,
       );
       await refreshUpcomingDrops();
     } catch (err: any) {
@@ -553,10 +523,16 @@ export default function AdminPage() {
 
     setCancelingDropId(dropId);
     try {
-      const data = await authedFetch(`/api/admin/bonus-cancel?id=${encodeURIComponent(dropId)}`, { method: 'POST' });
-      if (data && (data as any).ok === false) throw new Error((data as any).error || 'Failed to cancel drop');
+      const data = await authedFetch(
+        `/api/admin/bonus-cancel?id=${encodeURIComponent(dropId)}`,
+        { method: 'POST' },
+      );
+      if (data && (data as any).ok === false)
+        throw new Error((data as any).error || 'Failed to cancel drop');
 
-      setUpcomingDrops(prev => prev.map(d => (d.id === dropId ? { ...d, status: 'CANCELLED' } : d)));
+      setUpcomingDrops(prev =>
+        prev.map(d => (d.id === dropId ? { ...d, status: 'CANCELLED' } : d)),
+      );
     } catch (err: any) {
       console.error('[ADMIN] cancel drop error', err);
       setCancelDropError(err?.message || 'Failed to cancel bonus drop.');
@@ -671,7 +647,8 @@ export default function AdminPage() {
     setIsReopeningDraw(true);
     try {
       const data = await authedFetch('/api/admin/reopen-draw', { method: 'POST' });
-      if (!data || (data as any).ok === false) throw new Error((data as any)?.error || 'Failed to reopen draw');
+      if (!data || (data as any).ok === false)
+        throw new Error((data as any)?.error || 'Failed to reopen draw');
       setTodayDraw(prev => (prev ? { ...prev, status: 'open' } : prev));
     } catch (err: any) {
       console.error('[XPOT] reopen draw error:', err);
@@ -720,6 +697,13 @@ export default function AdminPage() {
     let cancelled = false;
 
     async function loadAll() {
+      // Ops mode (kept wired even if UI is hidden)
+      try {
+        await loadOpsMode();
+      } catch (err) {
+        console.error('[ADMIN] load ops mode error', err);
+      }
+
       // Today
       setTodayLoading(true);
       setTodayDrawError(null);
@@ -777,7 +761,7 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminToken]);
 
-  // ── Countdown (today draw closesAt) ───────────────────────
+  // ── Countdown (today draw closesAt) ─────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -965,7 +949,7 @@ export default function AdminPage() {
                         className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
                           ${
                             effectiveOpsMode === 'AUTO'
-                              ? 'border border-emerald-400/60 bg-emerald-500/10 text-emerald-300'
+                              ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-300'
                               : 'border border-slate-600/60 bg-slate-800/60 text-slate-200'
                           }`}
                         title={!envAutoAllowed ? 'AUTO is not allowed in this environment' : 'Current ops mode'}
@@ -1022,35 +1006,9 @@ export default function AdminPage() {
                   </button>
                 )}
               </div>
-
-              {isDevHost && tokenAccepted && (
-                <div className="flex gap-2 sm:mt-0">
-                  <button
-                    type="button"
-                    onClick={() => handleSeedDemoData(false)}
-                    disabled={isSeeding}
-                    className={`${BTN} px-3 py-1.5 text-xs`}
-                    title="Dev-only: seed demo draw, tickets, winners"
-                  >
-                    {isSeeding ? 'Seeding...' : 'Seed demo'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSeedDemoData(true)}
-                    disabled={isSeeding}
-                    className={`${BTN_DANGER} px-3 py-1.5 text-xs`}
-                    title="Dev-only: force seed even if DB is not empty"
-                  >
-                    Force seed
-                  </button>
-                </div>
-              )}
             </form>
           </div>
         </div>
-
-        {seedMsg && <p className="mt-2 px-6 text-xs text-slate-400">{seedMsg}</p>}
       </section>
 
       {/* Main grid */}
@@ -1141,9 +1099,9 @@ export default function AdminPage() {
                               ml-2 mt-2 font-mono text-2xl font-semibold transition-all
                               ${
                                 isWarningCritical
-                                  ? 'rounded-lg bg-amber-500/10 px-2 py-0.5 text-amber-300 animate-pulse'
+                                  ? 'rounded-lg bg-[rgba(var(--xpot-gold),0.12)] px-2 py-0.5 text-[rgb(var(--xpot-gold-2))] animate-pulse'
                                   : isWarningSoon
-                                  ? 'rounded-lg bg-amber-500/5 px-2 py-0.5 text-amber-400'
+                                  ? 'rounded-lg bg-[rgba(var(--xpot-gold),0.08)] px-2 py-0.5 text-[rgb(var(--xpot-gold-2))]'
                                   : 'text-emerald-300'
                               }
                             `}
@@ -1167,7 +1125,7 @@ export default function AdminPage() {
                             onClick={handlePickMainWinner}
                             className={`
                               ${BTN_CROWN} px-7 py-3 text-sm transition-all ease-out duration-300
-                              ${isWarningCritical ? 'ring-2 ring-amber-400/40 shadow-lg scale-[1.02]' : ''}
+                              ${isWarningCritical ? 'ring-2 ring-[rgba(var(--xpot-gold),0.32)] shadow-lg scale-[1.02]' : ''}
                             `}
                           >
                             {isPickingWinner ? 'Picking winner...' : "Crown today's XPOT winner"}
@@ -1214,7 +1172,7 @@ export default function AdminPage() {
                           type="button"
                           onClick={handleCreateTodayDraw}
                           disabled={creatingDraw || !adminToken}
-                          className="xpot-btn xpot-btn-primary px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-50"
+                          className={`${BTN_VAULT} px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-50`}
                         >
                           {creatingDraw ? "Creating today's draw..." : "Create today's draw (dev)"}
                         </button>
@@ -1275,7 +1233,7 @@ export default function AdminPage() {
                             onClick={() => setBonusAmount(String(v))}
                             className={`rounded-full border px-4 py-2 text-xs transition ${
                               active
-                                ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200'
+                                ? 'xpot-pill-gold border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
                                 : 'border-slate-800/80 bg-slate-950/60 text-slate-300 hover:bg-slate-900/50'
                             }`}
                           >
@@ -1326,7 +1284,7 @@ export default function AdminPage() {
                   </div>
 
                   <div className="mt-5 grid grid-cols-2 gap-3">
-                    <button type="submit" disabled={bonusSubmitting || !adminToken} className={`${BTN_PRIMARY} h-10 text-[13px]`}>
+                    <button type="submit" disabled={bonusSubmitting || !adminToken} className={`${BTN_VAULT} h-10 text-[13px]`}>
                       {bonusSubmitting ? 'Scheduling...' : 'Schedule bonus'}
                     </button>
 
@@ -1544,7 +1502,7 @@ export default function AdminPage() {
 
                           <div className="flex flex-col items-end gap-2">
                             <XpotPill amount={w.payoutUsd ?? 0} size="sm" />
-                            <Badge tone={isPaid ? 'emerald' : 'amber'}>
+                            <Badge tone={isPaid ? 'emerald' : 'gold'}>
                               {isPaid ? (
                                 <>
                                   <BadgeCheck className="h-3.5 w-3.5" />
@@ -1646,7 +1604,7 @@ export default function AdminPage() {
             </p>
 
             {!envAutoAllowed && modePending === 'AUTO' && (
-              <div className="mt-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+              <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
                 AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won't take
                 effect until allowed.
               </div>
@@ -1676,7 +1634,7 @@ export default function AdminPage() {
 
               <button
                 type="button"
-                className={`${BTN_PRIMARY} flex-1 h-11 text-sm`}
+                className={`${BTN_VAULT} flex-1 h-11 text-sm`}
                 disabled={modeSaving || !modeTokenInput.trim()}
                 onClick={async () => {
                   setModeError(null);
@@ -1748,7 +1706,7 @@ export default function AdminPage() {
                 <button
                   type="submit"
                   disabled={isSavingToken || !tokenInput.trim()}
-                  className="xpot-btn xpot-btn-primary w-full rounded-2xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`${BTN_VAULT} w-full rounded-2xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   {isSavingToken ? 'Verifying key...' : 'Unlock admin view'}
                 </button>
