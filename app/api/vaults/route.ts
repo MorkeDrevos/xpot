@@ -4,7 +4,6 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 
 import { TOKEN_MINT } from '@/lib/xpot';
-import { XPOT_VAULTS } from '@/lib/xpotVaults';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -20,34 +19,20 @@ type VaultTx = {
   err: unknown | null;
 };
 
-type VaultTokenAccount = {
-  tokenAccount: string; // token account pubkey
-  uiAmount: number;
-  amount: string;
-  decimals: number;
-};
-
 type VaultEntry = {
   name: string;
   address: string; // owner wallet address
-
-  // Kept for backward compatibility with your UI
-  // (we set this to the ATA address, even if balance is elsewhere)
-  ata: string;
-
-  // Kept for backward compatibility with your UI
-  // (now represents TOTAL XPOT owned by this wallet for this mint)
+  ata: string; // canonical ATA for owner+mint
   balance: {
-    amount: string;
-    uiAmount: number;
+    amount: string; // raw integer as string (sum)
+    uiAmount: number; // sum in UI units
     decimals: number;
   } | null;
-
-  // New fields (optional for UI)
-  ataExists: boolean;
-  primaryTokenAccount: string | null; // where the tokens actually are (largest account)
-  tokenAccounts: VaultTokenAccount[]; // all accounts for transparency
-
+  tokenAccounts?: {
+    pubkey: string;
+    amount: string;
+    uiAmount: number;
+  }[];
   recentTx: VaultTx[];
 };
 
@@ -57,76 +42,93 @@ type VaultResponse = {
   groups: Record<string, VaultEntry[]>;
 };
 
+function safeNum(n: unknown) {
+  const v = typeof n === 'number' ? n : Number(n);
+  return Number.isFinite(v) ? v : 0;
+}
+
+function addBigIntStrings(a: string, b: string) {
+  try {
+    return (BigInt(a) + BigInt(b)).toString();
+  } catch {
+    return a;
+  }
+}
+
+async function loadVaultsModule(): Promise<any> {
+  // Dynamic import avoids TS “no exported member” build failures
+  // even if your module export shape changes.
+  const mod = await import('@/lib/xpotVaults');
+  return mod;
+}
+
 export async function GET() {
   try {
+    const vaultsMod = await loadVaultsModule();
+
+    const XPOT_VAULTS =
+      (vaultsMod as any).XPOT_VAULTS ??
+      (vaultsMod as any).default ??
+      null;
+
+    if (!XPOT_VAULTS || typeof XPOT_VAULTS !== 'object') {
+      return NextResponse.json(
+        { ok: false, error: 'XPOT_VAULTS is missing or not exported from lib/xpotVaults.ts' },
+        { status: 500 },
+      );
+    }
+
     const conn = new Connection(RPC, 'confirmed');
     const mint = new PublicKey(TOKEN_MINT);
 
     const groups: VaultResponse['groups'] = {};
 
-    for (const [groupKey, vaults] of Object.entries(XPOT_VAULTS)) {
+    for (const [groupKey, vaults] of Object.entries(XPOT_VAULTS as Record<string, any[]>)) {
       const out: VaultEntry[] = [];
 
       for (const v of vaults) {
         const owner = new PublicKey(v.address);
 
-        // Always compute the ATA (nice to display), but do NOT assume balance lives there.
-        const ataPk = getAssociatedTokenAddressSync(mint, owner, true);
-        const ata = ataPk.toBase58();
+        // Canonical ATA (display + copy convenience)
+        const ata = getAssociatedTokenAddressSync(mint, owner, true);
 
-        // Pull ALL token accounts owned by this wallet for this mint (covers ATA + non-ATA)
-        let tokenAccounts: VaultTokenAccount[] = [];
+        // ✅ Balance: sum ALL token accounts for owner+mint (covers non-ATA accounts too)
+        let balance: VaultEntry['balance'] = null;
+        let tokenAccounts: VaultEntry['tokenAccounts'] = [];
+
         try {
-          const res = await conn.getTokenAccountsByOwner(owner, { mint });
+          const parsed = await conn.getParsedTokenAccountsByOwner(owner, { mint });
 
-          for (const { pubkey, account } of res.value) {
-            try {
-              // getTokenAccountBalance needs token account pubkey
-              const bal = await conn.getTokenAccountBalance(pubkey);
-              const ui = typeof bal.value.uiAmount === 'number' ? bal.value.uiAmount : 0;
+          let decimals = 0;
+          let totalUi = 0;
+          let totalRaw = '0';
 
-              tokenAccounts.push({
-                tokenAccount: pubkey.toBase58(),
-                uiAmount: ui,
-                amount: bal.value.amount,
-                decimals: bal.value.decimals,
-              });
-            } catch {
-              // ignore weird/unreadable accounts
-            }
-          }
+          tokenAccounts = parsed.value.map(acc => {
+            const info: any = acc.account.data?.parsed?.info;
+            const tokenAmount = info?.tokenAmount;
 
-          // Sort desc by uiAmount for a stable "primary"
-          tokenAccounts.sort((a, b) => (b.uiAmount ?? 0) - (a.uiAmount ?? 0));
+            const uiAmount = safeNum(tokenAmount?.uiAmount);
+            const amount = typeof tokenAmount?.amount === 'string' ? tokenAmount.amount : '0';
+            const dec = safeNum(tokenAmount?.decimals);
+
+            decimals = Math.max(decimals, dec);
+            totalUi += uiAmount;
+            totalRaw = addBigIntStrings(totalRaw, amount);
+
+            return {
+              pubkey: acc.pubkey.toBase58(),
+              amount,
+              uiAmount,
+            };
+          });
+
+          balance = parsed.value.length ? { amount: totalRaw, uiAmount: totalUi, decimals } : null;
         } catch {
+          balance = null;
           tokenAccounts = [];
         }
 
-        const ataExists = tokenAccounts.some(t => t.tokenAccount === ata);
-
-        // Total (sum across all token accounts for this mint)
-        const decimals = tokenAccounts[0]?.decimals ?? 0;
-        const totalUi = tokenAccounts.reduce((sum, t) => sum + (Number.isFinite(t.uiAmount) ? t.uiAmount : 0), 0);
-
-        // We keep `balance.amount` as a best-effort integer string.
-        // If decimals is 0 this is exact. If decimals > 0, we still compute safely.
-        const totalAmountRaw =
-          decimals > 0
-            ? Math.round(totalUi * Math.pow(10, decimals)).toString()
-            : Math.round(totalUi).toString();
-
-        const balance =
-          tokenAccounts.length > 0
-            ? {
-                amount: totalAmountRaw,
-                uiAmount: totalUi,
-                decimals,
-              }
-            : null;
-
-        const primaryTokenAccount = tokenAccounts[0]?.tokenAccount ?? null;
-
-        // Recent tx (OWNER wallet) – your existing behavior
+        // Recent tx (owner wallet)
         let recentTx: VaultTx[] = [];
         try {
           const sigs = await conn.getSignaturesForAddress(owner, { limit: 5 });
@@ -142,10 +144,8 @@ export async function GET() {
         out.push({
           name: v.name,
           address: v.address,
-          ata,
+          ata: ata.toBase58(),
           balance,
-          ataExists,
-          primaryTokenAccount,
           tokenAccounts,
           recentTx,
         });
@@ -162,6 +162,9 @@ export async function GET() {
 
     return NextResponse.json(body);
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? 'Failed to load vaults' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? 'Failed to load vaults' },
+      { status: 500 },
+    );
   }
 }
