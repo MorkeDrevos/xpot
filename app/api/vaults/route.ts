@@ -4,7 +4,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 
 import { TOKEN_MINT } from '@/lib/xpot';
-import * as VaultsModule from '@/lib/xpotVaults';
+import { XPOT_VAULTS } from '@/lib/xpotVaults';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -22,17 +22,18 @@ type VaultTx = {
 
 type VaultEntry = {
   name: string;
-  address: string; // owner wallet
-  ata: string; // canonical ATA for owner+mint (for convenience)
+  address: string; // owner wallet address
+  ata: string; // canonical ATA for owner+mint (display convenience)
   balance: {
-    amount: string; // raw total (integer string)
-    uiAmount: number; // total UI units
+    amount: string; // raw integer as string (sum)
+    uiAmount: number; // sum in UI units
     decimals: number;
   } | null;
   tokenAccounts?: {
     pubkey: string;
     amount: string;
     uiAmount: number;
+    decimals: number;
   }[];
   recentTx: VaultTx[];
 };
@@ -58,33 +59,21 @@ function addBigIntStrings(a: string, b: string) {
 
 export async function GET() {
   try {
-    // Works whether xpotVaults exports XPOT_VAULTS or default
-    const XPOT_VAULTS =
-      (VaultsModule as any).XPOT_VAULTS ??
-      (VaultsModule as any).default;
-
-    if (!XPOT_VAULTS || typeof XPOT_VAULTS !== 'object') {
-      return NextResponse.json(
-        { ok: false, error: 'XPOT_VAULTS is missing or not exported from lib/xpotVaults.ts' },
-        { status: 500 },
-      );
-    }
-
     const conn = new Connection(RPC, 'confirmed');
     const mint = new PublicKey(TOKEN_MINT);
 
     const groups: VaultResponse['groups'] = {};
 
-    for (const [groupKey, vaults] of Object.entries(XPOT_VAULTS as Record<string, any[]>)) {
+    for (const [groupKey, vaults] of Object.entries(XPOT_VAULTS)) {
       const out: VaultEntry[] = [];
 
       for (const v of vaults) {
         const owner = new PublicKey(v.address);
 
-        // Canonical ATA (display + copy convenience)
+        // Canonical ATA (for display + copy convenience)
         const ata = getAssociatedTokenAddressSync(mint, owner, true);
 
-        // Balance = sum ALL token accounts for this owner+mint
+        // ✅ Balance: sum ALL token accounts for this owner+mint
         let balance: VaultEntry['balance'] = null;
         let tokenAccounts: VaultEntry['tokenAccounts'] = [];
 
@@ -111,16 +100,23 @@ export async function GET() {
               pubkey: acc.pubkey.toBase58(),
               amount,
               uiAmount,
+              decimals: dec,
             };
           });
 
-          balance = parsed.value.length ? { amount: totalRaw, uiAmount: totalUi, decimals } : null;
+          balance = parsed.value.length
+            ? {
+                amount: totalRaw,
+                uiAmount: totalUi,
+                decimals,
+              }
+            : null;
         } catch {
           balance = null;
           tokenAccounts = [];
         }
 
-        // Recent tx (owner wallet)
+        // Recent tx (for OWNER wallet)
         let recentTx: VaultTx[] = [];
         try {
           const sigs = await conn.getSignaturesForAddress(owner, { limit: 5 });
@@ -154,9 +150,6 @@ export async function GET() {
 
     return NextResponse.json(body);
   } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? 'Failed to load vaults' },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: e?.message ?? 'Failed to load vaults' }, { status: 500 });
   }
 }
