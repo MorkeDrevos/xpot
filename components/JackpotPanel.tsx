@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
+import { Crown, Info, Sparkles, TrendingUp, AlertTriangle } from 'lucide-react';
 
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 import XpotLogo from '@/components/XpotLogo';
@@ -339,13 +339,10 @@ function TooltipBubble({
 
   let left = 0;
   if (anchorCenterX > vw - EDGE_ZONE) {
-    // right-align bubble with the anchor (feels correct on "USD ESTIMATE" at far right)
     left = clamp(rect.right - w, pad, vw - w - pad);
   } else if (anchorCenterX < EDGE_ZONE) {
-    // left-align bubble with the anchor
     left = clamp(rect.left, pad, vw - w - pad);
   } else {
-    // center default
     left = clamp(anchorCenterX - w / 2, pad, vw - w - pad);
   }
 
@@ -451,24 +448,76 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
   );
 }
 
-function PriceUnavailableNote({ compact }: { compact?: boolean }) {
+function PriceUnavailableNote({
+  mode,
+}: {
+  mode: 'pending-pair' | 'feed-error';
+}) {
+  const title = mode === 'feed-error' ? 'PRICE FEED UNAVAILABLE' : 'PRICE PENDING';
+  const body =
+    mode === 'feed-error'
+      ? 'DexScreener is temporarily unavailable or rate-limited. USD will return automatically.'
+      : 'USD will appear automatically once XPOT is trading and DexScreener indexes the first pair.';
+
   return (
     <div
-      className={[
-        'relative overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.25)]',
-        compact ? 'px-3 py-2' : 'px-4 py-3',
-      ].join(' ')}
+      className="relative overflow-hidden rounded-2xl border shadow-[0_12px_40px_rgba(0,0,0,0.40)]"
+      style={{
+        borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.45)` as any,
+        background:
+          'linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.12))',
+      }}
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-70"
+        className="pointer-events-none absolute inset-0 opacity-90"
         style={{
           background:
-            'radial-gradient(circle_at_18%_30%, rgba(245,158,11,0.12), transparent 60%), radial-gradient(circle_at_82%_20%, rgba(251,191,36,0.08), transparent 62%)',
+            'radial-gradient(circle_at_18%_30%, rgba(201,162,74,0.20), transparent 62%), radial-gradient(circle_at_82%_20%, rgba(251,191,36,0.10), transparent 64%), linear-gradient(90deg, rgba(201,162,74,0.10), rgba(0,0,0,0.00) 55%)',
         }}
       />
-      <p className={compact ? 'relative text-[11px] text-amber-100' : 'relative text-[12px] text-amber-100'}>
-        Live price not available yet - it will appear automatically once XPOT is trading and DexScreener indexes the first pair.
-      </p>
+      <div className="relative flex items-start gap-3 px-4 py-3">
+        <span
+          className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/35"
+          style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.38)` as any }}
+        >
+          <AlertTriangle
+            className="h-4 w-4"
+            style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.92)` as any }}
+          />
+        </span>
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.20em]"
+              style={{
+                borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.35)` as any,
+                color: `rgba(${VAULT_GOLD.rgb} / 0.90)` as any,
+                background: 'rgba(0,0,0,0.30)',
+              }}
+            >
+              <span className="xpot-pulse-dot h-1.5 w-1.5 rounded-full" />
+              {title}
+            </span>
+          </div>
+
+          <p className="mt-2 text-[12px] leading-snug text-slate-100/90">{body}</p>
+        </div>
+      </div>
+
+      {/* local-only micro animation */}
+      <style jsx>{`
+        .xpot-pulse-dot {
+          background: rgba(${VAULT_GOLD.rgb} / 0.95);
+          box-shadow: 0 0 14px rgba(${VAULT_GOLD.rgb} / 0.35);
+          animation: xpotPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes xpotPulse {
+          0% { transform: scale(1); opacity: 0.55; }
+          50% { transform: scale(1.35); opacity: 1; }
+          100% { transform: scale(1); opacity: 0.55; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -558,7 +607,6 @@ export default function JackpotPanel({
 
     let raf = 0;
 
-    // hysteresis
     const WIDE_ON = 900;
     const WIDE_OFF = 840;
 
@@ -634,7 +682,7 @@ export default function JackpotPanel({
     };
   }, [nextDrawUtcMs, mounted]);
 
-  // Load rolling samples (for 24h range + local sparkline)
+  // Load rolling samples
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -978,7 +1026,6 @@ export default function JackpotPanel({
           <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
         </div>
 
-        {/* keep only ONE live pill */}
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
             <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
@@ -1000,45 +1047,69 @@ export default function JackpotPanel({
               <span className="relative">Today&apos;s pool</span>
             </span>
 
-            {/* Premium "real 1M" presentation */}
+            {/* Ultra-premium pool capsule */}
             <span
-              className="relative inline-flex items-baseline rounded-2xl bg-black/55 px-6 py-2 font-mono text-2xl sm:text-3xl tracking-[0.22em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_22px_60px_rgba(0,0,0,0.45)]"
-              style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.26)` as any }}
+              className="group relative inline-flex items-center gap-4 rounded-2xl bg-black/60 px-7 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_28px_80px_rgba(0,0,0,0.55)]"
+              style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.34)` as any }}
             >
               <span
-                className="pointer-events-none absolute inset-0 rounded-2xl opacity-70"
+                className="pointer-events-none absolute inset-0 rounded-2xl opacity-90"
                 style={{
                   background:
-                    'radial-gradient(circle_at_20%_30%, rgba(201,162,74,0.16), transparent 56%), radial-gradient(circle_at_78%_22%, rgba(124,200,255,0.07), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.32), rgba(0,0,0,0.10))',
+                    'radial-gradient(circle_at_14%_32%, rgba(201,162,74,0.20), transparent 58%), radial-gradient(circle_at_86%_18%, rgba(124,200,255,0.08), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.36), rgba(0,0,0,0.12))',
                 }}
               />
+              <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-sheen" />
+
               <span
-                className="pointer-events-none absolute inset-0 rounded-2xl opacity-55"
-                style={{
-                  background:
-                    'linear-gradient(120deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.08) 18%, rgba(255,255,255,0.00) 36%, rgba(255,255,255,0.00) 100%)',
-                }}
-              />
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/35"
+                style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.28)` as any }}
+                aria-hidden="true"
+              >
+                <Crown className="h-4 w-4" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.92)` as any }} />
+              </span>
+
               <span
-                className="relative"
+                className="relative font-mono text-2xl sm:text-3xl tracking-[0.24em] tabular-nums"
                 style={{
-                  color: 'rgba(255,255,255,0.95)',
+                  color: 'rgba(255,255,255,0.96)',
                   textShadow:
-                    '0 0 18px rgba(201,162,74,0.10), 0 0 30px rgba(124,200,255,0.06)',
+                    '0 0 16px rgba(201,162,74,0.12), 0 0 26px rgba(124,200,255,0.06)',
                 }}
               >
                 {poolLabel}
               </span>
+
               <span
-                className="ml-3 hidden sm:inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                className="relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
                 style={{
-                  borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
-                  color: `rgba(${VAULT_GOLD.rgb} / 0.82)` as any,
-                  background: 'rgba(0,0,0,0.22)',
+                  borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.30)` as any,
+                  color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
+                  background: 'rgba(0,0,0,0.24)',
                 }}
               >
                 Daily
               </span>
+
+              <style jsx>{`
+                .xpot-sheen {
+                  background: linear-gradient(
+                    120deg,
+                    rgba(255, 255, 255, 0) 0%,
+                    rgba(255, 255, 255, 0.08) 14%,
+                    rgba(255, 255, 255, 0) 32%,
+                    rgba(255, 255, 255, 0) 100%
+                  );
+                  transform: translateX(-55%);
+                  animation: xpotSheen 3.8s ease-in-out infinite;
+                }
+                @keyframes xpotSheen {
+                  0% { transform: translateX(-55%); opacity: 0.0; }
+                  18% { opacity: 0.65; }
+                  38% { transform: translateX(55%); opacity: 0.0; }
+                  100% { transform: translateX(55%); opacity: 0.0; }
+                }
+              `}</style>
             </span>
           </div>
 
@@ -1115,10 +1186,10 @@ export default function JackpotPanel({
               <span className="text-[11px] text-slate-600">22:00 Madrid</span>
             </div>
 
-            {/* ✅ moved message into the main card (img 2) */}
+            {/* Stronger, readable availability note */}
             {showUnavailable ? (
               <div className="mt-3">
-                <PriceUnavailableNote compact />
+                <PriceUnavailableNote mode={hadError ? 'feed-error' : 'pending-pair'} />
               </div>
             ) : (
               <p className="mt-2 text-xs text-slate-500">Auto-updates from DexScreener ticks</p>
@@ -1349,7 +1420,6 @@ export default function JackpotPanel({
           </Link>
         </div>
 
-        {/* ✅ keep context clean now - message moved into main slab */}
         <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
       </div>
     </section>
