@@ -299,58 +299,32 @@ function VaultGroupPanel({
                       <span className="ml-2 text-xs font-normal text-slate-500">{shortAddr(v.address)}</span>
                     </p>
 
-                    {/* Wallet + ATA row (clear, not “Owner”) */}
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-                        <Wallet className="h-3.5 w-3.5 text-slate-400" />
-                        Wallet
-                      </span>
+                    {/* Wallet row (wallet only) */}
+<div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+  <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+    <Wallet className="h-3.5 w-3.5 text-slate-400" />
+    Wallet
+  </span>
 
-                      <a
-                        href={`https://solscan.io/account/${v.address}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 hover:text-slate-300 transition"
-                      >
-                        View <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
+  <a
+    href={`https://solscan.io/account/${v.address}`}
+    target="_blank"
+    rel="noreferrer"
+    className="inline-flex items-center gap-1 hover:text-slate-300 transition"
+  >
+    View <ExternalLink className="h-3.5 w-3.5" />
+  </a>
 
-                      <button
-                        type="button"
-                        onClick={() => copy(v.address)}
-                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
-                        title="Copy wallet address"
-                      >
-                        <Copy className="h-3.5 w-3.5 text-slate-400" />
-                        Copy
-                      </button>
-
-                      <span className="text-slate-700">•</span>
-
-                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-                        <Hash className="h-3.5 w-3.5 text-slate-400" />
-                        Token account (ATA)
-                      </span>
-
-                      <a
-                        href={`https://solscan.io/account/${v.ata}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 hover:text-slate-300 transition"
-                      >
-                        View <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-
-                      <button
-                        type="button"
-                        onClick={() => copy(v.ata)}
-                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
-                        title="Copy token account (ATA)"
-                      >
-                        <Copy className="h-3.5 w-3.5 text-slate-400" />
-                        Copy
-                      </button>
-                    </div>
+  <button
+    type="button"
+    onClick={() => copy(v.address)}
+    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
+    title="Copy wallet address"
+  >
+    <Copy className="h-3.5 w-3.5 text-slate-400" />
+    Copy
+  </button>
+</div>
                   </div>
 
                   <div className="text-right">
