@@ -76,6 +76,9 @@ const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
 
+// ✅ Health / protocol status page (replaces the duplicate Live pill on the right)
+const PROTOCOL_HREF = '/hub/protocol';
+
 // ✅ Your real deployed CA
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
@@ -209,7 +212,11 @@ export default function XpotTopBar({
                 )}
 
                 {isHub ? (
-                  <HubRight clerkEnabled={clerkEnabled} hubWalletStatus={hubWalletStatus} onOpenWalletModal={openWallet} />
+                  <HubRight
+                    clerkEnabled={clerkEnabled}
+                    hubWalletStatus={hubWalletStatus}
+                    onOpenWalletModal={openWallet}
+                  />
                 ) : (
                   <>{rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}</>
                 )}
@@ -246,7 +253,9 @@ export default function XpotTopBar({
       </header>
 
       {/* ✅ Light wallet popup (only used when parent does not supply onOpenWalletModal) */}
-      {!onOpenWalletModal && <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />}
+      {!onOpenWalletModal && (
+        <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
+      )}
     </>
   );
 }
@@ -494,13 +503,16 @@ function PublicNavCenter({
 function PublicRight({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
     <div className="hidden items-center gap-3 xl:flex">
-      <NavPill href="/hub/live" title={liveIsOpen ? 'Live draw is open' : 'Live view'}>
-        <LiveDot isOpen={liveIsOpen} />
-        <Radio className="h-4 w-4 text-emerald-300" />
-        Live
+      {/* ✅ Replace duplicate Live pill with Health (Protocol Status) */}
+      <NavPill href={PROTOCOL_HREF} title="Protocol health and live status">
+        <ShieldCheck className="h-4 w-4 text-sky-200" />
+        Health
       </NavPill>
 
-      <Link href="/hub" className="rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-black hover:bg-slate-200">
+      <Link
+        href="/hub"
+        className="rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-black hover:bg-slate-200"
+      >
         Enter today&apos;s XPOT →
       </Link>
     </div>
@@ -816,7 +828,9 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-100">{connected ? 'Wallet connected' : 'No wallet connected'}</p>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {connected ? 'Wallet connected' : 'No wallet connected'}
+                  </p>
                   <p className="mt-1 truncate text-xs text-slate-300/70">{connected ? addr : 'Choose a wallet below'}</p>
                 </div>
 
@@ -863,7 +877,6 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        {/* icon */}
                         {(w.adapter as any).icon ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
