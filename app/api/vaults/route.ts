@@ -4,6 +4,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 
 import { TOKEN_MINT } from '@/lib/xpot';
+import * as VaultsModule from '@/lib/xpotVaults';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -21,11 +22,11 @@ type VaultTx = {
 
 type VaultEntry = {
   name: string;
-  address: string; // owner wallet address
-  ata: string; // canonical ATA for owner+mint
+  address: string; // owner wallet
+  ata: string; // canonical ATA for owner+mint (for convenience)
   balance: {
-    amount: string; // raw integer as string (sum)
-    uiAmount: number; // sum in UI units
+    amount: string; // raw total (integer string)
+    uiAmount: number; // total UI units
     decimals: number;
   } | null;
   tokenAccounts?: {
@@ -55,21 +56,12 @@ function addBigIntStrings(a: string, b: string) {
   }
 }
 
-async function loadVaultsModule(): Promise<any> {
-  // Dynamic import avoids TS “no exported member” build failures
-  // even if your module export shape changes.
-  const mod = await import('@/lib/xpotVaults');
-  return mod;
-}
-
 export async function GET() {
   try {
-    const vaultsMod = await loadVaultsModule();
-
+    // Works whether xpotVaults exports XPOT_VAULTS or default
     const XPOT_VAULTS =
-      (vaultsMod as any).XPOT_VAULTS ??
-      (vaultsMod as any).default ??
-      null;
+      (VaultsModule as any).XPOT_VAULTS ??
+      (VaultsModule as any).default;
 
     if (!XPOT_VAULTS || typeof XPOT_VAULTS !== 'object') {
       return NextResponse.json(
@@ -92,7 +84,7 @@ export async function GET() {
         // Canonical ATA (display + copy convenience)
         const ata = getAssociatedTokenAddressSync(mint, owner, true);
 
-        // ✅ Balance: sum ALL token accounts for owner+mint (covers non-ATA accounts too)
+        // Balance = sum ALL token accounts for this owner+mint
         let balance: VaultEntry['balance'] = null;
         let tokenAccounts: VaultEntry['tokenAccounts'] = [];
 
