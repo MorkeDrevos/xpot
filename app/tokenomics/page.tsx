@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
+import GoldAmount from '@/components/GoldAmount';
 
 type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
@@ -52,9 +53,6 @@ const CARD =
 
 const VAULT_POLL_MS = 20_000;
 
-// Scroll positioning so expanded cards land like your screenshot (below the sticky top bar)
-const SCROLL_OFFSET_PX = 240;
-
 // Protocol rule (fixed)
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
@@ -67,7 +65,6 @@ function Pill({ children, tone = 'slate' }: { children: ReactNode; tone?: PillTo
     slate: 'border-slate-800/70 bg-slate-900/60 text-slate-200 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
     emerald: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
     sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
-    // ✅ gold-token pill (no Tailwind amber)
     amber: `${GOLD_BORDER} ${GOLD_BG_WASH} ${GOLD_TEXT} ${GOLD_RING_SHADOW}`,
   };
 
@@ -110,7 +107,12 @@ function shortAddr(a: string) {
 function formatMaybeNumber(n: unknown) {
   const v = typeof n === 'number' ? n : Number(n);
   if (!Number.isFinite(v)) return null;
-  return v.toLocaleString('en-US', { maximumFractionDigits: 6 });
+
+  // big balances should not look broken
+  const abs = Math.abs(v);
+  const maxFrac = abs >= 1_000 ? 2 : abs >= 1 ? 4 : 6;
+
+  return v.toLocaleString('en-US', { maximumFractionDigits: maxFrac });
 }
 
 function timeAgo(tsMs: number) {
@@ -243,7 +245,18 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
                   const y = h - pad - barH;
                   const bw = Math.max(6, barW - 10);
 
-                  return <rect key={r.m} x={x} y={y} width={bw} height={barH} rx="8" fill="url(#teamBars)" opacity="0.9" />;
+                  return (
+                    <rect
+                      key={r.m}
+                      x={x}
+                      y={y}
+                      width={bw}
+                      height={barH}
+                      rx="8"
+                      fill="url(#teamBars)"
+                      opacity="0.9"
+                    />
+                  );
                 })}
 
                 <polyline points={points} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" />
@@ -258,7 +271,8 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
           </div>
 
           <p className="mt-3 text-[11px] text-slate-600">
-            Bars = monthly unlock. Line = cumulative vested %. This is purely schedule math - your actual vesting wallet movements remain verifiable on-chain.
+            Bars = monthly unlock. Line = cumulative vested %. This is purely schedule math - your actual vesting wallet
+            movements remain verifiable on-chain.
           </p>
         </div>
 
@@ -281,7 +295,8 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
           <div className="mt-3 rounded-2xl border border-slate-800/70 bg-black/25 p-3">
             <p className="text-xs text-slate-300">Simple rule: no cliffs, no tricks.</p>
             <p className="mt-1 text-[11px] text-slate-500">
-              1/12 unlocks monthly, equal amounts. If you later add a real on-chain vesting contract, this panel can be wired to read actual vesting state.
+              1/12 unlocks monthly, equal amounts. If you later add a real on-chain vesting contract, this panel can be
+              wired to read actual vesting state.
             </p>
           </div>
         </div>
@@ -401,6 +416,20 @@ function VaultGroupPanel({
     }
   }
 
+  // ✅ balance fallback (fixes "—" when uiAmount is missing but amount+decimals exist)
+  function resolveUiAmount(v: ApiVaultEntry) {
+    const b = v.balance;
+    if (!b) return null;
+
+    if (typeof b.uiAmount === 'number' && Number.isFinite(b.uiAmount)) return b.uiAmount;
+
+    const amt = Number(b.amount);
+    const dec = typeof b.decimals === 'number' ? b.decimals : null;
+    if (!Number.isFinite(amt) || dec == null || dec < 0) return null;
+
+    return amt / Math.pow(10, dec);
+  }
+
   return (
     <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -439,7 +468,7 @@ function VaultGroupPanel({
       ) : (
         <div className="mt-3 grid gap-3">
           {entries.map((v) => {
-            const ui = typeof v.balance?.uiAmount === 'number' ? v.balance.uiAmount : null;
+            const ui = resolveUiAmount(v);
             const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
@@ -480,7 +509,18 @@ function VaultGroupPanel({
 
                   <div className="text-right">
                     <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">XPOT balance</p>
-                    <p className="mt-1 font-mono text-sm text-slate-100">{ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}</p>
+
+                    {/* ✅ stronger, more readable balance line */}
+                    <div className="mt-1">
+                      {ui == null ? (
+                        <p className="font-mono text-sm text-slate-100">—</p>
+                      ) : (
+                        <p className="font-mono text-sm text-slate-100">
+                          {formatMaybeNumber(ui) ?? '—'} <span className="text-slate-500">XPOT</span>
+                        </p>
+                      )}
+                    </div>
+
                     <p className="mt-1 text-[11px] text-slate-600">{decimals != null ? `Decimals: ${decimals}` : null}</p>
                   </div>
                 </div>
@@ -514,10 +554,7 @@ function VaultGroupPanel({
                             href={`https://solscan.io/tx/${tx.signature}`}
                             target="_blank"
                             rel="noreferrer"
-                            className={[
-                              'group flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 transition',
-                              'border-slate-800/70 bg-slate-950/45 hover:bg-slate-950/60',
-                            ].join(' ')}
+                            className="group flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800/70 bg-slate-950/45 px-3 py-2 transition hover:bg-slate-950/60"
                             title={tx.signature}
                           >
                             <div className="min-w-0">
@@ -567,6 +604,20 @@ function VaultGroupPanel({
       )}
     </div>
   );
+}
+
+function getStickyOffsetPx() {
+  if (typeof window === 'undefined') return 240;
+  const root = document.documentElement;
+  const css = getComputedStyle(root);
+
+  const banner = parseFloat(css.getPropertyValue('--xpot-banner-h')) || 0;
+  const topbar = parseFloat(css.getPropertyValue('--xpot-topbar-h')) || 0;
+
+  // Add a little breathing room below the sticky stack
+  const pad = 18;
+
+  return Math.max(0, Math.round(banner + topbar + pad));
 }
 
 function DonutAllocation({
@@ -639,9 +690,9 @@ function DonutAllocation({
       <div
         className="
           pointer-events-none absolute -inset-24 opacity-80 blur-3xl
-          bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.16),transparent_60%),
-              radial-gradient(circle_at_82%_78%,rgba(16,185,129,0.16),transparent_60%),
-              radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
+          bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.14),transparent_62%),
+              radial-gradient(circle_at_82%_78%,rgba(16,185,129,0.14),transparent_65%),
+              radial-gradient(circle_at_60%_0%,rgba(56,189,248,0.10),transparent_62%)]
         "
       />
 
@@ -695,7 +746,14 @@ function DonutAllocation({
                 })}
               </g>
 
-              <circle cx={size / 2} cy={size / 2} r={r - 26} fill="rgba(2,2,10,0.55)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={r - 26}
+                fill="rgba(2,2,10,0.55)"
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="1"
+              />
             </svg>
 
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -713,7 +771,9 @@ function DonutAllocation({
             />
             <div
               className="pointer-events-none absolute -inset-7 rounded-full opacity-70 blur-2xl"
-              style={{ background: `radial-gradient(circle at 50% 50%, ${toneGlow(selected?.tone ?? 'slate')}, transparent 60%)` }}
+              style={{
+                background: `radial-gradient(circle at 50% 50%, ${toneGlow(selected?.tone ?? 'slate')}, transparent 60%)`,
+              }}
             />
           </div>
         </div>
@@ -732,13 +792,15 @@ function DonutAllocation({
                 key={a.key}
                 ref={getCardRef(a.key)}
                 className={[
-                  'scroll-mt-[160px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
+                  'scroll-mt-[200px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
                   isSelected ? 'border-white/20 ring-1 ring-white/10' : 'border-slate-900/70',
                 ].join(' ')}
                 style={
                   isSelected
                     ? {
-                        boxShadow: `0 0 0 1px rgba(255,255,255,0.10), 0 18px 70px rgba(0,0,0,0.35), 0 0 36px ${toneRing(a.tone)}`,
+                        boxShadow: `0 0 0 1px rgba(255,255,255,0.10), 0 18px 70px rgba(0,0,0,0.35), 0 0 36px ${toneRing(
+                          a.tone,
+                        )}`,
                       }
                     : undefined
                 }
@@ -755,7 +817,10 @@ function DonutAllocation({
                   className="group w-full rounded-2xl px-4 py-3 text-left hover:bg-slate-950/65 transition outline-none"
                 >
                   <div className="flex items-start gap-3">
-                    <span className="mt-[6px] h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: stroke, boxShadow: `0 0 14px ${glow}` }} />
+                    <span
+                      className="mt-[6px] h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: stroke, boxShadow: `0 0 14px ${glow}` }}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
                         <p className="truncate text-sm font-semibold text-slate-100">{a.label}</p>
@@ -801,7 +866,9 @@ function DonutAllocation({
 
                           {a.key === 'distribution' && (
                             <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Distribution runway table</p>
+                              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                                Distribution runway table
+                              </p>
 
                               <div className="mt-3 space-y-2">
                                 {runwayTable.map((r) => {
@@ -824,8 +891,9 @@ function DonutAllocation({
                               </div>
 
                               <p className="mt-3 text-[11px] text-slate-500">
-                                Reserve size: {distributionReserve.toLocaleString('en-US')} XPOT (14% of supply). Daily distribution is fixed at{' '}
-                                {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Unused reserve stays in the reserve wallet and remains verifiable.
+                                Reserve size: {distributionReserve.toLocaleString('en-US')} XPOT (14% of supply). Daily
+                                distribution is fixed at {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Unused reserve stays in
+                                the reserve wallet and remains verifiable.
                               </p>
                             </div>
                           )}
@@ -841,7 +909,8 @@ function DonutAllocation({
                           />
 
                           <p className="mt-3 text-[11px] text-slate-600">
-                            Design intent: dedicated vaults, timelocks and public wallets so this stays verifiable over time.
+                            Design intent: dedicated vaults, timelocks and public wallets so this stays verifiable over
+                            time.
                           </p>
                         </div>
                       </div>
@@ -857,164 +926,6 @@ function DonutAllocation({
   );
 }
 
-/* ─────────────────────────────────────────────
-   ✅ HERO (full-width, home-page style)
-   Fixes “wiring” by pinning layout to topbar vars
-────────────────────────────────────────────── */
-function Hero({
-  supply,
-  distributionReserve,
-  runwayFixedYears,
-  runwayFixedDays,
-  onViewReserve,
-}: {
-  supply: number;
-  distributionReserve: number;
-  runwayFixedYears: number;
-  runwayFixedDays: number;
-  onViewReserve: () => void;
-}) {
-  return (
-    <section className="relative -mx-4 sm:-mx-6">
-      <div className="relative overflow-hidden border-b border-white/5 bg-black/30">
-        {/* Atmospheric hero wash */}
-        <div
-          className="
-            pointer-events-none absolute inset-0
-            bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.18),transparent_55%),
-                radial-gradient(circle_at_82%_18%,rgba(var(--xpot-gold),0.14),transparent_60%),
-                radial-gradient(circle_at_70%_85%,rgba(16,185,129,0.18),transparent_60%)]
-          "
-        />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.35),rgba(0,0,0,0.65))]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
-
-        <div className="relative mx-auto w-full max-w-[1440px] px-4 sm:px-6">
-          <div className="grid gap-10 py-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-start lg:py-14">
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <Pill tone="emerald">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Daily distribution
-                </Pill>
-                <Pill tone="sky">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Verifiable by design
-                </Pill>
-                <Pill tone="amber">
-                  <Lock className="h-3.5 w-3.5" />
-                  Self-custody
-                </Pill>
-              </div>
-
-              <div>
-                <h1 className="text-balance text-3xl font-semibold leading-tight sm:text-5xl">
-                  A protocol-grade distribution.
-                  <span className="block text-emerald-300">Rewards come first.</span>
-                </h1>
-                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-300">
-                  XPOT is designed to be calm, repeatable and checkable. Rules are simple, wallets are public, and outcomes can be verified on-chain - not
-                  “trusted”.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <Link href={ROUTE_HUB} className={BTN_PRIMARY}>
-                  Enter today&apos;s XPOT <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-                <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                  Terms
-                </Link>
-                <button
-                  type="button"
-                  onClick={onViewReserve}
-                  className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
-                >
-                  View reserve <ArrowRight className="ml-2 h-4 w-4" />
-                </button>
-              </div>
-
-              {/* “Homepage-like” stats strip */}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
-                  <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
-                  <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Daily rule</p>
-                  <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{fmtInt(DISTRIBUTION_DAILY_XPOT)}</p>
-                  <p className="mt-1 text-xs text-slate-500">XPOT per day</p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reserve</p>
-                  <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">{distributionReserve.toLocaleString('en-US')}</p>
-                  <p className="mt-1 text-xs text-slate-500">Designated reserve wallet</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: protocol snapshot (same content, cleaner, more “home page”) */}
-            <div className="relative">
-              <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur">
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(56,189,248,0.0),rgba(56,189,248,0.55),rgba(236,72,153,0.35),rgba(56,189,248,0.0))]" />
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Protocol snapshot</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">Proof-first economics</p>
-                    <p className="mt-1 text-xs text-slate-500">Each block is one rule with its own proof target.</p>
-                  </div>
-                  <Pill tone="emerald">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Verified
-                  </Pill>
-                </div>
-
-                <div className="mt-5 grid gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rule</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">Daily distribution</p>
-                    <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
-                      {fmtInt(DISTRIBUTION_DAILY_XPOT)}
-                      <span className="ml-2 text-sm font-semibold text-slate-500">/ day</span>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">Proof: outcomes can be checked on-chain</p>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Backing</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">Reserve coverage</p>
-                    <p className="mt-2 font-mono text-2xl font-semibold text-emerald-200">
-                      {runwayFixedYears.toFixed(2)}
-                      <span className="ml-2 text-sm font-semibold text-slate-500">years</span>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Proof: {distributionReserve.toLocaleString('en-US')} XPOT ({runwayFixedDays.toLocaleString('en-US')} days) in the reserve wallet
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Constraint</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">10-year requirement</p>
-                    <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{TEN_YEARS_REQUIRED.toLocaleString('en-US')}</p>
-                    <p className="mt-1 text-xs text-slate-500">Exact at 1,000,000/day</p>
-                  </div>
-                </div>
-
-                <p className="mt-5 text-[11px] text-slate-500">
-                  Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function TokenomicsPage() {
   const supply = 50_000_000_000;
 
@@ -1022,7 +933,7 @@ export default function TokenomicsPage() {
   const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100); // 7,000,000,000
 
   const TEAM_PCT = 9;
-  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100); // for vesting visuals
+  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100);
 
   function yearsOfRunway(daily: number) {
     if (!Number.isFinite(daily) || daily <= 0) return Infinity;
@@ -1030,7 +941,10 @@ export default function TokenomicsPage() {
   }
 
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
-  const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
+  const runwayFixedDays = useMemo(
+    () => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT),
+    [DISTRIBUTION_RESERVE],
+  );
 
   const runwayTable = useMemo(
     () => [
@@ -1087,7 +1001,8 @@ export default function TokenomicsPage() {
         label: 'Team and builders',
         pct: 9,
         note: 'Vested, long horizon. Builders stay aligned with holders.',
-        detail: 'Vesting: 12 months, monthly equal amounts. Builders earn upside by shipping, not by selling into early liquidity.',
+        detail:
+          'Vesting: 12 months, monthly equal amounts. Builders earn upside by shipping, not by selling into early liquidity.',
         tone: 'amber',
       },
       {
@@ -1104,7 +1019,8 @@ export default function TokenomicsPage() {
         label: 'Community incentives',
         pct: 7,
         note: 'Streak rewards, referral boosts and reputation-based unlocks.',
-        detail: 'Built for real users, not extraction. Incentives should reward participation, consistency and constructive momentum.',
+        detail:
+          'Built for real users, not extraction. Incentives should reward participation, consistency and constructive momentum.',
         tone: 'emerald',
       },
     ],
@@ -1144,16 +1060,9 @@ export default function TokenomicsPage() {
   };
 
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
   const getCardRef = (key: string) => (el: HTMLDivElement | null) => {
     cardRefs.current[key] = el;
-  };
-
-  const getDynamicStickyOffset = () => {
-    // ✅ Use real CSS vars (topbar + banner) if present; fallback to your constant
-    const topbar = Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue('--xpot-topbar-h') || '0', 10) || 0;
-    const banner = Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue('--xpot-banner-h') || '0', 10) || 0;
-    const soft = topbar + banner;
-    return Math.max(SCROLL_OFFSET_PX, soft + 90);
   };
 
   const scrollToCard = (key: string) => {
@@ -1161,12 +1070,12 @@ export default function TokenomicsPage() {
     if (!el) return;
 
     const rect = el.getBoundingClientRect();
-    const offset = typeof document === 'undefined' ? SCROLL_OFFSET_PX : getDynamicStickyOffset();
+    const offset = getStickyOffsetPx();
     const targetTop = window.scrollY + rect.top - offset;
+
     window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   };
 
-  // ✅ Make every expand land in the same position (like your screenshot)
   useEffect(() => {
     if (!pendingScrollKey) return;
     if (openKey !== pendingScrollKey) return;
@@ -1176,7 +1085,7 @@ export default function TokenomicsPage() {
         const t = window.setTimeout(() => {
           scrollToCard(pendingScrollKey);
           setPendingScrollKey(null);
-        }, 70);
+        }, 60);
         return () => window.clearTimeout(t);
       });
       return () => window.cancelAnimationFrame(r2);
@@ -1188,15 +1097,18 @@ export default function TokenomicsPage() {
 
   const allocationRef = useRef<HTMLDivElement | null>(null);
 
-  // ✅ “Wiring fix”: always scroll to the section first, then open + scroll to the card
   const openDistribution = () => {
     setSelectedKey('distribution');
-    allocationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setOpenKeyRaw('distribution');
+    setPendingScrollKey('distribution');
 
-    window.setTimeout(() => {
-      setOpenKeyRaw('distribution');
-      setPendingScrollKey('distribution');
-    }, 240);
+    window.requestAnimationFrame(() => {
+      const el = allocationRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const top = window.scrollY + rect.top - getStickyOffsetPx();
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    });
   };
 
   return (
@@ -1208,30 +1120,220 @@ export default function TokenomicsPage() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      {/* ✅ Redesigned top like a “home page hero” */}
-      <Hero
-        supply={supply}
-        distributionReserve={DISTRIBUTION_RESERVE}
-        runwayFixedYears={runwayFixedYears}
-        runwayFixedDays={runwayFixedDays}
-        onViewReserve={openDistribution}
-      />
+      {/* ✅ Full-bleed hero with brown/gold wash across the screen */}
+      <section className="relative -mx-4 sm:-mx-6">
+        {/* full-bleed brown/gold atmosphere */}
+        <div
+          className="
+            pointer-events-none absolute inset-0
+            bg-[linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.55)),
+                radial-gradient(1200px_380px_at_18%_12%,rgba(var(--xpot-gold),0.18),transparent_62%),
+                radial-gradient(900px_360px_at_78%_10%,rgba(120,70,20,0.22),transparent_62%),
+                radial-gradient(900px_420px_at_55%_90%,rgba(var(--xpot-gold),0.10),transparent_68%)]
+          "
+        />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10" />
 
-      <section className="mt-10" ref={allocationRef}>
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
+          <div className="pt-8 sm:pt-10">
+            <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
+              <div className="lg:col-span-8">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone="emerald">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Daily distribution
+                  </Pill>
+                  <Pill tone="sky">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Verifiable by design
+                  </Pill>
+                  <Pill tone="amber">
+                    <Lock className="h-3.5 w-3.5" />
+                    Self-custody
+                  </Pill>
+                </div>
+
+                <h1 className="mt-5 text-balance text-3xl font-semibold leading-tight sm:text-4xl">
+                  A distribution designed to outlast noise.<span className="text-emerald-300"> Rewards come first.</span>
+                </h1>
+
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-300">
+                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets
+                  are public, and outcomes can be checked on-chain. Over time, this becomes infrastructure that communities,
+                  creators and sponsors can plug into with confidence.
+                </p>
+
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                    Enter today&apos;s XPOT
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                  <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                    Terms
+                  </Link>
+                  <span className="text-[11px] text-slate-500">
+                    Allocation prioritises distribution, resilience and long-term execution.
+                  </span>
+                </div>
+
+                <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
+                    <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
+                    <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
+                  </div>
+
+                  {/* ✅ bring back "Token controls" in a more trustworthy block */}
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Token controls</p>
+                        <p className="mt-2 flex items-center gap-2 text-lg font-semibold leading-none text-white">
+                          Authority revoked
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200">
+                        Locked
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid gap-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Freeze</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-200">Fixed</p>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-500">No further supply can be minted or frozen</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve</p>
+                    <div className="mt-2">
+                      <GoldAmount value={fmtInt(DISTRIBUTION_RESERVE)} suffix="XPOT" size="md" />
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">Designated reserve wallet</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-4">
+                <div className="relative h-full rounded-[26px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur-xl">
+                  <div
+                    className="
+                      pointer-events-none absolute -inset-24 opacity-70 blur-3xl
+                      bg-[radial-gradient(circle_at_18%_18%,rgba(var(--xpot-gold),0.16),transparent_62%),
+                          radial-gradient(circle_at_80%_70%,rgba(16,185,129,0.12),transparent_66%)]
+                    "
+                  />
+
+                  <div className="relative z-10">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Protocol snapshot</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">Proof-first economics</p>
+                        <p className="mt-1 text-xs text-slate-500">Each block is one rule with its own proof target.</p>
+                      </div>
+
+                      <Pill tone="emerald">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Verified
+                      </Pill>
+                    </div>
+
+                    <div className="mt-5 grid gap-3">
+                      <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rule</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">Daily distribution</p>
+
+                        {/* ✅ gold signature amount (img3/4 style) */}
+                        <div className="mt-2 flex items-end gap-2">
+                          <GoldAmount value={fmtInt(DISTRIBUTION_DAILY_XPOT)} suffix="XPOT" size="lg" />
+                          <span className="pb-1 text-sm font-semibold text-slate-500">/ day</span>
+                        </div>
+
+                        <p className="mt-2 text-xs text-slate-500">Proof: outcomes can be checked on-chain</p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Backing</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">Reserve coverage</p>
+                        <p className="mt-2 font-mono text-2xl font-semibold text-emerald-200">
+                          {runwayFixedYears.toFixed(2)}
+                          <span className="ml-2 text-sm font-semibold text-slate-500">years</span>
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Proof: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT ({runwayFixedDays.toLocaleString('en-US')} days) in the reserve wallet
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Constraint</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">10-year requirement</p>
+                        <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{TEN_YEARS_REQUIRED.toLocaleString('en-US')}</p>
+                        <p className="mt-1 text-xs text-slate-500">Exact at 1,000,000/day</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={openDistribution}
+                        className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+                      >
+                        View reserve
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </button>
+
+                      <Link
+                        href={ROUTE_HUB}
+                        className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+                      >
+                        Enter today
+                        <ArrowRight className="ml-2 h-4 w-4 text-slate-400" />
+                      </Link>
+                    </div>
+
+                    <p className="mt-4 text-[11px] text-slate-600">
+                      Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-10 h-px w-full bg-white/10" />
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-8" ref={allocationRef}>
         <div className={CARD}>
           <div
             className="
               pointer-events-none absolute -inset-44 opacity-75 blur-3xl
-              bg-[radial-gradient(circle_at_10%_30%,rgba(56,189,248,0.16),transparent_60%),
-                  radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%),
-                  radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
+              bg-[radial-gradient(circle_at_12%_28%,rgba(var(--xpot-gold),0.14),transparent_62%),
+                  radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.14),transparent_62%),
+                  radial-gradient(circle_at_60%_0%,rgba(56,189,248,0.10),transparent_62%)]
             "
           />
           <div className="relative z-10 p-6 lg:p-8">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-100">Distribution map</p>
-                <p className="mt-1 text-xs text-slate-400">Select a slice, then expand the matching card for the full breakdown and live vaults.</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Select a slice, then expand the matching card for the full breakdown and live vaults.
+                </p>
               </div>
             </div>
 
@@ -1286,8 +1388,8 @@ export default function TokenomicsPage() {
                   Eligibility
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent, with clear rules and verifiable
-                  outcomes.
+                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent,
+                  with clear rules and verifiable outcomes.
                 </p>
               </div>
 
@@ -1297,8 +1399,8 @@ export default function TokenomicsPage() {
                   Status and reputation
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future perks and sponsor
-                  drops.
+                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile
+                  that unlocks future perks and sponsor drops.
                 </p>
               </div>
 
@@ -1308,8 +1410,8 @@ export default function TokenomicsPage() {
                   Sponsor-funded rewards
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales without
-                  pay-to-enter mechanics.
+                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention
+                  and the system scales without pay-to-enter mechanics.
                 </p>
               </div>
 
@@ -1319,8 +1421,8 @@ export default function TokenomicsPage() {
                   Verifiability edge
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public wallets and simple rules you can
-                  check.
+                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public
+                  wallets and simple rules you can check.
                 </p>
               </div>
             </div>
@@ -1331,12 +1433,14 @@ export default function TokenomicsPage() {
           <div className="relative z-10 p-6 lg:p-8">
             <p className="text-sm font-semibold text-slate-100">Long-term: why this can matter</p>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
-              The endgame is a protocol that communities and brands can plug into for daily distributions, with identity and verification built in from day one.
+              The endgame is a protocol that communities and brands can plug into for daily distributions, with identity and
+              verification built in from day one.
             </p>
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Link href="/roadmap" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                View roadmap <ArrowRight className="ml-2 h-4 w-4" />
+                View roadmap
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
 
               <a
@@ -1345,7 +1449,8 @@ export default function TokenomicsPage() {
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
               >
-                Token explorer <ExternalLink className="h-4 w-4 text-slate-500" />
+                Token explorer
+                <ExternalLink className="h-4 w-4 text-slate-500" />
               </a>
             </div>
 
@@ -1366,7 +1471,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v21</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v22</span>
         </div>
       </footer>
     </XpotPageShell>
