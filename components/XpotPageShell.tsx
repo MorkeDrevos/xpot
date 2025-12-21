@@ -94,17 +94,18 @@ export default function XpotPageShell({
 
   const mergedRightSlot = useMemo(() => rightSlot ?? null, [rightSlot]);
 
-  // ✅ Key fix for the “big gap”:
-  // Do NOT use hardcoded fallbacks like 56px/112px.
-  // Banner + topbar publish their exact heights into CSS vars after mount.
-  // Until then, default to 0 to avoid giant initial padding/gap.
-  const contentOffsetClass = showTopBar
-    ? 'pt-[calc(var(--xpot-banner-h,0px)+var(--xpot-topbar-h,0px)+24px)]'
-    : 'pt-[calc(var(--xpot-banner-h,0px)+24px)]';
+  // Header height (banner + topbar). Keep your existing fallbacks.
+  const headerOffset = showTopBar
+    ? 'calc(var(--xpot-banner-h,56px) + var(--xpot-topbar-h,112px))'
+    : 'var(--xpot-banner-h,56px)';
 
-  const fullBleedOffsetClass = showTopBar
-    ? 'pt-[calc(var(--xpot-banner-h,0px)+var(--xpot-topbar-h,0px))]'
-    : 'pt-[var(--xpot-banner-h,0px)]';
+  // If we render a full-bleed hero, we offset THAT hero by header height
+  // and we do NOT repeat the header offset again on the main container.
+  const containerPaddingTop = fullBleedTop
+    ? '24px'
+    : showTopBar
+      ? 'calc(var(--xpot-banner-h,56px) + var(--xpot-topbar-h,112px) + 24px)'
+      : 'calc(var(--xpot-banner-h,56px) + 24px)';
 
   return (
     <div className={['relative min-h-screen text-slate-100', className].join(' ')}>
@@ -117,19 +118,23 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* ✅ Full-bleed slot (edge-to-edge hero).
-          We DO offset it below the fixed header so it doesn’t get hidden/clip and create weird “dead” space.
-      */}
-      {fullBleedTop ? <div className={['relative z-10 w-full', fullBleedOffsetClass].join(' ')}>{fullBleedTop}</div> : null}
+      {/* ✅ Atmosphere (stars) removed */}
+
+      {/* ✅ Full-bleed hero: offset it by the fixed header height */}
+      {fullBleedTop ? (
+        <div className="relative z-10 w-full" style={{ paddingTop: headerOffset }}>
+          {fullBleedTop}
+        </div>
+      ) : null}
 
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
-          contentOffsetClass,
           'pb-6 sm:pb-8',
           maxWidthClassName,
           containerClassName,
         ].join(' ')}
+        style={{ paddingTop: containerPaddingTop }}
       >
         {(title || subtitle || mergedRightSlot) && (
           <div
