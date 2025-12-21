@@ -52,6 +52,9 @@ const CARD =
 
 const VAULT_POLL_MS = 20_000;
 
+// Scroll positioning so expanded cards land like your screenshot (below the sticky top bar)
+const SCROLL_OFFSET_PX = 140;
+
 // Protocol rule (fixed)
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
@@ -127,7 +130,6 @@ function timeAgo(tsMs: number) {
 function toneStroke(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.78)';
   if (tone === 'sky') return 'rgba(56,189,248,0.78)';
-  // ✅ gold tone stroke
   if (tone === 'amber') return 'rgba(var(--xpot-gold),0.78)';
   return 'rgba(148,163,184,0.68)'; // slate
 }
@@ -135,7 +137,6 @@ function toneStroke(tone: PillTone) {
 function toneGlow(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
-  // ✅ gold tone glow
   if (tone === 'amber') return 'rgba(var(--xpot-gold),0.18)';
   return 'rgba(148,163,184,0.16)';
 }
@@ -143,7 +144,6 @@ function toneGlow(tone: PillTone) {
 function toneRing(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
-  // ✅ gold tone ring
   if (tone === 'amber') return 'rgba(var(--xpot-gold),0.16)';
   return 'rgba(148,163,184,0.18)';
 }
@@ -158,7 +158,7 @@ type ApiVaultTx = {
 type ApiVaultEntry = {
   name: string;
   address: string; // wallet
-  ata: string; // XPOT ATA (kept in API but not shown here)
+  ata: string; // XPOT ATA (we intentionally don't show this in UI)
   balance:
     | {
         amount: string;
@@ -309,7 +309,7 @@ function VaultGroupPanel({
                       <span className="ml-2 text-xs font-normal text-slate-500">{shortAddr(v.address)}</span>
                     </p>
 
-                    {/* ✅ Wallet only (no ATA / Mint / Freeze here) */}
+                    {/* ✅ Wallet-only (no Mint / Freeze / ATA) */}
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                       <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
                         <Wallet className="h-3.5 w-3.5 text-slate-400" />
@@ -381,7 +381,9 @@ function VaultGroupPanel({
                           >
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-[11px] text-slate-200 group-hover:text-white transition">{shortAddr(tx.signature)}</span>
+                                <span className="font-mono text-[11px] text-slate-200 group-hover:text-white transition">
+                                  {shortAddr(tx.signature)}
+                                </span>
                                 <ExternalLink className="h-3.5 w-3.5 text-slate-500 group-hover:text-slate-300 transition" />
                               </div>
 
@@ -549,7 +551,14 @@ function DonutAllocation({
                 })}
               </g>
 
-              <circle cx={size / 2} cy={size / 2} r={r - 26} fill="rgba(2,2,10,0.55)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={r - 26}
+                fill="rgba(2,2,10,0.55)"
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="1"
+              />
             </svg>
 
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -586,8 +595,7 @@ function DonutAllocation({
                 key={a.key}
                 ref={getCardRef(a.key)}
                 className={[
-                  // ✅ bigger top margin so it never hides under sticky bars
-                  'scroll-mt-[220px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
+                  'scroll-mt-[160px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
                   isSelected ? 'border-white/20 ring-1 ring-white/10' : 'border-slate-900/70',
                 ].join(' ')}
                 style={
@@ -614,7 +622,9 @@ function DonutAllocation({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
                         <p className="truncate text-sm font-semibold text-slate-100">{a.label}</p>
-                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[12px] text-slate-100">{a.pct}%</span>
+                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[12px] text-slate-100">
+                          {a.pct}%
+                        </span>
                       </div>
 
                       <p className="mt-0.5 text-[11px] text-slate-500">{a.note}</p>
@@ -719,8 +729,11 @@ export default function TokenomicsPage() {
     return DISTRIBUTION_RESERVE / (daily * DAYS_PER_YEAR);
   }
 
-  const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), []);
-  const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
+  const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
+  const runwayFixedDays = useMemo(
+    () => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT),
+    [DISTRIBUTION_RESERVE],
+  );
 
   const runwayTable = useMemo(
     () => [
@@ -759,7 +772,8 @@ export default function TokenomicsPage() {
         label: 'Liquidity and market ops',
         pct: 26,
         note: 'LP depth, market resilience and controlled expansion.',
-        detail: 'Used to seed and support liquidity, reduce fragility and keep price discovery healthy. The goal is stability and trust, not noise.',
+        detail:
+          'Used to seed and support liquidity, reduce fragility and keep price discovery healthy. The goal is stability and trust, not noise.',
         tone: 'sky',
       },
       {
@@ -821,8 +835,6 @@ export default function TokenomicsPage() {
 
   const [openKey, setOpenKeyRaw] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(sortedAllocation[0]?.key ?? null);
-
-  // ✅ only scroll once React has actually opened the target panel
   const [pendingScrollKey, setPendingScrollKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -841,29 +853,31 @@ export default function TokenomicsPage() {
     cardRefs.current[key] = el;
   };
 
-  // ✅ deterministic scroll (offset for sticky header + pre-launch bar)
-  const SCROLL_TOP_OFFSET = 220;
-
   const scrollToCard = (key: string) => {
     const el = cardRefs.current[key];
     if (!el) return;
 
-    const top = window.scrollY + el.getBoundingClientRect().top - SCROLL_TOP_OFFSET;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    // Precise scroll with offset (sticky header safe)
+    const rect = el.getBoundingClientRect();
+    const targetTop = window.scrollY + rect.top - SCROLL_OFFSET_PX;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   };
 
-  // ✅ scroll only when the intended panel is actually open
+  // ✅ Make every expand land in the same position (like your screenshot)
   useEffect(() => {
     if (!pendingScrollKey) return;
     if (openKey !== pendingScrollKey) return;
 
-    // wait for expand + layout before measuring
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
+    // Wait for Framer + layout to settle, then scroll (2 ticks)
+    const r1 = window.requestAnimationFrame(() => {
+      const t = window.setTimeout(() => {
         scrollToCard(pendingScrollKey);
         setPendingScrollKey(null);
-      });
+      }, 60);
+      return () => window.clearTimeout(t);
     });
+
+    return () => window.cancelAnimationFrame(r1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openKey, pendingScrollKey]);
 
@@ -888,7 +902,18 @@ export default function TokenomicsPage() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      <div className="relative z-10 p-6 lg:p-8">
+      <section className="mt-6">
+        <div className={CARD}>
+          <div
+            className="
+              pointer-events-none absolute -inset-48 opacity-85 blur-3xl
+              bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.22),transparent_55%),
+                  radial-gradient(circle_at_85%_15%,rgba(56,189,248,0.22),transparent_55%),
+                  radial-gradient(circle_at_80%_90%,rgba(var(--xpot-gold),0.16),transparent_60%)]
+            "
+          />
+
+          <div className="relative z-10 p-6 lg:p-8">
             <div className="grid gap-6 lg:grid-cols-12">
               <div className="space-y-5 lg:col-span-8">
                 <div className="flex flex-wrap items-center gap-2">
@@ -1042,15 +1067,16 @@ export default function TokenomicsPage() {
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </button>
 
-                        <Link href={ROUTE_HUB} className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition">
+                        <Link
+                          href={ROUTE_HUB}
+                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+                        >
                           Enter today
                           <ArrowRight className="ml-2 h-4 w-4 text-slate-400" />
                         </Link>
                       </div>
 
-                      <p className="mt-4 text-[11px] text-slate-600">
-                        Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.
-                      </p>
+                      <p className="mt-4 text-[11px] text-slate-600">Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.</p>
                     </div>
                   </div>
                 </div>
@@ -1194,7 +1220,7 @@ export default function TokenomicsPage() {
               <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
               <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
               <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                Every distribution bucket can be mapped to wallets, ATAs and on-chain history. If it cannot be verified, it should not exist.
+                Every distribution bucket can be mapped to wallets and on-chain history. If it cannot be verified, it should not exist.
               </p>
             </div>
           </div>
@@ -1207,7 +1233,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v18</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v19</span>
         </div>
       </footer>
     </XpotPageShell>
