@@ -471,11 +471,11 @@ function PublicNavCenter({
           <>
             {/* click outside to close */}
             <button
-              type="button"
-              aria-label="Close learn menu"
-              className="fixed inset-0 z-[90] cursor-default"
-              onMouseDown={() => setLearnOpen(false)}
-            />
+  type="button"
+  aria-label="Close learn menu"
+  className="fixed inset-0 z-[95] bg-black/30 backdrop-blur-[1px]"
+  onMouseDown={() => setLearnOpen(false)}
+/>
 
             <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
               <div className="p-2">
