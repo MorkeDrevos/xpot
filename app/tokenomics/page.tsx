@@ -148,6 +148,161 @@ function toneRing(tone: PillTone) {
   return 'rgba(148,163,184,0.18)';
 }
 
+// ─────────────────────────────────────────────
+// Team vesting (12 months, monthly equal amounts)
+// ─────────────────────────────────────────────
+function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
+  const months = 12;
+  const perMonth = totalTeamTokens / months;
+
+  const rows = useMemo(() => {
+    const out: { m: number; monthly: number; cumulative: number; pct: number }[] = [];
+    let cum = 0;
+    for (let i = 1; i <= months; i++) {
+      cum += perMonth;
+      out.push({
+        m: i,
+        monthly: perMonth,
+        cumulative: cum,
+        pct: (cum / totalTeamTokens) * 100,
+      });
+    }
+    return out;
+  }, [perMonth, totalTeamTokens]);
+
+  const maxMonthly = perMonth || 1;
+  const w = 560;
+  const h = 170;
+  const pad = 18;
+  const barW = (w - pad * 2) / months;
+
+  const points = rows
+    .map((r, idx) => {
+      const x = pad + barW * idx + barW / 2;
+      const y = pad + (1 - r.pct / 100) * (h - pad * 2);
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  return (
+    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Team vesting schedule</p>
+          <p className="mt-1 text-[11px] text-slate-500">12 months, monthly equal unlocks. Visuals are deterministic from supply allocation.</p>
+        </div>
+        <span className="rounded-full border border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--xpot-gold-2))]">
+          12M linear
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Monthly unlock</p>
+              <p className="mt-1 font-mono text-lg font-semibold text-[rgb(var(--xpot-gold-2))]">
+                {fmtInt(perMonth)} <span className="text-xs text-slate-500">XPOT</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total vested</p>
+              <p className="mt-1 font-mono text-sm font-semibold text-slate-100">{fmtInt(totalTeamTokens)} XPOT</p>
+            </div>
+          </div>
+
+          <div className="mt-3 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/25">
+            <div className="w-full overflow-x-auto">
+              <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block">
+                <defs>
+                  <linearGradient id="teamBars" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="rgba(var(--xpot-gold),0.85)" />
+                    <stop offset="100%" stopColor="rgba(255,255,255,0.10)" />
+                  </linearGradient>
+                </defs>
+
+                <rect x="0" y="0" width={w} height={h} fill="rgba(2,2,10,0.35)" />
+
+                {/* grid */}
+                {[0.25, 0.5, 0.75].map(p => (
+                  <line
+                    key={p}
+                    x1={pad}
+                    x2={w - pad}
+                    y1={pad + p * (h - pad * 2)}
+                    y2={pad + p * (h - pad * 2)}
+                    stroke="rgba(255,255,255,0.06)"
+                    strokeWidth="1"
+                  />
+                ))}
+
+                {/* bars */}
+                {rows.map((r, idx) => {
+                  const x = pad + barW * idx + 5;
+                  const barH = (r.monthly / maxMonthly) * (h - pad * 2);
+                  const y = h - pad - barH;
+                  const bw = Math.max(6, barW - 10);
+
+                  return (
+                    <rect
+                      key={r.m}
+                      x={x}
+                      y={y}
+                      width={bw}
+                      height={barH}
+                      rx="8"
+                      fill="url(#teamBars)"
+                      opacity="0.9"
+                    />
+                  );
+                })}
+
+                {/* cumulative line */}
+                <polyline points={points} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" />
+
+                {/* dots */}
+                {rows.map((r, idx) => {
+                  const x = pad + barW * idx + barW / 2;
+                  const y = pad + (1 - r.pct / 100) * (h - pad * 2);
+                  return <circle key={r.m} cx={x} cy={y} r="3.2" fill="rgba(255,255,255,0.70)" />;
+                })}
+              </svg>
+            </div>
+          </div>
+
+          <p className="mt-3 text-[11px] text-slate-600">
+            Bars = monthly unlock. Line = cumulative vested %. This is purely schedule math - your actual vesting wallet movements remain verifiable on-chain.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Schedule</p>
+
+          <div className="mt-3 grid gap-2">
+            {rows.map(r => (
+              <div
+                key={r.m}
+                className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2 text-xs"
+              >
+                <span className="font-mono text-slate-300">Month {r.m}</span>
+                <span className="font-mono text-slate-200">{fmtInt(r.monthly)} XPOT</span>
+                <span className="text-slate-500">{r.pct.toFixed(0)}%</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 rounded-2xl border border-slate-800/70 bg-black/25 p-3">
+            <p className="text-xs text-slate-300">Simple rule: no cliffs, no tricks.</p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              1/12 unlocks monthly, equal amounts. If you later add a real on-chain vesting contract, this panel can be wired to read actual vesting state.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // /api/vaults exact schema
 type ApiVaultTx = {
   signature: string;
@@ -443,6 +598,7 @@ function DonutAllocation({
   yearsOfRunway,
   distributionReserve,
   getCardRef,
+  teamTotalTokens,
 }: {
   items: Allocation[];
   selectedKey: string | null;
@@ -462,6 +618,8 @@ function DonutAllocation({
   distributionReserve: number;
 
   getCardRef: (key: string) => (el: HTMLDivElement | null) => void;
+
+  teamTotalTokens: number;
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -693,6 +851,8 @@ function DonutAllocation({
                             </div>
                           )}
 
+                          {a.key === 'team' && <TeamVestingPanel totalTeamTokens={teamTotalTokens} />}
+
                           <VaultGroupPanel
                             title="Vaults (live)"
                             groupKey={vaultGroupKey}
@@ -724,16 +884,16 @@ export default function TokenomicsPage() {
   const DISTRIBUTION_RESERVE_PCT = 14;
   const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100); // 7,000,000,000
 
+  const TEAM_PCT = 9;
+  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100); // for vesting visuals
+
   function yearsOfRunway(daily: number) {
     if (!Number.isFinite(daily) || daily <= 0) return Infinity;
     return DISTRIBUTION_RESERVE / (daily * DAYS_PER_YEAR);
   }
 
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
-  const runwayFixedDays = useMemo(
-    () => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT),
-    [DISTRIBUTION_RESERVE],
-  );
+  const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
 
   const runwayTable = useMemo(
     () => [
@@ -791,7 +951,7 @@ export default function TokenomicsPage() {
         pct: 9,
         note: 'Vested, long horizon. Builders stay aligned with holders.',
         detail:
-          'Credibility comes from structure: a long cliff and slow linear vesting. Builders earn upside by shipping, not by selling into early liquidity.',
+          'Vesting: 12 months, monthly equal amounts. Builders earn upside by shipping, not by selling into early liquidity.',
         tone: 'amber',
       },
       {
@@ -853,13 +1013,21 @@ export default function TokenomicsPage() {
     cardRefs.current[key] = el;
   };
 
+  const getDynamicStickyOffset = () => {
+    // Best-effort: if you later add data-sticky attributes, this auto-improves.
+    const candidates = Array.from(document.querySelectorAll<HTMLElement>('[data-xpot-sticky="true"]'));
+    const extra = candidates.reduce((sum, el) => sum + (el?.offsetHeight ?? 0), 0);
+    return SCROLL_OFFSET_PX + (Number.isFinite(extra) ? extra : 0);
+  };
+
   const scrollToCard = (key: string) => {
     const el = cardRefs.current[key];
     if (!el) return;
 
     // Precise scroll with offset (sticky header safe)
     const rect = el.getBoundingClientRect();
-    const targetTop = window.scrollY + rect.top - SCROLL_OFFSET_PX;
+    const offset = typeof document === 'undefined' ? SCROLL_OFFSET_PX : getDynamicStickyOffset();
+    const targetTop = window.scrollY + rect.top - offset;
     window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   };
 
@@ -870,11 +1038,14 @@ export default function TokenomicsPage() {
 
     // Wait for Framer + layout to settle, then scroll (2 ticks)
     const r1 = window.requestAnimationFrame(() => {
-      const t = window.setTimeout(() => {
-        scrollToCard(pendingScrollKey);
-        setPendingScrollKey(null);
-      }, 60);
-      return () => window.clearTimeout(t);
+      const r2 = window.requestAnimationFrame(() => {
+        const t = window.setTimeout(() => {
+          scrollToCard(pendingScrollKey);
+          setPendingScrollKey(null);
+        }, 60);
+        return () => window.clearTimeout(t);
+      });
+      return () => window.cancelAnimationFrame(r2);
     });
 
     return () => window.cancelAnimationFrame(r1);
@@ -936,8 +1107,8 @@ export default function TokenomicsPage() {
                 </h1>
 
                 <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes
-                  can be checked on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into with confidence.
+                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes can be
+                  checked on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into with confidence.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -1044,8 +1215,7 @@ export default function TokenomicsPage() {
                             <span className="ml-2 text-sm font-semibold text-slate-500">years</span>
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
-                            Proof: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT ({runwayFixedDays.toLocaleString('en-US')} days) in the reserve
-                            wallet
+                            Proof: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT ({runwayFixedDays.toLocaleString('en-US')} days) in the reserve wallet
                           </p>
                         </div>
 
@@ -1076,7 +1246,9 @@ export default function TokenomicsPage() {
                         </Link>
                       </div>
 
-                      <p className="mt-4 text-[11px] text-slate-600">Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.</p>
+                      <p className="mt-4 text-[11px] text-slate-600">
+                        Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1121,6 +1293,7 @@ export default function TokenomicsPage() {
                 yearsOfRunway={yearsOfRunway}
                 distributionReserve={DISTRIBUTION_RESERVE}
                 getCardRef={getCardRef}
+                teamTotalTokens={TEAM_TOTAL_TOKENS}
               />
             </div>
           </div>
@@ -1233,7 +1406,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v19</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v20</span>
         </div>
       </footer>
     </XpotPageShell>
