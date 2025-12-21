@@ -30,11 +30,22 @@ type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 const ROUTE_HUB = '/hub';
 const ROUTE_TERMS = '/terms';
 
+// ✅ Gold helpers (same pattern as home page)
+const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
+const GOLD_TEXT_DIM = 'text-[rgba(var(--xpot-gold-2),0.85)]';
+const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
+const GOLD_BORDER_SOFT = 'border-[rgba(var(--xpot-gold),0.25)]';
+const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
+const GOLD_BG_WASH_2 = 'bg-[rgba(var(--xpot-gold),0.08)]';
+const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
+const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
+
+// ✅ Buttons (updated)
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition';
+  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition';
 
 const CARD =
   'relative overflow-hidden rounded-[30px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.55)] backdrop-blur-xl';
@@ -52,8 +63,9 @@ function Pill({ children, tone = 'slate' }: { children: ReactNode; tone?: PillTo
   const map: Record<PillTone, string> = {
     slate: 'border-slate-800/70 bg-slate-900/60 text-slate-200 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
     emerald: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
-    amber: 'border-amber-400/50 bg-amber-500/10 text-amber-200 shadow-[0_0_0_1px_rgba(245,158,11,0.16)]',
     sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
+    // ✅ gold-token pill (no Tailwind amber)
+    amber: `${GOLD_BORDER} ${GOLD_BG_WASH} ${GOLD_TEXT} ${GOLD_RING_SHADOW}`,
   };
 
   return (
@@ -115,21 +127,24 @@ function timeAgo(tsMs: number) {
 function toneStroke(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.78)';
   if (tone === 'sky') return 'rgba(56,189,248,0.78)';
-  if (tone === 'amber') return 'rgba(245,158,11,0.78)';
+  // ✅ gold tone stroke
+  if (tone === 'amber') return 'rgba(var(--xpot-gold),0.78)';
   return 'rgba(148,163,184,0.68)'; // slate
 }
 
 function toneGlow(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
-  if (tone === 'amber') return 'rgba(245,158,11,0.20)';
+  // ✅ gold tone glow
+  if (tone === 'amber') return 'rgba(var(--xpot-gold),0.18)';
   return 'rgba(148,163,184,0.16)';
 }
 
 function toneRing(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
-  if (tone === 'amber') return 'rgba(245,158,11,0.20)';
+  // ✅ gold tone ring
+  if (tone === 'amber') return 'rgba(var(--xpot-gold),0.16)';
   return 'rgba(148,163,184,0.18)';
 }
 
@@ -249,9 +264,7 @@ function VaultGroupPanel({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
-          <p className="mt-1 text-[11px] text-slate-500">
-  Live balances plus latest on-chain transactions for this vault.
-</p>
+          <p className="mt-1 text-[11px] text-slate-500">Live balances plus latest on-chain transactions for this vault.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -260,7 +273,7 @@ function VaultGroupPanel({
               Loading
             </span>
           ) : hadError ? (
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
+            <span className="rounded-full border border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--xpot-gold-2))]">
               API issue
             </span>
           ) : (
@@ -296,44 +309,40 @@ function VaultGroupPanel({
                       <span className="ml-2 text-xs font-normal text-slate-500">{shortAddr(v.address)}</span>
                     </p>
 
-                    {/* Wallet row (wallet only) */}
-<div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-  <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-    <Wallet className="h-3.5 w-3.5 text-slate-400" />
-    Wallet
-  </span>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                        <Wallet className="h-3.5 w-3.5 text-slate-400" />
+                        Wallet
+                      </span>
 
-  <a
-    href={`https://solscan.io/account/${v.address}`}
-    target="_blank"
-    rel="noreferrer"
-    className="inline-flex items-center gap-1 hover:text-slate-300 transition"
-  >
-    View <ExternalLink className="h-3.5 w-3.5" />
-  </a>
+                      <a
+                        href={`https://solscan.io/account/${v.address}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 hover:text-slate-300 transition"
+                      >
+                        View <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
 
-  <button
-    type="button"
-    onClick={() => copy(v.address)}
-    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
-    title="Copy wallet address"
-  >
-    <Copy className="h-3.5 w-3.5 text-slate-400" />
-    Copy
-  </button>
-</div>
+                      <button
+                        type="button"
+                        onClick={() => copy(v.address)}
+                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
+                        title="Copy wallet address"
+                      >
+                        <Copy className="h-3.5 w-3.5 text-slate-400" />
+                        Copy
+                      </button>
+                    </div>
                   </div>
 
                   <div className="text-right">
                     <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">XPOT balance</p>
-                    <p className="mt-1 font-mono text-sm text-slate-100">
-                      {ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}
-                    </p>
+                    <p className="mt-1 font-mono text-sm text-slate-100">{ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}</p>
                     <p className="mt-1 text-[11px] text-slate-600">{decimals != null ? `Decimals: ${decimals}` : null}</p>
                   </div>
                 </div>
 
-                {/* TX section redesigned */}
                 <div className="mt-4 rounded-2xl border border-slate-800/60 bg-black/25 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -371,9 +380,7 @@ function VaultGroupPanel({
                           >
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-[11px] text-slate-200 group-hover:text-white transition">
-                                  {shortAddr(tx.signature)}
-                                </span>
+                                <span className="font-mono text-[11px] text-slate-200 group-hover:text-white transition">{shortAddr(tx.signature)}</span>
                                 <ExternalLink className="h-3.5 w-3.5 text-slate-500 group-hover:text-slate-300 transition" />
                               </div>
 
@@ -384,7 +391,7 @@ function VaultGroupPanel({
                                 </span>
 
                                 {hasErr ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--xpot-gold-2))]">
                                     <AlertTriangle className="h-3.5 w-3.5" />
                                     Error
                                   </span>
@@ -487,7 +494,7 @@ function DonutAllocation({
           pointer-events-none absolute -inset-24 opacity-80 blur-3xl
           bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.16),transparent_60%),
               radial-gradient(circle_at_82%_78%,rgba(16,185,129,0.16),transparent_60%),
-              radial-gradient(circle_at_60%_0%,rgba(245,158,11,0.10),transparent_55%)]
+              radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
         "
       />
 
@@ -541,14 +548,7 @@ function DonutAllocation({
                 })}
               </g>
 
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={r - 26}
-                fill="rgba(2,2,10,0.55)"
-                stroke="rgba(255,255,255,0.06)"
-                strokeWidth="1"
-              />
+              <circle cx={size / 2} cy={size / 2} r={r - 26} fill="rgba(2,2,10,0.55)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
             </svg>
 
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -560,15 +560,10 @@ function DonutAllocation({
               </div>
             </div>
 
-            <div
-              className="pointer-events-none absolute inset-0 rounded-full"
-              style={{ boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 40px 120px rgba(0,0,0,0.55)` }}
-            />
+            <div className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 40px 120px rgba(0,0,0,0.55)` }} />
             <div
               className="pointer-events-none absolute -inset-7 rounded-full opacity-70 blur-2xl"
-              style={{
-                background: `radial-gradient(circle at 50% 50%, ${toneGlow(selected?.tone ?? 'slate')}, transparent 60%)`,
-              }}
+              style={{ background: `radial-gradient(circle at 50% 50%, ${toneGlow(selected?.tone ?? 'slate')}, transparent 60%)` }}
             />
           </div>
         </div>
@@ -587,9 +582,7 @@ function DonutAllocation({
                 key={a.key}
                 ref={getCardRef(a.key)}
                 className={[
-                  // ✅ "opens in front of you": scroll margin + we scroll with block:start
                   'scroll-mt-32 rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
-                  // ✅ chosen tab border more obvious (tone-aware)
                   isSelected ? 'border-white/20 ring-1 ring-white/10' : 'border-slate-900/70',
                 ].join(' ')}
                 style={
@@ -612,16 +605,11 @@ function DonutAllocation({
                   className="group w-full rounded-2xl px-4 py-3 text-left hover:bg-slate-950/65 transition outline-none"
                 >
                   <div className="flex items-start gap-3">
-                    <span
-                      className="mt-[6px] h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ background: stroke, boxShadow: `0 0 14px ${glow}` }}
-                    />
+                    <span className="mt-[6px] h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: stroke, boxShadow: `0 0 14px ${glow}` }} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
                         <p className="truncate text-sm font-semibold text-slate-100">{a.label}</p>
-                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[12px] text-slate-100">
-                          {a.pct}%
-                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[12px] text-slate-100">{a.pct}%</span>
                       </div>
 
                       <p className="mt-0.5 text-[11px] text-slate-500">{a.note}</p>
@@ -690,13 +678,7 @@ function DonutAllocation({
                             </div>
                           )}
 
-                          <VaultGroupPanel
-                            title="Vaults (live)"
-                            groupKey={vaultGroupKey}
-                            data={vaultData}
-                            isLoading={vaultLoading}
-                            hadError={vaultError}
-                          />
+                          <VaultGroupPanel title="Vaults (live)" groupKey={vaultGroupKey} data={vaultData} isLoading={vaultLoading} hadError={vaultError} />
 
                           <p className="mt-3 text-[11px] text-slate-600">
                             Design intent: dedicated vaults, timelocks and public wallets so this stays verifiable over time.
@@ -830,7 +812,6 @@ export default function TokenomicsPage() {
   const [openKey, setOpenKeyRaw] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(sortedAllocation[0]?.key ?? null);
 
-  // ✅ only scroll once React has actually opened the target panel
   const [pendingScrollKey, setPendingScrollKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -849,14 +830,12 @@ export default function TokenomicsPage() {
     cardRefs.current[key] = el;
   };
 
-  // ✅ "opens in front of you" (no extra jumpy scrollBy hacks)
   const scrollToCard = (key: string) => {
     const el = cardRefs.current[key];
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // ✅ scroll only when the intended panel is actually open
   useEffect(() => {
     if (!pendingScrollKey) return;
     if (openKey !== pendingScrollKey) return;
@@ -896,7 +875,7 @@ export default function TokenomicsPage() {
               pointer-events-none absolute -inset-48 opacity-85 blur-3xl
               bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.22),transparent_55%),
                   radial-gradient(circle_at_85%_15%,rgba(56,189,248,0.22),transparent_55%),
-                  radial-gradient(circle_at_80%_90%,rgba(245,158,11,0.16),transparent_60%)]
+                  radial-gradient(circle_at_80%_90%,rgba(var(--xpot-gold),0.16),transparent_60%)]
             "
           />
 
@@ -938,7 +917,6 @@ export default function TokenomicsPage() {
                   <span className="text-[11px] text-slate-500">Allocation prioritises distribution, resilience and long-term execution.</span>
                 </div>
 
-                {/* ✅ less messy: three clean tiles, and “Token controls” becomes 3 mini-boxes */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
@@ -960,7 +938,6 @@ export default function TokenomicsPage() {
                       </span>
                     </div>
 
-                    {/* ✅ 3 boxes (Mint / Freeze / Supply) */}
                     <div className="mt-3 grid gap-2">
                       <div className="grid grid-cols-3 gap-2">
                         <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
@@ -983,15 +960,12 @@ export default function TokenomicsPage() {
 
                   <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve</p>
-                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">
-                      {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT
-                    </p>
+                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</p>
                     <p className="mt-1 text-xs text-slate-500">Designated reserve wallet</p>
                   </div>
                 </div>
               </div>
 
-              {/* Right side snapshot (clear “belongs to what”) */}
               <div className="hidden lg:block lg:col-span-4">
                 <div className="h-full">
                   <div className="relative h-full rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur">
@@ -1036,7 +1010,8 @@ export default function TokenomicsPage() {
                             <span className="ml-2 text-sm font-semibold text-slate-500">years</span>
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
-                            Proof: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT ({runwayFixedDays.toLocaleString('en-US')} days) in the reserve wallet
+                            Proof: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT ({runwayFixedDays.toLocaleString('en-US')} days) in the reserve
+                            wallet
                           </p>
                         </div>
 
@@ -1058,10 +1033,7 @@ export default function TokenomicsPage() {
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </button>
 
-                        <Link
-                          href={ROUTE_HUB}
-                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-                        >
+                        <Link href={ROUTE_HUB} className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition">
                           Enter today
                           <ArrowRight className="ml-2 h-4 w-4 text-slate-400" />
                         </Link>
@@ -1087,7 +1059,7 @@ export default function TokenomicsPage() {
               pointer-events-none absolute -inset-44 opacity-75 blur-3xl
               bg-[radial-gradient(circle_at_10%_30%,rgba(56,189,248,0.16),transparent_60%),
                   radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%),
-                  radial-gradient(circle_at_60%_0%,rgba(245,158,11,0.10),transparent_55%)]
+                  radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
             "
           />
           <div className="relative z-10 p-6 lg:p-8">
@@ -1125,7 +1097,7 @@ export default function TokenomicsPage() {
           <div
             className="
               pointer-events-none absolute -inset-44 opacity-75 blur-3xl
-              bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_60%),
+              bg-[radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),
                   radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%)]
             "
           />
@@ -1148,19 +1120,17 @@ export default function TokenomicsPage() {
                   Eligibility
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent, with clear rules and
-                  verifiable outcomes.
+                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent, with clear rules and verifiable outcomes.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                  <Crown className="h-4 w-4 text-amber-200" />
+                  <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
                   Status and reputation
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future perks
-                  and sponsor drops.
+                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future perks and sponsor drops.
                 </p>
               </div>
 
@@ -1170,8 +1140,7 @@ export default function TokenomicsPage() {
                   Sponsor-funded rewards
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales
-                  without pay-to-enter mechanics.
+                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales without pay-to-enter mechanics.
                 </p>
               </div>
 
@@ -1181,8 +1150,7 @@ export default function TokenomicsPage() {
                   Verifiability edge
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public wallets and simple rules
-                  you can check.
+                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public wallets and simple rules you can check.
                 </p>
               </div>
             </div>
@@ -1193,8 +1161,7 @@ export default function TokenomicsPage() {
           <div className="relative z-10 p-6 lg:p-8">
             <p className="text-sm font-semibold text-slate-100">Long-term: why this can matter</p>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
-              The endgame is a protocol that communities and brands can plug into for daily distributions, with identity and verification built in from
-              day one.
+              The endgame is a protocol that communities and brands can plug into for daily distributions, with identity and verification built in from day one.
             </p>
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
