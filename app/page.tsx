@@ -1,5 +1,4 @@
 // app/page.tsx
-// app/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -29,9 +28,6 @@ import {
 import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
-
-import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
-import { type LiveEntrant, asLiveEntrant } from '@/lib/live-entrants';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
@@ -136,7 +132,6 @@ function PremiumCard({
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,158,11,0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
-
       <div className="relative z-10">{children}</div>
     </section>
   );
@@ -287,7 +282,7 @@ function RunwayPill() {
       <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10">
         <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
       </span>
-      BUILT WITH A 10-YEAR REWARDS RUNWAY AT LAUNCH
+      BUILT WITH A LONG-RUN REWARDS RUNWAY
     </span>
   );
 }
@@ -525,76 +520,17 @@ function formatCountdown(ms: number) {
   return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
 }
 
-function cleanHandle(h: string) {
-  return (h || '').replace(/^@/, '').trim();
-}
-
-function normalizeLiveEntrant(x: any): LiveEntrant | null {
-  if (!x) return null;
-
-  // API may return strings
-  if (typeof x === 'string') {
-    const h = cleanHandle(x);
-    if (!h) return null;
-    return asLiveEntrant({ handle: h });
-  }
-
-  if (typeof x?.handle !== 'string') return null;
-  const handle = cleanHandle(x.handle);
-  if (!handle) return null;
-
-  const avatarUrl =
-    typeof x?.avatarUrl === 'string' && x.avatarUrl.trim() ? x.avatarUrl.trim() : undefined;
-
-  const followers = typeof x?.followers === 'number' ? x.followers : undefined;
-  const verified = typeof x?.verified === 'boolean' ? x.verified : undefined;
-
-  // IMPORTANT: subtitle is NOT part of LiveEntrant anymore (locked).
-  return asLiveEntrant({ handle, avatarUrl, followers, verified });
-}
-
-function uniqByHandle(list: LiveEntrant[]) {
-  const seen = new Set<string>();
-  const out: LiveEntrant[] = [];
-  for (const e of list || []) {
-    const h = cleanHandle(e?.handle || '');
-    if (!h) continue;
-    const key = h.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ ...e, handle: h });
-  }
-  return out;
-}
-
 export default function HomePage() {
-  const [liveEntries, setLiveEntries] = useState<LiveEntrant[]>([]);
+  const mint = XPOT_CA;
+
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
-  let alive = true;
+    const t = window.setInterval(() => setNowMs(Date.now()), 250);
+    return () => window.clearInterval(t);
+  }, []);
 
-  async function load() {
-    try {
-      const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
-      const data = await r.json();
-
-      if (!alive) return;
-      const raw = Array.isArray(data?.entries) ? data.entries : [];
-      const normalized = raw.map(normalizeLiveEntrant).filter(Boolean) as LiveEntrant[];
-      setLiveEntries(uniqByHandle(normalized));
-    } catch {
-      // ignore
-    }
-  }
-
-  load();
-  const t = window.setInterval(load, 12_000);
-  return () => {
-    alive = false;
-    window.clearInterval(t);
-  };
-}, []);
-
+  const nextDrawUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(nowMs)), [nowMs]);
   const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
 
   const faq = useMemo(
@@ -605,11 +541,11 @@ export default function HomePage() {
       },
       {
         q: 'Is my wallet public on the site?',
-        a: 'Your public identity is your X handle. Wallets stay self-custody and aren’t presented as your “profile”.',
+        a: 'Your public identity is your X handle. Wallet stays self-custody.',
       },
       {
         q: 'How do winners verify payouts?',
-        a: 'Payouts are on-chain. Winners can verify the transaction in an explorer. Proof is the product.',
+        a: 'Payouts are on-chain. Winners verify the transaction in an explorer. Proof is the product.',
       },
       {
         q: 'What happens after launch?',
@@ -673,7 +609,7 @@ export default function HomePage() {
 
                     <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                        NO TICKETS · JUST XPOT HOLDINGS
+                        HOLDINGS-BASED REWARDS PROTOCOL
                       </p>
 
                       <h1 className="mt-3 text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
@@ -681,13 +617,13 @@ export default function HomePage() {
                       </h1>
 
                       <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                        Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain. Built to scale into a rewards
-                        ecosystem for communities, creators and sponsors.
+                        Hold XPOT, connect X and claim your entry in the hub. One winner daily, paid on-chain.
+                        Built for communities, creators and sponsors.
                       </p>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <RunwayPill />
-                        <TinyTooltip label="Runway = the rewards pool is designed to sustain daily payouts at launch. Exact mechanics can evolve, but payouts remain verifiable on-chain.">
+                        <TinyTooltip label="Rewards are provable on-chain. The UX stays calm on the homepage; entries happen in the hub.">
                           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition">
                             <Info className="h-4 w-4" />
                           </span>
@@ -733,6 +669,14 @@ export default function HomePage() {
                           Enter today&apos;s XPOT
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
+
+                        <Link
+                          href={ROUTE_TERMS}
+                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm text-slate-200 hover:bg-white/[0.06] transition"
+                        >
+                          Read terms
+                          <ExternalLink className="h-4 w-4 text-slate-400" />
+                        </Link>
                       </div>
 
                       <p className="mt-3 text-[11px] text-slate-500">
@@ -761,7 +705,7 @@ export default function HomePage() {
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
 
-                      <span className="text-[11px] text-slate-500">Watch live here. Claim entries in the hub.</span>
+                      <span className="text-[11px] text-slate-500">Claim entries in the hub.</span>
                     </div>
                   </PremiumCard>
 
@@ -789,7 +733,7 @@ export default function HomePage() {
 
 > LAST_WINNERS
   #2025-12-18  @DeWala_222222   1,000,000 XPOT
-  #2025-12-18  @SignalChaser    250,000 XPOT (bonus)
+  #2025-12-18  @SignalChaser      250,000 XPOT (bonus)
   #2025-12-17  @NFAResearch     1,000,000 XPOT`}
                       </pre>
                     </div>
@@ -801,14 +745,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Live entries (always-on) */}
-<div className="relative z-10 border-t border-slate-900/70 px-6 py-5 lg:px-8">
-  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(16,185,129,0.28),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)] opacity-70" />
-
-  <div className="relative">
-    <LiveEntrantsLounge entrants={liveEntries} hint="Live lobby - updates automatically" />
-  </div>
-</div>
+              {/* Removed: LiveEntrantsLounge / Twitter section */}
             </div>
           </div>
         </div>
@@ -835,7 +772,6 @@ export default function HomePage() {
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
                 XPOT keeps the surface area small: holdings-based eligibility, public identity by handle and on-chain payout proof.
-                Everything else can plug in later.
               </p>
             </div>
 
@@ -901,7 +837,7 @@ export default function HomePage() {
         </PremiumCard>
       </section>
 
-      {/* THE PROTOCOL STRIP (kept) */}
+      {/* THE PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -948,7 +884,6 @@ export default function HomePage() {
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
                 The daily draw is the primitive. Modules can reward participation, streaks and reputation over time.
-                That’s how XPOT becomes an ecosystem for communities, creators and sponsors.
               </p>
             </div>
 
@@ -1010,8 +945,8 @@ export default function HomePage() {
                   <ShieldCheck className="h-5 w-5 text-amber-200" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">Fairness layer</p>
-                  <p className="text-xs text-slate-400">If XPOT picked it, it’s fair</p>
+                  <p className="text-sm font-semibold text-slate-100">Proof</p>
+                  <p className="text-xs text-slate-400">If XPOT paid it, it’s verifiable</p>
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
@@ -1054,9 +989,7 @@ export default function HomePage() {
               Sponsors
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Sponsor pools and bonuses with visibility and provable distribution on-chain.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1065,9 +998,7 @@ export default function HomePage() {
               Communities
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Your XPOT history travels with you and unlocks better rewards over time.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
           </PremiumCard>
         </div>
       </section>
@@ -1105,25 +1036,43 @@ export default function HomePage() {
         </PremiumCard>
       </section>
 
-      {/* Footer */}
+      {/* Footer (new definition line feature) */}
       <footer className="mt-8 pb-10">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
-          <span className="inline-flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-            Pre-Launch Mode. UI is final, wiring continues.
-          </span>
+        <div className="grid gap-4">
+          <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+                <span>XPOT.bet</span>
+                <span className="text-slate-600">·</span>
+                <span className="text-slate-300">Build · Engage · Transact</span>
+              </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={ROUTE_OPS}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
-            >
-              <Lock className="h-3.5 w-3.5 text-amber-200" />
-              Ops
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-            </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={ROUTE_TERMS}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
+                >
+                  Terms
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                </Link>
 
-            <span className="font-mono text-slate-600">build: cinematic-home</span>
+                <Link
+                  href={ROUTE_OPS}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
+                >
+                  <Lock className="h-3.5 w-3.5 text-amber-200" />
+                  Ops
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                </Link>
+
+                <span className="font-mono text-[11px] text-slate-600">build: cinematic-home</span>
+              </div>
+            </div>
+
+            <div className="mt-3 border-l border-white/10 pl-4 text-[12px] leading-relaxed text-slate-400">
+              A participation-driven protocol for on-chain engagement and reward distribution.
+            </div>
           </div>
         </div>
       </footer>
