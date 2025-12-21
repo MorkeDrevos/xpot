@@ -30,10 +30,6 @@ import {
   XCircle,
   Loader2,
   ChevronRight,
-  AlertTriangle,
-  ListChecks,
-  Clock,
-  CheckCircle2,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -80,10 +76,10 @@ const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
 
-// Health / protocol status page (replaces the duplicate Live pill on the right)
+// ✅ Health / protocol status page (replaces the duplicate Live pill on the right)
 const PROTOCOL_HREF = '/hub/protocol';
 
-// Your real deployed CA
+// ✅ Your real deployed CA
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
 export default function XpotTopBar({
@@ -103,7 +99,7 @@ export default function XpotTopBar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [learnOpen, setLearnOpen] = useState(false);
 
-  // Internal light wallet popup (only used if onOpenWalletModal not provided)
+  // ✅ Internal light wallet popup (only used if onOpenWalletModal not provided)
   const [lightWalletOpen, setLightWalletOpen] = useState(false);
   const openWallet = useMemo(() => {
     return onOpenWalletModal ? onOpenWalletModal : () => setLightWalletOpen(true);
@@ -129,7 +125,7 @@ export default function XpotTopBar({
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Publish real topbar height to CSS var for perfect page offsets
+  // ✅ Publish real topbar height to CSS var for perfect page offsets
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -216,7 +212,11 @@ export default function XpotTopBar({
                 )}
 
                 {isHub ? (
-                  <HubRight clerkEnabled={clerkEnabled} hubWalletStatus={hubWalletStatus} onOpenWalletModal={openWallet} />
+                  <HubRight
+                    clerkEnabled={clerkEnabled}
+                    hubWalletStatus={hubWalletStatus}
+                    onOpenWalletModal={openWallet}
+                  />
                 ) : (
                   <>{rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}</>
                 )}
@@ -252,8 +252,10 @@ export default function XpotTopBar({
         />
       </header>
 
-      {/* Light wallet popup (only used when parent does not supply onOpenWalletModal) */}
-      {!onOpenWalletModal && <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />}
+      {/* ✅ Light wallet popup (only used when parent does not supply onOpenWalletModal) */}
+      {!onOpenWalletModal && (
+        <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
+      )}
     </>
   );
 }
@@ -412,7 +414,7 @@ function PublicNavCenter({
   learnOpen: boolean;
   setLearnOpen: (v: boolean) => void;
 }) {
-  // Premium hover open/close (prevents flicker)
+  // ✅ Premium hover open/close (prevents flicker)
   const openT = useRef<number | null>(null);
   const closeT = useRef<number | null>(null);
 
@@ -425,11 +427,13 @@ function PublicNavCenter({
 
   const hoverOpen = () => {
     clearTimers();
+    // slight delay avoids accidental opens
     openT.current = window.setTimeout(() => setLearnOpen(true), 80);
   };
 
   const hoverClose = () => {
     clearTimers();
+    // slower close feels premium and stops flicker
     closeT.current = window.setTimeout(() => setLearnOpen(false), 180);
   };
 
@@ -465,15 +469,15 @@ function PublicNavCenter({
 
         {learnOpen && (
           <>
-            {/* IMPORTANT: backdrop must be UNDER the menu (was above before) */}
+            {/* click outside to close (MUST be BEHIND the panel) */}
             <button
               type="button"
               aria-label="Close learn menu"
-              className="fixed inset-0 z-[90] bg-black/30 backdrop-blur-[1px]"
+              className="fixed inset-0 z-[89] bg-black/30 backdrop-blur-[1px]"
               onMouseDown={() => setLearnOpen(false)}
             />
 
-            <div className="absolute left-1/2 z-[96] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+            <div className="absolute left-1/2 z-[90] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
               <div className="p-2">
                 <Link
                   href={TOKENOMICS_HREF}
@@ -531,13 +535,16 @@ function PublicNavCenter({
 function PublicRight({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
     <div className="hidden items-center gap-3 xl:flex">
-      {/* Replace duplicate Live pill with Health (Protocol Status) */}
+      {/* ✅ Replace duplicate Live pill with Health (Protocol Status) */}
       <NavPill href={PROTOCOL_HREF} title="Protocol health and live status">
         <ShieldCheck className="h-4 w-4 text-sky-200" />
         Health
       </NavPill>
 
-      <Link href="/hub" className="rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-black hover:bg-slate-200">
+      <Link
+        href="/hub"
+        className="rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-black hover:bg-slate-200"
+      >
         Enter today&apos;s XPOT →
       </Link>
     </div>
@@ -635,7 +642,8 @@ function HubWalletMenuInline({
   const label = hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Select wallet');
   const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
 
-  const tone: HubWalletTone = hubWalletStatus?.winner ? 'sky' : hubWalletStatus?.claimed ? 'emerald' : connected ? 'sky' : 'amber';
+  const tone: HubWalletTone =
+    hubWalletStatus?.winner ? 'sky' : hubWalletStatus?.claimed ? 'emerald' : connected ? 'sky' : 'amber';
 
   const microIcon = hubWalletStatus?.winner ? (
     <Crown className="h-4 w-4 text-amber-200" />
@@ -720,7 +728,7 @@ function shortWallet(addr: string) {
   return addr ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : '';
 }
 
-/* ---------------- Light connect wallet popup ---------------- */
+/* ---------------- ✅ Light connect wallet popup ---------------- */
 
 function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { wallets, select, connect, connecting, connected, disconnect, publicKey, wallet: activeWallet } = useWallet();
@@ -842,7 +850,9 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-100">{connected ? 'Wallet connected' : 'No wallet connected'}</p>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {connected ? 'Wallet connected' : 'No wallet connected'}
+                  </p>
                   <p className="mt-1 truncate text-xs text-slate-300/70">{connected ? addr : 'Choose a wallet below'}</p>
                 </div>
 
@@ -903,7 +913,9 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
 
                         <div className="min-w-0 text-left">
                           <p className="truncate text-sm font-semibold text-slate-100">{String(name)}</p>
-                          <p className="mt-0.5 text-xs text-slate-300/70">{isActive && connected ? 'Active' : isInstalled ? 'Installed' : 'Available'}</p>
+                          <p className="mt-0.5 text-xs text-slate-300/70">
+                            {isActive && connected ? 'Active' : isInstalled ? 'Installed' : 'Available'}
+                          </p>
                         </div>
                       </div>
 
@@ -941,7 +953,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
               </p>
 
               {connecting && (
-                <p className="inline-flex items-center gap-2 text-xs text-slate-300/70">
+                <p className="text-xs text-slate-300/70 inline-flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Waiting for wallet approval...
                 </p>
@@ -992,7 +1004,12 @@ function MobileMenu({
 
   return (
     <>
-      <button type="button" className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm" onClick={onClose} aria-label="Close menu" />
+      <button
+        type="button"
+        className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-label="Close menu"
+      />
       <div className="fixed right-0 top-0 z-[81] h-full w-[92%] max-w-sm border-l border-white/10 bg-black/85 backdrop-blur-xl">
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <div className="flex items-center gap-3">
@@ -1021,7 +1038,10 @@ function MobileMenu({
         </div>
 
         <div className="space-y-2 px-5 py-5">
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href="/hub"
+          >
             Hub
           </Link>
 
@@ -1036,35 +1056,51 @@ function MobileMenu({
             <Radio className="h-4 w-4 text-emerald-300" />
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={PROTOCOL_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={PROTOCOL_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-sky-200" />
               Health
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={TOKENOMICS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <PieChart className="h-4 w-4 text-emerald-300" />
               Tokenomics
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={ROADMAP_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Map className="h-4 w-4 text-sky-300" />
               Roadmap
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={WINNERS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-300" />
               Winners
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={XPOT_X_POST} target="_blank">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={XPOT_X_POST}
+            target="_blank"
+          >
             <span className="inline-flex items-center gap-2">
               <ExternalLink className="h-4 w-4" />
               Official X
@@ -1091,7 +1127,10 @@ function MobileMenu({
           )}
 
           <div className="pt-3">
-            <Link href="/hub" className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200">
+            <Link
+              href="/hub"
+              className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
+            >
               Enter today&apos;s XPOT →
             </Link>
           </div>
