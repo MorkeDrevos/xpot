@@ -457,11 +457,9 @@ function PriceUnavailableNote({
 }) {
   const title = 'PRICE PENDING';
 
-  const body =
-    'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
+  const body = 'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
 
-  const secondary =
-    'Once the first LP goes live, USD pricing will auto-populate via DexScreener.';
+  const secondary = 'Once the first LP goes live, USD pricing will auto-populate via DexScreener.';
 
   return (
     <div
@@ -478,17 +476,11 @@ function PriceUnavailableNote({
         }}
       />
 
-      <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">
-        {title}
-      </p>
+      <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">{title}</p>
 
-      <p className="relative mt-2 text-[12px] text-amber-100">
-        {body}
-      </p>
+      <p className="relative mt-2 text-[12px] text-amber-100">{body}</p>
 
-      <p className="relative mt-2 text-[11px] text-amber-200/80">
-        {secondary}
-      </p>
+      <p className="relative mt-2 text-[11px] text-amber-200/80">{secondary}</p>
     </div>
   );
 }
@@ -1018,7 +1010,7 @@ export default function JackpotPanel({
               <span className="relative">Today&apos;s pool</span>
             </span>
 
-            {/* Ultra-premium pool capsule */}
+            {/* Ultra-premium pool capsule (vault-style, not royal) */}
             <span
               className="group relative inline-flex items-center gap-4 rounded-2xl bg-black/60 px-7 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_28px_80px_rgba(0,0,0,0.55)]"
               style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.34)` as any }}
@@ -1027,25 +1019,48 @@ export default function JackpotPanel({
                 className="pointer-events-none absolute inset-0 rounded-2xl opacity-90"
                 style={{
                   background:
-                    'radial-gradient(circle_at_14%_32%, rgba(201,162,74,0.20), transparent 58%), radial-gradient(circle_at_86%_18%, rgba(124,200,255,0.08), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.36), rgba(0,0,0,0.12))',
+                    'radial-gradient(circle_at_14%_32%, rgba(201,162,74,0.16), transparent 58%), radial-gradient(circle_at_86%_18%, rgba(124,200,255,0.07), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.38), rgba(0,0,0,0.10))',
                 }}
               />
-              <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-sheen" />
+              <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-sheen" />
 
-              <span
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/35"
-                style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.28)` as any }}
-                aria-hidden="true"
-              >
-                <Crown className="h-4 w-4" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.92)` as any }} />
+              {/* Vault seal */}
+              <span className="relative inline-flex items-center gap-3">
+                <span
+                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40"
+                  style={{
+                    border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.32)` as any,
+                    boxShadow:
+                      '0 0 0 1px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.03), 0 14px 30px rgba(0,0,0,0.40)',
+                  }}
+                  aria-hidden="true"
+                >
+                  <span className="pointer-events-none absolute inset-[-3px] rounded-full xpot-seal-ring" />
+                  <span className="pointer-events-none absolute inset-[3px] rounded-full xpot-seal-rim" />
+
+                  <span className="relative">
+                    <XpotLogo variant="mark" width={20} height={20} tone="gold" priority />
+                  </span>
+
+                  <span
+                    className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.22em]"
+                    style={{
+                      color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
+                      background: 'rgba(0,0,0,0.42)',
+                      border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
+                      boxShadow: '0 10px 20px rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    Vault
+                  </span>
+                </span>
               </span>
 
               <span
                 className="relative font-mono text-2xl sm:text-3xl tracking-[0.24em] tabular-nums"
                 style={{
                   color: 'rgba(255,255,255,0.96)',
-                  textShadow:
-                    '0 0 16px rgba(201,162,74,0.12), 0 0 26px rgba(124,200,255,0.06)',
+                  textShadow: '0 0 16px rgba(201,162,74,0.10), 0 0 26px rgba(124,200,255,0.06)',
                 }}
               >
                 {poolLabel}
@@ -1067,7 +1082,7 @@ export default function JackpotPanel({
                   background: linear-gradient(
                     120deg,
                     rgba(255, 255, 255, 0) 0%,
-                    rgba(255, 255, 255, 0.08) 14%,
+                    rgba(255, 255, 255, 0.07) 14%,
                     rgba(255, 255, 255, 0) 32%,
                     rgba(255, 255, 255, 0) 100%
                   );
@@ -1075,10 +1090,64 @@ export default function JackpotPanel({
                   animation: xpotSheen 3.8s ease-in-out infinite;
                 }
                 @keyframes xpotSheen {
-                  0% { transform: translateX(-55%); opacity: 0.0; }
-                  18% { opacity: 0.65; }
-                  38% { transform: translateX(55%); opacity: 0.0; }
-                  100% { transform: translateX(55%); opacity: 0.0; }
+                  0% {
+                    transform: translateX(-55%);
+                    opacity: 0;
+                  }
+                  18% {
+                    opacity: 0.7;
+                  }
+                  38% {
+                    transform: translateX(55%);
+                    opacity: 0;
+                  }
+                  100% {
+                    transform: translateX(55%);
+                    opacity: 0;
+                  }
+                }
+
+                /* Vault seal ring: subtle conic + slow rotation (very premium, not flashy) */
+                .xpot-seal-ring {
+                  background: conic-gradient(
+                    from 180deg,
+                    rgba(201, 162, 74, 0.0),
+                    rgba(201, 162, 74, 0.55),
+                    rgba(124, 200, 255, 0.16),
+                    rgba(201, 162, 74, 0.38),
+                    rgba(201, 162, 74, 0.0)
+                  );
+                  filter: blur(0.2px);
+                  opacity: 0.55;
+                  animation: xpotSealSpin 10.5s linear infinite;
+                }
+                @keyframes xpotSealSpin {
+                  0% {
+                    transform: rotate(0deg);
+                  }
+                  100% {
+                    transform: rotate(360deg);
+                  }
+                }
+
+                /* Inner rim for embossed feel */
+                .xpot-seal-rim {
+                  background: radial-gradient(
+                    circle at 35% 30%,
+                    rgba(255, 255, 255, 0.08),
+                    rgba(255, 255, 255, 0.02) 45%,
+                    rgba(0, 0, 0, 0.35) 72%,
+                    rgba(0, 0, 0, 0.55) 100%
+                  );
+                  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+                  opacity: 0.9;
+                }
+
+                @media (prefers-reduced-motion: reduce) {
+                  .xpot-sheen,
+                  .xpot-seal-ring {
+                    animation: none;
+                  }
                 }
               `}</style>
             </span>
