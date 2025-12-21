@@ -1099,14 +1099,6 @@ function HomePageInner() {
                       <JackpotPanel variant="standalone" layout="wide" />
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
-                        Enter now
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-
-                      <span className="text-[11px] text-slate-500">Watch live here. Claim entries in the hub.</span>
-                    </div>
                   </PremiumCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
