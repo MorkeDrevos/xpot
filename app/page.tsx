@@ -1,15 +1,8 @@
 // app/page.tsx
+// app/page.tsx
 'use client';
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-  createContext,
-  useContext,
-} from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -39,7 +32,6 @@ import XpotPageShell from '@/components/XpotPageShell';
 
 import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
 import { type LiveEntrant, asLiveEntrant } from '@/lib/live-entrants';
-import { createPortal } from 'react-dom';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
@@ -52,96 +44,11 @@ const XPOT_CA =
 
 const SOLANA_CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || '';
 
-// XPOT denomination glyph (use for token-native amounts, keep $ only for USD)
-const XPOT_SIGN = '✕';
-
 const BTN_PRIMARY =
   'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_GREEN =
   'inline-flex items-center justify-center rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition';
-
-// Vault-gold helpers (avoid tailwind amber mapping issues)
-const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
-const GOLD_TEXT_DIM = 'text-[rgba(var(--xpot-gold-2),0.85)]';
-const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
-const GOLD_BORDER_SOFT = 'border-[rgba(var(--xpot-gold),0.25)]';
-const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
-const GOLD_BG_WASH_2 = 'bg-[rgba(var(--xpot-gold),0.08)]';
-const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
-const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
-
-// ─────────────────────────────────────────────
-// Shared countdown context (single source of truth)
-// ─────────────────────────────────────────────
-
-type NextDrawState = {
-  nowMs: number;
-  nextDrawUtcMs: number;
-  countdown: string;
-  cutoffLabel: string; // "Madrid 22:00"
-};
-
-const NextDrawContext = createContext<NextDrawState | null>(null);
-
-function useNextDraw() {
-  const ctx = useContext(NextDrawContext);
-  if (!ctx) throw new Error('useNextDraw must be used within NextDrawProvider');
-  return ctx;
-}
-
-function NextDrawProvider({ children }: { children: ReactNode }) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
-
-  // Tick on the exact second boundary (prevents drift / jitter)
-  useEffect(() => {
-    let interval: number | null = null;
-
-    const start = () => {
-      interval = window.setInterval(() => setNowMs(Date.now()), 1000);
-    };
-
-    const msToNextSecond = 1000 - (Date.now() % 1000);
-    const t = window.setTimeout(() => {
-      setNowMs(Date.now());
-      start();
-    }, msToNextSecond);
-
-    return () => {
-      window.clearTimeout(t);
-      if (interval) window.clearInterval(interval);
-    };
-  }, []);
-
-  const nextDrawUtcMs = useMemo(
-    () => getNextMadridCutoffUtcMs(22, new Date(nowMs)),
-    [nowMs],
-  );
-  const countdown = useMemo(
-    () => formatCountdown(nextDrawUtcMs - nowMs),
-    [nextDrawUtcMs, nowMs],
-  );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.dispatchEvent(
-      new CustomEvent('xpot:next-draw', {
-        detail: { nowMs, nextDrawUtcMs, countdown, cutoffLabel: 'Madrid 22:00' },
-      }),
-    );
-  }, [nowMs, nextDrawUtcMs, countdown]);
-
-  const value = useMemo<NextDrawState>(
-    () => ({ nowMs, nextDrawUtcMs, countdown, cutoffLabel: 'Madrid 22:00' }),
-    [nowMs, nextDrawUtcMs, countdown],
-  );
-
-  return (
-    <NextDrawContext.Provider value={value}>
-      {children}
-    </NextDrawContext.Provider>
-  );
-}
 
 function Pill({
   children,
@@ -155,7 +62,8 @@ function Pill({
       'border-slate-700/70 bg-slate-900/70 text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
     emerald:
       'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
-    amber: `${GOLD_BORDER} ${GOLD_BG_WASH} ${GOLD_TEXT} ${GOLD_RING_SHADOW}`,
+    amber:
+      'border-amber-400/50 bg-amber-500/10 text-amber-200 shadow-[0_0_0_1px_rgba(245,158,11,0.16)]',
     sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
     violet:
       'border-violet-400/45 bg-violet-500/10 text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.16)]',
@@ -163,7 +71,7 @@ function Pill({
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 leading-none text-[10px] font-semibold uppercase tracking-[0.18em] ${map[tone]}`}
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${map[tone]}`}
     >
       {children}
     </span>
@@ -171,60 +79,24 @@ function Pill({
 }
 
 function TinyTooltip({ label, children }: { label: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  const anchorRef = useRef<HTMLSpanElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const update = () => {
-      const el = anchorRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      setPos({ left: r.left + r.width / 2, top: r.bottom + 10 });
-    };
-
-    update();
-    window.addEventListener('scroll', update, true);
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update, true);
-      window.removeEventListener('resize', update);
-    };
-  }, [open]);
-
   return (
     <span className="relative inline-flex items-center">
-      <span
-        ref={anchorRef}
-        className="group inline-flex items-center"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-      >
+      <span className="group relative inline-flex items-center">
         {children}
+        <span
+          className="
+            pointer-events-none absolute left-1/2 top-full z-[70] mt-2 w-[260px] -translate-x-1/2
+            rounded-2xl border border-white/10 bg-black/85 px-3 py-2
+            text-[11px] leading-relaxed text-slate-200
+            shadow-[0_30px_100px_rgba(0,0,0,0.65)]
+            opacity-0 translate-y-1
+            transition
+            group-hover:opacity-100 group-hover:translate-y-0
+          "
+        >
+          {label}
+        </span>
       </span>
-
-      {open && pos
-        ? createPortal(
-            <div
-              className="
-                fixed z-[9999]
-                -translate-x-1/2
-                rounded-2xl border border-white/10 bg-black/85 px-3 py-2
-                text-[11px] leading-relaxed text-slate-200
-                shadow-[0_30px_100px_rgba(0,0,0,0.65)]
-              "
-              style={{ left: pos.left, top: pos.top }}
-              role="tooltip"
-            >
-              {label}
-            </div>,
-            document.body,
-          )
-        : null}
     </span>
   );
 }
@@ -257,13 +129,13 @@ function PremiumCard({
             bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.26),transparent_55%),
                 radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.22),transparent_58%),
                 radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.16),transparent_58%),
-                radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.10),transparent_60%)]
+                radial-gradient(circle_at_50%_-10%,rgba(245,158,11,0.10),transparent_60%)]
             opacity-85
           "
         />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,158,11,0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
 
       <div className="relative z-10">{children}</div>
     </section>
@@ -285,7 +157,7 @@ function MiniStat({
       : tone === 'sky'
       ? 'text-sky-200'
       : tone === 'amber'
-      ? `text-[rgb(var(--xpot-gold-2))]`
+      ? 'text-amber-200'
       : tone === 'violet'
       ? 'text-violet-200'
       : 'text-slate-200';
@@ -304,8 +176,11 @@ function shortenAddress(addr: string, left = 6, right = 6) {
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
 
-function getJupiterSwapUrl(mint: string) {
-  return `https://jup.ag/swap/SOL-${mint}`;
+function getSolscanTokenUrl(mint: string) {
+  const base = `https://solscan.io/token/${mint}`;
+  if (!SOLANA_CLUSTER) return base;
+  if (SOLANA_CLUSTER === 'devnet') return `${base}?cluster=devnet`;
+  return base;
 }
 
 function RoyalContractBar({ mint }: { mint: string }) {
@@ -324,42 +199,40 @@ function RoyalContractBar({ mint }: { mint: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div
-        className={`
+        className="
           relative inline-flex items-center gap-3
-          rounded-full border ${GOLD_BORDER_SOFT} bg-slate-950/55
+          rounded-full border border-amber-400/30 bg-slate-950/55
           px-3.5 py-2
-          shadow-[0_22px_90px_rgba(var(--xpot-gold),0.12)]
+          shadow-[0_22px_90px_rgba(245,158,11,0.12)]
           backdrop-blur-md
-        `}
+        "
         title={mint}
       >
         <div
           className="
             pointer-events-none absolute -inset-10 rounded-full opacity-70 blur-2xl
-            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
+            bg-[radial-gradient(circle_at_18%_30%,rgba(245,158,11,0.22),transparent_60%),
                 radial-gradient(circle_at_85%_35%,rgba(255,255,255,0.06),transparent_62%)]
           "
         />
 
         <span className="relative z-10 inline-flex items-center gap-2">
           <span
-            className={`
+            className="
               inline-flex h-7 w-7 items-center justify-center rounded-full
-              border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH_2}
-              shadow-[0_0_22px_rgba(var(--xpot-gold),0.22)]
-            `}
+              border border-amber-400/25 bg-amber-500/10
+              shadow-[0_0_22px_rgba(245,158,11,0.22)]
+            "
           >
-            <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+            <ShieldCheck className="h-4 w-4 text-amber-200" />
           </span>
 
           <span className="flex flex-col leading-tight">
-            <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200/90">
               Official contract
             </span>
 
-            <span className="font-mono text-[12px] text-slate-100/90">
-              {shortenAddress(mint, 6, 6)}
-            </span>
+            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 6, 6)}</span>
           </span>
         </span>
 
@@ -378,7 +251,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
         >
           {copied ? (
             <>
-              <Check className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+              <Check className="h-3.5 w-3.5 text-amber-300" />
               Copied
             </>
           ) : (
@@ -391,22 +264,31 @@ function RoyalContractBar({ mint }: { mint: string }) {
       </div>
 
       <Link
-        href={getJupiterSwapUrl(mint)}
+        href={getSolscanTokenUrl(mint)}
         target="_blank"
-        className={`
+        className="
           inline-flex items-center gap-2 rounded-full
-          border border-emerald-400/25 bg-emerald-500/10
-          px-3.5 py-2 text-[11px] font-semibold text-emerald-200
-          hover:bg-emerald-500/15 hover:text-emerald-100
-          shadow-[0_18px_60px_rgba(16,185,129,0.14)]
-          transition
-        `}
-        title="Buy XPOT on Jupiter"
+          border border-amber-400/18 bg-slate-950/55
+          px-3.5 py-2 text-[11px] text-slate-200
+          hover:bg-slate-900/60 transition
+        "
+        title="Open in Solscan"
       >
-        Buy XPOT
-        <ExternalLink className="h-4 w-4 text-emerald-200/80" />
+        Explorer
+        <ExternalLink className="h-4 w-4 text-amber-200/70" />
       </Link>
     </div>
+  );
+}
+
+function RunwayPill() {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.16)]">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10">
+        <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+      </span>
+      BUILT WITH A 10-YEAR REWARDS RUNWAY AT LAUNCH
+    </span>
   );
 }
 
@@ -428,7 +310,7 @@ function PrinciplesStrip() {
       </div>
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
-        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_100%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_100%_0%,rgba(245,158,11,0.12),transparent_62%)]" />
         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Proof</p>
         <p className="mt-1 text-sm font-semibold text-slate-100">On-chain</p>
         <p className="mt-1 text-[12px] text-slate-400">Verify payouts in explorer</p>
@@ -465,7 +347,7 @@ function Bullet({
     tone === 'sky'
       ? 'bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]'
       : tone === 'amber'
-      ? `bg-[rgb(var(--xpot-gold-2))] ${GOLD_GLOW_SHADOW}`
+      ? 'bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.9)]'
       : tone === 'violet'
       ? 'bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]'
       : 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]';
@@ -497,7 +379,7 @@ function Step({
     tone === 'sky'
       ? 'border-sky-500/25 bg-sky-950/25'
       : tone === 'amber'
-      ? `border-[rgba(var(--xpot-gold),0.25)] bg-[rgba(var(--xpot-gold),0.06)]`
+      ? 'border-amber-500/25 bg-amber-950/20'
       : tone === 'violet'
       ? 'border-violet-500/25 bg-violet-950/25'
       : 'border-emerald-500/25 bg-emerald-950/30';
@@ -506,7 +388,7 @@ function Step({
     tone === 'sky'
       ? 'text-sky-200 border-sky-500/25 bg-sky-500/10'
       : tone === 'amber'
-      ? `${GOLD_TEXT} ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`
+      ? 'text-amber-200 border-amber-500/25 bg-amber-500/10'
       : tone === 'violet'
       ? 'text-violet-200 border-violet-500/25 bg-violet-500/10'
       : 'text-emerald-200 border-emerald-500/25 bg-emerald-500/10';
@@ -516,9 +398,7 @@ function Step({
       <div className="pointer-events-none absolute -inset-24 opacity-60 blur-3xl bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.10),transparent_55%)]" />
 
       <div className="relative flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-          Step {n}
-        </span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Step {n}</span>
 
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${tagTone}`}
@@ -528,9 +408,7 @@ function Step({
       </div>
 
       <div className="relative mt-4 flex items-center gap-3">
-        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${ring}`}>
-          {icon}
-        </span>
+        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${ring}`}>{icon}</span>
         <div>
           <p className="text-sm font-semibold text-slate-100">{title}</p>
           <p className="mt-1 text-xs text-slate-400">{desc}</p>
@@ -541,7 +419,7 @@ function Step({
 }
 
 function Accordion({ items }: { items: { q: string; a: string }[] }) {
-  const [open, setOpen] = useState<number | null>(null);
+  const [open, setOpen] = useState<number | null>(0);
 
   return (
     <div className="grid gap-3">
@@ -581,6 +459,7 @@ function Accordion({ items }: { items: { q: string; a: string }[] }) {
 
 /* ─────────────────────────────────────────────
    Countdown (Madrid draw cutoff)
+   Draw time: 22:00 Europe/Madrid
 ───────────────────────────────────────────── */
 
 function getMadridParts(date = new Date()) {
@@ -595,8 +474,7 @@ function getMadridParts(date = new Date()) {
     hourCycle: 'h23',
   }).formatToParts(date);
 
-  const get = (type: string, fallback = '0') =>
-    Number(parts.find(p => p.type === type)?.value ?? fallback);
+  const get = (type: string, fallback = '0') => Number(parts.find(p => p.type === type)?.value ?? fallback);
 
   return {
     y: get('year', '0'),
@@ -618,14 +496,7 @@ function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
   const p = getMadridParts(now);
   const offsetMs = getMadridOffsetMs(now);
 
-  const mkUtcFromMadridWallClock = (
-    yy: number,
-    mm: number,
-    dd: number,
-    hh: number,
-    mi: number,
-    ss: number,
-  ) => {
+  const mkUtcFromMadridWallClock = (yy: number, mm: number, dd: number, hh: number, mi: number, ss: number) => {
     const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
     return asUtc - offsetMs;
   };
@@ -661,6 +532,7 @@ function cleanHandle(h: string) {
 function normalizeLiveEntrant(x: any): LiveEntrant | null {
   if (!x) return null;
 
+  // API may return strings
   if (typeof x === 'string') {
     const h = cleanHandle(x);
     if (!h) return null;
@@ -671,174 +543,59 @@ function normalizeLiveEntrant(x: any): LiveEntrant | null {
   const handle = cleanHandle(x.handle);
   if (!handle) return null;
 
-  const avatarUrl = typeof x?.avatarUrl === 'string' && x.avatarUrl.trim() ? x.avatarUrl.trim() : undefined;
+  const avatarUrl =
+    typeof x?.avatarUrl === 'string' && x.avatarUrl.trim() ? x.avatarUrl.trim() : undefined;
+
   const followers = typeof x?.followers === 'number' ? x.followers : undefined;
   const verified = typeof x?.verified === 'boolean' ? x.verified : undefined;
 
+  // IMPORTANT: subtitle is NOT part of LiveEntrant anymore (locked).
   return asLiveEntrant({ handle, avatarUrl, followers, verified });
 }
 
 function uniqByHandle(list: LiveEntrant[]) {
   const seen = new Set<string>();
   const out: LiveEntrant[] = [];
-
   for (const e of list || []) {
     const h = cleanHandle(e?.handle || '');
     if (!h) continue;
-
     const key = h.toLowerCase();
     if (seen.has(key)) continue;
-
     seen.add(key);
     out.push({ ...e, handle: h });
   }
-
   return out;
 }
 
-function XLiveLobbyInline({
-  entrants,
-  hint = 'Live lobby - updates automatically',
-}: {
-  entrants: LiveEntrant[];
-  hint?: string;
-}) {
-  const shown = useMemo(() => (entrants || []).slice(0, 10), [entrants]);
-  const count = entrants?.length || 0;
-
-  return (
-    <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.02] p-4 backdrop-blur">
-      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_10%_10%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_90%_20%,rgba(139,92,246,0.14),transparent_65%),radial-gradient(circle_at_55%_100%,rgba(16,185,129,0.12),transparent_62%)]" />
-
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-black/30 text-slate-200">
-            <span className="text-[12px] font-bold tracking-tight">X</span>
-          </span>
-
-          <div className="leading-tight">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              X live lobby
-            </p>
-            <p className="mt-0.5 text-[12px] text-slate-300">
-              {hint}
-              {count > 0 ? (
-                <span className="text-slate-500"> • {count} today</span>
-              ) : null}
-            </p>
-          </div>
-        </div>
-
-        <Link
-          href={ROUTE_HUB}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-        >
-          View in hub
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-
-      <div className="relative z-10 mt-3 flex flex-wrap items-center gap-2">
-        {shown.length ? (
-          shown.map(e => (
-            <span
-              key={e.handle}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-[11px] text-slate-200"
-              title={`@${e.handle}`}
-            >
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-              @{e.handle}
-            </span>
-          ))
-        ) : (
-          <span className="text-[12px] text-slate-400">Waiting for the first entries…</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* Bonus visibility:
-   - We hide the entire block until an API reports "active".
-   - If the endpoint fails, we keep it hidden (safe default for pre-launch). */
-function useBonusActive() {
-  const [active, setActive] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-
-    async function probe() {
-      try {
-        // If you already have a different endpoint, swap it here.
-        const r = await fetch('/api/public/bonus', { cache: 'no-store' });
-        const data = (await r.json().catch(() => null)) as any;
-        if (!alive) return;
-
-        const on =
-          data?.active === true ||
-          data?.isActive === true ||
-          data?.enabled === true ||
-          data?.status === 'active' ||
-          data?.status === 'running';
-
-        setActive(Boolean(on));
-      } catch {
-        if (!alive) return;
-        setActive(false);
-      }
-    }
-
-    probe();
-    const t = window.setInterval(probe, 15_000);
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
-  }, []);
-
-  return active;
-}
-
-function HomePageInner() {
+export default function HomePage() {
   const [liveEntries, setLiveEntries] = useState<LiveEntrant[]>([]);
-  const bonusActive = useBonusActive();
 
   useEffect(() => {
-    let alive = true;
+  let alive = true;
 
-    async function load() {
-      try {
-        const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
-        const data = (await r.json().catch(() => null)) as any;
-        if (!alive) return;
+  async function load() {
+    try {
+      const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
+      const data = await r.json();
 
-        const raw: any[] = Array.isArray(data?.entries) ? data.entries : [];
-        const normalized: LiveEntrant[] = [];
-
-        for (const item of raw) {
-          const e = normalizeLiveEntrant(item);
-          if (e) normalized.push(e);
-        }
-
-        setLiveEntries(uniqByHandle(normalized));
-      } catch {
-        // ignore
-      }
+      if (!alive) return;
+      const raw = Array.isArray(data?.entries) ? data.entries : [];
+      const normalized = raw.map(normalizeLiveEntrant).filter(Boolean) as LiveEntrant[];
+      setLiveEntries(uniqByHandle(normalized));
+    } catch {
+      // ignore
     }
+  }
 
-    load();
-    const t = window.setInterval(load, 12_000);
+  load();
+  const t = window.setInterval(load, 12_000);
+  return () => {
+    alive = false;
+    window.clearInterval(t);
+  };
+}, []);
 
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
-  }, []);
-
-  const [mint, setMint] = useState(XPOT_CA);
-  useEffect(() => setMint(XPOT_CA), []);
-
-  const { countdown, cutoffLabel } = useNextDraw();
+  const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
 
   const faq = useMemo(
     () => [
@@ -864,104 +621,34 @@ function HomePageInner() {
 
   const hero = (
     <section className="relative">
-      <style jsx global>{`
-        @keyframes xpotHeroSweep {
-          0% { transform: translateX(-20%) rotate(8deg); opacity: 0.0; }
-          10% { opacity: 0.28; }
-          45% { opacity: 0.18; }
-          100% { transform: translateX(140%) rotate(8deg); opacity: 0.0; }
-        }
-        @keyframes xpotHeroDrift {
-          0% { transform: translate3d(-2%, -1%, 0); }
-          50% { transform: translate3d(2%, 1%, 0); }
-          100% { transform: translate3d(-2%, -1%, 0); }
-        }
-        @keyframes xpotHeroGrid {
-          0% { background-position: 0px 0px, 0px 0px; opacity: 0.11; }
-          50% { background-position: 120px 80px, -90px 60px; opacity: 0.07; }
-          100% { background-position: 0px 0px, 0px 0px; opacity: 0.11; }
-        }
-        .xpot-hero-cockpit { position: relative; }
-        .xpot-hero-cockpit::before {
-          content: "";
-          pointer-events: none;
-          position: absolute;
-          inset: -36px;
-          opacity: 0.75;
-          filter: blur(40px);
-          animation: xpotHeroDrift 12s ease-in-out infinite;
-          background:
-            radial-gradient(circle at 18% 22%, rgba(56,189,248,0.18), transparent 58%),
-            radial-gradient(circle at 82% 18%, rgba(139,92,246,0.18), transparent 60%),
-            radial-gradient(circle at 60% 86%, rgba(16,185,129,0.14), transparent 60%);
-        }
-        .xpot-hero-hudgrid {
-          pointer-events: none;
-          position: absolute;
-          inset: 0;
-          opacity: 0.10;
-          animation: xpotHeroGrid 16s ease-in-out infinite;
-          background-image:
-            linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
-          background-size: 44px 44px, 44px 44px;
-          mask-image: radial-gradient(circle at 40% 35%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.0) 70%);
-        }
-        .xpot-hero-sweep {
-          pointer-events: none;
-          position: absolute;
-          top: -28%;
-          left: -40%;
-          width: 55%;
-          height: 220%;
-          opacity: 0;
-          transform: rotate(8deg);
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255,255,255,0.10),
-            rgba(124,200,255,0.10),
-            transparent
-          );
-          animation: xpotHeroSweep 5.8s ease-in-out infinite;
-          mix-blend-mode: screen;
-        }
-        .xpot-hero-scanlines {
-          pointer-events: none;
-          position: absolute;
-          inset: 0;
-          opacity: 0.08;
-          background: repeating-linear-gradient(
-            to bottom,
-            rgba(255,255,255,0.04),
-            rgba(255,255,255,0.04) 1px,
-            transparent 1px,
-            transparent 7px
-          );
-          mask-image: radial-gradient(circle at 48% 30%, rgba(0,0,0,1), rgba(0,0,0,0.0) 72%);
-        }
-        .xpot-hero-edgeglow {
-          pointer-events: none;
-          position: absolute;
-          inset: 0;
-          border-radius: 30px;
-          opacity: 0.0;
-          transition: opacity 400ms ease;
-          box-shadow:
-            0 0 0 1px rgba(255,255,255,0.05),
-            0 0 28px rgba(59,167,255,0.10);
-        }
-        .xpot-hero-cockpit:hover .xpot-hero-edgeglow { opacity: 1; }
-      `}</style>
+      <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+18px)]" />
 
-      <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.08),rgba(0,0,0,0.55))]" />
+      <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/30 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
+        <div
+          className="
+            pointer-events-none absolute -inset-40 opacity-85 blur-3xl
+            bg-[radial-gradient(circle_at_12%_12%,rgba(16,185,129,0.24),transparent_58%),
+                radial-gradient(circle_at_60%_0%,rgba(56,189,248,0.18),transparent_60%),
+                radial-gradient(circle_at_92%_14%,rgba(139,92,246,0.22),transparent_62%),
+                radial-gradient(circle_at_82%_92%,rgba(236,72,153,0.12),transparent_66%),
+                radial-gradient(circle_at_50%_-10%,rgba(245,158,11,0.14),transparent_60%)]
+          "
+        />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.10),rgba(0,0,0,0.55))]" />
 
-        <div className="relative z-10">
-  <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6">
-    <div className="py-6 sm:py-8">
-      <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
+        <div className="relative z-10 w-full px-0">
+          <div className="py-6 sm:py-8">
+            <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(245,158,11,0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
+              <div
+                className="
+                  pointer-events-none absolute -inset-40 opacity-85 blur-3xl
+                  bg-[radial-gradient(circle_at_12%_10%,rgba(16,185,129,0.20),transparent_55%),
+                      radial-gradient(circle_at_86%_16%,rgba(139,92,246,0.22),transparent_58%),
+                      radial-gradient(circle_at_82%_92%,rgba(56,189,248,0.16),transparent_60%),
+                      radial-gradient(circle_at_55%_0%,rgba(245,158,11,0.12),transparent_58%)]
+                "
+              />
 
               <div className="relative z-10 grid gap-6 p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)] lg:p-8">
                 {/* LEFT */}
@@ -979,106 +666,76 @@ function HomePageInner() {
                       </Pill>
 
                       <Pill tone="amber">
-                        <Timer className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                        <Timer className="h-3.5 w-3.5 text-amber-200" />
                         Next draw {countdown}
                       </Pill>
                     </div>
 
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="font-mono text-slate-300">{XPOT_SIGN}</span>
-                      <span>denotes XPOT amounts (USD shown only for estimates)</span>
-                      <span className="text-slate-700">•</span>
-                      <span className="text-slate-600">{cutoffLabel}</span>
-                    </div>
-
-                    <div className="xpot-hero-cockpit rounded-[30px] border border-slate-900/70 bg-slate-950/28 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
-                      <div className="xpot-hero-hudgrid rounded-[30px]" />
-                      <div className="xpot-hero-scanlines rounded-[30px]" />
-                      <div className="xpot-hero-sweep" />
-                      <div className="xpot-hero-edgeglow" />
-
-                      <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
+                    <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/35 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
                         NO TICKETS · JUST XPOT HOLDINGS
                       </p>
 
-                      <div className="relative z-10 mt-3">
-                        <h1 className="relative text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
-                          One protocol. One identity.{' '}
-                          <span className="text-emerald-300">One daily XPOT draw.</span>
-                        </h1>
-                      </div>
+                      <h1 className="mt-3 text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
+                        One protocol. One identity. <span className="text-emerald-300">One daily XPOT draw.</span>
+                      </h1>
 
-                      <p className="relative z-10 mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                        Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain.
-                        Built to scale into a rewards ecosystem for communities, creators and sponsors.
+                      <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
+                        Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain. Built to scale into a rewards
+                        ecosystem for communities, creators and sponsors.
                       </p>
 
-                      {/* Runway: remove bg + border, and same for info icon */}
-                      <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
-                        <div className="inline-flex items-center gap-2 px-0 py-0">
-                          <ShieldCheck className="h-4 w-4 text-emerald-200/90" />
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.20em] text-emerald-200/70">
-                            Built with a 10-year rewards runway at launch
-                          </span>
-                        </div>
-
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <RunwayPill />
                         <TinyTooltip label="Runway = the rewards pool is designed to sustain daily payouts at launch. Exact mechanics can evolve, but payouts remain verifiable on-chain.">
-                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-slate-300/80 hover:text-slate-200 transition">
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition">
                             <Info className="h-4 w-4" />
                           </span>
                         </TinyTooltip>
                       </div>
 
-                      <div className="relative z-10 mt-4">
+                      <div className="mt-4">
                         <PrinciplesStrip />
                       </div>
 
-                      <div className="relative z-10 mt-4">
-                        <XLiveLobbyInline entrants={liveEntries} />
-                      </div>
-
-                      <div className="relative z-10 mt-5">
+                      <div className="mt-5">
                         <SectionDividerLabel label="Entry mechanics" />
                       </div>
 
-                      {/* BONUS XPOT: hidden completely until active */}
-                      {bonusActive ? (
-                        <div className="relative z-10 mt-3">
-                          <div className="relative">
-                            <div className="pointer-events-none absolute -inset-10 opacity-75 blur-2xl bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]" />
-                            <div className="relative rounded-[28px] border border-emerald-400/18 bg-slate-950/50 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.10)]">
-                              <div className="mb-2 flex items-center justify-between px-2">
-                                <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
-                                  <span className="relative flex h-2 w-2">
-                                    <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
-                                    <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-                                  </span>
-                                  Bonus XPOT
+                      {/* BONUS */}
+                      <div className="mt-3">
+                        <div className="relative">
+                          <div className="pointer-events-none absolute -inset-10 opacity-75 blur-2xl bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]" />
+                          <div className="relative rounded-[28px] border border-emerald-400/20 bg-slate-950/55 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.12)]">
+                            <div className="mb-2 flex items-center justify-between px-2">
+                              <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
+                                  <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
                                 </span>
-
-                                <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                                  Same entry
-                                </span>
-                              </div>
-
-                              <BonusStrip variant="home" />
+                                Bonus XPOT
+                              </span>
+                              <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">same entry</span>
                             </div>
+
+                            <BonusStrip variant="home" />
                           </div>
                         </div>
-                      ) : null}
+                      </div>
 
-                      <div className="relative z-10 mt-4">
+                      {/* CA bar */}
+                      <div className="mt-4">
                         <RoyalContractBar mint={mint} />
                       </div>
 
-                      <div className="relative z-10 mt-5 flex flex-wrap items-center gap-3">
+                      <div className="mt-5 flex flex-wrap items-center gap-3">
                         <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
                           Enter today&apos;s XPOT
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
                       </div>
 
-                      <p className="relative z-10 mt-3 text-[11px] text-slate-500">
+                      <p className="mt-3 text-[11px] text-slate-500">
                         Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
                       </p>
                     </div>
@@ -1098,6 +755,14 @@ function HomePageInner() {
                       <JackpotPanel variant="standalone" layout="wide" />
                     </div>
 
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                        Enter now
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+
+                      <span className="text-[11px] text-slate-500">Watch live here. Claim entries in the hub.</span>
+                    </div>
                   </PremiumCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1110,6 +775,8 @@ function HomePageInner() {
                     </div>
 
                     <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
+                      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.28),transparent_55%),radial-gradient(circle_at_90%_100%,rgba(139,92,246,0.10),transparent_60%)]" />
+
                       <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
 {`> XPOT_PROTOCOL
   primitive:       daily reward selection
@@ -1118,12 +785,12 @@ function HomePageInner() {
   composable:      modules can plug in later
 
 > NEXT_DRAW
-  in:             ${countdown}  (${cutoffLabel})
+  in:             ${countdown}  (Madrid 22:00)
 
 > LAST_WINNERS
-  #2025-12-18  @DeWala_222222   ${XPOT_SIGN}1,000,000
-  #2025-12-18  @SignalChaser    ${XPOT_SIGN}250,000 (bonus)
-  #2025-12-17  @NFAResearch     ${XPOT_SIGN}1,000,000`}
+  #2025-12-18  @DeWala_222222   1,000,000 XPOT
+  #2025-12-18  @SignalChaser    250,000 XPOT (bonus)
+  #2025-12-17  @NFAResearch     1,000,000 XPOT`}
                       </pre>
                     </div>
 
@@ -1134,22 +801,27 @@ function HomePageInner() {
                 </div>
               </div>
 
-              <div className="relative z-10 border-t border-slate-900/70 px-6 py-5 lg:px-8">
-                <div className="relative">
-                  <LiveEntrantsLounge entrants={liveEntries} hint="Live lobby - updates automatically" />
-                </div>
-              </div>
+              {/* Live entries (always-on) */}
+<div className="relative z-10 border-t border-slate-900/70 px-6 py-5 lg:px-8">
+  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(16,185,129,0.28),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)] opacity-70" />
+
+  <div className="relative">
+    <LiveEntrantsLounge entrants={liveEntries} hint="Live lobby - updates automatically" />
+  </div>
+</div>
             </div>
           </div>
         </div>
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(to_bottom,transparent,rgba(0,0,0,0.55))]" />
       </div>
     </section>
   );
 
   return (
-  <XpotPageShell pageTag="home" fullBleedTop={hero}>
-    {/* HOW IT WORKS */}
-    <section className="mt-8">
+    <XpotPageShell pageTag="home" fullBleedTop={hero}>
+      {/* HOW IT WORKS */}
+      <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
@@ -1184,6 +856,9 @@ function HomePageInner() {
           </div>
 
           <div className="relative mt-6">
+            <div className="pointer-events-none absolute inset-x-2 top-[34px] hidden h-px bg-white/10 lg:block" />
+            <div className="pointer-events-none absolute inset-x-2 top-[34px] hidden h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.35),rgba(16,185,129,0.25),rgba(245,158,11,0.18),transparent)] lg:block" />
+
             <div className="grid gap-4 lg:grid-cols-3">
               <Step
                 n="01"
@@ -1205,7 +880,7 @@ function HomePageInner() {
                 n="03"
                 title="Claim entry, verify payout"
                 desc="One winner daily. Proof is on-chain"
-                icon={<Crown className={`h-5 w-5 ${GOLD_TEXT}`} />}
+                icon={<Crown className="h-5 w-5 text-amber-200" />}
                 tone="amber"
                 tag="Payout"
               />
@@ -1226,7 +901,7 @@ function HomePageInner() {
         </PremiumCard>
       </section>
 
-            {/* THE PROTOCOL STRIP (restored) */}
+      {/* THE PROTOCOL STRIP (kept) */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1249,7 +924,7 @@ function HomePageInner() {
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
             <Pill tone="amber">
-              <span className={`h-1.5 w-1.5 rounded-full bg-[rgb(var(--xpot-gold-2))] ${GOLD_GLOW_SHADOW}`} />
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
               Payout
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
@@ -1258,7 +933,7 @@ function HomePageInner() {
         </div>
       </section>
 
-      {/* ECOSYSTEM LAYER (restored) */}
+      {/* ECOSYSTEM LAYER */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1331,8 +1006,8 @@ function HomePageInner() {
 
             <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="flex items-center gap-3">
-                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
-                  <ShieldCheck className={`h-5 w-5 ${GOLD_TEXT}`} />
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-950/20">
+                  <ShieldCheck className="h-5 w-5 text-amber-200" />
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-slate-100">Fairness layer</p>
@@ -1361,7 +1036,7 @@ function HomePageInner() {
         </PremiumCard>
       </section>
 
-      {/* WHO IT'S FOR (restored) */}
+      {/* WHO IT'S FOR */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1370,9 +1045,7 @@ function HomePageInner() {
               Creators
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              One mechanic, transparent winners and a premium experience that doesn’t feel spammy.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">One mechanic, transparent winners and a premium experience that doesn’t feel spammy.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1381,7 +1054,9 @@ function HomePageInner() {
               Sponsors
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              Sponsor pools and bonuses with visibility and provable distribution on-chain.
+            </p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1390,7 +1065,9 @@ function HomePageInner() {
               Communities
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              Your XPOT history travels with you and unlocks better rewards over time.
+            </p>
           </PremiumCard>
         </div>
       </section>
@@ -1441,16 +1118,8 @@ function HomePageInner() {
               href={ROUTE_OPS}
               className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
             >
-              <Lock className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+              <Lock className="h-3.5 w-3.5 text-amber-200" />
               Ops
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-            </Link>
-
-            <Link
-              href={ROUTE_TERMS}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
-            >
-              Terms
               <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
             </Link>
 
@@ -1459,13 +1128,5 @@ function HomePageInner() {
         </div>
       </footer>
     </XpotPageShell>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <NextDrawProvider>
-      <HomePageInner />
-    </NextDrawProvider>
   );
 }
