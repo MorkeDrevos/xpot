@@ -1148,7 +1148,8 @@ function HomePageInner() {
   );
 
   return (
-    <XpotPageShell pageTag="home" fullBleedTop={hero}>
+   <XpotPageShell pageTag="home">
+  {hero}
       {/* HOW IT WORKS */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
