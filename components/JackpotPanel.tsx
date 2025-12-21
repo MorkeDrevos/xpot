@@ -451,6 +451,28 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
   );
 }
 
+function PriceUnavailableNote({ compact }: { compact?: boolean }) {
+  return (
+    <div
+      className={[
+        'relative overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.25)]',
+        compact ? 'px-3 py-2' : 'px-4 py-3',
+      ].join(' ')}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-70"
+        style={{
+          background:
+            'radial-gradient(circle_at_18%_30%, rgba(245,158,11,0.12), transparent 60%), radial-gradient(circle_at_82%_20%, rgba(251,191,36,0.08), transparent 62%)',
+        }}
+      />
+      <p className={compact ? 'relative text-[11px] text-amber-100' : 'relative text-[12px] text-amber-100'}>
+        Live price not available yet - it will appear automatically once XPOT is trading and DexScreener indexes the first pair.
+      </p>
+    </div>
+  );
+}
+
 export default function JackpotPanel({
   isLocked,
   onJackpotUsdChange,
@@ -909,6 +931,7 @@ export default function JackpotPanel({
   }, [jackpotUsd, nextMilestone, prevMilestoneForBar]);
 
   const showUnavailable = !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
+
   const poolLabel = `${JACKPOT_XPOT.toLocaleString()} XPOT`;
 
   const displayUsdText =
@@ -972,24 +995,50 @@ export default function JackpotPanel({
         {/* Marketing row */}
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* FIXED: pill markup */}
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
               <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
-              <span className="relative">Today&apos;s XPOT</span>
+              <span className="relative">Today&apos;s pool</span>
             </span>
 
+            {/* Premium "real 1M" presentation */}
             <span
-              className="relative inline-flex items-baseline rounded-2xl bg-black/55 px-6 py-2 font-mono text-xl tracking-[0.22em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_18px_50px_rgba(0,0,0,0.40)]"
-              style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any }}
+              className="relative inline-flex items-baseline rounded-2xl bg-black/55 px-6 py-2 font-mono text-2xl sm:text-3xl tracking-[0.22em] text-slate-100 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_22px_60px_rgba(0,0,0,0.45)]"
+              style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.26)` as any }}
             >
               <span
-                className="pointer-events-none absolute inset-0 rounded-2xl opacity-60"
+                className="pointer-events-none absolute inset-0 rounded-2xl opacity-70"
                 style={{
                   background:
-                    'radial-gradient(circle_at_20%_30%, rgba(201,162,74,0.10), transparent 56%), radial-gradient(circle_at_80%_20%, rgba(124,200,255,0.06), transparent 58%)',
+                    'radial-gradient(circle_at_20%_30%, rgba(201,162,74,0.16), transparent 56%), radial-gradient(circle_at_78%_22%, rgba(124,200,255,0.07), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.32), rgba(0,0,0,0.10))',
                 }}
               />
-              <span className="relative">{poolLabel}</span>
+              <span
+                className="pointer-events-none absolute inset-0 rounded-2xl opacity-55"
+                style={{
+                  background:
+                    'linear-gradient(120deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.08) 18%, rgba(255,255,255,0.00) 36%, rgba(255,255,255,0.00) 100%)',
+                }}
+              />
+              <span
+                className="relative"
+                style={{
+                  color: 'rgba(255,255,255,0.95)',
+                  textShadow:
+                    '0 0 18px rgba(201,162,74,0.10), 0 0 30px rgba(124,200,255,0.06)',
+                }}
+              >
+                {poolLabel}
+              </span>
+              <span
+                className="ml-3 hidden sm:inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                style={{
+                  borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
+                  color: `rgba(${VAULT_GOLD.rgb} / 0.82)` as any,
+                  background: 'rgba(0,0,0,0.22)',
+                }}
+              >
+                Daily
+              </span>
             </span>
           </div>
 
@@ -1066,7 +1115,14 @@ export default function JackpotPanel({
               <span className="text-[11px] text-slate-600">22:00 Madrid</span>
             </div>
 
-            <p className="mt-2 text-xs text-slate-500">Auto-updates from DexScreener ticks</p>
+            {/* ✅ moved message into the main card (img 2) */}
+            {showUnavailable ? (
+              <div className="mt-3">
+                <PriceUnavailableNote compact />
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-slate-500">Auto-updates from DexScreener ticks</p>
+            )}
           </div>
 
           {/* Royal XPOT meta */}
@@ -1252,7 +1308,7 @@ export default function JackpotPanel({
               </div>
 
               <p className="mt-2 text-[11px] text-slate-600">
-                Today&apos;s XPOT is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT.
+                Today&apos;s pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT.
               </p>
             </div>
           </div>
@@ -1293,13 +1349,8 @@ export default function JackpotPanel({
           </Link>
         </div>
 
-        {showUnavailable ? (
-          <p className="mt-3 text-[12px] text-amber-200">
-            Live price not available yet - auto-populates when DexScreener sees a pair.
-          </p>
-        ) : (
-          <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
-        )}
+        {/* ✅ keep context clean now - message moved into main slab */}
+        <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
       </div>
     </section>
   );
