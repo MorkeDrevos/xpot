@@ -8,6 +8,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
+import GoldAmount from '@/components/GoldAmount';
 
 import XpotPageShell from '@/components/XpotPageShell';
 import PremiumWalletModal from '@/components/PremiumWalletModal';
@@ -815,8 +816,9 @@ export default function DashboardClient() {
                       {name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Holding requirement: {REQUIRED_XPOT.toLocaleString()} XPOT
-                    </p>
+  Holding requirement:{' '}
+  <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
+</p>
                   </div>
                 </div>
 
