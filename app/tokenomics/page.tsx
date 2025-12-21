@@ -53,7 +53,7 @@ const CARD =
 const VAULT_POLL_MS = 20_000;
 
 // Scroll positioning so expanded cards land like your screenshot (below the sticky top bar)
-const SCROLL_OFFSET_PX = 140;
+const SCROLL_OFFSET_PX = 240;
 
 // Protocol rule (fixed)
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
