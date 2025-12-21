@@ -210,7 +210,8 @@ body {
 }
 
 body {
-  background: var(--xpot-bg-page);
+  background-color: var(--xpot-bg-0); /* fallback */
+  background-image: var(--xpot-bg-page);
   color: var(--xpot-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -423,7 +424,7 @@ select {
 ============================================================= */
 
 .xpot-gold-text { color: rgb(var(--xpot-gold)); }
-.xpot-gold-text-hi { color: rgb(var(--xpot-gold-2)); } /* ✅ readable on dark */
+.xpot-gold-text-hi { color: rgb(var(--xpot-gold-2)); }
 .xpot-gold-border { border-color: rgba(var(--xpot-gold), 0.28); }
 .xpot-gold-bg { background: rgba(var(--xpot-gold), 0.10); }
 .xpot-gold-glow { box-shadow: var(--xpot-glow-gold); }
@@ -450,13 +451,11 @@ select {
    GOLD PILLS / BADGES (READABLE ON DARK UI)
 ============================================================= */
 
-/* Gold outline pill sitting on dark glass */
 .xpot-pill-gold {
-  color: rgb(var(--xpot-gold-2)); /* ✅ highlight gold for text */
+  color: rgb(var(--xpot-gold-2));
   border-color: rgba(var(--xpot-gold), 0.35);
 }
 
-/* When the pill itself is gold */
 .xpot-pill-gold-solid {
   background: var(--xpot-gold-grad);
   color: rgb(var(--xpot-gold-ink));
@@ -467,7 +466,6 @@ select {
    XPOT CONTROLS (buttons, inputs, halos)
 ============================================================= */
 
-/* Base button */
 .xpot-btn {
   display: inline-flex;
   align-items: center;
@@ -506,13 +504,11 @@ select {
   transform: none;
 }
 
-/* Utility variant (kept compatible with your BTN_UTILITY usage) */
 .xpot-btn-utility {
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(148, 163, 184, 0.20);
 }
 
-/* Danger button */
 .xpot-btn-danger {
   background: rgba(244, 63, 94, 0.08);
   border: 1px solid rgba(244, 63, 94, 0.32);
@@ -527,7 +523,6 @@ select {
   border-color: rgba(244, 63, 94, 0.42);
 }
 
-/* Input */
 .xpot-input {
   width: 100%;
   border-radius: 18px;
