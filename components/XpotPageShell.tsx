@@ -85,7 +85,6 @@ export default function XpotPageShell({
     else root.removeAttribute('data-xpot-page');
 
     return () => {
-      // Only remove if we set it (prevents clobbering other pages during fast nav)
       if (!resolvedPageTag) return;
       if (root.getAttribute('data-xpot-page') === resolvedPageTag) {
         root.removeAttribute('data-xpot-page');
@@ -94,6 +93,18 @@ export default function XpotPageShell({
   }, [resolvedPageTag]);
 
   const mergedRightSlot = useMemo(() => rightSlot ?? null, [rightSlot]);
+
+  // ✅ Key fix for the “big gap”:
+  // Do NOT use hardcoded fallbacks like 56px/112px.
+  // Banner + topbar publish their exact heights into CSS vars after mount.
+  // Until then, default to 0 to avoid giant initial padding/gap.
+  const contentOffsetClass = showTopBar
+    ? 'pt-[calc(var(--xpot-banner-h,0px)+var(--xpot-topbar-h,0px)+24px)]'
+    : 'pt-[calc(var(--xpot-banner-h,0px)+24px)]';
+
+  const fullBleedOffsetClass = showTopBar
+    ? 'pt-[calc(var(--xpot-banner-h,0px)+var(--xpot-topbar-h,0px))]'
+    : 'pt-[var(--xpot-banner-h,0px)]';
 
   return (
     <div className={['relative min-h-screen text-slate-100', className].join(' ')}>
@@ -106,17 +117,15 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* ✅ Atmosphere (stars) removed */}
-
-      {/* ✅ Full-bleed slot (edge-to-edge hero). No padding here on purpose. */}
-      {fullBleedTop ? <div className="relative z-10 w-full">{fullBleedTop}</div> : null}
+      {/* ✅ Full-bleed slot (edge-to-edge hero).
+          We DO offset it below the fixed header so it doesn’t get hidden/clip and create weird “dead” space.
+      */}
+      {fullBleedTop ? <div className={['relative z-10 w-full', fullBleedOffsetClass].join(' ')}>{fullBleedTop}</div> : null}
 
       <div
         className={[
           'relative z-10 mx-auto w-full px-4 sm:px-6',
-          showTopBar
-            ? 'pt-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+24px)]'
-            : 'pt-[calc(var(--xpot-banner-h,56px)+24px)]',
+          contentOffsetClass,
           'pb-6 sm:pb-8',
           maxWidthClassName,
           containerClassName,
