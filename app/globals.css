@@ -118,23 +118,8 @@
     rgba(2, 3, 10, 0.84)
   );
 
-  /* DEFAULT page bg */
-  --xpot-bg-page:
-    radial-gradient(
-      1000px 700px at 18% 18%,
-      rgba(var(--xpot-accent-primary), 0.16),
-      transparent 62%
-    ),
-    radial-gradient(
-      980px 680px at 82% 20%,
-      rgba(var(--xpot-accent-glow), 0.12),
-      transparent 64%
-    ),
-    radial-gradient(
-      900px 650px at 56% 28%,
-      rgba(var(--xpot-accent-secondary), 0.10),
-      transparent 66%
-    ),
+  /* DEFAULT page bg – flat & fast */
+--xpot-bg-page: var(--xpot-bg-0);
     linear-gradient(to bottom, var(--xpot-bg-2), var(--xpot-bg-0) 70%, #000109);
 }
 
