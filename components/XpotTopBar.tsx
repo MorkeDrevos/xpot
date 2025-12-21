@@ -414,34 +414,6 @@ function PublicNavCenter({
   learnOpen: boolean;
   setLearnOpen: (v: boolean) => void;
 }) {
-  // ✅ Premium hover open/close (prevents flicker)
-  const openT = useRef<number | null>(null);
-  const closeT = useRef<number | null>(null);
-
-  const clearTimers = () => {
-    if (openT.current) window.clearTimeout(openT.current);
-    if (closeT.current) window.clearTimeout(closeT.current);
-    openT.current = null;
-    closeT.current = null;
-  };
-
-  const hoverOpen = () => {
-    clearTimers();
-    // slight delay avoids accidental opens
-    openT.current = window.setTimeout(() => setLearnOpen(true), 80);
-  };
-
-  const hoverClose = () => {
-    clearTimers();
-    // slower close feels premium and stops flicker
-    closeT.current = window.setTimeout(() => setLearnOpen(false), 180);
-  };
-
-  useEffect(() => {
-    return () => clearTimers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
@@ -452,13 +424,10 @@ function PublicNavCenter({
         Live
       </NavLink>
 
-      <div className="relative" onMouseEnter={hoverOpen} onMouseLeave={hoverClose}>
+      <div className="relative">
         <button
           type="button"
-          onClick={() => {
-            clearTimers();
-            setLearnOpen(!learnOpen);
-          }}
+          onClick={() => setLearnOpen(!learnOpen)}
           className="inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition"
           aria-haspopup="menu"
           aria-expanded={learnOpen}
@@ -469,15 +438,14 @@ function PublicNavCenter({
 
         {learnOpen && (
           <>
-            {/* click outside to close (MUST be BEHIND the panel) */}
             <button
               type="button"
               aria-label="Close learn menu"
-              className="fixed inset-0 z-[89] bg-black/30 backdrop-blur-[1px]"
+              className="fixed inset-0 z-[90] cursor-default"
               onMouseDown={() => setLearnOpen(false)}
             />
 
-            <div className="absolute left-1/2 z-[90] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+            <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
               <div className="p-2">
                 <Link
                   href={TOKENOMICS_HREF}
@@ -669,6 +637,7 @@ function HubWalletMenuInline({
       `}
       title={addr ?? undefined}
     >
+      {/* royal sweep */}
       <span
         aria-hidden
         className={`
@@ -734,7 +703,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
   const { wallets, select, connect, connecting, connected, disconnect, publicKey, wallet: activeWallet } = useWallet();
 
   const [mounted, setMounted] = useState(false);
-  const [attempted, setAttempted] = useState(false);
+  const [attempted, setAttempted] = useState(false); // ✅ controls error visibility
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [busyName, setBusyName] = useState<string | null>(null);
 
@@ -743,6 +712,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
   useEffect(() => {
     if (!open) return;
 
+    // reset each time you open (prevents “red message too early”)
     setAttempted(false);
     setErrorMsg(null);
     setBusyName(null);
@@ -754,6 +724,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
     };
   }, [open]);
 
+  // Close on escape
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -771,6 +742,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
 
   async function handlePick(name: WalletName) {
     try {
+      // If already connected with that wallet, just close
       if (connected && activeWallet?.adapter?.name === String(name)) {
         onClose();
         return;
@@ -781,9 +753,13 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
       setBusyName(String(name));
 
       select(name);
+
+      // Give adapters a tick to switch (prevents occasional race)
       await new Promise((r) => setTimeout(r, 50));
+
       await connect();
 
+      // success
       setBusyName(null);
       setErrorMsg(null);
       onClose();
@@ -827,6 +803,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
             backdrop-blur-xl
           "
         >
+          {/* subtle top glow line */}
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(56,189,248,0.0),rgba(56,189,248,0.55),rgba(236,72,153,0.35),rgba(56,189,248,0.0))]" />
 
           <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-6">
@@ -847,6 +824,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
           </div>
 
           <div className="px-6 pb-6">
+            {/* Status card */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -868,6 +846,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
               </div>
             </div>
 
+            {/* ✅ Error only after an actual attempt */}
             {attempted && errorMsg && (
               <div className="mt-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
                 {errorMsg}
@@ -1054,16 +1033,6 @@ function MobileMenu({
               Live
             </span>
             <Radio className="h-4 w-4 text-emerald-300" />
-          </Link>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={PROTOCOL_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-sky-200" />
-              Health
-            </span>
           </Link>
 
           <Link
