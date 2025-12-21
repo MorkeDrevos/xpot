@@ -1235,6 +1235,175 @@ function HomePageInner() {
         </PremiumCard>
       </section>
 
+            {/* THE PROTOCOL STRIP (restored) */}
+      <section className="mt-8">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="emerald">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+              Qualification
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">No purchases. No tickets.</p>
+            <p className="mt-2 text-sm text-slate-300">Holding XPOT is the requirement to enter.</p>
+          </PremiumCard>
+
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="sky">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
+              Identity
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Public by handle.</p>
+            <p className="mt-2 text-sm text-slate-300">Your X handle is public. Wallet stays self-custody.</p>
+          </PremiumCard>
+
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="amber">
+              <span className={`h-1.5 w-1.5 rounded-full bg-[rgb(var(--xpot-gold-2))] ${GOLD_GLOW_SHADOW}`} />
+              Payout
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
+            <p className="mt-2 text-sm text-slate-300">Winners verify the transaction. Proof stays public.</p>
+          </PremiumCard>
+        </div>
+      </section>
+
+      {/* ECOSYSTEM LAYER (restored) */}
+      <section className="mt-8">
+        <PremiumCard className="p-6 sm:p-8" halo sheen>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <Pill tone="violet">
+                <Blocks className="h-3.5 w-3.5" />
+                Built to be built on
+              </Pill>
+
+              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
+                XPOT is a rewards protocol, not a one-off game.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                The daily draw is the primitive. Modules can reward participation, streaks and reputation over time.
+                That’s how XPOT becomes an ecosystem for communities, creators and sponsors.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Fair by design
+              </Pill>
+              <Pill tone="sky">
+                <Globe className="h-3.5 w-3.5" />
+                Sponsor friendly
+              </Pill>
+              <Pill tone="amber">
+                <Stars className="h-3.5 w-3.5" />
+                Portable loyalty
+              </Pill>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-950/30">
+                  <Wand2 className="h-5 w-5 text-emerald-200" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Modules</p>
+                  <p className="text-xs text-slate-400">Plug-in reward logic</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2">
+                <Bullet>Streak boosters and attendance rewards</Bullet>
+                <Bullet tone="sky">Creator-gated drops</Bullet>
+                <Bullet tone="amber">Sponsor-funded pools</Bullet>
+                <Bullet tone="violet">Milestone ladders</Bullet>
+              </ul>
+            </div>
+
+            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-500/25 bg-sky-950/25">
+                  <Users className="h-5 w-5 text-sky-200" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Identity</p>
+                  <p className="text-xs text-slate-400">Reputation across time</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2">
+                <Bullet tone="sky">X handle is public. Wallet stays self-custody</Bullet>
+                <Bullet tone="violet">History, streaks and wins become your profile</Bullet>
+                <Bullet tone="emerald">Anti-bot gravity without KYC vibes</Bullet>
+              </ul>
+            </div>
+
+            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="flex items-center gap-3">
+                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
+                  <ShieldCheck className={`h-5 w-5 ${GOLD_TEXT}`} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Fairness layer</p>
+                  <p className="text-xs text-slate-400">If XPOT picked it, it’s fair</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2">
+                <Bullet tone="amber">On-chain proof of payouts</Bullet>
+                <Bullet tone="emerald">Transparent winner announcements</Bullet>
+                <Bullet tone="sky">Reusable selection primitive for other apps</Bullet>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+              <p className="text-sm text-slate-300">XPOT is designed for rewards, not addiction loops.</p>
+            </div>
+
+            <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
+              Claim your entry
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </PremiumCard>
+      </section>
+
+      {/* WHO IT'S FOR (restored) */}
+      <section className="mt-8">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="sky">
+              <Crown className="h-3.5 w-3.5" />
+              Creators
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              One mechanic, transparent winners and a premium experience that doesn’t feel spammy.
+            </p>
+          </PremiumCard>
+
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="amber">
+              <Globe className="h-3.5 w-3.5" />
+              Sponsors
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
+            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
+          </PremiumCard>
+
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="emerald">
+              <Zap className="h-3.5 w-3.5" />
+              Communities
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
+            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
+          </PremiumCard>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo={false}>
