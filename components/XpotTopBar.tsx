@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import XpotLogo from '@/components/XpotLogo';
-import { ReactNode, useEffect, useRef, useState, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createPortal } from 'react-dom';
 
@@ -76,8 +76,8 @@ const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
 
-// ✅ Health / protocol status page (replaces the duplicate Live pill on the right)
-const PROTOCOL_HREF = '/hub/protocol';
+// ✅ Health / Protocol State page (pick one, keep constant here)
+const PROTOCOL_HREF = '/hub/protocol'; // or '/hub/protocol-state'
 
 // ✅ Your real deployed CA
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
@@ -212,11 +212,7 @@ export default function XpotTopBar({
                 )}
 
                 {isHub ? (
-                  <HubRight
-                    clerkEnabled={clerkEnabled}
-                    hubWalletStatus={hubWalletStatus}
-                    onOpenWalletModal={openWallet}
-                  />
+                  <HubRight clerkEnabled={clerkEnabled} hubWalletStatus={hubWalletStatus} onOpenWalletModal={openWallet} />
                 ) : (
                   <>{rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}</>
                 )}
@@ -253,9 +249,7 @@ export default function XpotTopBar({
       </header>
 
       {/* ✅ Light wallet popup (only used when parent does not supply onOpenWalletModal) */}
-      {!onOpenWalletModal && (
-        <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
-      )}
+      {!onOpenWalletModal && <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />}
     </>
   );
 }
@@ -414,6 +408,28 @@ function PublicNavCenter({
   learnOpen: boolean;
   setLearnOpen: (v: boolean) => void;
 }) {
+  const openT = useRef<number | null>(null);
+  const closeT = useRef<number | null>(null);
+
+  const openSoon = () => {
+    if (closeT.current) window.clearTimeout(closeT.current);
+    if (openT.current) window.clearTimeout(openT.current);
+    openT.current = window.setTimeout(() => setLearnOpen(true), 70);
+  };
+
+  const closeSoon = () => {
+    if (openT.current) window.clearTimeout(openT.current);
+    if (closeT.current) window.clearTimeout(closeT.current);
+    closeT.current = window.setTimeout(() => setLearnOpen(false), 90);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (openT.current) window.clearTimeout(openT.current);
+      if (closeT.current) window.clearTimeout(closeT.current);
+    };
+  }, []);
+
   return (
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
@@ -424,7 +440,8 @@ function PublicNavCenter({
         Live
       </NavLink>
 
-      <div className="relative">
+      {/* Learn dropdown (hover + click) */}
+      <div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
         <button
           type="button"
           onClick={() => setLearnOpen(!learnOpen)}
@@ -438,6 +455,7 @@ function PublicNavCenter({
 
         {learnOpen && (
           <>
+            {/* click outside catcher */}
             <button
               type="button"
               aria-label="Close learn menu"
@@ -503,9 +521,9 @@ function PublicNavCenter({
 function PublicRight({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
     <div className="hidden items-center gap-3 xl:flex">
-      {/* ✅ Replace duplicate Live pill with Health (Protocol Status) */}
-      <NavPill href={PROTOCOL_HREF} title="Protocol health and live status">
-        <ShieldCheck className="h-4 w-4 text-sky-200" />
+      {/* ✅ Replace duplicate Live pill with Health */}
+      <NavPill href={PROTOCOL_HREF} title="Protocol health">
+        <ShieldCheck className="h-4 w-4 text-emerald-300" />
         Health
       </NavPill>
 
@@ -530,6 +548,11 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         <LiveDot isOpen={liveIsOpen} />
         <Radio className="h-4 w-4 text-emerald-300" />
         Live
+      </NavLink>
+
+      <NavLink href={PROTOCOL_HREF} title="Protocol health">
+        <ShieldCheck className="h-4 w-4 text-emerald-300" />
+        Health
       </NavLink>
 
       <NavLink href={TOKENOMICS_HREF}>
@@ -637,7 +660,6 @@ function HubWalletMenuInline({
       `}
       title={addr ?? undefined}
     >
-      {/* royal sweep */}
       <span
         aria-hidden
         className={`
@@ -703,7 +725,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
   const { wallets, select, connect, connecting, connected, disconnect, publicKey, wallet: activeWallet } = useWallet();
 
   const [mounted, setMounted] = useState(false);
-  const [attempted, setAttempted] = useState(false); // ✅ controls error visibility
+  const [attempted, setAttempted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [busyName, setBusyName] = useState<string | null>(null);
 
@@ -712,7 +734,6 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
   useEffect(() => {
     if (!open) return;
 
-    // reset each time you open (prevents “red message too early”)
     setAttempted(false);
     setErrorMsg(null);
     setBusyName(null);
@@ -724,7 +745,6 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
     };
   }, [open]);
 
-  // Close on escape
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -742,7 +762,6 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
 
   async function handlePick(name: WalletName) {
     try {
-      // If already connected with that wallet, just close
       if (connected && activeWallet?.adapter?.name === String(name)) {
         onClose();
         return;
@@ -753,13 +772,9 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
       setBusyName(String(name));
 
       select(name);
-
-      // Give adapters a tick to switch (prevents occasional race)
       await new Promise((r) => setTimeout(r, 50));
-
       await connect();
 
-      // success
       setBusyName(null);
       setErrorMsg(null);
       onClose();
@@ -803,7 +818,6 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
             backdrop-blur-xl
           "
         >
-          {/* subtle top glow line */}
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(56,189,248,0.0),rgba(56,189,248,0.55),rgba(236,72,153,0.35),rgba(56,189,248,0.0))]" />
 
           <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-6">
@@ -824,14 +838,15 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
           </div>
 
           <div className="px-6 pb-6">
-            {/* Status card */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-100">
                     {connected ? 'Wallet connected' : 'No wallet connected'}
                   </p>
-                  <p className="mt-1 truncate text-xs text-slate-300/70">{connected ? addr : 'Choose a wallet below'}</p>
+                  <p className="mt-1 truncate text-xs text-slate-300/70">
+                    {connected ? addr : 'Choose a wallet below'}
+                  </p>
                 </div>
 
                 {connected && (
@@ -846,7 +861,6 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
               </div>
             </div>
 
-            {/* ✅ Error only after an actual attempt */}
             {attempted && errorMsg && (
               <div className="mt-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
                 {errorMsg}
@@ -932,7 +946,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
               </p>
 
               {connecting && (
-                <p className="text-xs text-slate-300/70 inline-flex items-center gap-2">
+                <p className="inline-flex items-center gap-2 text-xs text-slate-300/70">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Waiting for wallet approval...
                 </p>
@@ -1017,10 +1031,7 @@ function MobileMenu({
         </div>
 
         <div className="space-y-2 px-5 py-5">
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href="/hub"
-          >
+          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
             Hub
           </Link>
 
@@ -1037,28 +1048,29 @@ function MobileMenu({
 
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={TOKENOMICS_HREF}
+            href={PROTOCOL_HREF}
           >
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-300" />
+              Health
+            </span>
+          </Link>
+
+          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
             <span className="inline-flex items-center gap-2">
               <PieChart className="h-4 w-4 text-emerald-300" />
               Tokenomics
             </span>
           </Link>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={ROADMAP_HREF}
-          >
+          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
             <span className="inline-flex items-center gap-2">
               <Map className="h-4 w-4 text-sky-300" />
               Roadmap
             </span>
           </Link>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={WINNERS_HREF}
-          >
+          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
             <span className="inline-flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-300" />
               Winners
