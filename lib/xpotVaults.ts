@@ -16,10 +16,10 @@ export const XPOT_VAULTS: Record<XpotVaultKey, XpotVault[]> = {
     { name: 'XPOT Rewards / Distribution Vault', address: '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o' },
   ],
   liquidityOps: [
-    { name: 'Liquidity + Market Ops Vault', address: 'D2N1rt1N9fKqefQWpu5GH7N6r6H3uQQoaYksUUtkHcJR' },
+    { name: 'XPOT Liquidity + Market Ops Vault', address: '8VPiF9Mp8eoxSxg1m5m371d6D4V32iH6wf9KyMisxr67' },
   ],
   treasury: [
-    { name: 'Treasury Vault', address: '4nsLrcTCVUjYuemcGAs26ySw7teRyofq2vzqSZiFukPJ' },
+    { name: 'Treasury Vault', address: '88QKK3TKdqoBVcYqHN3pevwAXVDm3bMp6G4NASuQ9Ean' },
   ],
   team: [
     { name: 'Team Vesting Vault', address: '4nsLrcTCVUjYuemcGAs26ySw7teRyofq2vzqSZiFukPJ' },
