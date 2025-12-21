@@ -22,7 +22,7 @@ export const XPOT_VAULTS: Record<XpotVaultKey, XpotVault[]> = {
     { name: 'Treasury Vault', address: '88QKK3TKdqoBVcYqHN3pevwAXVDm3bMp6G4NASuQ9Ean' },
   ],
   team: [
-    { name: 'Team Vesting Vault', address: '4nsLrcTCVUjYuemcGAs26ySw7teRyofq2vzqSZiFukPJ' },
+    { name: 'Team Vesting Vault', address: 'G17RehqUAgMcAxcnLUZyf6WzuPqsM82q9SC1aSkBUR7w' },
   ],
   partners: [
     { name: 'Partners + Creators Vault', address: '4nsLrcTCVUjYuemcGAs26ySw7teRyofq2vzqSZiFukPJ' },
@@ -31,6 +31,6 @@ export const XPOT_VAULTS: Record<XpotVaultKey, XpotVault[]> = {
     { name: 'Community Incentives Vault', address: '4nsLrcTCVUjYuemcGAs26ySw7teRyofq2vzqSZiFukPJ' },
   ],
   strategic: [
-    { name: 'Strategic Reserve Vault', address: '4nsLrcTCVUjYuemcGAs26ySw7teRyofq2vzqSZiFukPJ' },
+    { name: 'Strategic Reserve Vault', address: '8M1xt2PNEJkSrN6JZU7TGf7cGvL9Tp4W7obDy4Y7awx8' },
   ],
 };
