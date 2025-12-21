@@ -334,6 +334,7 @@ function TooltipBubble({
 
   const anchorCenterX = rect.left + rect.width / 2;
 
+  // If we are close to screen edges, align the bubble to the icon (not centered).
   const EDGE_ZONE = 220;
 
   let left = 0;
@@ -388,8 +389,8 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
         aria-label="USD estimate info"
         className={
           compact
-            ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition'
-            : 'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 hover:bg-white/[0.06] transition'
+            ? 'inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/50 bg-black/20 text-slate-400 hover:text-slate-200 transition'
+            : 'inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 hover:bg-slate-900/40 transition'
         }
       >
         <Info className={compact ? 'h-3.5 w-3.5 opacity-90' : 'h-4 w-4 opacity-90'} />
@@ -431,7 +432,7 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
           <button
             type="button"
             aria-label="More info"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] hover:text-white transition"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/25 text-slate-200 hover:bg-slate-900/50 hover:text-white transition"
           >
             <Info className="h-4 w-4 opacity-90" />
           </button>
@@ -454,39 +455,12 @@ function PriceUnavailableNote({
   compact?: boolean;
   mode?: 'feed-error' | 'pending-pair';
 }) {
-  // ✅ Your exact “pending” narrative text
-  if (mode === 'pending-pair') {
-    return (
-      <div
-        className={[
-          'relative overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.25)]',
-          compact ? 'px-3 py-2' : 'px-4 py-3',
-        ].join(' ')}
-      >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-70"
-          style={{
-            background:
-              'radial-gradient(circle_at_18%_30%, rgba(245,158,11,0.12), transparent 60%), radial-gradient(circle_at_82%_20%, rgba(251,191,36,0.08), transparent 62%)',
-          }}
-        />
+  const title = 'PRICE PENDING';
 
-        <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">
-          PRICE PENDING
-        </p>
+  const body = 'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
 
-        <p className="relative mt-2 text-[12px] text-amber-100">
-          XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.
-        </p>
+  const secondary = 'Once the first LP goes live, USD pricing will auto-populate via DexScreener.';
 
-        <p className="relative mt-2 text-[11px] text-amber-200/80">
-          Once the first LP goes live, USD pricing will auto-populate via DexScreener.
-        </p>
-      </div>
-    );
-  }
-
-  // Feed error (keep short + calm)
   return (
     <div
       className={[
@@ -502,20 +476,11 @@ function PriceUnavailableNote({
         }}
       />
 
-      <div className="relative flex items-center gap-2">
-        <AlertTriangle className="h-4 w-4 text-amber-300" />
-        <p className="text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">
-          PRICE FEED UNAVAILABLE
-        </p>
-      </div>
+      <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">{title}</p>
 
-      <p className="relative mt-2 text-[12px] text-amber-100">
-        Live pricing is temporarily unavailable. This usually happens when DexScreener is rate-limited.
-      </p>
+      <p className="relative mt-2 text-[12px] text-amber-100">{body}</p>
 
-      <p className="relative mt-2 text-[11px] text-amber-200/80">
-        USD will return automatically once the feed stabilizes.
-      </p>
+      <p className="relative mt-2 text-[11px] text-amber-200/80">{secondary}</p>
     </div>
   );
 }
@@ -589,7 +554,7 @@ export default function JackpotPanel({
   }, []);
 
   // AUTO responsive wide switching (Layout "auto")
-  const rootRef = useRef<HTMLDivElement | null>(null);
+  const slabRef = useRef<HTMLDivElement | null>(null);
   const [autoWide, setAutoWide] = useState(false);
   const autoWideRef = useRef(false);
 
@@ -597,7 +562,7 @@ export default function JackpotPanel({
     if (layout !== 'auto') return;
     if (typeof window === 'undefined') return;
 
-    const el = rootRef.current;
+    const el = slabRef.current;
     if (!el) return;
 
     const RO = (window as any).ResizeObserver as typeof ResizeObserver | undefined;
@@ -605,8 +570,8 @@ export default function JackpotPanel({
 
     let raf = 0;
 
-    const WIDE_ON = 980;
-    const WIDE_OFF = 920;
+    const WIDE_ON = 900;
+    const WIDE_OFF = 840;
 
     const applyWidth = (w: number) => {
       const curr = autoWideRef.current;
@@ -983,6 +948,11 @@ export default function JackpotPanel({
   const displayUsdText =
     displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd) ? '-' : formatUsd(displayJackpotUsd);
 
+  const panelChrome =
+    variant === 'embedded'
+      ? 'rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
+      : 'rounded-2xl border border-slate-800 bg-slate-950/70 px-6 py-6 shadow-sm';
+
   const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
   const localSparkLabel =
     sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
@@ -999,24 +969,8 @@ export default function JackpotPanel({
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
-  const panelChrome =
-    variant === 'embedded'
-      ? 'rounded-3xl border border-white/10 bg-white/[0.02] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.45)]'
-      : 'rounded-3xl border border-white/10 bg-white/[0.02] p-6 shadow-[0_26px_90px_rgba(0,0,0,0.55)]';
-
   return (
-    <section ref={rootRef} className={`relative ${panelChrome}`}>
-      {/* Ambient (new look) */}
-      <div
-        className="pointer-events-none absolute inset-0 rounded-3xl opacity-90"
-        style={{
-          background:
-            'radial-gradient(circle_at_12%_18%, rgba(201,162,74,0.12), transparent 52%), radial-gradient(circle_at_82%_22%, rgba(124,200,255,0.09), transparent 50%), radial-gradient(circle_at_45%_95%, rgba(236,72,153,0.06), transparent 62%)',
-        }}
-      />
-      <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-b from-black/10 via-black/0 to-black/20" />
-
-      {/* Optional runway badge (kept) */}
+    <section className={`relative transition-colors duration-300 ${panelChrome}`}>
       {!!badgeLabel && (
         <div
           className={[
@@ -1028,113 +982,210 @@ export default function JackpotPanel({
         </div>
       )}
 
-      {/* Top line: minimal, premium */}
-      <div className="relative z-10 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/35"
-            style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.24)` as any }}
-          >
-            <XpotLogo variant="mark" width={22} height={22} tone="gold" priority />
-          </span>
-
-          <div className="leading-tight">
-            <p className="text-[10px] uppercase tracking-[0.34em] text-slate-300">TODAY&apos;S POOL</p>
-            <p className="text-xs text-slate-500">Paid in XPOT at 22:00 Madrid</p>
-          </div>
+      {/* HEADER */}
+      <div className="relative z-10 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
+          <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
         </div>
 
         <div className="flex items-center gap-2">
-          {isLocked ? (
-            <span className="rounded-full border border-rose-500/35 bg-rose-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-200">
-              Draw locked
-            </span>
-          ) : (
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-              Live
-            </span>
-          )}
-
-          <span
-            className="rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
-            style={{
-              border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
-              background: 'rgba(0,0,0,0.22)',
-              color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
-            }}
-          >
-            Daily
+          <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
+            Live
           </span>
         </div>
       </div>
 
-      {/* New hero block (completely different structure) */}
-      <div className={['relative z-10 mt-5 grid gap-4', isWide ? 'lg:grid-cols-[1.2fr_0.8fr]' : ''].join(' ')}>
-        {/* Left: XPOT amount + countdown + USD */}
+      {/* MAIN SLAB */}
+      <div
+        ref={slabRef}
+        className="relative z-10 mt-5 overflow-hidden rounded-2xl border border-slate-800/80 bg-black/25 p-5"
+      >
+        {/* Marketing row */}
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
+              <span className="relative">Today&apos;s pool</span>
+            </span>
+
+            {/* Ultra-premium pool capsule (vault-style, not royal) */}
+            <span
+              className="group relative inline-flex items-center gap-4 rounded-2xl bg-black/60 px-7 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_28px_80px_rgba(0,0,0,0.55)]"
+              style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.34)` as any }}
+            >
+              <span
+                className="pointer-events-none absolute inset-0 rounded-2xl opacity-90"
+                style={{
+                  background:
+                    'radial-gradient(circle_at_14%_32%, rgba(201,162,74,0.16), transparent 58%), radial-gradient(circle_at_86%_18%, rgba(124,200,255,0.07), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.38), rgba(0,0,0,0.10))',
+                }}
+              />
+              <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-sheen" />
+
+              {/* Vault seal */}
+              <span className="relative inline-flex items-center gap-3">
+                <span
+                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40"
+                  style={{
+                    border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.32)` as any,
+                    boxShadow:
+                      '0 0 0 1px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.03), 0 14px 30px rgba(0,0,0,0.40)',
+                  }}
+                  aria-hidden="true"
+                >
+                  <span className="pointer-events-none absolute inset-[-3px] rounded-full xpot-seal-ring" />
+                  <span className="pointer-events-none absolute inset-[3px] rounded-full xpot-seal-rim" />
+
+                  <span className="relative">
+                    <XpotLogo variant="mark" width={20} height={20} tone="gold" priority />
+                  </span>
+
+                  <span
+                    className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.22em]"
+                    style={{
+                      color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
+                      background: 'rgba(0,0,0,0.42)',
+                      border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
+                      boxShadow: '0 10px 20px rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    Vault
+                  </span>
+                </span>
+              </span>
+
+              <span
+                className="relative font-mono text-2xl sm:text-3xl tracking-[0.24em] tabular-nums"
+                style={{
+                  color: 'rgba(255,255,255,0.96)',
+                  textShadow: '0 0 16px rgba(201,162,74,0.10), 0 0 26px rgba(124,200,255,0.06)',
+                }}
+              >
+                {poolLabel}
+              </span>
+
+              <span
+                className="relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                style={{
+                  borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.30)` as any,
+                  color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
+                  background: 'rgba(0,0,0,0.24)',
+                }}
+              >
+                Daily
+              </span>
+
+              <style jsx>{`
+                .xpot-sheen {
+                  background: linear-gradient(
+                    120deg,
+                    rgba(255, 255, 255, 0) 0%,
+                    rgba(255, 255, 255, 0.07) 14%,
+                    rgba(255, 255, 255, 0) 32%,
+                    rgba(255, 255, 255, 0) 100%
+                  );
+                  transform: translateX(-55%);
+                  animation: xpotSheen 3.8s ease-in-out infinite;
+                }
+                @keyframes xpotSheen {
+                  0% {
+                    transform: translateX(-55%);
+                    opacity: 0;
+                  }
+                  18% {
+                    opacity: 0.7;
+                  }
+                  38% {
+                    transform: translateX(55%);
+                    opacity: 0;
+                  }
+                  100% {
+                    transform: translateX(55%);
+                    opacity: 0;
+                  }
+                }
+
+                /* Vault seal ring: subtle conic + slow rotation (very premium, not flashy) */
+                .xpot-seal-ring {
+                  background: conic-gradient(
+                    from 180deg,
+                    rgba(201, 162, 74, 0.0),
+                    rgba(201, 162, 74, 0.55),
+                    rgba(124, 200, 255, 0.16),
+                    rgba(201, 162, 74, 0.38),
+                    rgba(201, 162, 74, 0.0)
+                  );
+                  filter: blur(0.2px);
+                  opacity: 0.55;
+                  animation: xpotSealSpin 10.5s linear infinite;
+                }
+                @keyframes xpotSealSpin {
+                  0% {
+                    transform: rotate(0deg);
+                  }
+                  100% {
+                    transform: rotate(360deg);
+                  }
+                }
+
+                /* Inner rim for embossed feel */
+                .xpot-seal-rim {
+                  background: radial-gradient(
+                    circle at 35% 30%,
+                    rgba(255, 255, 255, 0.08),
+                    rgba(255, 255, 255, 0.02) 45%,
+                    rgba(0, 0, 0, 0.35) 72%,
+                    rgba(0, 0, 0, 0.55) 100%
+                  );
+                  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+                  opacity: 0.9;
+                }
+
+                @media (prefers-reduced-motion: reduce) {
+                  .xpot-sheen,
+                  .xpot-seal-ring {
+                    animation: none;
+                  }
+                }
+              `}</style>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isLocked && (
+              <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+                Draw locked
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Value row */}
         <div
-          className="relative overflow-hidden rounded-3xl bg-black/35 p-5"
-          style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.26)` as any }}
+          className={
+            isWide
+              ? 'relative mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]'
+              : 'relative mt-5 grid gap-4'
+          }
         >
+          {/* Big USD */}
           <div
-            className="pointer-events-none absolute inset-0 opacity-80"
+            className={[
+              'relative overflow-visible rounded-2xl border bg-black/30 px-5 py-4',
+              justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
+              justPumped ? 'shadow-[0_0_28px_rgba(56,189,248,0.10)]' : 'shadow-none',
+            ].join(' ')}
             style={{
               background:
-                'radial-gradient(circle_at_18%_28%, rgba(201,162,74,0.18), transparent 58%), radial-gradient(circle_at_85%_18%, rgba(124,200,255,0.08), transparent 58%)',
+                'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.06), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.04), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
             }}
-          />
-          <div className="pointer-events-none absolute inset-0 opacity-55 xpot-hero-sheen" />
-
-          {/* XPOT amount row */}
-          <div className="relative flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-slate-200/80" />
-                Pool size
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">USD estimate</span>
-              <UsdEstimateBadge compact />
-            </div>
-          </div>
-
-          <div className="relative mt-4">
-            <div
-              className="font-mono text-3xl sm:text-4xl md:text-5xl tracking-[0.22em] text-white tabular-nums"
-              style={{
-                textShadow: '0 0 18px rgba(201,162,74,0.10), 0 0 26px rgba(124,200,255,0.07)',
-              }}
-            >
-              {poolLabel}
-            </div>
-
-            {/* Small underline progress (milestone) */}
-            <div className="mt-4">
-              <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
-                <div
-                  className="absolute left-0 top-0 h-full rounded-full"
-                  style={{
-                    width: `${Math.round((progressToNext ?? 0) * 100)}%`,
-                    background: 'linear-gradient(90deg, rgba(201,162,74,0.35), rgba(124,200,255,0.55))',
-                    boxShadow: '0 0 18px rgba(124,200,255,0.10)',
-                  }}
-                />
-              </div>
-              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-                <span className="font-semibold text-slate-200">{leftMilestoneLabel}</span>
-                <span className="font-mono text-slate-200">{rightMilestoneLabel}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* USD + countdown row */}
-          <div className="relative mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-[10px] uppercase tracking-[0.26em] text-slate-500">POOL VALUE</p>
+          >
+            <div className="mt-4 flex items-end justify-between gap-3">
               <div
                 className={[
-                  'mt-2 text-3xl font-semibold tabular-nums transition-transform transition-colors duration-200',
+                  'text-5xl sm:text-6xl font-semibold tabular-nums transition-transform transition-colors duration-200',
                   justUpdated ? 'scale-[1.01]' : '',
                   justPumped ? 'text-[#7CC8FF]' : 'text-white',
                 ].join(' ')}
@@ -1142,186 +1193,274 @@ export default function JackpotPanel({
               >
                 {displayUsdText}
               </div>
-              <p className="mt-2 text-[11px] text-slate-500">
-                Source <span className="font-mono text-slate-200">{priceSource}</span>
-              </p>
+
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">USD estimate</span>
+                <UsdEstimateBadge compact />
+              </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-[10px] uppercase tracking-[0.26em] text-slate-500">NEXT DRAW</p>
-              <div
+            {/* countdown */}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span
                 className={[
-                  'mt-2 font-mono text-lg tracking-[0.26em] transition-colors',
+                  'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
+                  countPulse
+                    ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]'
+                    : '',
+                ].join(' ')}
+              >
+                Next draw in
+              </span>
+
+              <span
+                className={[
+                  'font-mono text-sm tracking-[0.26em] transition-colors',
                   countPulse ? 'text-white' : 'text-slate-100',
                 ].join(' ')}
                 style={{ textShadow: '0 0 18px rgba(124,200,255,0.08)' }}
               >
                 {mounted ? formatCountdown(countdownMs) : '00:00:00'}
-              </div>
-              <p className="mt-2 text-[11px] text-slate-500">22:00 Madrid</p>
+              </span>
+
+              <span className="text-[11px] text-slate-600">22:00 Madrid</span>
             </div>
+
+            {/* Stronger, readable availability note */}
+            {showUnavailable ? (
+              <div className="mt-3">
+                <PriceUnavailableNote mode={hadError ? 'feed-error' : 'pending-pair'} />
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-slate-500">Auto-updates from DexScreener ticks</p>
+            )}
           </div>
 
-          {/* Unavailable note (kept, but now sits neatly under hero) */}
-          {showUnavailable ? (
-            <div className="relative mt-4">
-              <PriceUnavailableNote compact mode={hadError ? 'feed-error' : 'pending-pair'} />
-            </div>
-          ) : (
-            <p className="relative mt-4 text-[11px] text-slate-500">
-              Auto-updates every {Math.round(PRICE_POLL_MS / 1000)}s
-            </p>
-          )}
-
-          <style jsx>{`
-            .xpot-hero-sheen {
-              background: linear-gradient(
-                120deg,
-                rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0.07) 14%,
-                rgba(255, 255, 255, 0) 34%,
-                rgba(255, 255, 255, 0) 100%
-              );
-              transform: translateX(-55%);
-              animation: xpotHeroSheen 4.1s ease-in-out infinite;
-            }
-            @keyframes xpotHeroSheen {
-              0% { transform: translateX(-55%); opacity: 0; }
-              18% { opacity: 0.65; }
-              38% { transform: translateX(55%); opacity: 0; }
-              100% { transform: translateX(55%); opacity: 0; }
-            }
-            @media (prefers-reduced-motion: reduce) {
-              .xpot-hero-sheen {
-                animation: none;
-              }
-            }
-          `}</style>
-        </div>
-
-        {/* Right: compact “vault facts” column (new, not like old meta block) */}
-        <div
-          className="relative overflow-hidden rounded-3xl bg-black/25 p-5"
-          style={{ border: `1px solid rgba(255,255,255,0.08)` as any }}
-        >
+          {/* Royal XPOT meta */}
           <div
-            className="pointer-events-none absolute inset-0 opacity-90"
+            className="relative overflow-hidden rounded-2xl px-5 py-4 min-h-[170px]"
             style={{
+              border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` as any,
               background:
-                'radial-gradient(circle_at_20%_18%, rgba(201,162,74,0.10), transparent 58%), radial-gradient(circle_at_90%_30%, rgba(236,72,153,0.05), transparent 62%)',
+                'radial-gradient(circle_at_18%_18%, rgba(201,162,74,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.04), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02)',
             }}
-          />
+          >
+            <div className="relative flex h-full flex-col">
+              <div className="pt-2 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30"
+                    style={{
+                      border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
+                      boxShadow: '0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
+                  </span>
 
-          <div className="relative flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/30"
-                style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` as any }}
-              >
-                <Crown className="h-4 w-4" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any }} />
-              </span>
-              <div className="leading-tight">
-                <p className="text-[10px] uppercase tracking-[0.30em] text-slate-300">VAULT FACTS</p>
-                <p className="text-xs text-slate-500">Paid in XPOT (self custody)</p>
+                  <div className="leading-tight">
+                    <p
+                      className="text-[10px] uppercase tracking-[0.24em]"
+                      style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.85)` as any }}
+                    >
+                      XPOT token
+                    </p>
+                    <p className="text-xs text-slate-300">Winners paid in XPOT</p>
+                  </div>
+                </div>
+
+                <span
+                  className="inline-flex items-center gap-2 rounded-full bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                  style={{
+                    border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
+                    color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
+                  }}
+                >
+                  <Sparkles className="h-3.5 w-3.5 opacity-90" />
+                  Verified
+                </span>
+              </div>
+
+              <div className="mt-auto pb-1 text-right">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
+                <p className="mt-1 text-sm text-slate-300">
+                  1 XPOT ≈{' '}
+                  <span className="font-mono text-slate-100">
+                    {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+                  </span>
+                </p>
+
+                <div className="mt-2 flex items-center justify-end gap-2 text-[11px] text-slate-500">
+                  <span>{observedLabel}</span>
+                  <span className="text-slate-700">•</span>
+                  <span>
+                    Source <span className="font-mono text-slate-200">{priceSource}</span>
+                  </span>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            <span
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200"
-              title="Token verified"
-            >
-              <Sparkles className="h-3.5 w-3.5 opacity-90" />
-              Verified
+        {/* Compact premium telemetry strip */}
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          {/* Pulse */}
+          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Pulse (global 1h)</p>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-sm font-semibold text-slate-100">{globalMomentumText}</span>
+                  <span className="text-[11px] text-slate-500">DexScreener</span>
+                </div>
+              </div>
+              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+                <TrendingUp className="h-4 w-4 text-slate-200/80" />
+              </span>
+            </div>
+
+            {spark ? (
+              <div className="mt-2">
+                <svg
+                  width="100%"
+                  height="34"
+                  viewBox="0 0 560 54"
+                  className="block text-slate-300/70"
+                  aria-label="XPOT pulse sparkline (local ticks)"
+                >
+                  <polyline
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.0"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    points={spark.points}
+                    opacity="0.85"
+                  />
+                </svg>
+                <p className="mt-1 text-[11px] text-slate-600">{localSparkLabel}</p>
+              </div>
+            ) : (
+              <p className="mt-2 text-[11px] text-slate-600">Collecting ticks…</p>
+            )}
+          </div>
+
+          {/* 24h range */}
+          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
+                {range24h ? (
+                  <p className="mt-1 text-sm text-slate-100">
+                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
+                    <span className="text-slate-600">-</span>{' '}
+                    <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">-</p>
+                )}
+                <p className="mt-2 text-[11px] text-slate-600">{observedLabel}</p>
+              </div>
+
+              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+                <Info className="h-4 w-4 text-slate-200/70" />
+              </span>
+            </div>
+
+            {maxJackpotToday != null ? (
+              <p className="mt-2 text-[11px] text-slate-600">
+                Session peak <span className="font-mono text-slate-200">{formatUsd(maxJackpotToday)}</span>
+              </p>
+            ) : null}
+          </div>
+
+          {/* Next milestone */}
+          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
+                <p className="mt-1 text-sm text-slate-100">
+                  {nextMilestone ? (
+                    <>
+                      <span className="font-mono">{rightMilestoneLabel}</span>{' '}
+                      <span className="text-[11px] text-slate-500">
+                        ({jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '-'})
+                      </span>
+                    </>
+                  ) : (
+                    '-'
+                  )}
+                </p>
+              </div>
+
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25"
+                style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.20)` as any }}
+              >
+                <Crown className="h-4 w-4 opacity-90" style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.78)` as any }} />
+              </span>
+            </div>
+
+            <div className="mt-3">
+              <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
+                <div
+                  className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.10)]"
+                  style={{
+                    width: `${Math.round((progressToNext ?? 0) * 100)}%`,
+                    background: 'linear-gradient(90deg, rgba(201,162,74,0.34), rgba(124,200,255,0.55))',
+                  }}
+                />
+              </div>
+
+              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                <span className="font-semibold text-slate-200">{leftMilestoneLabel}</span>
+                <span className="font-mono text-slate-200">{rightMilestoneLabel}</span>
+              </div>
+
+              <p className="mt-2 text-[11px] text-slate-600">
+                Today&apos;s pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CONTEXT STRIP */}
+      <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
+            <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
+
+            {maxJackpotToday != null && (
+              <span>
+                Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+              </span>
+            )}
+
+            {range24h && (
+              <span>
+                24h <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span> -{' '}
+                <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
+              </span>
+            )}
+
+            <span className="text-slate-500">{observedLabel}</span>
+
+            <span className="text-slate-500">
+              Source <span className="font-mono text-slate-200">{priceSource}</span>
             </span>
           </div>
 
-          <div className="relative mt-5 space-y-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-[10px] uppercase tracking-[0.26em] text-slate-500">1 XPOT</p>
-              <p className="mt-2 text-sm text-slate-200">
-                ≈{' '}
-                <span className="font-mono text-slate-100">
-                  {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
-                </span>
-              </p>
-              <p className="mt-2 text-[11px] text-slate-500">
-                Observed <span className="font-mono text-slate-200">{observedLabel.replace('Observed: ', '')}</span>
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.26em] text-slate-500">Pulse (1h)</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-100">{globalMomentumText}</p>
-                </div>
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03]">
-                  <TrendingUp className="h-4 w-4 text-slate-200/80" />
-                </span>
-              </div>
-
-              {spark ? (
-                <div className="mt-3">
-                  <svg
-                    width="100%"
-                    height="34"
-                    viewBox="0 0 560 54"
-                    className="block text-slate-300/70"
-                    aria-label="XPOT pulse sparkline (local ticks)"
-                  >
-                    <polyline
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.0"
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                      points={spark.points}
-                      opacity="0.85"
-                    />
-                  </svg>
-                  <p className="mt-2 text-[11px] text-slate-500">{localSparkLabel}</p>
-                </div>
-              ) : (
-                <p className="mt-3 text-[11px] text-slate-500">Collecting ticks…</p>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-[10px] uppercase tracking-[0.26em] text-slate-500">Range (observed)</p>
-              {range24h ? (
-                <p className="mt-2 text-sm text-slate-100">
-                  <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
-                  <span className="text-slate-600">-</span>{' '}
-                  <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
-                </p>
-              ) : (
-                <p className="mt-2 text-sm text-slate-100">-</p>
-              )}
-
-              {maxJackpotToday != null ? (
-                <p className="mt-2 text-[11px] text-slate-500">
-                  Session peak <span className="font-mono text-slate-200">{formatUsd(maxJackpotToday)}</span>
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="relative mt-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-[11px] text-slate-500">
-              <Info className="h-4 w-4 text-slate-400" />
-              <span>
-                Source <span className="font-mono text-slate-200">{priceSource}</span>
-              </span>
-            </div>
-
-            <Link
-              href="/hub"
-              className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition"
-            >
-              Enter now →
-            </Link>
-          </div>
+          <Link
+            href="/hub"
+            className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition"
+          >
+            Enter now →
+          </Link>
         </div>
+
+        <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
       </div>
     </section>
   );
