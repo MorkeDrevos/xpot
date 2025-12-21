@@ -4,6 +4,7 @@
 
 /* =============================================================
    XPOT GLOBAL TOKENS (NO THEME SWITCHING)
+   Goal: dark navy base, fast render, premium surfaces
 ============================================================= */
 
 :root {
@@ -14,10 +15,10 @@
   --xpot-text-dim: rgba(226, 232, 240, 0.72);
   --xpot-text-faint: rgba(226, 232, 240, 0.52);
 
-  /* Deep inks (dark navy) */
-  --xpot-bg-0: #01020a;
-  --xpot-bg-1: #020313;
-  --xpot-bg-2: #04061a;
+  /* Deep inks (navy) */
+  --xpot-bg-0: #050814; /* darkest navy */
+  --xpot-bg-1: #070b1e;
+  --xpot-bg-2: #0a1028;
 
   /* Accents (fixed) */
   --xpot-accent-primary: 56 189 248; /* sky */
@@ -83,8 +84,8 @@
   --xpot-r-lg: 18px;
   --xpot-r-xl: 22px;
 
-  /* Blur */
-  --xpot-blur: 12px;
+  /* Blur (keep tasteful) */
+  --xpot-blur: 10px;
 
   /* Focus ring */
   --xpot-ring: 0 0 0 3px rgba(var(--xpot-accent-primary), 0.25);
@@ -117,18 +118,21 @@
     rgba(2, 3, 10, 0.84)
   );
 
-  /* DEFAULT page bg - dark navy, fast (single layer) */
-  --xpot-bg-page: linear-gradient(to bottom, var(--xpot-bg-2), var(--xpot-bg-0) 72%, #000109);
+  /* DEFAULT page bg (dark navy, fast) */
+  --xpot-bg-page: linear-gradient(to bottom, var(--xpot-bg-2), var(--xpot-bg-0) 72%, #02040d);
 }
 
 /* =============================================================
    PAGE MODES (triggered by <html data-xpot-page="...">)
-   Keep them dark navy too (no heavy radial stacks)
+   Keep these calm - no huge multi-radial stacks
 ============================================================= */
 
 :root[data-xpot-page="ops"],
 :root[data-xpot-page="admin"] {
-  --xpot-bg-page: linear-gradient(to bottom, #050720, #01020a 72%, #000109);
+  --xpot-bg-page:
+    radial-gradient(1100px 700px at 18% 18%, rgba(var(--xpot-accent-primary), 0.16), transparent 62%),
+    radial-gradient(1100px 760px at 82% 22%, rgba(var(--xpot-accent-glow), 0.12), transparent 66%),
+    linear-gradient(to bottom, var(--xpot-bg-2), var(--xpot-bg-0) 72%, #02040d);
 
   --xpot-surface-1: linear-gradient(
     to bottom right,
@@ -141,7 +145,10 @@
 }
 
 :root[data-xpot-page="hub"] {
-  --xpot-bg-page: linear-gradient(to bottom, #04061a, #01020a 72%, #000109);
+  --xpot-bg-page:
+    radial-gradient(1000px 680px at 20% 18%, rgba(var(--xpot-accent-secondary), 0.12), transparent 66%),
+    radial-gradient(1050px 720px at 80% 22%, rgba(var(--xpot-accent-primary), 0.10), transparent 68%),
+    linear-gradient(to bottom, var(--xpot-bg-2), var(--xpot-bg-0) 72%, #02040d);
 }
 
 /* =============================================================
@@ -209,7 +216,7 @@ select {
 }
 
 /* =============================================================
-   XPOT UTILS (kept - used across your UI)
+   XPOT UTILS
 ============================================================= */
 
 .xpot-page {
@@ -314,8 +321,8 @@ select {
 }
 
 /* =============================================================
-   CSS-ONLY ATMOSPHERE (NO STARS)
-   Kept, but very light so it won't fight the navy bg
+   CSS-ONLY ATMOSPHERE (OPTIONAL)
+   If you want max speed, just don't render the .xpot-atmosphere element
 ============================================================= */
 
 .xpot-atmosphere {
@@ -329,8 +336,10 @@ select {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.22;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.015), transparent 55%);
+  opacity: 0.35;
+  background:
+    radial-gradient(1200px 900px at 20% 12%, rgba(255, 255, 255, 0.040), transparent 60%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.014), transparent 45%);
 }
 
 .xpot-atmosphere::after {
@@ -340,8 +349,8 @@ select {
   background: radial-gradient(
     circle at center,
     transparent 0%,
-    rgba(0, 0, 0, 0.58) 72%,
-    rgba(0, 0, 0, 0.82) 100%
+    rgba(0, 0, 0, 0.60) 72%,
+    rgba(0, 0, 0, 0.86) 100%
   );
 }
 
@@ -388,10 +397,7 @@ select {
   filter: brightness(1.03) saturate(1.02);
 }
 
-/* =============================================================
-   GOLD PILLS / BADGES (READABLE ON DARK UI)
-============================================================= */
-
+/* Gold pills */
 .xpot-pill-gold {
   color: rgb(var(--xpot-gold-2));
   border-color: rgba(var(--xpot-gold), 0.35);
@@ -404,7 +410,7 @@ select {
 }
 
 /* =============================================================
-   XPOT CONTROLS (buttons, inputs, halos)
+   XPOT CONTROLS
 ============================================================= */
 
 .xpot-btn {
@@ -497,10 +503,10 @@ select {
   inset: -1px;
   pointer-events: none;
   border-radius: inherit;
-  opacity: 0.9;
+  opacity: 0.85;
   background:
-    radial-gradient(900px 260px at 20% 0%, rgba(var(--xpot-accent-primary), 0.14), transparent 62%),
-    radial-gradient(860px 260px at 78% 0%, rgba(var(--xpot-accent-glow), 0.12), transparent 62%),
-    radial-gradient(820px 260px at 52% 0%, rgba(var(--xpot-accent-secondary), 0.10), transparent 62%);
+    radial-gradient(900px 260px at 20% 0%, rgba(var(--xpot-accent-primary), 0.12), transparent 62%),
+    radial-gradient(860px 260px at 78% 0%, rgba(var(--xpot-accent-glow), 0.10), transparent 62%),
+    radial-gradient(820px 260px at 52% 0%, rgba(var(--xpot-accent-secondary), 0.08), transparent 62%);
   filter: blur(0px);
 }
