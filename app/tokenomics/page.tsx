@@ -250,11 +250,8 @@ function VaultGroupPanel({
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Live balances plus latest on-chain transactions for this vault.
-            {typeof data?.fetchedAt === 'number' ? (
-              <span className="ml-2 text-slate-600">Updated {timeAgo(data.fetchedAt)}</span>
-            ) : null}
-          </p>
+  Live balances plus latest on-chain transactions for this vault.
+</p>
         </div>
 
         <div className="flex items-center gap-2">
