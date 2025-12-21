@@ -28,7 +28,7 @@ export const XPOT_VAULTS: Record<XpotVaultKey, XpotVault[]> = {
     { name: 'Partners + Creators Vault', address: '9wrsrr17nsMDU4oD3VG9hUB7supWvoPBWGxhG3BQmVV2' },
   ],
   community: [
-    { name: 'Community Incentives Vault', address: '4nsLrcTCVUjYuemcGAs26ySw7teRyofq2vzqSZiFukPJ' },
+    { name: 'Community Incentives Vault', address: 'Cn4GdKEKEiWh4UH3VNVrRkYHcgeYynThhP175iM9z2cc' },
   ],
   strategic: [
     { name: 'Strategic Reserve Vault', address: '8M1xt2PNEJkSrN6JZU7TGf7cGvL9Tp4W7obDy4Y7awx8' },
