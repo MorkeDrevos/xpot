@@ -25,7 +25,7 @@ export const XPOT_VAULTS: Record<XpotVaultKey, XpotVault[]> = {
     { name: 'Team Vesting Vault', address: 'G17RehqUAgMcAxcnLUZyf6WzuPqsM82q9SC1aSkBUR7w' },
   ],
   partners: [
-    { name: 'Partners + Creators Vault', address: '4nsLrcTCVUjYuemcGAs26ySw7teRyofq2vzqSZiFukPJ' },
+    { name: 'Partners + Creators Vault', address: '9wrsrr17nsMDU4oD3VG9hUB7supWvoPBWGxhG3BQmVV2' },
   ],
   community: [
     { name: 'Community Incentives Vault', address: '4nsLrcTCVUjYuemcGAs26ySw7teRyofq2vzqSZiFukPJ' },
