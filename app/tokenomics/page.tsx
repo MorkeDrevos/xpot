@@ -888,11 +888,328 @@ export default function TokenomicsPage() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      {/* ... everything below unchanged from your version (hero, tiles, donut, utility, footer) ... */}
+      <div className="relative z-10 p-6 lg:p-8">
+            <div className="grid gap-6 lg:grid-cols-12">
+              <div className="space-y-5 lg:col-span-8">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone="emerald">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Daily distribution
+                  </Pill>
+                  <Pill tone="sky">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Verifiable by design
+                  </Pill>
+                  <Pill tone="amber">
+                    <Lock className="h-3.5 w-3.5" />
+                    Self-custody
+                  </Pill>
+                </div>
 
-      {/* NOTE: to keep this response readable, I’m not re-pasting the unchanged hero/utility/footer blocks.
-         Only the scrolling/expand behavior changes above are required.
-         If you want, paste your *current* full file again and I’ll return a single fully merged file with zero omissions. */}
+                <h1 className="text-balance text-3xl font-semibold leading-tight sm:text-4xl">
+                  A distribution designed to outlast noise.<span className="text-emerald-300"> Rewards come first.</span>
+                </h1>
+
+                <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
+                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes
+                  can be checked on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into with confidence.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                    Enter today&apos;s XPOT
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                  <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                    Terms
+                  </Link>
+                  <span className="text-[11px] text-slate-500">Allocation prioritises distribution, resilience and long-term execution.</span>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
+                    <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
+                    <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
+                        <p className="mt-2 flex items-center gap-2 font-mono text-lg font-semibold leading-none text-slate-100">
+                          <ShieldCheck className="h-4 w-4 text-sky-300" />
+                          Authority revoked
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200">
+                        Locked
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid gap-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Freeze</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-200">Fixed</p>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-500">No further supply can be minted or frozen</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve</p>
+                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</p>
+                    <p className="mt-1 text-xs text-slate-500">Designated reserve wallet</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="hidden lg:block lg:col-span-4">
+                <div className="h-full">
+                  <div className="relative h-full rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur">
+                    <div
+                      className="
+                        pointer-events-none absolute -inset-24 opacity-75 blur-3xl
+                        bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.16),transparent_55%),
+                            radial-gradient(circle_at_80%_70%,rgba(16,185,129,0.16),transparent_60%)]
+                      "
+                    />
+
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Protocol snapshot</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">Proof-first economics</p>
+                          <p className="mt-1 text-xs text-slate-500">Each block is one rule with its own proof target.</p>
+                        </div>
+
+                        <Pill tone="emerald">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          Verified
+                        </Pill>
+                      </div>
+
+                      <div className="mt-5 grid gap-3">
+                        <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rule</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">Daily distribution</p>
+                          <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
+                            {fmtInt(DISTRIBUTION_DAILY_XPOT)}
+                            <span className="ml-2 text-sm font-semibold text-slate-500">/ day</span>
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">Proof: outcomes can be checked on-chain</p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Backing</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">Reserve coverage</p>
+                          <p className="mt-2 font-mono text-2xl font-semibold text-emerald-200">
+                            {runwayFixedYears.toFixed(2)}
+                            <span className="ml-2 text-sm font-semibold text-slate-500">years</span>
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Proof: {DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT ({runwayFixedDays.toLocaleString('en-US')} days) in the reserve
+                            wallet
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Constraint</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">10-year requirement</p>
+                          <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{TEN_YEARS_REQUIRED.toLocaleString('en-US')}</p>
+                          <p className="mt-1 text-xs text-slate-500">Exact at 1,000,000/day</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={openDistribution}
+                          className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+                        >
+                          View reserve
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </button>
+
+                        <Link href={ROUTE_HUB} className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition">
+                          Enter today
+                          <ArrowRight className="ml-2 h-4 w-4 text-slate-400" />
+                        </Link>
+                      </div>
+
+                      <p className="mt-4 text-[11px] text-slate-600">
+                        Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* /Right */}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-8" ref={allocationRef}>
+        <div className={CARD}>
+          <div
+            className="
+              pointer-events-none absolute -inset-44 opacity-75 blur-3xl
+              bg-[radial-gradient(circle_at_10%_30%,rgba(56,189,248,0.16),transparent_60%),
+                  radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%),
+                  radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
+            "
+          />
+          <div className="relative z-10 p-6 lg:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-lg font-semibold text-slate-100">Distribution map</p>
+                <p className="mt-1 text-xs text-slate-400">Select a slice, then expand the matching card for the full breakdown and live vaults.</p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <DonutAllocation
+                items={sortedAllocation}
+                selectedKey={selectedKey}
+                onSelect={setSelectedKey}
+                openKey={openKey}
+                setOpenKey={setOpenKey}
+                setPendingScrollKey={setPendingScrollKey}
+                vaultData={vaultData}
+                vaultLoading={vaultLoading}
+                vaultError={vaultError}
+                vaultGroupByAllocKey={VAULT_GROUP_BY_ALLOC_KEY}
+                runwayTable={runwayTable}
+                yearsOfRunway={yearsOfRunway}
+                distributionReserve={DISTRIBUTION_RESERVE}
+                getCardRef={getCardRef}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className={CARD}>
+          <div
+            className="
+              pointer-events-none absolute -inset-44 opacity-75 blur-3xl
+              bg-[radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),
+                  radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%)]
+            "
+          />
+          <div className="relative z-10 p-6 lg:p-8">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Utility map</p>
+                <p className="mt-1 text-xs text-slate-400">Why hold XPOT, not just observe?</p>
+              </div>
+              <Pill tone="emerald">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Flywheel
+              </Pill>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Gift className="h-4 w-4 text-emerald-300" />
+                  Eligibility
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent, with clear rules and verifiable outcomes.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
+                  Status and reputation
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future perks and sponsor drops.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Flame className="h-4 w-4 text-sky-300" />
+                  Sponsor-funded rewards
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales without pay-to-enter mechanics.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                  Verifiability edge
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public wallets and simple rules you can check.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={CARD}>
+          <div className="relative z-10 p-6 lg:p-8">
+            <p className="text-sm font-semibold text-slate-100">Long-term: why this can matter</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">
+              The endgame is a protocol that communities and brands can plug into for daily distributions, with identity and verification built in from day one.
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Link href="/roadmap" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                View roadmap
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+
+              <a
+                href="https://solscan.io"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
+              >
+                Token explorer
+                <ExternalLink className="h-4 w-4 text-slate-500" />
+              </a>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
+              <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Every distribution bucket can be mapped to wallets, ATAs and on-chain history. If it cannot be verified, it should not exist.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="mt-10 pb-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
+          <span className="inline-flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+            Tokenomics is built to be clear, verifiable and sponsor-friendly.
+          </span>
+          <span className="font-mono text-slate-600">build: tokenomics-v18</span>
+        </div>
+      </footer>
     </XpotPageShell>
   );
 }
