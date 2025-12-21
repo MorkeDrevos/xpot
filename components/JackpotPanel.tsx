@@ -448,76 +448,33 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
   );
 }
 
-function PriceUnavailableNote({
-  mode,
-}: {
-  mode: 'pending-pair' | 'feed-error';
-}) {
-  const title = mode === 'feed-error' ? 'PRICE FEED UNAVAILABLE' : 'PRICE PENDING';
-  const body =
-    mode === 'feed-error'
-      ? 'DexScreener is temporarily unavailable or rate-limited. USD will return automatically.'
-      : 'USD will appear automatically once XPOT is trading and DexScreener indexes the first pair.';
-
+function PriceUnavailableNote({ compact }: { compact?: boolean }) {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border shadow-[0_12px_40px_rgba(0,0,0,0.40)]"
-      style={{
-        borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.45)` as any,
-        background:
-          'linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.12))',
-      }}
+      className={[
+        'relative overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.25)]',
+        compact ? 'px-3 py-2' : 'px-4 py-3',
+      ].join(' ')}
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-90"
+        className="pointer-events-none absolute inset-0 opacity-70"
         style={{
           background:
-            'radial-gradient(circle_at_18%_30%, rgba(201,162,74,0.20), transparent 62%), radial-gradient(circle_at_82%_20%, rgba(251,191,36,0.10), transparent 64%), linear-gradient(90deg, rgba(201,162,74,0.10), rgba(0,0,0,0.00) 55%)',
+            'radial-gradient(circle_at_18%_30%, rgba(245,158,11,0.12), transparent 60%), radial-gradient(circle_at_82%_20%, rgba(251,191,36,0.08), transparent 62%)',
         }}
       />
-      <div className="relative flex items-start gap-3 px-4 py-3">
-        <span
-          className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/35"
-          style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.38)` as any }}
-        >
-          <AlertTriangle
-            className="h-4 w-4"
-            style={{ color: `rgba(${VAULT_GOLD.rgb} / 0.92)` as any }}
-          />
-        </span>
 
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.20em]"
-              style={{
-                borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.35)` as any,
-                color: `rgba(${VAULT_GOLD.rgb} / 0.90)` as any,
-                background: 'rgba(0,0,0,0.30)',
-              }}
-            >
-              <span className="xpot-pulse-dot h-1.5 w-1.5 rounded-full" />
-              {title}
-            </span>
-          </div>
+      <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">
+        PRICE PENDING
+      </p>
 
-          <p className="mt-2 text-[12px] leading-snug text-slate-100/90">{body}</p>
-        </div>
-      </div>
+      <p className={compact ? 'relative mt-2 text-[12px] text-amber-100' : 'relative mt-2 text-[12px] text-amber-100'}>
+        XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.
+      </p>
 
-      {/* local-only micro animation */}
-      <style jsx>{`
-        .xpot-pulse-dot {
-          background: rgba(${VAULT_GOLD.rgb} / 0.95);
-          box-shadow: 0 0 14px rgba(${VAULT_GOLD.rgb} / 0.35);
-          animation: xpotPulse 1.4s ease-in-out infinite;
-        }
-        @keyframes xpotPulse {
-          0% { transform: scale(1); opacity: 0.55; }
-          50% { transform: scale(1.35); opacity: 1; }
-          100% { transform: scale(1); opacity: 0.55; }
-        }
-      `}</style>
+      <p className="relative mt-2 text-[11px] text-amber-200/80">
+        Once the first LP goes live, USD pricing will auto-populate via DexScreener.
+      </p>
     </div>
   );
 }
