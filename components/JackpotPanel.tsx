@@ -448,7 +448,21 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
   );
 }
 
-function PriceUnavailableNote({ compact }: { compact?: boolean }) {
+function PriceUnavailableNote({
+  compact,
+  mode = 'pending-pair',
+}: {
+  compact?: boolean;
+  mode?: 'feed-error' | 'pending-pair';
+}) {
+  const title = 'PRICE PENDING';
+
+  const body =
+    'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
+
+  const secondary =
+    'Once the first LP goes live, USD pricing will auto-populate via DexScreener.';
+
   return (
     <div
       className={[
@@ -465,21 +479,15 @@ function PriceUnavailableNote({ compact }: { compact?: boolean }) {
       />
 
       <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">
-        PRICE PENDING
+        {title}
       </p>
 
-      <p
-        className={
-          compact
-            ? 'relative mt-2 text-[12px] text-amber-100'
-            : 'relative mt-2 text-[12px] text-amber-100'
-        }
-      >
-        XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.
+      <p className="relative mt-2 text-[12px] text-amber-100">
+        {body}
       </p>
 
       <p className="relative mt-2 text-[11px] text-amber-200/80">
-        Once the first LP goes live, USD pricing will auto-populate via DexScreener.
+        {secondary}
       </p>
     </div>
   );
