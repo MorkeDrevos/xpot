@@ -1146,10 +1146,9 @@ function HomePageInner() {
   );
 
   return (
-   <XpotPageShell pageTag="home">
-  {hero}
-      {/* HOW IT WORKS */}
-      <section className="mt-8">
+  <XpotPageShell pageTag="home" fullBleedTop={hero}>
+    {/* HOW IT WORKS */}
+    <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
