@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -21,9 +21,9 @@ import {
 import XpotPageShell from '@/components/XpotPageShell';
 
 type LiveDraw = {
-  jackpotXpot: number; // API field (keep)
-  jackpotUsd: number; // API field (keep)
-  closesAt: string; // ISO (keep)
+  jackpotXpot: number;
+  jackpotUsd: number;
+  closesAt: string; // ISO
   status: 'OPEN' | 'LOCKED' | 'DRAWING' | 'COMPLETED';
 };
 
@@ -93,64 +93,6 @@ function formatCountdown(ms: number) {
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
 }
 
-/* ─────────────────────────────────────────────
-   Madrid cutoff (sync with homepage)
-   Cutoff: 22:00 Europe/Madrid
-───────────────────────────────────────────── */
-
-function getMadridParts(date = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(date);
-
-  const get = (type: string, fallback = '0') => Number(parts.find(p => p.type === type)?.value ?? fallback);
-
-  return {
-    y: get('year', '0'),
-    m: get('month', '1'),
-    d: get('day', '1'),
-    hh: get('hour', '0'),
-    mm: get('minute', '0'),
-    ss: get('second', '0'),
-  };
-}
-
-function getMadridOffsetMs(now = new Date()) {
-  const p = getMadridParts(now);
-  const asUtc = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss);
-  return asUtc - now.getTime();
-}
-
-function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
-  const p = getMadridParts(now);
-  const offsetMs = getMadridOffsetMs(now);
-
-  const mkUtcFromMadridWallClock = (yy: number, mm: number, dd: number, hh: number, mi: number, ss: number) => {
-    const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
-    return asUtc - offsetMs;
-  };
-
-  let targetUtc = mkUtcFromMadridWallClock(p.y, p.m, p.d, cutoffHour, 0, 0);
-
-  if (now.getTime() >= targetUtc) {
-    const base = new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
-    base.setUTCDate(base.getUTCDate() + 1);
-    const yy = base.getUTCFullYear();
-    const mm = base.getUTCMonth() + 1;
-    const dd = base.getUTCDate();
-    targetUtc = mkUtcFromMadridWallClock(yy, mm, dd, cutoffHour, 0, 0);
-  }
-
-  return targetUtc;
-}
-
 function fmtUsd(n?: number) {
   const v = Number(n);
   if (!Number.isFinite(v)) return '—';
@@ -187,16 +129,21 @@ function isPairPending(p?: ProtocolState | null) {
   return !hasAny;
 }
 
-function fmtTimeMadridFromUtcMs(utcMs: number) {
+function formatTimeMadrid(iso?: string) {
+  if (!iso) return '—';
+  const t = new Date(iso);
+  if (!Number.isFinite(t.getTime())) return '—';
+
   try {
     return new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Europe/Madrid',
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
       hourCycle: 'h23',
-    }).format(new Date(utcMs));
+    }).format(t);
   } catch {
-    return '22:00';
+    return t.toLocaleTimeString();
   }
 }
 
@@ -211,16 +158,16 @@ export default function HubProtocolPage() {
   const [error, setError] = useState<string | null>(null);
   const [protoError, setProtoError] = useState<string | null>(null);
 
-  // sync tick (matches homepage vibe better than 1s)
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  // local timer tick for countdown
+  const [now, setNow] = useState(() => Date.now());
 
   // Avoid state updates after unmount and avoid out-of-order responses
   const liveReqId = useRef(0);
   const protoReqId = useRef(0);
 
   useEffect(() => {
-    const t = window.setInterval(() => setNowMs(Date.now()), 250);
-    return () => window.clearInterval(t);
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   // Live draw + bonus
@@ -310,29 +257,19 @@ export default function HubProtocolPage() {
 
   const liveIsOpen = draw?.status === 'OPEN';
 
-  // MAIN synced cutoff (same as homepage)
-  const nextCutoffUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(nowMs)), [nowMs]);
-  const closesIn = useMemo(() => formatCountdown(nextCutoffUtcMs - nowMs), [nextCutoffUtcMs, nowMs]);
-  const closesAtMadrid = useMemo(() => fmtTimeMadridFromUtcMs(nextCutoffUtcMs), [nextCutoffUtcMs]);
+  // ONE source of truth for closesAt -> countdown (DB/API driven)
+  const closesAtMs = useMemo(() => {
+    if (!draw?.closesAt) return null;
+    const ms = new Date(draw.closesAt).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }, [draw?.closesAt]);
 
-  // Optional drift detector (if API closesAt doesn't match cutoff)
-  const apiClosesAtMs = draw?.closesAt ? new Date(draw.closesAt).getTime() : null;
-  const cutoffDriftMin = useMemo(() => {
-    if (!apiClosesAtMs || !Number.isFinite(apiClosesAtMs)) return null;
-    const diffMs = Math.abs(apiClosesAtMs - nextCutoffUtcMs);
-    return Math.round(diffMs / 60000);
-  }, [apiClosesAtMs, nextCutoffUtcMs]);
+  const closesIn = useMemo(() => {
+    if (!closesAtMs) return '00:00:00';
+    return formatCountdown(closesAtMs - now);
+  }, [closesAtMs, now]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
-
-  const updatedLabel = useMemo(() => {
-    if (!proto?.updatedAt) return 'Live';
-    try {
-      return `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}`;
-    } catch {
-      return 'Live';
-    }
-  }, [proto?.updatedAt]);
 
   return (
     <XpotPageShell
@@ -354,18 +291,19 @@ export default function HubProtocolPage() {
 
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Integrity overview</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                Integrity overview
+              </p>
               <p className="mt-2 text-sm text-slate-200/90">
                 A calm, real-time view of liquidity and execution - designed for trust, not hype.
               </p>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                <span className="inline-flex items-center gap-2">
-                  <Info className="h-4 w-4 text-slate-300" />
-                  Data: {protoLoading ? 'loading…' : proto?.source ? proto.source : 'unavailable'}
-                </span>
-
-                {proto?.pairUrl ? (
+              {proto?.pairUrl ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                  <span className="inline-flex items-center gap-2">
+                    <Info className="h-4 w-4 text-slate-300" />
+                    Source: {proto.source || 'unknown'}
+                  </span>
                   <Link
                     href={proto.pairUrl}
                     target="_blank"
@@ -373,10 +311,8 @@ export default function HubProtocolPage() {
                   >
                     View pair <ExternalLink className="h-4 w-4" />
                   </Link>
-                ) : (
-                  <span className="text-slate-500">Pair link not available yet</span>
-                )}
-              </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -392,7 +328,7 @@ export default function HubProtocolPage() {
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
-                {updatedLabel}
+                {proto?.updatedAt ? `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}` : 'Live'}
               </StatusPill>
             </div>
           </div>
@@ -433,10 +369,11 @@ export default function HubProtocolPage() {
                   <Info className="h-5 w-5 text-amber-300" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Market pending</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">
+                    Price pending
+                  </p>
                   <p className="mt-1 text-sm text-slate-200/85">
-                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an
-                    LP exists.
+                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
                   </p>
                   <p className="mt-1 text-xs text-slate-400">Nothing to do here - it goes live automatically.</p>
                 </div>
@@ -456,8 +393,8 @@ export default function HubProtocolPage() {
           <div className="relative">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-100">Main reward</p>
-                <p className="mt-1 text-xs text-slate-400">Today’s primary selection</p>
+                <p className="text-sm font-semibold text-slate-100">Main XPOT</p>
+                <p className="mt-1 text-xs text-slate-400">Today’s primary draw</p>
               </div>
 
               <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'}>
@@ -473,19 +410,17 @@ export default function HubProtocolPage() {
             ) : (
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
-                  label="Main reward"
+                  label="Primary reward"
                   value={`${Number(draw.jackpotXpot ?? 0).toLocaleString()} XPOT`}
                   hint={`≈ ${fmtUsd(draw.jackpotUsd)}`}
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
-
                 <MetricCard
                   label="Closes in"
                   value={closesIn}
-                  hint={`Closes at ${closesAtMadrid} (Madrid 22:00 cutoff)`}
+                  hint={closesAtMs ? `Closes at ${formatTimeMadrid(draw.closesAt)} (Madrid)` : '—'}
                   icon={<Timer className="h-4 w-4 text-sky-300" />}
                 />
-
                 <MetricCard
                   label="Status"
                   value={draw.status}
@@ -502,13 +437,6 @@ export default function HubProtocolPage() {
                 />
               </div>
             )}
-
-            {!loading && draw?.closesAt && cutoffDriftMin !== null && cutoffDriftMin >= 2 ? (
-              <p className="mt-4 text-xs text-amber-200/90">
-                Note: API close time differs from Madrid cutoff by ~{cutoffDriftMin} min. This page follows the Madrid 22:00 cutoff to
-                stay synced with the homepage.
-              </p>
-            ) : null}
           </div>
         </motion.section>
 
@@ -535,8 +463,10 @@ export default function HubProtocolPage() {
                   className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-100">{Number(b.amountXpot ?? 0).toLocaleString()} XPOT</p>
-                    <p className="text-xs text-slate-400">{new Date(b.scheduledAt).toLocaleTimeString()}</p>
+                    <p className="font-semibold text-slate-100">
+                      {Number(b.amountXpot ?? 0).toLocaleString()} XPOT
+                    </p>
+                    <p className="text-xs text-slate-400">{formatTimeMadrid(b.scheduledAt)} (Madrid)</p>
                   </div>
 
                   <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : 'amber'}>
@@ -560,7 +490,11 @@ export default function HubProtocolPage() {
 
         {/* LIVE MARKET PANELS */}
         <section className="grid gap-6 lg:grid-cols-2">
-          <PremiumPanel title="Liquidity" subtitle="LP integrity and stability signals." icon={<Waves className="h-5 w-5 text-sky-300" />}>
+          <PremiumPanel
+            title="Liquidity"
+            subtitle="LP integrity and stability signals."
+            icon={<Waves className="h-5 w-5 text-sky-300" />}
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsd(proto?.lpUsd)} />
               <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
@@ -569,21 +503,28 @@ export default function HubProtocolPage() {
             <div className="mt-5">
               <GraphPlaceholder
                 title="LP trend (24h)"
-                note="Placeholder only. Real trend needs server-side snapshots stored over time."
+                note="Next: store hourly LP snapshots in DB and render a real 24h curve + stability band."
               />
             </div>
           </PremiumPanel>
 
-          <PremiumPanel title="Market" subtitle="Reference price and volume behaviour." icon={<Activity className="h-5 w-5 text-emerald-300" />}>
+          <PremiumPanel
+            title="Market"
+            subtitle="Reference price and volume behaviour."
+            icon={<Activity className="h-5 w-5 text-emerald-300" />}
+          >
             <div className="grid gap-3 sm:grid-cols-2">
-              <SoftKpi label="Price" value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'} />
+              <SoftKpi
+                label="Price"
+                value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
+              />
               <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)} />
             </div>
 
             <div className="mt-5">
               <GraphPlaceholder
                 title="Price + volume"
-                note="Placeholder only. Real sparklines require server-side sampling or a chart feed."
+                note="Next: render a premium sparkline + 24h range once sampling is stored server-side."
               />
             </div>
           </PremiumPanel>
