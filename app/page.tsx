@@ -37,7 +37,6 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
-import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
 import { type LiveEntrant, asLiveEntrant } from '@/lib/live-entrants';
 import { createPortal } from 'react-dom';
 
@@ -654,110 +653,6 @@ function formatCountdown(ms: number) {
   return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
 }
 
-function cleanHandle(h: string) {
-  return (h || '').replace(/^@/, '').trim();
-}
-
-function normalizeLiveEntrant(x: any): LiveEntrant | null {
-  if (!x) return null;
-
-  if (typeof x === 'string') {
-    const h = cleanHandle(x);
-    if (!h) return null;
-    return asLiveEntrant({ handle: h });
-  }
-
-  if (typeof x?.handle !== 'string') return null;
-  const handle = cleanHandle(x.handle);
-  if (!handle) return null;
-
-  const avatarUrl = typeof x?.avatarUrl === 'string' && x.avatarUrl.trim() ? x.avatarUrl.trim() : undefined;
-  const followers = typeof x?.followers === 'number' ? x.followers : undefined;
-  const verified = typeof x?.verified === 'boolean' ? x.verified : undefined;
-
-  return asLiveEntrant({ handle, avatarUrl, followers, verified });
-}
-
-function uniqByHandle(list: LiveEntrant[]) {
-  const seen = new Set<string>();
-  const out: LiveEntrant[] = [];
-
-  for (const e of list || []) {
-    const h = cleanHandle(e?.handle || '');
-    if (!h) continue;
-
-    const key = h.toLowerCase();
-    if (seen.has(key)) continue;
-
-    seen.add(key);
-    out.push({ ...e, handle: h });
-  }
-
-  return out;
-}
-
-function XLiveLobbyInline({
-  entrants,
-  hint = 'Live lobby - updates automatically',
-}: {
-  entrants: LiveEntrant[];
-  hint?: string;
-}) {
-  const shown = useMemo(() => (entrants || []).slice(0, 10), [entrants]);
-  const count = entrants?.length || 0;
-
-  return (
-    <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.02] p-4 backdrop-blur">
-      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_10%_10%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_90%_20%,rgba(139,92,246,0.14),transparent_65%),radial-gradient(circle_at_55%_100%,rgba(16,185,129,0.12),transparent_62%)]" />
-
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-black/30 text-slate-200">
-            <span className="text-[12px] font-bold tracking-tight">X</span>
-          </span>
-
-          <div className="leading-tight">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              X live lobby
-            </p>
-            <p className="mt-0.5 text-[12px] text-slate-300">
-              {hint}
-              {count > 0 ? (
-                <span className="text-slate-500"> • {count} today</span>
-              ) : null}
-            </p>
-          </div>
-        </div>
-
-        <Link
-          href={ROUTE_HUB}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-        >
-          View in hub
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-
-      <div className="relative z-10 mt-3 flex flex-wrap items-center gap-2">
-        {shown.length ? (
-          shown.map(e => (
-            <span
-              key={e.handle}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-[11px] text-slate-200"
-              title={`@${e.handle}`}
-            >
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-              @{e.handle}
-            </span>
-          ))
-        ) : (
-          <span className="text-[12px] text-slate-400">Waiting for the first entries…</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* Bonus visibility:
    - We hide the entire block until an API reports "active".
    - If the endpoint fails, we keep it hidden (safe default for pre-launch). */
@@ -802,38 +697,6 @@ function useBonusActive() {
 function HomePageInner() {
   const [liveEntries, setLiveEntries] = useState<LiveEntrant[]>([]);
   const bonusActive = useBonusActive();
-
-  useEffect(() => {
-    let alive = true;
-
-    async function load() {
-      try {
-        const r = await fetch('/api/public/live-entries', { cache: 'no-store' });
-        const data = (await r.json().catch(() => null)) as any;
-        if (!alive) return;
-
-        const raw: any[] = Array.isArray(data?.entries) ? data.entries : [];
-        const normalized: LiveEntrant[] = [];
-
-        for (const item of raw) {
-          const e = normalizeLiveEntrant(item);
-          if (e) normalized.push(e);
-        }
-
-        setLiveEntries(uniqByHandle(normalized));
-      } catch {
-        // ignore
-      }
-    }
-
-    load();
-    const t = window.setInterval(load, 12_000);
-
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
-  }, []);
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
