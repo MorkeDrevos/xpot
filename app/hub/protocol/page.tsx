@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import {
   Activity,
   ChartNoAxesCombined,
+  Copy,
+  Check,
   Crown,
   ShieldCheck,
   Sparkles,
@@ -42,7 +44,7 @@ type ProtocolState = {
   priceUsd?: number;
   volume24hUsd?: number;
   updatedAt?: string; // ISO
-  source?: 'dexscreener' | string;
+  source?: 'dexscreener';
   pairUrl?: string;
   pairAddress?: string;
   chainId?: string;
@@ -50,6 +52,12 @@ type ProtocolState = {
 };
 
 type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
+
+function shortAddr(a?: string) {
+  if (!a) return '—';
+  if (a.length <= 10) return a;
+  return `${a.slice(0, 4)}…${a.slice(-4)}`;
+}
 
 function StatusPill({
   children,
@@ -143,35 +151,42 @@ function formatMadridTime(iso?: string) {
   }).format(d);
 }
 
+/**
+ * XPOT amount styling: "gold digits + spaced, premium"
+ * (matches your screenshot vibe)
+ */
 function XpotAmount({
   amount,
-  suffix = 'XPOT',
+  suffix = TOKEN_SYMBOL,
   size = 'lg',
 }: {
-  amount: number;
+  amount: number | string;
   suffix?: string;
-  size?: 'lg' | 'md';
+  size?: 'lg' | 'md' | 'sm';
 }) {
-  const num =
-    Number.isFinite(Number(amount)) ? Number(amount).toLocaleString() : '—';
+  const n = typeof amount === 'number' ? amount : Number(amount);
+  const txt = Number.isFinite(n) ? n.toLocaleString() : String(amount);
 
-  const numCls =
+  const sizeCls =
     size === 'lg'
-      ? 'text-[28px] sm:text-[30px] leading-none'
-      : 'text-[18px] leading-none';
+      ? 'text-[22px] sm:text-[24px]'
+      : size === 'md'
+      ? 'text-[18px]'
+      : 'text-[16px]';
 
   return (
-    <span className="inline-flex items-baseline gap-2">
+    <span className="inline-flex items-baseline gap-3">
       <span
         className={[
-          'font-mono tracking-[0.12em]',
-          'text-amber-200 drop-shadow-[0_0_18px_rgba(245,158,11,0.12)]',
-          numCls,
+          'font-semibold tabular-nums',
+          'tracking-[0.28em]',
+          'text-amber-200/95',
+          sizeCls,
         ].join(' ')}
       >
-        {num}
+        {txt}
       </span>
-      <span className="text-sm font-semibold tracking-[0.14em] text-slate-400">
+      <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
         {suffix}
       </span>
     </span>
@@ -192,18 +207,23 @@ export default function HubProtocolPage() {
   // local timer tick for countdown
   const [now, setNow] = useState(() => Date.now());
 
+  // CA copy UX
+  const [copied, setCopied] = useState(false);
+
   // Avoid state updates after unmount and avoid out-of-order responses
   const liveReqId = useRef(0);
   const protoReqId = useRef(0);
 
-  // IMPORTANT: lock closesAt so mock polling doesn’t "rebase" countdown each refresh
-  const lockedClosesAtRef = useRef<string | null>(null);
-  const lockedStatusRef = useRef<LiveDraw['status'] | null>(null);
-
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = window.setTimeout(() => setCopied(false), 1200);
+    return () => window.clearTimeout(t);
+  }, [copied]);
 
   // Live draw + bonus
   useEffect(() => {
@@ -228,28 +248,8 @@ export default function HubProtocolPage() {
 
         if (!alive || req !== liveReqId.current) return;
 
-        const incomingDraw = (d?.draw ?? null) as LiveDraw | null;
-
-        if (incomingDraw?.closesAt) {
-          const prevStatus = lockedStatusRef.current;
-          const statusChanged = prevStatus && prevStatus !== incomingDraw.status;
-
-          // First time: lock it
-          if (!lockedClosesAtRef.current) {
-            lockedClosesAtRef.current = incomingDraw.closesAt;
-            lockedStatusRef.current = incomingDraw.status;
-          } else if (statusChanged) {
-            // If status changes (OPEN -> LOCKED -> DRAWING -> COMPLETED), accept new closesAt
-            lockedClosesAtRef.current = incomingDraw.closesAt;
-            lockedStatusRef.current = incomingDraw.status;
-          } else {
-            // Same status: keep locked closesAt to prevent rebase resets
-            incomingDraw.closesAt = lockedClosesAtRef.current;
-          }
-        }
-
-        setDraw(incomingDraw);
-        setBonus(Array.isArray(b?.bonus) ? (b.bonus as BonusXPOT[]) : []);
+        setDraw(d?.draw ?? null);
+        setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
       } catch {
         if (!alive) return;
         setError('Failed to load live data. Please refresh.');
@@ -312,7 +312,7 @@ export default function HubProtocolPage() {
 
   const liveIsOpen = draw?.status === 'OPEN';
 
-  // Synced to draw.closesAt (and now "locked" so mock polling won’t reset it)
+  // Syncs to DB-driven closesAt - as long as /api/draw/live is DB-backed
   const closesIn = useMemo(() => {
     if (!draw?.closesAt) return '00:00:00';
     const target = new Date(draw.closesAt).getTime();
@@ -320,12 +320,6 @@ export default function HubProtocolPage() {
   }, [draw?.closesAt, now]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
-
-  // CA link (single source: lib/xpot.ts)
-  const tokenLink = useMemo(() => {
-    const mint = TOKEN_MINT?.trim();
-    return mint ? `https://jup.ag/tokens/${mint}` : null;
-  }, []);
 
   return (
     <XpotPageShell
@@ -350,6 +344,7 @@ export default function HubProtocolPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 Integrity overview
               </p>
+
               <p className="mt-2 text-sm text-slate-200/90">
                 A calm, real-time view of liquidity and execution - designed for trust, not hype.
               </p>
@@ -357,34 +352,41 @@ export default function HubProtocolPage() {
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span className="inline-flex items-center gap-2">
                   <Info className="h-4 w-4 text-slate-300" />
-                  Token: {TOKEN_SYMBOL || 'XPOT'}
+                  Contract: <span className="font-semibold text-slate-200/90">{shortAddr(TOKEN_MINT)}</span>
                 </span>
 
-                {tokenLink ? (
-                  <Link
-                    href={tokenLink}
-                    target="_blank"
-                    className="inline-flex items-center gap-2 text-slate-200/80 hover:text-slate-100 transition"
-                    title={TOKEN_MINT}
-                  >
-                    Contract <ExternalLink className="h-4 w-4" />
-                  </Link>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(TOKEN_MINT);
+                      setCopied(true);
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200/80 hover:text-slate-100 hover:bg-white/[0.06] transition"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
 
                 {proto?.pairUrl ? (
-                  <>
-                    <span className="text-slate-600">•</span>
-                    <span>Source: {proto.source || 'unknown'}</span>
-                    <Link
-                      href={proto.pairUrl}
-                      target="_blank"
-                      className="inline-flex items-center gap-2 text-slate-200/80 hover:text-slate-100 transition"
-                    >
-                      View pair <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  </>
+                  <Link
+                    href={proto.pairUrl}
+                    target="_blank"
+                    className="inline-flex items-center gap-2 text-slate-200/70 hover:text-slate-100 transition"
+                  >
+                    View pair <ExternalLink className="h-4 w-4" />
+                  </Link>
                 ) : null}
               </div>
+
+              {proto?.source ? (
+                <p className="mt-2 text-[11px] text-slate-500">
+                  Source: <span className="text-slate-300/80">{proto.source}</span>
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -400,9 +402,7 @@ export default function HubProtocolPage() {
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
-                {proto?.updatedAt
-                  ? `Updated ${formatMadridTime(proto.updatedAt)} (Madrid)`
-                  : 'Live'}
+                {proto?.updatedAt ? `Updated ${formatMadridTime(proto.updatedAt)} (Madrid)` : 'Live'}
               </StatusPill>
             </div>
           </div>
@@ -422,13 +422,7 @@ export default function HubProtocolPage() {
             />
             <MetricCard
               label="Price (USD)"
-              value={
-                protoLoading
-                  ? 'Loading…'
-                  : proto?.priceUsd
-                  ? `$${proto.priceUsd.toFixed(6)}`
-                  : '—'
-              }
+              value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
             />
@@ -453,11 +447,9 @@ export default function HubProtocolPage() {
                     Market pending
                   </p>
                   <p className="mt-1 text-sm text-slate-200/85">
-                    Token is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
+                    Token is not trading yet or the first liquidity pool is not indexed publicly. This panel auto-populates once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Nothing to do here - it goes live automatically.
-                  </p>
+                  <p className="mt-1 text-xs text-slate-400">Nothing to do - it goes live automatically.</p>
                 </div>
               </div>
             </div>
@@ -493,8 +485,8 @@ export default function HubProtocolPage() {
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
                   label="Daily reward"
-                  value={<XpotAmount amount={Number(draw.jackpotXpot ?? 0)} size="lg" />}
-                  hint={Number.isFinite(Number(draw.jackpotUsd)) ? `≈ ${fmtUsd(draw.jackpotUsd)}` : ''}
+                  valueNode={<XpotAmount amount={Number(draw.jackpotXpot ?? 0)} />}
+                  hint={`≈ ${fmtUsd(draw.jackpotUsd)}`}
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
@@ -545,12 +537,10 @@ export default function HubProtocolPage() {
                   className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <XpotAmount amount={Number(b.amountXpot ?? 0)} size="md" />
-                    </div>
-                    <p className="mt-1 text-xs text-slate-400">
-                      {formatMadridTime(b.scheduledAt)} (Madrid)
+                    <p className="font-semibold text-slate-100">
+                      <XpotAmount amount={Number(b.amountXpot ?? 0)} size="sm" suffix={TOKEN_SYMBOL} />
                     </p>
+                    <p className="text-xs text-slate-400">{formatMadridTime(b.scheduledAt)} (Madrid)</p>
                   </div>
 
                   <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : 'amber'}>
@@ -600,14 +590,9 @@ export default function HubProtocolPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi
                 label="Price"
-                value={
-                  protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'
-                }
+                value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
               />
-              <SoftKpi
-                label="Volume (24h)"
-                value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)}
-              />
+              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)} />
             </div>
 
             <div className="mt-5">
@@ -626,11 +611,13 @@ export default function HubProtocolPage() {
 function MetricCard({
   label,
   value,
+  valueNode,
   hint,
   icon,
 }: {
   label: string;
-  value: React.ReactNode;
+  value?: string;
+  valueNode?: React.ReactNode;
   hint?: string;
   icon?: React.ReactNode;
 }) {
@@ -645,9 +632,15 @@ function MetricCard({
         ) : null}
       </div>
 
-      <div className="mt-2 text-lg font-semibold text-slate-100">{value}</div>
+      <div className="mt-2">
+        {valueNode ? (
+          valueNode
+        ) : (
+          <p className="text-lg font-semibold text-slate-100">{value ?? '—'}</p>
+        )}
+      </div>
 
-      {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+      {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
     </div>
   );
 }
