@@ -123,26 +123,30 @@ function timeAgo(tsMs: number) {
   return `${s}s ago`;
 }
 
+// Safer tone colors (amber has fallback if CSS var is missing/invalid)
 function toneStroke(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.78)';
   if (tone === 'sky') return 'rgba(56,189,248,0.78)';
-  if (tone === 'amber') return 'rgba(var(--xpot-gold),0.78)';
+  if (tone === 'amber') return 'rgba(250,204,21,0.78)'; // fallback gold (always valid)
   return 'rgba(148,163,184,0.68)'; // slate
 }
 
 function toneGlow(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
-  if (tone === 'amber') return 'rgba(var(--xpot-gold),0.18)';
+  if (tone === 'amber') return 'rgba(250,204,21,0.18)'; // fallback gold
   return 'rgba(148,163,184,0.16)';
 }
 
 function toneRing(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
-  if (tone === 'amber') return 'rgba(var(--xpot-gold),0.16)';
+  if (tone === 'amber') return 'rgba(250,204,21,0.16)'; // fallback gold
   return 'rgba(148,163,184,0.18)';
 }
+
+// If your CSS variables exist, we still use them for text/borders/washes.
+// The dot/glow uses a guaranteed-valid fallback so it never disappears.
 
 // ─────────────────────────────────────────────
 // Team vesting (12 months, monthly equal amounts)
@@ -284,7 +288,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
   );
 }
 
-// /api/vaults exact schema
+// /api/vaults exact schema (expanded - uiAmount is often null)
 type ApiVaultTx = {
   signature: string;
   blockTime: number | null; // seconds
@@ -297,8 +301,9 @@ type ApiVaultEntry = {
   ata: string; // XPOT ATA (we intentionally don't show this in UI)
   balance:
     | {
-        amount: string;
-        uiAmount: number;
+        amount: string; // raw integer in string
+        uiAmount: number | null; // Solana often returns null for large balances
+        uiAmountString?: string; // use this when uiAmount is null
         decimals: number;
       }
     | null;
@@ -310,6 +315,47 @@ type ApiVaultResponse = {
   fetchedAt: number;
   groups: Record<string, ApiVaultEntry[]>;
 };
+
+function formatRawAmount(amountStr: string, decimals: number) {
+  try {
+    const raw = BigInt(amountStr || '0');
+    const d = Math.max(0, Math.min(18, Number.isFinite(decimals) ? decimals : 0));
+    if (d === 0) return raw.toString();
+
+    const base = BigInt(10) ** BigInt(d);
+    const whole = raw / base;
+    const frac = raw % base;
+
+    const fracPadded = frac.toString().padStart(d, '0');
+    const fracTrimmed = fracPadded.replace(/0+$/, '');
+
+    if (!fracTrimmed) return whole.toString();
+    return `${whole.toString()}.${fracTrimmed}`;
+  } catch {
+    return null;
+  }
+}
+
+function formatVaultBalance(b: ApiVaultEntry['balance']) {
+  if (!b) return null;
+
+  // Best: uiAmount as number
+  if (typeof b.uiAmount === 'number' && Number.isFinite(b.uiAmount)) {
+    return formatMaybeNumber(b.uiAmount) ?? null;
+  }
+
+  // Next: uiAmountString
+  if (typeof b.uiAmountString === 'string' && b.uiAmountString.trim().length) {
+    return b.uiAmountString;
+  }
+
+  // Fallback: compute from raw amount + decimals
+  if (typeof b.amount === 'string' && typeof b.decimals === 'number') {
+    return formatRawAmount(b.amount, b.decimals);
+  }
+
+  return null;
+}
 
 function useVaultGroups() {
   const [data, setData] = useState<ApiVaultResponse | null>(null);
@@ -433,7 +479,7 @@ function VaultGroupPanel({
       ) : (
         <div className="mt-3 grid gap-3">
           {entries.map(v => {
-            const ui = typeof v.balance?.uiAmount === 'number' ? v.balance.uiAmount : null;
+            const balanceText = formatVaultBalance(v.balance);
             const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
@@ -474,7 +520,7 @@ function VaultGroupPanel({
 
                   <div className="text-right">
                     <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">XPOT balance</p>
-                    <p className="mt-1 font-mono text-sm text-slate-100">{ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}</p>
+                    <p className="mt-1 font-mono text-sm text-slate-100">{balanceText ? `${balanceText} XPOT` : '—'}</p>
                     <p className="mt-1 text-[11px] text-slate-600">{decimals != null ? `Decimals: ${decimals}` : null}</p>
                   </div>
                 </div>
@@ -568,9 +614,7 @@ function getStickyOffsetPx() {
   const banner = parseFloat(css.getPropertyValue('--xpot-banner-h')) || 0;
   const topbar = parseFloat(css.getPropertyValue('--xpot-topbar-h')) || 0;
 
-  // Add a little breathing room below the sticky stack
   const pad = 18;
-
   return Math.max(0, Math.round(banner + topbar + pad));
 }
 
@@ -1066,7 +1110,6 @@ export default function TokenomicsPage() {
             bg-[linear-gradient(180deg,rgba(10,7,4,0.96),rgba(0,0,0,0.94))]
           "
         >
-          {/* Brown-only wash (strong, fills entire hero) */}
           <div
             className="
               pointer-events-none absolute inset-0
@@ -1078,7 +1121,6 @@ export default function TokenomicsPage() {
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
 
-          {/* Content */}
           <div className="relative mx-auto max-w-[1440px] px-4 sm:px-6">
             <div className="pt-8 sm:pt-10">
               <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
@@ -1103,8 +1145,8 @@ export default function TokenomicsPage() {
                   </h1>
 
                   <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-300">
-                    Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes can be
-                    checked on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into with confidence.
+                    Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes can be checked
+                    on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into with confidence.
                   </p>
 
                   <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -1167,7 +1209,7 @@ export default function TokenomicsPage() {
                   </div>
                 </div>
 
-                {/* ✅ Restored "Protocol snapshot" (img 2) */}
+                {/* ✅ RESTORED "IMG 2" - Protocol snapshot card */}
                 <div className="lg:col-span-4">
                   <div className="relative h-full rounded-[26px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur-xl">
                     <div
@@ -1186,10 +1228,10 @@ export default function TokenomicsPage() {
                           <p className="mt-1 text-xs text-slate-500">Each block is one rule with its own proof target.</p>
                         </div>
 
-                        <Pill tone="emerald">
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                          Verified
-                        </Pill>
+                        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-200">
+                          <ShieldCheck className="h-4 w-4" />
+                          VERIFIED
+                        </span>
                       </div>
 
                       <div className="mt-5 grid gap-3">
@@ -1325,8 +1367,7 @@ export default function TokenomicsPage() {
                   Eligibility
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent, with clear rules and verifiable
-                  outcomes.
+                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent, with clear rules and verifiable outcomes.
                 </p>
               </div>
 
@@ -1336,8 +1377,7 @@ export default function TokenomicsPage() {
                   Status and reputation
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future perks and
-                  sponsor drops.
+                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future perks and sponsor drops.
                 </p>
               </div>
 
@@ -1347,8 +1387,7 @@ export default function TokenomicsPage() {
                   Sponsor-funded rewards
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales without
-                  pay-to-enter mechanics.
+                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales without pay-to-enter mechanics.
                 </p>
               </div>
 
@@ -1358,8 +1397,7 @@ export default function TokenomicsPage() {
                   Verifiability edge
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public wallets and simple rules you can
-                  check.
+                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public wallets and simple rules you can check.
                 </p>
               </div>
             </div>
@@ -1407,7 +1445,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v21</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v22</span>
         </div>
       </footer>
     </XpotPageShell>
