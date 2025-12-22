@@ -1,15 +1,7 @@
 // app/page.tsx
 'use client';
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-  createContext,
-  useContext,
-} from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -22,6 +14,7 @@ import {
   Crown,
   ExternalLink,
   Globe,
+  Info,
   Lock,
   ShieldCheck,
   Sparkles,
@@ -30,13 +23,11 @@ import {
   Wand2,
   Zap,
   Timer,
-  Info,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
-
 import { createPortal } from 'react-dom';
 
 const ROUTE_HUB = '/hub';
@@ -47,8 +38,6 @@ const XPOT_CA =
   process.env.NEXT_PUBLIC_XPOT_MINT ||
   process.env.NEXT_PUBLIC_XPOT_CA ||
   'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
-
-const SOLANA_CLUSTER = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || '';
 
 // XPOT denomination glyph (use for token-native amounts, keep $ only for USD)
 const XPOT_SIGN = '✕';
@@ -115,6 +104,7 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
     () => getNextMadridCutoffUtcMs(22, new Date(nowMs)),
     [nowMs],
   );
+
   const countdown = useMemo(
     () => formatCountdown(nextDrawUtcMs - nowMs),
     [nextDrawUtcMs, nowMs],
@@ -134,11 +124,7 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
     [nowMs, nextDrawUtcMs, countdown],
   );
 
-  return (
-    <NextDrawContext.Provider value={value}>
-      {children}
-    </NextDrawContext.Provider>
-  );
+  return <NextDrawContext.Provider value={value}>{children}</NextDrawContext.Provider>;
 }
 
 function Pill({
@@ -420,9 +406,9 @@ function PrinciplesStrip() {
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
         <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.12),transparent_62%)]" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Access</p>
-        <p className="mt-1 text-sm font-semibold text-slate-100">Wallet-based</p>
-        <p className="mt-1 text-[12px] text-slate-400">Self-custody, no accounts</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Self custody</p>
+        <p className="mt-1 text-sm font-semibold text-slate-100">Your wallet</p>
+        <p className="mt-1 text-[12px] text-slate-400">You stay in control</p>
       </div>
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
@@ -444,7 +430,7 @@ function SectionDividerLabel({ label }: { label: string }) {
         <span className="h-1 w-1 rounded-full bg-white/20" />
         <span>Eligibility</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
-        <span>Access</span>
+        <span>Self custody</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
         <span>Proof</span>
       </span>
@@ -616,14 +602,7 @@ function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
   const p = getMadridParts(now);
   const offsetMs = getMadridOffsetMs(now);
 
-  const mkUtcFromMadridWallClock = (
-    yy: number,
-    mm: number,
-    dd: number,
-    hh: number,
-    mi: number,
-    ss: number,
-  ) => {
+  const mkUtcFromMadridWallClock = (yy: number, mm: number, dd: number, hh: number, mi: number, ss: number) => {
     const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
     return asUtc - offsetMs;
   };
@@ -704,11 +683,11 @@ function HomePageInner() {
     () => [
       {
         q: 'Do I need to buy tickets to enter?',
-        a: 'No. Entry is holdings-based. The hub checks eligibility and handles the entry flow. The homepage stays calm and informational.',
+        a: 'No. Eligibility is holdings-based. The hub checks eligibility and handles the entry flow. The homepage stays calm and informational.',
       },
       {
-        q: 'Is my wallet public on the site?',
-        a: 'No. XPOT is self-custody. Your wallet is used for eligibility and claims, but the product avoids turning wallets into profiles.',
+        q: 'Do you take custody of my wallet?',
+        a: 'No. You always remain in control of your wallet. XPOT is self-custody by design.',
       },
       {
         q: 'How do winners verify payouts?',
@@ -830,8 +809,8 @@ function HomePageInner() {
                   <div className="space-y-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <Pill tone="emerald">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                        Wallet-based access
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-200/90" />
+                        Self custody
                       </Pill>
 
                       <Pill tone="violet">
@@ -870,16 +849,15 @@ function HomePageInner() {
                       </div>
 
                       <p className="relative z-10 mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                        Hold XPOT, connect your wallet and claim your entry. One winner daily, paid on-chain.
+                        Hold XPOT, claim your entry and verify payouts on-chain.
                         Built to scale into a rewards ecosystem for communities, creators and sponsors.
                       </p>
 
-                      {/* Runway */}
                       <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
                         <div className="inline-flex items-center gap-2 px-0 py-0">
                           <ShieldCheck className="h-4 w-4 text-emerald-200/90" />
                           <span className="text-[11px] font-semibold uppercase tracking-[0.20em] text-emerald-200/70">
-                            Built with a 10-year rewards runway at launch
+                            Built with a long rewards runway at launch
                           </span>
                         </div>
 
@@ -933,17 +911,21 @@ function HomePageInner() {
                           Enter today&apos;s XPOT
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
+
+                        <Link href={ROUTE_TERMS} className={`${BTN_PRIMARY} px-5 py-3 text-sm`}>
+                          Read terms
+                        </Link>
                       </div>
 
                       <p className="relative z-10 mt-3 text-[11px] text-slate-500">
-                        Winners are provable on-chain. Verification beats vibes.
+                        Payouts are on-chain. Proof stays public.
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Mode" value="On-chain" tone="emerald" />
-                    <MiniStat label="Access" value="Wallet" tone="sky" />
+                    <MiniStat label="Custody" value="Self" tone="sky" />
                     <MiniStat label="Layer" value="Rewards protocol" tone="violet" />
                   </div>
                 </div>
@@ -969,7 +951,7 @@ function HomePageInner() {
                       <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
 {`> XPOT_PROTOCOL
   primitive:       daily reward selection
-  access:          wallet-based (self custody)
+  custody:         self custody
   proof:           on-chain payout verification
   composable:      modules can plug in later
 
@@ -977,20 +959,20 @@ function HomePageInner() {
   in:             ${countdown}  (${cutoffLabel})
 
 > LAST_WINNERS
-  #2025-12-18  winner   ${XPOT_SIGN}1,000,000
-  #2025-12-18  bonus    ${XPOT_SIGN}250,000
-  #2025-12-17  winner   ${XPOT_SIGN}1,000,000`}
+  #2025-12-18  winner: on-chain  ${XPOT_SIGN}1,000,000
+  #2025-12-18  bonus:  on-chain  ${XPOT_SIGN}250,000
+  #2025-12-17  winner: on-chain  ${XPOT_SIGN}1,000,000`}
                       </pre>
                     </div>
 
                     <p className="mt-3 text-[12px] text-slate-400">
-                      Read-only cockpit view. Same panels as ops. Winners get access.
+                      Read-only cockpit view. Same panels as ops. Proof is always on-chain.
                     </p>
                   </PremiumCard>
                 </div>
               </div>
 
-              {/* Removed: LiveEntrantsLounge footer strip */}
+              {/* Removed the entire live lobby footer section */}
             </div>
           </div>
         </div>
@@ -1014,7 +996,7 @@ function HomePageInner() {
                 A daily reward primitive with provable outcomes.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT keeps the surface area small: holdings-based eligibility, wallet-based access and on-chain payout proof.
+                XPOT keeps the surface area small: holdings-based eligibility, self custody, and on-chain payout proof.
                 Everything else can plug in later.
               </p>
             </div>
@@ -1026,7 +1008,7 @@ function HomePageInner() {
               </Pill>
               <Pill tone="violet">
                 <Users className="h-3.5 w-3.5" />
-                Access layer
+                Ecosystem ready
               </Pill>
               <Pill tone="amber">
                 <Stars className="h-3.5 w-3.5" />
@@ -1048,10 +1030,10 @@ function HomePageInner() {
               <Step
                 n="02"
                 title="Connect wallet"
-                desc="Self-custody, no accounts"
+                desc="Self custody always"
                 icon={<Users className="h-5 w-5 text-sky-200" />}
                 tone="sky"
-                tag="Access"
+                tag="Self custody"
               />
               <Step
                 n="03"
@@ -1078,7 +1060,7 @@ function HomePageInner() {
         </PremiumCard>
       </section>
 
-      {/* THE PROTOCOL STRIP (restored) */}
+      {/* THE PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1093,10 +1075,10 @@ function HomePageInner() {
           <PremiumCard className="p-5 sm:p-6" halo={false}>
             <Pill tone="sky">
               <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-              Access
+              Self custody
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Self-custody.</p>
-            <p className="mt-2 text-sm text-slate-300">Connect wallet in the hub. Keep control of funds and keys.</p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Your wallet stays yours.</p>
+            <p className="mt-2 text-sm text-slate-300">No custody. No deposits. You stay in control.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1105,12 +1087,12 @@ function HomePageInner() {
               Payout
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
-            <p className="mt-2 text-sm text-slate-300">Anyone can verify payouts in an explorer.</p>
+            <p className="mt-2 text-sm text-slate-300">Winners verify the transaction. Proof stays public.</p>
           </PremiumCard>
         </div>
       </section>
 
-      {/* ECOSYSTEM LAYER (restored) */}
+      {/* ECOSYSTEM LAYER */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1170,14 +1152,14 @@ function HomePageInner() {
                   <Users className="h-5 w-5 text-sky-200" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">Access</p>
-                  <p className="text-xs text-slate-400">Self-custody, composable</p>
+                  <p className="text-sm font-semibold text-slate-100">Participation</p>
+                  <p className="text-xs text-slate-400">Reputation over time</p>
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
-                <Bullet tone="sky">Wallet connect, no accounts</Bullet>
-                <Bullet tone="violet">History and rewards can evolve later</Bullet>
-                <Bullet tone="emerald">Low-friction, high-proof</Bullet>
+                <Bullet tone="sky">History and streaks become your profile</Bullet>
+                <Bullet tone="violet">More modules unlock better rewards</Bullet>
+                <Bullet tone="emerald">Self custody, no KYC vibes</Bullet>
               </ul>
             </div>
 
@@ -1193,7 +1175,7 @@ function HomePageInner() {
               </div>
               <ul className="mt-4 space-y-2">
                 <Bullet tone="amber">On-chain proof of payouts</Bullet>
-                <Bullet tone="emerald">Transparent mechanics</Bullet>
+                <Bullet tone="emerald">Transparent winner verification</Bullet>
                 <Bullet tone="sky">Reusable selection primitive for other apps</Bullet>
               </ul>
             </div>
@@ -1213,7 +1195,7 @@ function HomePageInner() {
         </PremiumCard>
       </section>
 
-      {/* WHO IT'S FOR (restored) */}
+      {/* WHO IT'S FOR */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1223,7 +1205,7 @@ function HomePageInner() {
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
             <p className="mt-2 text-sm text-slate-300">
-              One mechanic, provable winners and a premium experience that doesn’t feel spammy.
+              One mechanic, provable outcomes and a premium experience that doesn’t feel spammy.
             </p>
           </PremiumCard>
 
@@ -1265,7 +1247,7 @@ function HomePageInner() {
             <div className="flex flex-wrap items-center gap-2">
               <Pill tone="sky">
                 <Users className="h-3.5 w-3.5" />
-                Access
+                Self custody
               </Pill>
               <Pill tone="amber">
                 <Stars className="h-3.5 w-3.5" />
@@ -1280,32 +1262,68 @@ function HomePageInner() {
         </PremiumCard>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-8 pb-10">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
-          <span className="inline-flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-            Pre-Launch Mode. UI is final, wiring continues.
-          </span>
+      {/* NEW FOOTER */}
+      <footer className="mt-10 pb-10">
+        <div className="overflow-hidden rounded-[28px] border border-slate-900/70 bg-slate-950/45 p-6 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="max-w-xl">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-500">
+                XPOT protocol
+              </p>
+              <p className="mt-2 text-sm text-slate-300">
+                A minimal daily rewards primitive with self custody and on-chain proof.
+                No tickets. No custody. Just verifiable payouts.
+              </p>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={ROUTE_OPS}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
-            >
-              <Lock className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Ops
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-            </Link>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Pill tone="emerald">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Self custody
+                </Pill>
+                <Pill tone="amber">
+                  <Stars className="h-3.5 w-3.5" />
+                  Proof
+                </Pill>
+                <Pill tone="violet">
+                  <Blocks className="h-3.5 w-3.5" />
+                  Composable
+                </Pill>
+              </div>
+            </div>
 
-            <Link
-              href={ROUTE_TERMS}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
-            >
-              Terms
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={ROUTE_HUB}
+                className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}
+              >
+                Enter hub
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
 
+              <Link
+                href={ROUTE_TERMS}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-4 py-2.5 text-[12px] font-semibold text-slate-200 hover:bg-slate-900 transition"
+              >
+                Terms
+                <ExternalLink className="h-4 w-4 text-slate-500" />
+              </Link>
+
+              <Link
+                href={ROUTE_OPS}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-4 py-2.5 text-[12px] font-semibold text-slate-200 hover:bg-slate-900 transition"
+              >
+                <Lock className={`h-4 w-4 ${GOLD_TEXT}`} />
+                Ops
+                <ExternalLink className="h-4 w-4 text-slate-500" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-[11px] text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+              UI is final. Wiring continues.
+            </span>
             <span className="font-mono text-slate-600">build: cinematic-home</span>
           </div>
         </div>
