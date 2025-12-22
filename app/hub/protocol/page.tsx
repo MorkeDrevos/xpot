@@ -142,44 +142,25 @@ function formatMadridTime(iso?: string) {
   }).format(d);
 }
 
-function parseIsoMs(iso?: string) {
-  if (!iso) return NaN;
-  const t = new Date(iso).getTime();
-  return Number.isFinite(t) ? t : NaN;
-}
-
-/**
- * XPOT amount style (matches your "gold number + grey XPOT" look)
- */
 function XpotAmount({
   amount,
   suffix = 'XPOT',
-  size = 'lg',
+  className = '',
 }: {
-  amount: number | string;
+  amount: number;
   suffix?: string;
-  size?: 'lg' | 'md';
+  className?: string;
 }) {
-  const n = typeof amount === 'number' ? amount : Number(amount);
-  const txt = Number.isFinite(n) ? n.toLocaleString() : String(amount);
+  const n = Number(amount);
+  const label = Number.isFinite(n) ? n.toLocaleString() : '—';
 
-  const numCls =
-    size === 'lg'
-      ? 'text-[26px] sm:text-[28px] leading-none'
-      : 'text-[18px] leading-none';
-
+  // Style based on your screenshot: gold mono amount + muted suffix
   return (
-    <span className="inline-flex items-baseline gap-3">
-      <span
-        className={[
-          'font-mono tabular-nums tracking-[0.14em]',
-          'text-amber-200/95',
-          numCls,
-        ].join(' ')}
-      >
-        {txt}
+    <span className={`inline-flex items-baseline gap-3 ${className}`}>
+      <span className="font-mono text-[26px] sm:text-[28px] leading-none tracking-[0.08em] text-amber-200">
+        {label}
       </span>
-      <span className="text-slate-400 font-semibold tracking-[0.18em] uppercase">
+      <span className="text-lg sm:text-xl font-semibold tracking-[0.06em] text-slate-500">
         {suffix}
       </span>
     </span>
@@ -187,8 +168,8 @@ function XpotAmount({
 }
 
 export default function HubProtocolPage() {
-  const [drawRaw, setDrawRaw] = useState<LiveDraw | null>(null);
-  const [bonusRaw, setBonusRaw] = useState<BonusXPOT[]>([]);
+  const [draw, setDraw] = useState<LiveDraw | null>(null);
+  const [bonus, setBonus] = useState<BonusXPOT[]>([]);
   const [proto, setProto] = useState<ProtocolState | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -204,17 +185,8 @@ export default function HubProtocolPage() {
   const liveReqId = useRef(0);
   const protoReqId = useRef(0);
 
-  /**
-   * Pinning to prevent mock endpoints (Date.now based) from shifting the schedule
-   * on every poll. This makes the UI behave like DB-backed data (stable closesAt).
-   */
-  const pinnedClosesAtRef = useRef<string | null>(null);
-  const pinnedStatusRef = useRef<LiveDraw['status'] | null>(null);
-
-  const pinnedBonusTimesRef = useRef<Record<string, string>>({});
-
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -241,11 +213,8 @@ export default function HubProtocolPage() {
 
         if (!alive || req !== liveReqId.current) return;
 
-        const incomingDraw = (d?.draw ?? null) as LiveDraw | null;
-        setDrawRaw(incomingDraw);
-
-        const incomingBonus = Array.isArray(b?.bonus) ? (b.bonus as BonusXPOT[]) : [];
-        setBonusRaw(incomingBonus);
+        setDraw(d?.draw ?? null);
+        setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
       } catch {
         if (!alive) return;
         setError('Failed to load live data. Please refresh.');
@@ -306,69 +275,9 @@ export default function HubProtocolPage() {
     };
   }, []);
 
-  /**
-   * Apply pinning logic (stable closesAt + stable bonus times).
-   * - closesAt: keep first value, unless status changes OR a real earlier close arrives.
-   * - bonus scheduledAt: pin per id on first sight.
-   */
-  const draw = useMemo(() => {
-    if (!drawRaw) return null;
-
-    const incomingStatus = drawRaw.status;
-    const incomingClosesMs = parseIsoMs(drawRaw.closesAt);
-
-    const pinnedStatus = pinnedStatusRef.current;
-    const pinnedIso = pinnedClosesAtRef.current;
-    const pinnedMs = parseIsoMs(pinnedIso ?? undefined);
-
-    // If we never pinned, pin immediately (first real draw we saw)
-    if (!pinnedIso || !pinnedStatus) {
-      pinnedClosesAtRef.current = drawRaw.closesAt;
-      pinnedStatusRef.current = incomingStatus;
-      return drawRaw;
-    }
-
-    // If status changes, accept new closesAt (new phase / new draw)
-    if (incomingStatus !== pinnedStatus) {
-      pinnedClosesAtRef.current = drawRaw.closesAt;
-      pinnedStatusRef.current = incomingStatus;
-      return drawRaw;
-    }
-
-    // Same status: allow "materially earlier" updates (DB correction), but reject drifting-later mock updates.
-    // Example: mock endpoint keeps returning now+4h, which moves later every poll.
-    const allowEarlier =
-      Number.isFinite(incomingClosesMs) &&
-      Number.isFinite(pinnedMs) &&
-      incomingClosesMs < pinnedMs - 30_000; // >30s earlier is real change
-
-    if (allowEarlier) {
-      pinnedClosesAtRef.current = drawRaw.closesAt;
-      pinnedStatusRef.current = incomingStatus;
-      return drawRaw;
-    }
-
-    // Otherwise, keep pinned closesAt
-    return {
-      ...drawRaw,
-      closesAt: pinnedIso,
-    };
-  }, [drawRaw]);
-
-  const bonus = useMemo(() => {
-    if (!bonusRaw?.length) return [];
-    const pinned = pinnedBonusTimesRef.current;
-
-    return bonusRaw.map(item => {
-      if (!item?.id) return item;
-      if (!pinned[item.id]) pinned[item.id] = item.scheduledAt;
-      return { ...item, scheduledAt: pinned[item.id] };
-    });
-  }, [bonusRaw]);
-
   const liveIsOpen = draw?.status === 'OPEN';
 
-  // Countdown (synced to pinned/DB closesAt)
+  // Synced to draw.closesAt (this will match your main countdown IF /api/draw/live is DB-backed and stable)
   const closesIn = useMemo(() => {
     if (!draw?.closesAt) return '00:00:00';
     const target = new Date(draw.closesAt).getTime();
@@ -434,7 +343,7 @@ export default function HubProtocolPage() {
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
-                {proto?.updatedAt ? `Updated ${formatMadridTime(proto.updatedAt)}` : 'Live'}
+                {proto?.updatedAt ? `Updated ${formatMadridTime(proto.updatedAt)} (Madrid)` : 'Live'}
               </StatusPill>
             </div>
           </div>
@@ -455,7 +364,11 @@ export default function HubProtocolPage() {
             <MetricCard
               label="Price (USD)"
               value={
-                protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'
+                protoLoading
+                  ? 'Loading…'
+                  : proto?.priceUsd
+                  ? `$${proto.priceUsd.toFixed(6)}`
+                  : '—'
               }
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
@@ -481,7 +394,7 @@ export default function HubProtocolPage() {
                     Price pending
                   </p>
                   <p className="mt-1 text-sm text-slate-200/85">
-                    Trading is not indexed publicly yet. This panel auto-populates once an LP is visible.
+                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
                     Nothing to do here - it goes live automatically.
@@ -528,7 +441,11 @@ export default function HubProtocolPage() {
                 <MetricCard
                   label="Closes in"
                   value={closesIn}
-                  hint={draw.closesAt ? `Closes at ${formatMadridTime(draw.closesAt)} (Madrid)` : ''}
+                  hint={
+                    draw.closesAt
+                      ? `Closes at ${formatMadridTime(draw.closesAt)} (Madrid)`
+                      : ''
+                  }
                   icon={<Timer className="h-4 w-4 text-sky-300" />}
                 />
                 <MetricCard
@@ -573,9 +490,7 @@ export default function HubProtocolPage() {
                   className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <div className="truncate">
-                      <XpotAmount amount={Number(b.amountXpot ?? 0)} size="md" />
-                    </div>
+                    <XpotAmount amount={Number(b.amountXpot ?? 0)} className="mt-0.5" />
                     <p className="mt-1 text-xs text-slate-400">
                       {formatMadridTime(b.scheduledAt)} (Madrid)
                     </p>
@@ -631,7 +546,13 @@ export default function HubProtocolPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi
                 label="Price"
-                value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
+                value={
+                  protoLoading
+                    ? 'Loading…'
+                    : proto?.priceUsd
+                    ? `$${proto.priceUsd.toFixed(6)}`
+                    : '—'
+                }
               />
               <SoftKpi
                 label="Volume (24h)"
