@@ -37,9 +37,7 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
-import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
 import { type LiveEntrant, asLiveEntrant } from '@/lib/live-entrants';
-
 import { createPortal } from 'react-dom';
 
 const ROUTE_HUB = '/hub';
@@ -694,39 +692,6 @@ function useBonusActive() {
   return active;
 }
 
-/* Live entrants (X handles) - homepage lobby */
-function useLiveEntrants() {
-  const [entrants, setEntrants] = useState<LiveEntrant[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-
-    async function load() {
-      try {
-        const r = await fetch('/api/public/live-entrants?limit=18', { cache: 'no-store' });
-        const data = (await r.json().catch(() => null)) as any;
-        if (!alive) return;
-
-        const raw = (data?.entrants || data?.items || data?.data || []) as unknown[];
-        const list = raw.map(asLiveEntrant).filter(Boolean) as LiveEntrant[];
-        setEntrants(list);
-      } catch {
-        if (!alive) return;
-        setEntrants([]);
-      }
-    }
-
-    load();
-    const t = window.setInterval(load, 15_000);
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
-  }, []);
-
-  return entrants;
-}
-
 function ProtocolReserveBanner() {
   return (
     <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -788,7 +753,6 @@ function ProtocolReserveBanner() {
 
 function HomePageInner() {
   const bonusActive = useBonusActive();
-  const liveEntrants = useLiveEntrants();
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
@@ -1022,10 +986,6 @@ function HomePageInner() {
 
                       {/* LIVE LOBBY (img 1) */}
                       <div className="relative z-10 mt-4">
-                        <LiveEntrantsLounge
-                          entrants={liveEntrants}
-                          hint="Live lobby - updates automatically"
-                        />
                       </div>
 
                       {/* BONUS XPOT: hidden completely until active */}
