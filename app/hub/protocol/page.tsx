@@ -142,6 +142,13 @@ function formatMadridTime(iso?: string) {
   }).format(d);
 }
 
+function clampSkewMs(ms: number) {
+  // Prevent insane skew if the header is missing/invalid
+  // +/- 5 minutes is more than enough to correct local drift
+  const MAX = 5 * 60 * 1000;
+  return Math.max(-MAX, Math.min(MAX, ms));
+}
+
 export default function HubProtocolPage() {
   const [draw, setDraw] = useState<LiveDraw | null>(null);
   const [bonus, setBonus] = useState<BonusXPOT[]>([]);
@@ -152,6 +159,9 @@ export default function HubProtocolPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [protoError, setProtoError] = useState<string | null>(null);
+
+  // Server clock sync (so countdown matches DB/server logic)
+  const [serverSkewMs, setServerSkewMs] = useState(0);
 
   // local timer tick for countdown
   const [now, setNow] = useState(() => Date.now());
@@ -182,6 +192,17 @@ export default function HubProtocolPage() {
           fetch('/api/draw/live', { cache: 'no-store', signal: ac.signal }),
           fetch('/api/bonus/live', { cache: 'no-store', signal: ac.signal }),
         ]).finally(() => window.clearTimeout(t));
+
+        // Server time sync from response header (best-effort)
+        // Works on Vercel and most setups: Date header is included.
+        const dateHdr = dRes.headers.get('date');
+        if (dateHdr) {
+          const serverMs = new Date(dateHdr).getTime();
+          if (Number.isFinite(serverMs)) {
+            const skew = clampSkewMs(serverMs - Date.now());
+            if (alive && req === liveReqId.current) setServerSkewMs(skew);
+          }
+        }
 
         const d = await dRes.json().catch(() => ({}));
         const b = await bRes.json().catch(() => ({}));
@@ -252,12 +273,15 @@ export default function HubProtocolPage() {
 
   const liveIsOpen = draw?.status === 'OPEN';
 
-  // This is synced to the DB-driven closesAt (same value your main countdown should use)
+  // Use server-synced "now" for countdown so it matches the DB/server closesAt logic
+  const nowSyncedMs = now + serverSkewMs;
+
+  // Synced to the DB-driven closesAt (same value your main countdown should use)
   const closesIn = useMemo(() => {
     if (!draw?.closesAt) return '00:00:00';
     const target = new Date(draw.closesAt).getTime();
-    return formatCountdown(target - now);
-  }, [draw?.closesAt, now]);
+    return formatCountdown(target - nowSyncedMs);
+  }, [draw?.closesAt, nowSyncedMs]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
 
@@ -318,9 +342,7 @@ export default function HubProtocolPage() {
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
-                {proto?.updatedAt
-                  ? `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}`
-                  : 'Live'}
+                {proto?.updatedAt ? `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}` : 'Live'}
               </StatusPill>
             </div>
           </div>
@@ -340,13 +362,7 @@ export default function HubProtocolPage() {
             />
             <MetricCard
               label="Price (USD)"
-              value={
-                protoLoading
-                  ? 'Loading…'
-                  : proto?.priceUsd
-                  ? `$${proto.priceUsd.toFixed(6)}`
-                  : '—'
-              }
+              value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
             />
@@ -373,9 +389,7 @@ export default function HubProtocolPage() {
                   <p className="mt-1 text-sm text-slate-200/85">
                     XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Nothing to do here - it goes live automatically.
-                  </p>
+                  <p className="mt-1 text-xs text-slate-400">Nothing to do here - it goes live automatically.</p>
                 </div>
               </div>
             </div>
@@ -466,9 +480,7 @@ export default function HubProtocolPage() {
                     <p className="font-semibold text-slate-100">
                       {Number(b.amountXpot ?? 0).toLocaleString()} XPOT
                     </p>
-                    <p className="text-xs text-slate-400">
-                      {formatMadridTime(b.scheduledAt)} (Madrid)
-                    </p>
+                    <p className="text-xs text-slate-400">{formatMadridTime(b.scheduledAt)} (Madrid)</p>
                   </div>
 
                   <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : 'amber'}>
@@ -492,11 +504,7 @@ export default function HubProtocolPage() {
 
         {/* LIVE MARKET PANELS */}
         <section className="grid gap-6 lg:grid-cols-2">
-          <PremiumPanel
-            title="Liquidity"
-            subtitle="LP integrity and stability signals."
-            icon={<Waves className="h-5 w-5 text-sky-300" />}
-          >
+          <PremiumPanel title="Liquidity" subtitle="LP integrity and stability signals." icon={<Waves className="h-5 w-5 text-sky-300" />}>
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsd(proto?.lpUsd)} />
               <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
@@ -510,11 +518,7 @@ export default function HubProtocolPage() {
             </div>
           </PremiumPanel>
 
-          <PremiumPanel
-            title="Market"
-            subtitle="Reference price and volume behaviour."
-            icon={<Activity className="h-5 w-5 text-emerald-300" />}
-          >
+          <PremiumPanel title="Market" subtitle="Reference price and volume behaviour." icon={<Activity className="h-5 w-5 text-emerald-300" />}>
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi
                 label="Price"
