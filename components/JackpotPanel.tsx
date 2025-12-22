@@ -1025,83 +1025,68 @@ export default function JackpotPanel({
               <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-sheen" />
 
               {/* Vault seal */}
-              <span className="group relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 overflow-hidden transition hover:bg-white/[0.05]">
-  <span className="relative h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)] xpot-dot" />
+              <span className="relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 overflow-hidden">
+  <span className="relative h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.75)] xpot-dot" />
   <span className="relative">Today&apos;s pool</span>
-  <span className="pointer-events-none absolute inset-0 xpot-hover-sheen" />
+  <span className="pointer-events-none absolute inset-0 xpot-micro-glow" />
 </span>
 
 <span
-  className="group relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] overflow-hidden transition hover:brightness-110"
+  className="relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] overflow-hidden"
   style={{
-    borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.30)` as any,
-    color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
-    background: 'rgba(0,0,0,0.24)',
+    borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.28)` as any,
+    color: `rgba(${VAULT_GOLD.rgb} / 0.84)` as any,
+    background: 'rgba(0,0,0,0.20)',
   }}
 >
   <span className="relative">Daily</span>
-  <span className="pointer-events-none absolute inset-0 xpot-hover-sheen-gold" />
+  <span className="pointer-events-none absolute inset-0 xpot-micro-glow-gold" />
 </span>
 
 <style jsx>{`
-  .xpot-hover-sheen,
-  .xpot-hover-sheen-gold {
-    opacity: 0;
-    transform: translateX(-55%);
-    transition: opacity 220ms ease;
+  .xpot-micro-glow {
+    background: radial-gradient(circle at 30% 40%, rgba(56, 189, 248, 0.14), transparent 60%);
+    opacity: 0.35;
+    animation: xpotMicro 4.8s ease-in-out infinite;
   }
-  .group:hover .xpot-hover-sheen {
-    opacity: 1;
-    background: linear-gradient(
-      120deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.10) 18%,
-      rgba(255, 255, 255, 0) 36%
-    );
-    animation: xpotSheenHover 1.4s ease-in-out;
+  .xpot-micro-glow-gold {
+    background: radial-gradient(circle at 35% 45%, rgba(201, 162, 74, 0.18), transparent 62%);
+    opacity: 0.28;
+    animation: xpotMicro 5.2s ease-in-out infinite;
   }
-  .group:hover .xpot-hover-sheen-gold {
-    opacity: 1;
-    background: linear-gradient(
-      120deg,
-      rgba(201, 162, 74, 0) 0%,
-      rgba(201, 162, 74, 0.18) 20%,
-      rgba(201, 162, 74, 0) 40%
-    );
-    animation: xpotSheenHover 1.5s ease-in-out;
-  }
-  @keyframes xpotSheenHover {
-    0% {
-      transform: translateX(-55%);
-    }
+  @keyframes xpotMicro {
+    0%,
     100% {
-      transform: translateX(55%);
+      transform: translateY(0);
+      opacity: 0.22;
+    }
+    50% {
+      transform: translateY(-1px);
+      opacity: 0.48;
     }
   }
   .xpot-dot {
-    animation: xpotDotPulse 2.6s ease-in-out infinite;
+    animation: xpotDotPulse 3.1s ease-in-out infinite;
   }
   @keyframes xpotDotPulse {
     0%,
     100% {
       transform: scale(1);
-      opacity: 0.9;
     }
     50% {
-      transform: scale(1.16);
-      opacity: 1;
+      transform: scale(1.12);
     }
   }
   @media (prefers-reduced-motion: reduce) {
+    .xpot-micro-glow,
+    .xpot-micro-glow-gold,
     .xpot-dot {
-      animation: none;
-    }
-    .group:hover .xpot-hover-sheen,
-    .group:hover .xpot-hover-sheen-gold {
       animation: none;
     }
   }
 `}</style>
+            </span>
+          </div>
 
           <div className="flex items-center gap-2">
             {isLocked && (
