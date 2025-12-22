@@ -31,14 +31,15 @@ import {
   Zap,
   Timer,
   Info,
-  X,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
+import LiveEntrantsLounge from '@/components/LiveEntrantsLounge';
 import { type LiveEntrant, asLiveEntrant } from '@/lib/live-entrants';
+
 import { createPortal } from 'react-dom';
 
 const ROUTE_HUB = '/hub';
@@ -421,9 +422,9 @@ function PrinciplesStrip() {
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
         <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.12),transparent_62%)]" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Identity</p>
-        <p className="mt-1 text-sm font-semibold text-slate-100">X handle</p>
-        <p className="mt-1 text-[12px] text-slate-400">Displayed as @handle (no wallet profiles)</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Access</p>
+        <p className="mt-1 text-sm font-semibold text-slate-100">Wallet-based</p>
+        <p className="mt-1 text-[12px] text-slate-400">Self-custody, no accounts</p>
       </div>
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
@@ -693,179 +694,101 @@ function useBonusActive() {
   return active;
 }
 
-/* Live lobby (X handles) - safe + optional endpoint
-   Expected response shapes (any):
-   - { entrants: [...] }
-   - { live: [...] }
-   - { data: [...] }
-*/
-function useLiveLobby() {
+/* Live entrants (X handles) - homepage lobby */
+function useLiveEntrants() {
   const [entrants, setEntrants] = useState<LiveEntrant[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
 
-    async function pull() {
+    async function load() {
       try {
-        const r = await fetch('/api/public/live-entrants', { cache: 'no-store' });
+        const r = await fetch('/api/public/live-entrants?limit=18', { cache: 'no-store' });
         const data = (await r.json().catch(() => null)) as any;
         if (!alive) return;
 
-        const raw = data?.entrants ?? data?.live ?? data?.data ?? [];
-        const list: LiveEntrant[] = Array.isArray(raw)
-          ? (raw
-              .map((x: unknown) => asLiveEntrant(x))
-              .filter(Boolean) as LiveEntrant[])
-          : [];
-
-        setEntrants(list.slice(0, 16));
-        setLoading(false);
+        const raw = (data?.entrants || data?.items || data?.data || []) as unknown[];
+        const list = raw.map(asLiveEntrant).filter(Boolean) as LiveEntrant[];
+        setEntrants(list);
       } catch {
         if (!alive) return;
         setEntrants([]);
-        setLoading(false);
       }
     }
 
-    pull();
-    const t = window.setInterval(pull, 8000);
+    load();
+    const t = window.setInterval(load, 15_000);
     return () => {
       alive = false;
       window.clearInterval(t);
     };
   }, []);
 
-  return { entrants, loading };
+  return entrants;
 }
 
-function LiveLobbyCard() {
-  const { entrants, loading } = useLiveLobby();
-
+function ProtocolReserveBanner() {
   return (
-    <div className="relative">
-      <div className="pointer-events-none absolute -inset-20 opacity-75 blur-3xl bg-[radial-gradient(circle_at_30%_30%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_85%_40%,rgba(139,92,246,0.12),transparent_62%)]" />
+    <PremiumCard className="p-5 sm:p-6" halo={false}>
+      <div className="relative overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/55 px-5 py-4">
+        <div
+          className="
+            pointer-events-none absolute -inset-24 opacity-70 blur-3xl
+            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.24),transparent_58%),
+                radial-gradient(circle_at_82%_24%,rgba(255,255,255,0.06),transparent_62%)]
+          "
+        />
 
-      <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_28px_110px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-6">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(16,185,129,0.04),rgba(56,189,248,0.05),rgba(139,92,246,0.06))]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),rgba(var(--xpot-gold),0.20),rgba(255,255,255,0.06),transparent)]" />
-
-        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-black/40 shadow-[0_22px_80px_rgba(0,0,0,0.55)]">
-              <X className="h-5 w-5 text-slate-200/90" />
-            </div>
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span
+              className={`
+                inline-flex h-10 w-10 items-center justify-center rounded-2xl
+                border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
+                shadow-[0_0_24px_rgba(var(--xpot-gold),0.18)]
+              `}
+            >
+              <ShieldCheck className={`h-5 w-5 ${GOLD_TEXT}`} />
+            </span>
 
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                X Live Lobby
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
+                Built with a 10-year rewards runway at launch
               </p>
-              <p className="mt-1 text-sm font-semibold text-slate-100">Live lobby - updates automatically</p>
               <p className="mt-1 text-[12px] text-slate-400">
-                {loading
-                  ? 'Loading entries…'
-                  : entrants.length
-                  ? `Showing latest @handles`
-                  : 'Waiting for the first entries…'}
+                Protocol distribution reserve - transparent allocation and long-range payouts.
               </p>
             </div>
+
+            <TinyTooltip label="This refers to the protocol reserve designed to sustain rewards. Exact emissions can evolve over time, but distribution remains auditable and payouts stay on-chain.">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-slate-300/80 hover:text-slate-200 transition">
+                <Info className="h-4 w-4" />
+              </span>
+            </TinyTooltip>
           </div>
 
           <Link
-            href={ROUTE_HUB}
-            className="
-              inline-flex items-center gap-2 rounded-full
-              border border-white/10 bg-white/[0.04]
-              px-5 py-2.5 text-[12px] font-semibold text-slate-200
-              hover:bg-white/[0.07] transition
-            "
-            title="Open hub"
+            href={ROUTE_TOKENOMICS}
+            className={`
+              group inline-flex items-center gap-2 rounded-full
+              border ${GOLD_BORDER} ${GOLD_BG_WASH}
+              px-4 py-2 text-[12px] font-semibold ${GOLD_TEXT}
+              hover:brightness-[1.06] transition
+            `}
+            title="Open Tokenomics"
           >
-            View in hub
-            <ArrowRight className="h-4 w-4 text-slate-300" />
+            View tokenomics
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
-
-        {entrants.length ? (
-          <div className="relative z-10 mt-4 flex flex-wrap gap-2">
-            {entrants.map((e, idx) => (
-              <span
-                key={`${e.handle}-${idx}`}
-                className="
-                  inline-flex items-center gap-2
-                  rounded-full border border-white/10 bg-black/20
-                  px-3 py-1.5 text-[11px] text-slate-200/90
-                "
-                title={`@${e.handle}`}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300/80 shadow-[0_0_10px_rgba(52,211,153,0.65)]" />
-                @{e.handle}
-                {e.verified ? (
-                  <span className="ml-1 rounded-full border border-sky-400/25 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-200">
-                    verified
-                  </span>
-                ) : null}
-                {e.subtitle ? (
-                  <span className={`ml-1 rounded-full border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} px-2 py-0.5 text-[10px] font-semibold ${GOLD_TEXT}`}>
-                    {e.subtitle}
-                  </span>
-                ) : null}
-              </span>
-            ))}
-          </div>
-        ) : null}
       </div>
-    </div>
-  );
-}
-
-function ProtocolReserveCallout() {
-  return (
-    <div className="relative overflow-hidden rounded-[28px] border border-slate-900/70 bg-slate-950/45 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
-      <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.16),transparent_60%),radial-gradient(circle_at_78%_30%,rgba(255,255,255,0.06),transparent_62%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),transparent)]" />
-
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH_2}`}>
-            <ShieldCheck className={`h-5 w-5 ${GOLD_TEXT}`} />
-          </span>
-
-          <div>
-            <p className={`text-[10px] font-semibold uppercase tracking-[0.26em] ${GOLD_TEXT_DIM}`}>
-              Protocol distribution reserve
-            </p>
-            <div className="mt-1 flex items-center gap-2">
-              <p className={`text-[12px] font-semibold ${GOLD_TEXT}`}>
-                Built with a 10-year rewards runway at launch
-              </p>
-              <TinyTooltip label="Reserve = protocol-controlled distribution pool designed to sustain daily payouts at launch. Payouts remain verifiable on-chain.">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.02] text-slate-300/80 hover:text-slate-200 transition">
-                  <Info className="h-4 w-4" />
-                </span>
-              </TinyTooltip>
-            </div>
-          </div>
-        </div>
-
-        <Link
-          href={`${ROUTE_TOKENOMICS}#protocol-distribution-reserve`}
-          className={`
-            inline-flex items-center gap-2 rounded-full border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
-            px-5 py-2.5 text-[12px] font-semibold ${GOLD_TEXT}
-            hover:bg-[rgba(var(--xpot-gold),0.10)] transition
-          `}
-        >
-          View tokenomics
-          <ExternalLink className="h-4 w-4 text-slate-300/80" />
-        </Link>
-      </div>
-    </div>
+    </PremiumCard>
   );
 }
 
 function HomePageInner() {
   const bonusActive = useBonusActive();
+  const liveEntrants = useLiveEntrants();
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
@@ -881,10 +804,6 @@ function HomePageInner() {
       {
         q: 'Is my wallet public on the site?',
         a: 'No. XPOT is self-custody. Your wallet is used for eligibility and claims, but the product avoids turning wallets into profiles.',
-      },
-      {
-        q: 'What shows publicly?',
-        a: 'The public-facing identity is your X handle (e.g. @name). Proof remains on-chain via payout transactions.',
       },
       {
         q: 'How do winners verify payouts?',
@@ -1050,18 +969,20 @@ function HomePageInner() {
                         Built to scale into a rewards ecosystem for communities, creators and sponsors.
                       </p>
 
-                      {/* Moved runway strip OUT (see below) */}
-
                       <div className="relative z-10 mt-4">
                         <PrinciplesStrip />
                       </div>
 
-                      {/* ✅ Bring back X section (img 1), then put divider BELOW it (img 2) */}
+                      {/* LIVE LOBBY (img 1) */}
                       <div className="relative z-10 mt-4">
-                        <LiveLobbyCard />
+                        <LiveEntrantsLounge
+                          entrants={liveEntrants}
+                          hint="Live lobby - updates automatically"
+                        />
                       </div>
 
-                      <div className="relative z-10 mt-5">
+                      {/* ENTRY MECHANICS DIVIDER (img 2 placement fixed: below lobby) */}
+                      <div className="relative z-10 mt-4">
                         <SectionDividerLabel label="Entry mechanics" />
                       </div>
 
@@ -1106,16 +1027,11 @@ function HomePageInner() {
                         Winners are provable on-chain. Verification beats vibes.
                       </p>
                     </div>
-
-                    {/* ✅ Move + upgrade runway strip (img 3): gold + premium + link to tokenomics */}
-                    <div className="pt-2">
-                      <ProtocolReserveCallout />
-                    </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Mode" value="On-chain" tone="emerald" />
-                    <MiniStat label="Identity" value="@handle" tone="sky" />
+                    <MiniStat label="Access" value="Wallet" tone="sky" />
                     <MiniStat label="Layer" value="Rewards protocol" tone="violet" />
                   </div>
                 </div>
@@ -1142,7 +1058,6 @@ function HomePageInner() {
 {`> XPOT_PROTOCOL
   primitive:       daily reward selection
   access:          wallet-based (self custody)
-  identity:        x-handle (@name)
   proof:           on-chain payout verification
   composable:      modules can plug in later
 
@@ -1163,7 +1078,7 @@ function HomePageInner() {
                 </div>
               </div>
 
-              {/* Live lobby is now inside the cockpit (as per screenshot) */}
+              {/* LiveEntrantsLounge restored inside cockpit (img 1) */}
             </div>
           </div>
         </div>
@@ -1173,6 +1088,11 @@ function HomePageInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
+      {/* GOLD RESERVE STRIP (img 3 moved + premium + link to tokenomics) */}
+      <section className="mt-8">
+        <ProtocolReserveBanner />
+      </section>
+
       {/* HOW IT WORKS */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
@@ -1188,7 +1108,7 @@ function HomePageInner() {
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
                 XPOT keeps the surface area small: holdings-based eligibility, wallet-based access and on-chain payout proof.
-                Identity is the handle, proof is the chain.
+                Everything else can plug in later.
               </p>
             </div>
 
@@ -1199,7 +1119,7 @@ function HomePageInner() {
               </Pill>
               <Pill tone="violet">
                 <Users className="h-3.5 w-3.5" />
-                Identity
+                Access layer
               </Pill>
               <Pill tone="amber">
                 <Stars className="h-3.5 w-3.5" />
@@ -1266,10 +1186,10 @@ function HomePageInner() {
           <PremiumCard className="p-5 sm:p-6" halo={false}>
             <Pill tone="sky">
               <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-              Identity
+              Access
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">X handle display.</p>
-            <p className="mt-2 text-sm text-slate-300">Public identity is @handle, not your wallet.</p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Self-custody.</p>
+            <p className="mt-2 text-sm text-slate-300">Connect wallet in the hub. Keep control of funds and keys.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1343,14 +1263,14 @@ function HomePageInner() {
                   <Users className="h-5 w-5 text-sky-200" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">Identity</p>
-                  <p className="text-xs text-slate-400">Handle-first, not wallet-first</p>
+                  <p className="text-sm font-semibold text-slate-100">Access</p>
+                  <p className="text-xs text-slate-400">Self-custody, composable</p>
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
-                <Bullet tone="sky">Public-facing @handle</Bullet>
-                <Bullet tone="violet">Wallet stays self-custody</Bullet>
-                <Bullet tone="emerald">Proof stays on-chain</Bullet>
+                <Bullet tone="sky">Wallet connect, no accounts</Bullet>
+                <Bullet tone="violet">History and rewards can evolve later</Bullet>
+                <Bullet tone="emerald">Low-friction, high-proof</Bullet>
               </ul>
             </div>
 
@@ -1431,14 +1351,14 @@ function HomePageInner() {
               </Pill>
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                The homepage stays calm. The hub is where entries happen. Identity is @handle. Proof stays on-chain.
+                The homepage stays calm. The hub is where entries happen. Proof stays on-chain.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <Pill tone="sky">
                 <Users className="h-3.5 w-3.5" />
-                Identity
+                Access
               </Pill>
               <Pill tone="amber">
                 <Stars className="h-3.5 w-3.5" />
@@ -1471,13 +1391,13 @@ function HomePageInner() {
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Self custody
                 </Pill>
-                <Pill tone="sky">
-                  <Users className="h-3.5 w-3.5" />
-                  Identity
-                </Pill>
                 <Pill tone="amber">
                   <Stars className="h-3.5 w-3.5" />
                   Proof
+                </Pill>
+                <Pill tone="violet">
+                  <Blocks className="h-3.5 w-3.5" />
+                  Composable
                 </Pill>
               </div>
             </div>
