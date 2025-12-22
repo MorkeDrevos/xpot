@@ -1061,21 +1061,22 @@ export default function TokenomicsPage() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      {/* ✅ Full-bleed hero (home-like) */}
-      <section className="relative -mx-4 sm:-mx-6">
+      {/* ✅ Full-bleed hero (brown runs edge-to-edge) */}
+<section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
   <div
     className="
       relative overflow-hidden border-b border-white/5
-      bg-[radial-gradient(circle_at_50%_30%,rgba(var(--xpot-gold),0.12),rgba(0,0,0,0)_62%)]
+      bg-[linear-gradient(180deg,rgba(10,7,4,0.94),rgba(0,0,0,0.92))]
     "
   >
-    {/* Brown-only wash */}
+    {/* Brown-only wash (strong, fills entire hero) */}
     <div
       className="
         pointer-events-none absolute inset-0
-        bg-[radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),
-            radial-gradient(circle_at_80%_35%,rgba(var(--xpot-gold),0.12),transparent_62%),
-            linear-gradient(180deg,rgba(0,0,0,0.15),rgba(0,0,0,0.70))]
+        bg-[radial-gradient(circle_at_18%_22%,rgba(var(--xpot-gold),0.22),transparent_62%),
+            radial-gradient(circle_at_78%_34%,rgba(var(--xpot-gold),0.14),transparent_66%),
+            radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.10),transparent_58%),
+            linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.75))]
       "
     />
     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
