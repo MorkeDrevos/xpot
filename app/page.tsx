@@ -940,12 +940,54 @@ function HomePageInner() {
                       </Pill>
                     </div>
 
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="font-mono text-slate-300">{XPOT_SIGN}</span>
-                      <span>denotes XPOT amounts (USD shown only for estimates)</span>
-                      <span className="text-slate-700">•</span>
-                      <span className="text-slate-600">{cutoffLabel}</span>
-                    </div>
+                    {/* 10+ YEARS runway strip (placed under pills) */}
+<div className="relative overflow-hidden rounded-full border border-slate-900/70 bg-slate-950/45 px-4 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur">
+  <div
+    className="
+      pointer-events-none absolute -inset-24 opacity-70 blur-3xl
+      bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
+          radial-gradient(circle_at_82%_24%,rgba(255,255,255,0.06),transparent_62%)]
+    "
+  />
+  <div className="relative flex flex-wrap items-center justify-between gap-3">
+    <div className="flex items-center gap-2.5">
+      <span
+        className={`
+          inline-flex h-8 w-8 items-center justify-center rounded-full
+          border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
+          shadow-[0_0_18px_rgba(var(--xpot-gold),0.16)]
+        `}
+      >
+        <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+      </span>
+
+      <div className="leading-tight">
+        <p className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
+          Built with a 10+ year rewards runway at launch
+        </p>
+        <p className="mt-0.5 text-[11px] text-slate-500">
+          Protocol distribution reserve - payouts stay on-chain
+          <span className="text-slate-700"> • </span>
+          <span className="text-slate-600">{cutoffLabel}</span>
+        </p>
+      </div>
+    </div>
+
+    <Link
+      href={ROUTE_TOKENOMICS}
+      className={`
+        inline-flex items-center gap-2 rounded-full
+        border ${GOLD_BORDER} ${GOLD_BG_WASH}
+        px-3.5 py-1.5 text-[11px] font-semibold ${GOLD_TEXT}
+        hover:brightness-[1.06] transition
+      `}
+      title="Open Tokenomics"
+    >
+      View tokenomics
+      <ArrowRight className="h-4 w-4" />
+    </Link>
+  </div>
+</div>
 
                     <div className="xpot-hero-cockpit rounded-[30px] border border-slate-900/70 bg-slate-950/28 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
                       <div className="xpot-hero-hudgrid rounded-[30px]" />
@@ -1088,10 +1130,6 @@ function HomePageInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* GOLD RESERVE STRIP (img 3 moved + premium + link to tokenomics) */}
-      <section className="mt-8">
-        <ProtocolReserveBanner />
-      </section>
 
       {/* HOW IT WORKS */}
       <section className="mt-8">
