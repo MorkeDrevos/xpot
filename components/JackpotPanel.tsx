@@ -1024,110 +1024,88 @@ export default function JackpotPanel({
               />
               <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-sheen" />
 
-              {/* Vault seal */}
-              {/* TODAY'S POOL pill (replace your current one) */}
-<span className="group relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 overflow-hidden">
-  <span className="relative h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)] xpot-dot" />
-  <span className="relative">Today&apos;s pool</span>
-  <span className="pointer-events-none absolute inset-0 xpot-pill-sweep" />
-  <span className="pointer-events-none absolute inset-0 xpot-pill-breathe" />
-</span>
+             <div className="flex flex-wrap items-center gap-3">
+  {/* LEFT PILL */}
+  <span className="relative inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 overflow-hidden">
+    <span className="relative h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+    <span className="relative">Today&apos;s pool</span>
+    <span className="pointer-events-none absolute inset-0 xpot-micro-glow" />
+  </span>
 
-{/* DAILY pill (replace your current one) */}
-<span
-  className="group relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] overflow-hidden"
-  style={{
-    borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.30)` as any,
-    color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
-    background: 'rgba(0,0,0,0.24)',
-  }}
->
-  <span className="relative">Daily</span>
-  <span className="pointer-events-none absolute inset-0 xpot-pill-sweep-gold" />
-</span>
+  {/* VALUE (RESTORES 1,000,000 XPOT) */}
+  <span
+    className="group relative inline-flex items-center gap-4 rounded-2xl bg-black/60 px-7 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_28px_80px_rgba(0,0,0,0.55)]"
+    style={{ border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.34)` as any }}
+  >
+    <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-sheen" />
+    <span
+      className="relative font-mono text-2xl sm:text-3xl tracking-[0.24em] tabular-nums"
+      style={{
+        color: 'rgba(255,255,255,0.96)',
+        textShadow: '0 0 16px rgba(201,162,74,0.10), 0 0 26px rgba(124,200,255,0.06)',
+      }}
+    >
+      {poolLabel}
+    </span>
+  </span>
 
-<style jsx>{`
-  .xpot-pill-sweep {
-    background: linear-gradient(
-      120deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.08) 18%,
-      rgba(255, 255, 255, 0) 36%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    transform: translateX(-60%);
-    opacity: 0;
-    animation: xpotPillSweep 4.2s ease-in-out infinite;
-  }
-  .xpot-pill-sweep-gold {
-    background: linear-gradient(
-      120deg,
-      rgba(201, 162, 74, 0) 0%,
-      rgba(201, 162, 74, 0.16) 20%,
-      rgba(201, 162, 74, 0) 40%,
-      rgba(201, 162, 74, 0) 100%
-    );
-    transform: translateX(-60%);
-    opacity: 0;
-    animation: xpotPillSweep 4.6s ease-in-out infinite;
-  }
-  @keyframes xpotPillSweep {
-    0% {
-      transform: translateX(-60%);
-      opacity: 0;
-    }
-    14% {
-      opacity: 0.9;
-    }
-    34% {
-      transform: translateX(60%);
-      opacity: 0;
-    }
-    100% {
-      transform: translateX(60%);
-      opacity: 0;
-    }
-  }
+  {/* RIGHT PILL */}
+  <span
+    className="relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] overflow-hidden"
+    style={{
+      borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.30)` as any,
+      color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
+      background: 'rgba(0,0,0,0.24)',
+    }}
+  >
+    <span className="pointer-events-none absolute inset-0 xpot-daily-shimmer" />
+    <span className="relative">Daily</span>
+  </span>
 
-  .xpot-pill-breathe {
-    background: radial-gradient(circle at 30% 40%, rgba(56, 189, 248, 0.10), transparent 60%);
-    opacity: 0.55;
-    animation: xpotBreathe 3.8s ease-in-out infinite;
-  }
-  @keyframes xpotBreathe {
-    0%,
-    100% {
-      opacity: 0.35;
-    }
-    50% {
-      opacity: 0.65;
-    }
-  }
-
-  .xpot-dot {
-    animation: xpotDotPulse 2.6s ease-in-out infinite;
-  }
-  @keyframes xpotDotPulse {
-    0%,
-    100% {
-      transform: scale(1);
-      filter: brightness(1);
-    }
-    50% {
-      transform: scale(1.15);
-      filter: brightness(1.15);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .xpot-pill-sweep,
-    .xpot-pill-sweep-gold,
-    .xpot-pill-breathe,
+  <style jsx>{`
     .xpot-dot {
-      animation: none;
+      animation: xpotDotPulse 3.1s ease-in-out infinite;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
     }
-  }
-`}</style>
+    @keyframes xpotDotPulse {
+      0% { transform: scale(1); opacity: 0.75; }
+      50% { transform: scale(1.25); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.75; }
+    }
+    .xpot-micro-glow {
+      background: radial-gradient(circle_at_20%_50%, rgba(56,189,248,0.10), transparent 58%);
+      animation: xpotMicro 4.8s ease-in-out infinite;
+      opacity: 0.22;
+    }
+    @keyframes xpotMicro {
+      0% { transform: translateX(0); opacity: 0.18; }
+      50% { transform: translateX(10px); opacity: 0.28; }
+      100% { transform: translateX(0); opacity: 0.18; }
+    }
+    .xpot-daily-shimmer {
+      background: linear-gradient(
+        120deg,
+        rgba(201,162,74,0) 0%,
+        rgba(201,162,74,0.10) 18%,
+        rgba(201,162,74,0) 40%,
+        rgba(201,162,74,0) 100%
+      );
+      transform: translateX(-55%);
+      animation: xpotDaily 5.2s ease-in-out infinite;
+      opacity: 0.25;
+    }
+    @keyframes xpotDaily {
+      0% { transform: translateX(-55%); opacity: 0; }
+      18% { opacity: 0.55; }
+      40% { transform: translateX(55%); opacity: 0; }
+      100% { transform: translateX(55%); opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .xpot-dot, .xpot-micro-glow, .xpot-daily-shimmer { animation: none; }
+    }
+  `}</style>
+</div>
+              
             </span>
           </div>
 
