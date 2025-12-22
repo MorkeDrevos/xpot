@@ -53,14 +53,13 @@ function Pill({
   children: ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky' | 'violet';
 }) {
-  // ✅ Fix: make amber pills feel “gold” again (brighter + subtle glow) without changing the whole palette
   const map: Record<string, string> = {
     slate:
       'border-slate-700/70 bg-slate-900/70 text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
     emerald:
       'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
     amber:
-      'border-amber-300/55 bg-[linear-gradient(180deg,rgba(245,158,11,0.14),rgba(245,158,11,0.06))] text-amber-100 shadow-[0_0_0_1px_rgba(245,158,11,0.18),0_0_22px_rgba(245,158,11,0.10)]',
+      'border-amber-400/50 bg-amber-500/10 text-amber-200 shadow-[0_0_0_1px_rgba(245,158,11,0.16)]',
     sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
     violet:
       'border-violet-400/45 bg-violet-500/10 text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.16)]',
@@ -153,7 +152,7 @@ function MiniStat({
       : tone === 'sky'
       ? 'text-sky-200'
       : tone === 'amber'
-      ? 'text-amber-100'
+      ? 'text-amber-200'
       : tone === 'violet'
       ? 'text-violet-200'
       : 'text-slate-200';
@@ -343,7 +342,7 @@ function Bullet({
     tone === 'sky'
       ? 'bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]'
       : tone === 'amber'
-      ? 'bg-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.85)]'
+      ? 'bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.9)]'
       : tone === 'violet'
       ? 'bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]'
       : 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]';
@@ -380,18 +379,17 @@ function Step({
       ? 'border-violet-500/25 bg-violet-950/25'
       : 'border-emerald-500/25 bg-emerald-950/30';
 
-  // ✅ Fix: amber tag should read as “gold” not brown
   const tagTone =
     tone === 'sky'
       ? 'text-sky-200 border-sky-500/25 bg-sky-500/10'
       : tone === 'amber'
-      ? 'text-amber-100 border-amber-300/40 bg-[linear-gradient(180deg,rgba(245,158,11,0.14),rgba(245,158,11,0.06))] shadow-[0_0_18px_rgba(245,158,11,0.10)]'
+      ? 'text-amber-200 border-amber-500/25 bg-amber-500/10'
       : tone === 'violet'
       ? 'text-violet-200 border-violet-500/25 bg-violet-500/10'
       : 'text-emerald-200 border-emerald-500/25 bg-emerald-500/10';
 
   return (
-    <div className="relative z-10 overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+    <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
       <div className="pointer-events-none absolute -inset-24 opacity-60 blur-3xl bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.10),transparent_55%)]" />
 
       <div className="relative flex items-center justify-between">
@@ -619,8 +617,8 @@ export default function HomePage() {
                       </h1>
 
                       <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                        Hold XPOT, connect X and claim your entry in the hub. One winner daily, paid on-chain. Built for
-                        communities, creators and sponsors.
+                        Hold XPOT, connect X and claim your entry in the hub. One winner daily, paid on-chain.
+                        Built for communities, creators and sponsors.
                       </p>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -794,13 +792,10 @@ export default function HomePage() {
           </div>
 
           <div className="relative mt-6">
-            {/* ✅ Fix: soften + reposition the connector line so it doesn’t “cut” across cards (img2) */}
-            <div className="pointer-events-none absolute inset-x-2 top-[30px] hidden h-px lg:block">
-              <div className="h-px w-full bg-white/5" />
-              <div className="mt-[-1px] h-px w-full bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.26),rgba(16,185,129,0.22),rgba(245,158,11,0.16),transparent)] opacity-50 blur-[0.2px]" />
-            </div>
+            <div className="pointer-events-none absolute inset-x-2 top-[34px] hidden h-px bg-white/10 lg:block" />
+            <div className="pointer-events-none absolute inset-x-2 top-[34px] hidden h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.35),rgba(16,185,129,0.25),rgba(245,158,11,0.18),transparent)] lg:block" />
 
-            <div className="relative z-10 grid gap-4 lg:grid-cols-3">
+            <div className="grid gap-4 lg:grid-cols-3">
               <Step
                 n="01"
                 title="Hold XPOT"
@@ -865,7 +860,7 @@ export default function HomePage() {
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
             <Pill tone="amber">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.85)]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
               Payout
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
@@ -985,9 +980,7 @@ export default function HomePage() {
               Creators
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              One mechanic, transparent winners and a premium experience that doesn’t feel spammy.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">One mechanic, transparent winners and a premium experience that doesn’t feel spammy.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -996,9 +989,7 @@ export default function HomePage() {
               Sponsors
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Sponsor pools and bonuses with visibility and provable distribution on-chain.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1045,41 +1036,43 @@ export default function HomePage() {
         </PremiumCard>
       </section>
 
-      {/* Footer (definition line feature) */}
+      {/* Footer (new definition line feature) */}
       <footer className="mt-8 pb-10">
-        <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 px-5 py-4 shadow-[0_28px_120px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-[11px] text-slate-400">
-              <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-              <span className="text-slate-300">XPOT.bet</span>
-              <span className="text-slate-600">·</span>
-              <span className="text-slate-300">Build · Engage · Transact</span>
+        <div className="grid gap-4">
+          <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+                <span>XPOT.bet</span>
+                <span className="text-slate-600">·</span>
+                <span className="text-slate-300">Build · Engage · Transact</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={ROUTE_TERMS}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
+                >
+                  Terms
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                </Link>
+
+                <Link
+                  href={ROUTE_OPS}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
+                >
+                  <Lock className="h-3.5 w-3.5 text-amber-200" />
+                  Ops
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                </Link>
+
+                <span className="font-mono text-[11px] text-slate-600">build: cinematic-home</span>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href={ROUTE_TERMS}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
-              >
-                Terms
-                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-              </Link>
-
-              <Link
-                href={ROUTE_OPS}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-3 py-1.5 text-[11px] text-slate-300 hover:bg-slate-900 transition"
-              >
-                <Lock className="h-3.5 w-3.5 text-amber-200" />
-                Ops
-                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-              </Link>
-
-              <span className="font-mono text-[11px] text-slate-600">build: cinematic-home</span>
+            <div className="mt-3 border-l border-white/10 pl-4 text-[12px] leading-relaxed text-slate-400">
+              A participation-driven protocol for on-chain engagement and reward distribution.
             </div>
-          </div>
-
-          <div className="mt-3 border-l border-white/10 pl-4 text-[12px] leading-relaxed text-slate-400">
-            A participation-driven protocol for on-chain engagement and reward distribution.
           </div>
         </div>
       </footer>
