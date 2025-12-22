@@ -1025,79 +1025,104 @@ export default function JackpotPanel({
               <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-sheen" />
 
               {/* Vault seal */}
-              <span className="group relative inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/35 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 overflow-hidden shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+              {/* TODAY'S POOL pill (replace your current one) */}
+<span className="group relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 overflow-hidden">
   <span className="relative h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.85)] xpot-dot" />
   <span className="relative">Today&apos;s pool</span>
-  <span className="pointer-events-none absolute inset-0 xpot-metal-sheen" />
+  <span className="pointer-events-none absolute inset-0 xpot-pill-sweep" />
+  <span className="pointer-events-none absolute inset-0 xpot-pill-breathe" />
 </span>
 
+{/* DAILY pill (replace your current one) */}
 <span
-  className="group relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] overflow-hidden shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]"
+  className="group relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] overflow-hidden"
   style={{
     borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.30)` as any,
     color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
-    background: 'rgba(0,0,0,0.30)',
+    background: 'rgba(0,0,0,0.24)',
   }}
 >
   <span className="relative">Daily</span>
-  <span className="pointer-events-none absolute inset-0 xpot-metal-sheen-gold" />
+  <span className="pointer-events-none absolute inset-0 xpot-pill-sweep-gold" />
 </span>
 
 <style jsx>{`
-  .xpot-metal-sheen {
+  .xpot-pill-sweep {
     background: linear-gradient(
-      110deg,
+      120deg,
       rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.10) 22%,
-      rgba(255, 255, 255, 0) 44%
+      rgba(255, 255, 255, 0.08) 18%,
+      rgba(255, 255, 255, 0) 36%,
+      rgba(255, 255, 255, 0) 100%
     );
-    transform: translateX(-70%);
+    transform: translateX(-60%);
     opacity: 0;
-    animation: xpotMetalSheen 5.0s ease-in-out infinite;
+    animation: xpotPillSweep 4.2s ease-in-out infinite;
   }
-  .xpot-metal-sheen-gold {
+  .xpot-pill-sweep-gold {
     background: linear-gradient(
-      110deg,
+      120deg,
       rgba(201, 162, 74, 0) 0%,
-      rgba(201, 162, 74, 0.18) 24%,
-      rgba(201, 162, 74, 0) 46%
+      rgba(201, 162, 74, 0.16) 20%,
+      rgba(201, 162, 74, 0) 40%,
+      rgba(201, 162, 74, 0) 100%
     );
-    transform: translateX(-70%);
+    transform: translateX(-60%);
     opacity: 0;
-    animation: xpotMetalSheen 5.4s ease-in-out infinite;
+    animation: xpotPillSweep 4.6s ease-in-out infinite;
   }
-  @keyframes xpotMetalSheen {
+  @keyframes xpotPillSweep {
     0% {
-      transform: translateX(-70%);
+      transform: translateX(-60%);
       opacity: 0;
     }
-    16% {
+    14% {
       opacity: 0.9;
     }
-    40% {
-      transform: translateX(70%);
+    34% {
+      transform: translateX(60%);
       opacity: 0;
     }
     100% {
-      transform: translateX(70%);
+      transform: translateX(60%);
       opacity: 0;
     }
   }
+
+  .xpot-pill-breathe {
+    background: radial-gradient(circle at 30% 40%, rgba(56, 189, 248, 0.10), transparent 60%);
+    opacity: 0.55;
+    animation: xpotBreathe 3.8s ease-in-out infinite;
+  }
+  @keyframes xpotBreathe {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 0.65;
+    }
+  }
+
   .xpot-dot {
-    animation: xpotDotPulse 2.8s ease-in-out infinite;
+    animation: xpotDotPulse 2.6s ease-in-out infinite;
   }
   @keyframes xpotDotPulse {
     0%,
     100% {
       transform: scale(1);
+      filter: brightness(1);
     }
     50% {
-      transform: scale(1.18);
+      transform: scale(1.15);
+      filter: brightness(1.15);
     }
   }
+
   @media (prefers-reduced-motion: reduce) {
-    .xpot-metal-sheen,
-    .xpot-metal-sheen-gold,
+    .xpot-pill-sweep,
+    .xpot-pill-sweep-gold,
+    .xpot-pill-breathe,
     .xpot-dot {
       animation: none;
     }
