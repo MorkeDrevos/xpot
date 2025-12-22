@@ -1,110 +1,53 @@
 // app/api/bonus/live/route.ts
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+
+// If your prisma client is default-exported, use:
+// import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-type ApiBonus = {
-  id: string;
-  amountXpot: number;
-  scheduledAt: string; // ISO
-  status: 'UPCOMING' | 'CLAIMED';
-};
-
-function getMadridParts(date = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(date);
-
-  const get = (type: string, fallback = '0') =>
-    Number(parts.find(p => p.type === type)?.value ?? fallback);
-
-  return {
-    y: get('year', '0'),
-    m: get('month', '1'),
-    d: get('day', '1'),
-    hh: get('hour', '0'),
-    mm: get('minute', '0'),
-    ss: get('second', '0'),
-  };
-}
-
-function getMadridOffsetMs(now = new Date()) {
-  const p = getMadridParts(now);
-  const asUtc = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss);
-  return asUtc - now.getTime();
-}
-
-function mkUtcFromMadridWallClock(
-  yy: number,
-  mm: number,
-  dd: number,
-  hh: number,
-  mi: number,
-  ss: number,
-  offsetMs: number,
-) {
-  const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
-  return new Date(asUtc - offsetMs);
-}
-
-function getMadridDayBoundsUtc(now = new Date()) {
-  const p = getMadridParts(now);
-  const offsetMs = getMadridOffsetMs(now);
-
-  const startUtc = mkUtcFromMadridWallClock(p.y, p.m, p.d, 0, 0, 0, offsetMs);
-  const endUtc = mkUtcFromMadridWallClock(p.y, p.m, p.d, 23, 59, 59, offsetMs);
-
-  return { startUtc, endUtc };
+function utcDayStart(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
 }
 
 export async function GET() {
-  try {
-    const now = new Date();
-    const { startUtc, endUtc } = getMadridDayBoundsUtc(now);
+  const today = utcDayStart(new Date());
 
-    // Adjust model/field names here only if your Prisma schema differs.
-    const rows = await prisma.bonusDrop.findMany({
-      where: {
-        scheduledAt: {
-          gte: startUtc,
-          lte: endUtc,
+  // Find today's draw (your schema uses drawDate as a UTC day bucket)
+  const draw = await prisma.draw.findUnique({
+    where: { drawDate: today },
+    select: {
+      bonusDrops: {
+        where: {
+          // Only show active + fired. Hide cancelled.
+          status: { in: ['SCHEDULED', 'FIRED'] },
+        },
+        orderBy: { scheduledAt: 'asc' },
+        select: {
+          id: true,
+          amountXpot: true,
+          scheduledAt: true,
+          status: true,
+          label: true,
         },
       },
-      orderBy: { scheduledAt: 'desc' },
-      select: {
-        id: true,
-        amountXpot: true,
-        scheduledAt: true,
-        status: true,
-        claimedAt: true,
-      },
-      take: 25,
-    });
+    },
+  });
 
-    const bonus: ApiBonus[] = rows.map(r => {
-      // Prefer DB enum if present, otherwise derive something safe for UI
-      const derived: ApiBonus['status'] =
-        r.status === 'CLAIMED' || r.claimedAt ? 'CLAIMED' : 'UPCOMING';
+  const bonus =
+    draw?.bonusDrops?.map(b => ({
+      id: b.id,
+      amountXpot: b.amountXpot,
+      scheduledAt: b.scheduledAt.toISOString(),
+      // UI expects: UPCOMING | CLAIMED
+      status: b.status === 'FIRED' ? 'CLAIMED' : 'UPCOMING',
+      // optional (safe to include; frontend can ignore)
+      label: b.label ?? null,
+    })) ?? [];
 
-      return {
-        id: r.id,
-        amountXpot: Number(r.amountXpot),
-        scheduledAt: r.scheduledAt.toISOString(),
-        status: derived,
-      };
-    });
-
-    return NextResponse.json({ bonus });
-  } catch (e) {
-    // Safe default: don’t show bonus block if DB is unavailable
-    return NextResponse.json({ bonus: [] }, { status: 200 });
-  }
+  return NextResponse.json(
+    { bonus },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } },
+  );
 }
