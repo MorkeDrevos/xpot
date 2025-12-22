@@ -41,8 +41,7 @@ export async function GET(req: Request) {
    * You can tweak keywords to shape the vibe,
    * but users are always real.
    */
-  const query =
-    '(crypto OR solana OR web3 OR defi OR airdrop) -is:retweet lang:en';
+  const query = '(solana OR crypto) -is:retweet lang:en is:verified';
 
   const apiUrl =
     `https://api.x.com/2/tweets/search/recent?` +
