@@ -21,8 +21,8 @@ import {
 import XpotPageShell from '@/components/XpotPageShell';
 
 type LiveDraw = {
-  jackpotXpot: number;
-  jackpotUsd: number;
+  rewardXpot: number;
+  rewardUsd: number;
   closesAt: string; // ISO
   status: 'OPEN' | 'LOCKED' | 'DRAWING' | 'COMPLETED';
 };
@@ -95,7 +95,7 @@ function formatCountdown(ms: number) {
 
 function fmtUsd(n?: number) {
   const v = Number(n);
-  if (!Number.isFinite(v)) return '—';
+  if (!Number.isFinite(v) || v <= 0) return '—';
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
@@ -121,10 +121,40 @@ function labelFromSignal(sig?: ProtocolState['liquiditySignal']) {
 }
 
 function isPairPending(p?: ProtocolState | null) {
-  // If endpoint returns but has no price and no LP, assume pre-launch / no public pair yet
   if (!p) return true;
-  const hasAny = Number.isFinite(Number(p.priceUsd)) || Number.isFinite(Number(p.lpUsd)) || Number.isFinite(Number(p.volume24hUsd));
+  const hasAny =
+    Number.isFinite(Number(p.priceUsd)) ||
+    Number.isFinite(Number(p.lpUsd)) ||
+    Number.isFinite(Number(p.volume24hUsd));
   return !hasAny;
+}
+
+// Accepts either old API fields (jackpotXpot/jackpotUsd) or new ones (rewardXpot/rewardUsd)
+function normalizeLiveDraw(x: any): LiveDraw | null {
+  if (!x) return null;
+
+  const closesAt = typeof x?.closesAt === 'string' ? x.closesAt : '';
+  const status = x?.status as LiveDraw['status'];
+
+  const rewardXpotRaw =
+    x?.rewardXpot ?? x?.jackpotXpot ?? x?.poolXpot ?? x?.amountXpot ?? 0;
+  const rewardUsdRaw =
+    x?.rewardUsd ?? x?.jackpotUsd ?? x?.poolUsd ?? x?.amountUsd ?? 0;
+
+  const rewardXpot = Number(rewardXpotRaw);
+  const rewardUsd = Number(rewardUsdRaw);
+
+  const okStatus =
+    status === 'OPEN' || status === 'LOCKED' || status === 'DRAWING' || status === 'COMPLETED';
+
+  if (!closesAt || !okStatus) return null;
+
+  return {
+    rewardXpot: Number.isFinite(rewardXpot) ? rewardXpot : 0,
+    rewardUsd: Number.isFinite(rewardUsd) ? rewardUsd : 0,
+    closesAt,
+    status,
+  };
 }
 
 export default function HubProtocolPage() {
@@ -173,7 +203,9 @@ export default function HubProtocolPage() {
 
         if (!alive || req !== liveReqId.current) return;
 
-        setDraw(d?.draw ?? null);
+        const normalizedDraw = normalizeLiveDraw(d?.draw ?? null);
+        setDraw(normalizedDraw);
+
         setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
       } catch {
         if (!alive) return;
@@ -212,7 +244,6 @@ export default function HubProtocolPage() {
         if (!alive || req !== protoReqId.current) return;
 
         if (!res.ok) {
-          // Treat as unavailable, not fatal
           setProto(null);
           return;
         }
@@ -303,9 +334,7 @@ export default function HubProtocolPage() {
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
-                {proto?.updatedAt
-                  ? `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}`
-                  : 'Live'}
+                {proto?.updatedAt ? `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}` : 'Live'}
               </StatusPill>
             </div>
           </div>
@@ -325,13 +354,7 @@ export default function HubProtocolPage() {
             />
             <MetricCard
               label="Price (USD)"
-              value={
-                protoLoading
-                  ? 'Loading…'
-                  : proto?.priceUsd
-                  ? `$${proto.priceUsd.toFixed(6)}`
-                  : '—'
-              }
+              value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
             />
@@ -358,9 +381,7 @@ export default function HubProtocolPage() {
                   <p className="mt-1 text-sm text-slate-200/85">
                     XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Nothing to do here - it goes live automatically.
-                  </p>
+                  <p className="mt-1 text-xs text-slate-400">Nothing to do here - it goes live automatically.</p>
                 </div>
               </div>
             </div>
@@ -390,14 +411,16 @@ export default function HubProtocolPage() {
 
             {error ? (
               <p className="mt-6 text-sm text-amber-300">{error}</p>
-            ) : loading || !draw ? (
+            ) : loading ? (
               <p className="mt-6 text-sm text-slate-400">Loading live draw…</p>
+            ) : !draw ? (
+              <p className="mt-6 text-sm text-slate-500">Live draw unavailable.</p>
             ) : (
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
-                  label="Jackpot"
-                  value={`${Number(draw.jackpotXpot ?? 0).toLocaleString()} XPOT`}
-                  hint={`≈ ${fmtUsd(draw.jackpotUsd)}`}
+                  label="Reward pool"
+                  value={`${Number(draw.rewardXpot ?? 0).toLocaleString()} XPOT`}
+                  hint={draw.rewardUsd > 0 ? `≈ ${fmtUsd(draw.rewardUsd)}` : undefined}
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
@@ -451,9 +474,7 @@ export default function HubProtocolPage() {
                     <p className="font-semibold text-slate-100">
                       {Number(b.amountXpot ?? 0).toLocaleString()} XPOT
                     </p>
-                    <p className="text-xs text-slate-400">
-                      {new Date(b.scheduledAt).toLocaleTimeString()}
-                    </p>
+                    <p className="text-xs text-slate-400">{new Date(b.scheduledAt).toLocaleTimeString()}</p>
                   </div>
 
                   <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : 'amber'}>
