@@ -7,8 +7,6 @@ import { motion } from 'framer-motion';
 import {
   Activity,
   ChartNoAxesCombined,
-  Copy,
-  Check,
   Crown,
   ShieldCheck,
   Sparkles,
@@ -18,23 +16,26 @@ import {
   Zap,
   ExternalLink,
   Info,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
-import { TOKEN_MINT, TOKEN_SYMBOL } from '@/lib/xpot';
+import { TOKEN_MINT } from '@/lib/xpot';
 
 type LiveDraw = {
   jackpotXpot: number; // API field name (keep), UI avoids "jackpot"
-  jackpotUsd: number;
+  jackpotUsd?: number; // legacy/stub only - UI should not rely on it
   closesAt: string; // ISO
   status: 'OPEN' | 'LOCKED' | 'DRAWING' | 'COMPLETED';
 };
 
 type BonusXPOT = {
   id: string;
+  label?: string;
   amountXpot: number;
   scheduledAt: string; // ISO
-  status: 'UPCOMING' | 'CLAIMED';
+  status: 'UPCOMING' | 'CLAIMED' | 'CANCELLED';
 };
 
 type ProtocolState = {
@@ -52,12 +53,6 @@ type ProtocolState = {
 };
 
 type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
-
-function shortAddr(a?: string) {
-  if (!a) return '—';
-  if (a.length <= 10) return a;
-  return `${a.slice(0, 4)}…${a.slice(-4)}`;
-}
 
 function StatusPill({
   children,
@@ -102,7 +97,7 @@ function formatCountdown(ms: number) {
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
 }
 
-function fmtUsd(n?: number) {
+function fmtUsdCompact(n?: number) {
   const v = Number(n);
   if (!Number.isFinite(v)) return '—';
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -151,44 +146,20 @@ function formatMadridTime(iso?: string) {
   }).format(d);
 }
 
-/**
- * XPOT amount styling: "gold digits + spaced, premium"
- * (matches your screenshot vibe)
- */
-function XpotAmount({
-  amount,
-  suffix = TOKEN_SYMBOL,
-  size = 'lg',
-}: {
-  amount: number | string;
-  suffix?: string;
-  size?: 'lg' | 'md' | 'sm';
-}) {
-  const n = typeof amount === 'number' ? amount : Number(amount);
-  const txt = Number.isFinite(n) ? n.toLocaleString() : String(amount);
+function shortAddr(a: string) {
+  if (!a) return '—';
+  return `${a.slice(0, 4)}…${a.slice(-4)}`;
+}
 
-  const sizeCls =
-    size === 'lg'
-      ? 'text-[22px] sm:text-[24px]'
-      : size === 'md'
-      ? 'text-[18px]'
-      : 'text-[16px]';
-
+function XpotAmount({ amount }: { amount: number }) {
+  const n = Number(amount);
+  const text = Number.isFinite(n) ? n.toLocaleString() : '—';
   return (
     <span className="inline-flex items-baseline gap-3">
-      <span
-        className={[
-          'font-semibold tabular-nums',
-          'tracking-[0.28em]',
-          'text-amber-200/95',
-          sizeCls,
-        ].join(' ')}
-      >
-        {txt}
+      <span className="font-mono text-amber-200 tracking-[0.18em] text-lg sm:text-xl">
+        {text}
       </span>
-      <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
-        {suffix}
-      </span>
+      <span className="text-slate-400 font-semibold tracking-[0.14em]">XPOT</span>
     </span>
   );
 }
@@ -204,10 +175,8 @@ export default function HubProtocolPage() {
   const [error, setError] = useState<string | null>(null);
   const [protoError, setProtoError] = useState<string | null>(null);
 
-  // local timer tick for countdown
   const [now, setNow] = useState(() => Date.now());
 
-  // CA copy UX
   const [copied, setCopied] = useState(false);
 
   // Avoid state updates after unmount and avoid out-of-order responses
@@ -215,17 +184,10 @@ export default function HubProtocolPage() {
   const protoReqId = useRef(0);
 
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    if (!copied) return;
-    const t = window.setTimeout(() => setCopied(false), 1200);
-    return () => window.clearTimeout(t);
-  }, [copied]);
-
-  // Live draw + bonus
   useEffect(() => {
     let alive = true;
 
@@ -266,7 +228,6 @@ export default function HubProtocolPage() {
     };
   }, []);
 
-  // Protocol metrics
   useEffect(() => {
     let alive = true;
 
@@ -312,7 +273,7 @@ export default function HubProtocolPage() {
 
   const liveIsOpen = draw?.status === 'OPEN';
 
-  // Syncs to DB-driven closesAt - as long as /api/draw/live is DB-backed
+  // Single source of truth: draw.closesAt from DB-backed /api/draw/live
   const closesIn = useMemo(() => {
     if (!draw?.closesAt) return '00:00:00';
     const target = new Date(draw.closesAt).getTime();
@@ -320,6 +281,27 @@ export default function HubProtocolPage() {
   }, [draw?.closesAt, now]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
+
+  // USD estimate: derived from live token price (proto.priceUsd) * daily amount
+  const dailyUsdEstimate = useMemo(() => {
+    const amt = Number(draw?.jackpotXpot);
+    const px = Number(proto?.priceUsd);
+
+    // Prefer derived value. (If someone re-adds jackpotUsd in an old stub, we ignore it.)
+    if (Number.isFinite(amt) && Number.isFinite(px)) return amt * px;
+
+    return undefined;
+  }, [draw?.jackpotXpot, proto?.priceUsd]);
+
+  async function copyCA() {
+    try {
+      await navigator.clipboard.writeText(TOKEN_MINT);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 900);
+    } catch {
+      // no-op
+    }
+  }
 
   return (
     <XpotPageShell
@@ -339,12 +321,11 @@ export default function HubProtocolPage() {
           <div className="pointer-events-none absolute -top-36 left-16 h-[520px] w-[520px] rounded-full bg-sky-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -top-40 right-0 h-[520px] w-[520px] rounded-full bg-fuchsia-500/10 blur-3xl" />
 
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 Integrity overview
               </p>
-
               <p className="mt-2 text-sm text-slate-200/90">
                 A calm, real-time view of liquidity and execution - designed for trust, not hype.
               </p>
@@ -352,41 +333,35 @@ export default function HubProtocolPage() {
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span className="inline-flex items-center gap-2">
                   <Info className="h-4 w-4 text-slate-300" />
-                  Contract: <span className="font-semibold text-slate-200/90">{shortAddr(TOKEN_MINT)}</span>
+                  Official CA: <span className="text-slate-200/80">{shortAddr(TOKEN_MINT)}</span>
                 </span>
 
                 <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(TOKEN_MINT);
-                      setCopied(true);
-                    } catch {
-                      // ignore
-                    }
-                  }}
+                  onClick={copyCA}
                   className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200/80 hover:text-slate-100 hover:bg-white/[0.06] transition"
+                  type="button"
+                  aria-label="Copy contract address"
                 >
                   {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                   {copied ? 'Copied' : 'Copy'}
                 </button>
 
                 {proto?.pairUrl ? (
-                  <Link
-                    href={proto.pairUrl}
-                    target="_blank"
-                    className="inline-flex items-center gap-2 text-slate-200/70 hover:text-slate-100 transition"
-                  >
-                    View pair <ExternalLink className="h-4 w-4" />
-                  </Link>
+                  <>
+                    <span className="inline-flex items-center gap-2">
+                      <Info className="h-4 w-4 text-slate-300" />
+                      Source: {proto.source || 'unknown'}
+                    </span>
+                    <Link
+                      href={proto.pairUrl}
+                      target="_blank"
+                      className="inline-flex items-center gap-2 text-slate-200/80 hover:text-slate-100 transition"
+                    >
+                      View pair <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </>
                 ) : null}
               </div>
-
-              {proto?.source ? (
-                <p className="mt-2 text-[11px] text-slate-500">
-                  Source: <span className="text-slate-300/80">{proto.source}</span>
-                </p>
-              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -410,7 +385,7 @@ export default function HubProtocolPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               label="LP (USD)"
-              value={protoLoading ? 'Loading…' : fmtUsd(proto?.lpUsd)}
+              value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)}
               hint={protoLoading ? '' : pendingPair ? 'Pending first LP' : 'Total liquidity value'}
               icon={<Waves className="h-4 w-4 text-sky-300" />}
             />
@@ -422,13 +397,19 @@ export default function HubProtocolPage() {
             />
             <MetricCard
               label="Price (USD)"
-              value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
+              value={
+                protoLoading
+                  ? 'Loading…'
+                  : Number.isFinite(Number(proto?.priceUsd))
+                  ? `$${Number(proto?.priceUsd).toFixed(6)}`
+                  : '—'
+              }
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
             />
             <MetricCard
               label="Volume (24h)"
-              value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)}
+              value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)}
               hint={protoLoading ? '' : pendingPair ? 'No trades yet' : 'Observed volume'}
               icon={<Zap className="h-4 w-4 text-amber-300" />}
             />
@@ -447,9 +428,11 @@ export default function HubProtocolPage() {
                     Market pending
                   </p>
                   <p className="mt-1 text-sm text-slate-200/85">
-                    Token is not trading yet or the first liquidity pool is not indexed publicly. This panel auto-populates once an LP exists.
+                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">Nothing to do - it goes live automatically.</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Nothing to do here - it goes live automatically.
+                  </p>
                 </div>
               </div>
             </div>
@@ -486,7 +469,11 @@ export default function HubProtocolPage() {
                 <MetricCard
                   label="Daily reward"
                   valueNode={<XpotAmount amount={Number(draw.jackpotXpot ?? 0)} />}
-                  hint={`≈ ${fmtUsd(draw.jackpotUsd)}`}
+                  hint={
+                    Number.isFinite(Number(dailyUsdEstimate))
+                      ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}`
+                      : '—'
+                  }
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
@@ -538,16 +525,32 @@ export default function HubProtocolPage() {
                 >
                   <div className="min-w-0">
                     <p className="font-semibold text-slate-100">
-                      <XpotAmount amount={Number(b.amountXpot ?? 0)} size="sm" suffix={TOKEN_SYMBOL} />
+                      <XpotAmount amount={Number(b.amountXpot ?? 0)} />
                     </p>
-                    <p className="text-xs text-slate-400">{formatMadridTime(b.scheduledAt)} (Madrid)</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {formatMadridTime(b.scheduledAt)} (Madrid)
+                      {b.label ? <span className="text-slate-500"> - {b.label}</span> : null}
+                    </p>
                   </div>
 
-                  <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : 'amber'}>
+                  <StatusPill
+                    tone={
+                      b.status === 'CLAIMED'
+                        ? 'emerald'
+                        : b.status === 'CANCELLED'
+                        ? 'slate'
+                        : 'amber'
+                    }
+                  >
                     {b.status === 'CLAIMED' ? (
                       <>
                         <Crown className="h-3.5 w-3.5" />
                         Claimed
+                      </>
+                    ) : b.status === 'CANCELLED' ? (
+                      <>
+                        <Info className="h-3.5 w-3.5" />
+                        Cancelled
                       </>
                     ) : (
                       <>
@@ -570,7 +573,7 @@ export default function HubProtocolPage() {
             icon={<Waves className="h-5 w-5 text-sky-300" />}
           >
             <div className="grid gap-3 sm:grid-cols-2">
-              <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsd(proto?.lpUsd)} />
+              <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)} />
               <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
             </div>
 
@@ -590,9 +593,15 @@ export default function HubProtocolPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi
                 label="Price"
-                value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
+                value={
+                  protoLoading
+                    ? 'Loading…'
+                    : Number.isFinite(Number(proto?.priceUsd))
+                    ? `$${Number(proto?.priceUsd).toFixed(6)}`
+                    : '—'
+                }
               />
-              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)} />
+              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)} />
             </div>
 
             <div className="mt-5">
@@ -634,7 +643,7 @@ function MetricCard({
 
       <div className="mt-2">
         {valueNode ? (
-          valueNode
+          <div className="text-slate-100">{valueNode}</div>
         ) : (
           <p className="text-lg font-semibold text-slate-100">{value ?? '—'}</p>
         )}
