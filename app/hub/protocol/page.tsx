@@ -21,8 +21,8 @@ import {
 import XpotPageShell from '@/components/XpotPageShell';
 
 type LiveDraw = {
-  rewardXpot: number;
-  rewardUsd: number;
+  jackpotXpot: number;
+  jackpotUsd: number;
   closesAt: string; // ISO
   status: 'OPEN' | 'LOCKED' | 'DRAWING' | 'COMPLETED';
 };
@@ -95,7 +95,7 @@ function formatCountdown(ms: number) {
 
 function fmtUsd(n?: number) {
   const v = Number(n);
-  if (!Number.isFinite(v) || v <= 0) return '—';
+  if (!Number.isFinite(v)) return '—';
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
@@ -129,32 +129,83 @@ function isPairPending(p?: ProtocolState | null) {
   return !hasAny;
 }
 
-// Accepts either old API fields (jackpotXpot/jackpotUsd) or new ones (rewardXpot/rewardUsd)
-function normalizeLiveDraw(x: any): LiveDraw | null {
-  if (!x) return null;
+/* ─────────────────────────────────────────────
+   Countdown (Madrid draw cutoff) - synced to home
+   Cutoff time: 22:00 Europe/Madrid
+───────────────────────────────────────────── */
 
-  const closesAt = typeof x?.closesAt === 'string' ? x.closesAt : '';
-  const status = x?.status as LiveDraw['status'];
+function getMadridParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
 
-  const rewardXpotRaw =
-    x?.rewardXpot ?? x?.jackpotXpot ?? x?.poolXpot ?? x?.amountXpot ?? 0;
-  const rewardUsdRaw =
-    x?.rewardUsd ?? x?.jackpotUsd ?? x?.poolUsd ?? x?.amountUsd ?? 0;
-
-  const rewardXpot = Number(rewardXpotRaw);
-  const rewardUsd = Number(rewardUsdRaw);
-
-  const okStatus =
-    status === 'OPEN' || status === 'LOCKED' || status === 'DRAWING' || status === 'COMPLETED';
-
-  if (!closesAt || !okStatus) return null;
+  const get = (type: string, fallback = '0') =>
+    Number(parts.find(p => p.type === type)?.value ?? fallback);
 
   return {
-    rewardXpot: Number.isFinite(rewardXpot) ? rewardXpot : 0,
-    rewardUsd: Number.isFinite(rewardUsd) ? rewardUsd : 0,
-    closesAt,
-    status,
+    y: get('year', '0'),
+    m: get('month', '1'),
+    d: get('day', '1'),
+    hh: get('hour', '0'),
+    mm: get('minute', '0'),
+    ss: get('second', '0'),
   };
+}
+
+function getMadridOffsetMs(now = new Date()) {
+  const p = getMadridParts(now);
+  const asUtc = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss);
+  return asUtc - now.getTime();
+}
+
+function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
+  const p = getMadridParts(now);
+  const offsetMs = getMadridOffsetMs(now);
+
+  const mkUtcFromMadridWallClock = (
+    yy: number,
+    mm: number,
+    dd: number,
+    hh: number,
+    mi: number,
+    ss: number,
+  ) => {
+    const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
+    return asUtc - offsetMs;
+  };
+
+  let targetUtc = mkUtcFromMadridWallClock(p.y, p.m, p.d, cutoffHour, 0, 0);
+
+  if (now.getTime() >= targetUtc) {
+    const base = new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
+    base.setUTCDate(base.getUTCDate() + 1);
+    const yy = base.getUTCFullYear();
+    const mm = base.getUTCMonth() + 1;
+    const dd = base.getUTCDate();
+    targetUtc = mkUtcFromMadridWallClock(yy, mm, dd, cutoffHour, 0, 0);
+  }
+
+  return targetUtc;
+}
+
+function formatMadridTime(msUtc: number) {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      timeZone: 'Europe/Madrid',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date(msUtc));
+  } catch {
+    return '22:00';
+  }
 }
 
 export default function HubProtocolPage() {
@@ -168,10 +219,8 @@ export default function HubProtocolPage() {
   const [error, setError] = useState<string | null>(null);
   const [protoError, setProtoError] = useState<string | null>(null);
 
-  // local timer tick for countdown
   const [now, setNow] = useState(() => Date.now());
 
-  // Avoid state updates after unmount and avoid out-of-order responses
   const liveReqId = useRef(0);
   const protoReqId = useRef(0);
 
@@ -203,9 +252,7 @@ export default function HubProtocolPage() {
 
         if (!alive || req !== liveReqId.current) return;
 
-        const normalizedDraw = normalizeLiveDraw(d?.draw ?? null);
-        setDraw(normalizedDraw);
-
+        setDraw(d?.draw ?? null);
         setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
       } catch {
         if (!alive) return;
@@ -269,11 +316,13 @@ export default function HubProtocolPage() {
 
   const liveIsOpen = draw?.status === 'OPEN';
 
-  const closesIn = useMemo(() => {
-    if (!draw?.closesAt) return '00:00:00';
-    const target = new Date(draw.closesAt).getTime();
-    return formatCountdown(target - now);
-  }, [draw?.closesAt, now]);
+  // ✅ Synced to the same Madrid 22:00 cutoff used on the homepage
+  const cutoffUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(now)), [now]);
+  const closesIn = useMemo(() => formatCountdown(cutoffUtcMs - now), [cutoffUtcMs, now]);
+  const closesAtMadrid = useMemo(() => formatMadridTime(cutoffUtcMs), [cutoffUtcMs]);
+
+  // Optional: show what the API claims, but don't use it for countdown
+  const apiClosesAt = draw?.closesAt ? new Date(draw.closesAt) : null;
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
 
@@ -375,9 +424,7 @@ export default function HubProtocolPage() {
                   <Info className="h-5 w-5 text-amber-300" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">
-                    Price pending
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Price pending</p>
                   <p className="mt-1 text-sm text-slate-200/85">
                     XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
                   </p>
@@ -411,22 +458,24 @@ export default function HubProtocolPage() {
 
             {error ? (
               <p className="mt-6 text-sm text-amber-300">{error}</p>
-            ) : loading ? (
+            ) : loading || !draw ? (
               <p className="mt-6 text-sm text-slate-400">Loading live draw…</p>
-            ) : !draw ? (
-              <p className="mt-6 text-sm text-slate-500">Live draw unavailable.</p>
             ) : (
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
-                  label="Reward pool"
-                  value={`${Number(draw.rewardXpot ?? 0).toLocaleString()} XPOT`}
-                  hint={draw.rewardUsd > 0 ? `≈ ${fmtUsd(draw.rewardUsd)}` : undefined}
+                  label="Reward"
+                  value={`${Number(draw.jackpotXpot ?? 0).toLocaleString()} XPOT`}
+                  hint={`≈ ${fmtUsd(draw.jackpotUsd)}`}
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
                   label="Closes in"
                   value={closesIn}
-                  hint={`Closes at ${new Date(draw.closesAt).toLocaleTimeString()}`}
+                  hint={
+                    apiClosesAt
+                      ? `Cutoff ${closesAtMadrid} (Madrid) · API ${apiClosesAt.toLocaleTimeString()}`
+                      : `Cutoff ${closesAtMadrid} (Madrid)`
+                  }
                   icon={<Timer className="h-4 w-4 text-sky-300" />}
                 />
                 <MetricCard
