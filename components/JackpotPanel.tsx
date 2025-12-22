@@ -1025,133 +1025,66 @@ export default function JackpotPanel({
               <span className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-sheen" />
 
               {/* Vault seal */}
-              <span className="relative inline-flex items-center gap-3">
-                <span
-                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40"
-                  style={{
-                    border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.32)` as any,
-                    boxShadow:
-                      '0 0 0 1px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.03), 0 14px 30px rgba(0,0,0,0.40)',
-                  }}
-                  aria-hidden="true"
-                >
-                  <span className="pointer-events-none absolute inset-[-3px] rounded-full xpot-seal-ring" />
-                  <span className="pointer-events-none absolute inset-[3px] rounded-full xpot-seal-rim" />
+              <span className="relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 overflow-hidden">
+  <span className="relative h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.75)] xpot-dot" />
+  <span className="relative">Today&apos;s pool</span>
+  <span className="pointer-events-none absolute inset-0 xpot-micro-glow" />
+</span>
 
-                  <span className="relative">
-                    <XpotLogo variant="mark" width={20} height={20} tone="gold" priority />
-                  </span>
+<span
+  className="relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] overflow-hidden"
+  style={{
+    borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.28)` as any,
+    color: `rgba(${VAULT_GOLD.rgb} / 0.84)` as any,
+    background: 'rgba(0,0,0,0.20)',
+  }}
+>
+  <span className="relative">Daily</span>
+  <span className="pointer-events-none absolute inset-0 xpot-micro-glow-gold" />
+</span>
 
-                  <span
-                    className="pointer-events-none absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.22em]"
-                    style={{
-                      color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
-                      background: 'rgba(0,0,0,0.42)',
-                      border: `1px solid rgba(${VAULT_GOLD.rgbSoft} / 0.22)` as any,
-                      boxShadow: '0 10px 20px rgba(0,0,0,0.35)',
-                    }}
-                  >
-                    Vault
-                  </span>
-                </span>
-              </span>
-
-              <span
-                className="relative font-mono text-2xl sm:text-3xl tracking-[0.24em] tabular-nums"
-                style={{
-                  color: 'rgba(255,255,255,0.96)',
-                  textShadow: '0 0 16px rgba(201,162,74,0.10), 0 0 26px rgba(124,200,255,0.06)',
-                }}
-              >
-                {poolLabel}
-              </span>
-
-              <span
-                className="relative inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
-                style={{
-                  borderColor: `rgba(${VAULT_GOLD.rgbSoft} / 0.30)` as any,
-                  color: `rgba(${VAULT_GOLD.rgb} / 0.86)` as any,
-                  background: 'rgba(0,0,0,0.24)',
-                }}
-              >
-                Daily
-              </span>
-
-              <style jsx>{`
-                .xpot-sheen {
-                  background: linear-gradient(
-                    120deg,
-                    rgba(255, 255, 255, 0) 0%,
-                    rgba(255, 255, 255, 0.07) 14%,
-                    rgba(255, 255, 255, 0) 32%,
-                    rgba(255, 255, 255, 0) 100%
-                  );
-                  transform: translateX(-55%);
-                  animation: xpotSheen 3.8s ease-in-out infinite;
-                }
-                @keyframes xpotSheen {
-                  0% {
-                    transform: translateX(-55%);
-                    opacity: 0;
-                  }
-                  18% {
-                    opacity: 0.7;
-                  }
-                  38% {
-                    transform: translateX(55%);
-                    opacity: 0;
-                  }
-                  100% {
-                    transform: translateX(55%);
-                    opacity: 0;
-                  }
-                }
-
-                /* Vault seal ring: subtle conic + slow rotation (very premium, not flashy) */
-                .xpot-seal-ring {
-                  background: conic-gradient(
-                    from 180deg,
-                    rgba(201, 162, 74, 0.0),
-                    rgba(201, 162, 74, 0.55),
-                    rgba(124, 200, 255, 0.16),
-                    rgba(201, 162, 74, 0.38),
-                    rgba(201, 162, 74, 0.0)
-                  );
-                  filter: blur(0.2px);
-                  opacity: 0.55;
-                  animation: xpotSealSpin 10.5s linear infinite;
-                }
-                @keyframes xpotSealSpin {
-                  0% {
-                    transform: rotate(0deg);
-                  }
-                  100% {
-                    transform: rotate(360deg);
-                  }
-                }
-
-                /* Inner rim for embossed feel */
-                .xpot-seal-rim {
-                  background: radial-gradient(
-                    circle at 35% 30%,
-                    rgba(255, 255, 255, 0.08),
-                    rgba(255, 255, 255, 0.02) 45%,
-                    rgba(0, 0, 0, 0.35) 72%,
-                    rgba(0, 0, 0, 0.55) 100%
-                  );
-                  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-                  opacity: 0.9;
-                }
-
-                @media (prefers-reduced-motion: reduce) {
-                  .xpot-sheen,
-                  .xpot-seal-ring {
-                    animation: none;
-                  }
-                }
-              `}</style>
-            </span>
-          </div>
+<style jsx>{`
+  .xpot-micro-glow {
+    background: radial-gradient(circle at 30% 40%, rgba(56, 189, 248, 0.14), transparent 60%);
+    opacity: 0.35;
+    animation: xpotMicro 4.8s ease-in-out infinite;
+  }
+  .xpot-micro-glow-gold {
+    background: radial-gradient(circle at 35% 45%, rgba(201, 162, 74, 0.18), transparent 62%);
+    opacity: 0.28;
+    animation: xpotMicro 5.2s ease-in-out infinite;
+  }
+  @keyframes xpotMicro {
+    0%,
+    100% {
+      transform: translateY(0);
+      opacity: 0.22;
+    }
+    50% {
+      transform: translateY(-1px);
+      opacity: 0.48;
+    }
+  }
+  .xpot-dot {
+    animation: xpotDotPulse 3.1s ease-in-out infinite;
+  }
+  @keyframes xpotDotPulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.12);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .xpot-micro-glow,
+    .xpot-micro-glow-gold,
+    .xpot-dot {
+      animation: none;
+    }
+  }
+`}</style>
 
           <div className="flex items-center gap-2">
             {isLocked && (
