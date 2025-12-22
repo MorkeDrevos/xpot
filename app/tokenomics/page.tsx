@@ -876,7 +876,7 @@ function Hero({
 }) {
   return (
     <section className="relative -mx-4 sm:-mx-6">
-      <div className="relative overflow-hidden border-b border-white/5 bg-black/30">
+      <div className="relative overflow-hidden border-b border-white/5 bg-[linear-gradient(180deg,rgba(var(--xpot-gold),0.14),rgba(0,0,0,0.72))]">
         {/* Atmospheric hero wash */}
         <div
           className="
@@ -886,8 +886,7 @@ function Hero({
                 radial-gradient(circle_at_70%_85%,rgba(16,185,129,0.18),transparent_60%)]
           "
         />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.35),rgba(0,0,0,0.65))]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_360px_at_50%_18%,rgba(var(--xpot-gold),0.20),transparent_60%)]" />
 
         <div className="relative mx-auto w-full max-w-[1440px] px-4 sm:px-6">
           <div className="grid gap-10 py-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-start lg:py-14">
