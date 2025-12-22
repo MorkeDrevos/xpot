@@ -1024,7 +1024,7 @@ export default function JackpotPanel({
               <div className="relative flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-                  Today&apos;s pool
+                  Today&apos;s XPOT
                 </span>
 
                 <span
