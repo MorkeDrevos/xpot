@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -22,7 +22,7 @@ import XpotPageShell from '@/components/XpotPageShell';
 
 type LiveDraw = {
   jackpotXpot: number; // API field name (keep), UI avoids "jackpot"
-  jackpotUsd: number; // may be mock - UI will prefer derived value from live priceUsd
+  jackpotUsd: number;
   closesAt: string; // ISO
   status: 'OPEN' | 'LOCKED' | 'DRAWING' | 'COMPLETED';
 };
@@ -54,7 +54,7 @@ function StatusPill({
   children,
   tone = 'slate',
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
   tone?: PillTone;
 }) {
   const cls =
@@ -94,12 +94,6 @@ function formatCountdown(ms: number) {
 }
 
 function fmtUsd(n?: number) {
-  const v = Number(n);
-  if (!Number.isFinite(v)) return '—';
-  return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-}
-
-function fmtUsdCompact(n?: number) {
   const v = Number(n);
   if (!Number.isFinite(v)) return '—';
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -148,6 +142,34 @@ function formatMadridTime(iso?: string) {
   }).format(d);
 }
 
+// Gold XPOT amount style (matches your screenshot vibe)
+function XpotAmount({
+  amount,
+  suffix = 'XPOT',
+  className = '',
+  suffixClassName = '',
+}: {
+  amount: number;
+  suffix?: string;
+  className?: string;
+  suffixClassName?: string;
+}) {
+  const n = Number(amount);
+  const txt = Number.isFinite(n) ? n.toLocaleString() : '—';
+  return (
+    <span className={`inline-flex items-baseline gap-3 ${className}`}>
+      <span className="font-mono text-[22px] sm:text-[26px] font-semibold tracking-[0.14em] text-amber-200/90">
+        {txt}
+      </span>
+      <span
+        className={`text-[14px] sm:text-[16px] font-semibold tracking-[0.10em] text-slate-400/80 ${suffixClassName}`}
+      >
+        {suffix}
+      </span>
+    </span>
+  );
+}
+
 export default function HubProtocolPage() {
   const [draw, setDraw] = useState<LiveDraw | null>(null);
   const [bonus, setBonus] = useState<BonusXPOT[]>([]);
@@ -166,14 +188,48 @@ export default function HubProtocolPage() {
   const liveReqId = useRef(0);
   const protoReqId = useRef(0);
 
+  // Sticky closesAt so polling can't "push forward" the countdown target (prevents fake drift)
+  const stickyClosesAtRef = useRef<string | null>(null);
+
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(t);
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   // Live draw + bonus
   useEffect(() => {
     let alive = true;
+
+    function clampDraw(incoming: LiveDraw | null): LiveDraw | null {
+      if (!incoming?.closesAt) return incoming;
+
+      const prevIso = stickyClosesAtRef.current;
+      const nextIso = incoming.closesAt;
+
+      // If no previous, accept.
+      if (!prevIso) {
+        stickyClosesAtRef.current = nextIso;
+        return incoming;
+      }
+
+      const prevT = new Date(prevIso).getTime();
+      const nextT = new Date(nextIso).getTime();
+
+      // If new value is invalid, keep old.
+      if (!Number.isFinite(nextT)) {
+        return { ...incoming, closesAt: prevIso };
+      }
+
+      // If the API "moves closesAt forward" while still OPEN, ignore that (common with mock routes).
+      // Allow backwards adjustments (lock earlier) and allow changes when status changes.
+      if (incoming.status === 'OPEN' && nextT > prevT + 2000) {
+        return { ...incoming, closesAt: prevIso };
+      }
+
+      // Otherwise accept and update sticky.
+      stickyClosesAtRef.current = nextIso;
+      return incoming;
+    }
 
     async function load() {
       const req = ++liveReqId.current;
@@ -194,7 +250,9 @@ export default function HubProtocolPage() {
 
         if (!alive || req !== liveReqId.current) return;
 
-        setDraw(d?.draw ?? null);
+        const nextDraw = clampDraw((d?.draw ?? null) as LiveDraw | null);
+        setDraw(nextDraw);
+
         setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
       } catch {
         if (!alive) return;
@@ -258,23 +316,15 @@ export default function HubProtocolPage() {
 
   const liveIsOpen = draw?.status === 'OPEN';
 
-  // This is synced to the DB-driven closesAt (same value your main countdown should use)
+  const effectiveClosesAt = draw?.closesAt || stickyClosesAtRef.current || undefined;
+
   const closesIn = useMemo(() => {
-    if (!draw?.closesAt) return '00:00:00';
-    const target = new Date(draw.closesAt).getTime();
+    if (!effectiveClosesAt) return '00:00:00';
+    const target = new Date(effectiveClosesAt).getTime();
     return formatCountdown(target - now);
-  }, [draw?.closesAt, now]);
+  }, [effectiveClosesAt, now]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
-
-  // Prefer LIVE USD estimate from protocol price (real) over API draw.jackpotUsd (often mock)
-  const dailyUsdEstimate = useMemo(() => {
-    const rewardXpot = Number(draw?.jackpotXpot);
-    const px = Number(proto?.priceUsd);
-    if (!Number.isFinite(rewardXpot) || rewardXpot <= 0) return undefined;
-    if (!Number.isFinite(px) || px <= 0) return undefined;
-    return rewardXpot * px;
-  }, [draw?.jackpotXpot, proto?.priceUsd]);
 
   return (
     <XpotPageShell
@@ -333,7 +383,7 @@ export default function HubProtocolPage() {
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
-                {proto?.updatedAt ? `Updated ${formatMadridTime(proto.updatedAt)}` : 'Live'}
+                {proto?.updatedAt ? `Updated ${formatMadridTime(proto.updatedAt)} (Madrid)` : 'Live'}
               </StatusPill>
             </div>
           </div>
@@ -354,11 +404,13 @@ export default function HubProtocolPage() {
             <MetricCard
               label="Price (USD)"
               value={
-                protoLoading
-                  ? 'Loading…'
-                  : proto?.priceUsd
-                  ? `$${proto.priceUsd.toFixed(6)}`
-                  : '—'
+                protoLoading ? (
+                  'Loading…'
+                ) : proto?.priceUsd ? (
+                  `$${proto.priceUsd.toFixed(6)}`
+                ) : (
+                  '—'
+                )
               }
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
@@ -384,11 +436,9 @@ export default function HubProtocolPage() {
                     Price pending
                   </p>
                   <p className="mt-1 text-sm text-slate-200/85">
-                    The token is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
+                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Nothing to do here - it goes live automatically.
-                  </p>
+                  <p className="mt-1 text-xs text-slate-400">Nothing to do here - it goes live automatically.</p>
                 </div>
               </div>
             </div>
@@ -424,18 +474,14 @@ export default function HubProtocolPage() {
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
                   label="Daily reward"
-                  value={`${Number(draw.jackpotXpot ?? 0).toLocaleString()} XPOT`}
-                  hint={
-                    dailyUsdEstimate != null
-                      ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}`
-                      : '≈ —'
-                  }
+                  value={<XpotAmount amount={Number(draw.jackpotXpot ?? 0)} />}
+                  hint={`≈ ${fmtUsd(draw.jackpotUsd)}`}
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
                   label="Closes in"
                   value={closesIn}
-                  hint={draw.closesAt ? `Closes at ${formatMadridTime(draw.closesAt)} (Madrid)` : ''}
+                  hint={effectiveClosesAt ? `Closes at ${formatMadridTime(effectiveClosesAt)} (Madrid)` : ''}
                   icon={<Timer className="h-4 w-4 text-sky-300" />}
                 />
                 <MetricCard
@@ -474,16 +520,20 @@ export default function HubProtocolPage() {
             ) : bonus.length === 0 ? (
               <p className="text-sm text-slate-500">No bonus XPOTs scheduled.</p>
             ) : (
-              bonus.map((b) => (
+              bonus.map(b => (
                 <div
                   key={b.id}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-100">
-                      {Number(b.amountXpot ?? 0).toLocaleString()} XPOT
-                    </p>
-                    <p className="text-xs text-slate-400">
+                    <div className="truncate">
+                      <XpotAmount
+                        amount={Number(b.amountXpot ?? 0)}
+                        className="gap-2"
+                        // slightly smaller inside list row
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">
                       {formatMadridTime(b.scheduledAt)} (Madrid)
                     </p>
                   </div>
@@ -538,14 +588,9 @@ export default function HubProtocolPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi
                 label="Price"
-                value={
-                  protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'
-                }
+                value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
               />
-              <SoftKpi
-                label="Volume (24h)"
-                value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)}
-              />
+              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)} />
             </div>
 
             <div className="mt-5">
@@ -568,9 +613,9 @@ function MetricCard({
   icon,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   hint?: string;
-  icon?: ReactNode;
+  icon?: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
@@ -582,7 +627,7 @@ function MetricCard({
           </span>
         ) : null}
       </div>
-      <p className="mt-2 text-lg font-semibold text-slate-100">{value}</p>
+      <div className="mt-2 text-lg font-semibold text-slate-100">{value}</div>
       {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
     </div>
   );
@@ -596,8 +641,8 @@ function PremiumPanel({
 }: {
   title: string;
   subtitle: string;
-  icon?: ReactNode;
-  children: ReactNode;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <div className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.02] px-6 py-6 backdrop-blur-xl">
@@ -623,11 +668,11 @@ function PremiumPanel({
   );
 }
 
-function SoftKpi({ label, value }: { label: string; value: string }) {
+function SoftKpi({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
       <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-1 text-base font-semibold text-slate-100">{value}</p>
+      <div className="mt-1 text-base font-semibold text-slate-100">{value}</div>
     </div>
   );
 }
