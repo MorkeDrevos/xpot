@@ -1,7 +1,8 @@
 // app/hub/protocol/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -13,6 +14,8 @@ import {
   Ticket,
   Waves,
   Zap,
+  ExternalLink,
+  Info,
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
@@ -32,13 +35,17 @@ type BonusXPOT = {
 };
 
 type ProtocolState = {
-  // Optional - only if you build /api/protocol/state later
-  lpUsd?: number; // total LP in USD
-  lpChange24hPct?: number; // +/- %
+  lpUsd?: number;
+  lpChange24hPct?: number;
   liquiditySignal?: 'HEALTHY' | 'WATCH' | 'CRITICAL';
   priceUsd?: number;
   volume24hUsd?: number;
   updatedAt?: string; // ISO
+  source?: 'dexscreener';
+  pairUrl?: string;
+  pairAddress?: string;
+  chainId?: string;
+  dexId?: string;
 };
 
 type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -113,6 +120,13 @@ function labelFromSignal(sig?: ProtocolState['liquiditySignal']) {
   return 'Unknown';
 }
 
+function isPairPending(p?: ProtocolState | null) {
+  // If endpoint returns but has no price and no LP, assume pre-launch / no public pair yet
+  if (!p) return true;
+  const hasAny = Number.isFinite(Number(p.priceUsd)) || Number.isFinite(Number(p.lpUsd)) || Number.isFinite(Number(p.volume24hUsd));
+  return !hasAny;
+}
+
 export default function HubProtocolPage() {
   const [draw, setDraw] = useState<LiveDraw | null>(null);
   const [bonus, setBonus] = useState<BonusXPOT[]>([]);
@@ -127,32 +141,41 @@ export default function HubProtocolPage() {
   // local timer tick for countdown
   const [now, setNow] = useState(() => Date.now());
 
+  // Avoid state updates after unmount and avoid out-of-order responses
+  const liveReqId = useRef(0);
+  const protoReqId = useRef(0);
+
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Live draw + bonus (existing endpoints)
+  // Live draw + bonus
   useEffect(() => {
     let alive = true;
 
     async function load() {
+      const req = ++liveReqId.current;
+
       try {
         setError(null);
 
+        const ac = new AbortController();
+        const t = window.setTimeout(() => ac.abort(), 5500);
+
         const [dRes, bRes] = await Promise.all([
-          fetch('/api/draw/live', { cache: 'no-store' }),
-          fetch('/api/bonus/live', { cache: 'no-store' }),
-        ]);
+          fetch('/api/draw/live', { cache: 'no-store', signal: ac.signal }),
+          fetch('/api/bonus/live', { cache: 'no-store', signal: ac.signal }),
+        ]).finally(() => window.clearTimeout(t));
 
         const d = await dRes.json().catch(() => ({}));
         const b = await bRes.json().catch(() => ({}));
 
-        if (!alive) return;
+        if (!alive || req !== liveReqId.current) return;
 
         setDraw(d?.draw ?? null);
         setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
-      } catch (e) {
+      } catch {
         if (!alive) return;
         setError('Failed to load live data. Please refresh.');
       } finally {
@@ -161,34 +184,42 @@ export default function HubProtocolPage() {
     }
 
     load();
-    const t = setInterval(load, 15_000);
+    const t = window.setInterval(load, 15_000);
     return () => {
       alive = false;
-      clearInterval(t);
+      window.clearInterval(t);
     };
   }, []);
 
-  // Protocol metrics (optional endpoint - safe fallback)
+  // Protocol metrics
   useEffect(() => {
     let alive = true;
 
     async function loadProto() {
+      const req = ++protoReqId.current;
+
       try {
         setProtoError(null);
 
-        const res = await fetch('/api/protocol/state', { cache: 'no-store' });
+        const ac = new AbortController();
+        const t = window.setTimeout(() => ac.abort(), 5500);
+
+        const res = await fetch('/api/protocol/state', {
+          cache: 'no-store',
+          signal: ac.signal,
+        }).finally(() => window.clearTimeout(t));
+
+        if (!alive || req !== protoReqId.current) return;
+
         if (!res.ok) {
-          // endpoint not implemented yet -> treat as "unavailable", not an error state
-          if (!alive) return;
+          // Treat as unavailable, not fatal
           setProto(null);
           return;
         }
 
         const j = await res.json().catch(() => ({}));
-        if (!alive) return;
-
-        setProto(j?.state ?? j ?? null);
-      } catch (e) {
+        setProto((j?.state ?? j ?? null) as ProtocolState | null);
+      } catch {
         if (!alive) return;
         setProtoError('Protocol metrics unavailable.');
         setProto(null);
@@ -198,10 +229,10 @@ export default function HubProtocolPage() {
     }
 
     loadProto();
-    const t = setInterval(loadProto, 20_000);
+    const t = window.setInterval(loadProto, 20_000);
     return () => {
       alive = false;
-      clearInterval(t);
+      window.clearInterval(t);
     };
   }, []);
 
@@ -213,6 +244,8 @@ export default function HubProtocolPage() {
     return formatCountdown(target - now);
   }, [draw?.closesAt, now]);
 
+  const pendingPair = useMemo(() => isPairPending(proto), [proto]);
+
   return (
     <XpotPageShell
       title="Protocol State"
@@ -222,7 +255,7 @@ export default function HubProtocolPage() {
       headerClassName="bg-white/[0.015]"
     >
       <section className="mt-2 space-y-6">
-        {/* TOP STRIP: Integrity overview */}
+        {/* TOP STRIP */}
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -239,6 +272,22 @@ export default function HubProtocolPage() {
               <p className="mt-2 text-sm text-slate-200/90">
                 A calm, real-time view of liquidity and execution - designed for trust, not hype.
               </p>
+
+              {proto?.pairUrl ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                  <span className="inline-flex items-center gap-2">
+                    <Info className="h-4 w-4 text-slate-300" />
+                    Source: {proto.source || 'unknown'}
+                  </span>
+                  <Link
+                    href={proto.pairUrl}
+                    target="_blank"
+                    className="inline-flex items-center gap-2 text-slate-200/80 hover:text-slate-100 transition"
+                  >
+                    View pair <ExternalLink className="h-4 w-4" />
+                  </Link>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -254,7 +303,9 @@ export default function HubProtocolPage() {
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
-                {proto?.updatedAt ? `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}` : 'Live'}
+                {proto?.updatedAt
+                  ? `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}`
+                  : 'Live'}
               </StatusPill>
             </div>
           </div>
@@ -263,33 +314,60 @@ export default function HubProtocolPage() {
             <MetricCard
               label="LP (USD)"
               value={protoLoading ? 'Loading…' : fmtUsd(proto?.lpUsd)}
-              hint={protoLoading ? '' : proto ? 'Total liquidity value' : 'Unavailable'}
+              hint={protoLoading ? '' : pendingPair ? 'Pending first LP' : 'Total liquidity value'}
               icon={<Waves className="h-4 w-4 text-sky-300" />}
             />
             <MetricCard
               label="LP change (24h)"
               value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)}
-              hint={protoLoading ? '' : proto ? 'Stability signal' : 'Unavailable'}
+              hint={protoLoading ? '' : 'History module lands next'}
               icon={<ChartNoAxesCombined className="h-4 w-4 text-fuchsia-300" />}
             />
             <MetricCard
               label="Price (USD)"
-              value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
-              hint={protoLoading ? '' : proto ? 'Reference price' : 'Unavailable'}
+              value={
+                protoLoading
+                  ? 'Loading…'
+                  : proto?.priceUsd
+                  ? `$${proto.priceUsd.toFixed(6)}`
+                  : '—'
+              }
+              hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
             />
             <MetricCard
               label="Volume (24h)"
               value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)}
-              hint={protoLoading ? '' : proto ? 'Observed volume' : 'Unavailable'}
+              hint={protoLoading ? '' : pendingPair ? 'No trades yet' : 'Observed volume'}
               icon={<Zap className="h-4 w-4 text-amber-300" />}
             />
           </div>
 
           {protoError ? <p className="mt-4 text-sm text-amber-300">{protoError}</p> : null}
+
+          {!protoLoading && pendingPair ? (
+            <div className="mt-5 rounded-3xl border border-amber-400/15 bg-amber-500/[0.06] p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-amber-400/20 bg-white/[0.03]">
+                  <Info className="h-5 w-5 text-amber-300" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">
+                    Price pending
+                  </p>
+                  <p className="mt-1 text-sm text-slate-200/85">
+                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Nothing to do here - it goes live automatically.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </motion.section>
 
-        {/* MAIN XPOT (reuse logic, more premium + less boxy) */}
+        {/* MAIN XPOT */}
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -373,7 +451,9 @@ export default function HubProtocolPage() {
                     <p className="font-semibold text-slate-100">
                       {Number(b.amountXpot ?? 0).toLocaleString()} XPOT
                     </p>
-                    <p className="text-xs text-slate-400">{new Date(b.scheduledAt).toLocaleTimeString()}</p>
+                    <p className="text-xs text-slate-400">
+                      {new Date(b.scheduledAt).toLocaleTimeString()}
+                    </p>
                   </div>
 
                   <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : 'amber'}>
@@ -395,7 +475,7 @@ export default function HubProtocolPage() {
           </div>
         </section>
 
-        {/* LIVE MARKET PANELS (placeholder graphs - safe, premium, wide) */}
+        {/* LIVE MARKET PANELS */}
         <section className="grid gap-6 lg:grid-cols-2">
           <PremiumPanel
             title="Liquidity"
@@ -410,7 +490,7 @@ export default function HubProtocolPage() {
             <div className="mt-5">
               <GraphPlaceholder
                 title="LP trend (24h)"
-                note="Live graph module lands next. Data will be derived from on-chain liquidity snapshots."
+                note="Next: store hourly LP snapshots in DB and render a real 24h curve + stability band."
               />
             </div>
           </PremiumPanel>
@@ -431,7 +511,7 @@ export default function HubProtocolPage() {
             <div className="mt-5">
               <GraphPlaceholder
                 title="Price + volume"
-                note="We will render a premium sparkline and 24h band once sampling is wired."
+                note="Next: render a premium sparkline + 24h range once sampling is stored server-side."
               />
             </div>
           </PremiumPanel>
