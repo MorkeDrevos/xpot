@@ -940,7 +940,34 @@ function HomePageInner() {
                       </Pill>
                     </div>
 
-                    {/* 10+ YEARS runway strip (placed under pills) */}
+                    <div className="xpot-hero-cockpit rounded-[30px] border border-slate-900/70 bg-slate-950/28 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
+                      <div className="xpot-hero-hudgrid rounded-[30px]" />
+                      <div className="xpot-hero-scanlines rounded-[30px]" />
+                      <div className="xpot-hero-sweep" />
+                      <div className="xpot-hero-edgeglow" />
+
+                      <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
+                        NO TICKETS · JUST XPOT HOLDINGS
+                      </p>
+
+                      <div className="relative z-10 mt-3">
+                        <h1 className="relative text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
+                          One protocol.{' '}
+                          <span className="text-emerald-300">One daily XPOT draw.</span>
+                        </h1>
+                      </div>
+
+                      {/* ENTRY MECHANICS DIVIDER (img 2 placement fixed: below lobby) */}
+                      <div className="relative z-10 mt-4">
+                        <SectionDividerLabel label="Entry mechanics" />
+                      </div>
+
+                      <p className="relative z-10 mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
+                        Hold XPOT, connect your wallet and claim your entry. One winner daily, paid on-chain.
+                        Built to scale into a rewards ecosystem for communities, creators and sponsors.
+                      </p>
+
+                      {/* 10+ YEARS runway strip (placed under pills) */}
 <div className="relative overflow-hidden rounded-full border border-slate-900/70 bg-slate-950/45 px-4 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur">
   <div
     className="
@@ -989,28 +1016,6 @@ function HomePageInner() {
   </div>
 </div>
 
-                    <div className="xpot-hero-cockpit rounded-[30px] border border-slate-900/70 bg-slate-950/28 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
-                      <div className="xpot-hero-hudgrid rounded-[30px]" />
-                      <div className="xpot-hero-scanlines rounded-[30px]" />
-                      <div className="xpot-hero-sweep" />
-                      <div className="xpot-hero-edgeglow" />
-
-                      <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                        NO TICKETS · JUST XPOT HOLDINGS
-                      </p>
-
-                      <div className="relative z-10 mt-3">
-                        <h1 className="relative text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
-                          One protocol.{' '}
-                          <span className="text-emerald-300">One daily XPOT draw.</span>
-                        </h1>
-                      </div>
-
-                      <p className="relative z-10 mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                        Hold XPOT, connect your wallet and claim your entry. One winner daily, paid on-chain.
-                        Built to scale into a rewards ecosystem for communities, creators and sponsors.
-                      </p>
-
                       <div className="relative z-10 mt-4">
                         <PrinciplesStrip />
                       </div>
@@ -1021,11 +1026,6 @@ function HomePageInner() {
                           entrants={liveEntrants}
                           hint="Live lobby - updates automatically"
                         />
-                      </div>
-
-                      {/* ENTRY MECHANICS DIVIDER (img 2 placement fixed: below lobby) */}
-                      <div className="relative z-10 mt-4">
-                        <SectionDividerLabel label="Entry mechanics" />
                       </div>
 
                       {/* BONUS XPOT: hidden completely until active */}
