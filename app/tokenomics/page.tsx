@@ -1063,15 +1063,24 @@ export default function TokenomicsPage() {
     >
       {/* ✅ Full-bleed hero (home-like) */}
       <section className="relative -mx-4 sm:-mx-6">
-        <div
-          className="
-            pointer-events-none absolute inset-0
-            bg-[radial-gradient(1200px_320px_at_20%_15%,rgba(16,185,129,0.18),transparent_58%),
-                radial-gradient(1100px_360px_at_80%_10%,rgba(56,189,248,0.18),transparent_60%),
-                radial-gradient(900px_360px_at_60%_90%,rgba(var(--xpot-gold),0.14),transparent_62%)]
-          "
-        />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10" />
+  <div
+    className="
+      relative overflow-hidden border-b border-white/5
+      bg-[radial-gradient(circle_at_50%_30%,rgba(var(--xpot-gold),0.12),rgba(0,0,0,0)_62%)]
+    "
+  >
+    {/* Brown-only wash */}
+    <div
+      className="
+        pointer-events-none absolute inset-0
+        bg-[radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),
+            radial-gradient(circle_at_80%_35%,rgba(var(--xpot-gold),0.12),transparent_62%),
+            linear-gradient(180deg,rgba(0,0,0,0.15),rgba(0,0,0,0.70))]
+      "
+    />
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
+
+    {/* keep the rest of your Hero markup as-is */}
 
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
           <div className="pt-8 sm:pt-10">
