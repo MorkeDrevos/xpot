@@ -21,7 +21,7 @@ import {
 import XpotPageShell from '@/components/XpotPageShell';
 
 type LiveDraw = {
-  jackpotXpot: number;
+  jackpotXpot: number; // API field name (keep), UI avoids "jackpot"
   jackpotUsd: number;
   closesAt: string; // ISO
   status: 'OPEN' | 'LOCKED' | 'DRAWING' | 'COMPLETED';
@@ -129,22 +129,17 @@ function isPairPending(p?: ProtocolState | null) {
   return !hasAny;
 }
 
-function formatTimeMadrid(iso?: string) {
+function formatMadridTime(iso?: string) {
   if (!iso) return '—';
-  const t = new Date(iso);
-  if (!Number.isFinite(t.getTime())) return '—';
-
-  try {
-    return new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/Madrid',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hourCycle: 'h23',
-    }).format(t);
-  } catch {
-    return t.toLocaleTimeString();
-  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: 'Europe/Madrid',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).format(d);
 }
 
 export default function HubProtocolPage() {
@@ -257,17 +252,12 @@ export default function HubProtocolPage() {
 
   const liveIsOpen = draw?.status === 'OPEN';
 
-  // ONE source of truth for closesAt -> countdown (DB/API driven)
-  const closesAtMs = useMemo(() => {
-    if (!draw?.closesAt) return null;
-    const ms = new Date(draw.closesAt).getTime();
-    return Number.isFinite(ms) ? ms : null;
-  }, [draw?.closesAt]);
-
+  // This is synced to the DB-driven closesAt (same value your main countdown should use)
   const closesIn = useMemo(() => {
-    if (!closesAtMs) return '00:00:00';
-    return formatCountdown(closesAtMs - now);
-  }, [closesAtMs, now]);
+    if (!draw?.closesAt) return '00:00:00';
+    const target = new Date(draw.closesAt).getTime();
+    return formatCountdown(target - now);
+  }, [draw?.closesAt, now]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
 
@@ -328,7 +318,9 @@ export default function HubProtocolPage() {
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
-                {proto?.updatedAt ? `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}` : 'Live'}
+                {proto?.updatedAt
+                  ? `Updated ${new Date(proto.updatedAt).toLocaleTimeString()}`
+                  : 'Live'}
               </StatusPill>
             </div>
           </div>
@@ -348,7 +340,13 @@ export default function HubProtocolPage() {
             />
             <MetricCard
               label="Price (USD)"
-              value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
+              value={
+                protoLoading
+                  ? 'Loading…'
+                  : proto?.priceUsd
+                  ? `$${proto.priceUsd.toFixed(6)}`
+                  : '—'
+              }
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
             />
@@ -375,7 +373,9 @@ export default function HubProtocolPage() {
                   <p className="mt-1 text-sm text-slate-200/85">
                     XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">Nothing to do here - it goes live automatically.</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Nothing to do here - it goes live automatically.
+                  </p>
                 </div>
               </div>
             </div>
@@ -410,7 +410,7 @@ export default function HubProtocolPage() {
             ) : (
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
-                  label="Primary reward"
+                  label="Daily reward"
                   value={`${Number(draw.jackpotXpot ?? 0).toLocaleString()} XPOT`}
                   hint={`≈ ${fmtUsd(draw.jackpotUsd)}`}
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
@@ -418,7 +418,7 @@ export default function HubProtocolPage() {
                 <MetricCard
                   label="Closes in"
                   value={closesIn}
-                  hint={closesAtMs ? `Closes at ${formatTimeMadrid(draw.closesAt)} (Madrid)` : '—'}
+                  hint={draw.closesAt ? `Closes at ${formatMadridTime(draw.closesAt)} (Madrid)` : ''}
                   icon={<Timer className="h-4 w-4 text-sky-300" />}
                 />
                 <MetricCard
@@ -466,7 +466,9 @@ export default function HubProtocolPage() {
                     <p className="font-semibold text-slate-100">
                       {Number(b.amountXpot ?? 0).toLocaleString()} XPOT
                     </p>
-                    <p className="text-xs text-slate-400">{formatTimeMadrid(b.scheduledAt)} (Madrid)</p>
+                    <p className="text-xs text-slate-400">
+                      {formatMadridTime(b.scheduledAt)} (Madrid)
+                    </p>
                   </div>
 
                   <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : 'amber'}>
