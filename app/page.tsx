@@ -37,7 +37,6 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
-import { type LiveEntrant, asLiveEntrant } from '@/lib/live-entrants';
 import { createPortal } from 'react-dom';
 
 const ROUTE_HUB = '/hub';
@@ -421,9 +420,9 @@ function PrinciplesStrip() {
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
         <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.12),transparent_62%)]" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Identity</p>
-        <p className="mt-1 text-sm font-semibold text-slate-100">@handle</p>
-        <p className="mt-1 text-[12px] text-slate-400">Public by X, wallet stays yours</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Access</p>
+        <p className="mt-1 text-sm font-semibold text-slate-100">Wallet-based</p>
+        <p className="mt-1 text-[12px] text-slate-400">Self-custody, no accounts</p>
       </div>
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
@@ -445,7 +444,7 @@ function SectionDividerLabel({ label }: { label: string }) {
         <span className="h-1 w-1 rounded-full bg-white/20" />
         <span>Eligibility</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
-        <span>Identity</span>
+        <span>Access</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
         <span>Proof</span>
       </span>
@@ -664,7 +663,6 @@ function useBonusActive() {
 
     async function probe() {
       try {
-        // If you already have a different endpoint, swap it here.
         const r = await fetch('/api/public/bonus', { cache: 'no-store' });
         const data = (await r.json().catch(() => null)) as any;
         if (!alive) return;
@@ -695,7 +693,6 @@ function useBonusActive() {
 }
 
 function HomePageInner() {
-  const [liveEntries, setLiveEntries] = useState<LiveEntrant[]>([]);
   const bonusActive = useBonusActive();
 
   const [mint, setMint] = useState(XPOT_CA);
@@ -711,7 +708,7 @@ function HomePageInner() {
       },
       {
         q: 'Is my wallet public on the site?',
-        a: 'Your public identity is your X handle. Wallets stay self-custody and aren’t presented as your “profile”.',
+        a: 'No. XPOT is self-custody. Your wallet is used for eligibility and claims, but the product avoids turning wallets into profiles.',
       },
       {
         q: 'How do winners verify payouts?',
@@ -832,9 +829,9 @@ function HomePageInner() {
                 <div className="flex flex-col justify-between gap-6">
                   <div className="space-y-5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Pill tone="sky">
-                        <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-                        Identity: @handle
+                      <Pill tone="emerald">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+                        Wallet-based access
                       </Pill>
 
                       <Pill tone="violet">
@@ -867,17 +864,17 @@ function HomePageInner() {
 
                       <div className="relative z-10 mt-3">
                         <h1 className="relative text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
-                          One protocol. One identity.{' '}
+                          One protocol.{' '}
                           <span className="text-emerald-300">One daily XPOT draw.</span>
                         </h1>
                       </div>
 
                       <p className="relative z-10 mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                        Hold XPOT, connect X and claim your entry. One winner daily, paid on-chain.
+                        Hold XPOT, connect your wallet and claim your entry. One winner daily, paid on-chain.
                         Built to scale into a rewards ecosystem for communities, creators and sponsors.
                       </p>
 
-                      {/* Runway: remove bg + border, and same for info icon */}
+                      {/* Runway */}
                       <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
                         <div className="inline-flex items-center gap-2 px-0 py-0">
                           <ShieldCheck className="h-4 w-4 text-emerald-200/90" />
@@ -895,10 +892,6 @@ function HomePageInner() {
 
                       <div className="relative z-10 mt-4">
                         <PrinciplesStrip />
-                      </div>
-
-                      <div className="relative z-10 mt-4">
-                        <XLiveLobbyInline entrants={liveEntries} />
                       </div>
 
                       <div className="relative z-10 mt-5">
@@ -943,14 +936,14 @@ function HomePageInner() {
                       </div>
 
                       <p className="relative z-10 mt-3 text-[11px] text-slate-500">
-                        Winners revealed by <span className="font-semibold text-slate-200">X handle</span>, never by wallet.
+                        Winners are provable on-chain. Verification beats vibes.
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Mode" value="On-chain" tone="emerald" />
-                    <MiniStat label="Identity" value="@handle" tone="sky" />
+                    <MiniStat label="Access" value="Wallet" tone="sky" />
                     <MiniStat label="Layer" value="Rewards protocol" tone="violet" />
                   </div>
                 </div>
@@ -961,7 +954,6 @@ function HomePageInner() {
                     <div className="mt-0">
                       <JackpotPanel variant="standalone" layout="wide" />
                     </div>
-
                   </PremiumCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -977,7 +969,7 @@ function HomePageInner() {
                       <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
 {`> XPOT_PROTOCOL
   primitive:       daily reward selection
-  identity:        X handle + wallet (self custody)
+  access:          wallet-based (self custody)
   proof:           on-chain payout verification
   composable:      modules can plug in later
 
@@ -985,9 +977,9 @@ function HomePageInner() {
   in:             ${countdown}  (${cutoffLabel})
 
 > LAST_WINNERS
-  #2025-12-18  @DeWala_222222   ${XPOT_SIGN}1,000,000
-  #2025-12-18  @SignalChaser    ${XPOT_SIGN}250,000 (bonus)
-  #2025-12-17  @NFAResearch     ${XPOT_SIGN}1,000,000`}
+  #2025-12-18  winner   ${XPOT_SIGN}1,000,000
+  #2025-12-18  bonus    ${XPOT_SIGN}250,000
+  #2025-12-17  winner   ${XPOT_SIGN}1,000,000`}
                       </pre>
                     </div>
 
@@ -998,11 +990,7 @@ function HomePageInner() {
                 </div>
               </div>
 
-              <div className="relative z-10 border-t border-slate-900/70 px-6 py-5 lg:px-8">
-                <div className="relative">
-                  <LiveEntrantsLounge entrants={liveEntries} hint="Live lobby - updates automatically" />
-                </div>
-              </div>
+              {/* Removed: LiveEntrantsLounge footer strip */}
             </div>
           </div>
         </div>
@@ -1026,7 +1014,7 @@ function HomePageInner() {
                 A daily reward primitive with provable outcomes.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT keeps the surface area small: holdings-based eligibility, public identity by handle and on-chain payout proof.
+                XPOT keeps the surface area small: holdings-based eligibility, wallet-based access and on-chain payout proof.
                 Everything else can plug in later.
               </p>
             </div>
@@ -1038,7 +1026,7 @@ function HomePageInner() {
               </Pill>
               <Pill tone="violet">
                 <Users className="h-3.5 w-3.5" />
-                Identity layer
+                Access layer
               </Pill>
               <Pill tone="amber">
                 <Stars className="h-3.5 w-3.5" />
@@ -1059,11 +1047,11 @@ function HomePageInner() {
               />
               <Step
                 n="02"
-                title="Connect X and wallet"
-                desc="Handle is public. Wallet stays self-custody"
+                title="Connect wallet"
+                desc="Self-custody, no accounts"
                 icon={<Users className="h-5 w-5 text-sky-200" />}
                 tone="sky"
-                tag="Identity"
+                tag="Access"
               />
               <Step
                 n="03"
@@ -1090,7 +1078,7 @@ function HomePageInner() {
         </PremiumCard>
       </section>
 
-            {/* THE PROTOCOL STRIP (restored) */}
+      {/* THE PROTOCOL STRIP (restored) */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1105,10 +1093,10 @@ function HomePageInner() {
           <PremiumCard className="p-5 sm:p-6" halo={false}>
             <Pill tone="sky">
               <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-              Identity
+              Access
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Public by handle.</p>
-            <p className="mt-2 text-sm text-slate-300">Your X handle is public. Wallet stays self-custody.</p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Self-custody.</p>
+            <p className="mt-2 text-sm text-slate-300">Connect wallet in the hub. Keep control of funds and keys.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1117,7 +1105,7 @@ function HomePageInner() {
               Payout
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
-            <p className="mt-2 text-sm text-slate-300">Winners verify the transaction. Proof stays public.</p>
+            <p className="mt-2 text-sm text-slate-300">Anyone can verify payouts in an explorer.</p>
           </PremiumCard>
         </div>
       </section>
@@ -1182,14 +1170,14 @@ function HomePageInner() {
                   <Users className="h-5 w-5 text-sky-200" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">Identity</p>
-                  <p className="text-xs text-slate-400">Reputation across time</p>
+                  <p className="text-sm font-semibold text-slate-100">Access</p>
+                  <p className="text-xs text-slate-400">Self-custody, composable</p>
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
-                <Bullet tone="sky">X handle is public. Wallet stays self-custody</Bullet>
-                <Bullet tone="violet">History, streaks and wins become your profile</Bullet>
-                <Bullet tone="emerald">Anti-bot gravity without KYC vibes</Bullet>
+                <Bullet tone="sky">Wallet connect, no accounts</Bullet>
+                <Bullet tone="violet">History and rewards can evolve later</Bullet>
+                <Bullet tone="emerald">Low-friction, high-proof</Bullet>
               </ul>
             </div>
 
@@ -1205,7 +1193,7 @@ function HomePageInner() {
               </div>
               <ul className="mt-4 space-y-2">
                 <Bullet tone="amber">On-chain proof of payouts</Bullet>
-                <Bullet tone="emerald">Transparent winner announcements</Bullet>
+                <Bullet tone="emerald">Transparent mechanics</Bullet>
                 <Bullet tone="sky">Reusable selection primitive for other apps</Bullet>
               </ul>
             </div>
@@ -1235,7 +1223,7 @@ function HomePageInner() {
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
             <p className="mt-2 text-sm text-slate-300">
-              One mechanic, transparent winners and a premium experience that doesn’t feel spammy.
+              One mechanic, provable winners and a premium experience that doesn’t feel spammy.
             </p>
           </PremiumCard>
 
@@ -1277,7 +1265,7 @@ function HomePageInner() {
             <div className="flex flex-wrap items-center gap-2">
               <Pill tone="sky">
                 <Users className="h-3.5 w-3.5" />
-                Identity
+                Access
               </Pill>
               <Pill tone="amber">
                 <Stars className="h-3.5 w-3.5" />
