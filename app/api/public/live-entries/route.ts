@@ -3,58 +3,83 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-// Curated seed list for the homepage "Live lobby" while wiring real entrants.
-// Later you will replace this with today's draw entrants from DB.
-const SEED_HANDLES: Array<{
+type LiveEntrant = {
   handle: string;
-  verified?: boolean;
+  avatarUrl?: string;
   followers?: number;
+  verified?: boolean;
   subtitle?: string;
-}> = [
-  { handle: 'solana', verified: true, subtitle: 'Protocol' },
-  { handle: 'JupiterExchange', verified: true, subtitle: 'Liquidity' },
+};
+
+// For now: curated real X accounts (public) you can filter later.
+// Avatars use unavatar (no X API needed). You can swap this to DB later.
+const ALLOWLIST: LiveEntrant[] = [
+  { handle: 'jup_ag', verified: true, subtitle: 'Sponsor' },
+  { handle: 'solana', verified: true, subtitle: 'Ecosystem' },
   { handle: 'phantom', verified: true, subtitle: 'Wallet' },
-  { handle: 'RaydiumProtocol', verified: true, subtitle: 'DEX' },
-  { handle: 'tensor_hq', verified: true, subtitle: 'NFT' },
-  { handle: 'birdeye_so', verified: true, subtitle: 'Analytics' },
-  { handle: 'coingecko', verified: true, subtitle: 'Data' },
-  { handle: 'coinmarketcap', verified: true, subtitle: 'Market' },
+  { handle: 'raydiumprotocol', verified: true, subtitle: 'DEX' },
+  { handle: 'MeteoraAG', verified: true, subtitle: 'Liquidity' },
+  { handle: 'DriftProtocol', verified: true, subtitle: 'Perps' },
+  { handle: 'orca_so', verified: true, subtitle: 'DEX' },
+  { handle: 'CoinGecko', verified: true, subtitle: 'Data' },
+  { handle: 'DexScreener', verified: true, subtitle: 'Charts' },
   { handle: 'heliuslabs', verified: true, subtitle: 'Infra' },
-  { handle: 'solflare_wallet', verified: true, subtitle: 'Wallet' },
   { handle: 'Backpack', verified: true, subtitle: 'Wallet' },
-  { handle: 'meteoraAG', verified: true, subtitle: 'Liquidity' },
+  { handle: 'birdeye_so', verified: true, subtitle: 'Analytics' },
 ];
 
-// Use Unavatar so you get a stable image without X API.
-// If unavatar is ever rate-limited, LiveEntrantsLounge will safely hide rows without avatarUrl.
-function avatarUrl(handle: string) {
-  const h = (handle || '').replace(/^@/, '').trim();
+function cleanHandle(h: string) {
+  return (h || '').replace(/^@/, '').trim();
+}
+
+function avatarFromHandle(handle: string) {
+  // unavatar supports x/twitter usernames
+  const h = cleanHandle(handle);
   return `https://unavatar.io/x/${encodeURIComponent(h)}`;
+}
+
+function uniqByHandle(list: LiveEntrant[]) {
+  const seen = new Set<string>();
+  const out: LiveEntrant[] = [];
+
+  for (const e of list) {
+    const h = cleanHandle(e.handle);
+    if (!h) continue;
+    const key = h.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...e, handle: h, avatarUrl: e.avatarUrl || avatarFromHandle(h) });
+  }
+
+  return out;
 }
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const limitRaw = url.searchParams.get('limit') || '18';
-  const limit = Math.max(1, Math.min(60, Number(limitRaw) || 18));
+  const limitRaw = Number(url.searchParams.get('limit') || '18');
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(50, limitRaw)) : 18;
 
-  // Rotate slightly so it feels "alive" even before real data:
-  const minuteBucket = Math.floor(Date.now() / 60_000);
-  const rotated = [...SEED_HANDLES].sort((a, b) => {
-    const ka = (a.handle.charCodeAt(0) + minuteBucket) % 1000;
-    const kb = (b.handle.charCodeAt(0) + minuteBucket) % 1000;
-    return ka - kb;
-  });
+  // Optional filtering: ?q=sol (matches handle or subtitle)
+  const q = (url.searchParams.get('q') || '').trim().toLowerCase();
 
-  const entrants = rotated.slice(0, limit).map(e => ({
-    handle: e.handle,
-    avatarUrl: avatarUrl(e.handle),
-    verified: Boolean(e.verified),
-    followers: e.followers,
-    subtitle: e.subtitle,
-  }));
+  let list = uniqByHandle(ALLOWLIST);
+
+  if (q) {
+    list = list.filter(e => {
+      const hay = `${e.handle} ${e.subtitle || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  // Simple rotate for “live” feel (no randomness needed server side)
+  const now = Date.now();
+  const offset = Math.floor(now / 15_000) % Math.max(1, list.length);
+  const rotated = list.slice(offset).concat(list.slice(0, offset));
+
+  const entrants = rotated.slice(0, limit);
 
   return NextResponse.json(
-    { entrants, source: 'seed', updatedAt: new Date().toISOString() },
+    { entrants },
     {
       headers: {
         'Cache-Control': 'no-store, max-age=0',
