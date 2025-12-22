@@ -22,7 +22,7 @@ import XpotPageShell from '@/components/XpotPageShell';
 
 type LiveDraw = {
   jackpotXpot: number; // API field name (keep), UI avoids "jackpot"
-  jackpotUsd: number;
+  jackpotUsd: number; // ignore in UI (can be stub/mock)
   closesAt: string; // ISO
   status: 'OPEN' | 'LOCKED' | 'DRAWING' | 'COMPLETED';
 };
@@ -61,10 +61,10 @@ function StatusPill({
     tone === 'emerald'
       ? 'bg-emerald-500/10 text-emerald-300 border-emerald-400/20'
       : tone === 'amber'
-      ? 'bg-amber-500/10 text-amber-300 border-amber-400/20'
-      : tone === 'sky'
-      ? 'bg-sky-500/10 text-sky-300 border-sky-400/20'
-      : 'bg-slate-800/60 text-slate-200 border-white/10';
+        ? 'bg-amber-500/10 text-amber-300 border-amber-400/20'
+        : tone === 'sky'
+          ? 'bg-sky-500/10 text-sky-300 border-sky-400/20'
+          : 'bg-slate-800/60 text-slate-200 border-white/10';
 
   return (
     <span
@@ -93,10 +93,18 @@ function formatCountdown(ms: number) {
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
 }
 
-function fmtUsd(n?: number) {
+function fmtUsd0(n?: number) {
   const v = Number(n);
   if (!Number.isFinite(v)) return '—';
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
+function fmtUsdEstimate(n?: number) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '—';
+  // Estimates look better with 0 dp once above $10, else 2 dp
+  const maxFractionDigits = v >= 10 ? 0 : 2;
+  return `$${v.toLocaleString(undefined, { maximumFractionDigits })}`;
 }
 
 function fmtPct(n?: number) {
@@ -142,13 +150,6 @@ function formatMadridTime(iso?: string) {
   }).format(d);
 }
 
-function clampSkewMs(ms: number) {
-  // Prevent insane skew if the header is missing/invalid
-  // +/- 5 minutes is more than enough to correct local drift
-  const MAX = 5 * 60 * 1000;
-  return Math.max(-MAX, Math.min(MAX, ms));
-}
-
 export default function HubProtocolPage() {
   const [draw, setDraw] = useState<LiveDraw | null>(null);
   const [bonus, setBonus] = useState<BonusXPOT[]>([]);
@@ -159,9 +160,6 @@ export default function HubProtocolPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [protoError, setProtoError] = useState<string | null>(null);
-
-  // Server clock sync (so countdown matches DB/server logic)
-  const [serverSkewMs, setServerSkewMs] = useState(0);
 
   // local timer tick for countdown
   const [now, setNow] = useState(() => Date.now());
@@ -192,17 +190,6 @@ export default function HubProtocolPage() {
           fetch('/api/draw/live', { cache: 'no-store', signal: ac.signal }),
           fetch('/api/bonus/live', { cache: 'no-store', signal: ac.signal }),
         ]).finally(() => window.clearTimeout(t));
-
-        // Server time sync from response header (best-effort)
-        // Works on Vercel and most setups: Date header is included.
-        const dateHdr = dRes.headers.get('date');
-        if (dateHdr) {
-          const serverMs = new Date(dateHdr).getTime();
-          if (Number.isFinite(serverMs)) {
-            const skew = clampSkewMs(serverMs - Date.now());
-            if (alive && req === liveReqId.current) setServerSkewMs(skew);
-          }
-        }
 
         const d = await dRes.json().catch(() => ({}));
         const b = await bRes.json().catch(() => ({}));
@@ -273,17 +260,33 @@ export default function HubProtocolPage() {
 
   const liveIsOpen = draw?.status === 'OPEN';
 
-  // Use server-synced "now" for countdown so it matches the DB/server closesAt logic
-  const nowSyncedMs = now + serverSkewMs;
-
-  // Synced to the DB-driven closesAt (same value your main countdown should use)
+  // Synced to DB-driven closesAt (whatever /api/draw/live returns)
   const closesIn = useMemo(() => {
     if (!draw?.closesAt) return '00:00:00';
     const target = new Date(draw.closesAt).getTime();
-    return formatCountdown(target - nowSyncedMs);
-  }, [draw?.closesAt, nowSyncedMs]);
+    return formatCountdown(target - now);
+  }, [draw?.closesAt, now]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
+
+  // LIVE USD estimates (real, derived from market price)
+  const dailyUsdEstimate = useMemo(() => {
+    const amount = Number(draw?.jackpotXpot);
+    const price = Number(proto?.priceUsd);
+    if (!Number.isFinite(amount) || !Number.isFinite(price)) return undefined;
+    return amount * price;
+  }, [draw?.jackpotXpot, proto?.priceUsd]);
+
+  const bonusUsdEstimate = useMemo(() => {
+    const price = Number(proto?.priceUsd);
+    if (!Number.isFinite(price)) return new Map<string, number>();
+    const m = new Map<string, number>();
+    for (const b of bonus) {
+      const amt = Number(b.amountXpot);
+      if (Number.isFinite(amt)) m.set(b.id, amt * price);
+    }
+    return m;
+  }, [bonus, proto?.priceUsd]);
 
   return (
     <XpotPageShell
@@ -350,7 +353,7 @@ export default function HubProtocolPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               label="LP (USD)"
-              value={protoLoading ? 'Loading…' : fmtUsd(proto?.lpUsd)}
+              value={protoLoading ? 'Loading…' : fmtUsd0(proto?.lpUsd)}
               hint={protoLoading ? '' : pendingPair ? 'Pending first LP' : 'Total liquidity value'}
               icon={<Waves className="h-4 w-4 text-sky-300" />}
             />
@@ -364,11 +367,12 @@ export default function HubProtocolPage() {
               label="Price (USD)"
               value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
+              icon={<Activityp
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
             />
             <MetricCard
               label="Volume (24h)"
-              value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)}
+              value={protoLoading ? 'Loading…' : fmtUsd0(proto?.volume24hUsd)}
               hint={protoLoading ? '' : pendingPair ? 'No trades yet' : 'Observed volume'}
               icon={<Zap className="h-4 w-4 text-amber-300" />}
             />
@@ -383,9 +387,7 @@ export default function HubProtocolPage() {
                   <Info className="h-5 w-5 text-amber-300" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">
-                    Price pending
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Price pending</p>
                   <p className="mt-1 text-sm text-slate-200/85">
                     XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
                   </p>
@@ -426,7 +428,11 @@ export default function HubProtocolPage() {
                 <MetricCard
                   label="Daily reward"
                   value={`${Number(draw.jackpotXpot ?? 0).toLocaleString()} XPOT`}
-                  hint={`≈ ${fmtUsd(draw.jackpotUsd)}`}
+                  hint={
+                    proto?.priceUsd
+                      ? `≈ ${fmtUsdEstimate(dailyUsdEstimate)} (live estimate)`
+                      : 'USD estimate pending market price'
+                  }
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
@@ -442,10 +448,10 @@ export default function HubProtocolPage() {
                     draw.status === 'OPEN'
                       ? 'Entries are active'
                       : draw.status === 'LOCKED'
-                      ? 'Entry window closed'
-                      : draw.status === 'DRAWING'
-                      ? 'Picking winner'
-                      : 'Completed'
+                        ? 'Entry window closed'
+                        : draw.status === 'DRAWING'
+                          ? 'Picking winner'
+                          : 'Completed'
                   }
                   icon={<Sparkles className="h-4 w-4 text-emerald-300" />}
                 />
@@ -471,42 +477,55 @@ export default function HubProtocolPage() {
             ) : bonus.length === 0 ? (
               <p className="text-sm text-slate-500">No bonus XPOTs scheduled.</p>
             ) : (
-              bonus.map(b => (
-                <div
-                  key={b.id}
-                  className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-100">
-                      {Number(b.amountXpot ?? 0).toLocaleString()} XPOT
-                    </p>
-                    <p className="text-xs text-slate-400">{formatMadridTime(b.scheduledAt)} (Madrid)</p>
-                  </div>
+              bonus.map(b => {
+                const usdEst = bonusUsdEstimate.get(b.id);
+                return (
+                  <div
+                    key={b.id}
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-100">{Number(b.amountXpot ?? 0).toLocaleString()} XPOT</p>
+                      <p className="text-xs text-slate-400">
+                        {formatMadridTime(b.scheduledAt)} (Madrid)
+                        {proto?.priceUsd && Number.isFinite(usdEst) ? (
+                          <span className="text-slate-600"> · </span>
+                        ) : null}
+                        {proto?.priceUsd && Number.isFinite(usdEst) ? (
+                          <span className="text-slate-500">≈ {fmtUsdEstimate(usdEst)} (live estimate)</span>
+                        ) : null}
+                      </p>
+                    </div>
 
-                  <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : 'amber'}>
-                    {b.status === 'CLAIMED' ? (
-                      <>
-                        <Crown className="h-3.5 w-3.5" />
-                        Claimed
-                      </>
-                    ) : (
-                      <>
-                        <Ticket className="h-3.5 w-3.5" />
-                        Upcoming
-                      </>
-                    )}
-                  </StatusPill>
-                </div>
-              ))
+                    <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : 'amber'}>
+                      {b.status === 'CLAIMED' ? (
+                        <>
+                          <Crown className="h-3.5 w-3.5" />
+                          Claimed
+                        </>
+                      ) : (
+                        <>
+                          <Ticket className="h-3.5 w-3.5" />
+                          Upcoming
+                        </>
+                      )}
+                    </StatusPill>
+                  </div>
+                );
+              })
             )}
           </div>
         </section>
 
         {/* LIVE MARKET PANELS */}
         <section className="grid gap-6 lg:grid-cols-2">
-          <PremiumPanel title="Liquidity" subtitle="LP integrity and stability signals." icon={<Waves className="h-5 w-5 text-sky-300" />}>
+          <PremiumPanel
+            title="Liquidity"
+            subtitle="LP integrity and stability signals."
+            icon={<Waves className="h-5 w-5 text-sky-300" />}
+          >
             <div className="grid gap-3 sm:grid-cols-2">
-              <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsd(proto?.lpUsd)} />
+              <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsd0(proto?.lpUsd)} />
               <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
             </div>
 
@@ -518,13 +537,17 @@ export default function HubProtocolPage() {
             </div>
           </PremiumPanel>
 
-          <PremiumPanel title="Market" subtitle="Reference price and volume behaviour." icon={<Activity className="h-5 w-5 text-emerald-300" />}>
+          <PremiumPanel
+            title="Market"
+            subtitle="Reference price and volume behaviour."
+            icon={<Activity className="h-5 w-5 text-emerald-300" />}
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi
                 label="Price"
                 value={protoLoading ? 'Loading…' : proto?.priceUsd ? `$${proto.priceUsd.toFixed(6)}` : '—'}
               />
-              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsd(proto?.volume24hUsd)} />
+              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsd0(proto?.volume24hUsd)} />
             </div>
 
             <div className="mt-5">
