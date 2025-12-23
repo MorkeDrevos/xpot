@@ -7,11 +7,9 @@ function todayUtcBucket() {
   const y = now.getUTCFullYear();
   const m = now.getUTCMonth();
   const d = now.getUTCDate();
-
   const start = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
   const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
   const bucket = start; // canonical bucket stored in Draw.drawDate (unique)
-
   return { start, end, bucket };
 }
 
@@ -29,6 +27,7 @@ function randHex(len: number) {
 }
 
 function fakeSolAddress() {
+  // Not a real Solana address - just a unique string for your schema.
   return `DEV${randHex(40)}`;
 }
 
@@ -50,34 +49,20 @@ async function main() {
     create: { singleton: 'singleton', mode: 'MANUAL' },
   });
 
-  // 1) Ensure today's draw exists (drawDate unique)
-  let draw = await prisma.draw.findUnique({
+  // 1) Ensure today's draw exists (drawDate is unique)
+  const closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const draw = await prisma.draw.upsert({
     where: { drawDate: bucket },
+    update: { closesAt },
+    create: { drawDate: bucket, status: 'open', closesAt },
   });
 
-  if (!draw) {
-    const closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    draw = await prisma.draw.create({
-      data: {
-        drawDate: bucket,
-        status: 'open',
-        closesAt,
-      },
-    });
-    console.log('[dev-populate] ✅ Created today draw:', {
-      id: draw.id,
-      drawDate: draw.drawDate,
-      status: draw.status,
-      closesAt: draw.closesAt,
-    });
-  } else {
-    console.log('[dev-populate] ℹ️ Today draw already exists:', {
-      id: draw.id,
-      drawDate: draw.drawDate,
-      status: draw.status,
-      closesAt: draw.closesAt,
-    });
-  }
+  console.log('[dev-populate] Draw ready:', {
+    id: draw.id,
+    status: draw.status,
+    drawDate: draw.drawDate,
+    closesAt: draw.closesAt,
+  });
 
   // Config
   const WALLETS = intEnv('XPOT_DEV_WALLETS', 30);
@@ -85,21 +70,20 @@ async function main() {
   const ENTRIES = intEnv('XPOT_DEV_ENTRIES', 18);
   const BONUS_DROPS = intEnv('XPOT_DEV_BONUS_DROPS', 2);
 
-  // 2) Create or reuse wallets
+  // 2) Ensure we have at least WALLETS wallets
   const existingWallets = await prisma.wallet.findMany({
     orderBy: { createdAt: 'asc' },
     take: WALLETS,
   });
 
   const wallets = [...existingWallets];
-
   while (wallets.length < WALLETS) {
     const address = fakeSolAddress();
     try {
       const w = await prisma.wallet.create({ data: { address } });
       wallets.push(w);
     } catch {
-      // collision, retry
+      // address collision - retry
     }
   }
 
@@ -108,35 +92,56 @@ async function main() {
   // 3) Create tickets for today's draw
   // IMPORTANT: schema has @@unique([walletId, drawId]) => max 1 ticket per wallet per draw
   const maxPossible = Math.min(TICKETS, wallets.length);
+
   let createdTickets = 0;
+  let existingTickets = 0;
 
   for (let i = 0; i < maxPossible; i++) {
     const w = wallets[i];
 
-    try {
-      await prisma.ticket.create({
-        data: {
-          code: ticketCode(),
-          walletId: w.id, // ✅ REQUIRED (your error was caused by a create without this)
-          walletAddress: w.address,
-          status: 'IN_DRAW',
+    // If ticket already exists for this wallet+draw, skip.
+    const already = await prisma.ticket.findUnique({
+      where: {
+        walletId_drawId: {
+          walletId: w.id,
           drawId: draw.id,
         },
-      });
-      createdTickets++;
-    } catch {
-      // likely unique collision (wallet already has a ticket for this draw, or code collision)
+      },
+      select: { id: true },
+    });
+
+    if (already) {
+      existingTickets++;
       continue;
     }
+
+    // Create the required fields: code, walletId, walletAddress, status, drawId
+    await prisma.ticket.create({
+      data: {
+        code: ticketCode(),
+        walletId: w.id,
+        walletAddress: w.address,
+        status: 'IN_DRAW',
+        drawId: draw.id,
+      },
+    });
+
+    createdTickets++;
   }
 
-  console.log('[dev-populate] ✅ Tickets created for today:', createdTickets);
+  console.log('[dev-populate] Tickets:', {
+    requested: TICKETS,
+    possible: maxPossible,
+    created: createdTickets,
+    alreadyExisted: existingTickets,
+  });
 
-  // 4) Bonus drops (optional)
+  // 4) Bonus drops (optional) - safe inserts, no wipes
+  let bonusCreated = 0;
   if (BONUS_DROPS > 0) {
-    let ensured = 0;
     for (let i = 0; i < BONUS_DROPS; i++) {
-      const scheduledAt = new Date(Date.now() + (i + 1) * 60 * 60 * 1000);
+      const scheduledAt = new Date(Date.now() + (i + 1) * 60 * 60 * 1000); // +1h, +2h...
+
       try {
         await prisma.bonusDrop.create({
           data: {
@@ -147,13 +152,14 @@ async function main() {
             status: 'SCHEDULED',
           },
         });
-        ensured++;
+        bonusCreated++;
       } catch {
-        // ignore duplicates on rerun
+        // ignore duplicates if any
       }
     }
-    console.log('[dev-populate] ✅ BonusDrops ensured this run:', ensured);
   }
+
+  console.log('[dev-populate] BonusDrops created:', bonusCreated);
 
   // 5) Public entrants (optional)
   const demoEntrants = [
@@ -164,46 +170,22 @@ async function main() {
   ];
 
   const targetEntrants = demoEntrants.slice(0, Math.min(ENTRIES, demoEntrants.length));
-  let createdEntrants = 0;
-
-  for (const e of targetEntrants) {
-    try {
-      await prisma.drawEntry.create({
-        data: {
-          drawId: draw.id,
-          clerkId: e.clerkId,
-          xHandle: e.xHandle,
-          xName: e.xName,
-          xAvatarUrl: null,
-          followers: e.followers,
-          verified: e.verified,
-        },
-      });
-      createdEntrants++;
-    } catch {
-      // already exists (unique drawId+clerkId)
-    }
+  if (targetEntrants.length) {
+    await prisma.drawEntry.createMany({
+      data: targetEntrants.map((e) => ({
+        drawId: draw.id,
+        clerkId: e.clerkId,
+        xHandle: e.xHandle,
+        xName: e.xName,
+        xAvatarUrl: null,
+        followers: e.followers,
+        verified: e.verified,
+      })),
+      skipDuplicates: true, // respects @@unique([drawId, clerkId])
+    });
   }
 
-  console.log('[dev-populate] ✅ Entrants created this run:', createdEntrants);
-
-  // Summary (quick sanity)
-  const totals = await Promise.all([
-    prisma.draw.count(),
-    prisma.wallet.count(),
-    prisma.ticket.count({ where: { drawId: draw.id } }),
-    prisma.bonusDrop.count({ where: { drawId: draw.id } }),
-    prisma.drawEntry.count({ where: { drawId: draw.id } }),
-  ]);
-
-  console.log('[dev-populate] Totals:', {
-    draws: totals[0],
-    wallets: totals[1],
-    ticketsInTodayDraw: totals[2],
-    bonusDropsInTodayDraw: totals[3],
-    entrantsInTodayDraw: totals[4],
-  });
-
+  console.log('[dev-populate] Entrants ensured:', targetEntrants.length);
   console.log('[dev-populate] ✅ Done.');
 }
 
