@@ -30,6 +30,7 @@ import {
   XCircle,
   Loader2,
   ChevronRight,
+  Info,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -75,6 +76,9 @@ const XPOT_X_POST = 'https://x.com/xpotbet';
 const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
+
+// ✅ NEW: Transparency / mechanism page
+const MECHANISM_HREF = '/mechanism';
 
 // ✅ Health / Protocol State page (pick one, keep constant here)
 const PROTOCOL_HREF = '/hub/protocol'; // or '/hub/protocol-state'
@@ -212,7 +216,11 @@ export default function XpotTopBar({
                 )}
 
                 {isHub ? (
-                  <HubRight clerkEnabled={clerkEnabled} hubWalletStatus={hubWalletStatus} onOpenWalletModal={openWallet} />
+                  <HubRight
+                    clerkEnabled={clerkEnabled}
+                    hubWalletStatus={hubWalletStatus}
+                    onOpenWalletModal={openWallet}
+                  />
                 ) : (
                   <>{rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}</>
                 )}
@@ -249,7 +257,9 @@ export default function XpotTopBar({
       </header>
 
       {/* ✅ Light wallet popup (only used when parent does not supply onOpenWalletModal) */}
-      {!onOpenWalletModal && <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />}
+      {!onOpenWalletModal && (
+        <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
+      )}
     </>
   );
 }
@@ -301,7 +311,9 @@ function OfficialCAChip() {
       </span>
 
       <div className="relative z-10 flex flex-col leading-none pr-1">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">OFFICIAL CA</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">
+          OFFICIAL CA
+        </span>
         <span className="mt-1 font-mono text-[12px] text-slate-100/95">{addrShort}</span>
       </div>
 
@@ -495,6 +507,17 @@ function PublicNavCenter({
                   Winners
                 </Link>
 
+                {/* ✅ NEW: Mechanism */}
+                <Link
+                  href={MECHANISM_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Info className="h-4 w-4 text-slate-200" />
+                  </span>
+                  Mechanism
+                </Link>
+
                 <div className="my-2 h-px bg-white/10" />
 
                 <Link
@@ -521,7 +544,6 @@ function PublicNavCenter({
 function PublicRight({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
     <div className="hidden items-center gap-3 xl:flex">
-      {/* ✅ Replace duplicate Live pill with Health */}
       <NavPill href={PROTOCOL_HREF} title="Protocol health">
         <ShieldCheck className="h-4 w-4 text-emerald-300" />
         Health
@@ -553,6 +575,12 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
       <NavLink href={PROTOCOL_HREF} title="Protocol health">
         <ShieldCheck className="h-4 w-4 text-emerald-300" />
         Health
+      </NavLink>
+
+      {/* ✅ NEW: Mechanism */}
+      <NavLink href={MECHANISM_HREF} title="How winners are picked">
+        <Info className="h-4 w-4 text-slate-200" />
+        Mechanism
       </NavLink>
 
       <NavLink href={TOKENOMICS_HREF}>
@@ -844,9 +872,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
                   <p className="text-sm font-semibold text-slate-100">
                     {connected ? 'Wallet connected' : 'No wallet connected'}
                   </p>
-                  <p className="mt-1 truncate text-xs text-slate-300/70">
-                    {connected ? addr : 'Choose a wallet below'}
-                  </p>
+                  <p className="mt-1 truncate text-xs text-slate-300/70">{connected ? addr : 'Choose a wallet below'}</p>
                 </div>
 
                 {connected && (
@@ -1031,7 +1057,10 @@ function MobileMenu({
         </div>
 
         <div className="space-y-2 px-5 py-5">
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href="/hub"
+          >
             Hub
           </Link>
 
@@ -1056,21 +1085,41 @@ function MobileMenu({
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
+          {/* ✅ NEW: Mechanism */}
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={MECHANISM_HREF}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Info className="h-4 w-4 text-slate-200" />
+              Mechanism
+            </span>
+          </Link>
+
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={TOKENOMICS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <PieChart className="h-4 w-4 text-emerald-300" />
               Tokenomics
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={ROADMAP_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Map className="h-4 w-4 text-sky-300" />
               Roadmap
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={WINNERS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-300" />
               Winners
