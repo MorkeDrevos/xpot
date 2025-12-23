@@ -1,6 +1,7 @@
 // components/XpotFooter.tsx
 'use client';
 
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -22,13 +23,7 @@ const ROUTE_TERMS = '/terms';
 const BTN_GREEN =
   'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
 
-function Pill({
-  tone,
-  children,
-}: {
-  tone: PillTone;
-  children: React.ReactNode;
-}) {
+function Pill({ tone, children }: { tone: PillTone; children: ReactNode }) {
   const toneClass =
     tone === 'emerald'
       ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200'
@@ -94,7 +89,10 @@ export default function XpotFooter() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
+            <Link
+              href={ROUTE_HUB}
+              className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}
+            >
               Enter hub
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
@@ -121,8 +119,13 @@ export default function XpotFooter() {
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-[11px] text-slate-500">
           <span className="inline-flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-            UI is final. Wiring continues.
+            <span className="text-slate-500">
+              <span className="font-semibold text-slate-300">XPOT.bet</span> · Build · Engage · Transact
+              <span className="mx-2 text-slate-700">|</span>
+              UI is final. Wiring continues.
+            </span>
           </span>
+
           <span className="font-mono text-slate-600">build: cinematic-home</span>
         </div>
       </div>
