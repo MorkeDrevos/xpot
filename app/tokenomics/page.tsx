@@ -52,9 +52,6 @@ const CARD =
 
 const VAULT_POLL_MS = 20_000;
 
-// Scroll positioning so expanded cards land like your screenshot (below the sticky top bar)
-const SCROLL_OFFSET_PX = 240;
-
 // Protocol rule (fixed)
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
@@ -67,7 +64,6 @@ function Pill({ children, tone = 'slate' }: { children: ReactNode; tone?: PillTo
     slate: 'border-slate-800/70 bg-slate-900/60 text-slate-200 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
     emerald: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
     sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
-    // ✅ gold-token pill (no Tailwind amber)
     amber: `${GOLD_BORDER} ${GOLD_BG_WASH} ${GOLD_TEXT} ${GOLD_RING_SHADOW}`,
   };
 
@@ -127,26 +123,30 @@ function timeAgo(tsMs: number) {
   return `${s}s ago`;
 }
 
+// Safer tone colors (amber has fallback if CSS var is missing/invalid)
 function toneStroke(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.78)';
   if (tone === 'sky') return 'rgba(56,189,248,0.78)';
-  if (tone === 'amber') return 'rgba(var(--xpot-gold),0.78)';
+  if (tone === 'amber') return 'rgba(250,204,21,0.78)'; // fallback gold (always valid)
   return 'rgba(148,163,184,0.68)'; // slate
 }
 
 function toneGlow(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
-  if (tone === 'amber') return 'rgba(var(--xpot-gold),0.18)';
+  if (tone === 'amber') return 'rgba(250,204,21,0.18)'; // fallback gold
   return 'rgba(148,163,184,0.16)';
 }
 
 function toneRing(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
-  if (tone === 'amber') return 'rgba(var(--xpot-gold),0.16)';
+  if (tone === 'amber') return 'rgba(250,204,21,0.16)'; // fallback gold
   return 'rgba(148,163,184,0.18)';
 }
+
+// If your CSS variables exist, we still use them for text/borders/washes.
+// The dot/glow uses a guaranteed-valid fallback so it never disappears.
 
 // ─────────────────────────────────────────────
 // Team vesting (12 months, monthly equal amounts)
@@ -223,7 +223,6 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
 
                 <rect x="0" y="0" width={w} height={h} fill="rgba(2,2,10,0.35)" />
 
-                {/* grid */}
                 {[0.25, 0.5, 0.75].map(p => (
                   <line
                     key={p}
@@ -236,32 +235,18 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
                   />
                 ))}
 
-                {/* bars */}
-                {rows.map((r, idx) => {
-                  const x = pad + barW * idx + 5;
+                {rows.map(r => {
+                  const x = pad + barW * (r.m - 1) + 5;
                   const barH = (r.monthly / maxMonthly) * (h - pad * 2);
                   const y = h - pad - barH;
                   const bw = Math.max(6, barW - 10);
-
-                  return (
-                    <rect
-                      key={r.m}
-                      x={x}
-                      y={y}
-                      width={bw}
-                      height={barH}
-                      rx="8"
-                      fill="url(#teamBars)"
-                      opacity="0.9"
-                    />
-                  );
+                  return <rect key={r.m} x={x} y={y} width={bw} height={barH} rx="8" fill="url(#teamBars)" opacity="0.9" />;
                 })}
 
-                {/* cumulative line */}
                 <polyline points={points} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" />
 
-                {/* dots */}
-                {rows.map((r, idx) => {
+                {rows.map(r => {
+                  const idx = r.m - 1;
                   const x = pad + barW * idx + barW / 2;
                   const y = pad + (1 - r.pct / 100) * (h - pad * 2);
                   return <circle key={r.m} cx={x} cy={y} r="3.2" fill="rgba(255,255,255,0.70)" />;
@@ -303,7 +288,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
   );
 }
 
-// /api/vaults exact schema
+// /api/vaults exact schema (expanded - uiAmount is often null)
 type ApiVaultTx = {
   signature: string;
   blockTime: number | null; // seconds
@@ -316,8 +301,9 @@ type ApiVaultEntry = {
   ata: string; // XPOT ATA (we intentionally don't show this in UI)
   balance:
     | {
-        amount: string;
-        uiAmount: number;
+        amount: string; // raw integer in string
+        uiAmount: number | null; // Solana often returns null for large balances
+        uiAmountString?: string; // use this when uiAmount is null
         decimals: number;
       }
     | null;
@@ -329,6 +315,47 @@ type ApiVaultResponse = {
   fetchedAt: number;
   groups: Record<string, ApiVaultEntry[]>;
 };
+
+function formatRawAmount(amountStr: string, decimals: number) {
+  try {
+    const raw = BigInt(amountStr || '0');
+    const d = Math.max(0, Math.min(18, Number.isFinite(decimals) ? decimals : 0));
+    if (d === 0) return raw.toString();
+
+    const base = BigInt(10) ** BigInt(d);
+    const whole = raw / base;
+    const frac = raw % base;
+
+    const fracPadded = frac.toString().padStart(d, '0');
+    const fracTrimmed = fracPadded.replace(/0+$/, '');
+
+    if (!fracTrimmed) return whole.toString();
+    return `${whole.toString()}.${fracTrimmed}`;
+  } catch {
+    return null;
+  }
+}
+
+function formatVaultBalance(b: ApiVaultEntry['balance']) {
+  if (!b) return null;
+
+  // Best: uiAmount as number
+  if (typeof b.uiAmount === 'number' && Number.isFinite(b.uiAmount)) {
+    return formatMaybeNumber(b.uiAmount) ?? null;
+  }
+
+  // Next: uiAmountString
+  if (typeof b.uiAmountString === 'string' && b.uiAmountString.trim().length) {
+    return b.uiAmountString;
+  }
+
+  // Fallback: compute from raw amount + decimals
+  if (typeof b.amount === 'string' && typeof b.decimals === 'number') {
+    return formatRawAmount(b.amount, b.decimals);
+  }
+
+  return null;
+}
 
 function useVaultGroups() {
   const [data, setData] = useState<ApiVaultResponse | null>(null);
@@ -452,7 +479,7 @@ function VaultGroupPanel({
       ) : (
         <div className="mt-3 grid gap-3">
           {entries.map(v => {
-            const ui = typeof v.balance?.uiAmount === 'number' ? v.balance.uiAmount : null;
+            const balanceText = formatVaultBalance(v.balance);
             const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
@@ -464,7 +491,6 @@ function VaultGroupPanel({
                       <span className="ml-2 text-xs font-normal text-slate-500">{shortAddr(v.address)}</span>
                     </p>
 
-                    {/* ✅ Wallet-only (no Mint / Freeze / ATA) */}
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                       <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
                         <Wallet className="h-3.5 w-3.5 text-slate-400" />
@@ -494,7 +520,7 @@ function VaultGroupPanel({
 
                   <div className="text-right">
                     <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">XPOT balance</p>
-                    <p className="mt-1 font-mono text-sm text-slate-100">{ui == null ? '—' : `${formatMaybeNumber(ui) ?? '—'} XPOT`}</p>
+                    <p className="mt-1 font-mono text-sm text-slate-100">{balanceText ? `${balanceText} XPOT` : '—'}</p>
                     <p className="mt-1 text-[11px] text-slate-600">{decimals != null ? `Decimals: ${decimals}` : null}</p>
                   </div>
                 </div>
@@ -528,10 +554,7 @@ function VaultGroupPanel({
                             href={`https://solscan.io/tx/${tx.signature}`}
                             target="_blank"
                             rel="noreferrer"
-                            className={[
-                              'group flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 transition',
-                              'border-slate-800/70 bg-slate-950/45 hover:bg-slate-950/60',
-                            ].join(' ')}
+                            className="group flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800/70 bg-slate-950/45 px-3 py-2 transition hover:bg-slate-950/60"
                             title={tx.signature}
                           >
                             <div className="min-w-0">
@@ -581,6 +604,18 @@ function VaultGroupPanel({
       )}
     </div>
   );
+}
+
+function getStickyOffsetPx() {
+  if (typeof window === 'undefined') return 240;
+  const root = document.documentElement;
+  const css = getComputedStyle(root);
+
+  const banner = parseFloat(css.getPropertyValue('--xpot-banner-h')) || 0;
+  const topbar = parseFloat(css.getPropertyValue('--xpot-topbar-h')) || 0;
+
+  const pad = 18;
+  return Math.max(0, Math.round(banner + topbar + pad));
 }
 
 function DonutAllocation({
@@ -753,7 +788,7 @@ function DonutAllocation({
                 key={a.key}
                 ref={getCardRef(a.key)}
                 className={[
-                  'scroll-mt-[160px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
+                  'scroll-mt-[200px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
                   isSelected ? 'border-white/20 ring-1 ring-white/10' : 'border-slate-900/70',
                 ].join(' ')}
                 style={
@@ -885,7 +920,7 @@ export default function TokenomicsPage() {
   const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100); // 7,000,000,000
 
   const TEAM_PCT = 9;
-  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100); // for vesting visuals
+  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100);
 
   function yearsOfRunway(daily: number) {
     if (!Number.isFinite(daily) || daily <= 0) return Infinity;
@@ -950,8 +985,7 @@ export default function TokenomicsPage() {
         label: 'Team and builders',
         pct: 9,
         note: 'Vested, long horizon. Builders stay aligned with holders.',
-        detail:
-          'Vesting: 12 months, monthly equal amounts. Builders earn upside by shipping, not by selling into early liquidity.',
+        detail: 'Vesting: 12 months, monthly equal amounts. Builders earn upside by shipping, not by selling into early liquidity.',
         tone: 'amber',
       },
       {
@@ -1013,30 +1047,21 @@ export default function TokenomicsPage() {
     cardRefs.current[key] = el;
   };
 
-  const getDynamicStickyOffset = () => {
-    // Best-effort: if you later add data-sticky attributes, this auto-improves.
-    const candidates = Array.from(document.querySelectorAll<HTMLElement>('[data-xpot-sticky="true"]'));
-    const extra = candidates.reduce((sum, el) => sum + (el?.offsetHeight ?? 0), 0);
-    return SCROLL_OFFSET_PX + (Number.isFinite(extra) ? extra : 0);
-  };
-
   const scrollToCard = (key: string) => {
     const el = cardRefs.current[key];
     if (!el) return;
 
-    // Precise scroll with offset (sticky header safe)
     const rect = el.getBoundingClientRect();
-    const offset = typeof document === 'undefined' ? SCROLL_OFFSET_PX : getDynamicStickyOffset();
+    const offset = getStickyOffsetPx();
     const targetTop = window.scrollY + rect.top - offset;
+
     window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   };
 
-  // ✅ Make every expand land in the same position (like your screenshot)
   useEffect(() => {
     if (!pendingScrollKey) return;
     if (openKey !== pendingScrollKey) return;
 
-    // Wait for Framer + layout to settle, then scroll (2 ticks)
     const r1 = window.requestAnimationFrame(() => {
       const r2 = window.requestAnimationFrame(() => {
         const t = window.setTimeout(() => {
@@ -1060,7 +1085,11 @@ export default function TokenomicsPage() {
     setPendingScrollKey('distribution');
 
     window.requestAnimationFrame(() => {
-      if (!cardRefs.current['distribution']) allocationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const el = allocationRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const top = window.scrollY + rect.top - getStickyOffsetPx();
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
     });
   };
 
@@ -1073,110 +1102,119 @@ export default function TokenomicsPage() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      <section className="mt-6">
-        <div className={CARD}>
+      {/* ✅ Full-bleed hero (brown runs edge-to-edge) */}
+      <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
+        <div
+          className="
+            relative overflow-hidden border-b border-white/5
+            bg-[linear-gradient(180deg,rgba(10,7,4,0.96),rgba(0,0,0,0.94))]
+          "
+        >
           <div
             className="
-              pointer-events-none absolute -inset-48 opacity-85 blur-3xl
-              bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.22),transparent_55%),
-                  radial-gradient(circle_at_85%_15%,rgba(56,189,248,0.22),transparent_55%),
-                  radial-gradient(circle_at_80%_90%,rgba(var(--xpot-gold),0.16),transparent_60%)]
+              pointer-events-none absolute inset-0
+              bg-[radial-gradient(circle_at_18%_22%,rgba(var(--xpot-gold),0.22),transparent_62%),
+                  radial-gradient(circle_at_78%_34%,rgba(var(--xpot-gold),0.14),transparent_66%),
+                  radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.10),transparent_58%),
+                  linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.78))]
             "
           />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
 
-          <div className="relative z-10 p-6 lg:p-8">
-            <div className="grid gap-6 lg:grid-cols-12">
-              <div className="space-y-5 lg:col-span-8">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Pill tone="emerald">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Daily distribution
-                  </Pill>
-                  <Pill tone="sky">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Verifiable by design
-                  </Pill>
-                  <Pill tone="amber">
-                    <Lock className="h-3.5 w-3.5" />
-                    Self-custody
-                  </Pill>
-                </div>
-
-                <h1 className="text-balance text-3xl font-semibold leading-tight sm:text-4xl">
-                  A distribution designed to outlast noise.<span className="text-emerald-300"> Rewards come first.</span>
-                </h1>
-
-                <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-                  Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes can be
-                  checked on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into with confidence.
-                </p>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
-                    Enter today&apos;s XPOT
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                  <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                    Terms
-                  </Link>
-                  <span className="text-[11px] text-slate-500">Allocation prioritises distribution, resilience and long-term execution.</span>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
-                    <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
-                    <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
+          <div className="relative mx-auto max-w-[1440px] px-4 sm:px-6">
+            <div className="pt-8 sm:pt-10">
+              <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
+                <div className="lg:col-span-8">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Pill tone="emerald">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Daily distribution
+                    </Pill>
+                    <Pill tone="sky">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Verifiable by design
+                    </Pill>
+                    <Pill tone="amber">
+                      <Lock className="h-3.5 w-3.5" />
+                      Self-custody
+                    </Pill>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
-                        <p className="mt-2 flex items-center gap-2 font-mono text-lg font-semibold leading-none text-slate-100">
-                          <ShieldCheck className="h-4 w-4 text-sky-300" />
-                          Authority revoked
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200">
-                        Locked
-                      </span>
+                  <h1 className="mt-5 text-balance text-3xl font-semibold leading-tight sm:text-4xl">
+                    A distribution designed to outlast noise.<span className="text-emerald-300"> Rewards come first.</span>
+                  </h1>
+
+                  <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-300">
+                    Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes can be checked
+                    on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into with confidence.
+                  </p>
+
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                    <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                      Enter today&apos;s XPOT
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                    <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                      Terms
+                    </Link>
+                    <span className="text-[11px] text-slate-500">Allocation prioritises distribution, resilience and long-term execution.</span>
+                  </div>
+
+                  <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
+                      <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
+                      <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
                     </div>
 
-                    <div className="mt-3 grid gap-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint</p>
-                          <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
+                          <p className="mt-2 flex items-center gap-2 font-mono text-lg font-semibold leading-none text-slate-100">
+                            <ShieldCheck className="h-4 w-4 text-sky-300" />
+                            Authority revoked
+                          </p>
                         </div>
-                        <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Freeze</p>
-                          <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
-                          <p className="mt-1 text-sm font-semibold text-slate-200">Fixed</p>
-                        </div>
+                        <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200">
+                          Locked
+                        </span>
                       </div>
 
-                      <p className="text-xs text-slate-500">No further supply can be minted or frozen</p>
+                      <div className="mt-3 grid gap-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
+                          </div>
+                          <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Freeze</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
+                          </div>
+                          <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-200">Fixed</p>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-slate-500">No further supply can be minted or frozen</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve</p>
+                      <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</p>
+                      <p className="mt-1 text-xs text-slate-500">Designated reserve wallet</p>
                     </div>
                   </div>
-
-                  <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve</p>
-                    <p className="mt-2 font-mono text-lg font-semibold text-emerald-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</p>
-                    <p className="mt-1 text-xs text-slate-500">Designated reserve wallet</p>
-                  </div>
                 </div>
-              </div>
 
-              <div className="hidden lg:block lg:col-span-4">
-                <div className="h-full">
-                  <div className="relative h-full rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur">
+                {/* ✅ RESTORED "IMG 2" - Protocol snapshot card */}
+                <div className="lg:col-span-4">
+                  <div className="relative h-full rounded-[26px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur-xl">
                     <div
                       className="
-                        pointer-events-none absolute -inset-24 opacity-75 blur-3xl
+                        pointer-events-none absolute -inset-24 opacity-70 blur-3xl
                         bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.16),transparent_55%),
                             radial-gradient(circle_at_80%_70%,rgba(16,185,129,0.16),transparent_60%)]
                       "
@@ -1190,14 +1228,14 @@ export default function TokenomicsPage() {
                           <p className="mt-1 text-xs text-slate-500">Each block is one rule with its own proof target.</p>
                         </div>
 
-                        <Pill tone="emerald">
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                          Verified
-                        </Pill>
+                        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-200">
+                          <ShieldCheck className="h-4 w-4" />
+                          VERIFIED
+                        </span>
                       </div>
 
                       <div className="mt-5 grid gap-3">
-                        <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
+                        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rule</p>
                           <p className="mt-1 text-sm font-semibold text-slate-100">Daily distribution</p>
                           <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
@@ -1207,7 +1245,7 @@ export default function TokenomicsPage() {
                           <p className="mt-1 text-xs text-slate-500">Proof: outcomes can be checked on-chain</p>
                         </div>
 
-                        <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
+                        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Backing</p>
                           <p className="mt-1 text-sm font-semibold text-slate-100">Reserve coverage</p>
                           <p className="mt-2 font-mono text-2xl font-semibold text-emerald-200">
@@ -1219,7 +1257,7 @@ export default function TokenomicsPage() {
                           </p>
                         </div>
 
-                        <div className="rounded-2xl border border-slate-900/70 bg-black/25 p-4">
+                        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Constraint</p>
                           <p className="mt-1 text-sm font-semibold text-slate-100">10-year requirement</p>
                           <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{TEN_YEARS_REQUIRED.toLocaleString('en-US')}</p>
@@ -1253,7 +1291,8 @@ export default function TokenomicsPage() {
                   </div>
                 </div>
               </div>
-              {/* /Right */}
+
+              <div className="mt-10 h-px w-full bg-white/10" />
             </div>
           </div>
         </div>
@@ -1406,7 +1445,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v20</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v22</span>
         </div>
       </footer>
     </XpotPageShell>
