@@ -1,14 +1,12 @@
+// app/api/admin/pick-bonus-winner/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/app/api/admin/_auth';
 import { WinnerKind } from '@prisma/client';
+import { randomInt } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-function randInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
 
 export async function POST(req: NextRequest) {
   const denied = requireAdmin(req);
@@ -23,60 +21,49 @@ export async function POST(req: NextRequest) {
     };
 
     if (!drawId || !label || !amountXpot) {
-      return NextResponse.json(
-        { ok: false, error: 'INVALID_INPUT' },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: 'INVALID_INPUT' }, { status: 400 });
     }
 
+    // Visible "EXECUTING" (briefly)
+    await prisma.draw.update({ where: { id: drawId }, data: { status: 'drawing' } });
+
     const tickets = await prisma.ticket.findMany({
-      where: {
-        drawId,
-        status: 'IN_DRAW',
-      },
-      select: {
-        id: true,
-        code: true,
-        walletAddress: true,
-      },
-      take: 2000,
+      where: { drawId, status: 'IN_DRAW' },
+      select: { id: true, code: true, walletAddress: true },
+      orderBy: { id: 'asc' }, // stable
     });
 
     if (tickets.length === 0) {
-      return NextResponse.json(
-        { ok: false, error: 'NO_ELIGIBLE_TICKETS' },
-        { status: 400 },
-      );
+      await prisma.draw.update({ where: { id: drawId }, data: { status: 'open' } });
+      return NextResponse.json({ ok: false, error: 'NO_ELIGIBLE_TICKETS' }, { status: 400 });
     }
 
-    const picked = tickets[randInt(0, tickets.length - 1)];
+    const picked = tickets[randomInt(0, tickets.length)];
 
-    const winner = await prisma.winner.create({
-      data: {
-        drawId,
-        ticketId: picked.id,            // REQUIRED
-        ticketCode: picked.code,
-        walletAddress: picked.walletAddress,
-        kind: WinnerKind.BONUS,          // ENUM SAFE
-        label,
-        payoutUsd: amountXpot,
-        jackpotUsd: 0,
-        isPaidOut: false,
-      },
+    const winner = await prisma.$transaction(async (tx) => {
+      const w = await tx.winner.create({
+        data: {
+          drawId,
+          ticketId: picked.id,
+          ticketCode: picked.code,
+          walletAddress: picked.walletAddress,
+          kind: WinnerKind.BONUS,
+          label,
+          payoutUsd: amountXpot, // UI treats this as XPOT amount
+          jackpotUsd: 0,
+          isPaidOut: false,
+        },
+      });
+
+      await tx.draw.update({ where: { id: drawId }, data: { status: 'open' } });
+      return w;
     });
 
-    return NextResponse.json({
-      ok: true,
-      winner,
-    });
+    return NextResponse.json({ ok: true, winner });
   } catch (err: any) {
     console.error('[pick-bonus-winner]', err);
     return NextResponse.json(
-      {
-        ok: false,
-        error: 'PICK_BONUS_FAILED',
-        message: err?.message ?? 'Unknown error',
-      },
+      { ok: false, error: 'PICK_BONUS_FAILED', message: err?.message ?? 'Unknown error' },
       { status: 500 },
     );
   }
