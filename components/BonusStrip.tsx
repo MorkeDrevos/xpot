@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Activity, Sparkles, Zap } from 'lucide-react';
+import { Activity, Sparkles, Zap, ChevronRight } from 'lucide-react';
 
 type BonusInfo = {
   id: string;
@@ -21,7 +21,7 @@ type BonusStripProps = {
 
 const ENDPOINT = '/api/bonus/upcoming';
 
-// Polling (tuned to feel “live” without hammering)
+// Polling (tuned to feel live without hammering)
 const POLL_IDLE_MS = 20000; // when no bonus exists yet (so it can appear without refresh)
 const POLL_CALM_MS = 45000; // bonus exists but far away
 const POLL_HOT_MS = 15000; // <= 30 min
@@ -141,16 +141,12 @@ export default function BonusStrip({ variant = 'home' }: BonusStripProps) {
   const mode: 'calm' | 'hot' | 'critical' | 'firing' =
     isFiring ? 'firing' : minutesLeft <= 5 ? 'critical' : minutesLeft <= 30 ? 'hot' : 'calm';
 
-  // Background polling:
-  // - If no bonus exists: poll so it can appear without refresh
-  // - If bonus exists: poll depending on proximity
+  // Background polling
   useEffect(() => {
     if (pollTimer.current) {
       window.clearInterval(pollTimer.current);
       pollTimer.current = null;
     }
-
-    const isVisible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true;
 
     // Choose interval
     let interval = POLL_IDLE_MS;
@@ -163,7 +159,6 @@ export default function BonusStrip({ variant = 'home' }: BonusStripProps) {
       interval = POLL_IDLE_MS;
     }
 
-    // Small clamp just to avoid anything silly
     interval = clamp(interval, 4000, 120000);
 
     pollTimer.current = window.setInterval(() => {
@@ -171,7 +166,6 @@ export default function BonusStrip({ variant = 'home' }: BonusStripProps) {
       loadBonus('poll');
     }, interval) as unknown as number;
 
-    // Visibility re-fetch (instant)
     function onVis() {
       if (typeof document === 'undefined') return;
       if (document.visibilityState === 'visible') loadBonus('visible');
@@ -179,11 +173,6 @@ export default function BonusStrip({ variant = 'home' }: BonusStripProps) {
 
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', onVis);
-    }
-
-    // If tab is visible on first run, great
-    if (isVisible) {
-      // no-op
     }
 
     return () => {
@@ -221,15 +210,7 @@ export default function BonusStrip({ variant = 'home' }: BonusStripProps) {
   }, [isFiring, bonus?.scheduledAt]);
 
   // If nothing scheduled, show nothing (keep home clean)
-  if (loading && !bonus) {
-    return (
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-1 text-[11px] text-slate-400">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-500" />
-        Checking bonus XPOT…
-      </div>
-    );
-  }
-
+  if (loading && !bonus) return null;
   if (error || !bonus) return null;
 
   const href = variant === 'ops' ? '/ops' : '/hub';
@@ -238,89 +219,102 @@ export default function BonusStrip({ variant = 'home' }: BonusStripProps) {
   const countdown = msLeft !== null ? formatHms(msLeft) : '';
   const amount = bonus.amountXpot.toLocaleString();
 
-  // Visual attention (more “premium” when hot/critical/firing)
-  const base =
-    'group relative inline-flex w-full max-w-[760px] items-center gap-3 rounded-full border px-3.5 py-2 text-[11px] font-medium transition';
-  const calmCls =
-    'border-emerald-500/35 bg-emerald-500/8 text-emerald-100 shadow-[0_0_40px_rgba(16,185,129,0.22)] hover:bg-emerald-500/12';
-  const hotCls =
-    'border-emerald-400/60 bg-emerald-500/12 text-emerald-50 shadow-[0_0_70px_rgba(16,185,129,0.32)] hover:bg-emerald-500/16';
-  const criticalCls =
-    'border-emerald-300/80 bg-emerald-500/16 text-emerald-50 shadow-[0_0_95px_rgba(16,185,129,0.48)]';
-  const firingCls =
-    'border-emerald-200/90 bg-emerald-400/18 text-emerald-50 shadow-[0_0_120px_rgba(16,185,129,0.62)]';
-
-  const cls = mode === 'firing' ? firingCls : mode === 'critical' ? criticalCls : mode === 'hot' ? hotCls : calmCls;
+  const label =
+    mode === 'firing'
+      ? 'BONUS XPOT FIRING'
+      : mode === 'critical'
+      ? 'BONUS XPOT INCOMING'
+      : mode === 'hot'
+      ? 'BONUS XPOT SOON'
+      : 'BONUS XPOT';
 
   const leftIcon =
-    mode === 'firing' ? <Zap className="h-3.5 w-3.5" /> : mode === 'critical' ? <Sparkles className="h-3.5 w-3.5" /> : <Activity className="h-3.5 w-3.5" />;
+    mode === 'firing' ? <Zap className="h-4 w-4" /> : mode === 'critical' ? <Sparkles className="h-4 w-4" /> : <Activity className="h-4 w-4" />;
 
-  const dotCls =
-    mode === 'firing' || mode === 'critical'
-      ? 'bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.95)]'
-      : 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]';
+  const ring =
+    mode === 'firing'
+      ? 'border-emerald-200/70'
+      : mode === 'critical'
+      ? 'border-emerald-300/55'
+      : mode === 'hot'
+      ? 'border-emerald-400/45'
+      : 'border-emerald-500/30';
+
+  const glow =
+    mode === 'firing'
+      ? 'shadow-[0_0_0_1px_rgba(52,211,153,0.28),0_24px_120px_rgba(16,185,129,0.22)]'
+      : mode === 'critical'
+      ? 'shadow-[0_0_0_1px_rgba(52,211,153,0.22),0_22px_110px_rgba(16,185,129,0.18)]'
+      : mode === 'hot'
+      ? 'shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_18px_90px_rgba(16,185,129,0.14)]'
+      : 'shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_18px_70px_rgba(16,185,129,0.10)]';
 
   const pulse = mode === 'hot' || mode === 'critical' || mode === 'firing' ? 'animate-pulse' : '';
 
-  const label =
-    mode === 'firing'
-      ? 'BONUS XPOT - FIRING…'
-      : mode === 'critical'
-      ? 'BONUS XPOT - INCOMING'
-      : mode === 'hot'
-      ? 'BONUS XPOT - SOON'
-      : 'BONUS XPOT';
-
-  const timePart =
-    mode === 'firing' ? (
-      <span className="font-mono text-emerald-100">FIRING…</span>
-    ) : (
-      <span className="font-mono text-emerald-200">T-{countdown}</span>
-    );
-
   return (
-    <Link href={href} className={`${base} ${cls}`} title={title}>
-      {/* premium sweep when hot+ */}
-      {(mode === 'hot' || mode === 'critical' || mode === 'firing') && (
-        <span
-          className="
-            pointer-events-none absolute inset-0 overflow-hidden rounded-full
-            before:absolute before:inset-0
-            before:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]
-            before:translate-x-[-60%]
-            before:animate-[xpotBonusSweep_4.8s_linear_infinite]
-            before:opacity-60
-          "
-        />
-      )}
-
-      <span className="relative inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/18">
-        <span className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ${dotCls} ${pulse}`} />
-        {leftIcon}
+    <Link
+      href={href}
+      className={[
+        'group relative block w-full',
+        'rounded-[22px] border bg-slate-950/55 backdrop-blur-xl',
+        ring,
+        glow,
+        'transition hover:bg-slate-950/62',
+      ].join(' ')}
+      title={title}
+    >
+      <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]">
+        <span className="absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_10%_30%,rgba(16,185,129,0.22),transparent_58%),radial-gradient(circle_at_90%_20%,rgba(56,189,248,0.12),transparent_60%),radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.06),transparent_60%)]" />
+        {(mode === 'hot' || mode === 'critical' || mode === 'firing') && (
+          <span className="absolute -left-[35%] top-[-40%] h-[220%] w-[55%] rotate-[10deg] bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.12),rgba(56,189,248,0.10),rgba(16,185,129,0.10),transparent)] opacity-0 [animation:xpotBonusSheen_6.2s_ease-in-out_infinite]" />
+        )}
+        <span className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(16,185,129,0.55),rgba(255,255,255,0.08),rgba(56,189,248,0.35),transparent)] opacity-80" />
+        <span className="absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.06),rgba(16,185,129,0.35),transparent)] opacity-70" />
       </span>
 
-      <span className="min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis">
-        <span className="uppercase tracking-[0.18em] text-emerald-200/90">{label}</span>
-        <span className="mx-2 text-emerald-200/60">•</span>
-        {timePart}
-        <span className="mx-2 text-emerald-200/60">•</span>
-        <span className="text-emerald-100">+{amount} XPOT</span>
-        <span className="mx-2 text-emerald-200/60">•</span>
-        <span className="text-emerald-200/80">same entry</span>
-      </span>
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-400/18 bg-emerald-500/10">
+            <span className={`absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.95)] ${pulse}`} />
+            {leftIcon}
+          </span>
 
-      <span className="hidden rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90 sm:inline-flex">
-        View
-      </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
+                {label}
+              </span>
+              <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                Same entry
+                <span className="h-1 w-1 rounded-full bg-white/20" />
+                Paid on-chain
+              </span>
+            </div>
+
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-300">
+              <span className="font-mono text-emerald-200">
+                {mode === 'firing' ? 'FIRING…' : `T-${countdown}`}
+              </span>
+              <span className="text-slate-600">•</span>
+              <span className="text-emerald-100 font-semibold">+{amount} XPOT</span>
+              <span className="text-slate-600">•</span>
+              <span className="truncate text-slate-400">{bonus.label || 'Bonus XPOT'}</span>
+            </div>
+          </div>
+        </div>
+
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-4 py-2 text-[11px] font-semibold text-emerald-200 transition group-hover:bg-emerald-500/14">
+          View
+          <ChevronRight className="h-4 w-4 opacity-80 transition group-hover:translate-x-0.5" />
+        </span>
+      </div>
 
       <style jsx global>{`
-        @keyframes xpotBonusSweep {
-          0% {
-            transform: translateX(-60%);
-          }
-          100% {
-            transform: translateX(160%);
-          }
+        @keyframes xpotBonusSheen {
+          0% { transform: translateX(-140%) rotate(10deg); opacity: 0.0; }
+          12% { opacity: 0.34; }
+          55% { opacity: 0.14; }
+          100% { transform: translateX(160%) rotate(10deg); opacity: 0.0; }
         }
       `}</style>
     </Link>
