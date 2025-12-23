@@ -193,7 +193,7 @@ model DrawEntry {
 }
 
 // ─────────────────────────────────────────────
-// Hub personalization (launch-safe)
+// Hub personalization (production-grade)
 // ─────────────────────────────────────────────
 
 model UserPreference {
@@ -201,11 +201,10 @@ model UserPreference {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  clerkId String @unique
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   soundEnabled Boolean @default(true)
-
-  @@index([clerkId])
 }
 
 model HubStreak {
@@ -213,27 +212,22 @@ model HubStreak {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  clerkId String @unique
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  days Int @default(0)
-
-  // UTC day bucket timestamp when completed
-  lastDoneDay DateTime?
-
-  @@index([clerkId])
+  days        Int     @default(0)
+  lastDoneYmd String?
 }
 
 model DailyMission {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  // "YYYY-MM-DD" (UTC)
-  ymd   String @unique
+  // UTC day key like "2025-12-23"
+  ymd String @unique
+
   title String
   desc  String
-
-  source String @default("seeded")
 
   @@index([ymd])
 }
