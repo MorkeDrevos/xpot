@@ -241,9 +241,12 @@ function PremiumCard({
   return (
     <section
       className={[
-        'relative overflow-hidden rounded-[30px]',
-        'border border-slate-900/70 bg-transparent',
-        'shadow-[0_32px_110px_rgba(15,23,42,0.85)] backdrop-blur-xl',
+        'relative overflow-hidden rounded-[32px]',
+        // softer "glass" surface, no hard border
+        'bg-white/[0.03] backdrop-blur-xl',
+        'shadow-[0_40px_140px_rgba(0,0,0,0.55)]',
+        // ultra subtle ring instead of border
+        'ring-1 ring-white/[0.06]',
         sheen ? 'xpot-sheen' : '',
         className,
       ].join(' ')}
@@ -252,16 +255,17 @@ function PremiumCard({
         <div
           className="
             pointer-events-none absolute -inset-28
-            bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.26),transparent_55%),
-                radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.22),transparent_58%),
-                radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.16),transparent_58%),
-                radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.10),transparent_60%)]
-            opacity-85
+            bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.22),transparent_58%),
+                radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.18),transparent_60%),
+                radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.14),transparent_60%),
+                radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.10),transparent_62%)]
+            opacity-90
           "
         />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.35),transparent)]" />
+      {/* one elegant top highlight line only */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
 
       <div className="relative z-10">{children}</div>
     </section>
