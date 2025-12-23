@@ -691,13 +691,196 @@ function useBonusActive() {
   return active;
 }
 
+/* ─────────────────────────────────────────────
+   WOW FEATURES
+   - “Alive” Control Room
+   - “Vault Event” Bonus XPOT reveal
+───────────────────────────────────────────── */
+
+function useBlink(periodMs = 900) {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    const t = window.setInterval(() => setOn(v => !v), periodMs);
+    return () => window.clearInterval(t);
+  }, [periodMs]);
+  return on;
+}
+
+function ControlRoomLive({
+  countdown,
+  cutoffLabel,
+  nowMs,
+}: {
+  countdown: string;
+  cutoffLabel: string;
+  nowMs: number;
+}) {
+  const blink = useBlink(720);
+
+  // “alive” micro-variation, deterministic per second (no random drift between rerenders)
+  const beat = Math.floor(nowMs / 1000) % 6;
+  const beatLabel =
+    beat === 0
+      ? 'telemetry sync'
+      : beat === 1
+      ? 'integrity check'
+      : beat === 2
+      ? 'reserve status'
+      : beat === 3
+      ? 'payout proof'
+      : beat === 4
+      ? 'identity map'
+      : 'protocol idle';
+
+  const lines = useMemo(() => {
+    return [
+      `> XPOT_PROTOCOL`,
+      `  primitive:       daily reward selection`,
+      `  eligibility:     hold XPOT (on-chain)`,
+      `  identity:        @handle-first (not wallet profiles)`,
+      `  proof:           on-chain payout verification`,
+      `  composable:      modules can plug in later`,
+      ``,
+      `> NEXT_DRAW`,
+      `  in:             ${countdown}  (${cutoffLabel})`,
+      ``,
+      `> SESSION`,
+      `  heartbeat:      ok`,
+      `  status:         ${beatLabel}`,
+      ``,
+      `> LAST_WINNERS`,
+      `  #2025-12-18  winner   ${XPOT_SIGN}1,000,000`,
+      `  #2025-12-18  bonus    ${XPOT_SIGN}250,000`,
+      `  #2025-12-17  winner   ${XPOT_SIGN}1,000,000`,
+    ];
+  }, [countdown, cutoffLabel, beatLabel]);
+
+  return (
+    <div className="relative">
+      <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-emerald-200/80">
+        <span className="inline-flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inset-0 rounded-full bg-emerald-400/60 animate-ping" />
+            <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+          </span>
+          Control Room - session view
+        </span>
+        <span className="font-mono text-emerald-200/70">read-only</span>
+      </div>
+
+      <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
+        {/* alive overlays */}
+        <div className="pointer-events-none absolute inset-0 xpot-terminal-scanlines opacity-60" />
+        <div className="pointer-events-none absolute inset-0 xpot-terminal-noise opacity-40" />
+        <div className="pointer-events-none absolute -inset-24 xpot-terminal-aurora opacity-80 blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(52,211,153,0.65),rgba(255,255,255,0.08),transparent)]" />
+
+        <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
+          {lines.join('\n')}
+          <span className="inline-block w-2 align-baseline">
+            <span
+              className={[
+                'inline-block h-[12px] w-[8px] translate-y-[2px] rounded-[2px]',
+                blink ? 'bg-emerald-300/90 shadow-[0_0_14px_rgba(52,211,153,0.65)]' : 'bg-transparent',
+              ].join(' ')}
+            />
+          </span>
+        </pre>
+
+        <div className="relative z-10 mt-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] text-emerald-100/70">
+            Live cockpit feed · updates every second
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+            integrity locked
+          </span>
+        </div>
+      </div>
+
+      <p className="mt-3 text-[12px] text-slate-400">
+        Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.
+      </p>
+    </div>
+  );
+}
+
+function BonusVault({
+  children,
+  countdown,
+}: {
+  children: ReactNode;
+  countdown: string;
+}) {
+  return (
+    <div className="relative">
+      {/* outer “event” glow */}
+      <div className="pointer-events-none absolute -inset-10 opacity-80 blur-2xl bg-[radial-gradient(circle_at_20%_40%,rgba(16,185,129,0.30),transparent_60%),radial-gradient(circle_at_80%_30%,rgba(56,189,248,0.22),transparent_62%),radial-gradient(circle_at_50%_100%,rgba(var(--xpot-gold),0.12),transparent_65%)]" />
+
+      {/* animated premium frame */}
+      <div className="relative overflow-hidden rounded-[30px] border border-emerald-400/16 bg-slate-950/45 shadow-[0_30px_120px_rgba(16,185,129,0.10)] backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-0 xpot-bonus-conic" />
+        <div className="pointer-events-none absolute inset-0 xpot-bonus-scan" />
+        <div className="pointer-events-none absolute inset-0 xpot-bonus-noise opacity-40" />
+
+        <div className="relative z-10 p-3">
+          <div className="mb-2 flex items-center justify-between px-2">
+            <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
+                <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+              </span>
+              Bonus XPOT - vault event
+            </span>
+
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+              <Timer className="h-3.5 w-3.5 text-emerald-200/80" />
+              live window
+            </span>
+          </div>
+
+          {/* “moment” header strip */}
+          <div className="mb-3 overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-3">
+            <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_12%_30%,rgba(56,189,248,0.14),transparent_60%),radial-gradient(circle_at_88%_25%,rgba(16,185,129,0.14),transparent_62%)]" />
+            <div className="relative flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  same entry · bonus funded pool
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-100">
+                  Bonus XPOT is active right now
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">next draw in</p>
+                <p className="mt-1 font-mono text-sm text-emerald-200">{countdown}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* actual strip */}
+          {children}
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-2">
+            <span className="text-[11px] text-slate-400">
+              Bonus is a module · identity stays @handle-first
+            </span>
+            <span className="inline-flex items-center rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+              protocol module
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomePageInner() {
   const bonusActive = useBonusActive();
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
 
-  const { countdown, cutoffLabel } = useNextDraw();
+  const { countdown, cutoffLabel, nowMs } = useNextDraw();
 
   const faq = useMemo(
     () => [
@@ -740,6 +923,23 @@ function HomePageInner() {
           50% { background-position: 120px 80px, -90px 60px; opacity: 0.07; }
           100% { background-position: 0px 0px, 0px 0px; opacity: 0.11; }
         }
+        @keyframes xpotConicSpin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes xpotScanDrift {
+          0% { transform: translateY(-25%); opacity: 0.0; }
+          15% { opacity: 0.12; }
+          65% { opacity: 0.08; }
+          100% { transform: translateY(120%); opacity: 0.0; }
+        }
+        @keyframes xpotNoiseShift {
+          0% { transform: translate3d(0,0,0); opacity: 0.22; }
+          35% { transform: translate3d(-1%, 1%, 0); opacity: 0.18; }
+          70% { transform: translate3d(1%, -1%, 0); opacity: 0.20; }
+          100% { transform: translate3d(0,0,0); opacity: 0.22; }
+        }
+
         .xpot-hero-cockpit { position: relative; }
         .xpot-hero-cockpit::before {
           content: "";
@@ -811,6 +1011,77 @@ function HomePageInner() {
             0 0 28px rgba(59,167,255,0.10);
         }
         .xpot-hero-cockpit:hover .xpot-hero-edgeglow { opacity: 1; }
+
+        /* Alive Terminal overlays */
+        .xpot-terminal-scanlines {
+          background: repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,0.05),
+            rgba(255,255,255,0.05) 1px,
+            transparent 1px,
+            transparent 8px
+          );
+          mask-image: radial-gradient(circle at 40% 25%, rgba(0,0,0,1), rgba(0,0,0,0.0) 70%);
+        }
+        .xpot-terminal-noise {
+          background-image:
+            radial-gradient(circle at 18% 30%, rgba(255,255,255,0.05), transparent 40%),
+            radial-gradient(circle at 62% 55%, rgba(255,255,255,0.04), transparent 45%),
+            radial-gradient(circle at 82% 18%, rgba(255,255,255,0.03), transparent 40%);
+          animation: xpotNoiseShift 3.8s ease-in-out infinite;
+          mix-blend-mode: screen;
+        }
+        .xpot-terminal-aurora {
+          background:
+            radial-gradient(circle at 18% 30%, rgba(16,185,129,0.22), transparent 60%),
+            radial-gradient(circle at 70% 22%, rgba(56,189,248,0.14), transparent 62%),
+            radial-gradient(circle at 82% 78%, rgba(139,92,246,0.12), transparent 62%);
+        }
+
+        /* Bonus Vault premium frame */
+        .xpot-bonus-conic {
+          inset: -1px;
+          border-radius: 30px;
+          background: conic-gradient(
+            from 0deg,
+            rgba(16,185,129,0.0),
+            rgba(16,185,129,0.22),
+            rgba(56,189,248,0.18),
+            rgba(var(--xpot-gold),0.14),
+            rgba(139,92,246,0.18),
+            rgba(16,185,129,0.22),
+            rgba(16,185,129,0.0)
+          );
+          filter: blur(10px);
+          opacity: 0.55;
+          animation: xpotConicSpin 10s linear infinite;
+          mask-image: radial-gradient(circle at 50% 40%, rgba(0,0,0,1), rgba(0,0,0,0.0) 72%);
+          mix-blend-mode: screen;
+        }
+        .xpot-bonus-scan::before {
+          content: "";
+          position: absolute;
+          inset: -60%;
+          background: linear-gradient(
+            180deg,
+            transparent,
+            rgba(255,255,255,0.10),
+            rgba(56,189,248,0.10),
+            transparent
+          );
+          transform: translateY(-25%);
+          opacity: 0;
+          animation: xpotScanDrift 6.2s ease-in-out infinite;
+          mix-blend-mode: screen;
+        }
+        .xpot-bonus-noise {
+          background-image:
+            radial-gradient(circle at 12% 30%, rgba(255,255,255,0.06), transparent 38%),
+            radial-gradient(circle at 82% 22%, rgba(255,255,255,0.04), transparent 42%),
+            radial-gradient(circle at 60% 70%, rgba(255,255,255,0.03), transparent 44%);
+          animation: xpotNoiseShift 4.4s ease-in-out infinite;
+          mix-blend-mode: screen;
+        }
       `}</style>
 
       <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+18px)]" />
@@ -924,27 +1195,20 @@ function HomePageInner() {
                       </div>
 
                       {bonusActive ? (
-                        <div className="relative z-10 mt-3">
-                          <div className="relative">
-                            <div className="pointer-events-none absolute -inset-10 opacity-75 blur-2xl bg-[radial-gradient(circle_at_30%_40%,rgba(16,185,129,0.28),transparent_62%),radial-gradient(circle_at_75%_30%,rgba(56,189,248,0.18),transparent_62%)]" />
-                            <div className="relative rounded-[28px] border border-emerald-400/18 bg-slate-950/50 p-3 shadow-[0_22px_90px_rgba(16,185,129,0.10)]">
-                              <div className="mb-2 flex items-center justify-between px-2">
-                                <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
-                                  <span className="relative flex h-2 w-2">
-                                    <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
-                                    <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-                                  </span>
-                                  Bonus XPOT
-                                </span>
-
-                                <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                                  Same entry
-                                </span>
-                              </div>
-
-                              <BonusStrip variant="home" />
-                            </div>
-                          </div>
+                        <div className="relative z-10 mt-4">
+                          <AnimatePresence mode="popLayout" initial={false}>
+                            <motion.div
+                              key="bonus-vault"
+                              initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 8, scale: 0.99 }}
+                              transition={{ duration: 0.26, ease: 'easeOut' }}
+                            >
+                              <BonusVault countdown={countdown}>
+                                <BonusStrip variant="home" />
+                              </BonusVault>
+                            </motion.div>
+                          </AnimatePresence>
                         </div>
                       ) : null}
 
@@ -981,36 +1245,7 @@ function HomePageInner() {
                   </PremiumCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-emerald-200/80">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                        Control Room - session view
-                      </span>
-                      <span className="font-mono text-emerald-200/70">read-only</span>
-                    </div>
-
-                    <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
-                      <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
-{`> XPOT_PROTOCOL
-  primitive:       daily reward selection
-  eligibility:     hold XPOT (on-chain)
-  identity:        @handle-first (not wallet profiles)
-  proof:           on-chain payout verification
-  composable:      modules can plug in later
-
-> NEXT_DRAW
-  in:             ${countdown}  (${cutoffLabel})
-
-> LAST_WINNERS
-  #2025-12-18  winner   ${XPOT_SIGN}1,000,000
-  #2025-12-18  bonus    ${XPOT_SIGN}250,000
-  #2025-12-17  winner   ${XPOT_SIGN}1,000,000`}
-                      </pre>
-                    </div>
-
-                    <p className="mt-3 text-[12px] text-slate-400">
-                      Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.
-                    </p>
+                    <ControlRoomLive countdown={countdown} cutoffLabel={cutoffLabel} nowMs={nowMs} />
                   </PremiumCard>
                 </div>
               </div>
