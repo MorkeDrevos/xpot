@@ -1,12 +1,12 @@
 // app/api/admin/draw/pick-winner/route.ts
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/app/api/admin/_auth';
 
-// Helper: UTC day bucket [start, endExclusive)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// UTC day bucket [start, end)
 function getTodayRangeUtc() {
   const now = new Date();
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
@@ -22,11 +22,9 @@ export async function POST(req: NextRequest) {
   try {
     const { start, end } = getTodayRangeUtc();
 
+    // 1) Find today's open draw
     const draw = await prisma.draw.findFirst({
-      where: {
-        drawDate: { gte: start, lt: end },
-        status: 'open',
-      },
+      where: { drawDate: { gte: start, lt: end }, status: 'open' },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
 
@@ -34,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'NO_OPEN_DRAW_FOR_TODAY' }, { status: 400 });
     }
 
-    // If MAIN winner already exists, return it (idempotent)
+    // 2) If MAIN winner already exists, return it
     const existingWinner = await prisma.winner.findFirst({
       where: { drawId: draw.id, kind: 'MAIN' },
       include: { ticket: { include: { wallet: true } } },
@@ -51,7 +49,7 @@ export async function POST(req: NextRequest) {
             wallet: existingWinner.ticket.wallet?.address ?? existingWinner.walletAddress,
             jackpotUsd: existingWinner.jackpotUsd,
             payoutUsd: existingWinner.payoutUsd,
-            kind: existingWinner.kind ?? 'MAIN',
+            kind: existingWinner.kind,
             isPaidOut: existingWinner.isPaidOut,
           },
         },
@@ -59,7 +57,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Load IN_DRAW tickets
+    // 3) Load IN_DRAW tickets
     const tickets = await prisma.ticket.findMany({
       where: { drawId: draw.id, status: 'IN_DRAW' },
       include: { wallet: true },
@@ -69,13 +67,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'NO_TICKETS_IN_DRAW' }, { status: 400 });
     }
 
-    // Pick random
-    const randomIndex = Math.floor(Math.random() * tickets.length);
-    const winningTicket = tickets[randomIndex];
+    // 4) Pick random ticket
+    const winningTicket = tickets[Math.floor(Math.random() * tickets.length)];
 
-    // Launch-safe (wire USD later)
+    // TODO: wire real USD later
     const jackpotUsd = 0;
 
+    // 5) Persist changes atomically
     const [updatedTicket, newWinner] = await prisma.$transaction([
       prisma.ticket.update({
         where: { id: winningTicket.id },
@@ -94,12 +92,7 @@ export async function POST(req: NextRequest) {
           kind: 'MAIN',
           label: 'Main XPOT winner',
         },
-        select: {
-          jackpotUsd: true,
-          payoutUsd: true,
-          kind: true,
-          isPaidOut: true,
-        },
+        select: { jackpotUsd: true, payoutUsd: true, kind: true, isPaidOut: true },
       }),
     ]);
 
@@ -112,7 +105,7 @@ export async function POST(req: NextRequest) {
           wallet: winningTicket.wallet?.address ?? winningTicket.walletAddress ?? '',
           jackpotUsd: newWinner.jackpotUsd,
           payoutUsd: newWinner.payoutUsd,
-          kind: newWinner.kind ?? 'MAIN',
+          kind: newWinner.kind,
           isPaidOut: newWinner.isPaidOut,
         },
       },
