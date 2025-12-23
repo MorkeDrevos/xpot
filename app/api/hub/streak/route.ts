@@ -6,24 +6,28 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
-function utcStartOfDay(d = new Date()) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+function utcYmd(d = new Date()) {
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
 }
 
-function isSameUtcDay(a?: Date | null, b?: Date | null) {
-  if (!a || !b) return false;
-  return (
-    a.getUTCFullYear() === b.getUTCFullYear() &&
-    a.getUTCMonth() === b.getUTCMonth() &&
-    a.getUTCDate() === b.getUTCDate()
-  );
+function yesterdayYmd(todayYmd: string) {
+  const d = new Date(`${todayYmd}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
-async function getUserByClerkId(clerkId: string) {
-  return prisma.user.findUnique({
+async function getOrCreateUserIdByClerkId(clerkId: string) {
+  const existing = await prisma.user.findUnique({
     where: { clerkId },
     select: { id: true },
   });
+  if (existing) return existing.id;
+
+  const created = await prisma.user.create({
+    data: { clerkId },
+    select: { id: true },
+  });
+  return created.id;
 }
 
 export async function GET() {
@@ -33,31 +37,32 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
-    const user = await getUserByClerkId(clerkId);
-    if (!user) {
-      return NextResponse.json({ ok: false, error: 'USER_NOT_FOUND' }, { status: 404 });
-    }
+    const userId = await getOrCreateUserIdByClerkId(clerkId);
+    const today = utcYmd();
 
     const row = await prisma.hubStreak.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id },
+      where: { userId },
+      create: { userId, days: 0, lastDoneYmd: null },
       update: {},
+      select: { days: true, lastDoneYmd: true },
     });
 
-    const today = utcStartOfDay();
-    const todayDone = isSameUtcDay(row.lastDoneDay, today);
+    const todayDone = row.lastDoneYmd === today;
 
-    return NextResponse.json({
-      ok: true,
-      streak: {
-        days: row.days,
-        todayDone,
-        lastDoneYmd: row.lastDoneDay?.toISOString().slice(0, 10) ?? null,
+    return NextResponse.json(
+      {
+        ok: true,
+        streak: {
+          days: row.days,
+          todayDone,
+          lastDoneYmd: row.lastDoneYmd ?? null,
+        },
       },
-    });
+      { status: 200 },
+    );
   } catch (err: any) {
-    console.error('[XPOT] hub streak GET error', err);
-    return NextResponse.json({ ok: false, error: 'INTERNAL_ERROR' }, { status: 500 });
+    console.error('[XPOT] /api/hub/streak GET error:', err);
+    return NextResponse.json({ ok: false, error: err?.message || 'INTERNAL_ERROR' }, { status: 500 });
   }
 }
 
@@ -68,55 +73,52 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
-    const user = await getUserByClerkId(clerkId);
-    if (!user) {
-      return NextResponse.json({ ok: false, error: 'USER_NOT_FOUND' }, { status: 404 });
-    }
-
-    const today = utcStartOfDay();
+    const userId = await getOrCreateUserIdByClerkId(clerkId);
+    const today = utcYmd();
+    const yesterday = yesterdayYmd(today);
 
     const current = await prisma.hubStreak.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id },
+      where: { userId },
+      create: { userId, days: 0, lastDoneYmd: null },
       update: {},
+      select: { id: true, days: true, lastDoneYmd: true },
     });
 
-    if (isSameUtcDay(current.lastDoneDay, today)) {
-      return NextResponse.json({
-        ok: true,
-        streak: {
-          days: current.days,
-          todayDone: true,
-          lastDoneYmd: today.toISOString().slice(0, 10),
+    if (current.lastDoneYmd === today) {
+      return NextResponse.json(
+        {
+          ok: true,
+          streak: {
+            days: current.days,
+            todayDone: true,
+            lastDoneYmd: today,
+          },
         },
-      });
+        { status: 200 },
+      );
     }
 
-    const yesterday = new Date(today);
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-
-    const nextDays = isSameUtcDay(current.lastDoneDay, yesterday)
-      ? current.days + 1
-      : 1;
+    const nextDays = current.lastDoneYmd === yesterday ? current.days + 1 : 1;
 
     const updated = await prisma.hubStreak.update({
-      where: { userId: user.id },
-      data: {
-        days: nextDays,
-        lastDoneDay: today,
-      },
+      where: { id: current.id },
+      data: { days: nextDays, lastDoneYmd: today },
+      select: { days: true, lastDoneYmd: true },
     });
 
-    return NextResponse.json({
-      ok: true,
-      streak: {
-        days: updated.days,
-        todayDone: true,
-        lastDoneYmd: today.toISOString().slice(0, 10),
+    return NextResponse.json(
+      {
+        ok: true,
+        streak: {
+          days: updated.days,
+          todayDone: true,
+          lastDoneYmd: updated.lastDoneYmd ?? null,
+        },
       },
-    });
+      { status: 200 },
+    );
   } catch (err: any) {
-    console.error('[XPOT] hub streak POST error', err);
-    return NextResponse.json({ ok: false, error: 'INTERNAL_ERROR' }, { status: 500 });
+    console.error('[XPOT] /api/hub/streak POST error:', err);
+    return NextResponse.json({ ok: false, error: err?.message || 'INTERNAL_ERROR' }, { status: 500 });
   }
 }
