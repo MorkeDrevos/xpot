@@ -845,7 +845,6 @@ function buildInitialLines(countdown: string, cutoffLabel: string) {
     `  eligibility:     hold XPOT (on-chain)`,
     `  identity:        @handle-first (not wallet profiles)`,
     `  proof:           on-chain payout verification`,
-    `  composable:      modules can plug in later`,
     ``,
     `> NEXT_DRAW`,
     `  in:             ${countdown}  (${cutoffLabel})`,
