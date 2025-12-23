@@ -33,7 +33,6 @@ enum WinnerKind {
   BONUS
 }
 
-// Ops mode for admin control (manual vs auto)
 enum OpsMode {
   MANUAL
   AUTO
@@ -43,7 +42,6 @@ enum OpsMode {
 // Models
 // ─────────────────────────────────────────────
 
-// Single-row config table (stores ops mode etc)
 model OpsConfig {
   singleton String @id @default("singleton")
 
@@ -57,6 +55,7 @@ model OpsConfig {
 model User {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   clerkId    String? @unique
   xUserId    String? @unique
@@ -69,6 +68,7 @@ model User {
   hubStreak   HubStreak?
 
   @@index([xHandle])
+  @@index([clerkId])
 }
 
 // Wallet -> owns tickets
@@ -79,7 +79,7 @@ model Wallet {
   address String @unique
 
   userId String?
-  user   User?   @relation(fields: [userId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   tickets Ticket[]
 
@@ -91,21 +91,19 @@ model Draw {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  /// Calendar date of the draw (UTC day bucket)
+  // Calendar date of the draw (UTC day bucket)
   drawDate DateTime @unique
 
-  /// When the main XPOT closes for entries
+  // When the main XPOT closes for entries
   closesAt DateTime?
 
-  /// "open" / "closed" / "completed"
+  // "open" / "closed" / "completed"
   status String @default("open")
 
   tickets    Ticket[]
   winners    Winner[]
   bonusDrops BonusDrop[]
-
-  // Public lobby entrants for this draw (X handles)
-  entries DrawEntry[]
+  entries    DrawEntry[]
 }
 
 // XPOT ticket in a draw
@@ -117,7 +115,7 @@ model Ticket {
 
   // Ticket must always have an owning wallet
   walletId String
-  wallet   Wallet @relation(fields: [walletId], references: [id])
+  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   // Snapshot of wallet address at creation time
   walletAddress String
@@ -125,7 +123,7 @@ model Ticket {
   status TicketStatus @default(IN_DRAW)
 
   drawId String
-  draw   Draw @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id], onDelete: Cascade)
 
   winners Winner[]
 
@@ -144,11 +142,12 @@ model Winner {
   createdAt DateTime @default(now())
 
   drawId String
-  draw   Draw   @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id], onDelete: Cascade)
 
   ticketId String
-  ticket   Ticket @relation(fields: [ticketId], references: [id])
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
+  // Optional extra timestamp (keep if you want)
   date DateTime @default(now())
 
   // Snapshots (fast and stable rendering)
@@ -176,7 +175,7 @@ model BonusDrop {
   createdAt DateTime @default(now())
 
   drawId String
-  draw   Draw   @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id], onDelete: Cascade)
 
   label       String
   amountXpot  Int
@@ -194,12 +193,11 @@ model DrawEntry {
   createdAt DateTime @default(now())
 
   drawId String
-  draw   Draw   @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id], onDelete: Cascade)
 
-  // Clerk user id (string) - keeps this reliable even if User row doesn't exist yet
+  // Clerk user id (string) - reliable even if User row doesn't exist yet
   clerkId String
 
-  // Public identity (by handle)
   xHandle    String
   xName      String?
   xAvatarUrl String?
@@ -214,47 +212,6 @@ model DrawEntry {
 }
 
 // ─────────────────────────────────────────────
-// Hub personalization (production-grade)
-// ─────────────────────────────────────────────
-
-model UserPreference {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Hub sound toggle
-  soundEnabled Boolean @default(true)
-}
-
-model HubStreak {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // "Healthy streak" count. Keep it simple for launch.
-  days        Int     @default(0)
-  lastDoneYmd String?
-}
-
-model DailyMission {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  // UTC day key like "2025-12-23"
-  ymd String @unique
-
-  title String
-  desc  String
-
-  @@index([ymd])
-}
-// ─────────────────────────────────────────────
 // Hub personalization (Prisma-backed)
 // ─────────────────────────────────────────────
 
@@ -263,11 +220,12 @@ model UserPreference {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  clerkId String @unique
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   soundEnabled Boolean @default(true)
 
-  @@index([clerkId])
+  @@index([userId])
 }
 
 model HubStreak {
@@ -275,14 +233,13 @@ model HubStreak {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  clerkId String @unique
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  days Int @default(0)
+  days        Int     @default(0)
+  lastDoneYmd String?
 
-  // last day the user completed the ritual (UTC day bucket)
-  lastDoneDay DateTime?
-
-  @@index([clerkId])
+  @@index([userId])
 }
 
 model DailyMission {
@@ -290,12 +247,11 @@ model DailyMission {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // store as "YYYY-MM-DD" (UTC day key) so it’s simple + stable
-  ymd   String @unique
-  title String
-  desc  String
+  // "YYYY-MM-DD" UTC day key
+  ymd String @unique
 
-  // "seeded" pre-launch, later "ops" / "db"
+  title  String
+  desc   String
   source String @default("seeded")
 
   @@index([ymd])
