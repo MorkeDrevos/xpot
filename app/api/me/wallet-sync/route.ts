@@ -2,75 +2,53 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
-function normalizeAddress(addr: string) {
-  return addr.trim();
+function isLikelySolAddress(s: string) {
+  // quick sanity check (base58-ish length)
+  return typeof s === 'string' && s.length >= 32 && s.length <= 64;
 }
 
-function looksLikeSolanaAddress(addr: string) {
-  // quick sanity: base58 length usually 32-44 chars
-  return addr.length >= 32 && addr.length <= 44;
-}
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const { userId: clerkId } = await auth();
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
-    const body = await req.json().catch(() => ({}));
-    const raw = body?.address ?? body?.walletAddress ?? body?.wallet ?? null;
-
-    const address =
-      typeof raw === 'string' && raw.trim().length > 0 ? normalizeAddress(raw) : null;
-
-    if (!address) {
-      return NextResponse.json({ ok: false, error: 'MISSING_WALLET_ADDRESS' }, { status: 400 });
+    const user = await prisma.user.findUnique({ where: { clerkId } });
+    if (!user) {
+      return NextResponse.json(
+        { ok: false, error: 'USER_NOT_SYNCED' },
+        { status: 409 },
+      );
     }
 
-    if (!looksLikeSolanaAddress(address)) {
-      return NextResponse.json({ ok: false, error: 'INVALID_WALLET_ADDRESS' }, { status: 400 });
-    }
+    const body = (await req.json().catch(() => null)) as any;
+    const address = String(body?.address ?? '').trim();
 
-    const user = await prisma.user.upsert({
-      where: { clerkId },
-      create: { clerkId },
-      update: {},
-    });
-
-    const existing = await prisma.wallet.findUnique({
-      where: { address },
-      select: { id: true, userId: true },
-    });
-
-    if (existing?.userId && existing.userId !== user.id) {
-      return NextResponse.json({ ok: false, error: 'WALLET_ALREADY_LINKED' }, { status: 409 });
+    if (!isLikelySolAddress(address)) {
+      return NextResponse.json({ ok: false, error: 'INVALID_WALLET' }, { status: 400 });
     }
 
     const wallet = await prisma.wallet.upsert({
       where: { address },
-      create: { address, userId: user.id },
-      update: { userId: user.id },
+      create: {
+        address,
+        userId: user.id,
+      },
+      update: {
+        // if someone re-connects, keep it linked to the current signed-in user
+        userId: user.id,
+      },
+      select: { id: true, address: true, userId: true, createdAt: true },
     });
 
-    return NextResponse.json(
-      {
-        ok: true,
-        linked: true,
-        wallet: { id: wallet.id, address: wallet.address },
-        user: { id: user.id, clerkId: user.clerkId },
-      },
-      { status: 200 },
-    );
+    return NextResponse.json({ ok: true, wallet }, { status: 200 });
   } catch (err: any) {
     console.error('[XPOT] /api/me/wallet-sync error:', err);
-    return NextResponse.json(
-      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: 'INTERNAL_ERROR' }, { status: 500 });
   }
 }
