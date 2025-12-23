@@ -1,6 +1,8 @@
 // scripts/dev-populate.ts
 import 'dotenv/config';
-import { prisma } from '../lib/prisma';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 function todayUtcBucket() {
   const now = new Date();
@@ -10,7 +12,9 @@ function todayUtcBucket() {
 
   const start = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
   const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
-  const bucket = start; // canonical key stored in Draw.drawDate (unique)
+
+  // canonical "bucket key" stored in Draw.drawDate (unique)
+  const bucket = start;
 
   return { start, end, bucket };
 }
@@ -29,7 +33,7 @@ function randHex(len: number) {
 }
 
 function fakeSolAddress() {
-  // Wallet.address is a string in your schema - doesn't need to be a real Solana pubkey
+  // Wallet.address is just a string in your schema.
   return `DEV${randHex(40)}`;
 }
 
@@ -44,77 +48,66 @@ async function main() {
     `[dev-populate] UTC day bucket: ${start.toISOString()} - ${end.toISOString()} (drawDate=${bucket.toISOString()})`,
   );
 
-  // Sanity: show whether env vars exist
-  console.log('[dev-populate] DATABASE_URL set:', Boolean(process.env.DATABASE_URL));
-  console.log('[dev-populate] DIRECT_URL set:', Boolean(process.env.DIRECT_URL));
-
-  // 0) Ensure singleton ops config exists
+  // 0) Ensure singleton ops config exists (safe upsert)
   await prisma.opsConfig.upsert({
     where: { singleton: 'singleton' },
     update: {},
     create: { singleton: 'singleton', mode: 'MANUAL' },
   });
 
-  // 1) Ensure today's draw exists (drawDate is unique)
-  let draw = await prisma.draw.findUnique({
-    where: { drawDate: bucket },
-  });
-
-  if (!draw) {
-    const closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // +24h from now
-    draw = await prisma.draw.create({
-      data: {
-        drawDate: bucket,
-        status: 'open',
-        closesAt,
-      },
-    });
-    console.log('[dev-populate] ✅ Created today draw:', {
-      id: draw.id,
-      drawDate: draw.drawDate,
-      status: draw.status,
-      closesAt: draw.closesAt,
-    });
-  } else {
-    console.log('[dev-populate] ℹ️ Today draw already exists:', {
-      id: draw.id,
-      drawDate: draw.drawDate,
-      status: draw.status,
-      closesAt: draw.closesAt,
-    });
-  }
-
-  // Config (safe defaults)
+  // Config
   const WALLETS = intEnv('XPOT_DEV_WALLETS', 30);
   const TICKETS = intEnv('XPOT_DEV_TICKETS', 250);
   const ENTRIES = intEnv('XPOT_DEV_ENTRIES', 18);
   const BONUS_DROPS = intEnv('XPOT_DEV_BONUS_DROPS', 2);
 
-  // 2) Create/reuse wallets
+  // 1) Ensure today's draw exists (drawDate is unique)
+  const closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // +24h
+  const draw = await prisma.draw.upsert({
+    where: { drawDate: bucket },
+    update: {
+      // keep it open for dev if it already exists
+      status: 'open',
+      closesAt: closesAt,
+    },
+    create: {
+      drawDate: bucket,
+      status: 'open',
+      closesAt: closesAt,
+    },
+  });
+
+  console.log('[dev-populate] ✅ Draw ready:', {
+    id: draw.id,
+    drawDate: draw.drawDate,
+    status: draw.status,
+    closesAt: draw.closesAt,
+  });
+
+  // 2) Create/reuse wallets (safe, no wipes)
   const existingWallets = await prisma.wallet.findMany({
     orderBy: { createdAt: 'asc' },
     take: WALLETS,
   });
 
   const wallets = [...existingWallets];
-
   while (wallets.length < WALLETS) {
     const address = fakeSolAddress();
     try {
       const w = await prisma.wallet.create({ data: { address } });
       wallets.push(w);
     } catch {
-      // address collision - retry
+      // address collision, retry
     }
   }
 
   console.log('[dev-populate] ✅ Wallets ready:', wallets.length);
 
   // 3) Create tickets for today's draw
-  // IMPORTANT: your schema has @@unique([walletId, drawId]) -> max 1 ticket per wallet per draw
+  // IMPORTANT: your schema has @@unique([walletId, drawId]) => max 1 ticket per wallet per draw
   const maxPossible = Math.min(TICKETS, wallets.length);
-
   let createdTickets = 0;
+
   for (let i = 0; i < maxPossible; i++) {
     const w = wallets[i % wallets.length];
 
@@ -122,7 +115,7 @@ async function main() {
       await prisma.ticket.create({
         data: {
           code: ticketCode(),
-          walletId: w.id,
+          walletId: w.id, // REQUIRED
           walletAddress: w.address,
           status: 'IN_DRAW',
           drawId: draw.id,
@@ -130,15 +123,15 @@ async function main() {
       });
       createdTickets++;
     } catch {
-      // likely unique collision (wallet already has ticket for this draw, or code collision)
+      // likely unique collision (wallet already has ticket in this draw) or code collision
       continue;
     }
   }
 
   console.log('[dev-populate] ✅ Tickets created for today:', createdTickets);
 
-  // 4) Bonus drops (optional) - no wipes, safe inserts
-  let bonusCreatedOrEnsured = 0;
+  // 4) Bonus drops (safe inserts)
+  let bonusEnsured = 0;
   if (BONUS_DROPS > 0) {
     for (let i = 0; i < BONUS_DROPS; i++) {
       const scheduledAt = new Date(Date.now() + (i + 1) * 60 * 60 * 1000); // +1h, +2h...
@@ -152,15 +145,16 @@ async function main() {
             status: 'SCHEDULED',
           },
         });
-        bonusCreatedOrEnsured++;
+        bonusEnsured++;
       } catch {
-        // ignore duplicates on reruns
+        // ignore duplicates on rerun
       }
     }
   }
-  console.log('[dev-populate] ✅ BonusDrops created this run:', bonusCreatedOrEnsured);
 
-  // 5) Public entrants (optional)
+  console.log('[dev-populate] ✅ BonusDrops ensured (this run):', bonusEnsured);
+
+  // 5) Public entrants (DrawEntry) (safe inserts)
   const demoEntrants = [
     { clerkId: 'dev_clerk_01', xHandle: 'xpotbet', xName: 'XPOT', followers: 1200, verified: false },
     { clerkId: 'dev_clerk_02', xHandle: 'solana', xName: 'Solana', followers: 3000000, verified: true },
@@ -186,13 +180,13 @@ async function main() {
       });
       entrantsEnsured++;
     } catch {
-      // already exists (unique drawId+clerkId)
+      // already exists: @@unique([drawId, clerkId])
     }
   }
 
-  console.log('[dev-populate] ✅ Entrants created this run:', entrantsEnsured);
+  console.log('[dev-populate] ✅ Entrants ensured (this run):', entrantsEnsured);
 
-  // Summary counts (so you can verify in Prisma Studio)
+  // 6) Quick totals to confirm in terminal
   const totals = await Promise.all([
     prisma.draw.count(),
     prisma.wallet.count(),
@@ -201,15 +195,15 @@ async function main() {
     prisma.drawEntry.count({ where: { drawId: draw.id } }),
   ]);
 
-  console.log('[dev-populate] ✅ Done.');
-  console.log('[dev-populate] Totals:', {
+  console.log('[dev-populate] ✅ Totals:', {
     draws: totals[0],
     wallets: totals[1],
     ticketsInTodayDraw: totals[2],
     bonusDropsInTodayDraw: totals[3],
     entrantsInTodayDraw: totals[4],
   });
-  console.log('[dev-populate] Note: tickets per draw are capped by wallet count due to @@unique([walletId, drawId]).');
+
+  console.log('[dev-populate] Done.');
 }
 
 main()
