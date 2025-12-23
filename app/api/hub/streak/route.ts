@@ -21,15 +21,14 @@ function isSameUtcDay(a?: Date | null, b?: Date | null) {
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    const clerkId = userId;
+    const { userId: clerkId } = await auth();
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
     const row = await prisma.hubStreak.upsert({
       where: { clerkId },
-      create: { clerkId, days: 0, lastDoneDay: null },
+      create: { clerkId, days: 0 },
       update: {},
       select: { days: true, lastDoneDay: true },
     });
@@ -56,8 +55,7 @@ export async function GET() {
 
 export async function POST() {
   try {
-    const { userId } = await auth();
-    const clerkId = userId;
+    const { userId: clerkId } = await auth();
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
