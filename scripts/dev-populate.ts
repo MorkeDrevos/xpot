@@ -10,7 +10,7 @@ function todayUtcBucket() {
 
   const start = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
   const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
-  const bucket = start; // canonical bucket stored in Draw.drawDate (unique)
+  const bucket = start; // canonical bucket key stored in Draw.drawDate (unique)
 
   return { start, end, bucket };
 }
@@ -68,24 +68,22 @@ async function main() {
       id: draw.id,
       drawDate: draw.drawDate,
       status: draw.status,
-      closesAt: draw.closesAt,
     });
   } else {
     console.log('[dev-populate] ℹ️ Today draw already exists:', {
       id: draw.id,
       drawDate: draw.drawDate,
       status: draw.status,
-      closesAt: draw.closesAt,
     });
   }
 
   // Config
   const WALLETS = intEnv('XPOT_DEV_WALLETS', 30);
   const TICKETS = intEnv('XPOT_DEV_TICKETS', 250);
-  const ENTRIES = intEnv('XPOT_DEV_ENTRIES', 18);
+  const ENTRIES = intEnv('XPOT_DEV_ENTRIES', 4);
   const BONUS_DROPS = intEnv('XPOT_DEV_BONUS_DROPS', 2);
 
-  // 2) Ensure we have enough wallets
+  // 2) Create or reuse wallets
   const existingWallets = await prisma.wallet.findMany({
     orderBy: { createdAt: 'asc' },
     take: WALLETS,
@@ -98,13 +96,13 @@ async function main() {
       const w = await prisma.wallet.create({ data: { address } });
       wallets.push(w);
     } catch {
-      // collision, retry
+      // address collision - retry
     }
   }
 
-  console.log('[dev-populate] Wallets ready:', wallets.length);
+  console.log('[dev-populate] ✅ Wallets ready:', wallets.length);
 
-  // 3) Create tickets (IMPORTANT: your schema allows max 1 ticket per wallet per draw)
+  // 3) Create tickets for today's draw (1 per wallet per draw because of @@unique([walletId, drawId]))
   const maxPossible = Math.min(TICKETS, wallets.length);
   let createdTickets = 0;
 
@@ -115,7 +113,7 @@ async function main() {
       await prisma.ticket.create({
         data: {
           code: ticketCode(),
-          walletId: w.id, // ✅ REQUIRED by schema
+          walletId: w.id, // ✅ REQUIRED
           walletAddress: w.address,
           status: 'IN_DRAW',
           drawId: draw.id,
@@ -123,16 +121,16 @@ async function main() {
       });
       createdTickets++;
     } catch {
-      // likely unique collision (wallet already has a ticket for this draw, or code collision)
+      // unique collision (wallet already has a ticket for this draw, or code collision)
       continue;
     }
   }
 
   console.log('[dev-populate] ✅ Tickets created for today:', createdTickets);
 
-  // 4) Bonus drops (optional) - safe inserts only
-  let bonusCreated = 0;
+  // 4) Bonus drops (optional)
   if (BONUS_DROPS > 0) {
+    let ensured = 0;
     for (let i = 0; i < BONUS_DROPS; i++) {
       const scheduledAt = new Date(Date.now() + (i + 1) * 60 * 60 * 1000);
       try {
@@ -145,15 +143,15 @@ async function main() {
             status: 'SCHEDULED',
           },
         });
-        bonusCreated++;
+        ensured++;
       } catch {
-        // ignore duplicates if rerun
+        // ignore duplicates
       }
     }
+    console.log('[dev-populate] ✅ BonusDrops ensured:', ensured);
   }
-  console.log('[dev-populate] ✅ BonusDrops ensured:', bonusCreated);
 
-  // 5) Public entrants (optional) - safe inserts only
+  // 5) Public entrants (optional)
   const demoEntrants = [
     { clerkId: 'dev_clerk_01', xHandle: 'xpotbet', xName: 'XPOT', followers: 1200, verified: false },
     { clerkId: 'dev_clerk_02', xHandle: 'solana', xName: 'Solana', followers: 3000000, verified: true },
@@ -162,7 +160,7 @@ async function main() {
   ];
 
   const targetEntrants = demoEntrants.slice(0, Math.min(ENTRIES, demoEntrants.length));
-  let entrantsCreated = 0;
+  let ensuredEntrants = 0;
 
   for (const e of targetEntrants) {
     try {
@@ -177,16 +175,21 @@ async function main() {
           verified: e.verified,
         },
       });
-      entrantsCreated++;
+      ensuredEntrants++;
     } catch {
-      // already exists (unique drawId+clerkId)
+      // already exists
     }
   }
 
-  console.log('[dev-populate] ✅ Entrants ensured:', entrantsCreated);
-
+  console.log('[dev-populate] ✅ Entrants ensured:', ensuredEntrants);
   console.log('[dev-populate] ✅ Done.');
-  console.log('[dev-populate] Tip: with @@unique([walletId, drawId]) tickets cap per draw = wallets count.');
+  console.log('[dev-populate] Draw:', {
+    id: draw.id,
+    status: draw.status,
+    drawDate: draw.drawDate,
+    closesAt: draw.closesAt,
+  });
+  console.log('[dev-populate] Tip: max tickets per draw = number of wallets (because of @@unique([walletId, drawId])).');
 }
 
 main()
