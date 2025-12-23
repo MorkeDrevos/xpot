@@ -55,24 +55,18 @@ async function main() {
   if (!draw) {
     const closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     draw = await prisma.draw.create({
-      data: {
-        drawDate: bucket,
-        status: 'open',
-        closesAt,
-      },
+      data: { drawDate: bucket, status: 'open', closesAt },
     });
     console.log('[dev-populate] ✅ Created today draw:', {
       id: draw.id,
       drawDate: draw.drawDate,
       status: draw.status,
-      closesAt: draw.closesAt,
     });
   } else {
     console.log('[dev-populate] ℹ️ Today draw already exists:', {
       id: draw.id,
       drawDate: draw.drawDate,
       status: draw.status,
-      closesAt: draw.closesAt,
     });
   }
 
@@ -82,13 +76,14 @@ async function main() {
   const ENTRIES = intEnv('XPOT_DEV_ENTRIES', 4);
   const BONUS_DROPS = intEnv('XPOT_DEV_BONUS_DROPS', 2);
 
-  // 2) Ensure wallets exist (create more if needed)
+  // 2) Create/reuse wallets (ensure at least WALLETS exist)
   const existingWallets = await prisma.wallet.findMany({
     orderBy: { createdAt: 'asc' },
     take: WALLETS,
   });
 
   const wallets = [...existingWallets];
+
   while (wallets.length < WALLETS) {
     const address = fakeSolAddress();
     try {
@@ -99,19 +94,20 @@ async function main() {
     }
   }
 
-  console.log('[dev-populate] ✅ Wallets ready:', wallets.length);
+  console.log('[dev-populate] Wallets ready:', wallets.length);
 
-  // 3) Create tickets (schema allows max 1 ticket per wallet per draw)
+  // 3) Create tickets (IMPORTANT: your schema allows max 1 ticket per wallet per draw)
   const maxPossible = Math.min(TICKETS, wallets.length);
   let createdTickets = 0;
 
   for (let i = 0; i < maxPossible; i++) {
     const w = wallets[i];
+
     try {
       await prisma.ticket.create({
         data: {
           code: ticketCode(),
-          walletId: w.id,
+          walletId: w.id, // REQUIRED
           walletAddress: w.address,
           status: 'IN_DRAW',
           drawId: draw.id,
@@ -125,9 +121,11 @@ async function main() {
   }
 
   console.log('[dev-populate] ✅ Tickets created for today:', createdTickets);
+  console.log('[dev-populate] Note: max tickets per draw = number of wallets (because @@unique([walletId, drawId])).');
 
-  // 4) Bonus drops (optional)
+  // 4) Bonus drops
   if (BONUS_DROPS > 0) {
+    let ensured = 0;
     for (let i = 0; i < BONUS_DROPS; i++) {
       const scheduledAt = new Date(Date.now() + (i + 1) * 60 * 60 * 1000);
       try {
@@ -140,14 +138,15 @@ async function main() {
             status: 'SCHEDULED',
           },
         });
+        ensured++;
       } catch {
-        // ignore if rerun creates duplicates
+        // ignore duplicates on rerun
       }
     }
-    console.log('[dev-populate] ✅ BonusDrops ensured:', BONUS_DROPS);
+    console.log('[dev-populate] ✅ BonusDrops ensured:', ensured);
   }
 
-  // 5) Entrants (optional)
+  // 5) Entrants (small demo)
   const demoEntrants = [
     { clerkId: 'dev_clerk_01', xHandle: 'xpotbet', xName: 'XPOT', followers: 1200, verified: false },
     { clerkId: 'dev_clerk_02', xHandle: 'solana', xName: 'Solana', followers: 3000000, verified: true },
@@ -156,6 +155,8 @@ async function main() {
   ];
 
   const targetEntrants = demoEntrants.slice(0, Math.min(ENTRIES, demoEntrants.length));
+  let entrantsEnsured = 0;
+
   for (const e of targetEntrants) {
     try {
       await prisma.drawEntry.create({
@@ -164,18 +165,25 @@ async function main() {
           clerkId: e.clerkId,
           xHandle: e.xHandle,
           xName: e.xName,
-          xAvatarUrl: undefined,
+          xAvatarUrl: null,
           followers: e.followers,
           verified: e.verified,
         },
       });
+      entrantsEnsured++;
     } catch {
       // already exists
     }
   }
 
+  console.log('[dev-populate] ✅ Entrants ensured:', entrantsEnsured);
   console.log('[dev-populate] ✅ Done.');
-  console.log('[dev-populate] Tip: max tickets per draw = number of wallets (because of @@unique([walletId, drawId])).');
+  console.log('[dev-populate] Draw:', {
+    id: draw.id,
+    status: draw.status,
+    drawDate: draw.drawDate,
+    closesAt: draw.closesAt,
+  });
 }
 
 main()
