@@ -39,7 +39,7 @@ enum OpsMode {
 }
 
 // ─────────────────────────────────────────────
-// Models
+// Core models
 // ─────────────────────────────────────────────
 
 model OpsConfig {
@@ -84,12 +84,13 @@ model Draw {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  // UTC day bucket
+  /// UTC day bucket (00:00Z)
   drawDate DateTime @unique
 
+  /// When entries close (UTC)
   closesAt DateTime?
 
-  // "open" / "closed" / "completed"
+  /// "open" / "closed" / "completed"
   status String @default("open")
 
   tickets    Ticket[]
@@ -134,7 +135,7 @@ model Winner {
   ticketId String
   ticket   Ticket @relation(fields: [ticketId], references: [id])
 
-  // Snapshots
+  // Snapshots for stable rendering
   ticketCode    String
   walletAddress String
 
@@ -192,8 +193,7 @@ model DrawEntry {
 }
 
 // ─────────────────────────────────────────────
-// Hub personalization (production-grade)
-// keyed by Clerk id so it works even if User row not created yet
+// Hub personalization (launch-safe)
 // ─────────────────────────────────────────────
 
 model UserPreference {
@@ -217,7 +217,7 @@ model HubStreak {
 
   days Int @default(0)
 
-  // last day the user completed the ritual (UTC day bucket)
+  // UTC day bucket timestamp when completed
   lastDoneDay DateTime?
 
   @@index([clerkId])
@@ -228,9 +228,8 @@ model DailyMission {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // "YYYY-MM-DD" UTC day key
-  ymd String @unique
-
+  // "YYYY-MM-DD" (UTC)
+  ymd   String @unique
   title String
   desc  String
 
