@@ -13,6 +13,7 @@ import GoldAmount from '@/components/GoldAmount';
 import XpotPageShell from '@/components/XpotPageShell';
 import PremiumWalletModal from '@/components/PremiumWalletModal';
 import HubLockOverlay from '@/components/HubLockOverlay';
+import BonusStrip from '@/components/BonusStrip';
 import { REQUIRED_XPOT } from '@/lib/xpot';
 
 import {
@@ -24,6 +25,8 @@ import {
   Ticket,
   Wallet,
   X,
+  Radio,
+  Timer,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -165,6 +168,52 @@ function initialFromHandle(h?: string | null) {
 }
 
 // ─────────────────────────────────────────────
+// Bonus visibility (hub)
+// Uses same endpoint pattern as home: /api/bonus/upcoming
+// "active" if there's an upcoming bonus object
+// ─────────────────────────────────────────────
+
+function useBonusUpcomingActive(enabled: boolean) {
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) {
+      setActive(false);
+      return;
+    }
+
+    let alive = true;
+
+    async function probe() {
+      try {
+        const r = await fetch('/api/bonus/upcoming', { cache: 'no-store' });
+        if (!alive) return;
+
+        if (!r.ok) {
+          setActive(false);
+          return;
+        }
+
+        const data = (await r.json().catch(() => null)) as any;
+        setActive(Boolean(data?.bonus?.scheduledAt));
+      } catch {
+        if (!alive) return;
+        setActive(false);
+      }
+    }
+
+    probe();
+    const t = window.setInterval(probe, 15_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [enabled]);
+
+  return active;
+}
+
+// ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
 
@@ -264,6 +313,9 @@ export default function DashboardClient() {
 
   // Lock overlay ON when missing auth/X
   const showLock = isUserLoaded ? !isAuthedEnough : true;
+
+  // Bonus XPOT (hub) - only start polling when authed
+  const bonusActive = useBonusUpcomingActive(isAuthedEnough);
 
   // ─────────────────────────────────────────────
   // Sync X identity into DB whenever user is loaded
@@ -426,6 +478,7 @@ export default function DashboardClient() {
           }
         } else {
           setXpotBalance(null);
+          simulateRitual(false);
           setHistoryEntries([]);
           setHistoryError(null);
           setLoadingHistory(false);
@@ -499,6 +552,7 @@ export default function DashboardClient() {
     if (!currentWalletAddress) {
       setTicketClaimed(false);
       setTodaysTicket(null);
+      simulateRitual(false);
       return;
     }
 
@@ -509,9 +563,11 @@ export default function DashboardClient() {
     if (myTicket) {
       setTicketClaimed(true);
       setTodaysTicket(myTicket);
+      simulateRitual(true);
     } else {
       setTicketClaimed(false);
       setTodaysTicket(null);
+      simulateRitual(false);
     }
   }, [entries, currentWalletAddress]);
 
@@ -605,6 +661,8 @@ export default function DashboardClient() {
 
       // Premium feel: sync immediately after claim
       refreshAll('manual');
+      simulateRitual(true);
+      triggerRitualStamp();
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
       setClaimError(
@@ -631,11 +689,73 @@ export default function DashboardClient() {
     winner.walletAddress?.toLowerCase() === normalizedWallet;
 
   // ─────────────────────────────────────────────
+  // “Alive / ritual” micro-feel (no backend needed)
+  // ─────────────────────────────────────────────
+  const [ritualOn, setRitualOn] = useState(false);
+  const [ritualStamp, setRitualStamp] = useState(0);
+  const [aliveTick, setAliveTick] = useState(0);
+
+  useEffect(() => {
+    const t = window.setInterval(() => setAliveTick(v => v + 1), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  function simulateRitual(on: boolean) {
+    setRitualOn(on);
+  }
+
+  function triggerRitualStamp() {
+    setRitualStamp(v => v + 1);
+  }
+
+  const ritualLine =
+    aliveTick % 6 === 0
+      ? 'signal: warm'
+      : aliveTick % 9 === 0
+      ? 'signal: sync'
+      : 'signal: stable';
+
+  // ─────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────
 
   return (
     <>
+      <style jsx global>{`
+        @keyframes xpotHubPulse {
+          0% { opacity: 0.55; transform: translateZ(0) scale(1); }
+          50% { opacity: 0.95; transform: translateZ(0) scale(1.01); }
+          100% { opacity: 0.55; transform: translateZ(0) scale(1); }
+        }
+        @keyframes xpotStampSweep {
+          0% { transform: translateX(-140%) rotate(8deg); opacity: 0; }
+          12% { opacity: 0.26; }
+          60% { opacity: 0.12; }
+          100% { transform: translateX(160%) rotate(8deg); opacity: 0; }
+        }
+        .xpot-stamp::before {
+          content: "";
+          pointer-events: none;
+          position: absolute;
+          top: -40%;
+          left: -60%;
+          width: 55%;
+          height: 220%;
+          opacity: 0;
+          transform: rotate(8deg);
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,0.10),
+            rgba(56,189,248,0.10),
+            rgba(16,185,129,0.10),
+            transparent
+          );
+          animation: xpotStampSweep 5.8s ease-in-out infinite;
+          mix-blend-mode: screen;
+        }
+      `}</style>
+
       <PremiumWalletModal
         open={walletModalOpen}
         onClose={() => setWalletModalOpen(false)}
@@ -728,6 +848,74 @@ export default function DashboardClient() {
             ),
           }}
         >
+          {/* DAILY RITUAL STRIP */}
+          <section className="mt-6">
+            <div className="relative overflow-hidden rounded-[28px] border border-slate-800/70 bg-slate-950/55 p-5 shadow-[0_28px_120px_rgba(0,0,0,0.55)]">
+              <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.16),transparent_60%),radial-gradient(circle_at_88%_30%,rgba(56,189,248,0.12),transparent_65%)]" />
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <StatusPill tone="emerald">
+                  <Radio className="h-3.5 w-3.5 animate-[xpotHubPulse_2.6s_ease-in-out_infinite]" />
+                  Daily ritual
+                </StatusPill>
+
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <Timer className="h-4 w-4 text-slate-400" />
+                  Next draw in <span className="font-mono text-slate-200">{countdown}</span>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className={SUBCARD}>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                    Today
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-100">
+                    {(handle ? `@${handle.replace(/^@/, '')}` : name) || 'XPOT user'}
+                  </p>
+                </div>
+
+                <div className={SUBCARD}>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                    Status
+                  </p>
+                  <p className="mt-1 font-mono text-sm text-slate-100">{ritualLine}</p>
+                </div>
+
+                <div className={SUBCARD}>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                    Entry
+                  </p>
+                  {ticketClaimed ? (
+                    <p className="mt-1 text-sm font-semibold text-emerald-200">Active</p>
+                  ) : (
+                    <p className="mt-1 text-sm font-semibold text-slate-200">Not claimed</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* BONUS XPOT (HUB) */}
+          {bonusActive ? (
+            <section className="mt-4">
+              <div className="relative overflow-hidden rounded-[28px] border border-emerald-400/22 bg-slate-950/55 p-3 shadow-[0_30px_110px_rgba(16,185,129,0.12)]">
+                <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_14%_22%,rgba(16,185,129,0.22),transparent_62%),radial-gradient(circle_at_88%_24%,rgba(56,189,248,0.12),transparent_64%)]" />
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 pt-2">
+                  <StatusPill tone="emerald">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Bonus XPOT active
+                  </StatusPill>
+                  <p className="text-xs text-slate-400">Same entry - paid on-chain</p>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-500/18 bg-emerald-950/15 p-3">
+                  <BonusStrip variant="hub" />
+                </div>
+              </div>
+            </section>
+          ) : null}
+
           {/* MAIN GRID */}
           <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             {/* LEFT COLUMN */}
@@ -816,9 +1004,9 @@ export default function DashboardClient() {
                       {name}
                     </p>
                     <p className="text-xs text-slate-500">
-  Holding requirement:{' '}
-  <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
-</p>
+                      Holding requirement:{' '}
+                      <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
+                    </p>
                   </div>
                 </div>
 
@@ -851,7 +1039,7 @@ export default function DashboardClient() {
                       Today’s XPOT
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
-                      Claim a free entry if your wallet holds the minimum XPOT.
+                      Make it a daily ritual. Claim your entry when your wallet meets the minimum XPOT.
                     </p>
                   </div>
 
@@ -859,6 +1047,42 @@ export default function DashboardClient() {
                     <Ticket className="h-3.5 w-3.5" />
                     {ticketClaimed ? 'Entry active' : 'Not claimed'}
                   </StatusPill>
+                </div>
+
+                {/* Ritual “stamp” */}
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                        Daily stamp
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Cutoff <span className="font-mono text-slate-200">{countdown}</span>
+                    </p>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <TinyMeta
+                      label="Eligibility"
+                      value={
+                        typeof xpotBalance === 'number'
+                          ? hasRequiredXpot
+                            ? 'Eligible'
+                            : 'Below minimum'
+                          : 'Checking…'
+                      }
+                    />
+                    <TinyMeta
+                      label="Wallet"
+                      value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
+                    />
+                    <TinyMeta
+                      label="Entry"
+                      value={ticketClaimed ? 'Locked' : 'Available'}
+                    />
+                  </div>
                 </div>
 
                 {!walletConnected && (
@@ -896,8 +1120,11 @@ export default function DashboardClient() {
                 )}
 
                 {walletConnected && ticketClaimed && todaysTicket && (
-                  <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  <div
+                    key={ritualStamp}
+                    className="relative mt-4 overflow-hidden rounded-2xl border border-emerald-400/18 bg-emerald-500/10 px-4 py-3 xpot-stamp"
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/80">
                       Your ticket code
                     </p>
 
@@ -918,7 +1145,7 @@ export default function DashboardClient() {
 
                     <p className="mt-2 text-xs text-slate-500">
                       Status:{' '}
-                      <span className="font-semibold text-slate-200">
+                      <span className="font-semibold text-emerald-200">
                         IN DRAW
                       </span>
                       {' · '}Issued {formatDateTime(todaysTicket.createdAt)}
@@ -937,6 +1164,16 @@ export default function DashboardClient() {
                   <div className="mt-4 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
                     You won today’s XPOT. Check your wallet and the winners feed.
                   </div>
+                )}
+
+                {ritualOn ? (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Your daily stamp is locked. Come back tomorrow for the next one.
+                  </p>
+                ) : (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Claiming is free - your wallet stays self-custody. Identity stays @handle-first.
+                  </p>
                 )}
               </section>
 
