@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
           },
         },
       },
-      orderBy: { date: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
 
     if (existingWinner) {
