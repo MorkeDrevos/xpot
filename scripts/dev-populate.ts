@@ -29,7 +29,6 @@ function randHex(len: number) {
 }
 
 function fakeSolAddress() {
-  // Wallet.address is just a string in your schema, so this is fine for dev
   return `DEV${randHex(40)}`;
 }
 
@@ -51,7 +50,7 @@ async function main() {
     create: { singleton: 'singleton', mode: 'MANUAL' },
   });
 
-  // 1) Ensure today's draw exists (drawDate is unique)
+  // 1) Ensure today's draw exists (drawDate unique)
   let draw = await prisma.draw.findUnique({
     where: { drawDate: bucket },
   });
@@ -86,7 +85,7 @@ async function main() {
   const ENTRIES = intEnv('XPOT_DEV_ENTRIES', 18);
   const BONUS_DROPS = intEnv('XPOT_DEV_BONUS_DROPS', 2);
 
-  // 2) Create/reuse wallets (we'll ensure at least WALLETS exist total)
+  // 2) Create or reuse wallets
   const existingWallets = await prisma.wallet.findMany({
     orderBy: { createdAt: 'asc' },
     take: WALLETS,
@@ -100,17 +99,17 @@ async function main() {
       const w = await prisma.wallet.create({ data: { address } });
       wallets.push(w);
     } catch {
-      // collision on address (rare) - retry
+      // collision, retry
     }
   }
 
-  console.log('[dev-populate] ✅ Wallets ready:', wallets.length);
+  console.log('[dev-populate] Wallets ready:', wallets.length);
 
   // 3) Create tickets for today's draw
-  // IMPORTANT: @@unique([walletId, drawId]) => max 1 ticket per wallet per draw
+  // IMPORTANT: schema has @@unique([walletId, drawId]) => max 1 ticket per wallet per draw
   const maxPossible = Math.min(TICKETS, wallets.length);
-
   let createdTickets = 0;
+
   for (let i = 0; i < maxPossible; i++) {
     const w = wallets[i];
 
@@ -118,7 +117,7 @@ async function main() {
       await prisma.ticket.create({
         data: {
           code: ticketCode(),
-          walletId: w.id, // ✅ REQUIRED
+          walletId: w.id, // ✅ REQUIRED (your error was caused by a create without this)
           walletAddress: w.address,
           status: 'IN_DRAW',
           drawId: draw.id,
@@ -126,16 +125,16 @@ async function main() {
       });
       createdTickets++;
     } catch {
-      // already has ticket for this draw OR code collision
+      // likely unique collision (wallet already has a ticket for this draw, or code collision)
       continue;
     }
   }
 
   console.log('[dev-populate] ✅ Tickets created for today:', createdTickets);
 
-  // 4) Bonus drops
-  let bonusCreatedOrEnsured = 0;
+  // 4) Bonus drops (optional)
   if (BONUS_DROPS > 0) {
+    let ensured = 0;
     for (let i = 0; i < BONUS_DROPS; i++) {
       const scheduledAt = new Date(Date.now() + (i + 1) * 60 * 60 * 1000);
       try {
@@ -148,16 +147,15 @@ async function main() {
             status: 'SCHEDULED',
           },
         });
-        bonusCreatedOrEnsured++;
+        ensured++;
       } catch {
-        // ignore duplicates if you rerun
+        // ignore duplicates on rerun
       }
     }
+    console.log('[dev-populate] ✅ BonusDrops ensured this run:', ensured);
   }
 
-  console.log('[dev-populate] ✅ BonusDrops created/ensured:', bonusCreatedOrEnsured);
-
-  // 5) Public entrants (DrawEntry)
+  // 5) Public entrants (optional)
   const demoEntrants = [
     { clerkId: 'dev_clerk_01', xHandle: 'xpotbet', xName: 'XPOT', followers: 1200, verified: false },
     { clerkId: 'dev_clerk_02', xHandle: 'solana', xName: 'Solana', followers: 3000000, verified: true },
@@ -166,7 +164,7 @@ async function main() {
   ];
 
   const targetEntrants = demoEntrants.slice(0, Math.min(ENTRIES, demoEntrants.length));
-  let entrantsCreatedOrEnsured = 0;
+  let createdEntrants = 0;
 
   for (const e of targetEntrants) {
     try {
@@ -181,15 +179,15 @@ async function main() {
           verified: e.verified,
         },
       });
-      entrantsCreatedOrEnsured++;
+      createdEntrants++;
     } catch {
-      // @@unique([drawId, clerkId]) duplicate - ignore
+      // already exists (unique drawId+clerkId)
     }
   }
 
-  console.log('[dev-populate] ✅ Entrants created/ensured:', entrantsCreatedOrEnsured);
+  console.log('[dev-populate] ✅ Entrants created this run:', createdEntrants);
 
-  // 6) Totals (so you can confirm in Prisma Studio)
+  // Summary (quick sanity)
   const totals = await Promise.all([
     prisma.draw.count(),
     prisma.wallet.count(),
@@ -198,7 +196,7 @@ async function main() {
     prisma.drawEntry.count({ where: { drawId: draw.id } }),
   ]);
 
-  console.log('[dev-populate] ✅ Totals:', {
+  console.log('[dev-populate] Totals:', {
     draws: totals[0],
     wallets: totals[1],
     ticketsInTodayDraw: totals[2],
