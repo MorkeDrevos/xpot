@@ -897,73 +897,37 @@ function updateLines(prev: string[], tick: number, countdown: string, cutoffLabe
 function BonusVault({ children }: { children: ReactNode }) {
   return (
     <div className="relative">
-      <style jsx global>{`
-        @keyframes xpotBonusSheen {
-          0% { transform: translateX(-140%) rotate(10deg); opacity: 0.0; }
-          12% { opacity: 0.34; }
-          55% { opacity: 0.14; }
-          100% { transform: translateX(160%) rotate(10deg); opacity: 0.0; }
-        }
-        .xpot-bonus-sheen::before {
-          content: "";
-          pointer-events: none;
-          position: absolute;
-          top: -40%;
-          left: -60%;
-          width: 55%;
-          height: 220%;
-          opacity: 0;
-          transform: rotate(10deg);
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255,255,255,0.12),
-            rgba(56,189,248,0.10),
-            rgba(var(--xpot-gold),0.10),
-            transparent
-          );
-          animation: xpotBonusSheen 6.2s ease-in-out infinite;
-          mix-blend-mode: screen;
-        }
-      `}</style>
+      {/* keep your xpotBonusSheen CSS exactly as you had it */}
 
-      <div className="pointer-events-none absolute -inset-10 opacity-75 blur-2xl bg-[radial-gradient(circle_at_22%_38%,rgba(16,185,129,0.26),transparent_62%),radial-gradient(circle_at_72%_30%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_85%_80%,rgba(var(--xpot-gold),0.12),transparent_65%)]" />
+      <div className="pointer-events-none absolute -inset-10 opacity-70 blur-2xl bg-[radial-gradient(circle_at_22%_38%,rgba(16,185,129,0.20),transparent_64%),radial-gradient(circle_at_72%_30%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_85%_80%,rgba(var(--xpot-gold),0.10),transparent_66%)]" />
 
-      <div className="relative overflow-hidden rounded-[28px] border border-emerald-400/18 bg-slate-950/45 shadow-[0_30px_110px_rgba(16,185,129,0.10)]">
+      <div className="relative overflow-hidden rounded-[28px] bg-white/[0.03] ring-1 ring-white/[0.06] shadow-[0_30px_110px_rgba(0,0,0,0.45)]">
         <div className="xpot-bonus-sheen" />
-        <div className="pointer-events-none absolute inset-0 opacity-80">
-          <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(16,185,129,0.55),rgba(255,255,255,0.08),rgba(56,189,248,0.35),transparent)]" />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.35),rgba(255,255,255,0.06),rgba(56,189,248,0.28),transparent)]" />
-        </div>
 
         <div className="relative p-3 sm:p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inset-0 rounded-full bg-emerald-400/70 animate-ping" />
+                <span className="absolute inset-0 rounded-full bg-emerald-400/60 animate-ping" />
                 <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
               </span>
               Bonus XPOT active
             </span>
 
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+            <span className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200 ring-1 ring-white/10">
               Same entry
               <span className="h-1 w-1 rounded-full bg-white/20" />
               Paid on-chain
             </span>
           </div>
 
-          <div className="relative overflow-hidden rounded-[22px] border border-emerald-500/14 bg-emerald-950/12 p-3 shadow-[0_18px_80px_rgba(16,185,129,0.08)]">
-            <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_62%),radial-gradient(circle_at_90%_25%,rgba(56,189,248,0.10),transparent_64%)]" />
-            <div className="relative">{children}</div>
-          </div>
+          {/* no inner border panel */}
+          <div className="relative">{children}</div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[12px] text-slate-400">
-              Scheduled bonus drop. Appears automatically when active.
-            </p>
+            <p className="text-[12px] text-slate-400">Scheduled bonus drop. Appears automatically when active.</p>
 
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/14 bg-emerald-500/8 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 ring-1 ring-emerald-400/15">
               <Sparkles className="h-3.5 w-3.5" />
               Vault reveal
             </span>
@@ -1041,7 +1005,7 @@ function HomePageInner() {
                       </Pill>
                     </div>
 
-                    <div className="rounded-[30px] border border-slate-900/70 bg-slate-950/28 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-6">
+                    <div className="rounded-[26px] bg-white/[0.02] p-5 ring-1 ring-white/[0.05] sm:p-6">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
                         NO TICKETS · JUST XPOT HOLDINGS
                       </p>
