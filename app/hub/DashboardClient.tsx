@@ -96,7 +96,6 @@ function StatusPill({
   children: React.ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky';
 }) {
-  // NOTE: "amber" maps to vault-gold pill styling (readable on dark UI)
   const cls =
     tone === 'emerald'
       ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]'
@@ -127,14 +126,11 @@ function TinyMeta({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Optional UX helper: show hint under wallet button
 function WalletStatusHint() {
   const { wallets, connected } = useWallet();
 
   const anyDetected = wallets.some(
-    w =>
-      w.readyState === WalletReadyState.Installed ||
-      w.readyState === WalletReadyState.Loadable,
+    w => w.readyState === WalletReadyState.Installed || w.readyState === WalletReadyState.Loadable,
   );
 
   if (connected) return null;
@@ -184,7 +180,7 @@ function useReducedMotion() {
 type BonusUpcoming = {
   id: string;
   amountXpot: number;
-  scheduledAt: string; // ISO
+  scheduledAt: string;
   status?: 'UPCOMING' | 'CLAIMED' | 'CANCELLED';
   label?: string;
 };
@@ -230,41 +226,6 @@ function useBonusUpcoming() {
   }, []);
 
   return { bonus, loading, active: Boolean(bonus?.scheduledAt) };
-}
-
-// ─────────────────────────────────────────────
-// Daily mission (seeded for pre-launch)
-// ─────────────────────────────────────────────
-
-function ymdKeyLocal(d = new Date()) {
-  const yy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yy}-${mm}-${dd}`;
-}
-
-function seededPick<T>(seed: string, arr: readonly T[]) {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  const idx = Math.abs(h) % arr.length;
-  return arr[idx];
-}
-
-function getTodayMission(seedExtra = '') {
-  const seed = `${ymdKeyLocal()}|xpot-mission|${seedExtra}`;
-  const missions = [
-    { title: 'Lock your identity', desc: 'Make sure your X handle is linked and visible in the dashboard.' },
-    { title: 'Verify eligibility', desc: 'Confirm your XPOT balance meets the minimum for today’s entry.' },
-    { title: 'Claim your entry', desc: 'Issue today’s ticket and keep your code ready.' },
-    { title: 'Proof mindset', desc: 'After draw time, verify the winners payout in an explorer.' },
-    { title: 'Invite one holder', desc: 'Bring one new holder in - XPOT grows on reputation.' },
-    { title: 'Stay consistent', desc: 'Show up daily. Streaks will matter after launch.' },
-  ] as const;
-
-  return seededPick(seed, missions);
 }
 
 // ─────────────────────────────────────────────
@@ -360,9 +321,7 @@ function EntryCeremony({
 
         <div className="relative p-5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-              Entry issued
-            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">Entry issued</span>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
               <Radio className="h-3.5 w-3.5" />
               LIVE
@@ -419,63 +378,54 @@ type RecentWinner = {
   handle?: string | null;
 };
 
+type Mission = { title: string; desc: string; ymd?: string };
+type Streak = { days: number; todayDone: boolean; lastDoneYmd?: string | null };
+
 // ─────────────────────────────────────────────
 // Page (CLIENT)
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
-  // Premium wallet modal
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
-  // Today entries (global)
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
-  // Claim state
   const [ticketClaimed, setTicketClaimed] = useState(false);
   const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
-  // Ceremony state
   const [showCeremony, setShowCeremony] = useState(false);
   const [ceremonyCode, setCeremonyCode] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Wallet
   const { publicKey, connected } = useWallet();
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
-  // XPOT balance
   const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
-  const hasRequiredXpot =
-    typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
+  const hasRequiredXpot = typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
-  // History (wallet specific)
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Recent winners (global)
   const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
 
-  // Premium sync feel
   const [countdown, setCountdown] = useState('00:00:00');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncPulse, setSyncPulse] = useState(0);
   const refreshingRef = useRef(false);
 
-  // Clerk user (X identity)
   const { user, isLoaded: isUserLoaded } = useUser();
   const isSignedIn = !!user;
 
   const externalAccounts = (user?.externalAccounts || []) as any[];
-
   const xAccount =
     externalAccounts.find(acc => {
       const provider = (acc.provider ?? '') as string;
@@ -494,51 +444,17 @@ export default function DashboardClient() {
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
   const name = user?.fullName || handle || 'XPOT user';
 
-  // Authed enough = logged in AND X is linked
   const isAuthedEnough = isSignedIn && !!handle;
-
-  // Lock overlay ON when missing auth/X
   const showLock = isUserLoaded ? !isAuthedEnough : true;
 
-  // Bonus in Hub
   const { bonus: upcomingBonus, active: bonusActive } = useBonusUpcoming();
 
-  // Streak placeholder (local, healthy “come back daily”)
-  const [streakDays, setStreakDays] = useState(0);
-  const [streakTodayDone, setStreakTodayDone] = useState(false);
-
-  // Today mission (seeded)
-  const mission = useMemo(() => getTodayMission(handle || ''), [handle]);
-
-  // Load sound toggle + streak from localStorage
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const s = window.localStorage.getItem('xpot_hub_sound_enabled');
-    if (s === '0') setSoundEnabled(false);
-
-    const key = 'xpot_hub_streak_v1';
-    const raw = window.localStorage.getItem(key);
-    if (raw) {
-      try {
-        const obj = JSON.parse(raw) as { days: number; lastYmd: string; doneYmd?: string };
-        const today = ymdKeyLocal();
-        const done = obj.doneYmd === today;
-        setStreakDays(Number.isFinite(obj.days) ? obj.days : 0);
-        setStreakTodayDone(done);
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
-
-  const persistStreak = useCallback((days: number, done: boolean) => {
-    if (typeof window === 'undefined') return;
-    const key = 'xpot_hub_streak_v1';
-    const today = ymdKeyLocal();
-    const obj = { days, lastYmd: today, doneYmd: done ? today : '' };
-    window.localStorage.setItem(key, JSON.stringify(obj));
-  }, []);
+  // DB-driven streak + mission
+  const [streak, setStreak] = useState<Streak>({ days: 0, todayDone: false });
+  const [mission, setMission] = useState<Mission>({
+    title: 'Loading…',
+    desc: 'Preparing today’s mission.',
+  });
 
   // ─────────────────────────────────────────────
   // Sync X identity into DB whenever user is loaded
@@ -592,6 +508,46 @@ export default function DashboardClient() {
   }, []);
 
   // ─────────────────────────────────────────────
+  // Hub boot: preferences + streak + mission (Prisma)
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthedEnough) return;
+
+    let alive = true;
+
+    (async () => {
+      try {
+        const pr = await fetch('/api/me/preferences', { cache: 'no-store' });
+        if (alive && pr.ok) {
+          const pj = (await pr.json().catch(() => null)) as any;
+          const se = pj?.preferences?.soundEnabled;
+          if (typeof se === 'boolean') setSoundEnabled(se);
+        }
+
+        const sr = await fetch('/api/hub/streak', { cache: 'no-store' });
+        if (alive && sr.ok) {
+          const sj = (await sr.json().catch(() => null)) as any;
+          if (sj?.streak) setStreak(sj.streak as Streak);
+        }
+
+        const mr = await fetch(`/api/hub/mission/today?seed=${encodeURIComponent(handle || '')}`, {
+          cache: 'no-store',
+        });
+        if (alive && mr.ok) {
+          const mj = (await mr.json().catch(() => null)) as any;
+          if (mj?.mission?.title) setMission(mj.mission as Mission);
+        }
+      } catch (e) {
+        console.error('[hub boot] failed', e);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [isAuthedEnough, handle]);
+
+  // ─────────────────────────────────────────────
   // Fetch helpers
   // ─────────────────────────────────────────────
   const fetchTicketsToday = useCallback(async () => {
@@ -603,18 +559,14 @@ export default function DashboardClient() {
   }, []);
 
   const fetchXpotBalance = useCallback(async (address: string) => {
-    const res = await fetch(`/api/xpot-balance?address=${address}`, {
-      cache: 'no-store',
-    });
+    const res = await fetch(`/api/xpot-balance?address=${address}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     const data: { balance: number } = await res.json();
     return data.balance;
   }, []);
 
   const fetchHistory = useCallback(async (address: string) => {
-    const res = await fetch(`/api/tickets/history?wallet=${address}`, {
-      cache: 'no-store',
-    });
+    const res = await fetch(`/api/tickets/history?wallet=${address}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load history');
     const data = await res.json();
     const tickets: Entry[] = Array.isArray(data.tickets)
@@ -658,7 +610,6 @@ export default function DashboardClient() {
       const addr = publicKey?.toBase58() ?? null;
 
       try {
-        // Tickets (global)
         if (reason === 'initial') {
           setLoadingTickets(true);
           setTicketsError(null);
@@ -666,7 +617,6 @@ export default function DashboardClient() {
         const nextTickets = await fetchTicketsToday();
         setEntries(nextTickets);
 
-        // Winners (global)
         if (reason === 'initial') {
           setLoadingWinners(true);
           setWinnersError(null);
@@ -674,9 +624,7 @@ export default function DashboardClient() {
         const nextWinners = await fetchRecentWinners();
         setRecentWinners(nextWinners);
 
-        // Wallet-specific (only when wallet is present)
         if (addr) {
-          // Balance
           try {
             setXpotBalance(null);
             const b = await fetchXpotBalance(addr);
@@ -686,7 +634,6 @@ export default function DashboardClient() {
             setXpotBalance('error');
           }
 
-          // History
           try {
             if (reason === 'initial') setLoadingHistory(true);
             setHistoryError(null);
@@ -718,20 +665,9 @@ export default function DashboardClient() {
         refreshingRef.current = false;
       }
     },
-    [
-      isAuthedEnough,
-      publicKey,
-      fetchTicketsToday,
-      fetchRecentWinners,
-      fetchXpotBalance,
-      fetchHistory,
-    ],
+    [isAuthedEnough, publicKey, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
   );
 
-  // ─────────────────────────────────────────────
-  // Load tickets + winners + wallet data (ONLY when authed)
-  // Also keeps things feeling live via a gentle poll
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) {
       setEntries([]);
@@ -767,9 +703,7 @@ export default function DashboardClient() {
     };
   }, [isAuthedEnough, refreshAll]);
 
-  // ─────────────────────────────────────────────
   // Sync "today's ticket" state with DB
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!currentWalletAddress) {
       setTicketClaimed(false);
@@ -777,9 +711,7 @@ export default function DashboardClient() {
       return;
     }
 
-    const myTicket = entries.find(
-      t => t.walletAddress === currentWalletAddress && t.status === 'in-draw',
-    );
+    const myTicket = entries.find(t => t.walletAddress === currentWalletAddress && t.status === 'in-draw');
 
     if (myTicket) {
       setTicketClaimed(true);
@@ -790,7 +722,6 @@ export default function DashboardClient() {
     }
   }, [entries, currentWalletAddress]);
 
-  // Ticket actions
   async function handleCopyCode(entry: Entry) {
     const ok = await safeCopy(entry.code);
     if (!ok) return;
@@ -798,17 +729,15 @@ export default function DashboardClient() {
     setTimeout(() => setCopiedId(null), 1500);
   }
 
-  function bumpStreakAfterClaim() {
-    const today = ymdKeyLocal();
-    if (streakTodayDone) return;
-
-    const nextDays = Math.max(0, streakDays) + 1;
-    setStreakDays(nextDays);
-    setStreakTodayDone(true);
-    persistStreak(nextDays, true);
-
-    // small delight: if sound on, tiny chime
-    if (soundEnabled) playChime();
+  async function markStreakDone() {
+    try {
+      const r = await fetch('/api/hub/streak', { method: 'POST' });
+      if (!r.ok) return;
+      const j = (await r.json().catch(() => null)) as any;
+      if (j?.streak) setStreak(j.streak as Streak);
+    } catch {
+      // ignore
+    }
   }
 
   async function handleClaimTicket() {
@@ -847,26 +776,16 @@ export default function DashboardClient() {
               ).toLocaleString()} XPOT.`,
             );
             break;
-
           case 'NOT_ENOUGH_SOL':
-            setClaimError(
-              'Your wallet needs some SOL for network fees before you can get today’s ticket.',
-            );
+            setClaimError('Your wallet needs some SOL for network fees before you can get today’s ticket.');
             break;
-
           case 'XPOT_CHECK_FAILED':
-            setClaimError(
-              'Could not verify your XPOT balance right now. Please try again in a moment.',
-            );
+            setClaimError('Could not verify your XPOT balance right now. Please try again in a moment.');
             break;
-
           case 'MISSING_WALLET':
           case 'INVALID_BODY':
-            setClaimError(
-              'Something is wrong with your wallet address. Try reconnecting your wallet and trying again.',
-            );
+            setClaimError('Something is wrong with your wallet address. Try reconnecting your wallet and trying again.');
             break;
-
           default:
             setClaimError('Ticket request failed. Please try again.');
         }
@@ -891,14 +810,11 @@ export default function DashboardClient() {
       setTodaysTicket(ticket);
       setClaimError(null);
 
-      // Ceremony
       setCeremonyCode(ticket?.code || '');
       setShowCeremony(true);
 
-      // Streak bump (healthy daily ritual)
-      bumpStreakAfterClaim();
+      await markStreakDone();
 
-      // Premium feel: sync immediately after claim
       refreshAll('manual');
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
@@ -908,34 +824,31 @@ export default function DashboardClient() {
     }
   }
 
-  // Derived helpers
   const normalizedWallet = currentWalletAddress?.toLowerCase();
   const myTickets: Entry[] = useMemo(() => {
     if (!normalizedWallet) return [];
-    return entries.filter(
-      e => e.walletAddress?.toLowerCase() === normalizedWallet,
-    );
+    return entries.filter(e => e.walletAddress?.toLowerCase() === normalizedWallet);
   }, [entries, normalizedWallet]);
 
   const winner = entries.find(e => e.status === 'won') || null;
-  const iWonToday =
-    !!winner &&
-    !!normalizedWallet &&
-    winner.walletAddress?.toLowerCase() === normalizedWallet;
+  const iWonToday = !!winner && !!normalizedWallet && winner.walletAddress?.toLowerCase() === normalizedWallet;
 
-  // sound toggle persist
-  function toggleSound() {
+  async function toggleSound() {
     const next = !soundEnabled;
     setSoundEnabled(next);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('xpot_hub_sound_enabled', next ? '1' : '0');
+
+    try {
+      await fetch('/api/me/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ soundEnabled: next }),
+      });
+    } catch {
+      // ignore
     }
+
     if (next) playChime();
   }
-
-  // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
 
   return (
     <>
@@ -948,7 +861,6 @@ export default function DashboardClient() {
         onClose={() => setShowCeremony(false)}
       />
 
-      {/* IMPORTANT: overlay is NOT inside the blurred container */}
       <HubLockOverlay
         open={showLock}
         reason={
@@ -959,30 +871,22 @@ export default function DashboardClient() {
         showLinkX={isSignedIn && !handle}
       />
 
-      {/* Hub behind overlay only */}
       <div className={showLock ? 'pointer-events-none select-none blur-[2px] opacity-95' : ''}>
         <XpotPageShell
           topBarProps={{
             pillText: 'HOLDER DASHBOARD',
             rightSlot: (
               <div className="flex items-center gap-3">
-                {/* Identity chip */}
                 <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:inline-flex">
                   {avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={avatar}
-                      alt={name}
-                      className="h-6 w-6 rounded-full border border-white/10 object-cover"
-                    />
+                    <img src={avatar} alt={name} className="h-6 w-6 rounded-full border border-white/10 object-cover" />
                   ) : (
                     <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-semibold text-slate-200">
                       {initialFromHandle(handle)}
                     </div>
                   )}
-                  <span className="text-xs font-semibold text-slate-200">
-                    @{(handle || 'x').replace(/^@/, '')}
-                  </span>
+                  <span className="text-xs font-semibold text-slate-200">@{(handle || 'x').replace(/^@/, '')}</span>
                 </div>
 
                 <button
@@ -1000,16 +904,13 @@ export default function DashboardClient() {
                   <span className="ml-1">History</span>
                 </Link>
 
-                {/* Ritual wallet CTA */}
                 <div className="rounded-full border border-slate-700/80 bg-slate-950/50 px-4 py-2">
                   <button
                     type="button"
                     onClick={() => setWalletModalOpen(true)}
                     className="text-left leading-tight hover:opacity-90"
                   >
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                      Wallet bay
-                    </div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Wallet bay</div>
                     <div className="text-[13px] font-semibold text-slate-100">
                       {walletConnected ? 'Change wallet' : 'Select wallet'}
                     </div>
@@ -1040,7 +941,7 @@ export default function DashboardClient() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-100">Today’s mission</p>
-                  <p className="mt-1 text-xs text-slate-400">A small daily nudge - seeded in pre-launch.</p>
+                  <p className="mt-1 text-xs text-slate-400">DB-driven and changes daily.</p>
                 </div>
                 <StatusPill tone="sky">
                   <Target className="h-3.5 w-3.5" />
@@ -1053,9 +954,7 @@ export default function DashboardClient() {
                 <p className="mt-1 text-xs text-slate-500">{mission.desc}</p>
               </div>
 
-              <p className="mt-3 text-[11px] text-slate-500">
-                Later this becomes DB-driven and personalized.
-              </p>
+              <p className="mt-3 text-[11px] text-slate-500">Later: this becomes truly personalized per holder.</p>
             </section>
 
             {/* Streak */}
@@ -1065,19 +964,19 @@ export default function DashboardClient() {
                   <p className="text-sm font-semibold text-slate-100">Daily streak</p>
                   <p className="mt-1 text-xs text-slate-400">Healthy consistency - not a casino loop.</p>
                 </div>
-                <StatusPill tone={streakTodayDone ? 'emerald' : 'amber'}>
+                <StatusPill tone={streak.todayDone ? 'emerald' : 'amber'}>
                   <Flame className="h-3.5 w-3.5" />
-                  {streakTodayDone ? 'Today done' : 'Pending'}
+                  {streak.todayDone ? 'Today done' : 'Pending'}
                 </StatusPill>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <TinyMeta label="Streak days" value={`${Math.max(0, streakDays)}`} />
-                <TinyMeta label="Resets" value="Not in pre-launch" />
+                <TinyMeta label="Streak days" value={`${Math.max(0, streak.days)}`} />
+                <TinyMeta label="Reset logic" value="UTC day rule" />
               </div>
 
               <p className="mt-3 text-[11px] text-slate-500">
-                Streaks activate fully after launch with on-chain proof + anti-gaming.
+                Streak increments when you claim today’s entry.
               </p>
             </section>
 
@@ -1086,9 +985,7 @@ export default function DashboardClient() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-100">Bonus XPOT</p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Shows automatically when a bonus drop is scheduled.
-                  </p>
+                  <p className="mt-1 text-xs text-slate-400">Shows automatically when a bonus drop is scheduled.</p>
                 </div>
                 {bonusActive ? (
                   <StatusPill tone="emerald">
@@ -1110,8 +1007,6 @@ export default function DashboardClient() {
                       {new Date(upcomingBonus.scheduledAt).toLocaleString('de-DE')}
                     </span>
                   </div>
-
-                  {/* reuse the same component as home (safe) */}
                   <BonusStrip variant="home" />
                 </div>
               ) : (
@@ -1184,11 +1079,7 @@ export default function DashboardClient() {
                 <div className="mt-4 flex items-center gap-3">
                   {avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={avatar}
-                      alt={name}
-                      className="h-9 w-9 rounded-full border border-slate-800 object-cover"
-                    />
+                    <img src={avatar} alt={name} className="h-9 w-9 rounded-full border border-slate-800 object-cover" />
                   ) : (
                     <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-800 bg-slate-900 text-slate-300">
                       <X className="h-4 w-4" />
@@ -1198,8 +1089,7 @@ export default function DashboardClient() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-100">{name}</p>
                     <p className="text-xs text-slate-500">
-                      Holding requirement:{' '}
-                      <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
+                      Holding requirement: <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
                     </p>
                   </div>
                 </div>
@@ -1226,9 +1116,7 @@ export default function DashboardClient() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-slate-100">Today’s XPOT</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Claim a free entry if your wallet holds the minimum XPOT.
-                    </p>
+                    <p className="mt-1 text-xs text-slate-400">Claim a free entry if your wallet holds the minimum XPOT.</p>
                   </div>
 
                   <StatusPill tone={ticketClaimed ? 'emerald' : 'slate'}>
@@ -1259,10 +1147,7 @@ export default function DashboardClient() {
                     {typeof xpotBalance === 'number' && !hasRequiredXpot && (
                       <p className="mt-3 text-xs text-slate-500">
                         Your wallet is below the minimum. You need{' '}
-                        <span className="font-semibold text-slate-200">
-                          {REQUIRED_XPOT.toLocaleString()} XPOT
-                        </span>{' '}
-                        to claim today’s entry.
+                        <span className="font-semibold text-slate-200">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to claim today’s entry.
                       </p>
                     )}
                   </>
@@ -1328,21 +1213,10 @@ export default function DashboardClient() {
                       <p className="text-xs text-slate-500">No entries yet.</p>
                     ) : (
                       myTickets.map(t => (
-                        <div
-                          key={t.id}
-                          className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
-                        >
+                        <div key={t.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-mono text-sm text-slate-100">{t.code}</p>
-                            <StatusPill
-                              tone={
-                                t.status === 'in-draw'
-                                  ? 'emerald'
-                                  : t.status === 'won'
-                                  ? 'sky'
-                                  : 'slate'
-                              }
-                            >
+                            <StatusPill tone={t.status === 'in-draw' ? 'emerald' : t.status === 'won' ? 'sky' : 'slate'}>
                               {t.status.replace('-', ' ')}
                             </StatusPill>
                           </div>
@@ -1381,10 +1255,7 @@ export default function DashboardClient() {
                     recentWinners.map(w => {
                       const h = w.handle ? w.handle.replace(/^@/, '') : null;
                       return (
-                        <div
-                          key={w.id}
-                          className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
-                        >
+                        <div key={w.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
                           <div className="flex items-center justify-between gap-3">
                             <p className="text-xs text-slate-400">{formatDate(w.drawDate)}</p>
                             {h ? (
@@ -1419,9 +1290,7 @@ export default function DashboardClient() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-slate-100">Your draw history</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Past entries for this wallet (wins, not-picked, expired).
-                    </p>
+                    <p className="mt-1 text-xs text-slate-400">Past entries for this wallet (wins, not-picked, expired).</p>
                   </div>
 
                   <Link href="/hub/history" className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
@@ -1440,10 +1309,7 @@ export default function DashboardClient() {
                     <p className="text-xs text-slate-500">No history yet.</p>
                   ) : (
                     historyEntries.slice(0, 5).map(t => (
-                      <div
-                        key={t.id}
-                        className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
-                      >
+                      <div key={t.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
                           <p className="font-mono text-sm text-slate-100">{t.code}</p>
                           <StatusPill
@@ -1469,11 +1335,10 @@ export default function DashboardClient() {
             </div>
           </section>
 
-          {/* FOOTER */}
           <footer className="mt-8 border-t border-slate-800/70 pt-4 text-xs text-slate-500">
             <span className="inline-flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-              XPOT is in Pre-Launch Mode. UI is final, wiring continues.
+              XPOT is in Pre-Launch Mode. UI is final and wiring is live.
             </span>
           </footer>
         </XpotPageShell>
