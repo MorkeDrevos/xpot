@@ -56,7 +56,7 @@ async function main() {
   });
 
   if (!draw) {
-    const closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // +24h
+    const closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     draw = await prisma.draw.create({
       data: {
         drawDate: bucket,
@@ -85,7 +85,7 @@ async function main() {
   const ENTRIES = intEnv('XPOT_DEV_ENTRIES', 18);
   const BONUS_DROPS = intEnv('XPOT_DEV_BONUS_DROPS', 2);
 
-  // 2) Create or reuse wallets
+  // 2) Ensure we have enough wallets
   const existingWallets = await prisma.wallet.findMany({
     orderBy: { createdAt: 'asc' },
     take: WALLETS,
@@ -98,17 +98,16 @@ async function main() {
       const w = await prisma.wallet.create({ data: { address } });
       wallets.push(w);
     } catch {
-      // address collision - retry
+      // collision, retry
     }
   }
 
   console.log('[dev-populate] Wallets ready:', wallets.length);
 
-  // 3) Create tickets for today's draw
-  // IMPORTANT: schema has @@unique([walletId, drawId]) so max 1 ticket per wallet per draw.
+  // 3) Create tickets (IMPORTANT: your schema allows max 1 ticket per wallet per draw)
   const maxPossible = Math.min(TICKETS, wallets.length);
-
   let createdTickets = 0;
+
   for (let i = 0; i < maxPossible; i++) {
     const w = wallets[i];
 
@@ -116,7 +115,7 @@ async function main() {
       await prisma.ticket.create({
         data: {
           code: ticketCode(),
-          walletId: w.id, // ✅ REQUIRED
+          walletId: w.id, // ✅ REQUIRED by schema
           walletAddress: w.address,
           status: 'IN_DRAW',
           drawId: draw.id,
@@ -124,18 +123,18 @@ async function main() {
       });
       createdTickets++;
     } catch {
-      // likely unique collision (wallet already has ticket for this draw, or code collision)
+      // likely unique collision (wallet already has a ticket for this draw, or code collision)
       continue;
     }
   }
 
   console.log('[dev-populate] ✅ Tickets created for today:', createdTickets);
 
-  // 4) Bonus drops (optional)
-  let bonusEnsured = 0;
+  // 4) Bonus drops (optional) - safe inserts only
+  let bonusCreated = 0;
   if (BONUS_DROPS > 0) {
     for (let i = 0; i < BONUS_DROPS; i++) {
-      const scheduledAt = new Date(Date.now() + (i + 1) * 60 * 60 * 1000); // +1h, +2h...
+      const scheduledAt = new Date(Date.now() + (i + 1) * 60 * 60 * 1000);
       try {
         await prisma.bonusDrop.create({
           data: {
@@ -146,15 +145,15 @@ async function main() {
             status: 'SCHEDULED',
           },
         });
-        bonusEnsured++;
+        bonusCreated++;
       } catch {
         // ignore duplicates if rerun
       }
     }
   }
-  console.log('[dev-populate] ✅ BonusDrops ensured (new inserts):', bonusEnsured);
+  console.log('[dev-populate] ✅ BonusDrops ensured:', bonusCreated);
 
-  // 5) Public entrants (optional)
+  // 5) Public entrants (optional) - safe inserts only
   const demoEntrants = [
     { clerkId: 'dev_clerk_01', xHandle: 'xpotbet', xName: 'XPOT', followers: 1200, verified: false },
     { clerkId: 'dev_clerk_02', xHandle: 'solana', xName: 'Solana', followers: 3000000, verified: true },
@@ -163,8 +162,8 @@ async function main() {
   ];
 
   const targetEntrants = demoEntrants.slice(0, Math.min(ENTRIES, demoEntrants.length));
+  let entrantsCreated = 0;
 
-  let entrantsEnsured = 0;
   for (const e of targetEntrants) {
     try {
       await prisma.drawEntry.create({
@@ -178,33 +177,16 @@ async function main() {
           verified: e.verified,
         },
       });
-      entrantsEnsured++;
+      entrantsCreated++;
     } catch {
       // already exists (unique drawId+clerkId)
     }
   }
 
-  console.log('[dev-populate] ✅ Entrants ensured (new inserts):', entrantsEnsured);
+  console.log('[dev-populate] ✅ Entrants ensured:', entrantsCreated);
 
-  // Summary
-  const totals = await Promise.all([
-    prisma.draw.count(),
-    prisma.wallet.count(),
-    prisma.ticket.count({ where: { drawId: draw.id } }),
-    prisma.bonusDrop.count({ where: { drawId: draw.id } }),
-    prisma.drawEntry.count({ where: { drawId: draw.id } }),
-  ]);
-
-  console.log('[dev-populate] ✅ Totals:', {
-    draws: totals[0],
-    wallets: totals[1],
-    ticketsInTodayDraw: totals[2],
-    bonusDropsInTodayDraw: totals[3],
-    entrantsInTodayDraw: totals[4],
-  });
-
-  console.log('[dev-populate] Done.');
-  console.log('[dev-populate] Tip: max tickets per draw = wallets count (because @@unique([walletId, drawId])).');
+  console.log('[dev-populate] ✅ Done.');
+  console.log('[dev-populate] Tip: with @@unique([walletId, drawId]) tickets cap per draw = wallets count.');
 }
 
 main()
