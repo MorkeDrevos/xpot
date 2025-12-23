@@ -663,34 +663,18 @@ function useBonusActive() {
 
     async function probe() {
       try {
-        // IMPORTANT: Use the real route that exists in your app to avoid 404 console noise.
-        // You already have /app/api/bonus/live/route.ts in the project.
-        const r = await fetch('/api/bonus/live', { cache: 'no-store' });
-        if (!alive) return;
+       const r = await fetch('/api/bonus/upcoming', { cache: 'no-store' });
+if (!alive) return;
 
-        if (!r.ok) {
-          setActive(false);
-          return;
-        }
+if (!r.ok) {
+  setActive(false);
+  return;
+}
 
-        const data = (await r.json().catch(() => null)) as any;
+const data = (await r.json().catch(() => null)) as any;
 
-        // Accept multiple shapes:
-        // - { active: true }
-        // - { isActive: true }
-        // - { enabled: true }
-        // - { status: 'active'|'running' }
-        // - { items: [...] } -> active if any UPCOMING (or "active") exists
-        const on =
-          data?.active === true ||
-          data?.isActive === true ||
-          data?.enabled === true ||
-          data?.status === 'active' ||
-          data?.status === 'running' ||
-          (Array.isArray(data?.items) && data.items.some((x: any) => String(x?.status).toUpperCase() === 'UPCOMING')) ||
-          (Array.isArray(data) && data.some((x: any) => String(x?.status).toUpperCase() === 'UPCOMING'));
-
-        setActive(Boolean(on));
+// "active" if there's an upcoming bonus object
+setActive(Boolean(data?.bonus?.scheduledAt));
       } catch {
         if (!alive) return;
         setActive(false);
