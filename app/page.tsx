@@ -293,7 +293,7 @@ function MiniStat({
       : 'text-slate-200';
 
   return (
-    <div className="rounded-2xl border border-slate-900/70 bg-slate-950/70 px-4 py-3">
+    <div className="rounded-2xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.05]">
       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <div className={`mt-1 font-mono text-sm ${toneCls}`}>{value}</div>
     </div>
@@ -415,26 +415,36 @@ function RoyalContractBar({ mint }: { mint: string }) {
 function PrinciplesStrip() {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
-        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.12),transparent_60%)]" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Eligibility</p>
-        <p className="mt-1 text-sm font-semibold text-slate-100">Hold XPOT</p>
-        <p className="mt-1 text-[12px] text-slate-400">No tickets, no purchase flow</p>
-      </div>
-
-      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
-        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.12),transparent_62%)]" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Identity</p>
-        <p className="mt-1 text-sm font-semibold text-slate-100">Handle-based</p>
-        <p className="mt-1 text-[12px] text-slate-400">Winners shown by @handle</p>
-      </div>
-
-      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
-        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_100%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Proof</p>
-        <p className="mt-1 text-sm font-semibold text-slate-100">On-chain</p>
-        <p className="mt-1 text-[12px] text-slate-400">Verify payouts in explorer</p>
-      </div>
+      {[
+        {
+          k: 'Eligibility',
+          v: 'Hold XPOT',
+          s: 'No tickets, no purchase flow',
+          glow: 'bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.10),transparent_62%)]',
+        },
+        {
+          k: 'Identity',
+          v: 'Handle-based',
+          s: 'Winners shown by @handle',
+          glow: 'bg-[radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.10),transparent_64%)]',
+        },
+        {
+          k: 'Proof',
+          v: 'On-chain',
+          s: 'Verify payouts in explorer',
+          glow: 'bg-[radial-gradient(circle_at_100%_0%,rgba(var(--xpot-gold),0.10),transparent_64%)]',
+        },
+      ].map(it => (
+        <div
+          key={it.k}
+          className="relative overflow-hidden rounded-2xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.05]"
+        >
+          <div className={`pointer-events-none absolute -inset-24 opacity-80 blur-3xl ${it.glow}`} />
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{it.k}</p>
+          <p className="mt-1 text-sm font-semibold text-slate-100">{it.v}</p>
+          <p className="mt-1 text-[12px] text-slate-400">{it.s}</p>
+        </div>
+      ))}
     </div>
   );
 }
