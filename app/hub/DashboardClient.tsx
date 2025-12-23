@@ -243,8 +243,7 @@ function ymdKeyLocal(d = new Date()) {
   return `${yy}-${mm}-${dd}`;
 }
 
-function seededPick<T>(seed: string, arr: T[]) {
-  // simple deterministic hash
+function seededPick<T>(seed: string, arr: readonly T[]) {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i++) {
     h ^= seed.charCodeAt(i);
