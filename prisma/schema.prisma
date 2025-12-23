@@ -1,209 +1,124 @@
-// prisma/schema.prisma
+// app/api/hub/streak/route.ts
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-generator client {
-  provider = "prisma-client-js"
+import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/prisma';
+
+function utcYmd(d = new Date()) {
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
 }
 
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+function yesterdayYmd(todayYmd: string) {
+  const d = new Date(`${todayYmd}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
-// ─────────────────────────────────────────────
-// Enums
-// ─────────────────────────────────────────────
+async function getOrCreateUserIdByClerkId(clerkId: string) {
+  const existing = await prisma.user.findUnique({
+    where: { clerkId },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
 
-enum TicketStatus {
-  IN_DRAW
-  WON
-  CLAIMED
-  NOT_PICKED
-  EXPIRED
+  const created = await prisma.user.create({
+    data: { clerkId },
+    select: { id: true },
+  });
+  return created.id;
 }
 
-enum BonusDropStatus {
-  SCHEDULED
-  FIRED
-  CANCELLED
+export async function GET() {
+  try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
+
+    const userId = await getOrCreateUserIdByClerkId(clerkId);
+    const today = utcYmd();
+
+    const row = await prisma.hubStreak.upsert({
+      where: { userId },
+      create: { userId, days: 0, lastDoneYmd: null },
+      update: {},
+      select: { days: true, lastDoneYmd: true },
+    });
+
+    const todayDone = row.lastDoneYmd === today;
+
+    return NextResponse.json(
+      {
+        ok: true,
+        streak: {
+          days: row.days,
+          todayDone,
+          lastDoneYmd: row.lastDoneYmd ?? null,
+        },
+      },
+      { status: 200 },
+    );
+  } catch (err: any) {
+    console.error('[XPOT] /api/hub/streak GET error:', err);
+    return NextResponse.json({ ok: false, error: err?.message || 'INTERNAL_ERROR' }, { status: 500 });
+  }
 }
 
-enum WinnerKind {
-  MAIN
-  BONUS
-}
+export async function POST() {
+  try {
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
 
-enum OpsMode {
-  MANUAL
-  AUTO
-}
+    const userId = await getOrCreateUserIdByClerkId(clerkId);
+    const today = utcYmd();
+    const yesterday = yesterdayYmd(today);
 
-// ─────────────────────────────────────────────
-// Core models
-// ─────────────────────────────────────────────
+    const current = await prisma.hubStreak.upsert({
+      where: { userId },
+      create: { userId, days: 0, lastDoneYmd: null },
+      update: {},
+      select: { id: true, days: true, lastDoneYmd: true },
+    });
 
-model OpsConfig {
-  singleton String @id @default("singleton")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  mode OpsMode @default(MANUAL)
-}
+    if (current.lastDoneYmd === today) {
+      return NextResponse.json(
+        {
+          ok: true,
+          streak: {
+            days: current.days,
+            todayDone: true,
+            lastDoneYmd: today,
+          },
+        },
+        { status: 200 },
+      );
+    }
 
-model User {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+    const nextDays = current.lastDoneYmd === yesterday ? current.days + 1 : 1;
 
-  clerkId    String @unique
-  xUserId    String? @unique
-  xHandle    String? @unique
-  xName      String?
-  xAvatarUrl String?
+    const updated = await prisma.hubStreak.update({
+      where: { id: current.id },
+      data: { days: nextDays, lastDoneYmd: today },
+      select: { days: true, lastDoneYmd: true },
+    });
 
-  wallets     Wallet[]
-  preference  UserPreference?
-  hubStreak   HubStreak?
-
-  @@index([xHandle])
-}
-
-model Wallet {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  address String @unique
-
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
-  tickets Ticket[]
-
-  @@index([userId])
-}
-
-model Draw {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  drawDate DateTime @unique
-  closesAt DateTime?
-  status String @default("open")
-
-  tickets    Ticket[]
-  winners    Winner[]
-  bonusDrops BonusDrop[]
-  entries    DrawEntry[]
-}
-
-model Ticket {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  code String @unique
-
-  walletId String
-  wallet   Wallet @relation(fields: [walletId], references: [id])
-
-  walletAddress String
-  status TicketStatus @default(IN_DRAW)
-
-  drawId String
-  draw   Draw @relation(fields: [drawId], references: [id])
-
-  winners Winner[]
-
-  @@unique([walletId, drawId])
-  @@index([walletId, drawId, status, walletAddress])
-}
-
-model Winner {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  drawId String
-  draw   Draw   @relation(fields: [drawId], references: [id])
-
-  ticketId String
-  ticket   Ticket @relation(fields: [ticketId], references: [id])
-
-  ticketCode    String
-  walletAddress String
-
-  jackpotUsd Float   @default(0)
-  payoutUsd  Float   @default(0)
-  isPaidOut  Boolean @default(false)
-  txUrl      String?
-
-  kind  WinnerKind @default(MAIN)
-  label String?
-
-  @@index([drawId, ticketId, walletAddress])
-}
-
-model BonusDrop {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  drawId String
-  draw   Draw   @relation(fields: [drawId], references: [id])
-
-  label       String
-  amountXpot  Int
-  scheduledAt DateTime
-  status BonusDropStatus @default(SCHEDULED)
-
-  @@index([drawId, status, scheduledAt])
-}
-
-model DrawEntry {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  drawId String
-  draw   Draw   @relation(fields: [drawId], references: [id])
-
-  clerkId String
-  xHandle String
-  xName   String?
-  xAvatarUrl String?
-
-  @@unique([drawId, clerkId])
-  @@index([drawId, xHandle])
-}
-
-// ─────────────────────────────────────────────
-// Hub personalization
-// ─────────────────────────────────────────────
-
-model UserPreference {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  soundEnabled Boolean @default(true)
-}
-
-model HubStreak {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  days        Int @default(0)
-  lastDoneDay DateTime?
-}
-
-model DailyMission {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  ymd   String @unique
-  title String
-  desc  String
-
-  @@index([ymd])
+    return NextResponse.json(
+      {
+        ok: true,
+        streak: {
+          days: updated.days,
+          todayDone: true,
+          lastDoneYmd: updated.lastDoneYmd ?? null,
+        },
+      },
+      { status: 200 },
+    );
+  } catch (err: any) {
+    console.error('[XPOT] /api/hub/streak POST error:', err);
+    return NextResponse.json({ ok: false, error: err?.message || 'INTERNAL_ERROR' }, { status: 500 });
+  }
 }
