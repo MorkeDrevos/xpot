@@ -6,48 +6,36 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
-function utcYmd(d = new Date()) {
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+function utcStartOfDay(d = new Date()) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
 }
 
-function yesterdayYmd(todayYmd: string) {
-  const d = new Date(`${todayYmd}T00:00:00.000Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
-
-async function getOrCreateUserIdByClerkId(clerkId: string) {
-  const existing = await prisma.user.findUnique({
-    where: { clerkId },
-    select: { id: true },
-  });
-  if (existing) return existing.id;
-
-  const created = await prisma.user.create({
-    data: { clerkId },
-    select: { id: true },
-  });
-  return created.id;
+function isSameUtcDay(a?: Date | null, b?: Date | null) {
+  if (!a || !b) return false;
+  return (
+    a.getUTCFullYear() === b.getUTCFullYear() &&
+    a.getUTCMonth() === b.getUTCMonth() &&
+    a.getUTCDate() === b.getUTCDate()
+  );
 }
 
 export async function GET() {
   try {
-    const { userId: clerkId } = auth();
+    const { userId } = await auth();
+    const clerkId = userId;
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
-    const userId = await getOrCreateUserIdByClerkId(clerkId);
-    const today = utcYmd();
-
     const row = await prisma.hubStreak.upsert({
-      where: { userId },
-      create: { userId, days: 0, lastDoneYmd: null },
+      where: { clerkId },
+      create: { clerkId, days: 0, lastDoneDay: null },
       update: {},
-      select: { days: true, lastDoneYmd: true },
+      select: { days: true, lastDoneDay: true },
     });
 
-    const todayDone = row.lastDoneYmd === today;
+    const today = utcStartOfDay();
+    const todayDone = isSameUtcDay(row.lastDoneDay, today);
 
     return NextResponse.json(
       {
@@ -55,7 +43,7 @@ export async function GET() {
         streak: {
           days: row.days,
           todayDone,
-          lastDoneYmd: row.lastDoneYmd ?? null,
+          lastDoneYmd: row.lastDoneDay ? row.lastDoneDay.toISOString().slice(0, 10) : null,
         },
       },
       { status: 200 },
@@ -68,42 +56,44 @@ export async function GET() {
 
 export async function POST() {
   try {
-    const { userId: clerkId } = auth();
+    const { userId } = await auth();
+    const clerkId = userId;
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
-    const userId = await getOrCreateUserIdByClerkId(clerkId);
-    const today = utcYmd();
-    const yesterday = yesterdayYmd(today);
+    const today = utcStartOfDay();
 
     const current = await prisma.hubStreak.upsert({
-      where: { userId },
-      create: { userId, days: 0, lastDoneYmd: null },
+      where: { clerkId },
+      create: { clerkId, days: 0, lastDoneDay: null },
       update: {},
-      select: { id: true, days: true, lastDoneYmd: true },
+      select: { id: true, days: true, lastDoneDay: true },
     });
 
-    if (current.lastDoneYmd === today) {
+    if (isSameUtcDay(current.lastDoneDay, today)) {
       return NextResponse.json(
         {
           ok: true,
           streak: {
             days: current.days,
             todayDone: true,
-            lastDoneYmd: today,
+            lastDoneYmd: today.toISOString().slice(0, 10),
           },
         },
         { status: 200 },
       );
     }
 
-    const nextDays = current.lastDoneYmd === yesterday ? current.days + 1 : 1;
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+    const nextDays = isSameUtcDay(current.lastDoneDay, yesterday) ? current.days + 1 : 1;
 
     const updated = await prisma.hubStreak.update({
       where: { id: current.id },
-      data: { days: nextDays, lastDoneYmd: today },
-      select: { days: true, lastDoneYmd: true },
+      data: { days: nextDays, lastDoneDay: today },
+      select: { days: true, lastDoneDay: true },
     });
 
     return NextResponse.json(
@@ -112,7 +102,7 @@ export async function POST() {
         streak: {
           days: updated.days,
           todayDone: true,
-          lastDoneYmd: updated.lastDoneYmd ?? null,
+          lastDoneYmd: updated.lastDoneDay ? updated.lastDoneDay.toISOString().slice(0, 10) : null,
         },
       },
       { status: 200 },
