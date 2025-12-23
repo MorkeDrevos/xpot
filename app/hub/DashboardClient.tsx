@@ -26,7 +26,10 @@ import {
   Wallet,
   X,
   Radio,
-  Timer,
+  Volume2,
+  VolumeX,
+  Flame,
+  Target,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -93,7 +96,7 @@ function StatusPill({
   children: React.ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky';
 }) {
-  // NOTE: "amber" now maps to vault-gold pill styling (readable on dark UI)
+  // NOTE: "amber" maps to vault-gold pill styling (readable on dark UI)
   const cls =
     tone === 'emerald'
       ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]'
@@ -118,9 +121,7 @@ function StatusPill({
 function TinyMeta({ label, value }: { label: string; value: string }) {
   return (
     <div className={SUBCARD}>
-      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-        {label}
-      </p>
+      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
     </div>
   );
@@ -146,11 +147,7 @@ function WalletStatusHint() {
     );
   }
 
-  return (
-    <p className="mt-2 text-xs text-slate-500">
-      Click “Select Wallet” and choose a wallet to connect.
-    </p>
-  );
+  return <p className="mt-2 text-xs text-slate-500">Click “Select Wallet” and choose a wallet to connect.</p>;
 }
 
 async function safeCopy(text: string) {
@@ -167,21 +164,36 @@ function initialFromHandle(h?: string | null) {
   return s ? s[0].toUpperCase() : 'X';
 }
 
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const m = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => setReduced(Boolean(m.matches));
+    apply();
+    m.addEventListener?.('change', apply);
+    return () => m.removeEventListener?.('change', apply);
+  }, []);
+  return reduced;
+}
+
 // ─────────────────────────────────────────────
-// Bonus visibility (hub)
-// Uses same endpoint pattern as home: /api/bonus/upcoming
-// "active" if there's an upcoming bonus object
+// Bonus hook (same endpoint as homepage)
 // ─────────────────────────────────────────────
 
-function useBonusUpcomingActive(enabled: boolean) {
-  const [active, setActive] = useState(false);
+type BonusUpcoming = {
+  id: string;
+  amountXpot: number;
+  scheduledAt: string; // ISO
+  status?: 'UPCOMING' | 'CLAIMED' | 'CANCELLED';
+  label?: string;
+};
+
+function useBonusUpcoming() {
+  const [bonus, setBonus] = useState<BonusUpcoming | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!enabled) {
-      setActive(false);
-      return;
-    }
-
     let alive = true;
 
     async function probe() {
@@ -190,15 +202,22 @@ function useBonusUpcomingActive(enabled: boolean) {
         if (!alive) return;
 
         if (!r.ok) {
-          setActive(false);
+          setBonus(null);
+          setLoading(false);
           return;
         }
 
         const data = (await r.json().catch(() => null)) as any;
-        setActive(Boolean(data?.bonus?.scheduledAt));
+        const b = data?.bonus ?? null;
+
+        if (b?.scheduledAt) setBonus(b as BonusUpcoming);
+        else setBonus(null);
+
+        setLoading(false);
       } catch {
         if (!alive) return;
-        setActive(false);
+        setBonus(null);
+        setLoading(false);
       }
     }
 
@@ -208,9 +227,172 @@ function useBonusUpcomingActive(enabled: boolean) {
       alive = false;
       window.clearInterval(t);
     };
-  }, [enabled]);
+  }, []);
 
-  return active;
+  return { bonus, loading, active: Boolean(bonus?.scheduledAt) };
+}
+
+// ─────────────────────────────────────────────
+// Daily mission (seeded for pre-launch)
+// ─────────────────────────────────────────────
+
+function ymdKeyLocal(d = new Date()) {
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+function seededPick<T>(seed: string, arr: T[]) {
+  // simple deterministic hash
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const idx = Math.abs(h) % arr.length;
+  return arr[idx];
+}
+
+function getTodayMission(seedExtra = '') {
+  const seed = `${ymdKeyLocal()}|xpot-mission|${seedExtra}`;
+  const missions = [
+    { title: 'Lock your identity', desc: 'Make sure your X handle is linked and visible in the dashboard.' },
+    { title: 'Verify eligibility', desc: 'Confirm your XPOT balance meets the minimum for today’s entry.' },
+    { title: 'Claim your entry', desc: 'Issue today’s ticket and keep your code ready.' },
+    { title: 'Proof mindset', desc: 'After draw time, verify the winners payout in an explorer.' },
+    { title: 'Invite one holder', desc: 'Bring one new holder in - XPOT grows on reputation.' },
+    { title: 'Stay consistent', desc: 'Show up daily. Streaks will matter after launch.' },
+  ] as const;
+
+  return seededPick(seed, missions);
+}
+
+// ─────────────────────────────────────────────
+// Entry ceremony (2s shimmer + stamp + optional chime)
+// ─────────────────────────────────────────────
+
+function playChime() {
+  try {
+    const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as any;
+    if (!AudioCtx) return;
+
+    const ctx = new AudioCtx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+
+    o.type = 'sine';
+    o.frequency.value = 880;
+
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+
+    setTimeout(() => {
+      o.stop();
+      ctx.close?.();
+    }, 300);
+  } catch {
+    // ignore
+  }
+}
+
+function EntryCeremony({
+  open,
+  code,
+  onClose,
+  soundEnabled,
+}: {
+  open: boolean;
+  code: string;
+  onClose: () => void;
+  soundEnabled: boolean;
+}) {
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    if (!open) return;
+    if (!reduced && soundEnabled) playChime();
+    const t = window.setTimeout(onClose, 2000);
+    return () => window.clearTimeout(t);
+  }, [open, onClose, soundEnabled, reduced]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-5">
+      <style jsx global>{`
+        @keyframes xpotCeremonySweep {
+          0% { transform: translateX(-140%) rotate(12deg); opacity: 0.0; }
+          10% { opacity: 0.35; }
+          55% { opacity: 0.14; }
+          100% { transform: translateX(160%) rotate(12deg); opacity: 0.0; }
+        }
+        @keyframes xpotStampIn {
+          0% { transform: scale(1.2) rotate(-6deg); opacity: 0; filter: blur(2px); }
+          55% { transform: scale(0.98) rotate(2deg); opacity: 1; filter: blur(0px); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .xpot-ceremony-sweep::before{
+          content:"";
+          position:absolute;
+          top:-55%;
+          left:-60%;
+          width:55%;
+          height:240%;
+          opacity:0;
+          transform: rotate(12deg);
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), rgba(56,189,248,0.12), rgba(16,185,129,0.10), transparent);
+          animation: xpotCeremonySweep 1.6s ease-in-out infinite;
+          mix-blend-mode: screen;
+          pointer-events:none;
+        }
+      `}</style>
+
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/70 shadow-[0_40px_140px_rgba(0,0,0,0.75)] backdrop-blur-xl">
+        <div className="xpot-ceremony-sweep absolute inset-0" />
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_80%_35%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_50%_100%,rgba(255,215,0,0.08),transparent_62%)]" />
+
+        <div className="relative p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+              Entry issued
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+              <Radio className="h-3.5 w-3.5" />
+              LIVE
+            </span>
+          </div>
+
+          <div className="mt-4">
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-400/18 bg-emerald-950/25 px-4 py-3">
+              <Ticket className="h-5 w-5 text-emerald-200" />
+              <span className="font-mono text-base text-slate-100">{code}</span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-center">
+            <div
+              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-200"
+              style={{ animation: reduced ? 'none' : 'xpotStampIn 420ms ease-out both' }}
+            >
+              STAMPED IN
+            </div>
+          </div>
+
+          <p className="mt-4 text-center text-xs text-slate-400">
+            Your daily entry is live. Come back after draw time for proof.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -257,6 +439,11 @@ export default function DashboardClient() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
+
+  // Ceremony state
+  const [showCeremony, setShowCeremony] = useState(false);
+  const [ceremonyCode, setCeremonyCode] = useState('');
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Wallet
   const { publicKey, connected } = useWallet();
@@ -314,8 +501,45 @@ export default function DashboardClient() {
   // Lock overlay ON when missing auth/X
   const showLock = isUserLoaded ? !isAuthedEnough : true;
 
-  // Bonus XPOT (hub) - only start polling when authed
-  const bonusActive = useBonusUpcomingActive(isAuthedEnough);
+  // Bonus in Hub
+  const { bonus: upcomingBonus, active: bonusActive } = useBonusUpcoming();
+
+  // Streak placeholder (local, healthy “come back daily”)
+  const [streakDays, setStreakDays] = useState(0);
+  const [streakTodayDone, setStreakTodayDone] = useState(false);
+
+  // Today mission (seeded)
+  const mission = useMemo(() => getTodayMission(handle || ''), [handle]);
+
+  // Load sound toggle + streak from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const s = window.localStorage.getItem('xpot_hub_sound_enabled');
+    if (s === '0') setSoundEnabled(false);
+
+    const key = 'xpot_hub_streak_v1';
+    const raw = window.localStorage.getItem(key);
+    if (raw) {
+      try {
+        const obj = JSON.parse(raw) as { days: number; lastYmd: string; doneYmd?: string };
+        const today = ymdKeyLocal();
+        const done = obj.doneYmd === today;
+        setStreakDays(Number.isFinite(obj.days) ? obj.days : 0);
+        setStreakTodayDone(done);
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  const persistStreak = useCallback((days: number, done: boolean) => {
+    if (typeof window === 'undefined') return;
+    const key = 'xpot_hub_streak_v1';
+    const today = ymdKeyLocal();
+    const obj = { days, lastYmd: today, doneYmd: done ? today : '' };
+    window.localStorage.setItem(key, JSON.stringify(obj));
+  }, []);
 
   // ─────────────────────────────────────────────
   // Sync X identity into DB whenever user is loaded
@@ -478,7 +702,6 @@ export default function DashboardClient() {
           }
         } else {
           setXpotBalance(null);
-          simulateRitual(false);
           setHistoryEntries([]);
           setHistoryError(null);
           setLoadingHistory(false);
@@ -552,7 +775,6 @@ export default function DashboardClient() {
     if (!currentWalletAddress) {
       setTicketClaimed(false);
       setTodaysTicket(null);
-      simulateRitual(false);
       return;
     }
 
@@ -563,11 +785,9 @@ export default function DashboardClient() {
     if (myTicket) {
       setTicketClaimed(true);
       setTodaysTicket(myTicket);
-      simulateRitual(true);
     } else {
       setTicketClaimed(false);
       setTodaysTicket(null);
-      simulateRitual(false);
     }
   }, [entries, currentWalletAddress]);
 
@@ -577,6 +797,19 @@ export default function DashboardClient() {
     if (!ok) return;
     setCopiedId(entry.id);
     setTimeout(() => setCopiedId(null), 1500);
+  }
+
+  function bumpStreakAfterClaim() {
+    const today = ymdKeyLocal();
+    if (streakTodayDone) return;
+
+    const nextDays = Math.max(0, streakDays) + 1;
+    setStreakDays(nextDays);
+    setStreakTodayDone(true);
+    persistStreak(nextDays, true);
+
+    // small delight: if sound on, tiny chime
+    if (soundEnabled) playChime();
   }
 
   async function handleClaimTicket() {
@@ -659,15 +892,18 @@ export default function DashboardClient() {
       setTodaysTicket(ticket);
       setClaimError(null);
 
+      // Ceremony
+      setCeremonyCode(ticket?.code || '');
+      setShowCeremony(true);
+
+      // Streak bump (healthy daily ritual)
+      bumpStreakAfterClaim();
+
       // Premium feel: sync immediately after claim
       refreshAll('manual');
-      simulateRitual(true);
-      triggerRitualStamp();
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
-      setClaimError(
-        'Unexpected error while getting your ticket. Please try again.',
-      );
+      setClaimError('Unexpected error while getting your ticket. Please try again.');
     } finally {
       setClaiming(false);
     }
@@ -688,32 +924,15 @@ export default function DashboardClient() {
     !!normalizedWallet &&
     winner.walletAddress?.toLowerCase() === normalizedWallet;
 
-  // ─────────────────────────────────────────────
-  // “Alive / ritual” micro-feel (no backend needed)
-  // ─────────────────────────────────────────────
-  const [ritualOn, setRitualOn] = useState(false);
-  const [ritualStamp, setRitualStamp] = useState(0);
-  const [aliveTick, setAliveTick] = useState(0);
-
-  useEffect(() => {
-    const t = window.setInterval(() => setAliveTick(v => v + 1), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-
-  function simulateRitual(on: boolean) {
-    setRitualOn(on);
+  // sound toggle persist
+  function toggleSound() {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('xpot_hub_sound_enabled', next ? '1' : '0');
+    }
+    if (next) playChime();
   }
-
-  function triggerRitualStamp() {
-    setRitualStamp(v => v + 1);
-  }
-
-  const ritualLine =
-    aliveTick % 6 === 0
-      ? 'signal: warm'
-      : aliveTick % 9 === 0
-      ? 'signal: sync'
-      : 'signal: stable';
 
   // ─────────────────────────────────────────────
   // Render
@@ -721,44 +940,13 @@ export default function DashboardClient() {
 
   return (
     <>
-      <style jsx global>{`
-        @keyframes xpotHubPulse {
-          0% { opacity: 0.55; transform: translateZ(0) scale(1); }
-          50% { opacity: 0.95; transform: translateZ(0) scale(1.01); }
-          100% { opacity: 0.55; transform: translateZ(0) scale(1); }
-        }
-        @keyframes xpotStampSweep {
-          0% { transform: translateX(-140%) rotate(8deg); opacity: 0; }
-          12% { opacity: 0.26; }
-          60% { opacity: 0.12; }
-          100% { transform: translateX(160%) rotate(8deg); opacity: 0; }
-        }
-        .xpot-stamp::before {
-          content: "";
-          pointer-events: none;
-          position: absolute;
-          top: -40%;
-          left: -60%;
-          width: 55%;
-          height: 220%;
-          opacity: 0;
-          transform: rotate(8deg);
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255,255,255,0.10),
-            rgba(56,189,248,0.10),
-            rgba(16,185,129,0.10),
-            transparent
-          );
-          animation: xpotStampSweep 5.8s ease-in-out infinite;
-          mix-blend-mode: screen;
-        }
-      `}</style>
+      <PremiumWalletModal open={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
 
-      <PremiumWalletModal
-        open={walletModalOpen}
-        onClose={() => setWalletModalOpen(false)}
+      <EntryCeremony
+        open={showCeremony}
+        code={ceremonyCode}
+        soundEnabled={soundEnabled}
+        onClose={() => setShowCeremony(false)}
       />
 
       {/* IMPORTANT: overlay is NOT inside the blurred container */}
@@ -773,13 +961,7 @@ export default function DashboardClient() {
       />
 
       {/* Hub behind overlay only */}
-      <div
-        className={
-          showLock
-            ? 'pointer-events-none select-none blur-[2px] opacity-95'
-            : ''
-        }
-      >
+      <div className={showLock ? 'pointer-events-none select-none blur-[2px] opacity-95' : ''}>
         <XpotPageShell
           topBarProps={{
             pillText: 'HOLDER DASHBOARD',
@@ -804,10 +986,17 @@ export default function DashboardClient() {
                   </span>
                 </div>
 
-                <Link
-                  href="/hub/history"
+                <button
+                  type="button"
+                  onClick={toggleSound}
                   className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                  title={soundEnabled ? 'Sound on' : 'Sound off'}
                 >
+                  {soundEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
+                  {soundEnabled ? 'Sound' : 'Muted'}
+                </button>
+
+                <Link href="/hub/history" className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
                   <History className="mr-2 h-4 w-4" />
                   <span className="ml-1">History</span>
                 </Link>
@@ -819,11 +1008,11 @@ export default function DashboardClient() {
                     onClick={() => setWalletModalOpen(true)}
                     className="text-left leading-tight hover:opacity-90"
                   >
-                    <div className="text-[28px] font-medium text-slate-100">
-                      Select Wallet
+                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+                      Wallet bay
                     </div>
-                    <div className="text-[28px] font-medium text-slate-100">
-                      Change wallet
+                    <div className="text-[13px] font-semibold text-slate-100">
+                      {walletConnected ? 'Change wallet' : 'Select wallet'}
                     </div>
                   </button>
                   <WalletStatusHint />
@@ -837,10 +1026,7 @@ export default function DashboardClient() {
                     </button>
                   </SignOutButton>
                 ) : (
-                  <Link
-                    href="/sign-in?redirect_url=/hub"
-                    className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                  >
+                  <Link href="/sign-in?redirect_url=/hub" className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
                     <span>Sign in</span>
                   </Link>
                 )}
@@ -848,73 +1034,94 @@ export default function DashboardClient() {
             ),
           }}
         >
-          {/* DAILY RITUAL STRIP */}
-          <section className="mt-6">
-            <div className="relative overflow-hidden rounded-[28px] border border-slate-800/70 bg-slate-950/55 p-5 shadow-[0_28px_120px_rgba(0,0,0,0.55)]">
-              <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.16),transparent_60%),radial-gradient(circle_at_88%_30%,rgba(56,189,248,0.12),transparent_65%)]" />
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <StatusPill tone="emerald">
-                  <Radio className="h-3.5 w-3.5 animate-[xpotHubPulse_2.6s_ease-in-out_infinite]" />
-                  Daily ritual
+          {/* TOP RITUAL STRIP */}
+          <section className="mt-6 grid gap-4 lg:grid-cols-3">
+            {/* Mission */}
+            <section className={CARD}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Today’s mission</p>
+                  <p className="mt-1 text-xs text-slate-400">A small daily nudge - seeded in pre-launch.</p>
+                </div>
+                <StatusPill tone="sky">
+                  <Target className="h-3.5 w-3.5" />
+                  Daily
                 </StatusPill>
-
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <Timer className="h-4 w-4 text-slate-400" />
-                  Next draw in <span className="font-mono text-slate-200">{countdown}</span>
-                </div>
               </div>
 
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <div className={SUBCARD}>
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Today
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-100">
-                    {(handle ? `@${handle.replace(/^@/, '')}` : name) || 'XPOT user'}
-                  </p>
-                </div>
-
-                <div className={SUBCARD}>
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Status
-                  </p>
-                  <p className="mt-1 font-mono text-sm text-slate-100">{ritualLine}</p>
-                </div>
-
-                <div className={SUBCARD}>
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Entry
-                  </p>
-                  {ticketClaimed ? (
-                    <p className="mt-1 text-sm font-semibold text-emerald-200">Active</p>
-                  ) : (
-                    <p className="mt-1 text-sm font-semibold text-slate-200">Not claimed</p>
-                  )}
-                </div>
+              <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-100">{mission.title}</p>
+                <p className="mt-1 text-xs text-slate-500">{mission.desc}</p>
               </div>
-            </div>
-          </section>
 
-          {/* BONUS XPOT (HUB) */}
-          {bonusActive ? (
-            <section className="mt-4">
-              <div className="relative overflow-hidden rounded-[28px] border border-emerald-400/22 bg-slate-950/55 p-3 shadow-[0_30px_110px_rgba(16,185,129,0.12)]">
-                <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_14%_22%,rgba(16,185,129,0.22),transparent_62%),radial-gradient(circle_at_88%_24%,rgba(56,189,248,0.12),transparent_64%)]" />
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 pt-2">
+              <p className="mt-3 text-[11px] text-slate-500">
+                Later this becomes DB-driven and personalized.
+              </p>
+            </section>
+
+            {/* Streak */}
+            <section className={CARD}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Daily streak</p>
+                  <p className="mt-1 text-xs text-slate-400">Healthy consistency - not a casino loop.</p>
+                </div>
+                <StatusPill tone={streakTodayDone ? 'emerald' : 'amber'}>
+                  <Flame className="h-3.5 w-3.5" />
+                  {streakTodayDone ? 'Today done' : 'Pending'}
+                </StatusPill>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <TinyMeta label="Streak days" value={`${Math.max(0, streakDays)}`} />
+                <TinyMeta label="Resets" value="Not in pre-launch" />
+              </div>
+
+              <p className="mt-3 text-[11px] text-slate-500">
+                Streaks activate fully after launch with on-chain proof + anti-gaming.
+              </p>
+            </section>
+
+            {/* Bonus XPOT */}
+            <section className={CARD}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Bonus XPOT</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Shows automatically when a bonus drop is scheduled.
+                  </p>
+                </div>
+                {bonusActive ? (
                   <StatusPill tone="emerald">
                     <Sparkles className="h-3.5 w-3.5" />
-                    Bonus XPOT active
+                    Active
                   </StatusPill>
-                  <p className="text-xs text-slate-400">Same entry - paid on-chain</p>
-                </div>
-
-                <div className="rounded-2xl border border-emerald-500/18 bg-emerald-950/15 p-3">
-                  <BonusStrip variant="hub" />
-                </div>
+                ) : (
+                  <StatusPill tone="slate">None</StatusPill>
+                )}
               </div>
+
+              {bonusActive && upcomingBonus ? (
+                <div className="mt-4 rounded-[22px] border border-emerald-400/18 bg-emerald-950/20 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
+                      Scheduled
+                    </span>
+                    <span className="text-[11px] font-mono text-emerald-100/90">
+                      {new Date(upcomingBonus.scheduledAt).toLocaleString('de-DE')}
+                    </span>
+                  </div>
+
+                  {/* reuse the same component as home (safe) */}
+                  <BonusStrip variant="home" />
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3 text-xs text-slate-500">
+                  No bonus scheduled right now.
+                </div>
+              )}
             </section>
-          ) : null}
+          </section>
 
           {/* MAIN GRID */}
           <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -924,12 +1131,8 @@ export default function DashboardClient() {
               <section className={CARD}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">
-                      Connected identity
-                    </p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Wallet and X identity used for XPOT draws
-                    </p>
+                    <p className="text-sm font-semibold text-slate-100">Connected identity</p>
+                    <p className="mt-1 text-xs text-slate-400">Wallet and X identity used for XPOT draws</p>
                   </div>
 
                   <StatusPill tone={handle ? 'emerald' : 'amber'}>
@@ -951,9 +1154,7 @@ export default function DashboardClient() {
                   />
 
                   <div className={SUBCARD}>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                      Eligibility
-                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Eligibility</p>
                     <div className="mt-1">
                       {typeof xpotBalance === 'number' ? (
                         hasRequiredXpot ? (
@@ -974,13 +1175,9 @@ export default function DashboardClient() {
                   </div>
 
                   <div className={SUBCARD}>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                      Wallet
-                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Wallet</p>
                     <p className="mt-1 font-mono text-sm text-slate-100">
-                      {currentWalletAddress
-                        ? shortWallet(currentWalletAddress)
-                        : 'Not connected'}
+                      {currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
                     </p>
                   </div>
                 </div>
@@ -1000,9 +1197,7 @@ export default function DashboardClient() {
                   )}
 
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-100">
-                      {name}
-                    </p>
+                    <p className="truncate text-sm font-semibold text-slate-100">{name}</p>
                     <p className="text-xs text-slate-500">
                       Holding requirement:{' '}
                       <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
@@ -1010,17 +1205,13 @@ export default function DashboardClient() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="mt-4 flex items-center justify-between gap-3">
                   <div className="text-xs text-slate-500">
-                    Next draw in{' '}
-                    <span className="font-mono text-slate-200">{countdown}</span>
+                    Next draw in <span className="font-mono text-slate-200">{countdown}</span>
                   </div>
                   <div className="text-xs text-slate-500">
                     {lastSyncedAt ? (
-                      <span
-                        key={syncPulse}
-                        className="inline-flex items-center gap-2"
-                      >
+                      <span key={syncPulse} className="inline-flex items-center gap-2">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
                         Synced {new Date(lastSyncedAt).toLocaleTimeString('de-DE')}
                       </span>
@@ -1035,11 +1226,9 @@ export default function DashboardClient() {
               <section className={CARD}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">
-                      Today’s XPOT
-                    </p>
+                    <p className="text-sm font-semibold text-slate-100">Today’s XPOT</p>
                     <p className="mt-1 text-xs text-slate-400">
-                      Make it a daily ritual. Claim your entry when your wallet meets the minimum XPOT.
+                      Claim a free entry if your wallet holds the minimum XPOT.
                     </p>
                   </div>
 
@@ -1049,46 +1238,9 @@ export default function DashboardClient() {
                   </StatusPill>
                 </div>
 
-                {/* Ritual “stamp” */}
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                        Daily stamp
-                      </p>
-                    </div>
-                    <p className="text-xs text-slate-500">
-                      Cutoff <span className="font-mono text-slate-200">{countdown}</span>
-                    </p>
-                  </div>
-
-                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                    <TinyMeta
-                      label="Eligibility"
-                      value={
-                        typeof xpotBalance === 'number'
-                          ? hasRequiredXpot
-                            ? 'Eligible'
-                            : 'Below minimum'
-                          : 'Checking…'
-                      }
-                    />
-                    <TinyMeta
-                      label="Wallet"
-                      value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
-                    />
-                    <TinyMeta
-                      label="Entry"
-                      value={ticketClaimed ? 'Locked' : 'Available'}
-                    />
-                  </div>
-                </div>
-
                 {!walletConnected && (
                   <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3 text-xs text-slate-400">
-                    Activate your wallet to check eligibility and claim today’s
-                    entry.
+                    Activate your wallet to check eligibility and claim today’s entry.
                   </div>
                 )}
 
@@ -1103,9 +1255,7 @@ export default function DashboardClient() {
                       {claiming ? 'Generating…' : 'Claim today’s entry'}
                     </button>
 
-                    {claimError && (
-                      <p className="mt-3 text-xs xpot-gold-text">{claimError}</p>
-                    )}
+                    {claimError && <p className="mt-3 text-xs xpot-gold-text">{claimError}</p>}
 
                     {typeof xpotBalance === 'number' && !hasRequiredXpot && (
                       <p className="mt-3 text-xs text-slate-500">
@@ -1120,18 +1270,11 @@ export default function DashboardClient() {
                 )}
 
                 {walletConnected && ticketClaimed && todaysTicket && (
-                  <div
-                    key={ritualStamp}
-                    className="relative mt-4 overflow-hidden rounded-2xl border border-emerald-400/18 bg-emerald-500/10 px-4 py-3 xpot-stamp"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/80">
-                      Your ticket code
-                    </p>
+                  <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Your ticket code</p>
 
                     <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-                      <p className="font-mono text-base text-slate-100">
-                        {todaysTicket.code}
-                      </p>
+                      <p className="font-mono text-base text-slate-100">{todaysTicket.code}</p>
 
                       <button
                         type="button"
@@ -1144,10 +1287,7 @@ export default function DashboardClient() {
                     </div>
 
                     <p className="mt-2 text-xs text-slate-500">
-                      Status:{' '}
-                      <span className="font-semibold text-emerald-200">
-                        IN DRAW
-                      </span>
+                      Status: <span className="font-semibold text-slate-200">IN DRAW</span>
                       {' · '}Issued {formatDateTime(todaysTicket.createdAt)}
                     </p>
                   </div>
@@ -1155,8 +1295,7 @@ export default function DashboardClient() {
 
                 {walletConnected && ticketClaimed && !todaysTicket && (
                   <p className="mt-4 text-xs text-slate-500">
-                    Your wallet has an entry today, but it hasn’t loaded yet.
-                    Refresh the page.
+                    Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.
                   </p>
                 )}
 
@@ -1165,16 +1304,6 @@ export default function DashboardClient() {
                     You won today’s XPOT. Check your wallet and the winners feed.
                   </div>
                 )}
-
-                {ritualOn ? (
-                  <p className="mt-3 text-xs text-slate-500">
-                    Your daily stamp is locked. Come back tomorrow for the next one.
-                  </p>
-                ) : (
-                  <p className="mt-3 text-xs text-slate-500">
-                    Claiming is free - your wallet stays self-custody. Identity stays @handle-first.
-                  </p>
-                )}
               </section>
 
               {/* TODAY ENTRIES (your wallet only) */}
@@ -1182,12 +1311,8 @@ export default function DashboardClient() {
                 <section className={CARD}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-slate-100">
-                        Your entries today
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Entries tied to your connected wallet.
-                      </p>
+                      <p className="text-sm font-semibold text-slate-100">Your entries today</p>
+                      <p className="mt-1 text-xs text-slate-400">Entries tied to your connected wallet.</p>
                     </div>
                     <StatusPill tone="sky">
                       <Wallet className="h-3.5 w-3.5" />
@@ -1209,9 +1334,7 @@ export default function DashboardClient() {
                           className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <p className="font-mono text-sm text-slate-100">
-                              {t.code}
-                            </p>
+                            <p className="font-mono text-sm text-slate-100">{t.code}</p>
                             <StatusPill
                               tone={
                                 t.status === 'in-draw'
@@ -1224,9 +1347,7 @@ export default function DashboardClient() {
                               {t.status.replace('-', ' ')}
                             </StatusPill>
                           </div>
-                          <p className="mt-1 text-xs text-slate-500">
-                            Issued {formatDateTime(t.createdAt)}
-                          </p>
+                          <p className="mt-1 text-xs text-slate-500">Issued {formatDateTime(t.createdAt)}</p>
                         </div>
                       ))
                     )}
@@ -1241,12 +1362,8 @@ export default function DashboardClient() {
               <section className={CARD}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">
-                      Recent winners
-                    </p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Latest completed draws across all holders.
-                    </p>
+                    <p className="text-sm font-semibold text-slate-100">Recent winners</p>
+                    <p className="mt-1 text-xs text-slate-400">Latest completed draws across all holders.</p>
                   </div>
                   <StatusPill tone="emerald">
                     <Sparkles className="h-3.5 w-3.5" />
@@ -1260,9 +1377,7 @@ export default function DashboardClient() {
                   ) : winnersError ? (
                     <p className="text-xs xpot-gold-text">{winnersError}</p>
                   ) : recentWinners.length === 0 ? (
-                    <p className="text-xs text-slate-500">
-                      No completed draws yet.
-                    </p>
+                    <p className="text-xs text-slate-500">No completed draws yet.</p>
                   ) : (
                     recentWinners.map(w => {
                       const h = w.handle ? w.handle.replace(/^@/, '') : null;
@@ -1272,9 +1387,7 @@ export default function DashboardClient() {
                           className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-slate-400">
-                              {formatDate(w.drawDate)}
-                            </p>
+                            <p className="text-xs text-slate-400">{formatDate(w.drawDate)}</p>
                             {h ? (
                               <StatusPill tone="sky">
                                 <X className="h-3.5 w-3.5" />
@@ -1291,12 +1404,8 @@ export default function DashboardClient() {
                             </div>
 
                             <div className="min-w-0">
-                              <p className="truncate font-mono text-sm text-slate-100">
-                                {w.ticketCode}
-                              </p>
-                              <p className="mt-1 text-xs text-slate-500">
-                                {h ? `@${h}` : shortWallet(w.walletAddress)}
-                              </p>
+                              <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
+                              <p className="mt-1 text-xs text-slate-500">{h ? `@${h}` : shortWallet(w.walletAddress)}</p>
                             </div>
                           </div>
                         </div>
@@ -1310,9 +1419,7 @@ export default function DashboardClient() {
               <section className={CARD}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">
-                      Your draw history
-                    </p>
+                    <p className="text-sm font-semibold text-slate-100">Your draw history</p>
                     <p className="mt-1 text-xs text-slate-400">
                       Past entries for this wallet (wins, not-picked, expired).
                     </p>
@@ -1325,9 +1432,7 @@ export default function DashboardClient() {
 
                 <div className="mt-4 space-y-2">
                   {!walletConnected ? (
-                    <p className="text-xs text-slate-500">
-                      Connect your wallet to view history.
-                    </p>
+                    <p className="text-xs text-slate-500">Connect your wallet to view history.</p>
                   ) : loadingHistory ? (
                     <p className="text-xs text-slate-500">Loading…</p>
                   ) : historyError ? (
@@ -1341,9 +1446,7 @@ export default function DashboardClient() {
                         className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <p className="font-mono text-sm text-slate-100">
-                            {t.code}
-                          </p>
+                          <p className="font-mono text-sm text-slate-100">{t.code}</p>
                           <StatusPill
                             tone={
                               t.status === 'won'
@@ -1358,9 +1461,7 @@ export default function DashboardClient() {
                             {t.status.replace('-', ' ')}
                           </StatusPill>
                         </div>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {formatDateTime(t.createdAt)}
-                        </p>
+                        <p className="mt-1 text-xs text-slate-500">{formatDateTime(t.createdAt)}</p>
                       </div>
                     ))
                   )}
