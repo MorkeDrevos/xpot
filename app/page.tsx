@@ -561,7 +561,7 @@ function Accordion({ items }: { items: { q: string; a: string }[] }) {
         const isOpen = open === idx;
 
         return (
-          <div key={it.q} className="overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/55">
+          <div key={it.q} className="overflow-hidden rounded-[22px] bg-white/[0.03] ring-1 ring-white/[0.06]">
             <button
               type="button"
               onClick={() => setOpen(v => (v === idx ? null : idx))}
