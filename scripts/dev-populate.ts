@@ -1,152 +1,189 @@
 // scripts/dev-populate.ts
-//
-// Safe dev helper: creates today's draw (if missing) and inserts tickets (if below target).
-// - Never deletes anything
-// - Idempotent: re-running only tops up missing tickets
-//
-// Run:
-//   npx tsx scripts/dev-populate.ts
-// or:
-//   node --loader ts-node/esm scripts/dev-populate.ts
-//
-// Optional env:
-//   TARGET_TICKETS=50
-//   DRAW_JACKPOT_XPOT=2500
-//   DRAW_JACKPOT_USD=0
-//   DRAW_ROLLOVER_USD=0
-//   DRAW_CLOSES_IN_HOURS=24
-
 import 'dotenv/config';
-import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
-const prisma = new PrismaClient();
+function todayUtcBucket() {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const d = now.getUTCDate();
 
-function isoDayUTC(d = new Date()) {
-  // YYYY-MM-DD
-  return d.toISOString().slice(0, 10);
+  const start = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
+  // canonical "bucket key" stored in Draw.drawDate (unique)
+  const bucket = start;
+
+  return { start, end, bucket };
 }
 
-function getTodayRangeUTC() {
-  const day = isoDayUTC();
-  const start = new Date(`${day}T00:00:00.000Z`);
-  const end = new Date(`${day}T23:59:59.999Z`);
-  return { start, end };
+function intEnv(name: string, fallback: number) {
+  const raw = process.env[name];
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
 
-function randCode(prefix = 'XPOT') {
-  // Short, unique, URL-safe-ish code
-  const hex = crypto.randomBytes(6).toString('hex'); // 12 chars
-  return `${prefix}-${hex}`.toUpperCase();
+function randHex(len: number) {
+  const chars = 'abcdef0123456789';
+  let out = '';
+  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
 }
 
-function randWallet() {
-  // Dev-only placeholder wallet address format (Solana-like length)
-  // NOTE: It's not a real keypair. It's just for DB rows.
-  const hex = crypto.randomBytes(16).toString('hex'); // 32 chars
-  return `DEV${hex}`; // keeps it obviously dev
+function fakeSolAddress() {
+  // Not a real Solana validator address - just a unique string for your schema.
+  // (Your app treats Wallet.address as a string.)
+  return `DEV${randHex(40)}`;
+}
+
+function ticketCode() {
+  return `XPOT-${randHex(6).toUpperCase()}-${randHex(6).toUpperCase()}`;
 }
 
 async function main() {
-  const TARGET_TICKETS = Number(process.env.TARGET_TICKETS ?? 30);
+  const { start, end, bucket } = todayUtcBucket();
 
-  const DRAW_JACKPOT_XPOT = Number(process.env.DRAW_JACKPOT_XPOT ?? 2500);
-  const DRAW_JACKPOT_USD = Number(process.env.DRAW_JACKPOT_USD ?? 0);
-  const DRAW_ROLLOVER_USD = Number(process.env.DRAW_ROLLOVER_USD ?? 0);
-  const DRAW_CLOSES_IN_HOURS = Number(process.env.DRAW_CLOSES_IN_HOURS ?? 24);
+  console.log(
+    `[dev-populate] UTC day bucket: ${start.toISOString()} - ${end.toISOString()} (drawDate=${bucket.toISOString()})`,
+  );
 
-  const { start, end } = getTodayRangeUTC();
-
-  console.log(`[dev-populate] Looking for today's draw in UTC range: ${start.toISOString()} - ${end.toISOString()}`);
-
-  // 1) Find today's draw (matching your /api/admin/pick-winner logic: status = 'open')
-  let draw = await prisma.draw.findFirst({
-    where: {
-      drawDate: { gte: start, lt: end },
-      status: 'open',
-    },
-    orderBy: { drawDate: 'desc' },
+  // 0) Ensure singleton ops config exists
+  await prisma.opsConfig.upsert({
+    where: { singleton: 'singleton' },
+    update: {},
+    create: { singleton: 'singleton', mode: 'MANUAL' },
   });
 
-  // 2) Create draw if missing
+  // 1) Ensure today's draw exists (drawDate is unique)
+  let draw = await prisma.draw.findUnique({
+    where: { drawDate: bucket },
+  });
+
   if (!draw) {
-    const closesAt = new Date(Date.now() + DRAW_CLOSES_IN_HOURS * 60 * 60 * 1000);
-
-    console.log('[dev-populate] No open draw found. Creating one...');
-
+    const closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // +24h from now (adjust later)
     draw = await prisma.draw.create({
       data: {
-        drawDate: new Date(),
+        drawDate: bucket,
         status: 'open',
-
-        // These fields exist in your UI types/screenshots.
-        // If Prisma complains about any of them, remove the offending key(s)
-        // to match your actual schema.
         closesAt,
-        jackpotXpot: DRAW_JACKPOT_XPOT,
-        jackpotUsd: DRAW_JACKPOT_USD,
-        rolloverUsd: DRAW_ROLLOVER_USD,
-        ticketsCount: 0,
-      } as any,
+      },
     });
-
-    console.log(`[dev-populate] Created draw: ${draw.id}`);
+    console.log('[dev-populate] ✅ Created today draw:', { id: draw.id, drawDate: draw.drawDate, status: draw.status });
   } else {
-    console.log(`[dev-populate] Found draw: ${draw.id}`);
+    console.log('[dev-populate] ℹ️ Today draw already exists:', { id: draw.id, drawDate: draw.drawDate, status: draw.status });
   }
 
-  // 3) Count existing eligible tickets
-  const existingCount = await prisma.ticket.count({
-    where: {
-      drawId: draw.id,
-      status: 'IN_DRAW',
-    },
+  // Config
+  const WALLETS = intEnv('XPOT_DEV_WALLETS', 30);
+  const TICKETS = intEnv('XPOT_DEV_TICKETS', 250);
+  const ENTRIES = intEnv('XPOT_DEV_ENTRIES', 18);
+  const BONUS_DROPS = intEnv('XPOT_DEV_BONUS_DROPS', 2);
+
+  // 2) Create or reuse wallets, then create tickets for today's draw
+  // We’ll create "WALLETS" dev wallets if you have fewer than that total.
+  const existingWallets = await prisma.wallet.findMany({
+    orderBy: { createdAt: 'asc' },
+    take: WALLETS,
   });
 
-  console.log(`[dev-populate] IN_DRAW tickets existing: ${existingCount}`);
-
-  if (existingCount >= TARGET_TICKETS) {
-    console.log('[dev-populate] Nothing to do. Already at or above target.');
-    return;
+  const wallets = [...existingWallets];
+  while (wallets.length < WALLETS) {
+    const address = fakeSolAddress();
+    try {
+      const w = await prisma.wallet.create({ data: { address } });
+      wallets.push(w);
+    } catch {
+      // address collision - retry
+    }
   }
 
-  const toCreate = TARGET_TICKETS - existingCount;
-  console.log(`[dev-populate] Creating ${toCreate} ticket(s)...`);
+  console.log('[dev-populate] Wallets ready:', wallets.length);
 
-  const rows = Array.from({ length: toCreate }).map(() => ({
-    drawId: draw!.id,
-    status: 'IN_DRAW',
-    walletAddress: randWallet(),
-    code: randCode('XPOT'),
-  }));
+  // Create up to TICKETS tickets distributed across wallets
+  let createdTickets = 0;
+  for (let i = 0; i < TICKETS; i++) {
+    const w = wallets[i % wallets.length];
 
-  // Use createMany for speed, but if your schema has unique constraints (code),
-  // this will still be safe because codes are random.
-  await prisma.ticket.createMany({
-    data: rows as any,
-  });
+    // Because of @@unique([walletId, drawId]) we can only have 1 ticket per wallet per draw.
+    // So max tickets you can create without changing schema = number of wallets.
+    try {
+      await prisma.ticket.create({
+        data: {
+          code: ticketCode(),
+          walletId: w.id,
+          walletAddress: w.address,
+          status: 'IN_DRAW',
+          drawId: draw.id,
+        },
+      });
+      createdTickets++;
+    } catch (e: any) {
+      // likely unique constraint (wallet already has ticket for this draw, or code collision)
+      continue;
+    }
 
-  // Optional: keep draw.ticketsCount updated if your schema uses it
-  const newCount = await prisma.ticket.count({
-    where: { drawId: draw.id, status: 'IN_DRAW' },
-  });
-
-  try {
-    await prisma.draw.update({
-      where: { id: draw.id },
-      data: { ticketsCount: newCount } as any,
-    });
-  } catch {
-    // If your schema doesn't have ticketsCount or it's computed elsewhere, ignore.
+    if (createdTickets >= Math.min(TICKETS, wallets.length)) break;
   }
 
-  console.log(`[dev-populate] Done. IN_DRAW tickets now: ${newCount}`);
+  console.log('[dev-populate] ✅ Tickets created for today:', createdTickets);
+
+  // 3) Bonus drops (optional)
+  if (BONUS_DROPS > 0) {
+    for (let i = 0; i < BONUS_DROPS; i++) {
+      const scheduledAt = new Date(Date.now() + (i + 1) * 60 * 60 * 1000); // +1h, +2h...
+      try {
+        await prisma.bonusDrop.create({
+          data: {
+            drawId: draw.id,
+            label: `Bonus Drop #${i + 1}`,
+            amountXpot: 250, // adjust as you like
+            scheduledAt,
+            status: 'SCHEDULED',
+          },
+        });
+      } catch {
+        // ignore duplicates if you rerun
+      }
+    }
+    console.log('[dev-populate] ✅ BonusDrops ensured:', BONUS_DROPS);
+  }
+
+  // 4) Public entrants (optional) - safe, limited, no wipes
+  // You can render these on your lobby if you want.
+  const demoEntrants = [
+    { clerkId: 'dev_clerk_01', xHandle: 'xpotbet', xName: 'XPOT', followers: 1200, verified: false },
+    { clerkId: 'dev_clerk_02', xHandle: 'solana', xName: 'Solana', followers: 3000000, verified: true },
+    { clerkId: 'dev_clerk_03', xHandle: 'jup_ag', xName: 'Jupiter', followers: 800000, verified: true },
+    { clerkId: 'dev_clerk_04', xHandle: 'phantom', xName: 'Phantom', followers: 700000, verified: true },
+  ];
+
+  const targetEntrants = demoEntrants.slice(0, Math.min(ENTRIES, demoEntrants.length));
+  for (const e of targetEntrants) {
+    try {
+      await prisma.drawEntry.create({
+        data: {
+          drawId: draw.id,
+          clerkId: e.clerkId,
+          xHandle: e.xHandle,
+          xName: e.xName,
+          xAvatarUrl: null,
+          followers: e.followers,
+          verified: e.verified,
+        },
+      });
+    } catch {
+      // already exists (unique drawId+clerkId)
+    }
+  }
+
+  console.log('[dev-populate] ✅ Done.');
+  console.log('[dev-populate] Draw:', { id: draw.id, status: draw.status, drawDate: draw.drawDate, closesAt: draw.closesAt });
+  console.log('[dev-populate] Tip: schema allows max 1 ticket per wallet per draw, so tickets cap = wallets count.');
 }
 
 main()
   .catch((e) => {
-    console.error('[dev-populate] Failed:', e);
-    process.exitCode = 1;
+    console.error('[dev-populate] ❌ Failed:', e);
+    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
