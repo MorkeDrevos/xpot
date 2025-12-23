@@ -103,8 +103,7 @@ export default function XpotPageShell({
     ? 'calc(var(--xpot-banner-h,56px) + var(--xpot-topbar-h,112px))'
     : 'var(--xpot-banner-h,56px)';
 
-  // If we render a full-bleed hero, we offset THAT hero by header height
-  // and we do NOT repeat the header offset again on the main container.
+  // If we render a full-bleed hero, we do NOT add header offset again on the container.
   const containerPaddingTop = fullBleedTop
     ? '24px'
     : showTopBar
@@ -125,19 +124,9 @@ export default function XpotPageShell({
         </div>
       )}
 
-      {/* ✅ Atmosphere (stars) removed */}
-
-      {/* ✅ Full-bleed hero: true edge-to-edge (NO max width, NO px) */}
-      {fullBleedTop ? (
-        <div
-          className="relative z-10 w-full"
-          style={{
-            paddingTop: 'var(--xpot-header-offset)',
-          }}
-        >
-          {fullBleedTop}
-        </div>
-      ) : null}
+      {/* ✅ Full-bleed hero: edge-to-edge.
+          IMPORTANT: do NOT pad by header offset here if your hero already includes its own spacer. */}
+      {fullBleedTop ? <div className="relative z-10 w-full">{fullBleedTop}</div> : null}
 
       {/* Normal page container */}
       <div
