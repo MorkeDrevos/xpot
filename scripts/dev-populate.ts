@@ -47,11 +47,15 @@ async function main() {
   );
 
   // 0) Ensure singleton ops config exists
-  await prisma.opsConfig.upsert({
-    where: { singleton: 'singleton' },
-    update: {},
-    create: { singleton: 'singleton', mode: 'MANUAL' },
-  });
+ await prisma.ticket.create({
+  data: {
+    code: ticketCode(),
+    walletId: w.id,          // ✅ REQUIRED
+    walletAddress: w.address,
+    status: 'IN_DRAW',
+    drawId: draw.id,
+  },
+});
 
   // 1) Ensure today's draw exists (drawDate is unique)
   let draw = await prisma.draw.findUnique({
