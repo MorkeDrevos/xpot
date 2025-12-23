@@ -37,7 +37,6 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 
-import { type LiveEntrant, asLiveEntrant } from '@/lib/live-entrants';
 import { createPortal } from 'react-dom';
 
 const ROUTE_HUB = '/hub';
@@ -420,9 +419,9 @@ function PrinciplesStrip() {
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
         <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.12),transparent_62%)]" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Access</p>
-        <p className="mt-1 text-sm font-semibold text-slate-100">Wallet-based</p>
-        <p className="mt-1 text-[12px] text-slate-400">Self-custody, no accounts</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Identity</p>
+        <p className="mt-1 text-sm font-semibold text-slate-100">Handle-based</p>
+        <p className="mt-1 text-[12px] text-slate-400">Winners shown by @handle</p>
       </div>
 
       <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur">
@@ -692,65 +691,6 @@ function useBonusActive() {
   return active;
 }
 
-function ProtocolReserveBanner() {
-  return (
-    <PremiumCard className="p-5 sm:p-6" halo={false}>
-      <div className="relative overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/55 px-5 py-4">
-        <div
-          className="
-            pointer-events-none absolute -inset-24 opacity-70 blur-3xl
-            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.24),transparent_58%),
-                radial-gradient(circle_at_82%_24%,rgba(255,255,255,0.06),transparent_62%)]
-          "
-        />
-
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span
-              className={`
-                inline-flex h-10 w-10 items-center justify-center rounded-2xl
-                border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
-                shadow-[0_0_24px_rgba(var(--xpot-gold),0.18)]
-              `}
-            >
-              <ShieldCheck className={`h-5 w-5 ${GOLD_TEXT}`} />
-            </span>
-
-            <div>
-              <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
-                Built with a 10-year rewards runway at launch
-              </p>
-              <p className="mt-1 text-[12px] text-slate-400">
-                Protocol distribution reserve - transparent allocation and long-range payouts.
-              </p>
-            </div>
-
-            <TinyTooltip label="This refers to the protocol reserve designed to sustain rewards. Exact emissions can evolve over time, but distribution remains auditable and payouts stay on-chain.">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-slate-300/80 hover:text-slate-200 transition">
-                <Info className="h-4 w-4" />
-              </span>
-            </TinyTooltip>
-          </div>
-
-          <Link
-            href={ROUTE_TOKENOMICS}
-            className={`
-              group inline-flex items-center gap-2 rounded-full
-              border ${GOLD_BORDER} ${GOLD_BG_WASH}
-              px-4 py-2 text-[12px] font-semibold ${GOLD_TEXT}
-              hover:brightness-[1.06] transition
-            `}
-            title="Open Tokenomics"
-          >
-            View tokenomics
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-      </div>
-    </PremiumCard>
-  );
-}
-
 function HomePageInner() {
   const bonusActive = useBonusActive();
 
@@ -763,19 +703,19 @@ function HomePageInner() {
     () => [
       {
         q: 'Do I need to buy tickets to enter?',
-        a: 'No. Entry is holdings-based. The hub checks eligibility and handles the entry flow. The homepage stays calm and informational.',
+        a: 'No. Entry is holdings-based: hold XPOT, then claim your entry in the hub. The homepage stays calm and informational.',
       },
       {
-        q: 'Is my wallet public on the site?',
-        a: 'No. XPOT is self-custody. Your wallet is used for eligibility and claims, but the product avoids turning wallets into profiles.',
+        q: 'Is XPOT wallet-based or handle-based?',
+        a: 'Eligibility and claims are wallet-native (self-custody). But identity is handle-first: XPOT presents winners and history by @handle, not by turning wallets into profiles.',
       },
       {
         q: 'How do winners verify payouts?',
-        a: 'Payouts are on-chain. Winners can verify the transaction in an explorer. Proof is the product.',
+        a: 'Payouts are on-chain. Anyone can verify the transaction in an explorer. Proof is the product.',
       },
       {
         q: 'What happens after launch?',
-        a: 'The daily draw is the primitive. Modules like streaks, creator drops and sponsor-funded pools can plug into the same protocol layer.',
+        a: 'The daily draw is the primitive. Modules like streaks, creator drops and sponsor-funded pools plug into the same protocol layer.',
       },
     ],
     [],
@@ -890,7 +830,7 @@ function HomePageInner() {
                     <div className="flex flex-wrap items-center gap-2">
                       <Pill tone="emerald">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                        Wallet-based access
+                        Handle-based identity
                       </Pill>
 
                       <Pill tone="violet">
@@ -911,7 +851,7 @@ function HomePageInner() {
                       <div className="xpot-hero-edgeglow" />
 
                       <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                        NO TICKETS · JUST XPOT HOLDINGS
+                        NO TICKETS · HOLD XPOT · WINNER SHOWN BY @HANDLE
                       </p>
 
                       <div className="relative z-10 mt-3">
@@ -921,74 +861,68 @@ function HomePageInner() {
                         </h1>
                       </div>
 
-                      {/* ENTRY MECHANICS DIVIDER (img 2 placement fixed: below lobby) */}
                       <div className="relative z-10 mt-4">
                         <SectionDividerLabel label="Entry mechanics" />
                       </div>
 
                       <p className="relative z-10 mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                        Hold XPOT, connect your wallet and claim your entry. One winner daily, paid on-chain.
+                        Hold XPOT, verify eligibility in the hub and claim your entry.
+                        Winners are presented by <span className="text-slate-100">X handle</span> and paid on-chain.
                         Built to scale into a rewards ecosystem for communities, creators and sponsors.
                       </p>
 
-                      {/* 10+ YEARS runway strip (placed under pills) */}
-<div className="relative overflow-hidden rounded-full border border-slate-900/70 bg-slate-950/45 px-4 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur">
-  <div
-    className="
-      pointer-events-none absolute -inset-24 opacity-70 blur-3xl
-      bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
-          radial-gradient(circle_at_82%_24%,rgba(255,255,255,0.06),transparent_62%)]
-    "
-  />
-  <div className="relative flex flex-wrap items-center justify-between gap-3">
-    <div className="flex items-center gap-2.5">
-      <span
-        className={`
-          inline-flex h-8 w-8 items-center justify-center rounded-full
-          border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
-          shadow-[0_0_18px_rgba(var(--xpot-gold),0.16)]
-        `}
-      >
-        <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
-      </span>
+                      <div className="relative overflow-hidden rounded-full border border-slate-900/70 bg-slate-950/45 px-4 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur">
+                        <div
+                          className="
+                            pointer-events-none absolute -inset-24 opacity-70 blur-3xl
+                            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
+                                radial-gradient(circle_at_82%_24%,rgba(255,255,255,0.06),transparent_62%)]
+                          "
+                        />
+                        <div className="relative flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className={`
+                                inline-flex h-8 w-8 items-center justify-center rounded-full
+                                border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
+                                shadow-[0_0_18px_rgba(var(--xpot-gold),0.16)]
+                              `}
+                            >
+                              <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+                            </span>
 
-      <div className="leading-tight">
-        <p className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
-          Built with a 10+ year rewards runway at launch
-        </p>
-        <p className="mt-0.5 text-[11px] text-slate-500">
-          Protocol distribution reserve - payouts stay on-chain
-          <span className="text-slate-700"> • </span>
-          <span className="text-slate-600">{cutoffLabel}</span>
-        </p>
-      </div>
-    </div>
+                            <div className="leading-tight">
+                              <p className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
+                                Built with a 10+ year rewards runway at launch
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-slate-500">
+                                Protocol distribution reserve - payouts stay on-chain
+                                <span className="text-slate-700"> • </span>
+                                <span className="text-slate-600">{cutoffLabel}</span>
+                              </p>
+                            </div>
+                          </div>
 
-    <Link
-      href={ROUTE_TOKENOMICS}
-      className={`
-        inline-flex items-center gap-2 rounded-full
-        border ${GOLD_BORDER} ${GOLD_BG_WASH}
-        px-3.5 py-1.5 text-[11px] font-semibold ${GOLD_TEXT}
-        hover:brightness-[1.06] transition
-      `}
-      title="Open Tokenomics"
-    >
-      View tokenomics
-      <ArrowRight className="h-4 w-4" />
-    </Link>
-  </div>
-</div>
+                          <Link
+                            href={ROUTE_TOKENOMICS}
+                            className={`
+                              inline-flex items-center gap-2 rounded-full
+                              border ${GOLD_BORDER} ${GOLD_BG_WASH}
+                              px-3.5 py-1.5 text-[11px] font-semibold ${GOLD_TEXT}
+                              hover:brightness-[1.06] transition
+                            `}
+                            title="Open Tokenomics"
+                          >
+                            View tokenomics
+                            <ArrowRight className="h-4 w-4" />
+                          </Link>
+                        </div>
+                      </div>
 
                       <div className="relative z-10 mt-4">
                         <PrinciplesStrip />
                       </div>
 
-                      {/* LIVE LOBBY (img 1) */}
-                      <div className="relative z-10 mt-4">
-                      </div>
-
-                      {/* BONUS XPOT: hidden completely until active */}
                       {bonusActive ? (
                         <div className="relative z-10 mt-3">
                           <div className="relative">
@@ -1026,14 +960,14 @@ function HomePageInner() {
                       </div>
 
                       <p className="relative z-10 mt-3 text-[11px] text-slate-500">
-                        Winners are provable on-chain. Verification beats vibes.
+                        Winners are shown by @handle. Payouts are provable on-chain.
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Mode" value="On-chain" tone="emerald" />
-                    <MiniStat label="Access" value="Wallet" tone="sky" />
+                    <MiniStat label="Identity" value="@handle" tone="sky" />
                     <MiniStat label="Layer" value="Rewards protocol" tone="violet" />
                   </div>
                 </div>
@@ -1059,7 +993,8 @@ function HomePageInner() {
                       <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
 {`> XPOT_PROTOCOL
   primitive:       daily reward selection
-  access:          wallet-based (self custody)
+  eligibility:     hold XPOT (on-chain)
+  identity:        @handle-first (not wallet profiles)
   proof:           on-chain payout verification
   composable:      modules can plug in later
 
@@ -1074,13 +1009,11 @@ function HomePageInner() {
                     </div>
 
                     <p className="mt-3 text-[12px] text-slate-400">
-                      Read-only cockpit view. Same panels as ops. Winners get access.
+                      Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.
                     </p>
                   </PremiumCard>
                 </div>
               </div>
-
-              {/* LiveEntrantsLounge restored inside cockpit (img 1) */}
             </div>
           </div>
         </div>
@@ -1090,7 +1023,6 @@ function HomePageInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-
       {/* HOW IT WORKS */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
@@ -1102,11 +1034,11 @@ function HomePageInner() {
               </Pill>
 
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                A daily reward primitive with provable outcomes.
+                A daily reward primitive with handle-first identity.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT keeps the surface area small: holdings-based eligibility, wallet-based access and on-chain payout proof.
-                Everything else can plug in later.
+                XPOT keeps the surface area small: holdings-based eligibility, handle-based identity and on-chain payout proof.
+                The wallet stays self-custody and claim-native, but the product experience stays @handle-first.
               </p>
             </div>
 
@@ -1117,7 +1049,7 @@ function HomePageInner() {
               </Pill>
               <Pill tone="violet">
                 <Users className="h-3.5 w-3.5" />
-                Access layer
+                Handle identity
               </Pill>
               <Pill tone="amber">
                 <Stars className="h-3.5 w-3.5" />
@@ -1131,23 +1063,23 @@ function HomePageInner() {
               <Step
                 n="01"
                 title="Hold XPOT"
-                desc="Eligibility is checked in the hub"
+                desc="Eligibility is checked on-chain in the hub"
                 icon={<ShieldCheck className="h-5 w-5 text-emerald-200" />}
                 tone="emerald"
                 tag="Eligibility"
               />
               <Step
                 n="02"
-                title="Connect wallet"
-                desc="Self-custody, no accounts"
+                title="Link your @handle"
+                desc="Identity is handle-first for winners and history"
                 icon={<Users className="h-5 w-5 text-sky-200" />}
                 tone="sky"
-                tag="Access"
+                tag="Identity"
               />
               <Step
                 n="03"
                 title="Claim entry, verify payout"
-                desc="One winner daily. Proof is on-chain"
+                desc="One winner daily. Proof stays on-chain"
                 icon={<Crown className={`h-5 w-5 ${GOLD_TEXT}`} />}
                 tone="amber"
                 tag="Payout"
@@ -1169,7 +1101,7 @@ function HomePageInner() {
         </PremiumCard>
       </section>
 
-      {/* THE PROTOCOL STRIP (restored) */}
+      {/* THE PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1184,10 +1116,10 @@ function HomePageInner() {
           <PremiumCard className="p-5 sm:p-6" halo={false}>
             <Pill tone="sky">
               <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-              Access
+              Identity
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Self-custody.</p>
-            <p className="mt-2 text-sm text-slate-300">Connect wallet in the hub. Keep control of funds and keys.</p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">@handle-first.</p>
+            <p className="mt-2 text-sm text-slate-300">Winners and history are shown by handle, not wallet profiles.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1201,7 +1133,7 @@ function HomePageInner() {
         </div>
       </section>
 
-      {/* ECOSYSTEM LAYER (restored) */}
+      {/* ECOSYSTEM LAYER */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1261,14 +1193,14 @@ function HomePageInner() {
                   <Users className="h-5 w-5 text-sky-200" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">Access</p>
-                  <p className="text-xs text-slate-400">Self-custody, composable</p>
+                  <p className="text-sm font-semibold text-slate-100">Identity</p>
+                  <p className="text-xs text-slate-400">Handle-first, premium UX</p>
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
-                <Bullet tone="sky">Wallet connect, no accounts</Bullet>
-                <Bullet tone="violet">History and rewards can evolve later</Bullet>
-                <Bullet tone="emerald">Low-friction, high-proof</Bullet>
+                <Bullet tone="sky">Winners shown by @handle</Bullet>
+                <Bullet tone="violet">History can evolve into reputation later</Bullet>
+                <Bullet tone="emerald">Still self-custody for claims</Bullet>
               </ul>
             </div>
 
@@ -1304,7 +1236,7 @@ function HomePageInner() {
         </PremiumCard>
       </section>
 
-      {/* WHO IT'S FOR (restored) */}
+      {/* WHO IT'S FOR */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1314,7 +1246,7 @@ function HomePageInner() {
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
             <p className="mt-2 text-sm text-slate-300">
-              One mechanic, provable winners and a premium experience that doesn’t feel spammy.
+              One mechanic, provable winners and a premium @handle-first experience that doesn’t feel spammy.
             </p>
           </PremiumCard>
 
@@ -1333,7 +1265,7 @@ function HomePageInner() {
               Communities
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">Your XPOT history travels with you and unlocks better rewards over time.</p>
+            <p className="mt-2 text-sm text-slate-300">Your XPOT history is handle-first and can evolve into better rewards over time.</p>
           </PremiumCard>
         </div>
       </section>
@@ -1349,14 +1281,14 @@ function HomePageInner() {
               </Pill>
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                The homepage stays calm. The hub is where entries happen. Proof stays on-chain.
+                The homepage stays calm. The hub is where entries happen. Identity is handle-first. Proof stays on-chain.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <Pill tone="sky">
                 <Users className="h-3.5 w-3.5" />
-                Access
+                Identity
               </Pill>
               <Pill tone="amber">
                 <Stars className="h-3.5 w-3.5" />
@@ -1380,8 +1312,8 @@ function HomePageInner() {
                 XPOT protocol
               </p>
               <p className="mt-2 text-sm text-slate-300">
-                A minimal daily rewards primitive with self custody and on-chain proof.
-                No tickets. No custody. Just verifiable payouts.
+                A minimal daily rewards primitive with handle-first identity and on-chain proof.
+                No tickets. Self custody for claims. Verifiable payouts.
               </p>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -1389,9 +1321,9 @@ function HomePageInner() {
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Self custody
                 </Pill>
-                <Pill tone="amber">
-                  <Stars className="h-3.5 w-3.5" />
-                  Proof
+                <Pill tone="sky">
+                  <Users className="h-3.5 w-3.5" />
+                  @handle-first
                 </Pill>
                 <Pill tone="violet">
                   <Blocks className="h-3.5 w-3.5" />
