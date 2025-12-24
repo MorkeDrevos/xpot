@@ -1,7 +1,7 @@
 // app/final-day/page.tsx
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
@@ -50,33 +50,27 @@ export default function FinalDayPage() {
       className="relative overflow-hidden"
       containerClassName="pb-0"
     >
-      {/* FULL-BLEED: totally new “future archive” backdrop */}
       <FutureBackdrop pulse={pulse} />
 
       <main className="relative">
-        {/* 0) Page Top Spacer (keeps topbar breathing room) */}
         <div className="h-4 sm:h-6" />
 
-        {/* 1) HERO: The Last Day (cinematic, nothing like existing pages) */}
-        <section className={container}>
+        <section className={`${container}`}>
           <TimeHeader />
           <FinalDayHero />
         </section>
 
-        {/* 2) SIGNAL STRIP: “System status” + “Final draw integrity” */}
         <section className={`${container} mt-10 sm:mt-12`}>
           <SignalStrip />
         </section>
 
-        {/* 3) MAIN GRID: left = story modules, right = “last draw” monolith */}
         <section className={`${container} mt-10 sm:mt-12`}>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             <div className="lg:col-span-7 space-y-6">
+              {/* ✅ NEW: Drevos obituary capsule */}
+              <MorkeDrevosObituaryCapsule />
+
               <MemoryCapsuleCard />
-
-              {/* ✅ NEW: Mørke Drevos obituary capsule */}
-              <DrevosObituaryCapsule />
-
               <LegacyTimeline />
               <FinalEulogyCard />
               <GuardianRulesCard />
@@ -90,18 +84,15 @@ export default function FinalDayPage() {
           </div>
         </section>
 
-        {/* 4) FULL-BLEED: “Eclipse Moment” divider */}
         <section className="relative mt-14 sm:mt-16">
           <EclipseDivider />
         </section>
 
-        {/* 5) EPILOGUE: the end screen + links */}
         <section className={`${container} mt-12 sm:mt-14 pb-12 sm:pb-16`}>
           <EpilogueGrid />
         </section>
       </main>
 
-      {/* Local page-only styling (so it cannot look like other pages) */}
       <style jsx global>{`
         .xpot-finalday-noise {
           background-image:
@@ -162,7 +153,6 @@ function FutureBackdrop({ pulse }: { pulse: number }) {
           opacity: 0.9,
         }}
       />
-      {/* tiny pulse to make it “alive” without copying existing vibe */}
       <div
         className="absolute inset-0"
         style={{
@@ -209,7 +199,6 @@ function FinalDayHero() {
           </div>
 
           <h1 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-white">
-            {/* YOU will write final copy */}
             The Last Main Daily XPOT
           </h1>
 
@@ -296,15 +285,7 @@ function SignalStrip() {
   );
 }
 
-function SignalPill({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+function SignalPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-4 py-3">
       <div className="flex items-center gap-2 text-white/70">
@@ -316,64 +297,64 @@ function SignalPill({
   );
 }
 
-function MemoryCapsuleCard() {
-  return (
-    <CardShell title="Memory Capsule" icon={<Sparkles className="h-4 w-4" />}>
-      <p className="text-white/72 leading-relaxed">{/* YOU will write final copy */}</p>
-    </CardShell>
-  );
-}
-
-/* ✅ NEW: Obituary Capsule */
-function DrevosObituaryCapsule() {
+/* ✅ NEW: obituary capsule card */
+function MorkeDrevosObituaryCapsule() {
   return (
     <CardShell title="Mørke Drevos - Obituary Capsule" icon={<Crown className="h-4 w-4" />}>
-      <div className="rounded-[18px] border border-white/10 bg-gradient-to-b from-white/6 to-black/30 p-4 sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          {/* Photo slot */}
-          <div className="shrink-0">
-            <div className="relative h-[120px] w-[120px] rounded-[18px] border border-white/12 bg-black/40 overflow-hidden">
-              {/* Replace with real image later (next/image if you want) */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/8 to-transparent" />
-              <div className="absolute inset-0 flex items-center justify-center text-xs text-white/45">
-                PHOTO
-              </div>
-            </div>
-            <div className="mt-2 text-[11px] text-white/45">
-              {/* optional micro-label */}
-              ARCHIVED PORTRAIT
-            </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
+        {/* Photo slot */}
+        <div className="sm:col-span-4">
+          <div className="relative overflow-hidden rounded-[18px] border border-white/10 bg-gradient-to-b from-white/6 to-black/40 p-4">
+            <div className="text-xs text-white/55">PHOTO SLOT</div>
+            <div className="mt-3 aspect-[4/5] w-full rounded-[14px] border border-white/10 bg-black/35" />
+            <div className="mt-3 text-[11px] text-white/40">Portrait remains optional - silhouette works too.</div>
           </div>
+        </div>
 
-          {/* Details */}
-          <div className="flex-1">
-            <div className="text-sm text-white/70">
-              {/* YOU will write exact dates */}
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                  <span className="text-white/55">Born:</span>
-                  <span className="text-white/85 font-semibold">[YYYY-MM-DD]</span>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                  <span className="text-white/55">Died:</span>
-                  <span className="text-white/85 font-semibold">[YYYY-MM-DD]</span>
-                </div>
-              </div>
+        {/* Details + founder quote */}
+        <div className="sm:col-span-8">
+          <div className="rounded-[18px] border border-white/10 bg-black/35 p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <LineItem k="Born" v="{/* YOU will write */}" />
+              <LineItem k="Died" v="{/* YOU will write */}" />
             </div>
 
-            <div className="mt-4 rounded-[16px] border border-white/10 bg-black/35 p-4">
-              <div className="text-xs text-white/50">FOUNDER QUOTE</div>
+            <div className="mt-4 rounded-[16px] border border-white/10 bg-white/5 p-4">
+              <div className="text-xs text-white/55">FOUNDER QUOTE</div>
               <div className="mt-2 text-sm text-white/78 leading-relaxed">
                 {/* YOU will write */}
-                “[…]”
               </div>
-              <div className="mt-3 text-[11px] text-white/45">
-                Signed in the Archive - immutable - handle-preserved.
+              <div className="mt-3 text-xs text-white/45">
+                - Mørke Drevos
               </div>
+            </div>
+
+            <div className="mt-3 text-xs text-white/45">
+              {/* optional tiny note */}
+              Archived with the Final Day record.
             </div>
           </div>
         </div>
       </div>
+    </CardShell>
+  );
+}
+
+function LineItem({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="rounded-[14px] border border-white/10 bg-white/5 px-3 py-2">
+      <div className="text-[11px] text-white/55">{k}</div>
+      <div className="text-sm font-semibold text-white">{v}</div>
+    </div>
+  );
+}
+
+/* --- rest of your components unchanged --- */
+
+function MemoryCapsuleCard() {
+  return (
+    <CardShell title="Memory Capsule" icon={<Sparkles className="h-4 w-4" />}>
+      <p className="text-white/72 leading-relaxed">{/* placeholder */}</p>
     </CardShell>
   );
 }
@@ -405,10 +386,8 @@ function FinalEulogyCard() {
   return (
     <CardShell title="The Final Day" icon={<Crown className="h-4 w-4" />}>
       <div className="rounded-[16px] border border-white/10 bg-black/35 p-4">
-        <p className="text-white/75 leading-relaxed">{/* YOU will write final copy */}</p>
-        <div className="mt-4 text-xs text-white/45">
-          Archived permanently - timestamped - uneditable.
-        </div>
+        <p className="text-white/75 leading-relaxed">{/* placeholder */}</p>
+        <div className="mt-4 text-xs text-white/45">Archived permanently - timestamped - uneditable.</div>
       </div>
     </CardShell>
   );
@@ -418,18 +397,9 @@ function GuardianRulesCard() {
   return (
     <CardShell title="Final-Day Rules" icon={<ShieldCheck className="h-4 w-4" />}>
       <ul className="space-y-2 text-sm text-white/72">
-        <li className="flex gap-2">
-          <span className="text-white/35">•</span>
-          <span>Rule line 1…</span>
-        </li>
-        <li className="flex gap-2">
-          <span className="text-white/35">•</span>
-          <span>Rule line 2…</span>
-        </li>
-        <li className="flex gap-2">
-          <span className="text-white/35">•</span>
-          <span>Rule line 3…</span>
-        </li>
+        <li className="flex gap-2"><span className="text-white/35">•</span><span>Rule line 1…</span></li>
+        <li className="flex gap-2"><span className="text-white/35">•</span><span>Rule line 2…</span></li>
+        <li className="flex gap-2"><span className="text-white/35">•</span><span>Rule line 3…</span></li>
       </ul>
     </CardShell>
   );
@@ -551,7 +521,7 @@ function EpilogueGrid() {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <div className="lg:col-span-7">
         <CardShell title="Epilogue" icon={<Sparkles className="h-4 w-4" />}>
-          <p className="text-white/72 leading-relaxed">{/* YOU will write final copy */}</p>
+          <p className="text-white/72 leading-relaxed">{/* placeholder */}</p>
         </CardShell>
       </div>
 
@@ -575,9 +545,7 @@ function EpilogueGrid() {
 
         <div className={`rounded-[22px] border ${GOLD_BORDER} ${GOLD_BG_WASH} p-5`}>
           <div className={`text-sm font-semibold ${GOLD_TEXT}`}>The Final Seal</div>
-          <div className="mt-2 text-xs text-white/60">
-            Signed, timestamped, and left for the next civilisation.
-          </div>
+          <div className="mt-2 text-xs text-white/60">Signed, timestamped, and left for the next civilisation.</div>
         </div>
       </div>
     </div>
@@ -590,8 +558,8 @@ function CardShell({
   children,
 }: {
   title: string;
-  icon?: ReactNode;
-  children: ReactNode;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <div className="rounded-[22px] border border-white/10 bg-black/35 p-5 sm:p-6">
