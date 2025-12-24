@@ -95,9 +95,7 @@ model Draw {
 
   /// When the main XPOT closes for entries
   closesAt DateTime?
-
-  /// "open" / "closed" / "completed"
-  status String @default("open")
+  status   String   @default("open")
 
   tickets    Ticket[]
   winners    Winner[]
@@ -120,8 +118,7 @@ model Ticket {
 
   // Snapshot of wallet address at creation time
   walletAddress String
-
-  status TicketStatus @default(IN_DRAW)
+  status        TicketStatus @default(IN_DRAW)
 
   drawId String
   draw   Draw @relation(fields: [drawId], references: [id])
@@ -143,7 +140,7 @@ model Winner {
   createdAt DateTime @default(now())
 
   drawId String
-  draw   Draw   @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id])
 
   ticketId String
   ticket   Ticket @relation(fields: [ticketId], references: [id])
@@ -176,7 +173,7 @@ model BonusDrop {
   createdAt DateTime @default(now())
 
   drawId String
-  draw   Draw   @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id])
 
   label       String
   amountXpot  Int
@@ -194,7 +191,7 @@ model DrawEntry {
   createdAt DateTime @default(now())
 
   drawId String
-  draw   Draw   @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id])
 
   // Clerk user id (string) - keeps this reliable even if User row doesn't exist yet
   clerkId String
