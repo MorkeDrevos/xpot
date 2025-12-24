@@ -1,23 +1,31 @@
-// app/2044y/final-day/page.tsx
+// app/2044/final-day/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Printer, Repeat2 } from 'lucide-react';
 
 type Era = '2044' | 'now';
 
-const STORAGE_KEY = 'xpot_final_day_era_v2';
+const STORAGE_KEY = 'xpot_final_day_era_v3';
+
+function isEra(v: any): v is Era {
+  return v === '2044' || v === 'now';
+}
 
 export default function FinalDayPage() {
   const [era, setEra] = useState<Era>('2044');
+
+  const archiveH1Ref = useRef<HTMLHeadingElement | null>(null);
+  const nowH2Ref = useRef<HTMLHeadingElement | null>(null);
 
   // Restore from localStorage
   useEffect(() => {
     try {
       const v = window.localStorage.getItem(STORAGE_KEY);
-      if (v === '2044' || v === 'now') setEra(v);
+      if (isEra(v)) setEra(v);
     } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist
@@ -25,6 +33,25 @@ export default function FinalDayPage() {
     try {
       window.localStorage.setItem(STORAGE_KEY, era);
     } catch {}
+  }, [era]);
+
+  // Premium: set a nice document title per era
+  useEffect(() => {
+    try {
+      document.title =
+        era === '2044'
+          ? "XPOT Times (2044) - XPOT's Final Day"
+          : 'XPOT - The Final Draw';
+    } catch {}
+  }, [era]);
+
+  // Focus management after flipping (keyboard + a11y)
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (era === '2044') archiveH1Ref.current?.focus();
+      else nowH2Ref.current?.focus();
+    }, 120);
+    return () => window.clearTimeout(t);
   }, [era]);
 
   const meta = useMemo(() => {
@@ -58,11 +85,38 @@ export default function FinalDayPage() {
     if (typeof window !== 'undefined') window.print();
   }, []);
 
+  // Keyboard shortcuts: F = flip, P = print, 1/2 = switch tabs
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      // don't hijack typing
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName?.toLowerCase();
+      const isTyping =
+        tag === 'input' || tag === 'textarea' || (el as any)?.isContentEditable;
+      if (isTyping) return;
+
+      const k = e.key.toLowerCase();
+      if (k === 'f') {
+        e.preventDefault();
+        onFlip();
+      }
+      if (k === 'p') {
+        e.preventDefault();
+        onPrint();
+      }
+      if (e.key === '1') setEra('2044');
+      if (e.key === '2') setEra('now');
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onFlip, onPrint]);
+
   return (
     <main className="xpot-fd-root">
       {/* Top utility bar (hidden on print) */}
       <div className="xpot-fd-topbar" aria-label="Final Day controls">
-        <Link className="xpot-fd-back" href="/">
+        <Link className="xpot-fd-back" href="/" aria-label="Back to home">
           <ChevronLeft size={18} />
           <span>Back</span>
         </Link>
@@ -75,6 +129,7 @@ export default function FinalDayPage() {
             role="tab"
             aria-selected={era === '2044'}
             aria-controls="xpot-fd-archive"
+            id="xpot-tab-2044"
           >
             2044
           </button>
@@ -85,17 +140,18 @@ export default function FinalDayPage() {
             role="tab"
             aria-selected={era === 'now'}
             aria-controls="xpot-fd-now"
+            id="xpot-tab-now"
           >
             Now
           </button>
         </div>
 
-        <div className="xpot-fd-actions">
-          <button type="button" className="xpot-fd-btn" onClick={onFlip}>
+        <div className="xpot-fd-actions" aria-label="Actions">
+          <button type="button" className="xpot-fd-btn" onClick={onFlip} aria-label="Flip edition (shortcut: F)">
             <Repeat2 size={16} />
             <span>Flip</span>
           </button>
-          <button type="button" className="xpot-fd-btn" onClick={onPrint}>
+          <button type="button" className="xpot-fd-btn" onClick={onPrint} aria-label="Print archive (shortcut: P)">
             <Printer size={16} />
             <span>Print</span>
           </button>
@@ -109,6 +165,8 @@ export default function FinalDayPage() {
           <article
             id="xpot-fd-archive"
             className="xpot-fd-face xpot-fd-front"
+            role="tabpanel"
+            aria-labelledby="xpot-tab-2044"
             aria-hidden={era !== '2044'}
           >
             <header className="xpot-fd-masthead">
@@ -133,7 +191,13 @@ export default function FinalDayPage() {
             </header>
 
             <div className="xpot-fd-body">
-              <h1 className="xpot-fd-h1">{meta.headline}</h1>
+              <h1
+                ref={archiveH1Ref}
+                tabIndex={-1}
+                className="xpot-fd-h1"
+              >
+                {meta.headline}
+              </h1>
               <p className="xpot-fd-deck">{meta.deck}</p>
 
               <div className="xpot-fd-grid">
@@ -170,7 +234,7 @@ export default function FinalDayPage() {
                   <p>Everyone knows it&apos;s the last one.</p>
                   <p>Streams everywhere. Millions watching live. Some people crying already.</p>
 
-                  <div className="xpot-fd-sidebox">
+                  <div className="xpot-fd-sidebox" aria-label="Final draw facts">
                     <div className="xpot-fd-sidebox-title">The Final Draw</div>
                     <div className="xpot-fd-sidebox-row">
                       <span>Jackpot</span>
@@ -190,15 +254,9 @@ export default function FinalDayPage() {
                     </div>
                   </div>
 
-                  <p>
-                    No boost. No fireworks gimmick. No last-minute twist. Just dignity.
-                  </p>
-                  <p>
-                    The countdown starts. People aren&apos;t hoping to win anymore. They&apos;re hoping to witness.
-                  </p>
-                  <p>
-                    When it hits zero, a winner is picked. Someone ordinary. Someone random. Just like always.
-                  </p>
+                  <p>No boost. No fireworks gimmick. No last-minute twist. Just dignity.</p>
+                  <p>The countdown starts. People aren&apos;t hoping to win anymore. They&apos;re hoping to witness.</p>
+                  <p>When it hits zero, a winner is picked. Someone ordinary. Someone random. Just like always.</p>
                   <p>XPOT does what it promised. One final time.</p>
 
                   <div className="xpot-fd-break" />
@@ -211,18 +269,14 @@ export default function FinalDayPage() {
                 {/* Column C */}
                 <div className="xpot-fd-col xpot-fd-col-wide">
                   <h2 className="xpot-fd-h2">And then something rare happens</h2>
-                  <p>
-                    Nothing breaks. Nothing explodes. Nothing disappears.
-                  </p>
-                  <p>
-                    The system simply stops issuing draws.
-                  </p>
+                  <p>Nothing breaks. Nothing explodes. Nothing disappears.</p>
+                  <p>The system simply stops issuing draws.</p>
                   <p>
                     The site stays online. The history stays visible. Every single winner. Every single day.
                     Nineteen point one eight years, perfectly accounted for.
                   </p>
 
-                  <div className="xpot-fd-stamp">
+                  <div className="xpot-fd-stamp" aria-label="Archive conclusion">
                     <div className="xpot-fd-stamp-label">A quiet line appears</div>
                     <div className="xpot-fd-stamp-text">“XPOT completed its mission.”</div>
                     <div className="xpot-fd-stamp-sub">
@@ -259,7 +313,7 @@ export default function FinalDayPage() {
               </div>
             </div>
 
-            <footer className="xpot-fd-footer">
+            <footer className="xpot-fd-footer" aria-label="Archive footer">
               <span>XPOT TIMES / ARCHIVE EDITION</span>
               <span className="xpot-fd-footer-dot" />
               <span>Printed record layout</span>
@@ -272,11 +326,19 @@ export default function FinalDayPage() {
           <article
             id="xpot-fd-now"
             className="xpot-fd-face xpot-fd-backface"
+            role="tabpanel"
+            aria-labelledby="xpot-tab-now"
             aria-hidden={era !== 'now'}
           >
             <header className="xpot-fd-now-hero">
               <div className="xpot-fd-now-pill">{meta.badge}</div>
-              <h2 className="xpot-fd-now-title">{meta.headline}</h2>
+              <h2
+                ref={nowH2Ref}
+                tabIndex={-1}
+                className="xpot-fd-now-title"
+              >
+                {meta.headline}
+              </h2>
               <p className="xpot-fd-now-sub">{meta.deck}</p>
 
               <div className="xpot-fd-now-cta">
@@ -286,6 +348,17 @@ export default function FinalDayPage() {
                 <Link className="xpot-fd-now-link" href="/hub">
                   Enter today&apos;s XPOT
                 </Link>
+              </div>
+
+              <div className="xpot-fd-hints" aria-label="Keyboard shortcuts">
+                <span>Shortcuts:</span>
+                <span className="xpot-fd-kbd">F</span> flip
+                <span className="xpot-fd-dot" />
+                <span className="xpot-fd-kbd">P</span> print
+                <span className="xpot-fd-dot" />
+                <span className="xpot-fd-kbd">1</span> 2044
+                <span className="xpot-fd-dot" />
+                <span className="xpot-fd-kbd">2</span> now
               </div>
             </header>
 
@@ -299,18 +372,18 @@ export default function FinalDayPage() {
                 <ul className="xpot-fd-now-list">
                   <li>One story, two eras</li>
                   <li>Flip for theatre, print for a clean “newspaper” capture</li>
-                  <li>Archive stays timeless while “Now” can become live later</li>
+                  <li>Archive stays timeless while “Now” can become live</li>
                 </ul>
               </div>
 
               <div className="xpot-fd-now-card">
-                <div className="xpot-fd-now-kicker">Production notes</div>
+                <div className="xpot-fd-now-kicker">Ready for launch</div>
                 <p className="xpot-fd-now-copy">
-                  Wire this side to your DB later (countdown, draw status, last winner handle, sponsor banner).
-                  Keep the 2044 edition static.
+                  Tomorrow: keep “Now” minimal and premium. Later: bind this side to your draw data (countdown, status,
+                  last winner handle and sponsor banner).
                 </p>
                 <p className="xpot-fd-now-copy">
-                  Print always outputs the archive page, even if you&apos;re viewing “Now”.
+                  Print always outputs the archive edition - even if you’re viewing “Now”.
                 </p>
               </div>
             </section>
@@ -327,12 +400,26 @@ export default function FinalDayPage() {
         /* ---------- Base ---------- */
         .xpot-fd-root {
           min-height: 100vh;
-          background: radial-gradient(1200px 800px at 20% 10%, rgba(56, 189, 248, 0.12), transparent 55%),
-            radial-gradient(900px 700px at 80% 20%, rgba(236, 72, 153, 0.1), transparent 60%),
+          background:
+            radial-gradient(1200px 800px at 20% 10%, rgba(56, 189, 248, 0.12), transparent 55%),
+            radial-gradient(900px 700px at 80% 20%, rgba(236, 72, 153, 0.10), transparent 60%),
             radial-gradient(1000px 900px at 40% 90%, rgba(16, 185, 129, 0.08), transparent 60%),
             #05070a;
           color: rgba(255, 255, 255, 0.92);
           padding: 28px 14px 60px;
+          position: relative;
+          overflow-x: hidden;
+        }
+
+        /* Subtle premium grain */
+        .xpot-fd-root::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+          opacity: 0.10;
+          mix-blend-mode: overlay;
         }
 
         /* ---------- Controls Topbar (screen only) ---------- */
@@ -345,28 +432,48 @@ export default function FinalDayPage() {
           gap: 12px;
         }
 
-        .xpot-fd-back {
+        .xpot-fd-back,
+        .xpot-fd-btn {
           display: inline-flex;
           align-items: center;
           gap: 8px;
           padding: 10px 12px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.10);
           background: rgba(255, 255, 255, 0.03);
-          text-decoration: none;
-          color: rgba(255, 255, 255, 0.9);
-          font-weight: 750;
+          color: rgba(255, 255, 255, 0.92);
+          font-weight: 800;
           font-size: 13px;
+          text-decoration: none;
+          cursor: pointer;
+          transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
         }
 
-        .xpot-fd-back:hover {
+        .xpot-fd-back:hover,
+        .xpot-fd-btn:hover {
           background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 255, 255, 0.14);
+          transform: translateY(-1px);
+        }
+
+        .xpot-fd-back:active,
+        .xpot-fd-btn:active {
+          transform: translateY(0px);
+        }
+
+        .xpot-fd-back:focus-visible,
+        .xpot-fd-btn:focus-visible,
+        .xpot-fd-tab:focus-visible,
+        .xpot-fd-now-btn:focus-visible,
+        .xpot-fd-now-link:focus-visible {
+          outline: 2px solid rgba(56, 189, 248, 0.75);
+          outline-offset: 3px;
         }
 
         .xpot-fd-toggle {
           display: inline-flex;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.10);
           background: rgba(255, 255, 255, 0.03);
           overflow: hidden;
         }
@@ -377,11 +484,12 @@ export default function FinalDayPage() {
           background: transparent;
           color: rgba(255, 255, 255, 0.72);
           padding: 10px 14px;
-          font-weight: 850;
+          font-weight: 900;
           font-size: 12px;
           letter-spacing: 0.12em;
           text-transform: uppercase;
           cursor: pointer;
+          transition: background 160ms ease, color 160ms ease;
         }
 
         .xpot-fd-tab.is-active {
@@ -392,24 +500,6 @@ export default function FinalDayPage() {
         .xpot-fd-actions {
           display: inline-flex;
           gap: 10px;
-        }
-
-        .xpot-fd-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 12px;
-          border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(255, 255, 255, 0.03);
-          color: rgba(255, 255, 255, 0.9);
-          font-weight: 750;
-          font-size: 13px;
-          cursor: pointer;
-        }
-
-        .xpot-fd-btn:hover {
-          background: rgba(255, 255, 255, 0.05);
         }
 
         @media (max-width: 520px) {
@@ -442,6 +532,10 @@ export default function FinalDayPage() {
           .xpot-fd-card {
             transition: none !important;
           }
+          .xpot-fd-back:hover,
+          .xpot-fd-btn:hover {
+            transform: none !important;
+          }
         }
 
         .xpot-fd-face {
@@ -450,17 +544,36 @@ export default function FinalDayPage() {
           border-radius: 22px;
           overflow: hidden;
           box-shadow: 0 60px 180px rgba(0, 0, 0, 0.55);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.10);
         }
 
         /* ---------- 2044 Newspaper (front) ---------- */
         .xpot-fd-front {
-          background: radial-gradient(900px 600px at 15% 10%, rgba(0, 0, 0, 0.06), transparent 70%),
+          background:
+            radial-gradient(900px 600px at 15% 10%, rgba(0, 0, 0, 0.06), transparent 70%),
             radial-gradient(900px 700px at 90% 20%, rgba(0, 0, 0, 0.05), transparent 65%),
             linear-gradient(180deg, rgba(250, 244, 228, 0.96), rgba(244, 236, 214, 0.96));
           color: rgba(18, 16, 12, 0.95);
           padding: 28px 28px 20px;
           font-family: ui-serif, Georgia, 'Times New Roman', Times, serif;
+          position: relative;
+        }
+
+        /* Paper grain inside the archive */
+        .xpot-fd-front::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background:
+            radial-gradient(1200px 900px at 50% 10%, rgba(0,0,0,0.06), transparent 60%),
+            radial-gradient(900px 700px at 20% 90%, rgba(0,0,0,0.05), transparent 62%);
+          opacity: 0.55;
+        }
+
+        .xpot-fd-front > * {
+          position: relative;
+          z-index: 1;
         }
 
         @media (max-width: 720px) {
@@ -492,17 +605,17 @@ export default function FinalDayPage() {
           border: 1px solid rgba(18, 16, 12, 0.22);
           border-radius: 999px;
           background: rgba(18, 16, 12, 0.03);
-          font-weight: 850;
+          font-weight: 900;
         }
 
         .xpot-fd-date {
           justify-self: center;
-          font-weight: 800;
+          font-weight: 900;
         }
 
         .xpot-fd-price {
           justify-self: end;
-          font-weight: 900;
+          font-weight: 950;
         }
 
         .xpot-fd-paper-title {
@@ -549,7 +662,7 @@ export default function FinalDayPage() {
           color: rgba(18, 16, 12, 0.72);
           letter-spacing: 0.1em;
           text-transform: uppercase;
-          font-weight: 900;
+          font-weight: 950;
         }
 
         .xpot-fd-body {
@@ -572,7 +685,6 @@ export default function FinalDayPage() {
           max-width: 78ch;
         }
 
-        /* 3-column layout on desktop, collapses nicely */
         .xpot-fd-grid {
           display: grid;
           grid-template-columns: 1fr 1fr 1.25fr;
@@ -728,7 +840,7 @@ export default function FinalDayPage() {
         .xpot-fd-kicker {
           margin-top: 14px !important;
           font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-          font-weight: 900;
+          font-weight: 950;
           letter-spacing: -0.01em;
         }
 
@@ -758,7 +870,8 @@ export default function FinalDayPage() {
           position: absolute;
           inset: 0;
           transform: rotateY(180deg);
-          background: radial-gradient(900px 600px at 20% 10%, rgba(56, 189, 248, 0.14), transparent 60%),
+          background:
+            radial-gradient(900px 600px at 20% 10%, rgba(56, 189, 248, 0.14), transparent 60%),
             radial-gradient(900px 700px at 85% 25%, rgba(236, 72, 153, 0.12), transparent 62%),
             radial-gradient(1000px 900px at 50% 90%, rgba(16, 185, 129, 0.08), transparent 60%),
             linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0));
@@ -776,7 +889,7 @@ export default function FinalDayPage() {
         .xpot-fd-now-hero {
           padding: 22px 18px 18px;
           border-radius: 18px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.10);
           background: rgba(0, 0, 0, 0.35);
           box-shadow: 0 40px 120px rgba(0, 0, 0, 0.45);
         }
@@ -825,6 +938,12 @@ export default function FinalDayPage() {
           font-weight: 950;
           background: #fff;
           color: #000;
+          transition: transform 160ms ease, filter 160ms ease;
+        }
+
+        .xpot-fd-now-btn:hover {
+          transform: translateY(-1px);
+          filter: brightness(1.02);
         }
 
         .xpot-fd-now-link {
@@ -838,6 +957,44 @@ export default function FinalDayPage() {
           background: rgba(255, 255, 255, 0.05);
           text-decoration: none;
           color: rgba(255, 255, 255, 0.92);
+          transition: background 160ms ease, transform 160ms ease;
+        }
+
+        .xpot-fd-now-link:hover {
+          background: rgba(255, 255, 255, 0.07);
+          transform: translateY(-1px);
+        }
+
+        .xpot-fd-hints {
+          margin-top: 14px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: center;
+          opacity: 0.78;
+          font-size: 12px;
+          letter-spacing: 0.02em;
+        }
+
+        .xpot-fd-kbd {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2px 8px;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(255, 255, 255, 0.06);
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .xpot-fd-dot {
+          width: 3px;
+          height: 3px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.35);
+          display: inline-block;
         }
 
         .xpot-fd-now-panel {
@@ -855,10 +1012,10 @@ export default function FinalDayPage() {
 
         .xpot-fd-now-card {
           border-radius: 18px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          background: rgba(0, 0, 0, 0.30);
           padding: 16px 16px;
-          box-shadow: 0 40px 120px rgba(0, 0, 0, 0.4);
+          box-shadow: 0 40px 120px rgba(0, 0, 0, 0.40);
           position: relative;
           overflow: hidden;
         }
@@ -883,7 +1040,7 @@ export default function FinalDayPage() {
 
         .xpot-fd-now-line.is-2 {
           margin-top: 8px;
-          background: linear-gradient(90deg, transparent, rgba(236, 72, 153, 0.5), transparent);
+          background: linear-gradient(90deg, transparent, rgba(236, 72, 153, 0.50), transparent);
         }
 
         .xpot-fd-now-list {
@@ -903,8 +1060,8 @@ export default function FinalDayPage() {
         .xpot-fd-now-footer {
           margin-top: 16px;
           border-radius: 18px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          background: rgba(0, 0, 0, 0.30);
           padding: 14px 16px;
           text-align: center;
           letter-spacing: 0.18em;
@@ -918,7 +1075,8 @@ export default function FinalDayPage() {
         .xpot-fd-now-footer-glow {
           position: absolute;
           inset: -40px;
-          background: radial-gradient(circle at 25% 20%, rgba(56, 189, 248, 0.16), transparent 55%),
+          background:
+            radial-gradient(circle at 25% 20%, rgba(56, 189, 248, 0.16), transparent 55%),
             radial-gradient(circle at 80% 30%, rgba(236, 72, 153, 0.14), transparent 60%);
           filter: blur(12px);
           opacity: 0.9;
@@ -931,6 +1089,10 @@ export default function FinalDayPage() {
             background: #fff !important;
             color: #000 !important;
             padding: 0 !important;
+          }
+
+          .xpot-fd-root::before {
+            display: none !important;
           }
 
           .xpot-fd-topbar {
