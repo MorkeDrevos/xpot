@@ -11,7 +11,6 @@ import {
   useContext,
 } from 'react';
 import Link from 'next/link';
-import Head from 'next/head';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -74,18 +73,18 @@ const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
 
 // ─────────────────────────────────────────────
 // FINAL DRAW SEASON (7000-day campaign)
-// UI day logic:
-// - Before first 22:00 draw: Day 0
-// - At 22:00 it flips to Day 1
-// Locked finale moment:
-// - 22/02/2045 22:00 (Madrid)
+// Locked globally:
+// - Season flips at 22:00 Madrid daily
+// - Start: 25/12/2025 22:00 (Madrid) -> DAY 1
+// - Before that cutoff (including same day before 22:00) -> DAY 0
+// - End: 22/02/2045 22:00 (Madrid) -> DAY 7000
 // ─────────────────────────────────────────────
 
 const SEASON_DAYS = 7000;
 
-// Season start moment = first ever "today's XPOT" draw
-const SEASON_START = { y: 2025, m: 12, d: 25, hh: 22, mi: 0, ss: 0 }; // Madrid
-const SEASON_END = { y: 2045, m: 2, d: 22, hh: 22, mi: 0, ss: 0 }; // Madrid
+const SEASON_START = { y: 2025, m: 12, d: 25 };
+const SEASON_END = { y: 2045, m: 2, d: 22 };
+const SEASON_CUTOFF_HOUR = 22;
 
 const SEASON_START_LABEL = '25/12/2025 22:00 (Madrid)';
 const SEASON_END_LABEL = '22/02/2045 22:00 (Madrid)';
@@ -133,7 +132,7 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const nextDrawUtcMs = useMemo(
-    () => getNextMadridCutoffUtcMs(22, new Date(nowMs)),
+    () => getNextMadridCutoffUtcMs(SEASON_CUTOFF_HOUR, new Date(nowMs)),
     [nowMs],
   );
 
@@ -146,13 +145,18 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return;
     window.dispatchEvent(
       new CustomEvent('xpot:next-draw', {
-        detail: { nowMs, nextDrawUtcMs, countdown, cutoffLabel: 'Madrid 22:00' },
+        detail: { nowMs, nextDrawUtcMs, countdown, cutoffLabel: `Madrid ${String(SEASON_CUTOFF_HOUR).padStart(2, '0')}:00` },
       }),
     );
   }, [nowMs, nextDrawUtcMs, countdown]);
 
   const value = useMemo<NextDrawState>(
-    () => ({ nowMs, nextDrawUtcMs, countdown, cutoffLabel: 'Madrid 22:00' }),
+    () => ({
+      nowMs,
+      nextDrawUtcMs,
+      countdown,
+      cutoffLabel: `Madrid ${String(SEASON_CUTOFF_HOUR).padStart(2, '0')}:00`,
+    }),
     [nowMs, nextDrawUtcMs, countdown],
   );
 
@@ -453,7 +457,9 @@ function SectionDividerLabel({ label }: { label: string }) {
       <span className="h-px flex-1 bg-white/10" />
       <span className="hidden sm:inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-slate-600">
         <span className="h-1 w-1 rounded-full bg-white/20" />
-        <span>Season</span>
+        <span>Entry mechanics</span>
+        <span className="h-1 w-1 rounded-full bg-white/20" />
+        <span>Eligibility</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
         <span>Identity</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
@@ -623,18 +629,47 @@ function getMadridOffsetMs(now = new Date()) {
   return asUtc - now.getTime();
 }
 
-function getMadridWallClockUtcMs(
-  yy: number,
-  mm: number,
-  dd: number,
-  hh: number,
-  mi: number,
-  ss: number,
-  now = new Date(),
-) {
-  const offsetMs = getMadridOffsetMs(now);
-  const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
-  return asUtc - offsetMs;
+function getMadridMidnightUtcMs(yy: number, mm: number, dd: number) {
+  return Date.UTC(yy, mm - 1, dd, 0, 0, 0);
+}
+
+function toUtcDateKey(yy: number, mm: number, dd: number) {
+  return Date.UTC(yy, mm - 1, dd, 0, 0, 0);
+}
+
+function addDaysKey(yy: number, mm: number, dd: number, deltaDays: number) {
+  const base = new Date(Date.UTC(yy, mm - 1, dd, 0, 0, 0));
+  base.setUTCDate(base.getUTCDate() + deltaDays);
+  return { y: base.getUTCFullYear(), m: base.getUTCMonth() + 1, d: base.getUTCDate() };
+}
+
+function calcSeasonProgress(now = new Date()) {
+  const p = getMadridParts(now);
+
+  // "Effective day" is the last cutoff day.
+  // Before 22:00 Madrid -> still previous day in season terms (DAY 0 before season starts).
+  const effective =
+    p.hh < SEASON_CUTOFF_HOUR ? addDaysKey(p.y, p.m, p.d, -1) : { y: p.y, m: p.m, d: p.d };
+
+  const startKey = toUtcDateKey(SEASON_START.y, SEASON_START.m, SEASON_START.d);
+  const effKey = toUtcDateKey(effective.y, effective.m, effective.d);
+  const endKey = toUtcDateKey(SEASON_END.y, SEASON_END.m, SEASON_END.d);
+
+  // If effective day is before start date -> DAY 0
+  if (effKey < startKey) {
+    const daysRemaining = SEASON_DAYS;
+    return { day: 0, daysRemaining, started: false, ended: false };
+  }
+
+  const daysSinceStart = Math.floor((effKey - startKey) / 86_400_000);
+  const rawDay = daysSinceStart + 1; // start cutoff date counts as DAY 1 after 22:00
+  const day = Math.max(0, Math.min(SEASON_DAYS, rawDay));
+
+  const daysRemaining = Math.max(0, SEASON_DAYS - day);
+  const started = day > 0;
+  const ended = day >= SEASON_DAYS;
+
+  return { day, daysRemaining, started, ended };
 }
 
 function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
@@ -655,7 +690,6 @@ function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
 
   let targetUtc = mkUtcFromMadridWallClock(p.y, p.m, p.d, cutoffHour, 0, 0);
 
-  // If now is at/after today's cutoff, next cutoff is tomorrow
   if (now.getTime() >= targetUtc) {
     const base = new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
     base.setUTCDate(base.getUTCDate() + 1);
@@ -676,53 +710,6 @@ function formatCountdown(ms: number) {
 
   const pad2 = (n: number) => String(n).padStart(2, '0');
   return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
-}
-
-/* Day logic:
-   - Day 0 before the first 22:00 draw moment
-   - At 22:00 flips to Day 1
-   - Each subsequent cutoff increments day
-*/
-function calcSeasonProgress(now = new Date()) {
-  const startUtc = getMadridWallClockUtcMs(
-    SEASON_START.y,
-    SEASON_START.m,
-    SEASON_START.d,
-    SEASON_START.hh,
-    SEASON_START.mi,
-    SEASON_START.ss,
-    now,
-  );
-
-  const endUtc = getMadridWallClockUtcMs(
-    SEASON_END.y,
-    SEASON_END.m,
-    SEASON_END.d,
-    SEASON_END.hh,
-    SEASON_END.mi,
-    SEASON_END.ss,
-    now,
-  );
-
-  const nextCutoffUtc = getNextMadridCutoffUtcMs(22, now);
-  const lastCutoffUtc = nextCutoffUtc - 86_400_000;
-
-  const started = now.getTime() >= startUtc;
-  const ended = now.getTime() >= endUtc;
-
-  let day = 0;
-
-  if (started) {
-    const diff = lastCutoffUtc - startUtc;
-    const idx = Math.floor(diff / 86_400_000) + 1; // Day 1 at first cutoff
-    day = Math.max(1, Math.min(SEASON_DAYS, idx));
-  } else {
-    day = 0;
-  }
-
-  const daysRemaining = Math.max(0, SEASON_DAYS - day);
-
-  return { day, daysRemaining, started, ended };
 }
 
 /* Bonus visibility:
@@ -778,6 +765,47 @@ function useLocalReducedMotion() {
     return () => m.removeEventListener?.('change', apply);
   }, []);
   return reduced;
+}
+
+/* ─────────────────────────────────────────────
+   Smart client meta (page.tsx is client)
+───────────────────────────────────────────── */
+
+function useClientMeta({
+  seasonDay,
+  countdown,
+}: {
+  seasonDay: number;
+  countdown: string;
+}) {
+  useEffect(() => {
+    const title =
+      seasonDay <= 0
+        ? `XPOT - Season begins at 22:00 (Madrid)`
+        : `XPOT - Day ${seasonDay}/${SEASON_DAYS} - Next draw ${countdown}`;
+
+    if (typeof document !== 'undefined') {
+      document.title = title;
+
+      const desc =
+        seasonDay <= 0
+          ? `XPOT daily draw protocol. Season flips at 22:00 (Madrid). Final: ${SEASON_END_LABEL}.`
+          : `XPOT daily draw protocol. Day ${seasonDay}/${SEASON_DAYS}. Next draw in ${countdown}. Final: ${SEASON_END_LABEL}.`;
+
+      const ensureMeta = (name: string) => {
+        let tag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+        if (!tag) {
+          tag = document.createElement('meta');
+          tag.setAttribute('name', name);
+          document.head.appendChild(tag);
+        }
+        return tag;
+      };
+
+      ensureMeta('description').setAttribute('content', desc);
+      ensureMeta('theme-color').setAttribute('content', '#0b1220');
+    }
+  }, [seasonDay, countdown]);
 }
 
 /* ─────────────────────────────────────────────
@@ -1034,11 +1062,12 @@ function FinalDrawBanner({
   ended: boolean;
 }) {
   const title = ended ? 'THE FINAL DRAW HAS ARRIVED' : 'THE FINAL DRAW SEASON';
+
   const sub = ended
     ? 'Season complete. The finale is live.'
     : started
-    ? 'A 7000-day global game. One arc. One legend.'
-    : `Season starts on ${SEASON_START_LABEL}.`;
+    ? `A 7000-day global game. Flips daily at 22:00 (Madrid).`
+    : `Season starts at ${SEASON_START_LABEL}.`;
 
   return (
     <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03] p-4 ring-1 ring-white/[0.06] shadow-[0_22px_90px_rgba(0,0,0,0.45)]">
@@ -1051,10 +1080,12 @@ function FinalDrawBanner({
               <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
               {title}
             </Pill>
+
             <Pill tone="violet">
               <Flame className="h-3.5 w-3.5" />
               Day {day}/{SEASON_DAYS}
             </Pill>
+
             <Pill tone="sky">
               <Timer className="h-3.5 w-3.5" />
               {daysRemaining} days remaining
@@ -1063,7 +1094,7 @@ function FinalDrawBanner({
 
           <p className="mt-2 text-sm font-semibold text-slate-100">{sub}</p>
           <p className="mt-1 text-[12px] text-slate-400">
-            Final moment: <span className="text-slate-200">{SEASON_END_LABEL}</span> • Eligibility is holdings-based • Winners are
+            Final draw: <span className="text-slate-200">{SEASON_END_LABEL}</span> • Eligibility is holdings-based • Winners are
             shown by <span className="text-slate-200">@handle</span> and paid on-chain
           </p>
         </div>
@@ -1090,26 +1121,15 @@ function HomePageInner() {
   const { countdown, cutoffLabel, nowMs } = useNextDraw();
 
   const season = useMemo(() => calcSeasonProgress(new Date(nowMs)), [nowMs]);
-  const seasonLine = useMemo(
-    () => `DAY ${season.day}/${SEASON_DAYS}  (final: ${SEASON_END_LABEL})`,
-    [season.day],
-  );
+  const seasonLine = useMemo(() => `DAY ${season.day}/${SEASON_DAYS}  (final: ${SEASON_END_LABEL})`, [season.day]);
 
-  const dynamicTitle = useMemo(() => {
-    if (!season.started) return `XPOT - Season starts ${SEASON_START_LABEL}`;
-    if (season.ended) return `XPOT - Final moment is now (${SEASON_END_LABEL})`;
-    return `XPOT - Day ${season.day}/${SEASON_DAYS} - Next draw in ${countdown}`;
-  }, [season.started, season.ended, season.day, countdown]);
-
-  const dynamicDescription = useMemo(() => {
-    return `One protocol. One identity. One daily XPOT draw. Day 0 before 22:00, Day 1 at 22:00 (Madrid). Final moment: ${SEASON_END_LABEL}.`;
-  }, []);
+  useClientMeta({ seasonDay: season.day, countdown });
 
   const faq = useMemo(
     () => [
       {
         q: 'What is “The Final Draw” exactly?',
-        a: `It’s the season finale of a 7000-day global XPOT campaign. Daily entries happen through the hub, and the entire season culminates at ${SEASON_END_LABEL}.`,
+        a: `It’s the season finale of a 7000-day global XPOT campaign. The season flips daily at 22:00 (Madrid) and culminates on ${SEASON_END_LABEL}.`,
       },
       {
         q: 'Do I need tickets to enter?',
@@ -1129,13 +1149,6 @@ function HomePageInner() {
 
   const hero = (
     <section className="relative">
-      <Head>
-        <title>{dynamicTitle}</title>
-        <meta name="description" content={dynamicDescription} />
-        <meta property="og:title" content={dynamicTitle} />
-        <meta property="og:description" content={dynamicDescription} />
-      </Head>
-
       <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+14px)]" />
 
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
@@ -1157,26 +1170,32 @@ function HomePageInner() {
                       ended={season.ended}
                     />
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    {/* moved down slightly + first pill now X-focused */}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Pill tone="emerald">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                        On-chain proof
-                      </Pill>
-
-                      <Pill tone="sky">
                         <Users className="h-3.5 w-3.5" />
-                        X handle required
+                        X handle identity
                       </Pill>
 
                       <Pill tone="violet">
-                        <Timer className="h-3.5 w-3.5" />
+                        <Blocks className="h-3.5 w-3.5" />
+                        Protocol layer
+                      </Pill>
+
+                      <Pill tone="amber">
+                        <Timer className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
                         Next draw {countdown}
                       </Pill>
                     </div>
 
                     <div className="rounded-[28px] bg-white/[0.022] p-6 ring-1 ring-white/[0.055] sm:p-7 lg:p-8">
                       <div className="mt-4">
-                        <h1 className="text-balance text-[40px] font-semibold leading-[1.05] sm:text-[56px]">
+                        {/* Grey line above H1 (brought back, EU format + time locked) */}
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                          No tickets · Just XPOT holdings
+                        </p>
+
+                        <h1 className="mt-3 text-balance text-[40px] font-semibold leading-[1.05] sm:text-[56px]">
                           One protocol. One identity.
                           <br />
                           <span className="text-emerald-300">One daily XPOT draw.</span>
@@ -1199,6 +1218,7 @@ function HomePageInner() {
                         Winners are presented by <span className="text-slate-100">@handle</span> and paid on-chain.
                       </p>
 
+                      {/* Eligibility block redesigned: "DAY X/7000" louder */}
                       <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.03] px-5 py-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -1213,15 +1233,33 @@ function HomePageInner() {
                             </p>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex flex-col items-end gap-2">
                             <Pill tone="amber">
                               <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
                               THE FINAL DRAW
                             </Pill>
 
-                            <span className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-                              Day {season.day} of {SEASON_DAYS}
-                            </span>
+                            <div
+                              className="
+                                relative overflow-hidden rounded-full
+                                border border-white/10 bg-slate-950/45 px-4 py-2
+                                shadow-[0_18px_70px_rgba(0,0,0,0.45)]
+                              "
+                            >
+                              <div className="pointer-events-none absolute -inset-16 opacity-70 blur-3xl bg-[radial-gradient(circle_at_30%_20%,rgba(var(--xpot-gold),0.24),transparent_62%),radial-gradient(circle_at_80%_40%,rgba(16,185,129,0.14),transparent_62%)]" />
+                              <div className="relative flex items-baseline gap-2">
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                                  Day
+                                </span>
+                                <span className={`font-mono text-[16px] font-semibold ${GOLD_TEXT}`}>
+                                  {season.day}
+                                </span>
+                                <span className="font-mono text-[12px] text-slate-500">/ {SEASON_DAYS}</span>
+                              </div>
+                              <p className="relative mt-0.5 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                                flips at 22:00 (Madrid)
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1317,7 +1355,7 @@ function HomePageInner() {
                       </div>
 
                       <p className="mt-4 text-[11px] text-slate-500/95">
-                        Day 0 before 22:00 (Madrid). Day 1 at 22:00. Final moment: {SEASON_END_LABEL}.
+                        Daily draws are the heartbeat. The Final Draw is the season ending. Winners are shown by @handle and paid on-chain.
                       </p>
                     </div>
                   </div>
@@ -1325,7 +1363,7 @@ function HomePageInner() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Season day" value={`#${season.day}/${SEASON_DAYS}`} tone="amber" />
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
-                    <MiniStat label="Final moment" value="22/02/2045 22:00" tone="violet" />
+                    <MiniStat label="Final draw" value="22/02/2045 22:00" tone="violet" />
                   </div>
                 </div>
 
@@ -1407,7 +1445,7 @@ function HomePageInner() {
               <Step
                 n="03"
                 title="Claim entry, verify payout"
-                desc={`Daily winners. On-chain proof. Final moment: ${SEASON_END_LABEL}`}
+                desc="Daily winners. On-chain proof. Season finale ahead"
                 icon={<Crown className={`h-5 w-5 ${GOLD_TEXT}`} />}
                 tone="amber"
                 tag="Proof"
@@ -1440,7 +1478,7 @@ function HomePageInner() {
               Finale (season ending)
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">The Final Draw is the season ending.</p>
-            <p className="mt-2 text-sm text-slate-300">Final moment: {SEASON_END_LABEL}.</p>
+            <p className="mt-2 text-sm text-slate-300">Locked globally: {SEASON_END_LABEL}.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1547,7 +1585,7 @@ function HomePageInner() {
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
-                <Bullet tone="amber">Final moment: {SEASON_END_LABEL}</Bullet>
+                <Bullet tone="amber">Final draw: {SEASON_END_LABEL}</Bullet>
                 <Bullet tone="emerald">Daily cadence builds the arc</Bullet>
                 <Bullet tone="sky">Proof stays public</Bullet>
               </ul>
