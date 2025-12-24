@@ -21,7 +21,7 @@ import {
   Radio,
   Trophy,
   Wallet,
-  Map,
+  Map as MapIcon,
   X,
   Crown,
   Ticket,
@@ -79,6 +79,7 @@ const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
 const MECHANISM_HREF = '/mechanism';
 const PROTOCOL_HREF = '/hub/protocol';
+const FINAL_DAY_HREF = '/final-day';
 
 // ✅ Your real deployed CA
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
@@ -200,7 +201,11 @@ export default function XpotTopBar({
                 {isHub ? (
                   <HubNavCenter liveIsOpen={liveIsOpen} />
                 ) : (
-                  <PublicNavCenter liveIsOpen={liveIsOpen} learnOpen={learnOpen} setLearnOpen={setLearnOpen} />
+                  <PublicNavCenter
+                    liveIsOpen={liveIsOpen}
+                    learnOpen={learnOpen}
+                    setLearnOpen={setLearnOpen}
+                  />
                 )}
               </div>
 
@@ -475,6 +480,16 @@ function PublicNavCenter({
             <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
               <div className="p-2">
                 <Link
+                  href={FINAL_DAY_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Crown className="h-4 w-4 text-amber-300" />
+                  </span>
+                  Final day
+                </Link>
+
+                <Link
                   href={TOKENOMICS_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
                 >
@@ -489,7 +504,7 @@ function PublicNavCenter({
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
                 >
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Map className="h-4 w-4 text-sky-300" />
+                    <MapIcon className="h-4 w-4 text-sky-300" />
                   </span>
                   Roadmap
                 </Link>
@@ -584,13 +599,18 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
       </NavLink>
 
       <NavLink href={ROADMAP_HREF}>
-        <Map className="h-4 w-4 text-sky-300" />
+        <MapIcon className="h-4 w-4 text-sky-300" />
         Roadmap
       </NavLink>
 
       <NavLink href={WINNERS_HREF}>
         <Trophy className="h-4 w-4 text-amber-300" />
         Winners
+      </NavLink>
+
+      <NavLink href={FINAL_DAY_HREF}>
+        <Crown className="h-4 w-4 text-amber-300" />
+        Final day
       </NavLink>
 
       <NavLink href={XPOT_X_POST} external title="Official XPOT X">
@@ -872,7 +892,9 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
                   <p className="text-sm font-semibold text-slate-100">
                     {connected ? 'Wallet connected' : 'No wallet connected'}
                   </p>
-                  <p className="mt-1 truncate text-xs text-slate-300/70">{connected ? addr : 'Choose a wallet below'}</p>
+                  <p className="mt-1 truncate text-xs text-slate-300/70">
+                    {connected ? addr : 'Choose a wallet below'}
+                  </p>
                 </div>
 
                 {connected && (
@@ -1016,8 +1038,8 @@ function MobileMenu({
 
   const handle = xAccount?.username || xAccount?.screenName || null;
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
-  const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
-  const initial = (displayHandle || 'X')[1] || 'X';
+  const displayHandle = handle ? `@${String(handle).replace(/^@/, '')}` : null;
+  const initial = (displayHandle?.[1] ?? 'X') || 'X';
 
   if (!open) return null;
 
@@ -1077,6 +1099,16 @@ function MobileMenu({
 
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={FINAL_DAY_HREF}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Crown className="h-4 w-4 text-amber-300" />
+              Final day
+            </span>
+          </Link>
+
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={PROTOCOL_HREF}
           >
             <span className="inline-flex items-center gap-2">
@@ -1110,7 +1142,7 @@ function MobileMenu({
             href={ROADMAP_HREF}
           >
             <span className="inline-flex items-center gap-2">
-              <Map className="h-4 w-4 text-sky-300" />
+              <MapIcon className="h-4 w-4 text-sky-300" />
               Roadmap
             </span>
           </Link>
