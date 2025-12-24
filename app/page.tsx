@@ -11,7 +11,7 @@ import {
   useContext,
 } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion'; but 
 import {
   ArrowRight,
   Blocks,
@@ -44,6 +44,7 @@ const ROUTE_HUB = '/hub';
 const ROUTE_OPS = '/ops';
 const ROUTE_TERMS = '/terms';
 const ROUTE_TOKENOMICS = '/tokenomics';
+const ROUTE_TOKENOMICS_RESERVE = '/tokenomics?tab=rewards&focus=reserve';
 
 const XPOT_CA =
   process.env.NEXT_PUBLIC_XPOT_MINT ||
@@ -1073,20 +1074,16 @@ function HomePageInner() {
       </div>
 
       <Link
-  href={ROUTE_TOKENOMICS}
+  href={ROUTE_TOKENOMICS_RESERVE}
   target="_blank"
   rel="noopener noreferrer"
-  className={`
-    inline-flex items-center gap-2 rounded-full
-    border ${GOLD_BORDER} ${GOLD_BG_WASH}
-    px-4 py-2 text-[11px] font-semibold ${GOLD_TEXT}
-    hover:brightness-[1.06] transition
-  `}
-  title="Open Tokenomics"
+  className={/* keep your classes */}
+  title="Open Tokenomics (Rewards reserve)"
 >
   View tokenomics
   <ArrowRight className="h-4 w-4" />
 </Link>
+    
     </div>
   </div>
 
