@@ -1,8 +1,7 @@
-// app/final-day/page.tsx (or wherever you mount it)
-// FinalDayPage.tsx
+// app/final-day/page.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
@@ -29,17 +28,10 @@ const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
 const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
 const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
 
-type FinalDayPageProps = {
-  // Optional: wire real values later (DB-driven)
-  dayIndex?: number; // e.g. 6991
-  dailyAmount?: number; // 1_000_000
-  finalTimestampIso?: string; // e.g. "2045-06-...T00:00:00Z"
-};
-
-export default function FinalDayPage(_props: FinalDayPageProps) {
+export default function Page() {
   const reduceMotion = useReducedMotion();
 
-  // --- purely visual “futuristic” ambience state ---
+  // purely visual “futuristic” ambience state
   const [pulse, setPulse] = useState(0);
   useEffect(() => {
     if (reduceMotion) return;
@@ -47,9 +39,7 @@ export default function FinalDayPage(_props: FinalDayPageProps) {
     return () => window.clearInterval(t);
   }, [reduceMotion]);
 
-  // --- layout helpers ---
-  const container =
-    'mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8';
+  const container = 'mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8';
 
   return (
     <XpotPageShell
@@ -63,25 +53,28 @@ export default function FinalDayPage(_props: FinalDayPageProps) {
       <FutureBackdrop pulse={pulse} />
 
       <main className="relative">
-        {/* 0) Page Top Spacer (keeps topbar breathing room) */}
         <div className="h-4 sm:h-6" />
 
-        {/* 1) HERO: The Last Day (cinematic, nothing like existing pages) */}
+        {/* 1) HERO */}
         <section className={`${container}`}>
           <TimeHeader />
           <FinalDayHero />
         </section>
 
-        {/* 2) SIGNAL STRIP: “System status” + “Final draw integrity” */}
+        {/* 2) SIGNAL STRIP */}
         <section className={`${container} mt-10 sm:mt-12`}>
           <SignalStrip />
         </section>
 
-        {/* 3) MAIN GRID: left = story modules, right = “last draw” monolith */}
+        {/* 3) MAIN GRID */}
         <section className={`${container} mt-10 sm:mt-12`}>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             <div className="lg:col-span-7 space-y-6">
               <MemoryCapsuleCard />
+
+              {/* ✅ NEW: Mørke Drevos obituary capsule card */}
+              <MorkeDrevosObituaryCapsule />
+
               <LegacyTimeline />
               <FinalEulogyCard />
               <GuardianRulesCard />
@@ -95,12 +88,12 @@ export default function FinalDayPage(_props: FinalDayPageProps) {
           </div>
         </section>
 
-        {/* 4) FULL-BLEED: “Eclipse Moment” divider */}
+        {/* 4) FULL-BLEED divider */}
         <section className="relative mt-14 sm:mt-16">
           <EclipseDivider />
         </section>
 
-        {/* 5) EPILOGUE: the end screen + links */}
+        {/* 5) EPILOGUE */}
         <section className={`${container} mt-12 sm:mt-14 pb-12 sm:pb-16`}>
           <EpilogueGrid />
         </section>
@@ -109,16 +102,18 @@ export default function FinalDayPage(_props: FinalDayPageProps) {
       {/* Local page-only styling (so it cannot look like other pages) */}
       <style jsx global>{`
         .xpot-finalday-noise {
-          background-image:
-            radial-gradient(circle at 18% 22%, rgba(56,189,248,0.08), transparent 46%),
-            radial-gradient(circle at 72% 30%, rgba(244,63,94,0.10), transparent 44%),
-            radial-gradient(circle at 40% 78%, rgba(16,185,129,0.09), transparent 50%);
+          background-image: radial-gradient(
+              circle at 18% 22%,
+              rgba(56, 189, 248, 0.08),
+              transparent 46%
+            ),
+            radial-gradient(circle at 72% 30%, rgba(244, 63, 94, 0.1), transparent 44%),
+            radial-gradient(circle at 40% 78%, rgba(16, 185, 129, 0.09), transparent 50%);
           filter: saturate(1.08);
         }
         .xpot-finalday-grid {
-          background-image:
-            linear-gradient(to right, rgba(148,163,184,0.06) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(148,163,184,0.06) 1px, transparent 1px);
+          background-image: linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
           background-size: 48px 48px;
           mask-image: radial-gradient(circle at 50% 30%, black 42%, transparent 72%);
         }
@@ -128,8 +123,8 @@ export default function FinalDayPage(_props: FinalDayPageProps) {
           background: linear-gradient(
             120deg,
             transparent,
-            rgba(255,255,255,0.05),
-            rgba(56,189,248,0.06),
+            rgba(255, 255, 255, 0.05),
+            rgba(56, 189, 248, 0.06),
             transparent
           );
           transform: rotate(8deg);
@@ -139,9 +134,17 @@ export default function FinalDayPage(_props: FinalDayPageProps) {
           opacity: 0.6;
         }
         @keyframes xpotFinalScan {
-          0% { transform: translate3d(-6%, -2%, 0) rotate(8deg); opacity: 0.25; }
-          45% { opacity: 0.75; }
-          100% { transform: translate3d(6%, 2%, 0) rotate(8deg); opacity: 0.25; }
+          0% {
+            transform: translate3d(-6%, -2%, 0) rotate(8deg);
+            opacity: 0.25;
+          }
+          45% {
+            opacity: 0.75;
+          }
+          100% {
+            transform: translate3d(6%, 2%, 0) rotate(8deg);
+            opacity: 0.25;
+          }
         }
       `}</style>
     </XpotPageShell>
@@ -160,19 +163,16 @@ function FutureBackdrop({ pulse }: { pulse: number }) {
       <div
         className="absolute inset-0"
         style={{
-          background:
-            `radial-gradient(circle at 50% 15%, rgba(255,255,255,0.08), transparent 55%),
+          background: `radial-gradient(circle at 50% 15%, rgba(255,255,255,0.08), transparent 55%),
              radial-gradient(circle at 18% 60%, rgba(16,185,129,0.09), transparent 50%),
              radial-gradient(circle at 82% 55%, rgba(56,189,248,0.08), transparent 55%)`,
           opacity: 0.9,
         }}
       />
-      {/* tiny pulse to make it “alive” without copying existing vibe */}
       <div
         className="absolute inset-0"
         style={{
-          background:
-            `radial-gradient(circle at 50% 40%, rgba(255,255,255,0.06), transparent 48%)`,
+          background: `radial-gradient(circle at 50% 40%, rgba(255,255,255,0.06), transparent 48%)`,
           opacity: 0.08 + (pulse % 6) * 0.01,
         }}
       />
@@ -215,13 +215,11 @@ function FinalDayHero() {
           </div>
 
           <h1 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-white">
-            {/* YOU will write final copy */}
             The Last Main Daily XPOT
           </h1>
 
           <p className="mt-3 text-base sm:text-lg text-white/72 leading-relaxed">
             {/* YOU will write final copy */}
-            {/* This page is a time capsule. It feels like the end of an era - not a normal landing page. */}
           </p>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
@@ -274,7 +272,6 @@ function HeroSigil() {
       <div className="mt-4 rounded-[18px] border border-white/10 bg-gradient-to-b from-white/6 to-transparent p-4">
         <div className="text-xs text-white/50">FINAL-DAY HASH</div>
         <div className="mt-2 font-mono text-xs text-white/70 break-all">
-          {/* placeholder */}
           0xFINALDAY::XPOT::ARCHIVE::6991::…
         </div>
 
@@ -327,11 +324,67 @@ function SignalPill({
 function MemoryCapsuleCard() {
   return (
     <CardShell title="Memory Capsule" icon={<Sparkles className="h-4 w-4" />}>
-      {/* YOU will write final copy */}
-      <p className="text-white/72 leading-relaxed">
-        {/* placeholder */}
-      </p>
+      <p className="text-white/72 leading-relaxed">{/* YOU will write final copy */}</p>
     </CardShell>
+  );
+}
+
+/* ✅ NEW CARD: Mørke Drevos obituary capsule */
+function MorkeDrevosObituaryCapsule() {
+  return (
+    <CardShell title="Mørke Drevos Obituary Capsule" icon={<Star className="h-4 w-4" />}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-start">
+        {/* Photo slot */}
+        <div className="sm:col-span-4">
+          <div className="relative overflow-hidden rounded-[18px] border border-white/10 bg-gradient-to-b from-white/8 to-black/40">
+            <div className="aspect-[4/5] w-full" />
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-white/45">
+              PHOTO SLOT
+            </div>
+            <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-black/35 px-3 py-2 text-[11px] text-white/60">
+              {/* optional small caption */}
+              {/* YOU will write */}
+              Founder portrait - archived
+            </div>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="sm:col-span-8">
+          <div className="rounded-[18px] border border-white/10 bg-black/35 p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <LineItem k="Born" v="YYYY-MM-DD" />
+              <LineItem k="Died" v="YYYY-MM-DD" />
+            </div>
+
+            <div className="mt-4 rounded-[16px] border border-white/10 bg-white/5 p-4">
+              <div className="text-xs text-white/55">Founder quote</div>
+              <div className="mt-2 text-sm text-white/75 leading-relaxed">
+                {/* YOU will write */}
+                “...”
+              </div>
+              <div className="mt-3 text-[11px] text-white/45">
+                Signed in the Final Day archive. Read-only forever.
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 text-xs text-white/45 leading-relaxed">
+            {/* YOU will write */}
+            This capsule is not marketing. It is a record.
+          </div>
+        </div>
+      </div>
+    </CardShell>
+  );
+}
+
+function LineItem({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[14px] border border-white/10 bg-white/5 px-3 py-2">
+      <div className="text-[11px] text-white/55">{k}</div>
+      <div className="text-sm font-semibold text-white">{v}</div>
+    </div>
   );
 }
 
@@ -361,15 +414,9 @@ function TimelineRow({ k, v }: { k: string; v: string }) {
 function FinalEulogyCard() {
   return (
     <CardShell title="The Final Day" icon={<Crown className="h-4 w-4" />}>
-      {/* YOU will write final copy */}
       <div className="rounded-[16px] border border-white/10 bg-black/35 p-4">
-        <p className="text-white/75 leading-relaxed">
-          {/* placeholder */}
-        </p>
-        <div className="mt-4 text-xs text-white/45">
-          {/* placeholder */}
-          Archived permanently - timestamped - uneditable.
-        </div>
+        <p className="text-white/75 leading-relaxed">{/* YOU will write final copy */}</p>
+        <div className="mt-4 text-xs text-white/45">Archived permanently - timestamped - uneditable.</div>
       </div>
     </CardShell>
   );
@@ -381,7 +428,6 @@ function GuardianRulesCard() {
       <ul className="space-y-2 text-sm text-white/72">
         <li className="flex gap-2">
           <span className="text-white/35">•</span>
-          {/* YOU will write */}
           <span>Rule line 1…</span>
         </li>
         <li className="flex gap-2">
@@ -432,7 +478,6 @@ function LastDrawMonolith() {
       </div>
 
       <div className="mt-4 text-xs text-white/45 leading-relaxed">
-        {/* YOU will write */}
         This monolith stays on-chain as the last public interface of the daily main.
       </div>
     </div>
@@ -460,10 +505,7 @@ function HallOfFamePortal() {
           <ExternalLink className="h-4 w-4" />
         </button>
 
-        <div className="text-xs text-white/45">
-          {/* YOU will write */}
-          Handle-based legacy preserved forever.
-        </div>
+        <div className="text-xs text-white/45">Handle-based legacy preserved forever.</div>
       </div>
     </CardShell>
   );
@@ -478,9 +520,7 @@ function TimeLockPlaque() {
       </div>
       <div className="mt-3 rounded-[16px] border border-white/10 bg-white/5 p-4">
         <div className="text-xs text-white/50">FINAL MESSAGE</div>
-        <p className="mt-2 text-sm text-white/75 leading-relaxed">
-          {/* YOU will write */}
-        </p>
+        <p className="mt-2 text-sm text-white/75 leading-relaxed">{/* YOU will write */}</p>
       </div>
     </div>
   );
@@ -500,7 +540,6 @@ function EclipseDivider() {
             <div>
               <div className="text-xs text-white/55">ECLIPSE MOMENT</div>
               <div className="mt-2 text-xl sm:text-2xl font-semibold text-white">
-                {/* YOU will write */}
                 When the lights go out, the legend remains.
               </div>
             </div>
@@ -520,8 +559,7 @@ function EpilogueGrid() {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <div className="lg:col-span-7">
         <CardShell title="Epilogue" icon={<Sparkles className="h-4 w-4" />}>
-          {/* YOU will write final copy */}
-          <p className="text-white/72 leading-relaxed">{/* placeholder */}</p>
+          <p className="text-white/72 leading-relaxed">{/* YOU will write final copy */}</p>
         </CardShell>
       </div>
 
@@ -545,10 +583,7 @@ function EpilogueGrid() {
 
         <div className={`rounded-[22px] border ${GOLD_BORDER} ${GOLD_BG_WASH} p-5`}>
           <div className={`text-sm font-semibold ${GOLD_TEXT}`}>The Final Seal</div>
-          <div className="mt-2 text-xs text-white/60">
-            {/* YOU will write */}
-            Signed, timestamped, and left for the next civilisation.
-          </div>
+          <div className="mt-2 text-xs text-white/60">Signed, timestamped, and left for the next civilisation.</div>
         </div>
       </div>
     </div>
