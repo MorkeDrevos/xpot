@@ -11,7 +11,7 @@ import {
   useContext,
 } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'framer-motion'; but 
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight,
   Blocks,
@@ -1077,11 +1077,11 @@ function HomePageInner() {
   href={ROUTE_TOKENOMICS_RESERVE}
   target="_blank"
   rel="noopener noreferrer"
-  className={/* keep your classes */}
+  className={`${BTN_PRIMARY} group px-5 py-2.5 text-sm`}
   title="Open Tokenomics (Rewards reserve)"
 >
   View tokenomics
-  <ArrowRight className="h-4 w-4" />
+  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 </Link>
     
     </div>
