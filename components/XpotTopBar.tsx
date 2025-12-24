@@ -2,36 +2,36 @@
 'use client';
 
 import Link from 'next/link';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+
+import XpotLogo from '@/components/XpotLogo';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState, type WalletName } from '@solana/wallet-adapter-base';
 
-import XpotLogo from '@/components/XpotLogo';
-
 import {
   ChevronDown,
-  ChevronRight,
   ExternalLink,
-  Info,
-  Loader2,
   LogOut,
-  Map,
   Menu,
   PieChart,
   Radio,
-  ShieldCheck,
-  Ticket,
   Trophy,
   Wallet,
+  Map,
   X,
-  XCircle,
+  Crown,
+  Ticket,
   Copy,
   Check,
-  Crown,
+  ShieldCheck,
+  XCircle,
+  Loader2,
+  ChevronRight,
+  Info,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -44,7 +44,7 @@ export type HubWalletStatus = {
   winner?: boolean;
 };
 
-type XpotTopBarProps = {
+export type XpotTopBarProps = {
   logoHref?: string;
 
   // Public pill (non-hub pages)
@@ -77,14 +77,10 @@ const XPOT_X_POST = 'https://x.com/xpotbet';
 const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
-
-// ✅ Transparency / mechanism page
 const MECHANISM_HREF = '/mechanism';
-
-// ✅ Health / Protocol State page
 const PROTOCOL_HREF = '/hub/protocol';
 
-// ✅ Official CA
+// ✅ Your real deployed CA
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
 export default function XpotTopBar({
@@ -223,7 +219,7 @@ export default function XpotTopBar({
                     onOpenWalletModal={openWallet}
                   />
                 ) : (
-                  <>{rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}</>
+                  <>{rightSlot ? rightSlot : <PublicRight />}</>
                 )}
 
                 {/* Mobile menu button */}
@@ -541,7 +537,7 @@ function PublicNavCenter({
 
 /* ---------------- Public: Right actions ---------------- */
 
-function PublicRight({ liveIsOpen }: { liveIsOpen: boolean }) {
+function PublicRight() {
   return (
     <div className="hidden items-center gap-3 xl:flex">
       <NavPill href={PROTOCOL_HREF} title="Protocol health">
@@ -619,6 +615,7 @@ function HubRight({
   return (
     <div className="hidden items-center gap-3 xl:flex">
       <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
+
       {clerkEnabled && (
         <SignOutButton redirectUrl="/">
           <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06]">
@@ -631,7 +628,7 @@ function HubRight({
   );
 }
 
-/* ---------------- Wallet button ---------------- */
+/* ---------------- Wallet button (premium + royal) ---------------- */
 
 function toneRing(tone: HubWalletTone) {
   if (tone === 'emerald') return 'ring-emerald-400/20';
@@ -686,6 +683,7 @@ function HubWalletMenuInline({
         transition
       `}
       title={addr ?? undefined}
+      type="button"
     >
       <span
         aria-hidden
@@ -718,17 +716,20 @@ function HubWalletMenuInline({
         <div className="min-w-0 text-left">
           <div className="flex items-center gap-2">
             <span className="text-[13px] font-semibold text-slate-100">{label}</span>
+
             {hubWalletStatus?.winner && (
               <span className="hidden sm:inline-flex items-center rounded-full border border-amber-400/15 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-amber-100">
                 WINNER
               </span>
             )}
+
             {hubWalletStatus?.claimed && !hubWalletStatus?.winner && (
               <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-400/15 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-emerald-100">
                 TICKET
               </span>
             )}
           </div>
+
           <div className="mt-0.5 flex items-center gap-2">
             <span className="text-[11px] text-slate-300/70">{sublabel}</span>
           </div>
@@ -1018,24 +1019,6 @@ function MobileMenu({
   const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
   const initial = (displayHandle || 'X')[1] || 'X';
 
-  // ✅ lock scroll + escape close
-  useEffect(() => {
-    if (!open) return;
-
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKey);
-
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [open, onClose]);
-
   if (!open) return null;
 
   return (
@@ -1077,7 +1060,6 @@ function MobileMenu({
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href="/hub"
-            onClick={onClose}
           >
             Hub
           </Link>
@@ -1085,7 +1067,6 @@ function MobileMenu({
           <Link
             className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href="/hub/live"
-            onClick={onClose}
           >
             <span className="inline-flex items-center gap-2">
               <LiveDot isOpen={liveIsOpen} />
@@ -1097,7 +1078,6 @@ function MobileMenu({
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={PROTOCOL_HREF}
-            onClick={onClose}
           >
             <span className="inline-flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-300" />
@@ -1108,7 +1088,6 @@ function MobileMenu({
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={MECHANISM_HREF}
-            onClick={onClose}
           >
             <span className="inline-flex items-center gap-2">
               <Info className="h-4 w-4 text-slate-200" />
@@ -1119,7 +1098,6 @@ function MobileMenu({
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={TOKENOMICS_HREF}
-            onClick={onClose}
           >
             <span className="inline-flex items-center gap-2">
               <PieChart className="h-4 w-4 text-emerald-300" />
@@ -1130,7 +1108,6 @@ function MobileMenu({
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={ROADMAP_HREF}
-            onClick={onClose}
           >
             <span className="inline-flex items-center gap-2">
               <Map className="h-4 w-4 text-sky-300" />
@@ -1141,7 +1118,6 @@ function MobileMenu({
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={WINNERS_HREF}
-            onClick={onClose}
           >
             <span className="inline-flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-300" />
@@ -1153,7 +1129,6 @@ function MobileMenu({
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={XPOT_X_POST}
             target="_blank"
-            onClick={onClose}
           >
             <span className="inline-flex items-center gap-2">
               <ExternalLink className="h-4 w-4" />
@@ -1170,10 +1145,7 @@ function MobileMenu({
           {isHub && clerkEnabled && (
             <div className="pt-2">
               <SignOutButton redirectUrl="/">
-                <button
-                  className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                  onClick={onClose}
-                >
+                <button className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]">
                   <span className="inline-flex items-center gap-2">
                     <LogOut className="h-5 w-5" />
                     Log out
@@ -1187,7 +1159,6 @@ function MobileMenu({
             <Link
               href="/hub"
               className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
-              onClick={onClose}
             >
               Enter today&apos;s XPOT →
             </Link>
