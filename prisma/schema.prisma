@@ -33,6 +33,7 @@ enum WinnerKind {
   BONUS
 }
 
+// Ops mode for admin control (manual vs auto)
 enum OpsMode {
   MANUAL
   AUTO
@@ -42,7 +43,9 @@ enum OpsMode {
 // Models
 // ─────────────────────────────────────────────
 
+// Single-row config table (stores ops mode etc)
 model OpsConfig {
+  // enforce exactly one row via stable primary key
   singleton String @id @default("singleton")
 
   createdAt DateTime @default(now())
@@ -51,6 +54,7 @@ model OpsConfig {
   mode OpsMode @default(MANUAL)
 }
 
+// User (optional identity, NOT tied to tickets)
 model User {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -66,6 +70,7 @@ model User {
   @@index([xHandle])
 }
 
+// Wallet -> owns tickets
 model Wallet {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -80,29 +85,38 @@ model Wallet {
   @@index([userId])
 }
 
+// Daily XPOT draw
 model Draw {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
+  /// Calendar date of the draw (UTC day bucket)
   drawDate DateTime @unique
+
+  /// When the main XPOT closes for entries
   closesAt DateTime?
   status   String   @default("open")
 
   tickets    Ticket[]
   winners    Winner[]
   bonusDrops BonusDrop[]
-  entries    DrawEntry[]
+
+  // Public lobby entrants for this draw (X handles)
+  entries DrawEntry[]
 }
 
+// XPOT ticket in a draw
 model Ticket {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
   code String @unique
 
+  // Ticket must always have an owning wallet
   walletId String
   wallet   Wallet @relation(fields: [walletId], references: [id])
 
+  // Snapshot of wallet address at creation time
   walletAddress String
   status        TicketStatus @default(IN_DRAW)
 
@@ -115,9 +129,12 @@ model Ticket {
   @@index([drawId])
   @@index([status])
   @@index([walletAddress])
+
+  // Prevent duplicate tickets per wallet per draw
   @@unique([walletId, drawId])
 }
 
+// Log of main + bonus winners
 model Winner {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -128,9 +145,10 @@ model Winner {
   ticketId String
   ticket   Ticket @relation(fields: [ticketId], references: [id])
 
-  // keep (some routes sort by this)
+  // Optional extra timestamp (you already have createdAt)
   date DateTime @default(now())
 
+  // Snapshots (keep them - makes rendering fast and stable)
   ticketCode    String
   walletAddress String
 
@@ -149,6 +167,7 @@ model Winner {
   @@index([walletAddress])
 }
 
+// Scheduled bonus XPOT drops
 model BonusDrop {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -166,6 +185,7 @@ model BonusDrop {
   @@index([status, scheduledAt])
 }
 
+// Public lobby entry (X handle) for a specific draw
 model DrawEntry {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -173,61 +193,22 @@ model DrawEntry {
   drawId String
   draw   Draw @relation(fields: [drawId], references: [id])
 
+  // Clerk user id (string) - keeps this reliable even if User row doesn't exist yet
   clerkId String
 
+  // Public identity (by handle)
   xHandle    String
   xName      String?
   xAvatarUrl String?
   followers  Int?
   verified   Boolean?
 
+  // One entry per user per draw
   @@unique([drawId, clerkId])
+
+  // Optional: uncomment if you want "1 handle = 1 entry" per draw
+  // @@unique([drawId, xHandle])
+
   @@index([drawId, createdAt])
   @@index([xHandle])
-}
-
-// ─────────────────────────────────────────────
-// Hub (Prisma-backed, keyed by Clerk id)
-// ─────────────────────────────────────────────
-
-model UserPreference {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  clerkId String @unique
-
-  soundEnabled Boolean @default(true)
-
-  @@index([clerkId])
-}
-
-model HubStreak {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  clerkId String @unique
-
-  days Int @default(0)
-
-  // UTC day bucket the user last completed the ritual
-  lastDoneDay DateTime?
-
-  @@index([clerkId])
-}
-
-model DailyMission {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // "YYYY-MM-DD" UTC day key
-  ymd   String @unique
-  title String
-  desc  String
-
-  source String @default("seeded")
-
-  @@index([ymd])
 }
