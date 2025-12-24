@@ -2,7 +2,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
@@ -63,8 +64,6 @@ const TEN_YEARS_REQUIRED = DISTRIBUTION_DAILY_XPOT * DAYS_PER_YEAR * 10; // 3,65
 // ✅ Team vesting (Streamflow) - on-chain proof targets
 // ─────────────────────────────────────────────
 function getStreamflowContractUrl(contractAccount: string) {
-  // Your previous link was ending up on a dead page for you
-  // This format is commonly accepted and avoids the extra segment that was failing.
   return `https://app.streamflow.finance/contract/solana/${contractAccount}`;
 }
 
@@ -996,6 +995,7 @@ function DonutAllocation({
 }
 
 export default function TokenomicsPage() {
+  const searchParams = useSearchParams();
   const supply = 50_000_000_000;
 
   const DISTRIBUTION_RESERVE_PCT = 14;
@@ -1004,12 +1004,15 @@ export default function TokenomicsPage() {
   const TEAM_PCT = 9;
   const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100);
 
-  function yearsOfRunway(daily: number) {
-    if (!Number.isFinite(daily) || daily <= 0) return Infinity;
-    return DISTRIBUTION_RESERVE / (daily * DAYS_PER_YEAR);
-  }
+  const yearsOfRunway = useCallback(
+    (daily: number) => {
+      if (!Number.isFinite(daily) || daily <= 0) return Infinity;
+      return DISTRIBUTION_RESERVE / (daily * DAYS_PER_YEAR);
+    },
+    [DISTRIBUTION_RESERVE],
+  );
 
-  const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
+  const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
   const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
 
   const runwayTable = useMemo(
@@ -1067,8 +1070,6 @@ export default function TokenomicsPage() {
         label: 'Team and builders',
         pct: 9,
         note: 'Vested, long horizon. Builders stay aligned with holders.',
-        // ✅ Removed the raw URL that was ending up dead for you
-        // Proof is now always in the expanded panel buttons.
         detail:
           `Vesting is live on-chain via Streamflow: 12 months, monthly equal unlocks. ` +
           `Contract (escrow): ${shortAddr(TEAM_VESTING.contractAccount)}. ` +
@@ -1168,7 +1169,7 @@ export default function TokenomicsPage() {
 
   const allocationRef = useRef<HTMLDivElement | null>(null);
 
-  const openDistribution = () => {
+  const openDistribution = useCallback(() => {
     setSelectedKey('distribution');
     setOpenKeyRaw('distribution');
     setPendingScrollKey('distribution');
@@ -1180,7 +1181,24 @@ export default function TokenomicsPage() {
       const top = window.scrollY + rect.top - getStickyOffsetPx();
       window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
     });
-  };
+  }, []);
+
+  // ✅ Deep-link support from home page: /tokenomics?tab=rewards&focus=reserve
+  const didAutoFocusRef = useRef(false);
+  useEffect(() => {
+    if (didAutoFocusRef.current) return;
+
+    const focus = searchParams.get('focus');
+    const tab = searchParams.get('tab');
+
+    if (focus === 'reserve' || tab === 'rewards') {
+      didAutoFocusRef.current = true;
+
+      // Let the page layout/refs settle first (prevents "scroll before ref")
+      const t = window.setTimeout(() => openDistribution(), 120);
+      return () => window.clearTimeout(t);
+    }
+  }, [searchParams, openDistribution]);
 
   return (
     <XpotPageShell
