@@ -212,18 +212,39 @@ model DrawEntry {
   @@index([drawId, createdAt])
   @@index([xHandle])
 }
-// Hub streak tracking (for /api/hub/streak)
+
+// ─────────────────────────────────────────────
+// ✅ Missing models (fixes prisma.hubStreak + prisma.userPreference)
+// ─────────────────────────────────────────────
+
+// Hub streak tracking (used by /api/hub/streak)
 model HubStreak {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Clerk user id (used by upsert where: { clerkId })
-  clerkId     String   @unique
+  clerkId String @unique
 
   // Consecutive days
-  days        Int      @default(0)
+  days Int @default(0)
 
-  // The last UTC day the streak was recorded for (nullable)
+  // The last UTC day the streak was recorded for (store as DateTime bucket)
   lastDoneDay DateTime?
+
+  @@index([clerkId])
+}
+
+// User preferences (used by /api/me/preferences)
+model UserPreference {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Clerk user id (used by upsert where: { clerkId })
+  clerkId String @unique
+
+  soundEnabled Boolean @default(true)
+
+  @@index([clerkId])
 }
