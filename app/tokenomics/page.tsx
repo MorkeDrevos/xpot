@@ -721,6 +721,7 @@ function DonutAllocation({
   onSelect: (key: string) => void;
 
   openKey: string | null;
+  // DonutAllocation props
   setOpenKey: (fn: (k: string | null) => string | null) => void;
   setPendingScrollKey: (key: string | null) => void;
 
@@ -994,9 +995,10 @@ function DonutAllocation({
   );
 }
 
-// ✅ This is the component that uses useSearchParams
-function TokenomicsClient() {
+function TokenomicsPageClient() {
+  // ✅ Next.js requirement: useSearchParams must be inside a Suspense boundary.
   const searchParams = useSearchParams();
+
   const supply = 50_000_000_000;
 
   const DISTRIBUTION_RESERVE_PCT = 14;
@@ -1558,11 +1560,26 @@ function TokenomicsClient() {
   );
 }
 
-// ✅ Fix for Vercel/Next prerender error: wrap useSearchParams usage in Suspense
 export default function TokenomicsPage() {
+  // ✅ Fix for your Vercel build error:
+  // "useSearchParams() should be wrapped in a suspense boundary"
   return (
-    <Suspense fallback={<div className="min-h-[40vh]" />}>
-      <TokenomicsClient />
+    <Suspense
+      fallback={
+        <XpotPageShell
+          title="Tokenomics"
+          subtitle="XPOT is built as a daily distribution protocol - transparent, repeatable and verifiable."
+          topBarProps={{ pillText: 'TOKENOMICS', sloganRight: 'Protocol-grade distribution' }}
+        >
+          <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
+            <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-sm text-slate-300">
+              Loading tokenomics…
+            </div>
+          </div>
+        </XpotPageShell>
+      }
+    >
+      <TokenomicsPageClient />
     </Suspense>
   );
 }
