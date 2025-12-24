@@ -22,7 +22,9 @@ function isSameUtcDay(a?: Date | null, b?: Date | null) {
 export async function GET() {
   try {
     const { userId: clerkId } = await auth();
-    if (!clerkId) return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
+    if (!clerkId) {
+      return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
 
     const row = await prisma.hubStreak.upsert({
       where: { clerkId },
@@ -54,7 +56,9 @@ export async function GET() {
 export async function POST() {
   try {
     const { userId: clerkId } = await auth();
-    if (!clerkId) return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
+    if (!clerkId) {
+      return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
 
     const today = utcStartOfDay();
 
@@ -67,7 +71,14 @@ export async function POST() {
 
     if (isSameUtcDay(current.lastDoneDay, today)) {
       return NextResponse.json(
-        { ok: true, streak: { days: current.days, todayDone: true, lastDoneYmd: today.toISOString().slice(0, 10) } },
+        {
+          ok: true,
+          streak: {
+            days: current.days,
+            todayDone: true,
+            lastDoneYmd: today.toISOString().slice(0, 10),
+          },
+        },
         { status: 200 },
       );
     }
