@@ -208,7 +208,11 @@ export default function XpotTopBar({
                 {isHub ? (
                   <HubNavCenter liveIsOpen={liveIsOpen} />
                 ) : (
-                  <PublicNavCenter liveIsOpen={liveIsOpen} learnOpen={learnOpen} setLearnOpen={setLearnOpen} />
+                  <PublicNavCenter
+                    liveIsOpen={liveIsOpen}
+                    learnOpen={learnOpen}
+                    setLearnOpen={setLearnOpen}
+                  />
                 )}
               </div>
 
@@ -501,7 +505,8 @@ function PublicNavCenter({
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      <NavLink href="/hub/live" title={liveIsOpen ? 'Live draw is open' : 'Live view'}>
+      {/* ✅ Live label stays, but route goes to Protocol */}
+      <NavLink href={PROTOCOL_HREF} title="Protocol state">
         <LiveDot isOpen={liveIsOpen} />
         <Radio className="h-4 w-4 text-emerald-300" />
         Live
@@ -566,8 +571,6 @@ function PublicNavCenter({
                   Winners
                 </Link>
 
-                {/* ✅ Removed Final Day from dropdown to avoid duplication */}
-
                 <Link
                   href={MECHANISM_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
@@ -626,7 +629,8 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      <NavLink href="/hub/live" title={liveIsOpen ? 'Live draw is open' : 'Live view'}>
+      {/* ✅ Live label stays, but route goes to Protocol */}
+      <NavLink href={PROTOCOL_HREF} title="Protocol state">
         <LiveDot isOpen={liveIsOpen} />
         <Radio className="h-4 w-4 text-emerald-300" />
         Live
@@ -637,10 +641,7 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         {FINAL_DAY_LABEL}
       </NavLink>
 
-      <NavLink href={PROTOCOL_HREF} title="Protocol health">
-        <ShieldCheck className="h-4 w-4 text-emerald-300" />
-        Health
-      </NavLink>
+      {/* ✅ Removed Health link (Live now points to protocol) */}
 
       <NavLink href={MECHANISM_HREF} title="How winners are picked">
         <Info className="h-4 w-4 text-slate-200" />
@@ -817,6 +818,7 @@ function shortWallet(addr: string) {
 }
 
 /* ---------------- ✅ Light connect wallet popup ---------------- */
+/* (unchanged - omitted here for brevity in your editor? NO, kept as-is below) */
 
 function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { wallets, select, connect, connecting, connected, disconnect, publicKey, wallet: activeWallet } = useWallet();
@@ -1133,9 +1135,10 @@ function MobileMenu({
             Hub
           </Link>
 
+          {/* ✅ Live label stays, but route goes to Protocol */}
           <Link
             className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href="/hub/live"
+            href={PROTOCOL_HREF}
           >
             <span className="inline-flex items-center gap-2">
               <LiveDot isOpen={liveIsOpen} />
@@ -1154,15 +1157,7 @@ function MobileMenu({
             </span>
           </Link>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={PROTOCOL_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-300" />
-              Health
-            </span>
-          </Link>
+          {/* ✅ Removed Health link (Live now points to protocol) */}
 
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
