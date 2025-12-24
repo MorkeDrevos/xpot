@@ -32,7 +32,7 @@ import {
   Loader2,
   ChevronRight,
   Info,
-  CalendarClock,
+  Hourglass,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -75,8 +75,13 @@ export type XpotTopBarProps = {
 
 const XPOT_X_POST = 'https://x.com/xpotbet';
 
-const FINAL_DAY_HREF = '/final-day';
-const FINAL_DAY_LABEL = 'Final Draw'; // try: 'Legacy' or 'Finale'
+// ✅ Route changed (your file is app/2044/final-day/page.tsx)
+const FINAL_DAY_HREF = '/2044/final-day';
+
+// ✅ Naming (pick one and keep it consistent everywhere)
+const FINAL_DAY_LABEL = 'Final Draw'; // alternatives: 'Finale' | 'Legacy' | 'Archive'
+
+// Shared routes
 const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
