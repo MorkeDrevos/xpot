@@ -33,6 +33,7 @@ import {
   ChevronRight,
   Info,
   Hourglass,
+  CalendarClock,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -513,7 +514,7 @@ function PublicNavCenter({
       </NavLink>
 
       <NavLink href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <CalendarClock className="h-4 w-4 text-amber-200" />
+       <Hourglass className="h-4 w-4 text-amber-200" />
         {FINAL_DAY_LABEL}
       </NavLink>
 
