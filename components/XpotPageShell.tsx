@@ -36,6 +36,9 @@ type XpotPageShellProps = {
 
   // Explicit page tag used for styling hooks (ops, hub etc)
   pageTag?: string;
+
+  // Optional: disable ambient background on special pages
+  ambientBg?: boolean;
 };
 
 export default function XpotPageShell({
@@ -60,6 +63,7 @@ export default function XpotPageShell({
   showOpsThemeSwitcher,
 
   pageTag,
+  ambientBg = true,
 }: XpotPageShellProps) {
   void showAtmosphere;
   void showOpsThemeSwitcher;
@@ -103,8 +107,7 @@ export default function XpotPageShell({
     ? 'calc(var(--xpot-banner-h,56px) + var(--xpot-topbar-h,112px))'
     : 'var(--xpot-banner-h,56px)';
 
-  // If we render a full-bleed hero, we offset THAT hero by header height
-  // and we do NOT repeat the header offset again on the main container.
+  // If we render a full-bleed hero, we do NOT add header offset again on the container.
   const containerPaddingTop = fullBleedTop
     ? '24px'
     : showTopBar
@@ -116,64 +119,99 @@ export default function XpotPageShell({
       className={['relative min-h-screen text-slate-100 overflow-x-hidden', className].join(' ')}
       style={{ ['--xpot-header-offset' as any]: headerOffsetVar }}
     >
-      {/* Banner is hidden on mobile inside PreLaunchBanner (hidden sm:block) */}
-      <PreLaunchBanner />
+      {/* Ambient background (same vibe as footer) */}
+      {ambientBg ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+          {/* Base */}
+          <div className="absolute inset-0 bg-[#060912]" />
 
-      {showTopBar && (
-        <div className={topBarClassName}>
-          <XpotTopBar {...topBarProps} />
-        </div>
-      )}
+          {/* Soft nebula glows */}
+          <div
+            className="absolute inset-0 opacity-[0.95]"
+            style={{
+              background:
+                'radial-gradient(1100px 700px at 12% 18%, rgba(16,185,129,0.18), transparent 60%),' +
+                'radial-gradient(900px 600px at 88% 22%, rgba(168,85,247,0.18), transparent 62%),' +
+                'radial-gradient(900px 700px at 78% 78%, rgba(56,189,248,0.12), transparent 60%),' +
+                'radial-gradient(800px 600px at 22% 82%, rgba(245,158,11,0.10), transparent 60%)',
+            }}
+          />
 
-      {/* ✅ Atmosphere (stars) removed */}
+          {/* Subtle grid texture */}
+          <div
+            className="absolute inset-0 opacity-[0.10]"
+            style={{
+              backgroundImage:
+                'linear-gradient(to right, rgba(255,255,255,0.10) 1px, transparent 1px), ' +
+                'linear-gradient(to bottom, rgba(255,255,255,0.10) 1px, transparent 1px)',
+              backgroundSize: '72px 72px',
+              maskImage: 'radial-gradient(80% 70% at 50% 30%, #000 55%, transparent 100%)',
+              WebkitMaskImage: 'radial-gradient(80% 70% at 50% 30%, #000 55%, transparent 100%)',
+            }}
+          />
 
-      {/* ✅ Full-bleed hero: true edge-to-edge (NO max width, NO px) */}
-      {fullBleedTop ? (
-        <div
-          className="relative z-10 w-full"
-          style={{
-            paddingTop: 'var(--xpot-header-offset)',
-          }}
-        >
-          {fullBleedTop}
+          {/* Vignette */}
+          <div
+            className="absolute inset-0 opacity-[0.9]"
+            style={{
+              background:
+                'radial-gradient(1200px 800px at 50% 25%, transparent 55%, rgba(0,0,0,0.70) 100%)',
+            }}
+          />
         </div>
       ) : null}
 
-      {/* Normal page container */}
-      <div
-        className={[
-          'relative z-10 mx-auto w-full px-4 sm:px-6',
-          'pb-6 sm:pb-8',
-          maxWidthClassName,
-          containerClassName,
-        ].join(' ')}
-        style={{ paddingTop: containerPaddingTop }}
-      >
-        {(title || subtitle || mergedRightSlot) && (
-          <div
-            className={[
-              'mb-6 rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur',
-              'px-5 py-5 sm:px-7 sm:py-6',
-              'grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-center',
-              headerClassName,
-            ].join(' ')}
-          >
-            <div className="min-w-0">
-              {title && <h1 className="text-[26px] font-semibold text-slate-50 sm:text-[30px]">{title}</h1>}
-              {subtitle && <p className="mt-2 text-[14px] text-slate-400 sm:text-[15px]">{subtitle}</p>}
-            </div>
+      {/* Content layer */}
+      <div className="relative z-10">
+        {/* Banner is hidden on mobile inside PreLaunchBanner (hidden sm:block) */}
+        <PreLaunchBanner />
 
-            {mergedRightSlot && (
-              <div className="w-full justify-self-stretch sm:w-auto sm:justify-self-end">
-                <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-                  {mergedRightSlot}
-                </div>
-              </div>
-            )}
+        {showTopBar && (
+          <div className={topBarClassName}>
+            <XpotTopBar {...topBarProps} />
           </div>
         )}
 
-        {children}
+        {/* ✅ Full-bleed hero: edge-to-edge.
+            IMPORTANT: do NOT pad by header offset here if your hero already includes its own spacer. */}
+        {fullBleedTop ? <div className="relative w-full">{fullBleedTop}</div> : null}
+
+        {/* Normal page container */}
+        <div
+          className={[
+            'relative mx-auto w-full px-4 sm:px-6',
+            'pb-6 sm:pb-8',
+            maxWidthClassName,
+            containerClassName,
+          ].join(' ')}
+          style={{ paddingTop: containerPaddingTop }}
+        >
+          {(title || subtitle || mergedRightSlot) && (
+            <div
+              className={[
+                'mb-6 rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur',
+                'px-5 py-5 sm:px-7 sm:py-6',
+                'grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-center',
+                headerClassName,
+              ].join(' ')}
+            >
+              <div className="min-w-0">
+                {title && <h1 className="text-[26px] font-semibold text-slate-50 sm:text-[30px]">{title}</h1>}
+                {subtitle && <p className="mt-2 text-[14px] text-slate-400 sm:text-[15px]">{subtitle}</p>}
+              </div>
+
+              {mergedRightSlot && (
+                <div className="w-full justify-self-stretch sm:w-auto sm:justify-self-end">
+                  <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+                    {mergedRightSlot}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {children}
+        </div>
       </div>
     </div>
   );
