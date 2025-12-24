@@ -147,11 +147,7 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
     [nowMs, nextDrawUtcMs, countdown],
   );
 
-  return (
-    <NextDrawContext.Provider value={value}>
-      {children}
-    </NextDrawContext.Provider>
-  );
+  return <NextDrawContext.Provider value={value}>{children}</NextDrawContext.Provider>;
 }
 
 function Pill({
@@ -315,10 +311,6 @@ function shortenAddress(addr: string, left = 6, right = 6) {
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
 
-function getJupiterSwapUrl(mint: string) {
-  return `https://jup.ag/swap/SOL-${mint}`;
-}
-
 function RoyalContractBar({ mint }: { mint: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -368,9 +360,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
               Official contract
             </span>
 
-            <span className="font-mono text-[12px] text-slate-100/90">
-              {shortenAddress(mint, 6, 6)}
-            </span>
+            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 6, 6)}</span>
           </span>
         </span>
 
@@ -409,10 +399,10 @@ function PrinciplesStrip() {
     <div className="grid gap-3 sm:grid-cols-3">
       {[
         {
-          k: 'The Final Draw',
-          v: '7000-day season',
-          s: 'A single global arc, not a one-week promo',
-          glow: 'bg-[radial-gradient(circle_at_0%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]',
+          k: 'Jackpot',
+          v: 'The main character',
+          s: 'Live panel, live numbers, live heartbeat',
+          glow: 'bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.12),transparent_62%)]',
         },
         {
           k: 'Identity',
@@ -448,7 +438,7 @@ function SectionDividerLabel({ label }: { label: string }) {
       <span className="h-px flex-1 bg-white/10" />
       <span className="hidden sm:inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-slate-600">
         <span className="h-1 w-1 rounded-full bg-white/20" />
-        <span>Season</span>
+        <span>Jackpot</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
         <span>Identity</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
@@ -553,14 +543,19 @@ function Accordion({ items }: { items: { q: string; a: string }[] }) {
         const isOpen = open === idx;
 
         return (
-          <div key={it.q} className="overflow-hidden rounded-[22px] bg-white/[0.03] ring-1 ring-white/[0.06]">
+          <div
+            key={it.q}
+            className="overflow-hidden rounded-[22px] bg-white/[0.03] ring-1 ring-white/[0.06]"
+          >
             <button
               type="button"
               onClick={() => setOpen(v => (v === idx ? null : idx))}
               className="group flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
             >
               <span className="text-sm font-semibold text-slate-100">{it.q}</span>
-              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              />
             </button>
 
             <AnimatePresence initial={false}>
@@ -751,9 +746,7 @@ function LiveControlRoom({
 }) {
   const reduced = useLocalReducedMotion();
   const [tick, setTick] = useState(0);
-  const [lines, setLines] = useState<string[]>(() =>
-    buildInitialLines(countdown, cutoffLabel, seasonLine),
-  );
+  const [lines, setLines] = useState<string[]>(() => buildInitialLines(countdown, cutoffLabel, seasonLine));
 
   useEffect(() => {
     const t = window.setInterval(() => setTick(v => v + 1), 1000);
@@ -789,7 +782,7 @@ function LiveControlRoom({
         }
         .xpot-cr-scan {
           position: relative;
-          isolation: isolate; /* critical */
+          isolation: isolate;
         }
         .xpot-cr-scan::before {
           content: "";
@@ -864,7 +857,7 @@ function LiveControlRoom({
       </div>
 
       <p className="mt-3 text-[12px] text-slate-400">
-        Read-only cockpit view. Season is public. Identity stays handle-first. Proof stays on-chain.
+        Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.
       </p>
     </div>
   );
@@ -884,7 +877,7 @@ function buildInitialLines(countdown: string, cutoffLabel: string, seasonLine: s
     ``,
     `> SESSION`,
     `  heartbeat:      ok`,
-    `  status:         season telemetry`,
+    `  status:         jackpot telemetry`,
     ``,
     `> LAST_WINNERS`,
     `  #2025-12-18  winner   ${XPOT_SIGN}1,000,000`,
@@ -913,7 +906,7 @@ function updateLines(
 
   const stIdx = next.findIndex(l => l.trim().startsWith('status:'));
   if (stIdx !== -1) {
-    const modes = ['season telemetry', 'proof verify', 'pool telemetry', 'entry window open'];
+    const modes = ['jackpot telemetry', 'proof verify', 'pool telemetry', 'entry window open'];
     next[stIdx] = `  status:         ${modes[tick % modes.length]}`;
   }
 
@@ -983,64 +976,30 @@ function BonusVault({ children }: { children: ReactNode }) {
 }
 
 /* ─────────────────────────────────────────────
-   FINAL DRAW BANNER (OBVIOUS)
+   FINAL DRAW CHIP (SIDELINE, PREMIUM)
 ───────────────────────────────────────────── */
 
-function FinalDrawBanner({
+function FinalDrawChip({
   day,
   daysRemaining,
-  started,
-  ended,
 }: {
   day: number;
   daysRemaining: number;
-  started: boolean;
-  ended: boolean;
 }) {
-  const title = ended ? 'THE FINAL DRAW HAS ARRIVED' : 'THE FINAL DRAW SEASON';
-  const sub = ended
-    ? 'Season complete. The finale is live.'
-    : started
-    ? 'A 7000-day global game. One arc. One legend.'
-    : 'Season starts on 2025-12-25 (Madrid).';
-
   return (
-    <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03] p-4 ring-1 ring-white/[0.06] shadow-[0_22px_90px_rgba(0,0,0,0.45)]">
-      <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_10%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_88%_22%,rgba(236,72,153,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(56,189,248,0.10),transparent_62%)]" />
-
-      <div className="relative flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Pill tone="amber">
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              {title}
-            </Pill>
-            <Pill tone="violet">
-              <Flame className="h-3.5 w-3.5" />
-              Day {day}/{SEASON_DAYS}
-            </Pill>
-            <Pill tone="sky">
-              <Timer className="h-3.5 w-3.5" />
-              {daysRemaining} days remaining
-            </Pill>
-          </div>
-
-          <p className="mt-2 text-sm font-semibold text-slate-100">{sub}</p>
-          <p className="mt-1 text-[12px] text-slate-400">
-            Final day: <span className="text-slate-200">2045-02-22</span> (Madrid) • Eligibility is holdings-based • Winners are
-            shown by <span className="text-slate-200">@handle</span> and paid on-chain
-          </p>
-        </div>
-
-        <Link
-          href={ROUTE_HUB}
-          className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}
-          title="Enter the season via the hub"
-        >
-          Enter now
-          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-        </Link>
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <Pill tone="amber">
+        <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+        Final Draw season
+      </Pill>
+      <Pill tone="violet">
+        <Flame className="h-3.5 w-3.5" />
+        Day {day}/{SEASON_DAYS}
+      </Pill>
+      <Pill tone="sky">
+        <Timer className="h-3.5 w-3.5" />
+        {daysRemaining} days left
+      </Pill>
     </div>
   );
 }
@@ -1094,57 +1053,42 @@ function HomePageInner() {
             <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
-              <div className="relative z-10 grid gap-6 p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)] lg:p-8">
-                {/* LEFT */}
+              <div className="relative z-10 grid gap-6 p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1.25fr)] lg:p-8">
+                {/* LEFT (story + CTAs) */}
                 <div className="flex flex-col justify-between gap-5">
                   <div className="space-y-5">
-                    <FinalDrawBanner
-                      day={season.day}
-                      daysRemaining={season.daysRemaining}
-                      started={season.started}
-                      ended={season.ended}
-                    />
-
                     <div className="flex flex-wrap items-center gap-2">
-                      <Pill tone="amber">
-                        <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                        The Final Draw is the point
-                      </Pill>
-
                       <Pill tone="emerald">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                        On-chain proof
+                        Live jackpot
                       </Pill>
-
-                      <Pill tone="sky">
-                        <Users className="h-3.5 w-3.5" />
-                        X handle required
-                      </Pill>
-
                       <Pill tone="violet">
                         <Timer className="h-3.5 w-3.5" />
                         Next draw {countdown}
                       </Pill>
+                      <Pill tone="sky">
+                        <Users className="h-3.5 w-3.5" />
+                        X handle required
+                      </Pill>
                     </div>
 
                     <div className="rounded-[28px] bg-white/[0.022] p-6 ring-1 ring-white/[0.055] sm:p-7 lg:p-8">
+                      <h1 className="text-balance text-[40px] font-semibold leading-[1.05] sm:text-[56px]">
+                        The daily jackpot protocol.
+                        <br />
+                        <span className="text-emerald-300">Proof on-chain.</span>
+                      </h1>
 
-                      <div className="mt-4">
-                        <h1 className="text-balance text-[40px] font-semibold leading-[1.05] sm:text-[56px]">
-  The biggest on-chain game.
-  <br />
-  <span className="text-emerald-300">
-    One season. One final draw.
-  </span>
-</h1>
+                      {/* Final Draw = sideline chip, still premium */}
+                      <div className="mt-5">
+                        <FinalDrawChip day={season.day} daysRemaining={season.daysRemaining} />
                       </div>
 
                       <div className="mt-5">
-                        <SectionDividerLabel label="What you need" />
+                        <SectionDividerLabel label="What you do" />
                       </div>
 
                       <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-slate-300/95">
-                        XPOT is built around a single season arc: daily entries, daily proof and a finale that matters.
                         Connect your <span className="text-slate-100">X account</span>, connect a{' '}
                         <span className="text-slate-100">wallet</span> and hold the minimum threshold to qualify.
                         Winners are presented by <span className="text-slate-100">@handle</span> and paid on-chain.
@@ -1165,15 +1109,15 @@ function HomePageInner() {
                           </div>
 
                           <div className="flex flex-wrap items-center gap-3">
-  <Pill tone="amber">
-    <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-    THE FINAL DRAW
-  </Pill>
+                            <Pill tone="amber">
+                              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                              Finale on day 7000
+                            </Pill>
 
-  <span className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
-    Day {season.day} of {SEASON_DAYS}
-  </span>
-</div>
+                            <span className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
+                              2045-02-22
+                            </span>
+                          </div>
                         </div>
                       </div>
 
@@ -1210,7 +1154,7 @@ function HomePageInner() {
 
                             <div className="leading-tight">
                               <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT}`}>
-                                SEASON ARCHITECTURE - BUILT FOR A LONG RUNWAY
+                                SEASON ARCHITECTURE - BUILT FOR LONG RUNWAY
                               </p>
                               <p className="mt-1 text-[11px] text-slate-400/80">
                                 Reserve-backed distribution • Proof stays on-chain
@@ -1241,12 +1185,14 @@ function HomePageInner() {
                         <RoyalContractBar mint={mint} />
                       </div>
 
+                      {/* FIXED CTA ROW */}
                       <div className="mt-7 flex flex-wrap items-center gap-3">
                         <Link
-  href={ROUTE_HUB}
-  className="
-    inline-flex items-center justify-center rounded-full
-    border border-white/10 bg-white/[0.03] px-6 py-3.5
+                          href={ROUTE_HUB}
+                          className={`${BTN_GREEN} group px-6 py-3.5 text-sm`}
+                          title="Enter the hub"
+                        >
+                          Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
 
@@ -1267,32 +1213,37 @@ function HomePageInner() {
                       </div>
 
                       <p className="mt-4 text-[11px] text-slate-500/95">
-                        The Final Draw is the headline. Daily draws are the heartbeat. Winners are shown by @handle and paid on-chain.
+                        Jackpot is the main character. Final Draw is the long arc. Winners are shown by @handle and paid on-chain.
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <MiniStat label="Season day" value={`#${season.day}/${SEASON_DAYS}`} tone="amber" />
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
+                    <MiniStat label="Finale day" value={`#${season.day}/${SEASON_DAYS}`} tone="amber" />
                     <MiniStat label="Final date" value="2045-02-22" tone="violet" />
                   </div>
                 </div>
 
-                {/* RIGHT */}
+                {/* RIGHT (JACKPOT HERO) */}
                 <div className="grid gap-4">
                   <PremiumCard className="p-5 sm:p-6" halo sheen>
-                    <div className="mt-0">
-                      <JackpotPanel variant="standalone" layout="wide" />
+                    <div className="mb-3 flex items-center justify-between">
+                      <Pill tone="emerald">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Live jackpot panel
+                      </Pill>
+                      <Pill tone="violet">
+                        <Timer className="h-3.5 w-3.5" />
+                        {countdown}
+                      </Pill>
                     </div>
+
+                    <JackpotPanel variant="standalone" layout="wide" />
                   </PremiumCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <LiveControlRoom
-                      countdown={countdown}
-                      cutoffLabel={cutoffLabel}
-                      seasonLine={seasonLine}
-                    />
+                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} seasonLine={seasonLine} />
                   </PremiumCard>
                 </div>
               </div>
@@ -1310,17 +1261,17 @@ function HomePageInner() {
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                The Final Draw
+              <Pill tone="emerald">
+                <Sparkles className="h-3.5 w-3.5" />
+                Jackpot protocol
               </Pill>
 
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                A 7000-day season that ends with one unforgettable finale.
+                Daily jackpot cadence. Clean rules. Provable outcomes.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT is simple on purpose: holdings-based eligibility, handle-first identity and on-chain payout proof.
-                Daily draws are the heartbeat. The Final Draw is the destination.
+                Holdings-based eligibility, handle-first identity and on-chain payout proof.
+                Final Draw is the long arc - daily jackpot is the heartbeat.
               </p>
             </div>
 
@@ -1361,7 +1312,7 @@ function HomePageInner() {
               <Step
                 n="03"
                 title="Claim entry, verify payout"
-                desc="Daily winners. On-chain proof. Season finale ahead"
+                desc="Daily winners. On-chain proof."
                 icon={<Crown className={`h-5 w-5 ${GOLD_TEXT}`} />}
                 tone="amber"
                 tag="Proof"
@@ -1373,7 +1324,7 @@ function HomePageInner() {
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
               <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public season arc and provable outcomes.
+                Built for serious players: clean rules, public proof and a live jackpot panel.
               </p>
             </div>
 
@@ -1383,173 +1334,6 @@ function HomePageInner() {
             </Link>
           </div>
         </PremiumCard>
-      </section>
-
-      {/* THE PROTOCOL STRIP */}
-      <section className="mt-8">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="amber">
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Finale-first
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">The Final Draw is the headline.</p>
-            <p className="mt-2 text-sm text-slate-300">Daily draws build the season. The finale builds the legend.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="sky">
-              <Users className="h-3.5 w-3.5" />
-              Identity
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">@handle-first.</p>
-            <p className="mt-2 text-sm text-slate-300">Winners and history are shown by handle, not wallet profiles.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="emerald">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Proof
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
-            <p className="mt-2 text-sm text-slate-300">Anyone can verify payouts in an explorer.</p>
-          </PremiumCard>
-        </div>
-      </section>
-
-      {/* ECOSYSTEM LAYER */}
-      <section className="mt-8">
-        <PremiumCard className="p-6 sm:p-8" halo sheen>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="violet">
-                <Blocks className="h-3.5 w-3.5" />
-                Built to scale
-              </Pill>
-
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                A season engine with a finale, not a one-off giveaway.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT stays minimal where it matters and expandable where it counts.
-                The season can grow with modules and sponsor pools, while keeping the same primitive and the same proof.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Fair by design
-              </Pill>
-              <Pill tone="sky">
-                <Globe className="h-3.5 w-3.5" />
-                Global-friendly
-              </Pill>
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                Finale-ready
-              </Pill>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-950/30">
-                  <Wand2 className="h-5 w-5 text-emerald-200" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Modules</p>
-                  <p className="text-xs text-slate-400">Plug-in reward logic</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2">
-                <Bullet>Season streak boosters</Bullet>
-                <Bullet tone="sky">Creator-gated drops</Bullet>
-                <Bullet tone="amber">Sponsor-funded pools</Bullet>
-                <Bullet tone="violet">Milestone ladders</Bullet>
-              </ul>
-            </div>
-
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-500/25 bg-sky-950/25">
-                  <Users className="h-5 w-5 text-sky-200" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Identity</p>
-                  <p className="text-xs text-slate-400">Handle-first, premium UX</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2">
-                <Bullet tone="sky">Winners shown by @handle</Bullet>
-                <Bullet tone="violet">History can evolve into reputation</Bullet>
-                <Bullet tone="emerald">Still self-custody for claims</Bullet>
-              </ul>
-            </div>
-
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
-                  <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Finale</p>
-                  <p className="text-xs text-slate-400">A season that ends</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2">
-                <Bullet tone="amber">Day 7000 finale: 2045-02-22</Bullet>
-                <Bullet tone="emerald">Daily cadence builds the arc</Bullet>
-                <Bullet tone="sky">Proof stays public</Bullet>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Clarity first. Proof first. Season-first narrative.</p>
-            </div>
-
-            <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
-              Claim your entry
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-        </PremiumCard>
-      </section>
-
-      {/* WHO IT'S FOR */}
-      <section className="mt-8">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="amber">
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Players
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">A serious season for serious entries.</p>
-            <p className="mt-2 text-sm text-slate-300">Join the arc. Track the day count. Build toward the Final Draw.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="sky">
-              <Globe className="h-3.5 w-3.5" />
-              Sponsors
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="emerald">
-              <Zap className="h-3.5 w-3.5" />
-              Communities
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">A shared public story: @handle identity and a season that ends.</p>
-          </PremiumCard>
-        </div>
       </section>
 
       {/* FAQ */}
@@ -1563,14 +1347,14 @@ function HomePageInner() {
               </Pill>
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                Homepage is the story. Hub is the action. The Final Draw is the destination.
+                Homepage is the story. Hub is the action. Jackpot panel is the hero.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                Final Draw
+              <Pill tone="emerald">
+                <Sparkles className="h-3.5 w-3.5" />
+                Jackpot
               </Pill>
               <Pill tone="sky">
                 <Users className="h-3.5 w-3.5" />
