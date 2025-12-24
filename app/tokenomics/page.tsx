@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
@@ -994,7 +994,8 @@ function DonutAllocation({
   );
 }
 
-export default function TokenomicsPage() {
+// ✅ This is the component that uses useSearchParams
+function TokenomicsClient() {
   const searchParams = useSearchParams();
   const supply = 50_000_000_000;
 
@@ -1554,5 +1555,14 @@ export default function TokenomicsPage() {
         </div>
       </footer>
     </XpotPageShell>
+  );
+}
+
+// ✅ Fix for Vercel/Next prerender error: wrap useSearchParams usage in Suspense
+export default function TokenomicsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[40vh]" />}>
+      <TokenomicsClient />
+    </Suspense>
   );
 }
