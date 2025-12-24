@@ -1077,11 +1077,11 @@ function HomePageInner() {
   href={ROUTE_TOKENOMICS_RESERVE}
   target="_blank"
   rel="noopener noreferrer"
-  className={`${BTN_PRIMARY} group px-5 py-2.5 text-sm`}
+  className={/* keep your classes */}
   title="Open Tokenomics (Rewards reserve)"
 >
   View tokenomics
-  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+  <ArrowRight className="h-4 w-4" />
 </Link>
     
     </div>
