@@ -312,7 +312,7 @@ function OfficialCAChip() {
 
       <div className="relative z-10 flex flex-col leading-none pr-1">
         <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">
-          OFFICIAL CA
+          OFFICIAL CONTRACT
         </span>
         <span className="mt-1 font-mono text-[12px] text-slate-100/95">{addrShort}</span>
       </div>
