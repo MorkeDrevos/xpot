@@ -215,3 +215,46 @@ model DrawEntry {
   @@index([drawId, createdAt])
   @@index([xHandle])
 }
+// ─────────────────────────────────────────────
+// Hub personalization (simple, ClerkId-keyed)
+// ─────────────────────────────────────────────
+
+model UserPreference {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clerkId String @unique
+
+  soundEnabled Boolean @default(true)
+
+  @@index([clerkId])
+}
+
+model HubStreak {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clerkId String @unique
+
+  days Int @default(0)
+
+  // last day the user completed the ritual (UTC day bucket)
+  lastDoneDay DateTime?
+
+  @@index([clerkId])
+}
+
+model DailyMission {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // store as "YYYY-MM-DD" (UTC day key)
+  ymd   String @unique
+  title String
+  desc  String
+
+  @@index([ymd])
+}
