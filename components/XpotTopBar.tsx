@@ -32,6 +32,7 @@ import {
   Loader2,
   ChevronRight,
   Info,
+  CalendarClock,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -75,6 +76,7 @@ export type XpotTopBarProps = {
 const XPOT_X_POST = 'https://x.com/xpotbet';
 
 const FINAL_DAY_HREF = '/final-day';
+const FINAL_DAY_LABEL = 'Final Draw'; // try: 'Legacy' or 'Finale'
 const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
@@ -201,11 +203,7 @@ export default function XpotTopBar({
                 {isHub ? (
                   <HubNavCenter liveIsOpen={liveIsOpen} />
                 ) : (
-                  <PublicNavCenter
-                    liveIsOpen={liveIsOpen}
-                    learnOpen={learnOpen}
-                    setLearnOpen={setLearnOpen}
-                  />
+                  <PublicNavCenter liveIsOpen={liveIsOpen} learnOpen={learnOpen} setLearnOpen={setLearnOpen} />
                 )}
               </div>
 
@@ -305,10 +303,8 @@ function OfficialCAChip() {
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        {/* subtle inner ring */}
         <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
 
-        {/* left icon */}
         <span
           className="
             relative z-10 inline-flex h-8 w-8 items-center justify-center
@@ -320,23 +316,17 @@ function OfficialCAChip() {
           <ShieldCheck className="h-4 w-4 text-emerald-200" />
         </span>
 
-        {/* text */}
         <div className="relative z-10 hidden min-w-0 flex-col leading-none sm:flex">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-200/85">
-              Status
-            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-200/85">Status</span>
             <span className="inline-flex items-center rounded-full border border-emerald-400/15 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-emerald-100">
               VERIFIED
             </span>
           </div>
 
-          <span className="mt-1 font-mono text-[12px] text-slate-100/90">
-            {addrShort}
-          </span>
+          <span className="mt-1 font-mono text-[12px] text-slate-100/90">{addrShort}</span>
         </div>
 
-        {/* right chevron */}
         <span className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200/80 group-hover:bg-white/[0.07] group-hover:text-slate-100 transition">
           <ChevronDown className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`} />
         </span>
@@ -354,12 +344,8 @@ function OfficialCAChip() {
           <div className="absolute right-0 z-[91] mt-3 w-[360px] overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
             <div className="p-3">
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">
-                  OFFICIAL CONTRACT
-                </p>
-                <p className="mt-2 font-mono text-sm text-slate-100 break-all">
-                  {XPOT_OFFICIAL_CA}
-                </p>
+                <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">OFFICIAL CONTRACT</p>
+                <p className="mt-2 font-mono text-sm text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
 
                 <div className="mt-3 flex items-center gap-2">
                   <button
@@ -401,9 +387,7 @@ function OfficialCAChip() {
               </div>
 
               <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="text-xs text-slate-300/80">
-                  Verified contract and protocol status live in one place.
-                </p>
+                <p className="text-xs text-slate-300/80">Verified contract and protocol status live in one place.</p>
               </div>
             </div>
           </div>
@@ -518,9 +502,9 @@ function PublicNavCenter({
         Live
       </NavLink>
 
-      <NavLink href={FINAL_DAY_HREF} title="Final day">
-        <Trophy className="h-4 w-4 text-amber-300" />
-        Final Day
+      <NavLink href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
+        <CalendarClock className="h-4 w-4 text-amber-200" />
+        {FINAL_DAY_LABEL}
       </NavLink>
 
       {/* Learn dropdown (hover + click) */}
@@ -538,7 +522,6 @@ function PublicNavCenter({
 
         {learnOpen && (
           <>
-            {/* click outside catcher */}
             <button
               type="button"
               aria-label="Close learn menu"
@@ -578,15 +561,7 @@ function PublicNavCenter({
                   Winners
                 </Link>
 
-                <Link
-                  href={FINAL_DAY_HREF}
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Crown className="h-4 w-4 text-amber-200" />
-                  </span>
-                  Final Day
-                </Link>
+                {/* ✅ Removed Final Day from dropdown to avoid duplication */}
 
                 <Link
                   href={MECHANISM_HREF}
@@ -652,9 +627,9 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         Live
       </NavLink>
 
-      <NavLink href={FINAL_DAY_HREF} title="Final day">
-        <Trophy className="h-4 w-4 text-amber-300" />
-        Final Day
+      <NavLink href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
+        <CalendarClock className="h-4 w-4 text-amber-200" />
+        {FINAL_DAY_LABEL}
       </NavLink>
 
       <NavLink href={PROTOCOL_HREF} title="Protocol health">
@@ -1169,8 +1144,8 @@ function MobileMenu({
             href={FINAL_DAY_HREF}
           >
             <span className="inline-flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-300" />
-              Final Day
+              <CalendarClock className="h-4 w-4 text-amber-200" />
+              {FINAL_DAY_LABEL}
             </span>
           </Link>
 
