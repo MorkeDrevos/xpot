@@ -1,5 +1,5 @@
+// app/api/hub/mission/today/route.ts
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,23 +34,15 @@ export async function GET(req: Request) {
   const seed = url.searchParams.get('seed') ?? '';
   const today = ymdUtc();
 
-  const existing = await prisma.dailyMission.findUnique({ where: { ymd: today } });
-  if (existing) {
-    return NextResponse.json({
-      ok: true,
-      mission: { title: existing.title, desc: existing.desc, ymd: existing.ymd },
-    });
-  }
-
-  // deterministic creation (stable across deploys)
   const picked = seededPick(`${today}|xpot-mission|${seed}`, FALLBACK_MISSIONS);
-
-  const created = await prisma.dailyMission.create({
-    data: { ymd: today, title: picked.title, desc: picked.desc },
-  });
 
   return NextResponse.json({
     ok: true,
-    mission: { title: created.title, desc: created.desc, ymd: created.ymd },
+    mission: {
+      title: picked.title,
+      desc: picked.desc,
+      ymd: today,
+      source: 'seeded',
+    },
   });
 }
