@@ -59,6 +59,25 @@ const DAYS_PER_YEAR = 365;
 // Exact 10y requirement at 1M/day
 const TEN_YEARS_REQUIRED = DISTRIBUTION_DAILY_XPOT * DAYS_PER_YEAR * 10; // 3,650,000,000
 
+// ─────────────────────────────────────────────
+// ✅ Team vesting (Streamflow) - on-chain proof targets
+// (These are public and should match Solscan/Streamflow exactly.)
+// ─────────────────────────────────────────────
+const TEAM_VESTING = {
+  // Streamflow contract account shown on Solscan (Owner: Streamflow)
+  contractAccount: 'BYUYCGu1mH2B33QU2mzF2AZDvqxgLoboJbDDVJYvGWkR',
+
+  // Sender wallet (your XPOT Team wallet)
+  senderWallet: 'G17RehqUAgMcAxcnLUZyf6WzuPqsM82q9SC1aSkBUR7w',
+
+  // Recipient wallet that will receive the monthly unlocks (your "XPOT Team Payout" wallet)
+  recipientWallet: '3DSuZP8d8a9f5CftdJvmJA1wxgzgxKULLDwZeRKC2Vh',
+
+  // Streamflow contract URL (use the exact one you have open if it differs)
+  streamflowUrl:
+    'https://app.streamflow.finance/contract/solana/mainnet/BYUYCGu1mH2B33QU2mzF2AZDvqxgLoboJbDDVJYvGWkR',
+};
+
 function Pill({ children, tone = 'slate' }: { children: ReactNode; tone?: PillTone }) {
   const map: Record<PillTone, string> = {
     slate: 'border-slate-800/70 bg-slate-900/60 text-slate-200 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
@@ -145,11 +164,9 @@ function toneRing(tone: PillTone) {
   return 'rgba(148,163,184,0.18)';
 }
 
-// If your CSS variables exist, we still use them for text/borders/washes.
-// The dot/glow uses a guaranteed-valid fallback so it never disappears.
-
 // ─────────────────────────────────────────────
 // Team vesting (12 months, monthly equal amounts)
+// + ✅ on-chain Streamflow proof panel
 // ─────────────────────────────────────────────
 function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
   const months = 12;
@@ -184,16 +201,88 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
     })
     .join(' ');
 
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // ignore
+    }
+  }
+
   return (
     <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Team vesting schedule</p>
-          <p className="mt-1 text-[11px] text-slate-500">12 months, monthly equal unlocks. Visuals are deterministic from supply allocation.</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            12 months, monthly equal unlocks. Schedule math below matches the on-chain vesting behaviour.
+          </p>
         </div>
         <span className="rounded-full border border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--xpot-gold-2))]">
           12M linear
         </span>
+      </div>
+
+      {/* ✅ On-chain proof block */}
+      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain vesting</p>
+            <p className="mt-1 text-sm font-semibold text-slate-100">Streamflow contract (public)</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Tokens are held by the vesting contract (escrow) and unlock monthly to the payout wallet.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={TEAM_VESTING.streamflowUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+            >
+              View on Streamflow <ExternalLink className="ml-2 h-4 w-4" />
+            </a>
+
+            <a
+              href={`https://solscan.io/account/${TEAM_VESTING.contractAccount}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+            >
+              Contract on Solscan <ExternalLink className="ml-2 h-4 w-4 text-slate-400" />
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-2">
+          {[
+            { k: 'Sender (team wallet)', v: TEAM_VESTING.senderWallet },
+            { k: 'Recipient (payout wallet)', v: TEAM_VESTING.recipientWallet },
+            { k: 'Contract (escrow)', v: TEAM_VESTING.contractAccount },
+          ].map(row => (
+            <div key={row.k} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
+                <p className="mt-1 font-mono text-xs text-slate-200">{row.v}</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => copy(row.v)}
+                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 hover:bg-white/[0.06] transition"
+                title="Copy address"
+              >
+                <Copy className="h-3.5 w-3.5 text-slate-400" />
+                Copy
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-3 text-[11px] text-slate-600">
+          Important: the “Team” wallet balance will look lower after vesting creation because the tokens moved into escrow. That is expected.
+        </p>
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -256,7 +345,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
           </div>
 
           <p className="mt-3 text-[11px] text-slate-600">
-            Bars = monthly unlock. Line = cumulative vested %. This is purely schedule math - your actual vesting wallet movements remain verifiable on-chain.
+            Bars = monthly unlock. Line = cumulative vested %. Your actual vesting is verifiable via the Streamflow links above.
           </p>
         </div>
 
@@ -265,10 +354,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
 
           <div className="mt-3 grid gap-2">
             {rows.map(r => (
-              <div
-                key={r.m}
-                className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2 text-xs"
-              >
+              <div key={r.m} className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2 text-xs">
                 <span className="font-mono text-slate-300">Month {r.m}</span>
                 <span className="font-mono text-slate-200">{fmtInt(r.monthly)} XPOT</span>
                 <span className="text-slate-500">{r.pct.toFixed(0)}%</span>
@@ -278,9 +364,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
 
           <div className="mt-3 rounded-2xl border border-slate-800/70 bg-black/25 p-3">
             <p className="text-xs text-slate-300">Simple rule: no cliffs, no tricks.</p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              1/12 unlocks monthly, equal amounts. If you later add a real on-chain vesting contract, this panel can be wired to read actual vesting state.
-            </p>
+            <p className="mt-1 text-[11px] text-slate-500">1/12 unlocks monthly, equal amounts.</p>
           </div>
         </div>
       </div>
@@ -920,7 +1004,7 @@ export default function TokenomicsPage() {
   const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100); // 7,000,000,000
 
   const TEAM_PCT = 9;
-  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100);
+  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100); // 4,500,000,000
 
   function yearsOfRunway(daily: number) {
     if (!Number.isFinite(daily) || daily <= 0) return Infinity;
@@ -985,7 +1069,12 @@ export default function TokenomicsPage() {
         label: 'Team and builders',
         pct: 9,
         note: 'Vested, long horizon. Builders stay aligned with holders.',
-        detail: 'Vesting: 12 months, monthly equal amounts. Builders earn upside by shipping, not by selling into early liquidity.',
+        detail:
+          `Vesting is live on-chain via Streamflow: 12 months, monthly equal unlocks. ` +
+          `Contract (escrow): ${shortAddr(TEAM_VESTING.contractAccount)}. ` +
+          `Sender: ${shortAddr(TEAM_VESTING.senderWallet)}. ` +
+          `Recipient (payout): ${shortAddr(TEAM_VESTING.recipientWallet)}. ` +
+          `Public proof: ${TEAM_VESTING.streamflowUrl}`,
         tone: 'amber',
       },
       {
@@ -1145,7 +1234,7 @@ export default function TokenomicsPage() {
                   </h1>
 
                   <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-300">
-                    Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public, and outcomes can be checked
+                    Many reward systems are opaque and hard to verify. XPOT is the opposite: the rules are simple, the wallets are public and outcomes can be checked
                     on-chain. Over time, this becomes infrastructure that communities, creators and sponsors can plug into with confidence.
                   </p>
 
@@ -1284,9 +1373,7 @@ export default function TokenomicsPage() {
                         </Link>
                       </div>
 
-                      <p className="mt-4 text-[11px] text-slate-600">
-                        Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.
-                      </p>
+                      <p className="mt-4 text-[11px] text-slate-600">Built to feel calm and verifiable. If it cannot be proven on-chain, it should not exist.</p>
                     </div>
                   </div>
                 </div>
@@ -1367,7 +1454,7 @@ export default function TokenomicsPage() {
                   Eligibility
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent, with clear rules and verifiable outcomes.
+                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent with clear rules and verifiable outcomes.
                 </p>
               </div>
 
@@ -1408,7 +1495,7 @@ export default function TokenomicsPage() {
           <div className="relative z-10 p-6 lg:p-8">
             <p className="text-sm font-semibold text-slate-100">Long-term: why this can matter</p>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
-              The endgame is a protocol that communities and brands can plug into for daily distributions, with identity and verification built in from day one.
+              The endgame is a protocol that communities and brands can plug into for daily distributions with identity and verification built in from day one.
             </p>
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -1445,7 +1532,7 @@ export default function TokenomicsPage() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v22</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v23</span>
         </div>
       </footer>
     </XpotPageShell>
