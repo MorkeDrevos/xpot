@@ -392,22 +392,6 @@ function RoyalContractBar({ mint }: { mint: string }) {
         </button>
       </div>
 
-      <Link
-        href={getJupiterSwapUrl(mint)}
-        target="_blank"
-        className={`
-          inline-flex items-center gap-2 rounded-full
-          border border-emerald-400/25 bg-emerald-500/10
-          px-3.5 py-2 text-[11px] font-semibold text-emerald-200
-          hover:bg-emerald-500/15 hover:text-emerald-100
-          shadow-[0_18px_60px_rgba(16,185,129,0.14)]
-          transition
-        `}
-        title="Buy XPOT on Jupiter"
-      >
-        Buy XPOT
-        <ExternalLink className="h-4 w-4 text-emerald-200/80" />
-      </Link>
     </div>
   );
 }
