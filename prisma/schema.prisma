@@ -1,3 +1,4 @@
+
 // prisma/schema.prisma
 
 generator client {
@@ -211,4 +212,19 @@ model DrawEntry {
 
   @@index([drawId, createdAt])
   @@index([xHandle])
+}
+// Hub streak tracking (for /api/hub/streak)
+model HubStreak {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clerk user id (used by upsert where: { clerkId })
+  clerkId     String   @unique
+
+  // Consecutive days
+  days        Int      @default(0)
+
+  // The last UTC day the streak was recorded for (nullable)
+  lastDoneDay DateTime?
 }
