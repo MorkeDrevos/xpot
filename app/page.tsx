@@ -1108,11 +1108,15 @@ function HomePageInner() {
 
                     <div className="rounded-[28px] bg-white/[0.022] p-6 ring-1 ring-white/[0.055] sm:p-7 lg:p-8">
                       <div className="mt-4">
-                        <h1 className="text-balance text-[40px] font-semibold leading-[1.05] sm:text-[56px]">
-                          Daily draws, provable outcomes.
-                          <br />
-                          <span className="text-emerald-300">The Final Draw is the season ending.</span>
-                        </h1>
+                        <h1 className="text-balance text-[42px] font-semibold leading-[1.05] sm:text-[60px]">
+  One protocol. One identity.
+  <span className="block text-emerald-300">
+    One daily XPOT draw.
+  </span>
+  <span className="block text-[18px] font-medium tracking-tight text-slate-400 sm:text-[20px]">
+    The season concludes with a final draw.
+  </span>
+</h1>
                       </div>
 
                       <div className="mt-5">
