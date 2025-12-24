@@ -1,4 +1,4 @@
-// app/tokenomics/page.tsx
+// app/tokenomics/TokenomicsClient.tsx
 'use client';
 
 import Link from 'next/link';
@@ -994,7 +994,7 @@ function DonutAllocation({
   );
 }
 
-export default function TokenomicsPage() {
+export default function TokenomicsClient() {
   const searchParams = useSearchParams();
   const supply = 50_000_000_000;
 
