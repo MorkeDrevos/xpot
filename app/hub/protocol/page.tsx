@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   Activity,
@@ -185,7 +185,8 @@ function loadSamples(key: string): Sample[] {
     if (!Array.isArray(j)) return [];
     return j
       .map((x: any) => ({ t: Number(x?.t), v: Number(x?.v) }))
-      .filter(s => Number.isFinite(s.t) && Number.isFinite(s.v));
+      .filter((s) => Number.isFinite(s.t) && Number.isFinite(s.v))
+      .slice(-SAMPLE_MAX);
   } catch {
     return [];
   }
@@ -199,41 +200,47 @@ function saveSamples(key: string, arr: Sample[]) {
   }
 }
 
-function pushSample(key: string, v?: number) {
+function pushSampleIntoState({
+  key,
+  v,
+  current,
+  setCurrent,
+}: {
+  key: string;
+  v?: number;
+  current: Sample[];
+  setCurrent: (next: Sample[]) => void;
+}) {
   const num = Number(v);
   if (!Number.isFinite(num)) return;
 
   const now = Date.now();
-  const arr = loadSamples(key);
+  const last = current[current.length - 1];
 
-  // avoid noisy duplicates: only push if last is older than ~6s or value changed meaningfully
-  const last = arr[arr.length - 1];
+  // avoid noisy duplicates
   if (last && now - last.t < 6000 && Math.abs(last.v - num) < 1e-12) return;
 
-  const next = [...arr, { t: now, v: num }].slice(-SAMPLE_MAX);
+  const next = [...current, { t: now, v: num }].slice(-SAMPLE_MAX);
+  setCurrent(next);
   saveSamples(key, next);
 }
 
-function Sparkline({
-  samples,
-  height = 40,
-}: {
-  samples: Sample[];
-  height?: number;
-}) {
+function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: number }) {
   const width = 240;
+  const gid = useId();
+  const gradId = `xpotSpark_${gid}`;
 
   const points = useMemo(() => {
     if (!samples || samples.length < 2) return '';
 
-    const vs = samples.map(s => s.v);
+    const vs = samples.map((s) => s.v);
     const min = Math.min(...vs);
     const max = Math.max(...vs);
 
     const span = max - min || 1;
 
     const xs = samples.map((_, i) => (i / (samples.length - 1)) * (width - 8) + 4);
-    const ys = samples.map(s => {
+    const ys = samples.map((s) => {
       const y01 = (s.v - min) / span;
       const y = (1 - clamp01(y01)) * (height - 10) + 5;
       return y;
@@ -246,12 +253,13 @@ function Sparkline({
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-transparent">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="block h-[40px] w-full"
+        className="block w-full"
+        style={{ height }}
         preserveAspectRatio="none"
         aria-hidden="true"
       >
         <defs>
-          <linearGradient id="xpotSpark" x1="0" y1="0" x2="1" y2="0">
+          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="rgba(56,189,248,0.60)" />
             <stop offset="50%" stopColor="rgba(52,211,153,0.60)" />
             <stop offset="100%" stopColor="rgba(217,70,239,0.55)" />
@@ -259,13 +267,9 @@ function Sparkline({
         </defs>
 
         <path
-          d={
-            points
-              ? `M ${points.replaceAll(' ', ' L ')}`
-              : ''
-          }
+          d={points ? `M ${points.replaceAll(' ', ' L ')}` : ''}
           fill="none"
-          stroke="url(#xpotSpark)"
+          stroke={`url(#${gradId})`}
           strokeWidth="2"
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -273,12 +277,8 @@ function Sparkline({
         />
 
         <path
-          d={
-            points
-              ? `M ${points.replaceAll(' ', ' L ')} L ${width - 4},${height - 5} L 4,${height - 5} Z`
-              : ''
-          }
-          fill="url(#xpotSpark)"
+          d={points ? `M ${points.replaceAll(' ', ' L ')} L ${width - 4},${height - 5} L 4,${height - 5} Z` : ''}
+          fill={`url(#${gradId})`}
           opacity={points ? 0.08 : 0}
         />
       </svg>
@@ -299,18 +299,27 @@ function XpotAmount({ amount }: { amount: number }) {
   const text = Number.isFinite(n) ? n.toLocaleString() : '—';
   return (
     <span className="inline-flex items-baseline gap-3">
-      <span className="font-mono text-amber-200 tracking-[0.18em] text-lg sm:text-xl">
-        {text}
-      </span>
+      <span className="font-mono text-amber-200 tracking-[0.18em] text-lg sm:text-xl">{text}</span>
       <span className="text-slate-400 font-semibold tracking-[0.14em]">XPOT</span>
     </span>
   );
 }
 
-function tickNumber(prev: string, next: string, ms = 240) {
-  // micro “alive” tick: briefly fade/scale when value changes
-  // (handled by CSS class toggle; logic lives in component)
-  return { prev, next, ms };
+function SkeletonLine({ w = 'w-24' }: { w?: string }) {
+  return (
+    <span
+      className={`
+        inline-block h-5 ${w}
+        rounded-full
+        bg-white/[0.06]
+        shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]
+        overflow-hidden
+        relative
+        xpot-shimmer
+      `}
+      aria-hidden="true"
+    />
+  );
 }
 
 export default function HubProtocolPage() {
@@ -323,11 +332,13 @@ export default function HubProtocolPage() {
   const [loading, setLoading] = useState(true);
   const [protoLoading, setProtoLoading] = useState(true);
 
+  const [liveFetching, setLiveFetching] = useState(false);
+  const [protoFetching, setProtoFetching] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [protoError, setProtoError] = useState<string | null>(null);
 
   const [now, setNow] = useState(() => Date.now());
-
   const [copied, setCopied] = useState(false);
 
   // Refresh telemetry
@@ -340,12 +351,12 @@ export default function HubProtocolPage() {
   const liveReqId = useRef(0);
   const protoReqId = useRef(0);
 
-  // “tick” animation keys for numbers
+  // “tick” animation keys for numbers (only increments on value change)
   const [lpKey, setLpKey] = useState(0);
   const [pxKey, setPxKey] = useState(0);
   const [volKey, setVolKey] = useState(0);
 
-  // Load sparklines from storage
+  // Sparklines in memory (load once, then update state + persist)
   const [priceSamples, setPriceSamples] = useState<Sample[]>([]);
   const [lpSamples, setLpSamples] = useState<Sample[]>([]);
   const [volSamples, setVolSamples] = useState<Sample[]>([]);
@@ -356,7 +367,6 @@ export default function HubProtocolPage() {
   }, []);
 
   useEffect(() => {
-    // initial sample load
     try {
       setPriceSamples(loadSamples(KEY_PRICE));
       setLpSamples(loadSamples(KEY_LP));
@@ -366,16 +376,11 @@ export default function HubProtocolPage() {
     }
   }, []);
 
-  function refreshLocalSamples() {
-    setPriceSamples(loadSamples(KEY_PRICE));
-    setLpSamples(loadSamples(KEY_LP));
-    setVolSamples(loadSamples(KEY_VOL));
-  }
-
   async function loadLive() {
     const req = ++liveReqId.current;
 
     try {
+      setLiveFetching(true);
       setError(null);
 
       const ac = new AbortController();
@@ -400,8 +405,10 @@ export default function HubProtocolPage() {
       setDraw(d?.draw ?? null);
       setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
     } catch {
+      if (req !== liveReqId.current) return;
       setError('Failed to load live data. Please refresh.');
     } finally {
+      if (req === liveReqId.current) setLiveFetching(false);
       setLoading(false);
       setLiveNextAt(Date.now() + LIVE_REFRESH_MS);
     }
@@ -411,6 +418,7 @@ export default function HubProtocolPage() {
     const req = ++protoReqId.current;
 
     try {
+      setProtoFetching(true);
       setProtoError(null);
 
       const ac = new AbortController();
@@ -435,16 +443,8 @@ export default function HubProtocolPage() {
       const j = await res.json().catch(() => ({}));
       const next = (j?.state ?? j ?? null) as ProtocolState | null;
 
-      // sample for sparklines
-      if (next) {
-        pushSample(KEY_PRICE, next.priceUsd);
-        pushSample(KEY_LP, next.lpUsd);
-        pushSample(KEY_VOL, next.volume24hUsd);
-        refreshLocalSamples();
-      }
-
-      setProto(prev => {
-        // trigger subtle tick if value changed
+      // Tick triggers only if changed vs previous proto
+      setProto((prev) => {
         const prevLp = Number(prev?.lpUsd);
         const prevPx = Number(prev?.priceUsd);
         const prevVol = Number(prev?.volume24hUsd);
@@ -453,16 +453,40 @@ export default function HubProtocolPage() {
         const nextPx = Number(next?.priceUsd);
         const nextVol = Number(next?.volume24hUsd);
 
-        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp) setLpKey(k => k + 1);
-        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx) setPxKey(k => k + 1);
-        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol) setVolKey(k => k + 1);
+        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp) setLpKey((k) => k + 1);
+        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx) setPxKey((k) => k + 1);
+        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol) setVolKey((k) => k + 1);
 
         return next;
       });
+
+      // Samples: update in-memory + persist (no re-parsing storage each refresh)
+      if (next) {
+        pushSampleIntoState({
+          key: KEY_PRICE,
+          v: next.priceUsd,
+          current: priceSamples,
+          setCurrent: setPriceSamples,
+        });
+        pushSampleIntoState({
+          key: KEY_LP,
+          v: next.lpUsd,
+          current: lpSamples,
+          setCurrent: setLpSamples,
+        });
+        pushSampleIntoState({
+          key: KEY_VOL,
+          v: next.volume24hUsd,
+          current: volSamples,
+          setCurrent: setVolSamples,
+        });
+      }
     } catch {
+      if (req !== protoReqId.current) return;
       setProtoError('Protocol metrics unavailable.');
       setProto(null);
     } finally {
+      if (req === protoReqId.current) setProtoFetching(false);
       setProtoLoading(false);
       setProtoNextAt(Date.now() + PROTO_REFRESH_MS);
     }
@@ -496,6 +520,7 @@ export default function HubProtocolPage() {
   }, []);
 
   const liveIsOpen = draw?.status === 'OPEN';
+  const isRefreshing = liveFetching || protoFetching;
 
   // Single source of truth: draw.closesAt from DB-backed /api/draw/live
   const closesIn = useMemo(() => {
@@ -544,6 +569,7 @@ export default function HubProtocolPage() {
   }
 
   async function manualRefresh() {
+    if (isRefreshing) return;
     setLoading(true);
     setProtoLoading(true);
     await Promise.allSettled([loadLive(), loadProto()]);
@@ -610,6 +636,33 @@ export default function HubProtocolPage() {
           35%{ transform: translateY(-1px); filter: brightness(1.12); }
           100%{ transform: translateY(0); filter: brightness(1); }
         }
+        .xpot-shimmer::before{
+          content:"";
+          position:absolute;
+          inset:0;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,0.12),
+            transparent
+          );
+          transform: translateX(-120%);
+          animation: xpotShimmer 1.25s ease-in-out infinite;
+          pointer-events:none;
+        }
+        @keyframes xpotShimmer{
+          0%{ transform: translateX(-120%); opacity:0.0; }
+          25%{ opacity:0.8; }
+          100%{ transform: translateX(120%); opacity:0.0; }
+        }
+        @media (prefers-reduced-motion: reduce){
+          .xpot-protocol-scan::before,
+          .xpot-live-pulse::after,
+          .xpot-tick,
+          .xpot-shimmer::before{
+            animation: none !important;
+          }
+        }
       `}</style>
 
       <section className="mt-2 space-y-6">
@@ -624,9 +677,7 @@ export default function HubProtocolPage() {
 
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                Integrity overview
-              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Integrity overview</p>
               <p className="mt-2 text-sm text-slate-200/90">
                 A calm, real-time view of liquidity and execution - designed for trust, not hype.
               </p>
@@ -634,8 +685,7 @@ export default function HubProtocolPage() {
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span className="inline-flex items-center gap-2">
                   <Info className="h-4 w-4 text-slate-300" />
-                  Official CA:{' '}
-                  <span className="text-slate-200/80">{shortAddr(TOKEN_MINT)}</span>
+                  Official CA: <span className="text-slate-200/80">{shortAddr(TOKEN_MINT)}</span>
                 </span>
 
                 <button
@@ -679,22 +729,24 @@ export default function HubProtocolPage() {
                 <StatusPill tone="sky">
                   <Timer className="h-3.5 w-3.5" />
                   Refresh:{' '}
-                  <span className="text-slate-200/80">
-                    live {Math.ceil(liveRefreshIn / 1000)}s
-                  </span>
+                  <span className="text-slate-200/80">live {Math.ceil(liveRefreshIn / 1000)}s</span>
                   <span className="text-slate-500">/</span>
-                  <span className="text-slate-200/80">
-                    protocol {Math.ceil(protoRefreshIn / 1000)}s
-                  </span>
+                  <span className="text-slate-200/80">protocol {Math.ceil(protoRefreshIn / 1000)}s</span>
                 </StatusPill>
 
                 <button
                   onClick={manualRefresh}
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200/80 hover:text-slate-100 hover:bg-white/[0.06] transition"
+                  disabled={isRefreshing}
+                  className="
+                    inline-flex items-center gap-2 rounded-full border border-white/10
+                    bg-white/[0.03] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em]
+                    text-slate-200/80 hover:text-slate-100 hover:bg-white/[0.06] transition
+                    disabled:opacity-60 disabled:cursor-not-allowed
+                  "
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Refresh now
+                  <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing' : 'Refresh now'}
                 </button>
               </div>
             </div>
@@ -712,9 +764,7 @@ export default function HubProtocolPage() {
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
-                {proto?.updatedAt
-                  ? `Updated ${formatMadridTime(proto.updatedAt)} (Madrid)`
-                  : 'Live'}
+                {proto?.updatedAt ? `Updated ${formatMadridTime(proto.updatedAt)} (Madrid)` : 'Live'}
               </StatusPill>
 
               <StatusPill tone={protoError ? 'amber' : 'emerald'}>
@@ -727,7 +777,8 @@ export default function HubProtocolPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               label="LP (USD)"
-              value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)}
+              loading={protoLoading}
+              value={fmtUsdCompact(proto?.lpUsd)}
               hint={protoLoading ? '' : pendingPair ? 'Pending first LP' : 'Total liquidity value'}
               icon={<Waves className="h-4 w-4 text-sky-300" />}
               pulseKey={lpKey}
@@ -735,13 +786,15 @@ export default function HubProtocolPage() {
             />
             <MetricCard
               label="LP change (24h)"
-              value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)}
+              loading={protoLoading}
+              value={fmtPct(proto?.lpChange24hPct)}
               hint={protoLoading ? '' : 'Stability band next'}
               icon={<ChartNoAxesCombined className="h-4 w-4 text-fuchsia-300" />}
             />
             <MetricCard
               label="Price (USD)"
-              value={protoLoading ? 'Loading…' : fmtUsd(proto?.priceUsd, 6)}
+              loading={protoLoading}
+              value={fmtUsd(proto?.priceUsd, 6)}
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
               pulseKey={pxKey}
@@ -749,7 +802,8 @@ export default function HubProtocolPage() {
             />
             <MetricCard
               label="Volume (24h)"
-              value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)}
+              loading={protoLoading}
+              value={fmtUsdCompact(proto?.volume24hUsd)}
               hint={protoLoading ? '' : pendingPair ? 'No trades yet' : 'Observed volume'}
               icon={<Zap className="h-4 w-4 text-amber-300" />}
               pulseKey={volKey}
@@ -766,15 +820,12 @@ export default function HubProtocolPage() {
                   <Info className="h-5 w-5 text-amber-300" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">
-                    Market pending
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Market pending</p>
                   <p className="mt-1 text-sm text-slate-200/85">
-                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
+                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will
+                    auto-populate once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Nothing to do here - it goes live automatically.
-                  </p>
+                  <p className="mt-1 text-xs text-slate-400">Nothing to do here - it goes live automatically.</p>
                 </div>
               </div>
             </div>
@@ -805,17 +856,17 @@ export default function HubProtocolPage() {
             {error ? (
               <p className="mt-6 text-sm text-amber-300">{error}</p>
             ) : loading || !draw ? (
-              <p className="mt-6 text-sm text-slate-400">Loading live draw…</p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <MetricCard label="Daily reward" loading value="—" icon={<Crown className="h-4 w-4 text-amber-300" />} />
+                <MetricCard label="Closes in" loading value="—" icon={<Timer className="h-4 w-4 text-sky-300" />} />
+                <MetricCard label="Status" loading value="—" icon={<Sparkles className="h-4 w-4 text-emerald-300" />} />
+              </div>
             ) : (
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
                   label="Daily reward"
                   valueNode={<XpotAmount amount={Number(draw.jackpotXpot ?? 0)} />}
-                  hint={
-                    Number.isFinite(Number(dailyUsdEstimate))
-                      ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}`
-                      : '—'
-                  }
+                  hint={Number.isFinite(Number(dailyUsdEstimate)) ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}` : '—'}
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
@@ -856,11 +907,19 @@ export default function HubProtocolPage() {
 
           <div className="mt-4 space-y-3">
             {loading ? (
-              <p className="text-sm text-slate-400">Loading bonus XPOTs…</p>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-2">
+                    <SkeletonLine w="w-40" />
+                    <SkeletonLine w="w-56" />
+                  </div>
+                  <SkeletonLine w="w-20" />
+                </div>
+              </div>
             ) : bonus.length === 0 ? (
               <p className="text-sm text-slate-500">No bonus XPOTs scheduled.</p>
             ) : (
-              bonus.map(b => (
+              bonus.map((b) => (
                 <div
                   key={b.id}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
@@ -876,13 +935,7 @@ export default function HubProtocolPage() {
                   </div>
 
                   <StatusPill
-                    tone={
-                      b.status === 'CLAIMED'
-                        ? 'emerald'
-                        : b.status === 'CANCELLED'
-                        ? 'slate'
-                        : 'amber'
-                    }
+                    tone={b.status === 'CLAIMED' ? 'emerald' : b.status === 'CANCELLED' ? 'slate' : 'amber'}
                   >
                     {b.status === 'CLAIMED' ? (
                       <>
@@ -909,11 +962,7 @@ export default function HubProtocolPage() {
 
         {/* LIVE MARKET PANELS */}
         <section className="grid gap-6 lg:grid-cols-2">
-          <PremiumPanel
-            title="Liquidity"
-            subtitle="LP integrity and stability signals."
-            icon={<Waves className="h-5 w-5 text-sky-300" />}
-          >
+          <PremiumPanel title="Liquidity" subtitle="LP integrity and stability signals." icon={<Waves className="h-5 w-5 text-sky-300" />}>
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)} />
               <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
@@ -929,11 +978,7 @@ export default function HubProtocolPage() {
             </div>
           </PremiumPanel>
 
-          <PremiumPanel
-            title="Market"
-            subtitle="Reference price and volume behaviour."
-            icon={<Activity className="h-5 w-5 text-emerald-300" />}
-          >
+          <PremiumPanel title="Market" subtitle="Reference price and volume behaviour." icon={<Activity className="h-5 w-5 text-emerald-300" />}>
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi label="Price" value={protoLoading ? 'Loading…' : fmtUsd(proto?.priceUsd, 6)} />
               <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)} />
@@ -968,6 +1013,7 @@ function MetricCard({
   icon,
   pulseKey,
   spark,
+  loading = false,
 }: {
   label: string;
   value?: string;
@@ -976,7 +1022,10 @@ function MetricCard({
   icon?: React.ReactNode;
   pulseKey?: number;
   spark?: React.ReactNode;
+  loading?: boolean;
 }) {
+  const shouldTick = typeof pulseKey === 'number';
+
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
@@ -989,16 +1038,21 @@ function MetricCard({
       </div>
 
       <div className="mt-2">
-        {valueNode ? (
+        {loading ? (
+          <div className="space-y-2">
+            <SkeletonLine w="w-28" />
+            <span className="block h-3 w-44 rounded-full bg-white/[0.04] xpot-shimmer relative overflow-hidden" />
+          </div>
+        ) : valueNode ? (
           <div className="text-slate-100">{valueNode}</div>
         ) : (
-          <p key={pulseKey ?? 0} className="text-lg font-semibold text-slate-100 xpot-tick">
+          <p key={pulseKey ?? label} className={`text-lg font-semibold text-slate-100 ${shouldTick ? 'xpot-tick' : ''}`}>
             {value ?? '—'}
           </p>
         )}
       </div>
 
-      {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+      {!loading && hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
 
       {spark ? <div className="mt-3">{spark}</div> : null}
     </div>
@@ -1041,10 +1095,18 @@ function PremiumPanel({
 }
 
 function SoftKpi({ label, value }: { label: string; value: string }) {
+  const isLoading = value === 'Loading…';
+
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
       <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-1 text-base font-semibold text-slate-100">{value}</p>
+      {isLoading ? (
+        <div className="mt-2">
+          <SkeletonLine w="w-28" />
+        </div>
+      ) : (
+        <p className="mt-1 text-base font-semibold text-slate-100">{value}</p>
+      )}
     </div>
   );
 }
