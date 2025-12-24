@@ -32,6 +32,7 @@ import {
   Timer,
   Info,
   Radio,
+  Flame,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -69,6 +70,16 @@ const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
 const GOLD_BG_WASH_2 = 'bg-[rgba(var(--xpot-gold),0.08)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
 const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
+
+// ─────────────────────────────────────────────
+// FINAL DRAW SEASON (7000-day campaign)
+// - Day 1 begins 2025-12-25 (Madrid)
+// - Day 7000 is 2045-02-22 (Madrid)
+// ─────────────────────────────────────────────
+
+const SEASON_DAYS = 7000;
+const SEASON_START = { y: 2025, m: 12, d: 25 }; // Madrid wall-clock start
+const SEASON_END = { y: 2045, m: 2, d: 22 }; // Day 7000 (Madrid)
 
 // ─────────────────────────────────────────────
 // Shared countdown context (single source of truth)
@@ -398,22 +409,22 @@ function PrinciplesStrip() {
     <div className="grid gap-3 sm:grid-cols-3">
       {[
         {
-          k: 'Eligibility',
-          v: 'Hold XPOT',
-          s: 'No tickets, no purchase flow',
-          glow: 'bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.10),transparent_62%)]',
+          k: 'The Final Draw',
+          v: '7000-day season',
+          s: 'A single global arc, not a one-week promo',
+          glow: 'bg-[radial-gradient(circle_at_0%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]',
         },
         {
           k: 'Identity',
-          v: 'Handle-based',
-          s: 'Winners shown by @handle',
+          v: '@handle-first',
+          s: 'Winners shown by handle, not wallet profiles',
           glow: 'bg-[radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.10),transparent_64%)]',
         },
         {
           k: 'Proof',
-          v: 'On-chain',
-          s: 'Verify payouts in explorer',
-          glow: 'bg-[radial-gradient(circle_at_100%_0%,rgba(var(--xpot-gold),0.10),transparent_64%)]',
+          v: 'On-chain payouts',
+          s: 'Verify distributions in an explorer',
+          glow: 'bg-[radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.10),transparent_64%)]',
         },
       ].map(it => (
         <div
@@ -437,7 +448,7 @@ function SectionDividerLabel({ label }: { label: string }) {
       <span className="h-px flex-1 bg-white/10" />
       <span className="hidden sm:inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-slate-600">
         <span className="h-1 w-1 rounded-full bg-white/20" />
-        <span>Eligibility</span>
+        <span>Season</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
         <span>Identity</span>
         <span className="h-1 w-1 rounded-full bg-white/20" />
@@ -573,7 +584,7 @@ function Accordion({ items }: { items: { q: string; a: string }[] }) {
 }
 
 /* ─────────────────────────────────────────────
-   Countdown (Madrid draw cutoff)
+   Countdown (Madrid draw cutoff) + Madrid date helpers
 ───────────────────────────────────────────── */
 
 function getMadridParts(date = new Date()) {
@@ -605,6 +616,29 @@ function getMadridOffsetMs(now = new Date()) {
   const p = getMadridParts(now);
   const asUtc = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss);
   return asUtc - now.getTime();
+}
+
+function getMadridMidnightUtcMs(yy: number, mm: number, dd: number, now = new Date()) {
+  const offsetMs = getMadridOffsetMs(now);
+  const asUtc = Date.UTC(yy, mm - 1, dd, 0, 0, 0);
+  return asUtc - offsetMs;
+}
+
+function calcSeasonProgress(now = new Date()) {
+  const p = getMadridParts(now);
+
+  const todayMidUtc = getMadridMidnightUtcMs(p.y, p.m, p.d, now);
+  const startMidUtc = getMadridMidnightUtcMs(SEASON_START.y, SEASON_START.m, SEASON_START.d, now);
+  const endMidUtc = getMadridMidnightUtcMs(SEASON_END.y, SEASON_END.m, SEASON_END.d, now);
+
+  const dayIndex = Math.floor((todayMidUtc - startMidUtc) / 86_400_000) + 1; // Day 1 on start date
+  const day = Math.max(0, Math.min(SEASON_DAYS, dayIndex));
+
+  const daysRemaining = Math.max(0, Math.floor((endMidUtc - todayMidUtc) / 86_400_000));
+  const started = todayMidUtc >= startMidUtc;
+  const ended = todayMidUtc > endMidUtc;
+
+  return { day, daysRemaining, started, ended };
 }
 
 function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
@@ -706,10 +740,20 @@ function useLocalReducedMotion() {
    Alive Control Room feed (premium, subtle, real)
 ───────────────────────────────────────────── */
 
-function LiveControlRoom({ countdown, cutoffLabel }: { countdown: string; cutoffLabel: string }) {
+function LiveControlRoom({
+  countdown,
+  cutoffLabel,
+  seasonLine,
+}: {
+  countdown: string;
+  cutoffLabel: string;
+  seasonLine: string;
+}) {
   const reduced = useLocalReducedMotion();
   const [tick, setTick] = useState(0);
-  const [lines, setLines] = useState<string[]>(() => buildInitialLines(countdown, cutoffLabel));
+  const [lines, setLines] = useState<string[]>(() =>
+    buildInitialLines(countdown, cutoffLabel, seasonLine),
+  );
 
   useEffect(() => {
     const t = window.setInterval(() => setTick(v => v + 1), 1000);
@@ -717,8 +761,8 @@ function LiveControlRoom({ countdown, cutoffLabel }: { countdown: string; cutoff
   }, []);
 
   useEffect(() => {
-    setLines(prev => updateLines(prev, tick, countdown, cutoffLabel));
-  }, [tick, countdown, cutoffLabel]);
+    setLines(prev => updateLines(prev, tick, countdown, cutoffLabel, seasonLine));
+  }, [tick, countdown, cutoffLabel, seasonLine]);
 
   const live = true;
   const pulseCls = reduced ? '' : 'animate-[xpotPulse_2.6s_ease-in-out_infinite]';
@@ -820,26 +864,27 @@ function LiveControlRoom({ countdown, cutoffLabel }: { countdown: string; cutoff
       </div>
 
       <p className="mt-3 text-[12px] text-slate-400">
-        Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.
+        Read-only cockpit view. Season is public. Identity stays handle-first. Proof stays on-chain.
       </p>
     </div>
   );
 }
 
-function buildInitialLines(countdown: string, cutoffLabel: string) {
+function buildInitialLines(countdown: string, cutoffLabel: string, seasonLine: string) {
   return [
     `> XPOT_PROTOCOL`,
-    `  primitive:       daily reward selection`,
-    `  eligibility:     hold XPOT (on-chain)`,
-    `  identity:        @handle-first (not wallet profiles)`,
-    `  proof:           on-chain payout verification`,
+    `  season:         ${seasonLine}`,
+    `  primitive:      daily reward selection`,
+    `  eligibility:    hold XPOT (min threshold applies)`,
+    `  identity:       @handle-first (not wallet profiles)`,
+    `  proof:          on-chain payout verification`,
     ``,
     `> NEXT_DRAW`,
     `  in:             ${countdown}  (${cutoffLabel})`,
     ``,
     `> SESSION`,
     `  heartbeat:      ok`,
-    `  status:         identity map`,
+    `  status:         season telemetry`,
     ``,
     `> LAST_WINNERS`,
     `  #2025-12-18  winner   ${XPOT_SIGN}1,000,000`,
@@ -848,8 +893,17 @@ function buildInitialLines(countdown: string, cutoffLabel: string) {
   ];
 }
 
-function updateLines(prev: string[], tick: number, countdown: string, cutoffLabel: string) {
+function updateLines(
+  prev: string[],
+  tick: number,
+  countdown: string,
+  cutoffLabel: string,
+  seasonLine: string,
+) {
   const next = [...prev];
+
+  const seasonIdx = next.findIndex(l => l.trim().startsWith('season:'));
+  if (seasonIdx !== -1) next[seasonIdx] = `  season:         ${seasonLine}`;
 
   const idx = next.findIndex(l => l.trim().startsWith('in:'));
   if (idx !== -1) next[idx] = `  in:             ${countdown}  (${cutoffLabel})`;
@@ -859,18 +913,18 @@ function updateLines(prev: string[], tick: number, countdown: string, cutoffLabe
 
   const stIdx = next.findIndex(l => l.trim().startsWith('status:'));
   if (stIdx !== -1) {
-    const modes = ['identity map', 'proof verify', 'pool telemetry', 'module idle'];
+    const modes = ['season telemetry', 'proof verify', 'pool telemetry', 'entry window open'];
     next[stIdx] = `  status:         ${modes[tick % modes.length]}`;
   }
 
   if (tick > 0 && tick % 7 === 0) {
     const stamp = String(tick).padStart(4, '0');
     const events = [
-      `tick ${stamp}: oracle sample ok`,
-      `tick ${stamp}: liquidity signal stable`,
-      `tick ${stamp}: entry window open`,
-      `tick ${stamp}: handle registry warm`,
+      `tick ${stamp}: eligibility index ok`,
+      `tick ${stamp}: identity cache warm`,
       `tick ${stamp}: proof cache updated`,
+      `tick ${stamp}: entry window open`,
+      `tick ${stamp}: liquidity signal stable`,
     ];
     const line = `  log:            ${events[tick % events.length]}`;
     const sessBlockEnd = next.findIndex(l => l.trim().startsWith('> LAST_WINNERS'));
@@ -929,6 +983,69 @@ function BonusVault({ children }: { children: ReactNode }) {
 }
 
 /* ─────────────────────────────────────────────
+   FINAL DRAW BANNER (OBVIOUS)
+───────────────────────────────────────────── */
+
+function FinalDrawBanner({
+  day,
+  daysRemaining,
+  started,
+  ended,
+}: {
+  day: number;
+  daysRemaining: number;
+  started: boolean;
+  ended: boolean;
+}) {
+  const title = ended ? 'THE FINAL DRAW HAS ARRIVED' : 'THE FINAL DRAW SEASON';
+  const sub = ended
+    ? 'Season complete. The finale is live.'
+    : started
+    ? 'A 7000-day global game. One arc. One legend.'
+    : 'Season starts on 2025-12-25 (Madrid).';
+
+  return (
+    <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03] p-4 ring-1 ring-white/[0.06] shadow-[0_22px_90px_rgba(0,0,0,0.45)]">
+      <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_10%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_88%_22%,rgba(236,72,153,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(56,189,248,0.10),transparent_62%)]" />
+
+      <div className="relative flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill tone="amber">
+              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+              {title}
+            </Pill>
+            <Pill tone="violet">
+              <Flame className="h-3.5 w-3.5" />
+              Day {day}/{SEASON_DAYS}
+            </Pill>
+            <Pill tone="sky">
+              <Timer className="h-3.5 w-3.5" />
+              {daysRemaining} days remaining
+            </Pill>
+          </div>
+
+          <p className="mt-2 text-sm font-semibold text-slate-100">{sub}</p>
+          <p className="mt-1 text-[12px] text-slate-400">
+            Final day: <span className="text-slate-200">2045-02-22</span> (Madrid) • Eligibility is holdings-based • Winners are
+            shown by <span className="text-slate-200">@handle</span> and paid on-chain
+          </p>
+        </div>
+
+        <Link
+          href={ROUTE_HUB}
+          className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}
+          title="Enter the season via the hub"
+        >
+          Enter now
+          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Home
 ───────────────────────────────────────────── */
 
@@ -938,25 +1055,28 @@ function HomePageInner() {
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
 
-  const { countdown, cutoffLabel } = useNextDraw();
+  const { countdown, cutoffLabel, nowMs } = useNextDraw();
+
+  const season = useMemo(() => calcSeasonProgress(new Date(nowMs)), [nowMs]);
+  const seasonLine = useMemo(() => `DAY ${season.day}/${SEASON_DAYS}  (final: 2045-02-22)`, [season.day]);
 
   const faq = useMemo(
     () => [
       {
-        q: 'Do I need to buy tickets to enter?',
-        a: 'No. Entry is holdings-based: hold XPOT, then claim your entry in the hub. The homepage stays calm and informational.',
+        q: 'What is “The Final Draw” exactly?',
+        a: 'It’s the season finale of a 7000-day global XPOT campaign. Daily entries happen through the hub, and the entire season culminates in the Final Draw.',
       },
       {
-        q: 'Is XPOT wallet-based or handle-based?',
-        a: 'Eligibility and claims are wallet-native (self-custody). But identity is handle-first: XPOT presents winners and history by @handle, not by turning wallets into profiles.',
+        q: 'Do I need tickets to enter?',
+        a: 'No tickets. Eligibility is holdings-based. Hold XPOT, verify eligibility in the hub and claim your entry.',
       },
       {
-        q: 'How do winners verify payouts?',
-        a: 'Payouts are on-chain. Anyone can verify the transaction in an explorer. Proof is the product.',
+        q: 'Why do winners show as @handle?',
+        a: 'XPOT is handle-first: winners and history are presented by X handle for a clean public layer, while claims remain self-custody and wallet-native.',
       },
       {
-        q: 'What happens after launch?',
-        a: 'The daily draw is the primitive. Modules like streaks, creator drops and sponsor-funded pools plug into the same protocol layer.',
+        q: 'How can anyone verify payouts?',
+        a: 'Payouts are on-chain. Proof is the product. Anyone can verify distributions in an explorer.',
       },
     ],
     [],
@@ -978,44 +1098,84 @@ function HomePageInner() {
                 {/* LEFT */}
                 <div className="flex flex-col justify-between gap-5">
                   <div className="space-y-5">
+                    <FinalDrawBanner
+                      day={season.day}
+                      daysRemaining={season.daysRemaining}
+                      started={season.started}
+                      ended={season.ended}
+                    />
+
                     <div className="flex flex-wrap items-center gap-2">
+                      <Pill tone="amber">
+                        <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                        The Final Draw is the point
+                      </Pill>
+
                       <Pill tone="emerald">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                        Handle-based identity
+                        On-chain proof
+                      </Pill>
+
+                      <Pill tone="sky">
+                        <Users className="h-3.5 w-3.5" />
+                        X handle required
                       </Pill>
 
                       <Pill tone="violet">
-                        <span className="h-1.5 w-1.5 rounded-full bg-violet-300 shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
-                        Protocol layer
-                      </Pill>
-
-                      <Pill tone="amber">
-                        <Timer className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                        <Timer className="h-3.5 w-3.5" />
                         Next draw {countdown}
                       </Pill>
                     </div>
 
                     <div className="rounded-[28px] bg-white/[0.022] p-6 ring-1 ring-white/[0.055] sm:p-7 lg:p-8">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-400/90">
-                        NO TICKETS · JUST XPOT HOLDINGS
+                        GLOBAL SEASON · 7000 DAYS · ONE FINAL DRAW
                       </p>
 
                       <div className="mt-4">
                         <h1 className="text-balance text-[38px] font-semibold leading-[1.06] sm:text-5xl">
-                          One protocol.{' '}
-                          <span className="text-emerald-300">One daily XPOT draw.</span>
+                          The biggest on-chain game{' '}
+                          <span className="text-emerald-300">anyone with a serious stack can play.</span>
                         </h1>
                       </div>
 
                       <div className="mt-5">
-                        <SectionDividerLabel label="Entry mechanics" />
+                        <SectionDividerLabel label="What you need" />
                       </div>
 
                       <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-slate-300/95">
-                        Hold XPOT, verify eligibility in the hub and claim your entry.
-                        Winners are presented by <span className="text-slate-100">X handle</span> and paid on-chain.
-                        Built to scale into a rewards ecosystem for communities, creators and sponsors.
+                        XPOT is built around a single season arc: daily entries, daily proof and a finale that matters.
+                        Connect your <span className="text-slate-100">X account</span>, connect a{' '}
+                        <span className="text-slate-100">wallet</span> and hold the minimum threshold to qualify.
+                        Winners are presented by <span className="text-slate-100">@handle</span> and paid on-chain.
                       </p>
+
+                      <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.03] px-5 py-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                              Eligibility (launch rule)
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-100">
+                              Hold at least <span className={`${GOLD_TEXT}`}>$100,000</span> worth of XPOT
+                            </p>
+                            <p className="mt-1 text-[12px] text-slate-400">
+                              Entry is claim-based in the hub. No tickets. No checkout.
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] text-slate-200">
+                              <Users className="h-3.5 w-3.5 text-sky-200" />
+                              X required
+                            </span>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] text-slate-200">
+                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+                              Wallet required
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
                       {bonusActive ? (
                         <div className="mt-6">
@@ -1050,17 +1210,16 @@ function HomePageInner() {
 
                             <div className="leading-tight">
                               <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT}`}>
-                                BUILT WITH A 10+ YEAR REWARDS RUNWAY AT LAUNCH
+                                SEASON ARCHITECTURE - BUILT FOR A LONG RUNWAY
                               </p>
                               <p className="mt-1 text-[11px] text-slate-400/80">
-                                Protocol distribution reserve - payouts stay on-chain
+                                Reserve-backed distribution • Proof stays on-chain
                                 <span className="text-slate-700"> • </span>
                                 <span className="text-slate-600">{cutoffLabel}</span>
                               </p>
                             </div>
                           </div>
 
-                          {/* ✅ FIXED: no placeholder comment inside className */}
                           <Link
                             href={ROUTE_TOKENOMICS_RESERVE}
                             target="_blank"
@@ -1084,21 +1243,36 @@ function HomePageInner() {
 
                       <div className="mt-7 flex flex-wrap items-center gap-3">
                         <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-7 py-3.5 text-sm`}>
-                          Enter today&apos;s XPOT
+                          Enter today&apos;s draw
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                        </Link>
+
+                        <Link
+                          href={ROUTE_HUB}
+                          className="
+                            inline-flex items-center justify-center rounded-full
+                            border border-white/10 bg-white/[0.03] px-6 py-3.5
+                            text-sm font-semibold text-slate-100
+                            shadow-[0_18px_60px_rgba(0,0,0,0.35)]
+                            hover:bg-white/[0.06] transition
+                          "
+                          title="Learn how entry works in the hub"
+                        >
+                          See eligibility
+                          <Info className="ml-2 h-4 w-4 text-slate-300" />
                         </Link>
                       </div>
 
                       <p className="mt-4 text-[11px] text-slate-500/95">
-                        Winners are shown by @handle. Payouts are provable on-chain.
+                        The Final Draw is the headline. Daily draws are the heartbeat. Winners are shown by @handle and paid on-chain.
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <MiniStat label="Mode" value="On-chain" tone="emerald" />
-                    <MiniStat label="Identity" value="@handle" tone="sky" />
-                    <MiniStat label="Layer" value="Rewards protocol" tone="violet" />
+                    <MiniStat label="Season day" value={`#${season.day}/${SEASON_DAYS}`} tone="amber" />
+                    <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
+                    <MiniStat label="Final date" value="2045-02-22" tone="violet" />
                   </div>
                 </div>
 
@@ -1111,7 +1285,11 @@ function HomePageInner() {
                   </PremiumCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} />
+                    <LiveControlRoom
+                      countdown={countdown}
+                      cutoffLabel={cutoffLabel}
+                      seasonLine={seasonLine}
+                    />
                   </PremiumCard>
                 </div>
               </div>
@@ -1129,17 +1307,17 @@ function HomePageInner() {
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <Pill tone="sky">
-                <Blocks className="h-3.5 w-3.5" />
-                How it works
+              <Pill tone="amber">
+                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                The Final Draw
               </Pill>
 
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                A daily reward primitive with handle-first identity.
+                A 7000-day season that ends with one unforgettable finale.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT keeps the surface area small: holdings-based eligibility, handle-based identity and on-chain payout proof.
-                The wallet stays self-custody and claim-native, but the product experience stays @handle-first.
+                XPOT is simple on purpose: holdings-based eligibility, handle-first identity and on-chain payout proof.
+                Daily draws are the heartbeat. The Final Draw is the destination.
               </p>
             </div>
 
@@ -1148,13 +1326,13 @@ function HomePageInner() {
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Proof first
               </Pill>
-              <Pill tone="violet">
+              <Pill tone="sky">
                 <Users className="h-3.5 w-3.5" />
-                Handle identity
+                X identity
               </Pill>
-              <Pill tone="amber">
-                <Stars className="h-3.5 w-3.5" />
-                Sponsor ready
+              <Pill tone="violet">
+                <Timer className="h-3.5 w-3.5" />
+                Daily cadence
               </Pill>
             </div>
           </div>
@@ -1171,8 +1349,8 @@ function HomePageInner() {
               />
               <Step
                 n="02"
-                title="Link your @handle"
-                desc="Identity is handle-first for winners and history"
+                title="Link your X handle"
+                desc="Handle-first identity for winners and history"
                 icon={<Users className="h-5 w-5 text-sky-200" />}
                 tone="sky"
                 tag="Identity"
@@ -1180,10 +1358,10 @@ function HomePageInner() {
               <Step
                 n="03"
                 title="Claim entry, verify payout"
-                desc="One winner daily. Proof stays on-chain"
+                desc="Daily winners. On-chain proof. Season finale ahead"
                 icon={<Crown className={`h-5 w-5 ${GOLD_TEXT}`} />}
                 tone="amber"
-                tag="Payout"
+                tag="Proof"
               />
             </div>
           </div>
@@ -1191,7 +1369,9 @@ function HomePageInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Designed for rewards, not addiction loops.</p>
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public season arc and provable outcomes.
+              </p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -1206,17 +1386,17 @@ function HomePageInner() {
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="emerald">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-              Qualification
+            <Pill tone="amber">
+              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+              Finale-first
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">No purchases. No tickets.</p>
-            <p className="mt-2 text-sm text-slate-300">Holding XPOT is the requirement to enter.</p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">The Final Draw is the headline.</p>
+            <p className="mt-2 text-sm text-slate-300">Daily draws build the season. The finale builds the legend.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
             <Pill tone="sky">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
+              <Users className="h-3.5 w-3.5" />
               Identity
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">@handle-first.</p>
@@ -1224,9 +1404,9 @@ function HomePageInner() {
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="amber">
-              <span className={`h-1.5 w-1.5 rounded-full bg-[rgb(var(--xpot-gold-2))] ${GOLD_GLOW_SHADOW}`} />
-              Payout
+            <Pill tone="emerald">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Proof
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
             <p className="mt-2 text-sm text-slate-300">Anyone can verify payouts in an explorer.</p>
@@ -1241,15 +1421,15 @@ function HomePageInner() {
             <div className="max-w-2xl">
               <Pill tone="violet">
                 <Blocks className="h-3.5 w-3.5" />
-                Built to be built on
+                Built to scale
               </Pill>
 
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                XPOT is a rewards protocol, not a one-off game.
+                A season engine with a finale, not a one-off giveaway.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                The daily draw is the primitive. Modules can reward participation, streaks and reputation over time.
-                That’s how XPOT becomes an ecosystem for communities, creators and sponsors.
+                XPOT stays minimal where it matters and expandable where it counts.
+                The season can grow with modules and sponsor pools, while keeping the same primitive and the same proof.
               </p>
             </div>
 
@@ -1260,11 +1440,11 @@ function HomePageInner() {
               </Pill>
               <Pill tone="sky">
                 <Globe className="h-3.5 w-3.5" />
-                Sponsor friendly
+                Global-friendly
               </Pill>
               <Pill tone="amber">
-                <Stars className="h-3.5 w-3.5" />
-                Portable loyalty
+                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                Finale-ready
               </Pill>
             </div>
           </div>
@@ -1281,7 +1461,7 @@ function HomePageInner() {
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
-                <Bullet>Streak boosters and attendance rewards</Bullet>
+                <Bullet>Season streak boosters</Bullet>
                 <Bullet tone="sky">Creator-gated drops</Bullet>
                 <Bullet tone="amber">Sponsor-funded pools</Bullet>
                 <Bullet tone="violet">Milestone ladders</Bullet>
@@ -1300,7 +1480,7 @@ function HomePageInner() {
               </div>
               <ul className="mt-4 space-y-2">
                 <Bullet tone="sky">Winners shown by @handle</Bullet>
-                <Bullet tone="violet">History can evolve into reputation later</Bullet>
+                <Bullet tone="violet">History can evolve into reputation</Bullet>
                 <Bullet tone="emerald">Still self-custody for claims</Bullet>
               </ul>
             </div>
@@ -1308,17 +1488,17 @@ function HomePageInner() {
             <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="flex items-center gap-3">
                 <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
-                  <ShieldCheck className={`h-5 w-5 ${GOLD_TEXT}`} />
+                  <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">Fairness layer</p>
-                  <p className="text-xs text-slate-400">If XPOT picked it, it’s fair</p>
+                  <p className="text-sm font-semibold text-slate-100">Finale</p>
+                  <p className="text-xs text-slate-400">A season that ends</p>
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
-                <Bullet tone="amber">On-chain proof of payouts</Bullet>
-                <Bullet tone="emerald">Transparent mechanics</Bullet>
-                <Bullet tone="sky">Reusable selection primitive for other apps</Bullet>
+                <Bullet tone="amber">Day 7000 finale: 2045-02-22</Bullet>
+                <Bullet tone="emerald">Daily cadence builds the arc</Bullet>
+                <Bullet tone="sky">Proof stays public</Bullet>
               </ul>
             </div>
           </div>
@@ -1326,7 +1506,7 @@ function HomePageInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">XPOT is designed for rewards, not addiction loops.</p>
+              <p className="text-sm text-slate-300">Clarity first. Proof first. Season-first narrative.</p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -1341,18 +1521,16 @@ function HomePageInner() {
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="sky">
-              <Crown className="h-3.5 w-3.5" />
-              Creators
+            <Pill tone="amber">
+              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+              Players
             </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Giveaways without chaos.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              One mechanic, provable winners and a premium @handle-first experience that doesn’t feel spammy.
-            </p>
+            <p className="mt-3 text-lg font-semibold text-slate-50">A serious season for serious entries.</p>
+            <p className="mt-2 text-sm text-slate-300">Join the arc. Track the day count. Build toward the Final Draw.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="amber">
+            <Pill tone="sky">
               <Globe className="h-3.5 w-3.5" />
               Sponsors
             </Pill>
@@ -1366,7 +1544,7 @@ function HomePageInner() {
               Communities
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">Your XPOT history is handle-first and can evolve into better rewards over time.</p>
+            <p className="mt-2 text-sm text-slate-300">A shared public story: @handle identity and a season that ends.</p>
           </PremiumCard>
         </div>
       </section>
@@ -1382,18 +1560,18 @@ function HomePageInner() {
               </Pill>
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                The homepage stays calm. The hub is where entries happen. Identity is handle-first. Proof stays on-chain.
+                Homepage is the story. Hub is the action. The Final Draw is the destination.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="amber">
+                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                Final Draw
+              </Pill>
               <Pill tone="sky">
                 <Users className="h-3.5 w-3.5" />
                 Identity
-              </Pill>
-              <Pill tone="amber">
-                <Stars className="h-3.5 w-3.5" />
-                Proof
               </Pill>
             </div>
           </div>
