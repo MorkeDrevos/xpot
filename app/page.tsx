@@ -1193,22 +1193,22 @@ function HomePageInner() {
                       </div>
 
                       {/* MOVE THE 3 PILLS DOWN (away from top) */}
-                      <div className="mt-5 flex flex-wrap items-center gap-2">
-                        <Pill tone="emerald">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                          On-chain proof
-                        </Pill>
+                      <div className="mt-6 flex flex-wrap items-center gap-3">
+  <Pill tone="emerald">
+    <Users className="h-3.5 w-3.5" />
+    X handle identity
+  </Pill>
 
-                        <Pill tone="sky">
-                          <Users className="h-3.5 w-3.5" />
-                          X handle required
-                        </Pill>
+  <Pill tone="violet">
+    <Blocks className="h-3.5 w-3.5" />
+    Protocol layer
+  </Pill>
 
-                        <Pill tone="violet">
-                          <Timer className="h-3.5 w-3.5" />
-                          Next draw {countdown}
-                        </Pill>
-                      </div>
+  <Pill tone="amber">
+    <Timer className="h-3.5 w-3.5" />
+    Next draw {countdown}
+  </Pill>
+</div>
 
                       <div className="mt-5">
                         <SectionDividerLabel label="What you need" />
