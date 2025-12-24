@@ -760,35 +760,49 @@ function LiveControlRoom({ countdown, cutoffLabel }: { countdown: string; cutoff
           50% { opacity: 0.75; }
           100% { opacity: 0.35; }
         }
-        .xpot-cr-scan::before {
-          content: "";
-          pointer-events: none;
-          position: absolute;
-          inset: 0;
-          border-radius: 18px;
-          background: linear-gradient(
-            to bottom,
-            transparent,
-            rgba(16,185,129,0.10),
-            rgba(56,189,248,0.07),
-            transparent
-          );
-          opacity: 0;
-          transform: translateY(-20%);
-          animation: xpotScan 5.6s ease-in-out infinite;
-          mix-blend-mode: screen;
-        }
-        .xpot-cr-cursor {
-          display: inline-block;
-          width: 8px;
-          height: 14px;
-          margin-left: 4px;
-          background: rgba(16,185,129,0.75);
-          box-shadow: 0 0 16px rgba(52,211,153,0.6);
-          border-radius: 2px;
-          vertical-align: -2px;
-          animation: xpotFlicker 1.1s ease-in-out infinite;
-        }
+        .xpot-cr-scan {
+  position: relative;
+  isolation: isolate; /* CRITICAL */
+}
+
+.xpot-cr-scan::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(16,185,129,0.10),
+    rgba(56,189,248,0.07),
+    transparent
+  );
+  opacity: 0;
+  transform: translateY(-20%);
+  animation: xpotScan 5.6s ease-in-out infinite;
+
+  mix-blend-mode: screen;
+  z-index: 0; /* always behind */
+}
+
+/* force ALL real content above scan */
+.xpot-cr-scan > * {
+  position: relative;
+  z-index: 1;
+}
+
+.xpot-cr-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  margin-left: 4px;
+  background: rgba(16,185,129,0.75);
+  box-shadow: 0 0 16px rgba(52,211,153,0.6);
+  border-radius: 2px;
+  vertical-align: -2px;
+  animation: xpotFlicker 1.1s ease-in-out infinite;
+}
       `}</style>
 
       <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-emerald-200/80">
