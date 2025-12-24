@@ -28,7 +28,7 @@ export async function GET() {
 
     const row = await prisma.hubStreak.upsert({
       where: { clerkId },
-      create: { clerkId, days: 0 },
+      create: { clerkId, days: 0, lastDoneDay: null },
       update: {},
       select: { days: true, lastDoneDay: true },
     });

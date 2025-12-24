@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-
+// app/api/hub/mission/today/route.ts
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+import { NextResponse } from 'next/server';
 
 function ymdUtc(d = new Date()) {
   const y = d.getUTCFullYear();
@@ -11,7 +12,7 @@ function ymdUtc(d = new Date()) {
 }
 
 function seededPick<T>(seed: string, arr: T[]): T {
-  let h = 2166136261;
+  let h = 2166136261; // FNV-1a
   for (let i = 0; i < seed.length; i++) {
     h ^= seed.charCodeAt(i);
     h = Math.imul(h, 16777619);
@@ -20,37 +21,40 @@ function seededPick<T>(seed: string, arr: T[]): T {
   return arr[idx];
 }
 
-const FALLBACK_MISSIONS: Array<{ title: string; desc: string }> = [
-  { title: 'Lock your identity', desc: 'Make sure your X handle is linked and visible in the dashboard.' },
-  { title: 'Verify eligibility', desc: 'Confirm your XPOT balance meets the minimum for today’s entry.' },
+const MISSIONS: Array<{ title: string; desc: string }> = [
+  { title: 'Lock your identity', desc: 'Make sure your X handle is linked and visible in your hub.' },
+  { title: 'Verify eligibility', desc: 'Confirm you meet today’s entry requirements before you submit.' },
   { title: 'Claim your entry', desc: 'Issue today’s ticket and keep your code safe.' },
   { title: 'Proof mindset', desc: 'After draw time, verify the winner payout in an explorer.' },
   { title: 'Invite one holder', desc: 'Bring one new holder in - XPOT grows on reputation.' },
-  { title: 'Stay consistent', desc: 'Show up daily. Streaks will matter after launch.' },
+  { title: 'Stay consistent', desc: 'Show up daily. Consistency will matter.' },
 ];
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const seed = url.searchParams.get('seed') ?? '';
-  const today = ymdUtc();
+  try {
+    const url = new URL(req.url);
+    const seed = url.searchParams.get('seed') ?? '';
+    const today = ymdUtc();
 
-  const existing = await prisma.dailyMission.findUnique({ where: { ymd: today } });
-  if (existing) {
-    return NextResponse.json({
-      ok: true,
-      mission: { title: existing.title, desc: existing.desc, ymd: existing.ymd },
-    });
+    // Deterministic mission (stable across deploys) without touching DB
+    const picked = seededPick(`${today}|xpot-mission|${seed}`, MISSIONS);
+
+    return NextResponse.json(
+      {
+        ok: true,
+        mission: {
+          ymd: today,
+          title: picked.title,
+          desc: picked.desc,
+        },
+      },
+      { status: 200 },
+    );
+  } catch (err: any) {
+    console.error('[XPOT] /api/hub/mission/today GET error:', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
+      { status: 500 },
+    );
   }
-
-  // deterministic creation (stable across deploys)
-  const picked = seededPick(`${today}|xpot-mission|${seed}`, FALLBACK_MISSIONS);
-
-  const created = await prisma.dailyMission.create({
-    data: { ymd: today, title: picked.title, desc: picked.desc },
-  });
-
-  return NextResponse.json({
-    ok: true,
-    mission: { title: created.title, desc: created.desc, ymd: created.ymd },
-  });
 }

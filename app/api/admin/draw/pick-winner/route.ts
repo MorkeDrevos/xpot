@@ -3,10 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/app/api/admin/_auth';
 
-export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// UTC day bucket [start, end)
+// Helper: today's UTC bucket [start, end)
 function getTodayRangeUtc() {
   const now = new Date();
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
@@ -16,27 +15,31 @@ function getTodayRangeUtc() {
 }
 
 export async function POST(req: NextRequest) {
-  const authResp = requireAdmin(req);
-  if (authResp) return authResp;
+  const auth = requireAdmin(req);
+  if (auth) return auth;
 
   try {
     const { start, end } = getTodayRangeUtc();
 
-    // 1) Find today's open draw
+    // 1) Find today's draw that is still open
     const draw = await prisma.draw.findFirst({
-      where: { drawDate: { gte: start, lt: end }, status: 'open' },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      where: {
+        drawDate: { gte: start, lt: end },
+        status: 'open',
+      },
     });
 
     if (!draw) {
       return NextResponse.json({ ok: false, error: 'NO_OPEN_DRAW_FOR_TODAY' }, { status: 400 });
     }
 
-    // 2) If MAIN winner already exists, return it
+    // 2) If a MAIN winner already exists for this draw, return it
     const existingWinner = await prisma.winner.findFirst({
       where: { drawId: draw.id, kind: 'MAIN' },
-      include: { ticket: { include: { wallet: true } } },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: {
+        ticket: { include: { wallet: true } },
+      },
+      orderBy: [{ date: 'desc' }, { id: 'desc' }],
     });
 
     if (existingWinner) {
@@ -49,7 +52,7 @@ export async function POST(req: NextRequest) {
             wallet: existingWinner.ticket.wallet?.address ?? existingWinner.walletAddress,
             jackpotUsd: existingWinner.jackpotUsd,
             payoutUsd: existingWinner.payoutUsd,
-            kind: existingWinner.kind,
+            kind: existingWinner.kind ?? 'MAIN',
             isPaidOut: existingWinner.isPaidOut,
           },
         },
@@ -57,7 +60,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3) Load IN_DRAW tickets
+    // 3) Load all IN_DRAW tickets for this draw
     const tickets = await prisma.ticket.findMany({
       where: { drawId: draw.id, status: 'IN_DRAW' },
       include: { wallet: true },
@@ -67,18 +70,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'NO_TICKETS_IN_DRAW' }, { status: 400 });
     }
 
-    // 4) Pick random ticket
+    // 4) Pick a random ticket
     const winningTicket = tickets[Math.floor(Math.random() * tickets.length)];
 
-    // TODO: wire real USD later
     const jackpotUsd = 0;
 
-    // 5) Persist changes atomically
+    // 5) Persist: mark ticket as WON + create Winner row
     const [updatedTicket, newWinner] = await prisma.$transaction([
       prisma.ticket.update({
         where: { id: winningTicket.id },
         data: { status: 'WON' },
-        select: { id: true, code: true },
       }),
       prisma.winner.create({
         data: {
@@ -86,13 +87,13 @@ export async function POST(req: NextRequest) {
           ticketId: winningTicket.id,
           ticketCode: winningTicket.code,
           walletAddress: winningTicket.walletAddress,
+          date: new Date(),
           jackpotUsd,
           payoutUsd: jackpotUsd,
           isPaidOut: false,
           kind: 'MAIN',
           label: 'Main XPOT winner',
         },
-        select: { jackpotUsd: true, payoutUsd: true, kind: true, isPaidOut: true },
       }),
     ]);
 
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
           wallet: winningTicket.wallet?.address ?? winningTicket.walletAddress ?? '',
           jackpotUsd: newWinner.jackpotUsd,
           payoutUsd: newWinner.payoutUsd,
-          kind: newWinner.kind,
+          kind: newWinner.kind ?? 'MAIN',
           isPaidOut: newWinner.isPaidOut,
         },
       },

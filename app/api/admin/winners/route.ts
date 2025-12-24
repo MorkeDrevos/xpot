@@ -11,15 +11,15 @@ export async function GET(req: NextRequest) {
 
   try {
     const winners = await prisma.winner.findMany({
-  orderBy: [
-    { createdAt: 'desc' },
-    { id: 'desc' },
-  ],
-  take: 50,
-  include: {
-    ticket: true,
-  },
-});});
+      orderBy: { date: 'desc' }, // ✅ canonical ordering
+      take: 50,
+      include: {
+        ticket: {
+          include: { wallet: true },
+        },
+        draw: true,
+      },
+    });
 
     const payload = winners.map(w => {
       const walletAddress = w.ticket?.wallet?.address ?? w.walletAddress ?? '';

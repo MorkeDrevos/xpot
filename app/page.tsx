@@ -392,22 +392,6 @@ function RoyalContractBar({ mint }: { mint: string }) {
         </button>
       </div>
 
-      <Link
-        href={getJupiterSwapUrl(mint)}
-        target="_blank"
-        className={`
-          inline-flex items-center gap-2 rounded-full
-          border border-emerald-400/25 bg-emerald-500/10
-          px-3.5 py-2 text-[11px] font-semibold text-emerald-200
-          hover:bg-emerald-500/15 hover:text-emerald-100
-          shadow-[0_18px_60px_rgba(16,185,129,0.14)]
-          transition
-        `}
-        title="Buy XPOT on Jupiter"
-      >
-        Buy XPOT
-        <ExternalLink className="h-4 w-4 text-emerald-200/80" />
-      </Link>
     </div>
   );
 }
@@ -760,35 +744,49 @@ function LiveControlRoom({ countdown, cutoffLabel }: { countdown: string; cutoff
           50% { opacity: 0.75; }
           100% { opacity: 0.35; }
         }
-        .xpot-cr-scan::before {
-          content: "";
-          pointer-events: none;
-          position: absolute;
-          inset: 0;
-          border-radius: 18px;
-          background: linear-gradient(
-            to bottom,
-            transparent,
-            rgba(16,185,129,0.10),
-            rgba(56,189,248,0.07),
-            transparent
-          );
-          opacity: 0;
-          transform: translateY(-20%);
-          animation: xpotScan 5.6s ease-in-out infinite;
-          mix-blend-mode: screen;
-        }
-        .xpot-cr-cursor {
-          display: inline-block;
-          width: 8px;
-          height: 14px;
-          margin-left: 4px;
-          background: rgba(16,185,129,0.75);
-          box-shadow: 0 0 16px rgba(52,211,153,0.6);
-          border-radius: 2px;
-          vertical-align: -2px;
-          animation: xpotFlicker 1.1s ease-in-out infinite;
-        }
+        .xpot-cr-scan {
+  position: relative;
+  isolation: isolate; /* CRITICAL */
+}
+
+.xpot-cr-scan::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(16,185,129,0.10),
+    rgba(56,189,248,0.07),
+    transparent
+  );
+  opacity: 0;
+  transform: translateY(-20%);
+  animation: xpotScan 5.6s ease-in-out infinite;
+
+  mix-blend-mode: screen;
+  z-index: 0; /* always behind */
+}
+
+/* force ALL real content above scan */
+.xpot-cr-scan > * {
+  position: relative;
+  z-index: 1;
+}
+
+.xpot-cr-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  margin-left: 4px;
+  background: rgba(16,185,129,0.75);
+  box-shadow: 0 0 16px rgba(52,211,153,0.6);
+  border-radius: 2px;
+  vertical-align: -2px;
+  animation: xpotFlicker 1.1s ease-in-out infinite;
+}
       `}</style>
 
       <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-emerald-200/80">
@@ -1005,104 +1003,113 @@ function HomePageInner() {
                       </Pill>
                     </div>
 
-                    <div className="rounded-[26px] bg-white/[0.02] p-5 ring-1 ring-white/[0.05] sm:p-6">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                        NO TICKETS · JUST XPOT HOLDINGS
-                      </p>
+                    <div className="rounded-[28px] bg-white/[0.022] p-6 ring-1 ring-white/[0.055] sm:p-7 lg:p-8">
+  <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-400/90">
+    NO TICKETS · JUST XPOT HOLDINGS
+  </p>
 
-                      <div className="mt-3">
-                        <h1 className="text-balance text-4xl font-semibold leading-[1.05] sm:text-5xl">
-                          One protocol.{' '}
-                          <span className="text-emerald-300">One daily XPOT draw.</span>
-                        </h1>
-                      </div>
+  <div className="mt-4">
+    <h1 className="text-balance text-[38px] font-semibold leading-[1.06] sm:text-5xl">
+      One protocol.{' '}
+      <span className="text-emerald-300">One daily XPOT draw.</span>
+    </h1>
+  </div>
 
-                      <div className="mt-4">
-                        <SectionDividerLabel label="Entry mechanics" />
-                      </div>
+  <div className="mt-5">
+    <SectionDividerLabel label="Entry mechanics" />
+  </div>
 
-                      <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                        Hold XPOT, verify eligibility in the hub and claim your entry.
-                        Winners are presented by <span className="text-slate-100">X handle</span> and paid on-chain.
-                        Built to scale into a rewards ecosystem for communities, creators and sponsors.
-                      </p>
+  <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-slate-300/95">
+    Hold XPOT, verify eligibility in the hub and claim your entry.
+    Winners are presented by <span className="text-slate-100">X handle</span> and paid on-chain.
+    Built to scale into a rewards ecosystem for communities, creators and sponsors.
+  </p>
 
-                      {/* MOVED UP: Bonus sits here to kill the dead gap and feel like a live event */}
-                      {bonusActive ? (
-                        <div className="mt-4">
-                          <BonusVault>
-                            <BonusStrip variant="home" />
-                          </BonusVault>
-                        </div>
-                      ) : null}
+  {/* Bonus sits here - but give it a “featured” spacing */}
+  {bonusActive ? (
+    <div className="mt-6">
+      <BonusVault>
+        <BonusStrip variant="home" />
+      </BonusVault>
+    </div>
+  ) : null}
 
-                      <div className="mt-4 relative overflow-hidden rounded-full border border-slate-900/70 bg-slate-950/45 px-4 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur">
-                        <div
-                          className="
-                            pointer-events-none absolute -inset-24 opacity-70 blur-3xl
-                            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
-                                radial-gradient(circle_at_82%_24%,rgba(255,255,255,0.06),transparent_62%)]
-                          "
-                        />
-                        <div className="relative flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5">
-                            <span
-                              className={`
-                                inline-flex h-8 w-8 items-center justify-center rounded-full
-                                border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
-                                shadow-[0_0_18px_rgba(var(--xpot-gold),0.16)]
-                              `}
-                            >
-                              <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
-                            </span>
+  {/* Soft section separator */}
+  <div className="mt-6 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
 
-                            <div className="leading-tight">
-                              <p className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
-                                Built with a 10+ year rewards runway at launch
-                              </p>
-                              <p className="mt-0.5 text-[11px] text-slate-500">
-                                Protocol distribution reserve - payouts stay on-chain
-                                <span className="text-slate-700"> • </span>
-                                <span className="text-slate-600">{cutoffLabel}</span>
-                              </p>
-                            </div>
-                          </div>
+  <div className="mt-6 relative overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/45 px-5 py-4 shadow-[0_22px_80px_rgba(0,0,0,0.38)] backdrop-blur">
+    <div
+      className="
+        pointer-events-none absolute -inset-24 opacity-70 blur-3xl
+        bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
+            radial-gradient(circle_at_82%_24%,rgba(255,255,255,0.06),transparent_62%)]
+      "
+    />
 
-                          <Link
-                            href={ROUTE_TOKENOMICS}
-                            className={`
-                              inline-flex items-center gap-2 rounded-full
-                              border ${GOLD_BORDER} ${GOLD_BG_WASH}
-                              px-3.5 py-1.5 text-[11px] font-semibold ${GOLD_TEXT}
-                              hover:brightness-[1.06] transition
-                            `}
-                            title="Open Tokenomics"
-                          >
-                            View tokenomics
-                            <ArrowRight className="h-4 w-4" />
-                          </Link>
-                        </div>
-                      </div>
+    <div className="relative flex flex-wrap items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <span
+          className={`
+            inline-flex h-9 w-9 items-center justify-center rounded-full
+            border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
+            shadow-[0_0_22px_rgba(var(--xpot-gold),0.16)]
+          `}
+        >
+          <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+        </span>
 
-                      <div className="mt-4">
-                        <PrinciplesStrip />
-                      </div>
+        <div className="leading-tight">
+          <p
+  className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT}`}
+>
+  BUILT WITH A 10+ YEAR REWARDS RUNWAY AT LAUNCH
+</p>
+          <p className="mt-1 text-[11px] text-slate-400/80">
+  Protocol distribution reserve – payouts stay on-chain
+            <span className="text-slate-700"> • </span>
+            <span className="text-slate-600">{cutoffLabel}</span>
+          </p>
+        </div>
+      </div>
 
-                      <div className="mt-4">
-                        <RoyalContractBar mint={mint} />
-                      </div>
+      <Link
+  href={ROUTE_TOKENOMICS}
+  target="_blank"
+  rel="noopener noreferrer"
+  className={`
+    inline-flex items-center gap-2 rounded-full
+    border ${GOLD_BORDER} ${GOLD_BG_WASH}
+    px-4 py-2 text-[11px] font-semibold ${GOLD_TEXT}
+    hover:brightness-[1.06] transition
+  `}
+  title="Open Tokenomics"
+>
+  View tokenomics
+  <ArrowRight className="h-4 w-4" />
+</Link>
+    </div>
+  </div>
 
-                      <div className="mt-5 flex flex-wrap items-center gap-3">
-                        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
-                          Enter today&apos;s XPOT
-                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                        </Link>
-                      </div>
+  <div className="mt-6">
+    <PrinciplesStrip />
+  </div>
 
-                      <p className="mt-3 text-[11px] text-slate-500">
-                        Winners are shown by @handle. Payouts are provable on-chain.
-                      </p>
-                    </div>
+  <div className="mt-6">
+    <RoyalContractBar mint={mint} />
+  </div>
+
+  {/* CTA area gets its own “stage” */}
+  <div className="mt-7 flex flex-wrap items-center gap-3">
+    <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-7 py-3.5 text-sm`}>
+      Enter today&apos;s XPOT
+      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+    </Link>
+  </div>
+
+  <p className="mt-4 text-[11px] text-slate-500/95">
+    Winners are shown by @handle. Payouts are provable on-chain.
+  </p>
+</div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
