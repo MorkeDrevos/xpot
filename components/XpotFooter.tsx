@@ -22,19 +22,14 @@ const ROUTE_TERMS = '/terms';
 const ROUTE_PRIVACY = '/privacy';
 
 const BTN_GREEN =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-emerald-500 text-black font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.25)] hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
-
-const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
-const GOLD_BORDER_SOFT = 'border-[rgba(var(--xpot-gold),0.22)]';
-const GOLD_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
-const GOLD_RING = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
+  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-300 to-emerald-500 text-black font-semibold shadow-[0_18px_50px_rgba(16,185,129,0.18)] hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 function Pill({ tone, children }: { tone: PillTone; children: ReactNode }) {
   const toneClass =
     tone === 'emerald'
       ? 'border-emerald-400/20 bg-emerald-500/8 text-emerald-100'
       : tone === 'amber'
-      ? `${GOLD_BORDER_SOFT} ${GOLD_WASH} ${GOLD_TEXT} ${GOLD_RING}`
+      ? 'border-amber-400/20 bg-amber-500/8 text-amber-100'
       : tone === 'sky'
       ? 'border-sky-400/20 bg-sky-500/8 text-sky-100'
       : tone === 'violet'
@@ -62,7 +57,7 @@ function FooterLinkPill({
 }: {
   href: string;
   children: ReactNode;
-  tone?: 'slate' | 'ops' | 'gold';
+  tone?: 'slate' | 'ops';
   icon?: ReactNode;
 }) {
   const base =
@@ -70,8 +65,6 @@ function FooterLinkPill({
   const cls =
     tone === 'ops'
       ? 'border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.06]'
-      : tone === 'gold'
-      ? `${GOLD_BORDER_SOFT} ${GOLD_WASH} ${GOLD_TEXT} hover:brightness-[1.07] ${GOLD_RING}`
       : 'border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.05]';
 
   return (
@@ -85,36 +78,30 @@ function FooterLinkPill({
 
 export default function XpotFooter() {
   return (
-    <footer className="relative mt-10 w-full overflow-x-clip">
-      {/* Full-bleed band (no w-screen trick) */}
-      <div className="relative">
-        {/* Background layer spans the full viewport width */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-full overflow-hidden">
-          <div className="xpot-footer-ambient absolute inset-0 opacity-[0.95]" />
-
-          {/* gold crown line */}
-          <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.22),transparent)]" />
-
-          {/* soft glows */}
+    <footer className="relative mt-10">
+      {/* Full-bleed footer band (true edge-to-edge) */}
+      <div className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+        {/* Ambient animated background */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="xpot-footer-ambient absolute inset-0 opacity-[0.92]" />
           <div className="absolute inset-0 bg-[radial-gradient(70%_90%_at_50%_0%,rgba(255,255,255,0.06),transparent_62%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(70%_80%_at_10%_95%,rgba(16,185,129,0.09),transparent_60%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(70%_80%_at_90%_95%,rgba(139,92,246,0.09),transparent_60%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(60%_90%_at_50%_110%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(70%_80%_at_10%_95%,rgba(16,185,129,0.08),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(70%_80%_at_90%_95%,rgba(139,92,246,0.08),transparent_60%)]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/45 to-black/70" />
 
-          {/* depth */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/50 to-black/75" />
-
-          {/* glass rails */}
+          {/* subtle “glass” rail lines so it feels premium, not boxy */}
           <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
           <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
         </div>
 
-        {/* Content container (always inside page padding) */}
-        <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
+        {/* Content (full width like the section above, with page padding) */}
+        <div className="relative px-4 sm:px-6 lg:px-10">
+          {/* slightly taller on desktop */}
           <div className="py-12 sm:py-14 lg:py-20">
             <div className="flex flex-col gap-7">
               {/* top row */}
               <div className="flex flex-wrap items-start justify-between gap-6">
+                {/* NO max-w box: allow this to breathe across the band */}
                 <div className="min-w-[260px] flex-1">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
                     XPOT protocol
@@ -161,12 +148,8 @@ export default function XpotFooter() {
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
 
-                  <FooterLinkPill href={ROUTE_TERMS} tone="gold">
-                    Terms
-                  </FooterLinkPill>
-                  <FooterLinkPill href={ROUTE_PRIVACY} tone="gold">
-                    Privacy
-                  </FooterLinkPill>
+                  <FooterLinkPill href={ROUTE_TERMS}>Terms</FooterLinkPill>
+                  <FooterLinkPill href={ROUTE_PRIVACY}>Privacy</FooterLinkPill>
 
                   <FooterLinkPill
                     href={ROUTE_OPS}
@@ -178,7 +161,7 @@ export default function XpotFooter() {
                 </div>
               </div>
 
-              {/* bottom rail */}
+              {/* bottom rail (full width) */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-[11px] text-slate-500">
                 <span className="inline-flex items-center gap-2">
                   <Sparkles className="h-3.5 w-3.5 text-slate-400" />
@@ -196,14 +179,13 @@ export default function XpotFooter() {
         </div>
       </div>
 
-      {/* Very subtle ambient loop */}
+      {/* Very subtle 20-30s ambient loop */}
       <style jsx global>{`
         .xpot-footer-ambient {
           background:
             radial-gradient(1100px 620px at 12% 20%, rgba(16, 185, 129, 0.16), transparent 62%),
             radial-gradient(1100px 620px at 88% 25%, rgba(139, 92, 246, 0.14), transparent 62%),
             radial-gradient(1200px 680px at 50% 105%, rgba(56, 189, 248, 0.10), transparent 66%),
-            radial-gradient(900px 520px at 55% 10%, rgba(var(--xpot-gold), 0.10), transparent 62%),
             linear-gradient(180deg, rgba(2, 6, 23, 0.30), rgba(2, 6, 23, 0.92));
           filter: saturate(112%);
           transform: translateZ(0);
