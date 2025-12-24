@@ -1128,15 +1128,15 @@ function HomePageInner() {
                     </div>
 
                     <div className="rounded-[28px] bg-white/[0.022] p-6 ring-1 ring-white/[0.055] sm:p-7 lg:p-8">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-400/90">
-                        GLOBAL SEASON · 7000 DAYS · ONE FINAL DRAW
-                      </p>
 
                       <div className="mt-4">
-                        <h1 className="text-balance text-[38px] font-semibold leading-[1.06] sm:text-5xl">
-                          The biggest on-chain game{' '}
-                          <span className="text-emerald-300">anyone with a serious stack can play.</span>
-                        </h1>
+                        <h1 className="text-balance text-[40px] font-semibold leading-[1.05] sm:text-[56px]">
+  The biggest on-chain game.
+  <br />
+  <span className="text-emerald-300">
+    One season. One final draw.
+  </span>
+</h1>
                       </div>
 
                       <div className="mt-5">
@@ -1164,16 +1164,16 @@ function HomePageInner() {
                             </p>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] text-slate-200">
-                              <Users className="h-3.5 w-3.5 text-sky-200" />
-                              X required
-                            </span>
-                            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] text-slate-200">
-                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
-                              Wallet required
-                            </span>
-                          </div>
+                          <div className="flex flex-wrap items-center gap-3">
+  <Pill tone="amber">
+    <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+    THE FINAL DRAW
+  </Pill>
+
+  <span className="text-[11px] uppercase tracking-[0.22em] text-slate-400">
+    Day {season.day} of {SEASON_DAYS}
+  </span>
+</div>
                         </div>
                       </div>
 
@@ -1242,8 +1242,11 @@ function HomePageInner() {
                       </div>
 
                       <div className="mt-7 flex flex-wrap items-center gap-3">
-                        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-7 py-3.5 text-sm`}>
-                          Enter today&apos;s draw
+                        <Link
+  href={ROUTE_HUB}
+  className="
+    inline-flex items-center justify-center rounded-full
+    border border-white/10 bg-white/[0.03] px-6 py-3.5
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
 
