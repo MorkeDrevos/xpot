@@ -116,6 +116,7 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
     () => getNextMadridCutoffUtcMs(22, new Date(nowMs)),
     [nowMs],
   );
+
   const countdown = useMemo(
     () => formatCountdown(nextDrawUtcMs - nowMs),
     [nextDrawUtcMs, nowMs],
@@ -243,10 +244,8 @@ function PremiumCard({
     <section
       className={[
         'relative overflow-hidden rounded-[32px]',
-        // softer "glass" surface, no hard border
         'bg-white/[0.03] backdrop-blur-xl',
         'shadow-[0_40px_140px_rgba(0,0,0,0.55)]',
-        // ultra subtle ring instead of border
         'ring-1 ring-white/[0.06]',
         sheen ? 'xpot-sheen' : '',
         className,
@@ -265,9 +264,7 @@ function PremiumCard({
         />
       )}
 
-      {/* one elegant top highlight line only */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
-
       <div className="relative z-10">{children}</div>
     </section>
   );
@@ -392,7 +389,6 @@ function RoyalContractBar({ mint }: { mint: string }) {
           )}
         </button>
       </div>
-
     </div>
   );
 }
@@ -671,8 +667,6 @@ function useBonusActive() {
         }
 
         const data = (await r.json().catch(() => null)) as any;
-
-        // "active" if there's an upcoming bonus object
         setActive(Boolean(data?.bonus?.scheduledAt));
       } catch {
         if (!alive) return;
@@ -692,10 +686,10 @@ function useBonusActive() {
 }
 
 /* ─────────────────────────────────────────────
-   Alive Control Room feed (premium, subtle, real)
+   Reduced motion hook (local)
 ───────────────────────────────────────────── */
 
-function useReducedMotion() {
+function useLocalReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -708,8 +702,12 @@ function useReducedMotion() {
   return reduced;
 }
 
+/* ─────────────────────────────────────────────
+   Alive Control Room feed (premium, subtle, real)
+───────────────────────────────────────────── */
+
 function LiveControlRoom({ countdown, cutoffLabel }: { countdown: string; cutoffLabel: string }) {
-  const reduced = useReducedMotion();
+  const reduced = useLocalReducedMotion();
   const [tick, setTick] = useState(0);
   const [lines, setLines] = useState<string[]>(() => buildInitialLines(countdown, cutoffLabel));
 
@@ -746,48 +744,43 @@ function LiveControlRoom({ countdown, cutoffLabel }: { countdown: string; cutoff
           100% { opacity: 0.35; }
         }
         .xpot-cr-scan {
-  position: relative;
-  isolation: isolate; /* CRITICAL */
-}
-
-.xpot-cr-scan::before {
-  content: "";
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  border-radius: 18px;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(16,185,129,0.10),
-    rgba(56,189,248,0.07),
-    transparent
-  );
-  opacity: 0;
-  transform: translateY(-20%);
-  animation: xpotScan 5.6s ease-in-out infinite;
-
-  mix-blend-mode: screen;
-  z-index: 0; /* always behind */
-}
-
-/* force ALL real content above scan */
-.xpot-cr-scan > * {
-  position: relative;
-  z-index: 1;
-}
-
-.xpot-cr-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 14px;
-  margin-left: 4px;
-  background: rgba(16,185,129,0.75);
-  box-shadow: 0 0 16px rgba(52,211,153,0.6);
-  border-radius: 2px;
-  vertical-align: -2px;
-  animation: xpotFlicker 1.1s ease-in-out infinite;
-}
+          position: relative;
+          isolation: isolate; /* critical */
+        }
+        .xpot-cr-scan::before {
+          content: "";
+          pointer-events: none;
+          position: absolute;
+          inset: 0;
+          border-radius: 18px;
+          background: linear-gradient(
+            to bottom,
+            transparent,
+            rgba(16,185,129,0.10),
+            rgba(56,189,248,0.07),
+            transparent
+          );
+          opacity: 0;
+          transform: translateY(-20%);
+          animation: xpotScan 5.6s ease-in-out infinite;
+          mix-blend-mode: screen;
+          z-index: 0;
+        }
+        .xpot-cr-scan > * {
+          position: relative;
+          z-index: 1;
+        }
+        .xpot-cr-cursor {
+          display: inline-block;
+          width: 8px;
+          height: 14px;
+          margin-left: 4px;
+          background: rgba(16,185,129,0.75);
+          box-shadow: 0 0 16px rgba(52,211,153,0.6);
+          border-radius: 2px;
+          vertical-align: -2px;
+          animation: xpotFlicker 1.1s ease-in-out infinite;
+        }
       `}</style>
 
       <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-emerald-200/80">
@@ -798,7 +791,6 @@ function LiveControlRoom({ countdown, cutoffLabel }: { countdown: string; cutoff
 
         <span className="inline-flex items-center gap-2">
           <span className="font-mono text-emerald-200/70">read-only</span>
-
           <span
             className={[
               'inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1',
@@ -812,11 +804,13 @@ function LiveControlRoom({ countdown, cutoffLabel }: { countdown: string; cutoff
         </span>
       </div>
 
-      <div className={`relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)] ${scanCls}`}>
+      <div
+        className={`relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)] ${scanCls}`}
+      >
         <div className="pointer-events-none absolute -inset-20 opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_88%_30%,rgba(56,189,248,0.12),transparent_65%)]" />
 
         <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
-{lines.join('\n')}
+          {lines.join('\n')}
         </pre>
 
         <div className="relative z-10 mt-2 text-[11px] text-emerald-200/70">
@@ -896,8 +890,6 @@ function updateLines(prev: string[], tick: number, countdown: string, cutoffLabe
 function BonusVault({ children }: { children: ReactNode }) {
   return (
     <div className="relative">
-      {/* keep your xpotBonusSheen CSS exactly as you had it */}
-
       <div className="pointer-events-none absolute -inset-10 opacity-70 blur-2xl bg-[radial-gradient(circle_at_22%_38%,rgba(16,185,129,0.20),transparent_64%),radial-gradient(circle_at_72%_30%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_85%_80%,rgba(var(--xpot-gold),0.10),transparent_66%)]" />
 
       <div className="relative overflow-hidden rounded-[28px] bg-white/[0.03] ring-1 ring-white/[0.06] shadow-[0_30px_110px_rgba(0,0,0,0.45)]">
@@ -920,7 +912,6 @@ function BonusVault({ children }: { children: ReactNode }) {
             </span>
           </div>
 
-          {/* no inner border panel */}
           <div className="relative">{children}</div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -1005,108 +996,103 @@ function HomePageInner() {
                     </div>
 
                     <div className="rounded-[28px] bg-white/[0.022] p-6 ring-1 ring-white/[0.055] sm:p-7 lg:p-8">
-  <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-400/90">
-    NO TICKETS · JUST XPOT HOLDINGS
-  </p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-400/90">
+                        NO TICKETS · JUST XPOT HOLDINGS
+                      </p>
 
-  <div className="mt-4">
-    <h1 className="text-balance text-[38px] font-semibold leading-[1.06] sm:text-5xl">
-      One protocol.{' '}
-      <span className="text-emerald-300">One daily XPOT draw.</span>
-    </h1>
-  </div>
+                      <div className="mt-4">
+                        <h1 className="text-balance text-[38px] font-semibold leading-[1.06] sm:text-5xl">
+                          One protocol.{' '}
+                          <span className="text-emerald-300">One daily XPOT draw.</span>
+                        </h1>
+                      </div>
 
-  <div className="mt-5">
-    <SectionDividerLabel label="Entry mechanics" />
-  </div>
+                      <div className="mt-5">
+                        <SectionDividerLabel label="Entry mechanics" />
+                      </div>
 
-  <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-slate-300/95">
-    Hold XPOT, verify eligibility in the hub and claim your entry.
-    Winners are presented by <span className="text-slate-100">X handle</span> and paid on-chain.
-    Built to scale into a rewards ecosystem for communities, creators and sponsors.
-  </p>
+                      <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-slate-300/95">
+                        Hold XPOT, verify eligibility in the hub and claim your entry.
+                        Winners are presented by <span className="text-slate-100">X handle</span> and paid on-chain.
+                        Built to scale into a rewards ecosystem for communities, creators and sponsors.
+                      </p>
 
-  {/* Bonus sits here - but give it a “featured” spacing */}
-  {bonusActive ? (
-    <div className="mt-6">
-      <BonusVault>
-        <BonusStrip variant="home" />
-      </BonusVault>
-    </div>
-  ) : null}
+                      {bonusActive ? (
+                        <div className="mt-6">
+                          <BonusVault>
+                            <BonusStrip variant="home" />
+                          </BonusVault>
+                        </div>
+                      ) : null}
 
-  {/* Soft section separator */}
-  <div className="mt-6 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
+                      <div className="mt-6 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
 
-  <div className="mt-6 relative overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/45 px-5 py-4 shadow-[0_22px_80px_rgba(0,0,0,0.38)] backdrop-blur">
-    <div
-      className="
-        pointer-events-none absolute -inset-24 opacity-70 blur-3xl
-        bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
-            radial-gradient(circle_at_82%_24%,rgba(255,255,255,0.06),transparent_62%)]
-      "
-    />
+                      <div className="mt-6 relative overflow-hidden rounded-[22px] border border-slate-900/70 bg-slate-950/45 px-5 py-4 shadow-[0_22px_80px_rgba(0,0,0,0.38)] backdrop-blur">
+                        <div
+                          className="
+                            pointer-events-none absolute -inset-24 opacity-70 blur-3xl
+                            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
+                                radial-gradient(circle_at_82%_24%,rgba(255,255,255,0.06),transparent_62%)]
+                          "
+                        />
 
-    <div className="relative flex flex-wrap items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <span
-          className={`
-            inline-flex h-9 w-9 items-center justify-center rounded-full
-            border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
-            shadow-[0_0_22px_rgba(var(--xpot-gold),0.16)]
-          `}
-        >
-          <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
-        </span>
+                        <div className="relative flex flex-wrap items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`
+                                inline-flex h-9 w-9 items-center justify-center rounded-full
+                                border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
+                                shadow-[0_0_22px_rgba(var(--xpot-gold),0.16)]
+                              `}
+                            >
+                              <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+                            </span>
 
-        <div className="leading-tight">
-          <p
-  className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT}`}
->
-  BUILT WITH A 10+ YEAR REWARDS RUNWAY AT LAUNCH
-</p>
-          <p className="mt-1 text-[11px] text-slate-400/80">
-  Protocol distribution reserve – payouts stay on-chain
-            <span className="text-slate-700"> • </span>
-            <span className="text-slate-600">{cutoffLabel}</span>
-          </p>
-        </div>
-      </div>
+                            <div className="leading-tight">
+                              <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT}`}>
+                                BUILT WITH A 10+ YEAR REWARDS RUNWAY AT LAUNCH
+                              </p>
+                              <p className="mt-1 text-[11px] text-slate-400/80">
+                                Protocol distribution reserve - payouts stay on-chain
+                                <span className="text-slate-700"> • </span>
+                                <span className="text-slate-600">{cutoffLabel}</span>
+                              </p>
+                            </div>
+                          </div>
 
-      <Link
-  href={ROUTE_TOKENOMICS_RESERVE}
-  target="_blank"
-  rel="noopener noreferrer"
-  className={/* keep your classes */}
-  title="Open Tokenomics (Rewards reserve)"
->
-  View tokenomics
-  <ArrowRight className="h-4 w-4" />
-</Link>
-    
-    </div>
-  </div>
+                          {/* ✅ FIXED: no placeholder comment inside className */}
+                          <Link
+                            href={ROUTE_TOKENOMICS_RESERVE}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`${BTN_PRIMARY} group px-5 py-2.5 text-sm`}
+                            title="Open Tokenomics (Rewards reserve)"
+                          >
+                            View tokenomics
+                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                          </Link>
+                        </div>
+                      </div>
 
-  <div className="mt-6">
-    <PrinciplesStrip />
-  </div>
+                      <div className="mt-6">
+                        <PrinciplesStrip />
+                      </div>
 
-  <div className="mt-6">
-    <RoyalContractBar mint={mint} />
-  </div>
+                      <div className="mt-6">
+                        <RoyalContractBar mint={mint} />
+                      </div>
 
-  {/* CTA area gets its own “stage” */}
-  <div className="mt-7 flex flex-wrap items-center gap-3">
-    <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-7 py-3.5 text-sm`}>
-      Enter today&apos;s XPOT
-      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-    </Link>
-  </div>
+                      <div className="mt-7 flex flex-wrap items-center gap-3">
+                        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-7 py-3.5 text-sm`}>
+                          Enter today&apos;s XPOT
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                        </Link>
+                      </div>
 
-  <p className="mt-4 text-[11px] text-slate-500/95">
-    Winners are shown by @handle. Payouts are provable on-chain.
-  </p>
-</div>
+                      <p className="mt-4 text-[11px] text-slate-500/95">
+                        Winners are shown by @handle. Payouts are provable on-chain.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
