@@ -275,6 +275,7 @@ function shortenAddress(addr: string, left = 6, right = 6) {
 }
 
 function OfficialCAChip() {
+  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 6, 6), []);
 
@@ -283,68 +284,131 @@ function OfficialCAChip() {
       await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1100);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   return (
-    <div
-      className="
-        relative inline-flex items-center gap-3
-        rounded-full px-4 py-1.5
-        border border-white/10 bg-white/[0.03]
-        backdrop-blur-xl
-        shadow-[0_18px_60px_rgba(0,0,0,0.55)]
-      "
-      title={XPOT_OFFICIAL_CA}
-    >
-      <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
-
-      <span
-        className="
-          relative z-10 inline-flex h-8 w-8 items-center justify-center
-          rounded-full border border-emerald-400/15
-          bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.18),rgba(0,0,0,0.35))]
-          shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_14px_40px_rgba(0,0,0,0.55)]
-        "
-      >
-        <ShieldCheck className="h-4 w-4 text-emerald-200" />
-      </span>
-
-      <div className="relative z-10 flex flex-col leading-none pr-1">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">
-          OFFICIAL CONTRACT
-        </span>
-        <span className="mt-1 font-mono text-[12px] text-slate-100/95">{addrShort}</span>
-      </div>
-
-      <span
-        className="
-          relative z-10 inline-flex items-center
-          rounded-full border border-white/10 bg-black/30
-          px-2.5 py-1
-          text-[10px] font-semibold uppercase tracking-[0.22em]
-          text-slate-200/80
-        "
-      >
-        VERIFIED
-      </span>
-
+    <div className="relative">
       <button
         type="button"
-        onClick={onCopy}
+        onClick={() => setOpen((v) => !v)}
         className="
-          relative z-10 inline-flex items-center justify-center
-          h-8 w-8 rounded-full
-          border border-white/10 bg-white/[0.04]
-          hover:bg-white/[0.07]
+          group relative inline-flex items-center gap-3
+          rounded-full px-4 py-2
+          border border-white/10 bg-white/[0.03]
+          backdrop-blur-xl
+          shadow-[0_18px_60px_rgba(0,0,0,0.55)]
+          hover:bg-white/[0.055]
+          transition
         "
-        aria-label="Copy official CA"
-        title="Copy official CA"
+        title="Status"
+        aria-haspopup="dialog"
+        aria-expanded={open}
       >
-        {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4 text-slate-100/90" />}
+        {/* subtle inner ring */}
+        <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
+
+        {/* left icon */}
+        <span
+          className="
+            relative z-10 inline-flex h-8 w-8 items-center justify-center
+            rounded-full border border-emerald-400/15
+            bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.20),rgba(0,0,0,0.35))]
+            shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_14px_40px_rgba(0,0,0,0.55)]
+          "
+        >
+          <ShieldCheck className="h-4 w-4 text-emerald-200" />
+        </span>
+
+        {/* text */}
+        <div className="relative z-10 hidden min-w-0 flex-col leading-none sm:flex">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-200/85">
+              Status
+            </span>
+            <span className="inline-flex items-center rounded-full border border-emerald-400/15 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-emerald-100">
+              VERIFIED
+            </span>
+          </div>
+
+          <span className="mt-1 font-mono text-[12px] text-slate-100/90">
+            {addrShort}
+          </span>
+        </div>
+
+        {/* right chevron */}
+        <span className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200/80 group-hover:bg-white/[0.07] group-hover:text-slate-100 transition">
+          <ChevronDown className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`} />
+        </span>
       </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[90] cursor-default"
+            aria-label="Close status"
+            onMouseDown={() => setOpen(false)}
+          />
+
+          <div className="absolute right-0 z-[91] mt-3 w-[360px] overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+            <div className="p-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">
+                  OFFICIAL CONTRACT
+                </p>
+                <p className="mt-2 font-mono text-sm text-slate-100 break-all">
+                  {XPOT_OFFICIAL_CA}
+                </p>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onCopy}
+                    className="
+                      inline-flex items-center gap-2 rounded-full
+                      border border-white/10 bg-white/[0.04]
+                      px-3 py-2 text-xs font-semibold text-slate-100
+                      hover:bg-white/[0.07]
+                    "
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 text-emerald-200" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 text-slate-100/90" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+
+                  <Link
+                    href={PROTOCOL_HREF}
+                    className="
+                      ml-auto inline-flex items-center gap-2 rounded-full
+                      border border-white/10 bg-white/[0.04]
+                      px-3 py-2 text-xs font-semibold text-slate-100
+                      hover:bg-white/[0.07]
+                    "
+                  >
+                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                    Health
+                  </Link>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs text-slate-300/80">
+                  Verified contract and protocol status live in one place.
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -560,14 +624,14 @@ function PublicNavCenter({
 function PublicRight() {
   return (
     <div className="hidden items-center gap-3 xl:flex">
-      <NavPill href={PROTOCOL_HREF} title="Protocol health">
-        <ShieldCheck className="h-4 w-4 text-emerald-300" />
-        Health
-      </NavPill>
-
       <Link
         href="/hub"
-        className="rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-black hover:bg-slate-200"
+        className="
+          rounded-full bg-white px-6 py-2.5
+          text-[13px] font-semibold text-black
+          hover:bg-slate-200
+          shadow-[0_18px_60px_rgba(0,0,0,0.35)]
+        "
       >
         Enter today&apos;s XPOT →
       </Link>
