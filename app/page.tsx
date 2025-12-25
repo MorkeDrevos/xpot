@@ -1057,11 +1057,11 @@ function HomePageInner() {
                       </p>
 
                       <div className="mt-4">
-                        <h1 className="text-balance text-[40px] font-semibold leading-[1.05] sm:text-[56px]">
-                          One protocol.
-                          <br />
-                          <span className="text-emerald-300">One daily XPOT draw.</span>
-                        </h1>
+                        <h1 className="text-balance text-[34px] sm:text-[48px] font-semibold leading-[1.05]">
+  One protocol.
+  <br />
+  <span className="text-emerald-300/90">One daily XPOT draw.</span>
+</h1>
 
                         <p className="mt-3 text-[13px] leading-relaxed text-slate-400">
                           Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
