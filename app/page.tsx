@@ -1202,14 +1202,25 @@ function HomePageInner() {
           Eligibility
         </p>
         <p className="mt-1 text-sm font-semibold text-slate-100">
-  Hold at least <span className={GOLD_TEXT}>100,000 XPOT</span>
+  Minimum balance: <span className={GOLD_TEXT}>100,000 XPOT</span>
 </p>
-<p className="mt-1 text-[12px] text-slate-400">
-  Minimum balance to qualify. Entry is claim-based in the hub. 
+
+<p className="mt-1 text-[12px] leading-relaxed text-slate-400">
+  To qualify, hold at least <span className="text-slate-200">100,000 XPOT</span> in a connected wallet.
+  Entry is claim-based in the hub - no tickets, no checkout.
 </p>
-        <p className="mt-1 text-[12px] text-slate-400">
-          Entry is claim-based in the hub. No tickets. No checkout.
-        </p>
+
+<div className="mt-3 flex flex-wrap items-center gap-2">
+  <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+    <ShieldCheck className="h-3.5 w-3.5" />
+    Holdings-based
+  </span>
+
+  <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`}>
+    <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+    No tickets
+  </span>
+</div>
 
         <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
           <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
@@ -1305,8 +1316,9 @@ function HomePageInner() {
         `}
         title="Open Tokenomics (Protocol distribution reserve)"
       >
-        View tokenomics
-        <ArrowRight className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`} />
+        <span className="text-slate-100">View tokenomics</span>
+<span className="opacity-70 text-slate-300">↗</span>
+<ArrowRight className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`} />
       </Link>
     </div>
   </div>
