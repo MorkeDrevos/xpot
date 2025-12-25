@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
+const TOTAL_DAYS = 7000;
+
 // UTC day bucket helper (MUST match how Draw.drawDate is written)
 function utcDayStart(d: Date) {
   return new Date(
@@ -12,55 +14,71 @@ function utcDayStart(d: Date) {
   );
 }
 
-function normalizeStatus(s: string | null | undefined): 'OPEN' | 'LOCKED' | 'COMPLETED' {
-  const v = String(s || '').toLowerCase();
-  if (v === 'open') return 'OPEN';
-  if (v === 'completed') return 'COMPLETED';
-  return 'LOCKED';
+function addNoStoreHeaders(res: NextResponse) {
+  res.headers.set('Cache-Control', 'no-store, max-age=0');
+  return res;
 }
 
 export async function GET() {
-  const today = utcDayStart(new Date());
+  try {
+    const today = utcDayStart(new Date());
 
-  const draw = await prisma.draw.findUnique({
-    where: { drawDate: today },
-    select: {
-      drawDate: true,
-      closesAt: true,
-      status: true,
-    },
-  });
-
-  // Day number = count of draws up show far (treat first ever draw as Day 1)
-  // This avoids hardcoding a “genesis date” and stays correct even if you change the schedule later.
-  const dayNumber = await prisma.draw.count({
-    where: { drawDate: { lte: today } },
-  });
-
-  const headers = { 'Cache-Control': 'no-store, max-age=0' };
-
-  if (!draw || !draw.closesAt) {
-    return NextResponse.json(
-      {
-        draw: null,
-        progress: { dayNumber: Math.max(0, dayNumber), totalDays: 7000 },
+    // Find today's draw
+    const draw = await prisma.draw.findUnique({
+      where: { drawDate: today },
+      select: {
+        drawDate: true,
+        closesAt: true,
+        status: true,
       },
-      { headers },
+    });
+
+    // Compute Day X of 7000 from DB truth (earliest drawDate = Day 1)
+    const agg = await prisma.draw.aggregate({
+      _min: { drawDate: true },
+    });
+
+    const genesis = agg._min.drawDate ? utcDayStart(agg._min.drawDate) : null;
+
+    const dayIndex =
+      genesis && draw?.drawDate
+        ? Math.max(
+            1,
+            Math.floor((utcDayStart(draw.drawDate).getTime() - genesis.getTime()) / 86400000) + 1,
+          )
+        : 1;
+
+    if (!draw || !draw.closesAt) {
+      return addNoStoreHeaders(
+        NextResponse.json({
+          draw: null,
+          progress: { dayIndex, totalDays: TOTAL_DAYS },
+        }),
+      );
+    }
+
+    return addNoStoreHeaders(
+      NextResponse.json({
+        draw: {
+          // canonical daily amount
+          dailyXpot: 1_000_000,
+          closesAt: draw.closesAt.toISOString(),
+          status:
+            draw.status === 'open'
+              ? 'OPEN'
+              : draw.status === 'completed'
+              ? 'COMPLETED'
+              : 'LOCKED',
+        },
+        progress: { dayIndex, totalDays: TOTAL_DAYS },
+      }),
+    );
+  } catch (err) {
+    return addNoStoreHeaders(
+      NextResponse.json(
+        { draw: null, error: 'LIVE_DRAW_UNAVAILABLE' },
+        { status: 200 },
+      ),
     );
   }
-
-  return NextResponse.json(
-    {
-      draw: {
-        dailyXpot: 1_000_000,
-        closesAt: draw.closesAt.toISOString(),
-        status: normalizeStatus(draw.status),
-      },
-      progress: {
-        dayNumber: Math.max(1, dayNumber),
-        totalDays: 7000,
-      },
-    },
-    { headers },
-  );
 }
