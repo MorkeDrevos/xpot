@@ -1,19 +1,46 @@
 // app/2044/final-day/page.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Printer, Repeat2, Timer, Radio, ShieldCheck } from 'lucide-react';
 
 type Era = '2044' | 'now';
 
-const STORAGE_KEY = 'xpot_final_day_era_v3';
+const STORAGE_KEY = 'xpot_final_day_era_v4';
 const LIVE_POLL_MS = 5000;
 
 type LiveDraw = {
   jackpotXpot: number;
-  closesAt: string; // ISO
+  closesAt: string; // ISO (expected)
   status: 'OPEN' | 'LOCKED' | 'COMPLETED';
+};
+
+// Centralized story copy (single source of truth)
+const STORY = {
+  archive: {
+    badge: 'ARCHIVE EDITION',
+    dateLine: 'Saturday, 12 October 2044',
+    section: 'Culture / Protocols',
+    headline: "XPOT's Final Day",
+    deck:
+      'Not a crash. Not a rug. Not a scandal. A scheduled ending - after 19.18 years of daily continuity.',
+    byline: 'By The XPOT Desk',
+  },
+  now: {
+    badge: 'PRESENT DAY',
+    dateLine: 'Today',
+    section: 'Live',
+    headline: 'The Final Draw is Approaching',
+    deck:
+      'A premium preview experience. Live countdown below. Flip to 2044 to read the archived edition as the world remembered it.',
+    byline: 'XPOT',
+  },
+  common: {
+    paperTitle: 'XPOT Times',
+    paperSub: 'Independent Archive Record',
+    price: '€3.00',
+  },
 };
 
 function pad2(n: number) {
@@ -29,6 +56,13 @@ function formatCountdown(ms: number) {
   return { d, h, m, s };
 }
 
+function safeIsoZ(s?: string | null) {
+  if (!s) return null;
+  const t = Date.parse(s);
+  if (!Number.isFinite(t)) return null;
+  return new Date(t).toISOString(); // ISO 8601 UTC (Z)
+}
+
 export default function FinalDayPage() {
   const [era, setEra] = useState<Era>('2044');
 
@@ -36,6 +70,9 @@ export default function FinalDayPage() {
   const [live, setLive] = useState<LiveDraw | null>(null);
   const [liveErr, setLiveErr] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number>(() => Date.now());
+
+  // Prevent overlapping pulls
+  const pullingRef = useRef(false);
 
   // Restore era from localStorage
   useEffect(() => {
@@ -52,26 +89,16 @@ export default function FinalDayPage() {
     } catch {}
   }, [era]);
 
-  const meta = useMemo(() => {
-    if (era === '2044') {
-      return {
-        badge: 'ARCHIVE EDITION',
-        dateLine: 'Saturday, 12 October 2044',
-        section: 'Culture / Protocols',
-        headline: "XPOT's Final Day",
-        deck: 'Not a crash. Not a rug. Not a scandal. A scheduled ending - after 19.18 years of daily continuity.',
-        byline: 'By The XPOT Desk',
-      };
-    }
+  const meta = useMemo(() => (era === '2044' ? STORY.archive : STORY.now), [era]);
 
-    return {
-      badge: 'PRESENT DAY',
-      dateLine: 'Today',
-      section: 'Live',
-      headline: 'The Final Draw is Approaching',
-      deck: 'A premium preview experience. Live countdown below. Flip to 2044 to read the archived edition as the world remembered it.',
-      byline: 'XPOT',
-    };
+  // Page title
+  useEffect(() => {
+    try {
+      document.title =
+        era === '2044'
+          ? `${STORY.archive.headline} - ${STORY.common.paperTitle}`
+          : `${STORY.now.headline} - XPOT`;
+    } catch {}
   }, [era]);
 
   const onFlip = useCallback(() => {
@@ -81,7 +108,6 @@ export default function FinalDayPage() {
   const onPrint = useCallback(() => {
     // Always print the archive side
     setEra('2044');
-    // Wait a tick so layout is guaranteed on the archive face
     window.setTimeout(() => {
       if (typeof window !== 'undefined') window.print();
     }, 60);
@@ -91,6 +117,17 @@ export default function FinalDayPage() {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const k = e.key.toLowerCase();
+
+      // Avoid hijacking if typing in an input/textarea/contentEditable
+      const el = e.target as HTMLElement | null;
+      const isTyping =
+        !!el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.getAttribute('contenteditable') === 'true');
+
+      if (isTyping) return;
+
       if (k === 'f') {
         e.preventDefault();
         onFlip();
@@ -118,6 +155,9 @@ export default function FinalDayPage() {
     let alive = true;
 
     async function pull() {
+      if (pullingRef.current) return;
+      pullingRef.current = true;
+
       try {
         setLiveErr(null);
         const res = await fetch('/api/draw/live', { cache: 'no-store' });
@@ -142,6 +182,8 @@ export default function FinalDayPage() {
         if (!alive) return;
         setLiveErr('Live draw unavailable');
         setLive(null);
+      } finally {
+        pullingRef.current = false;
       }
     }
 
@@ -182,6 +224,8 @@ export default function FinalDayPage() {
     'radial-gradient(900px_700px_at_85%_25%,rgba(236,72,153,0.12),transparent_62%),' +
     'radial-gradient(1000px_900px_at_50%_90%,rgba(16,185,129,0.08),transparent_60%),' +
     'linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0))]';
+
+  const closesAtIso = safeIsoZ(live?.closesAt);
 
   return (
     <main
@@ -279,7 +323,6 @@ export default function FinalDayPage() {
               'text-[rgba(18,16,12,0.95)]',
               'p-7 max-[720px]:p-4',
               'print:bg-white print:text-black print:p-[18mm_16mm_14mm]',
-              // subtle paper grain
               '[background-image:radial-gradient(900px_600px_at_15%_10%,rgba(0,0,0,0.06),transparent_70%),' +
                 'radial-gradient(900px_700px_at_90%_20%,rgba(0,0,0,0.05),transparent_65%),' +
                 'linear-gradient(180deg,rgba(250,244,228,0.96),rgba(244,236,214,0.96))]',
@@ -291,36 +334,38 @@ export default function FinalDayPage() {
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(18,16,12,0.65)] print:text-black">
                 <div className="justify-self-start">
                   <span className="inline-flex rounded-full border border-[rgba(18,16,12,0.22)] bg-[rgba(18,16,12,0.03)] px-3 py-1 font-black">
-                    {meta.badge}
+                    {STORY.archive.badge}
                   </span>
                 </div>
-                <div className="justify-self-center font-extrabold">{meta.dateLine}</div>
-                <div className="justify-self-end font-black">€3.00</div>
+                <div className="justify-self-center font-extrabold">{STORY.archive.dateLine}</div>
+                <div className="justify-self-end font-black">{STORY.common.price}</div>
               </div>
 
               <div className="mt-4 text-center">
                 <div className="font-sans text-[12px] font-black uppercase tracking-[0.22em] opacity-75">The</div>
                 <div className="mt-1 text-[clamp(36px,5vw,60px)] font-black leading-none tracking-[0.02em]">
-                  XPOT Times
+                  {STORY.common.paperTitle}
                 </div>
                 <div className="mt-2 font-sans text-[12px] font-black uppercase tracking-[0.14em] opacity-65">
-                  Independent Archive Record
+                  {STORY.common.paperSub}
                 </div>
               </div>
 
               <div className="my-4 h-[2px] bg-[linear-gradient(90deg,transparent,rgba(18,16,12,0.45),transparent)] print:bg-black/20" />
 
               <div className="flex items-center justify-between gap-3 font-sans text-[12px] font-black uppercase tracking-[0.10em] text-[rgba(18,16,12,0.72)] print:text-black">
-                <div>{meta.section}</div>
-                <div>{meta.byline}</div>
+                <div>{STORY.archive.section}</div>
+                <div>{STORY.archive.byline}</div>
               </div>
             </header>
 
             <div className="pt-1">
               <h1 className="text-[clamp(30px,4.2vw,52px)] font-black leading-[1.02] tracking-[-0.02em]">
-                {meta.headline}
+                {STORY.archive.headline}
               </h1>
-              <p className="mt-3 max-w-[78ch] text-[17px] leading-[1.45] text-[rgba(18,16,12,0.82)]">{meta.deck}</p>
+              <p className="mt-3 max-w-[78ch] text-[17px] leading-[1.45] text-[rgba(18,16,12,0.82)]">
+                {STORY.archive.deck}
+              </p>
 
               <div className="mt-5 grid grid-cols-[1fr_1fr_1.25fr] gap-4 max-[980px]:grid-cols-2 max-[860px]:grid-cols-1">
                 {/* Column A */}
@@ -390,7 +435,9 @@ export default function FinalDayPage() {
                     </div>
                   </div>
 
-                  <p className="mt-4 text-[15px] leading-[1.62]">No boost. No fireworks gimmick. No last-minute twist. Just dignity.</p>
+                  <p className="mt-4 text-[15px] leading-[1.62]">
+                    No boost. No fireworks gimmick. No last-minute twist. Just dignity.
+                  </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
                     The countdown starts. People aren&apos;t hoping to win anymore. They&apos;re hoping to witness.
                   </p>
@@ -401,7 +448,8 @@ export default function FinalDayPage() {
 
                   <div className="my-4 h-px bg-[linear-gradient(90deg,transparent,rgba(18,16,12,0.35),transparent)]" />
                   <p className="text-[14px] leading-[1.62] text-[rgba(18,16,12,0.78)]">
-                    What ends today isn&apos;t only a product. It&apos;s a shared clock - a daily habit that outlived cycles, headlines and skepticism.
+                    What ends today isn&apos;t only a product. It&apos;s a shared clock - a daily habit that outlived
+                    cycles, headlines and skepticism.
                   </p>
                 </div>
 
@@ -413,14 +461,17 @@ export default function FinalDayPage() {
                   <p className="mt-2 text-[15px] leading-[1.62]">Nothing breaks. Nothing explodes. Nothing disappears.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">The system simply stops issuing draws.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The site stays online. The history stays visible. Every single winner. Every single day. Nineteen point one eight years, perfectly accounted for.
+                    The site stays online. The history stays visible. Every single winner. Every single day. Nineteen
+                    point one eight years, perfectly accounted for.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/40 p-4">
                     <div className="font-sans text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(18,16,12,0.70)]">
                       A quiet line appears
                     </div>
-                    <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">“XPOT completed its mission.”</div>
+                    <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">
+                      “XPOT completed its mission.”
+                    </div>
                     <div className="mt-2 font-sans text-[13px] leading-[1.55] opacity-85">
                       No ads. No upsell. No “v2 coming soon”. Just truth.
                     </div>
@@ -430,18 +481,23 @@ export default function FinalDayPage() {
                     The creator
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    By then, nobody calls you “the founder”. You&apos;re called the architect of the longest fair game ever built.
+                    By then, nobody calls you “the founder”. You&apos;re called the architect of the longest fair game
+                    ever built.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    Not because you were loud, but because you were patient. You didn&apos;t chase infinite hype. You didn&apos;t mint forever. You didn&apos;t move the goalposts.
+                    Not because you were loud, but because you were patient. You didn&apos;t chase infinite hype. You
+                    didn&apos;t mint forever. You didn&apos;t move the goalposts.
                   </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">You chose a rarer thing: a finite promise, fully honored.</p>
+                  <p className="mt-3 text-[15px] leading-[1.62]">
+                    You chose a rarer thing: a finite promise, fully honored.
+                  </p>
 
                   <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
                     Legacy
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest jackpot, but as the proof that trust can be engineered and kept.
+                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest jackpot, but
+                    as the proof that trust can be engineered and kept.
                   </p>
                   <ul className="mt-3 list-disc pl-5 text-[15px] leading-[1.6]">
                     <li>The game that never cheated</li>
@@ -481,13 +537,13 @@ export default function FinalDayPage() {
             <header className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-[0_40px_120px_rgba(0,0,0,0.45)]">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em]">
                 <Radio size={14} className="opacity-90" />
-                <span>{meta.badge}</span>
+                <span>{STORY.now.badge}</span>
               </div>
 
               <h2 className="mt-4 text-[clamp(22px,3.2vw,34px)] font-black leading-[1.08] tracking-[-0.02em]">
-                {meta.headline}
+                {STORY.now.headline}
               </h2>
-              <p className="mt-2 max-w-[74ch] text-[14px] leading-[1.55] opacity-90">{meta.deck}</p>
+              <p className="mt-2 max-w-[74ch] text-[14px] leading-[1.55] opacity-90">{STORY.now.deck}</p>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <button
@@ -558,7 +614,7 @@ export default function FinalDayPage() {
                   </div>
 
                   <div className="font-black">
-                    {live?.closesAt ? `Closes at: ${new Date(live.closesAt).toUTCString()}` : liveErr ?? 'Fetching live draw...'}
+                    {closesAtIso ? `Closes at: ${closesAtIso}` : liveErr ?? 'Fetching live draw...'}
                   </div>
                 </div>
 
@@ -574,10 +630,10 @@ export default function FinalDayPage() {
 
                 <p className="mt-4 text-[14px] leading-[1.6] opacity-90">
                   This countdown is live from <span className="font-black">/api/draw/live</span>. When your draw closesAt
-                  is correct in Prisma, this page becomes a real “clock”.
+                  is correct in Prisma, this page becomes a real clock.
                 </p>
                 <p className="mt-3 text-[14px] leading-[1.6] opacity-90">
-                  Print always outputs the archive edition. That gives you clean “newspaper capture” moments for socials.
+                  Print always outputs the archive edition. That gives you clean newspaper capture moments for socials.
                 </p>
 
                 <div className="mt-4 text-[12px] font-black uppercase tracking-[0.16em] opacity-80">Shortcuts</div>
