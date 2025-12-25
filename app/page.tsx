@@ -1182,7 +1182,7 @@ function HomePageInner() {
   </div>
 
   <div className="mt-5">
-    <SectionDividerLabel label="What you need" />
+    <SectionDividerLabel label="Entry mechanics" />
   </div>
 
   <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-slate-300/95">
@@ -1199,7 +1199,7 @@ function HomePageInner() {
       {/* Launch rule */}
       <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-          Eligibility (launch rule)
+          Eligibility
         </p>
         <p className="mt-1 text-sm font-semibold text-slate-100">
   Hold at least <span className={GOLD_TEXT}>100,000 XPOT</span>
@@ -1261,7 +1261,38 @@ function HomePageInner() {
       <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
     </Link>
 
-    <Link
+    <div className="mt-6">
+  <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/45 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
+    <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(56,189,248,0.24),transparent)]" />
+
+    <div className="relative flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5">
+      <div className="flex items-center gap-3">
+        <span
+          className={`
+            inline-flex h-10 w-10 items-center justify-center rounded-full
+            border ${GOLD_BORDER_SOFT} bg-white/[0.03]
+            shadow-[0_0_26px_rgba(var(--xpot-gold),0.16)]
+          `}
+        >
+          <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+        </span>
+
+        <div className="leading-tight">
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.26em] ${GOLD_TEXT}`}>
+            RUN ARCHITECTURE - BUILT FOR A LONG RUNWAY
+          </p>
+          <p className="mt-1 text-[12px] text-slate-400">
+            Reserve-backed distribution
+            <span className="text-slate-700"> • </span>
+            Proof stays on-chain
+            <span className="text-slate-700"> • </span>
+            <span className="text-slate-300">{cutoffLabel}</span>
+          </p>
+        </div>
+      </div>
+
+      <Link
         href={ROUTE_TOKENOMICS_RESERVE}
         target="_blank"
         rel="noopener noreferrer"
@@ -1277,6 +1308,9 @@ function HomePageInner() {
         View tokenomics
         <ArrowRight className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`} />
       </Link>
+    </div>
+  </div>
+</div>
   </div>
 
   <p className="mt-4 text-[11px] text-slate-500/95">
