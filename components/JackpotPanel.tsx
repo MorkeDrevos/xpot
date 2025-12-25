@@ -1146,7 +1146,7 @@ export default function JackpotPanel({
 
             {showUnavailable ? (
               <div className="mt-3">
-                <PriceUnavailableNote mode={hadError ? 'feed-error' : 'pending-pair'} />
+                <PriceUnavailableNote />
               </div>
             ) : (
               <p className="mt-2 text-xs text-slate-500">Auto-updates from DexScreener ticks</p>
