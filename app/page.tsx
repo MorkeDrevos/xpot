@@ -1192,53 +1192,56 @@ function HomePageInner() {
   </p>
 
   {/* One clean “rules + finale” card (no nested banner noise) */}
-  <div className="mt-6 relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-5">
-    <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_14%_18%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_88%_24%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_55%_0%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
+  <div className="mt-6">
+  <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/45 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
+    <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(56,189,248,0.24),transparent)]" />
 
-    <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
-      {/* Launch rule */}
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-          Eligibility (launch rule)
-        </p>
-        <p className="mt-1 text-sm font-semibold text-slate-100">
-          Hold at least <span className={GOLD_TEXT}>$100,000</span> worth of XPOT
-        </p>
-        <p className="mt-1 text-[12px] text-slate-400">
-          Entry is claim-based in the hub. No tickets. No checkout.
-        </p>
+    <div className="relative flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5">
+      <div className="flex items-center gap-3">
+        <span
+          className={`
+            inline-flex h-10 w-10 items-center justify-center rounded-full
+            border ${GOLD_BORDER_SOFT} bg-white/[0.03]
+            shadow-[0_0_26px_rgba(var(--xpot-gold),0.16)]
+          `}
+        >
+          <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+        </span>
 
-        <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-          <span>Cutoff:</span>
-          <span className="text-slate-200">{cutoffLabel}</span>
-        </div>
-      </div>
-
-      {/* Finale (quiet, secondary) */}
-      <div className="rounded-2xl bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.06]">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-            Final Draw
+        <div className="leading-tight">
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.26em] ${GOLD_TEXT}`}>
+            RUN ARCHITECTURE - BUILT FOR A LONG RUNWAY
           </p>
-
-          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`}>
-            <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-            Day {run.day}/{RUN_DAYS}
-          </span>
+          <p className="mt-1 text-[12px] text-slate-400">
+            Reserve-backed distribution
+            <span className="text-slate-700"> • </span>
+            Proof stays on-chain
+            <span className="text-slate-700"> • </span>
+            <span className="text-slate-300">{cutoffLabel}</span>
+          </p>
         </div>
-
-        <p className="mt-2 text-[12px] text-slate-400">
-          Ends{' '}
-          <span className="text-slate-200">{RUN_END_EU}</span>
-        </p>
-
-        <p className="mt-1 text-[12px] text-slate-400">
-          <span className="text-slate-200">{run.daysRemaining}</span> days remaining
-        </p>
       </div>
+
+      <Link
+        href={ROUTE_TOKENOMICS_RESERVE}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`
+          group inline-flex items-center gap-2 rounded-full
+          border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
+          px-4 py-2 text-[12px] font-semibold
+          text-slate-100 shadow-[0_18px_60px_rgba(0,0,0,0.35)]
+          hover:bg-white/[0.06] transition
+        `}
+        title="Open Tokenomics (Protocol distribution reserve)"
+      >
+        View tokenomics
+        <ArrowRight className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`} />
+      </Link>
     </div>
   </div>
+</div>
 
   {bonusActive ? (
     <div className="mt-6">
