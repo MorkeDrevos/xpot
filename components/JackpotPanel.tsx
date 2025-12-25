@@ -448,13 +448,20 @@ function PriceUnavailableNote({
   compact?: boolean;
   mode?: 'feed-error' | 'pending-pair';
 }) {
-  const title = 'TOKEN NOT TRADABLE YET';
+  const title =
+  mode === 'feed-error'
+    ? 'PRICE FEED UNAVAILABLE'
+    : 'TOKEN NOT TRADABLE YET';
 
-  const body =
-    'Price feed is temporarily unavailable. We will retry automatically.';
+const body =
+  mode === 'feed-error'
+    ? 'Price feed is temporarily unavailable. We will retry automatically.'
+    : 'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
 
-  const secondary =
-    'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
+const secondary =
+  mode === 'feed-error'
+    ? 'If this persists, DexScreener may be rate limiting. Refresh later.'
+    : 'USD pricing will appear automatically once the first liquidity pool goes live.';
 
   return (
     <div
