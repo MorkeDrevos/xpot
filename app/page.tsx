@@ -38,6 +38,9 @@ import XpotPageShell from '@/components/XpotPageShell';
 import XpotFooter from '@/components/XpotFooter';
 import { createPortal } from 'react-dom';
 
+import FinalDrawDate from '@/components/FinalDrawDate';
+import { RUN_DAYS, RUN_START_MADRID, RUN_END_MADRID, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
+
 const ROUTE_HUB = '/hub';
 const ROUTE_TERMS = '/terms';
 const ROUTE_TOKENOMICS_RESERVE = '/tokenomics?tab=rewards&focus=reserve';
@@ -65,21 +68,6 @@ const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
 const GOLD_BG_WASH_2 = 'bg-[rgba(var(--xpot-gold),0.08)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
 const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
-
-// ─────────────────────────────────────────────
-// FINAL DRAW RUN (7000-day campaign)
-// Day 0: before first 22:00 cutoff
-// Day 1: flips at 25/12/2025 22:00 (Madrid)
-// Day 7000: 22/02/2045 22:00 (Madrid)  (locked)
-// ─────────────────────────────────────────────
-
-const RUN_DAYS = 7000;
-
-const RUN_START = { y: 2025, m: 12, d: 25, hh: 22, mm: 0 }; // Madrid wall-clock
-const RUN_END = { y: 2045, m: 2, d: 22, hh: 22, mm: 0 }; // Madrid wall-clock (locked)
-
-const RUN_START_EU = '25/12/2025 22:00 (Madrid)';
-const RUN_END_EU = '22/02/2045 22:00 (Madrid)';
 
 // Eligibility threshold (token-native)
 const MIN_ELIGIBLE_XPOT = 100_000;
@@ -597,24 +585,24 @@ function calcRunProgress(now = new Date()) {
   const p = getMadridParts(now);
 
   const runStartCutoffUtc = getMadridUtcMsFromWallClock(
-    RUN_START.y,
-    RUN_START.m,
-    RUN_START.d,
-    RUN_START.hh,
-    RUN_START.mm,
-    0,
-    now,
-  );
+  RUN_START_MADRID.y,
+  RUN_START_MADRID.m,
+  RUN_START_MADRID.d,
+  RUN_START_MADRID.hh,
+  RUN_START_MADRID.mm,
+  0,
+  now,
+);
 
-  const runEndCutoffUtc = getMadridUtcMsFromWallClock(
-    RUN_END.y,
-    RUN_END.m,
-    RUN_END.d,
-    RUN_END.hh,
-    RUN_END.mm,
-    0,
-    now,
-  );
+const runEndCutoffUtc = getMadridUtcMsFromWallClock(
+  RUN_END_MADRID.y,
+  RUN_END_MADRID.m,
+  RUN_END_MADRID.d,
+  RUN_END_MADRID.hh,
+  RUN_END_MADRID.mm,
+  0,
+  now,
+);
 
   // Choose the most recent cutoff “day” anchor (Madrid calendar date)
   const todayCutoffUtc = getMadridUtcMsFromWallClock(p.y, p.m, p.d, 22, 0, 0, now);
@@ -1065,7 +1053,7 @@ function HomePageInner() {
 
                         <p className="mt-3 text-[13px] leading-relaxed text-slate-400">
                           Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
-                          - <span className="text-slate-200">{RUN_END_EU}</span>.
+                          - <FinalDrawDate className="text-slate-200" />.
                         </p>
                       </div>
 
@@ -1250,7 +1238,7 @@ function HomePageInner() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
-                    <MiniStat label="Final draw" value="22/02/2045 22:00" tone="violet" />
+                    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
                   </div>
                 </div>
 
@@ -1472,7 +1460,9 @@ function HomePageInner() {
                 </div>
               </div>
               <ul className="mt-4 space-y-2">
-                <Bullet tone="amber">Final draw: {RUN_END_EU}</Bullet>
+               <Bullet tone="amber">
+  Final draw: <FinalDrawDate variant="short" />
+</Bullet>
                 <Bullet tone="emerald">Daily cadence builds the arc</Bullet>
                 <Bullet tone="sky">Proof stays public</Bullet>
               </ul>
