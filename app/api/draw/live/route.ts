@@ -13,46 +13,74 @@ function utcDayStart(d: Date) {
   );
 }
 
+/**
+ * 7,000-day arc
+ * If Day 7000 is 2044-10-12 (UTC day bucket), Day 1 is 2025-08-14.
+ */
+const TOTAL_DAYS = 7000;
+const GENESIS_UTC = new Date(Date.UTC(2025, 7, 14, 0, 0, 0)); // 2025-08-14T00:00:00Z
+const FINAL_UTC = new Date(Date.UTC(2044, 9, 12, 0, 0, 0)); // 2044-10-12T00:00:00Z
+
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
+}
+
+function dayIndexFromUtcDayStart(dayStart: Date) {
+  const ms = dayStart.getTime() - GENESIS_UTC.getTime();
+  const idx = Math.floor(ms / 86400000) + 1;
+  return clamp(idx, 1, TOTAL_DAYS);
+}
+
 export async function GET() {
-  try {
-    const today = utcDayStart(new Date());
+  const today = utcDayStart(new Date());
 
-    const draw = await prisma.draw.findUnique({
-      where: { drawDate: today },
-      select: { closesAt: true, status: true },
-    });
+  const draw = await prisma.draw.findUnique({
+    where: { drawDate: today },
+    select: {
+      closesAt: true,
+      status: true,
+      drawDate: true,
+    },
+  });
 
-    if (!draw || !draw.closesAt) {
-      return NextResponse.json(
-        { draw: null },
-        { headers: { 'Cache-Control': 'no-store, max-age=0' } },
-      );
-    }
+  // If draw row is missing, still return the day index so UI can show "Day X of 7000"
+  const dayIndex = dayIndexFromUtcDayStart(today);
 
-    // Normalize status to what UI expects
-    const status =
-      draw.status === 'open'
-        ? 'OPEN'
-        : draw.status === 'completed'
-        ? 'COMPLETED'
-        : 'LOCKED';
-
+  if (!draw || !draw.closesAt) {
     return NextResponse.json(
       {
-        draw: {
-          // Canonical daily amount (UI derives USD elsewhere by live price)
-          dailyXpot: 1_000_000,
-          closesAt: draw.closesAt.toISOString(),
-          status,
+        draw: null,
+        arc: {
+          dayIndex,
+          totalDays: TOTAL_DAYS,
+          daysRemaining: TOTAL_DAYS - dayIndex,
+          genesisUtc: GENESIS_UTC.toISOString(),
+          finalUtc: FINAL_UTC.toISOString(),
         },
       },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } },
     );
-  } catch (err) {
-    console.error('[XPOT] /api/draw/live GET error:', err);
-    return NextResponse.json(
-      { draw: null, error: 'INTERNAL_ERROR' },
-      { status: 500, headers: { 'Cache-Control': 'no-store, max-age=0' } },
-    );
   }
+
+  const normalizedStatus =
+    draw.status === 'open' ? 'OPEN' : draw.status === 'completed' ? 'COMPLETED' : 'LOCKED';
+
+  return NextResponse.json(
+    {
+      draw: {
+        dailyXpot: 1_000_000,
+        closesAt: draw.closesAt.toISOString(),
+        status: normalizedStatus,
+        drawDate: draw.drawDate.toISOString(),
+      },
+      arc: {
+        dayIndex,
+        totalDays: TOTAL_DAYS,
+        daysRemaining: TOTAL_DAYS - dayIndex,
+        genesisUtc: GENESIS_UTC.toISOString(),
+        finalUtc: FINAL_UTC.toISOString(),
+      },
+    },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } },
+  );
 }
