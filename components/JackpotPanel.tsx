@@ -170,10 +170,10 @@ function formatCountdown(ms: number) {
 
 // Milestone ladder for highlights (USD) - start at $5
 const MILESTONES = [
-  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
-  3_000, 4_000, 5_000, 7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000,
-  100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000, 1_500_000,
-  2_000_000, 3_000_000, 5_000_000, 10_000_000,
+  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000,
+  4_000, 5_000, 7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000, 100_000,
+  150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000, 1_500_000, 2_000_000,
+  3_000_000, 5_000_000, 10_000_000,
 ];
 
 type PriceSample = { t: number; p: number };
@@ -290,7 +290,7 @@ function useAnchoredTooltip<T extends HTMLElement>() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  return { ref, open, setOpen, rect, update };
+  return { ref, open, setOpen, rect };
 }
 
 function TooltipBubble({
@@ -328,7 +328,6 @@ function TooltipBubble({
 
   const anchorCenterX = rect.left + rect.width / 2;
 
-  // If we are close to screen edges, align the bubble to the icon (not centered).
   const EDGE_ZONE = 220;
 
   let left = 0;
@@ -534,7 +533,6 @@ export default function JackpotPanel({
   const [countdownMs, setCountdownMs] = useState<number>(0);
   const [countPulse, setCountPulse] = useState(false);
 
-  // After mount, compute the real cutoff once (DST-safe)
   useEffect(() => {
     if (!mounted) return;
     const nd = getNextMadridCutoffUtcMs(22, new Date());
@@ -1008,7 +1006,7 @@ export default function JackpotPanel({
         {/* Marketing row */}
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Pool capsule (no gold, more alive) */}
+            {/* Pool capsule */}
             <div className="group relative inline-flex items-center gap-4 rounded-2xl bg-black/55 px-5 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)]">
               <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
               <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
@@ -1074,11 +1072,11 @@ export default function JackpotPanel({
             </div>
 
             <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-              {/* USD value + INFO (img 1) moved right after value, same line */}
+              {/* USD value + INFO moved right after value (same line) */}
               <div className="flex items-end gap-3">
                 <div
                   className={[
-                    ''text-6xl sm:text-[4.25rem] font-semibold tabular-nums transition-transform transition-colors duration-200',
+                    'text-6xl sm:text-[4.25rem] font-semibold tabular-nums transition-transform transition-colors duration-200',
                     justUpdated ? 'scale-[1.01]' : '',
                     justPumped ? 'text-[#7CC8FF]' : 'text-white',
                   ].join(' ')}
@@ -1134,7 +1132,6 @@ export default function JackpotPanel({
               <span className="text-[11px] text-slate-600">22:00 Madrid</span>
             </div>
 
-            {/* Stronger, readable availability note */}
             {showUnavailable ? (
               <div className="mt-3">
                 <PriceUnavailableNote mode={hadError ? 'feed-error' : 'pending-pair'} />
