@@ -1078,7 +1078,7 @@ export default function JackpotPanel({
               <div className="flex items-end gap-3">
                 <div
                   className={[
-                    'text-5xl sm:text-6xl font-semibold tabular-nums transition-transform transition-colors duration-200',
+                    ''text-6xl sm:text-[4.25rem] font-semibold tabular-nums transition-transform transition-colors duration-200',
                     justUpdated ? 'scale-[1.01]' : '',
                     justPumped ? 'text-[#7CC8FF]' : 'text-white',
                   ].join(' ')}
