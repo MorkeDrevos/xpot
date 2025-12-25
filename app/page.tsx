@@ -1259,21 +1259,41 @@ function HomePageInner() {
     </Link>
 
     <Link
-      href={ROUTE_TOKENOMICS_RESERVE}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="
-        inline-flex items-center justify-center rounded-full
-        border border-white/10 bg-white/[0.03] px-6 py-3.5
-        text-sm font-semibold text-slate-100
-        shadow-[0_18px_60px_rgba(0,0,0,0.35)]
-        hover:bg-white/[0.06] transition
-      "
-      title="Open Tokenomics (Rewards reserve)"
+  href={ROUTE_TOKENOMICS_RESERVE}
+  target="_blank"
+  rel="noopener noreferrer"
+  className={[
+    'group inline-flex items-center gap-2 rounded-full',
+    'border border-white/10 bg-white/[0.04] px-5 py-2.5',
+    'text-sm font-semibold text-slate-100',
+    'shadow-[0_18px_70px_rgba(0,0,0,0.40)]',
+    'hover:bg-white/[0.07] hover:border-white/15 transition',
+    'focus:outline-none focus:ring-2 focus:ring-[rgba(var(--xpot-gold),0.35)] focus:ring-offset-0',
+  ].join(' ')}
+  title="Open Tokenomics (Rewards reserve)"
+>
+  <span className="inline-flex items-center gap-2">
+    <span
+      className={[
+        'inline-flex h-7 w-7 items-center justify-center rounded-full',
+        `border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`,
+        'shadow-[0_0_22px_rgba(var(--xpot-gold),0.14)]',
+      ].join(' ')}
     >
-      View tokenomics
-      <ArrowRight className="ml-2 h-4 w-4 text-slate-300" />
-    </Link>
+      <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
+    </span>
+
+    <span className="tracking-[0.02em]">View tokenomics</span>
+  </span>
+
+  <span className="h-5 w-px bg-white/10" />
+
+  <span className={`text-[11px] font-semibold ${GOLD_TEXT} opacity-90 group-hover:opacity-100`}>
+    rewards reserve
+  </span>
+
+  <ArrowRight className="ml-1 h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5" />
+</Link>
   </div>
 
   <p className="mt-4 text-[11px] text-slate-500/95">
