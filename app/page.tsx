@@ -585,21 +585,21 @@ function calcRunProgress(now = new Date()) {
   const p = getMadridParts(now);
 
   const runStartCutoffUtc = getMadridUtcMsFromWallClock(
-  RUN_START_MADRID.y,
-  RUN_START_MADRID.m,
-  RUN_START_MADRID.d,
-  RUN_START_MADRID.hh,
-  RUN_START_MADRID.mm,
+  RUN_START.y,
+  RUN_START.m,
+  RUN_START.d,
+  RUN_START.hh,
+  RUN_START.mm,
   0,
   now,
 );
 
 const runEndCutoffUtc = getMadridUtcMsFromWallClock(
-  RUN_END_MADRID.y,
-  RUN_END_MADRID.m,
-  RUN_END_MADRID.d,
-  RUN_END_MADRID.hh,
-  RUN_END_MADRID.mm,
+  RUN_END.y,
+  RUN_END.m,
+  RUN_END.d,
+  RUN_END.hh,
+  RUN_END.mm,
   0,
   now,
 );
