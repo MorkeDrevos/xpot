@@ -1,7 +1,7 @@
 // app/2044/final-day/page.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Printer, Repeat2, Timer, Radio, ShieldCheck } from 'lucide-react';
 
@@ -26,7 +26,6 @@ function formatCountdown(ms: number) {
   const h = Math.floor((total % 86400) / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-
   return { d, h, m, s };
 }
 
@@ -37,8 +36,6 @@ export default function FinalDayPage() {
   const [live, setLive] = useState<LiveDraw | null>(null);
   const [liveErr, setLiveErr] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number>(() => Date.now());
-
-  const archiveRef = useRef<HTMLElement | null>(null);
 
   // Restore era from localStorage
   useEffect(() => {
@@ -62,8 +59,7 @@ export default function FinalDayPage() {
         dateLine: 'Saturday, 12 October 2044',
         section: 'Culture / Protocols',
         headline: "XPOT's Final Day",
-        deck:
-          'Not a crash. Not a rug. Not a scandal. A scheduled ending - after 19.18 years of daily continuity.',
+        deck: 'Not a crash. Not a rug. Not a scandal. A scheduled ending - after 19.18 years of daily continuity.',
         byline: 'By The XPOT Desk',
       };
     }
@@ -73,21 +69,20 @@ export default function FinalDayPage() {
       dateLine: 'Today',
       section: 'Live',
       headline: 'The Final Draw is Approaching',
-      deck:
-        'A premium preview experience. Live countdown below. Flip to 2044 to read the archived edition as the world remembered it.',
+      deck: 'A premium preview experience. Live countdown below. Flip to 2044 to read the archived edition as the world remembered it.',
       byline: 'XPOT',
     };
   }, [era]);
 
   const onFlip = useCallback(() => {
-    setEra((e) => (e === '2044' ? 'now' : '2044'));
+    setEra(e => (e === '2044' ? 'now' : '2044'));
   }, []);
 
   const onPrint = useCallback(() => {
     // Always print the archive side
     setEra('2044');
     // Wait a tick so layout is guaranteed on the archive face
-    setTimeout(() => {
+    window.setTimeout(() => {
       if (typeof window !== 'undefined') window.print();
     }, 60);
   }, []);
@@ -99,25 +94,28 @@ export default function FinalDayPage() {
       if (k === 'f') {
         e.preventDefault();
         onFlip();
+        return;
       }
       if (k === 'p') {
         e.preventDefault();
         onPrint();
+        return;
       }
       if (e.key === 'Escape') {
-        // soft navigation (keep it simple)
         try {
           window.location.href = '/';
         } catch {}
       }
     }
+
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onFlip, onPrint]);
 
   // Poll live draw (for "Now" side)
   useEffect(() => {
-    let t: any;
+    let interval: number | null = null;
+    let alive = true;
 
     async function pull() {
       try {
@@ -125,6 +123,8 @@ export default function FinalDayPage() {
         const res = await fetch('/api/draw/live', { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP_${res.status}`);
         const json = await res.json();
+
+        if (!alive) return;
 
         if (!json?.draw?.closesAt) {
           setLive(null);
@@ -138,43 +138,56 @@ export default function FinalDayPage() {
         };
 
         setLive(d);
-      } catch (err: any) {
+      } catch {
+        if (!alive) return;
         setLiveErr('Live draw unavailable');
         setLive(null);
       }
     }
 
     pull();
-    t = setInterval(pull, LIVE_POLL_MS);
-    return () => clearInterval(t);
+    interval = window.setInterval(pull, LIVE_POLL_MS);
+
+    return () => {
+      alive = false;
+      if (interval) window.clearInterval(interval);
+    };
   }, []);
 
   // Local ticking clock for countdown (smooth)
   useEffect(() => {
-    const t = setInterval(() => setNowTs(Date.now()), 250);
-    return () => clearInterval(t);
+    const t = window.setInterval(() => setNowTs(Date.now()), 250);
+    return () => window.clearInterval(t);
   }, []);
 
   const closesAtMs = live?.closesAt ? Date.parse(live.closesAt) : null;
   const remainingMs = closesAtMs ? Math.max(0, closesAtMs - nowTs) : null;
   const cd = remainingMs !== null ? formatCountdown(remainingMs) : null;
 
-  const statusTone = live?.status === 'OPEN'
-    ? 'bg-emerald-500/12 text-emerald-200 ring-emerald-500/20'
-    : live?.status === 'COMPLETED'
-    ? 'bg-slate-500/12 text-slate-200 ring-white/15'
-    : 'bg-amber-500/12 text-amber-200 ring-amber-500/20';
+  const statusTone =
+    live?.status === 'OPEN'
+      ? 'bg-emerald-500/10 text-emerald-200 ring-emerald-500/20'
+      : live?.status === 'COMPLETED'
+      ? 'bg-white/5 text-white/85 ring-white/15'
+      : 'bg-amber-500/10 text-amber-200 ring-amber-500/20';
+
+  const bgRoot =
+    'bg-[#05070a] ' +
+    '[background-image:radial-gradient(1200px_800px_at_20%_10%,rgba(56,189,248,0.12),transparent_55%),' +
+    'radial-gradient(900px_700px_at_80%_20%,rgba(236,72,153,0.10),transparent_60%),' +
+    'radial-gradient(1000px_900px_at_40%_90%,rgba(16,185,129,0.08),transparent_60%)]';
+
+  const bgNowCard =
+    '[background-image:radial-gradient(900px_600px_at_20%_10%,rgba(56,189,248,0.14),transparent_60%),' +
+    'radial-gradient(900px_700px_at_85%_25%,rgba(236,72,153,0.12),transparent_62%),' +
+    'radial-gradient(1000px_900px_at_50%_90%,rgba(16,185,129,0.08),transparent_60%),' +
+    'linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0))]';
 
   return (
     <main
       className={[
         'min-h-screen px-3 pb-16 pt-7 text-white/90 print:p-0 print:text-black',
-        'bg-[#05070a]',
-        '[background-image:',
-        'radial-gradient(1200px_800px_at_20%_10%,rgba(56,189,248,0.12),transparent_55%),',
-        'radial-gradient(900px_700px_at_80%_20%,rgba(236,72,153,0.10),transparent_60%),',
-        'radial-gradient(1000px_900px_at_40%_90%,rgba(16,185,129,0.08),transparent_60%)',
-        ']',
+        bgRoot,
         'print:bg-white print:[background-image:none]',
       ].join(' ')}
     >
@@ -242,7 +255,10 @@ export default function FinalDayPage() {
       </div>
 
       {/* Flip scene */}
-      <section className="mx-auto max-w-[1120px] [perspective:1400px] print:[perspective:none]" aria-label="Final Day story">
+      <section
+        className="mx-auto max-w-[1120px] [perspective:1400px] print:[perspective:none]"
+        aria-label="Final Day story"
+      >
         <div
           className={[
             'relative [transform-style:preserve-3d] motion-safe:transition-transform motion-safe:duration-[800ms]',
@@ -254,9 +270,6 @@ export default function FinalDayPage() {
           {/* FRONT: 2044 newspaper */}
           <article
             id="xpot-fd-archive"
-            ref={(el) => {
-              archiveRef.current = el;
-            }}
             aria-hidden={era !== '2044'}
             className={[
               'overflow-hidden rounded-2xl border border-white/10 shadow-[0_60px_180px_rgba(0,0,0,0.55)]',
@@ -267,11 +280,9 @@ export default function FinalDayPage() {
               'p-7 max-[720px]:p-4',
               'print:bg-white print:text-black print:p-[18mm_16mm_14mm]',
               // subtle paper grain
-              '[background-image:',
-              'radial-gradient(900px_600px_at_15%_10%,rgba(0,0,0,0.06),transparent_70%),',
-              'radial-gradient(900px_700px_at_90%_20%,rgba(0,0,0,0.05),transparent_65%),',
-              'linear-gradient(180deg,rgba(250,244,228,0.96),rgba(244,236,214,0.96))',
-              ']',
+              '[background-image:radial-gradient(900px_600px_at_15%_10%,rgba(0,0,0,0.06),transparent_70%),' +
+                'radial-gradient(900px_700px_at_90%_20%,rgba(0,0,0,0.05),transparent_65%),' +
+                'linear-gradient(180deg,rgba(250,244,228,0.96),rgba(244,236,214,0.96))]',
               'print:[background-image:none]',
               'font-[ui-serif,Georgia,Times_New_Roman,Times,serif]',
             ].join(' ')}
@@ -309,9 +320,7 @@ export default function FinalDayPage() {
               <h1 className="text-[clamp(30px,4.2vw,52px)] font-black leading-[1.02] tracking-[-0.02em]">
                 {meta.headline}
               </h1>
-              <p className="mt-3 max-w-[78ch] text-[17px] leading-[1.45] text-[rgba(18,16,12,0.82)]">
-                {meta.deck}
-              </p>
+              <p className="mt-3 max-w-[78ch] text-[17px] leading-[1.45] text-[rgba(18,16,12,0.82)]">{meta.deck}</p>
 
               <div className="mt-5 grid grid-cols-[1fr_1fr_1.25fr] gap-4 max-[980px]:grid-cols-2 max-[860px]:grid-cols-1">
                 {/* Column A */}
@@ -332,7 +341,9 @@ export default function FinalDayPage() {
                     For <strong>19.18 years</strong>, every single day, XPOT showed up. Same ritual. Same anticipation.
                     Same pull in the stomach when the draw ticked down to zero.
                   </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">Kids grew up with it. Parents played it. Grandparents knew the sound.</p>
+                  <p className="mt-3 text-[15px] leading-[1.62]">
+                    Kids grew up with it. Parents played it. Grandparents knew the sound.
+                  </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
                     By this last day, XPOT isn&apos;t &quot;a crypto project&quot; anymore. It&apos;s{' '}
                     <strong>the biggest game on Earth</strong>.
@@ -353,7 +364,9 @@ export default function FinalDayPage() {
                     The final draw
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">Everyone knows it&apos;s the last one.</p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">Streams everywhere. Millions watching live. Some people crying already.</p>
+                  <p className="mt-3 text-[15px] leading-[1.62]">
+                    Streams everywhere. Millions watching live. Some people crying already.
+                  </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/35 p-3">
                     <div className="font-sans text-[12px] font-black uppercase tracking-[0.12em]">The Final Draw</div>
@@ -377,9 +390,7 @@ export default function FinalDayPage() {
                     </div>
                   </div>
 
-                  <p className="mt-4 text-[15px] leading-[1.62]">
-                    No boost. No fireworks gimmick. No last-minute twist. Just dignity.
-                  </p>
+                  <p className="mt-4 text-[15px] leading-[1.62]">No boost. No fireworks gimmick. No last-minute twist. Just dignity.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
                     The countdown starts. People aren&apos;t hoping to win anymore. They&apos;re hoping to witness.
                   </p>
@@ -409,9 +420,7 @@ export default function FinalDayPage() {
                     <div className="font-sans text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(18,16,12,0.70)]">
                       A quiet line appears
                     </div>
-                    <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">
-                      “XPOT completed its mission.”
-                    </div>
+                    <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">“XPOT completed its mission.”</div>
                     <div className="mt-2 font-sans text-[13px] leading-[1.55] opacity-85">
                       No ads. No upsell. No “v2 coming soon”. Just truth.
                     </div>
@@ -466,16 +475,11 @@ export default function FinalDayPage() {
               'print:hidden',
               'p-7 max-[720px]:p-4 font-sans',
               'text-white/90',
-              '[background-image:',
-              'radial-gradient(900px_600px_at_20%_10%,rgba(56,189,248,0.14),transparent_60%),',
-              'radial-gradient(900px_700px_at_85%_25%,rgba(236,72,153,0.12),transparent_62%),',
-              'radial-gradient(1000px_900px_at_50%_90%,rgba(16,185,129,0.08),transparent_60%),',
-              'linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0))',
-              ']',
+              bgNowCard,
             ].join(' ')}
           >
             <header className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-[0_40px_120px_rgba(0,0,0,0.45)]">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em]">
                 <Radio size={14} className="opacity-90" />
                 <span>{meta.badge}</span>
               </div>
@@ -483,9 +487,7 @@ export default function FinalDayPage() {
               <h2 className="mt-4 text-[clamp(22px,3.2vw,34px)] font-black leading-[1.08] tracking-[-0.02em]">
                 {meta.headline}
               </h2>
-              <p className="mt-2 max-w-[74ch] text-[14px] leading-[1.55] opacity-90">
-                {meta.deck}
-              </p>
+              <p className="mt-2 max-w-[74ch] text-[14px] leading-[1.55] opacity-90">{meta.deck}</p>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <button
@@ -496,7 +498,7 @@ export default function FinalDayPage() {
                   Read the 2044 story
                 </button>
                 <Link
-                  className="rounded-full border border-white/12 bg-white/5 px-4 py-2 text-[13px] font-black text-white/90 hover:bg-white/7"
+                  className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[13px] font-black text-white/90 hover:bg-white/[0.07]"
                   href="/hub"
                 >
                   Enter today&apos;s XPOT
@@ -513,13 +515,17 @@ export default function FinalDayPage() {
                     <span>Draw countdown</span>
                   </div>
 
-                  <span className={['inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1', statusTone].join(' ')}>
+                  <span
+                    className={['inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1', statusTone].join(
+                      ' ',
+                    )}
+                  >
                     {live?.status ?? (liveErr ? 'OFFLINE' : 'LOADING')}
                   </span>
                 </div>
 
                 <div className="mt-4 grid grid-cols-4 gap-2">
-                  {(['d', 'h', 'm', 's'] as const).map((k) => {
+                  {(['d', 'h', 'm', 's'] as const).map(k => {
                     const v =
                       cd == null
                         ? '--'
@@ -534,10 +540,7 @@ export default function FinalDayPage() {
                     const label = k === 'd' ? 'Days' : k === 'h' ? 'Hours' : k === 'm' ? 'Minutes' : 'Seconds';
 
                     return (
-                      <div
-                        key={k}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center"
-                      >
+                      <div key={k} className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-center">
                         <div className="text-[22px] font-black tracking-[-0.02em]">{v}</div>
                         <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">{label}</div>
                       </div>
@@ -549,12 +552,13 @@ export default function FinalDayPage() {
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={14} className="opacity-90" />
                     <span>
-                      Jackpot: <span className="font-black">{(live?.jackpotXpot ?? 1_000_000).toLocaleString()} XPOT</span>
+                      Jackpot:{' '}
+                      <span className="font-black">{(live?.jackpotXpot ?? 1_000_000).toLocaleString()} XPOT</span>
                     </span>
                   </div>
 
                   <div className="font-black">
-                    {live?.closesAt ? `Closes at: ${new Date(live.closesAt).toUTCString()}` : (liveErr ?? 'Fetching live draw...')}
+                    {live?.closesAt ? `Closes at: ${new Date(live.closesAt).toUTCString()}` : liveErr ?? 'Fetching live draw...'}
                   </div>
                 </div>
 
@@ -569,15 +573,14 @@ export default function FinalDayPage() {
                 <div className="mt-2 h-px bg-[linear-gradient(90deg,transparent,rgba(236,72,153,0.50),transparent)] opacity-70" />
 
                 <p className="mt-4 text-[14px] leading-[1.6] opacity-90">
-                  This countdown is live from <span className="font-black">/api/draw/live</span>. When your draw closesAt is correct in Prisma, this page becomes a real “clock”.
+                  This countdown is live from <span className="font-black">/api/draw/live</span>. When your draw closesAt
+                  is correct in Prisma, this page becomes a real “clock”.
                 </p>
                 <p className="mt-3 text-[14px] leading-[1.6] opacity-90">
                   Print always outputs the archive edition. That gives you clean “newspaper capture” moments for socials.
                 </p>
 
-                <div className="mt-4 text-[12px] font-black uppercase tracking-[0.16em] opacity-80">
-                  Shortcuts
-                </div>
+                <div className="mt-4 text-[12px] font-black uppercase tracking-[0.16em] opacity-80">Shortcuts</div>
                 <ul className="mt-2 list-disc pl-5 text-[14px] leading-[1.65] opacity-90">
                   <li>F = Flip</li>
                   <li>P = Print</li>
@@ -603,11 +606,12 @@ export default function FinalDayPage() {
       {/* Print rules */}
       <style jsx global>{`
         @media print {
-          html, body {
+          html,
+          body {
             background: #fff !important;
           }
           a[href]:after {
-            content: "" !important;
+            content: '' !important;
           }
         }
       `}</style>
