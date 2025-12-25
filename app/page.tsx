@@ -1051,7 +1051,7 @@ function HomePageInner() {
                 {/* LEFT */}
                 <div className="flex flex-col justify-between gap-5">
                   <div className="space-y-5">
-                    <div className="rounded-[28px] bg-white/[0.022] p-6 ring-1 ring-white/[0.055] sm:p-7 lg:p-8">
+                    <div className="p-6 border-l border-white/5">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
                         NO TICKETS · JUST XPOT HOLDINGS
                       </p>
