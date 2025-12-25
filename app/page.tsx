@@ -1070,20 +1070,9 @@ function HomePageInner() {
                       </div>
 
                       <div className="mt-6 flex flex-wrap items-center gap-3">
-                        <Pill tone="sky">
-                          <Users className="h-3.5 w-3.5" />
-                          X handle identity
-                        </Pill>
-
-                        <Pill tone="emerald">
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                          On-chain proof
-                        </Pill>
-
-                        <Pill tone="amber">
-                          <Timer className="h-3.5 w-3.5" />
-                          Next draw {countdown}
-                        </Pill>
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
+  Identity · Protocol · Next draw <span className="text-slate-300">{countdown}</span>
+</p>
                       </div>
 
                       <div className="mt-5">
