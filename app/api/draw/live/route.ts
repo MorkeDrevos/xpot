@@ -2,7 +2,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
@@ -13,23 +12,22 @@ function utcDayStart(d: Date) {
   );
 }
 
-/**
- * 7,000-day arc
- * If Day 7000 is 2044-10-12 (UTC day bucket), Day 1 is 2025-08-14.
- */
-const TOTAL_DAYS = 7000;
-const GENESIS_UTC = new Date(Date.UTC(2025, 7, 14, 0, 0, 0)); // 2025-08-14T00:00:00Z
-const FINAL_UTC = new Date(Date.UTC(2044, 9, 12, 0, 0, 0)); // 2044-10-12T00:00:00Z
-
-function clamp(n: number, a: number, b: number) {
-  return Math.max(a, Math.min(b, n));
+function diffDaysUtc(a: Date, b: Date) {
+  const dayMs = 86400 * 1000;
+  const ax = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate(), 0, 0, 0);
+  const bx = Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate(), 0, 0, 0);
+  return Math.floor((ax - bx) / dayMs);
 }
 
-function dayIndexFromUtcDayStart(dayStart: Date) {
-  const ms = dayStart.getTime() - GENESIS_UTC.getTime();
-  const idx = Math.floor(ms / 86400000) + 1;
-  return clamp(idx, 1, TOTAL_DAYS);
-}
+// Cheap in-memory cache so we don't scan the DB every 5s
+let genesisCache: { at: number; drawDate: Date | null } = { at: 0, drawDate: null };
+const GENESIS_TTL_MS = 60_000;
+
+// Change this only if your “mission length” changes
+const DAY_TOTAL = 7000;
+
+// Canonical daily amount (you can import from lib/xpot.ts if you want)
+const DAILY_XPOT = 1_000_000;
 
 export async function GET() {
   const today = utcDayStart(new Date());
@@ -37,48 +35,49 @@ export async function GET() {
   const draw = await prisma.draw.findUnique({
     where: { drawDate: today },
     select: {
+      drawDate: true,
       closesAt: true,
       status: true,
-      drawDate: true,
     },
   });
 
-  // If draw row is missing, still return the day index so UI can show "Day X of 7000"
-  const dayIndex = dayIndexFromUtcDayStart(today);
-
   if (!draw || !draw.closesAt) {
     return NextResponse.json(
-      {
-        draw: null,
-        arc: {
-          dayIndex,
-          totalDays: TOTAL_DAYS,
-          daysRemaining: TOTAL_DAYS - dayIndex,
-          genesisUtc: GENESIS_UTC.toISOString(),
-          finalUtc: FINAL_UTC.toISOString(),
-        },
-      },
+      { draw: null },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } },
     );
   }
 
-  const normalizedStatus =
-    draw.status === 'open' ? 'OPEN' : draw.status === 'completed' ? 'COMPLETED' : 'LOCKED';
+  // Resolve genesis (Day 1) from earliest draw in DB (cached)
+  const now = Date.now();
+  if (now - genesisCache.at > GENESIS_TTL_MS) {
+    const first = await prisma.draw.findFirst({
+      orderBy: { drawDate: 'asc' },
+      select: { drawDate: true },
+    });
+    genesisCache = { at: now, drawDate: first?.drawDate ?? null };
+  }
+
+  const genesis = genesisCache.drawDate;
+  const dayIndex =
+    genesis ? diffDaysUtc(draw.drawDate, genesis) + 1 : null;
+
+  // normalize status to what UI expects
+  const status =
+    draw.status === 'open'
+      ? 'OPEN'
+      : draw.status === 'completed'
+      ? 'COMPLETED'
+      : 'LOCKED';
 
   return NextResponse.json(
     {
       draw: {
-        dailyXpot: 1_000_000,
+        dailyXpot: DAILY_XPOT,
         closesAt: draw.closesAt.toISOString(),
-        status: normalizedStatus,
-        drawDate: draw.drawDate.toISOString(),
-      },
-      arc: {
-        dayIndex,
-        totalDays: TOTAL_DAYS,
-        daysRemaining: TOTAL_DAYS - dayIndex,
-        genesisUtc: GENESIS_UTC.toISOString(),
-        finalUtc: FINAL_UTC.toISOString(),
+        status,
+        dayIndex, // 1..7000 (if genesis exists)
+        dayTotal: DAY_TOTAL,
       },
     },
     { headers: { 'Cache-Control': 'no-store, max-age=0' } },
