@@ -443,10 +443,8 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
 
 function PriceUnavailableNote({
   compact,
-  mode = 'pending-pair',
 }: {
   compact?: boolean;
-  mode?: 'feed-error' | 'pending-pair';
 }) {
   const title = 'TOKEN NOT TRADABLE YET';
 
@@ -463,6 +461,7 @@ function PriceUnavailableNote({
         compact ? 'px-3 py-2' : 'px-4 py-3',
       ].join(' ')}
     >
+      {/* soft glow */}
       <div
         className="pointer-events-none absolute inset-0 opacity-70"
         style={{
@@ -470,9 +469,21 @@ function PriceUnavailableNote({
             'radial-gradient(circle_at_18%_30%, rgba(245,158,11,0.12), transparent 60%), radial-gradient(circle_at_82%_20%, rgba(251,191,36,0.08), transparent 62%)',
         }}
       />
-      <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">{title}</p>
-      <p className="relative mt-2 text-[12px] text-amber-100">{body}</p>
-      <p className="relative mt-2 text-[11px] text-amber-200/80">{secondary}</p>
+
+      {/* title */}
+      <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">
+        {title}
+      </p>
+
+      {/* main message – lighter & readable */}
+      <p className="relative mt-2 text-[12px] text-slate-200/80">
+        {body}
+      </p>
+
+      {/* supporting explanation – clearly secondary */}
+      <p className="relative mt-1 text-[11px] italic text-slate-300/60">
+        {secondary}
+      </p>
     </div>
   );
 }
