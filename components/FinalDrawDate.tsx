@@ -1,21 +1,15 @@
 // components/FinalDrawDate.tsx
 'use client';
 
-import { RUN_END_MADRID, formatMadridEU } from '@/lib/xpotRun';
+import { getFinalDrawEUShort, getFinalDrawEULong } from '@/lib/xpotRun';
 
 export default function FinalDrawDate({
-  variant = 'full',
-  withTz = true,
+  variant = 'long',
   className = '',
 }: {
-  variant?: 'full' | 'short';
-  withTz?: boolean;
+  variant?: 'long' | 'short';
   className?: string;
 }) {
-  const text =
-    variant === 'short'
-      ? formatMadridEU(RUN_END_MADRID, { withTime: false, withTz: false })
-      : formatMadridEU(RUN_END_MADRID, { withTime: true, withTz });
-
-  return <span className={className}>{text}</span>;
+  const value = variant === 'short' ? getFinalDrawEUShort() : getFinalDrawEULong();
+  return <span className={className}>{value}</span>;
 }
