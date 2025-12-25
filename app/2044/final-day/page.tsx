@@ -10,10 +10,18 @@ type Era = '2044' | 'now';
 const STORAGE_KEY = 'xpot_final_day_era_v4';
 const LIVE_POLL_MS = 5000;
 
+// Correct weekday for 2044-10-12 is Wednesday
+const ARCHIVE_DATE_LINE = 'Wednesday, 12 October 2044';
+
+// “Mission length”
+const DAY_TOTAL = 7000;
+
 type LiveDraw = {
   dailyXpot: number;
   closesAt: string; // ISO
   status: 'OPEN' | 'LOCKED' | 'COMPLETED';
+  dayIndex: number | null;
+  dayTotal: number | null;
 };
 
 function pad2(n: number) {
@@ -29,8 +37,9 @@ function formatCountdown(ms: number) {
   return { d, h, m, s };
 }
 
-// Correct weekday for 2044-10-12 is Wednesday
-const ARCHIVE_DATE_LINE = 'Wednesday, 12 October 2044';
+function clamp(n: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, n));
+}
 
 export default function FinalDayPage() {
   const [era, setEra] = useState<Era>('2044');
@@ -63,9 +72,9 @@ export default function FinalDayPage() {
         badge: 'ARCHIVE EDITION',
         dateLine: ARCHIVE_DATE_LINE,
         section: 'Culture / Protocols',
-        headline: "XPOT’s Final Day",
+        headline: "XPOT's Final Day",
         deck:
-          'It did not collapse. It did not vanish. It did not betray anyone. It simply reached the end of its promise - after 19.18 years of daily continuity.',
+          "It did not collapse. It did not vanish. It did not betray anyone. It simply reached the end of its promise - after 19.18 years of daily continuity.",
         byline: 'By The XPOT Desk',
         price: 'FREE EDITION',
       };
@@ -77,7 +86,7 @@ export default function FinalDayPage() {
       section: 'Live',
       headline: 'A Daily Ritual With an Ending',
       deck:
-        'This is the live countdown. When it reaches zero, the day’s winner is chosen - and XPOT moves one step closer to the Final Draw.',
+        "This is the live countdown. When it reaches zero, the day's winner is chosen - and XPOT moves one step closer to the Final Draw.",
       byline: 'XPOT',
       price: '',
     };
@@ -127,12 +136,12 @@ export default function FinalDayPage() {
 
     async function pull() {
       try {
-        // Cancel any in-flight request
         abortRef.current?.abort();
         const ac = new AbortController();
         abortRef.current = ac;
 
         setLiveErr(null);
+
         const res = await fetch('/api/draw/live', { cache: 'no-store', signal: ac.signal });
         if (!res.ok) throw new Error(`HTTP_${res.status}`);
         const json = await res.json();
@@ -148,6 +157,8 @@ export default function FinalDayPage() {
           dailyXpot: Number(json.draw.dailyXpot ?? 1_000_000),
           closesAt: String(json.draw.closesAt),
           status: (json.draw.status as LiveDraw['status']) ?? 'OPEN',
+          dayIndex: json.draw.dayIndex == null ? null : Number(json.draw.dayIndex),
+          dayTotal: json.draw.dayTotal == null ? null : Number(json.draw.dayTotal),
         };
 
         setLive(d);
@@ -185,6 +196,16 @@ export default function FinalDayPage() {
       : live?.status === 'COMPLETED'
       ? 'bg-white/5 text-white/85 ring-white/15'
       : 'bg-amber-500/10 text-amber-200 ring-amber-500/20';
+
+  const dayIndex = live?.dayIndex ?? null;
+  const dayTotal = live?.dayTotal ?? DAY_TOTAL;
+  const dayPct =
+    dayIndex && dayTotal ? clamp((dayIndex / dayTotal) * 100, 0, 100) : null;
+
+  const dayLabel =
+    dayIndex && dayTotal
+      ? `DAY ${dayIndex.toLocaleString()} / ${dayTotal.toLocaleString()}`
+      : 'DAY -- / 7,000';
 
   const bgRoot =
     'bg-[#05070a] ' +
@@ -276,7 +297,7 @@ export default function FinalDayPage() {
       >
         <div
           className={[
-            'relative [transform-style:preserve-3d] motion-safe:transition-transform motion-safe:duration-[800ms]',
+            'relative min-h-[740px] [transform-style:preserve-3d] motion-safe:transition-transform motion-safe:duration-[800ms]',
             'motion-safe:ease-[cubic-bezier(0.22,0.9,0.22,1)]',
             era === 'now' ? '[transform:rotateY(180deg)]' : '',
             'print:[transform:none]',
@@ -287,7 +308,7 @@ export default function FinalDayPage() {
             id="xpot-fd-archive"
             aria-hidden={era !== '2044'}
             className={[
-              'overflow-hidden rounded-2xl border border-white/10 shadow-[0_60px_180px_rgba(0,0,0,0.55)]',
+              'min-h-[740px] overflow-hidden rounded-2xl border border-white/10 shadow-[0_60px_180px_rgba(0,0,0,0.55)]',
               '[backface-visibility:hidden] [-webkit-backface-visibility:hidden]',
               'print:rounded-none print:border-0 print:shadow-none',
               'bg-[linear-gradient(180deg,rgba(250,244,228,0.96),rgba(244,236,214,0.96))]',
@@ -343,7 +364,7 @@ export default function FinalDayPage() {
                     <span className="float-left pr-2 text-[42px] font-black leading-[0.9] text-[rgba(18,16,12,0.92)]">
                       I
                     </span>
-                    t’s the final day.
+                    t's the final day.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">Not a crash. Not a rug. Not a scandal.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">A scheduled ending.</p>
@@ -356,7 +377,7 @@ export default function FinalDayPage() {
                     conversation. Same pull in the stomach when the numbers fell toward zero.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    People didn’t only play it. They <em>kept time with it</em>. School runs. lunch breaks. late nights.
+                    People did not only play it. They <em>kept time with it</em>. School runs. Lunch breaks. Late nights.
                     A thousand ordinary days stitched into one shared clock.
                   </p>
 
@@ -373,15 +394,12 @@ export default function FinalDayPage() {
                   </div>
 
                   <p className="mt-4 text-[15px] leading-[1.62]">
-                    By the last day, XPOT isn’t “a crypto project” anymore. It’s{' '}
+                    By the last day, XPOT is not "a crypto project" anymore. It is{' '}
                     <strong>a daily ritual the planet learned together</strong>.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">
-                    Not because of greed, but because it never asked anyone to believe in anything except the next day.
                   </p>
 
                   <blockquote className="mt-4 border-l-4 border-[rgba(18,16,12,0.35)] bg-[rgba(18,16,12,0.03)] px-3 py-3 italic">
-                    “It didn’t promise miracles. It promised a daily draw - and it kept its word.”
+                    "It did not promise miracles. It promised a daily draw - and it kept its word."
                     <span className="mt-2 block font-sans text-[12px] font-black uppercase tracking-[0.10em] text-[rgba(18,16,12,0.65)] not-italic">
                       - Archive commentary, 2044
                     </span>
@@ -393,14 +411,10 @@ export default function FinalDayPage() {
                   <div className="font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
                     The final draw
                   </div>
-                  <p className="mt-2 text-[15px] leading-[1.62]">Everyone knows it’s the last one.</p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">
-                    Streams everywhere. Millions watching live. Some crying before it even begins - not because they
-                    expect to win, but because they remember where they were when they first heard the sound.
-                  </p>
+                  <p className="mt-2 text-[15px] leading-[1.62]">Everyone knows it's the last one.</p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/35 p-3">
-                    <div className="font-sans text-[12px] font-black uppercase tracking-[0.12em]">The Final Draw</div>
+                    <div className="font-sans text-[12px] font-black uppercase tracking-[0.12em]">Day 7,000 / 7,000</div>
                     <div className="mt-3 space-y-2 font-sans text-[13px]">
                       <div className="flex items-center justify-between border-t border-dashed border-black/15 pt-2">
                         <span>Daily XPOT</span>
@@ -422,27 +436,12 @@ export default function FinalDayPage() {
                   </div>
 
                   <p className="mt-4 text-[15px] leading-[1.62]">
-                    No boost. No fireworks. No panic patch. No last-minute “upgrade”. Just the same rules, carried all
+                    No boost. No fireworks. No panic patch. No last-minute "upgrade". Just the same rules, carried all
                     the way to the end.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">
-                    The countdown starts. And something changes in the room: people stop hoping for luck, and start
-                    listening for closure.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">
-                    When it hits zero, a winner is chosen. Someone ordinary. Someone unknown. Someone who will carry the
-                    last number like a scar and a medal at the same time.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">XPOT does what it promised. One final time.</p>
-
-                  <div className="my-4 h-px bg-[linear-gradient(90deg,transparent,rgba(18,16,12,0.35),transparent)]" />
-                  <p className="text-[14px] leading-[1.62] text-[rgba(18,16,12,0.78)]">
-                    What ends today isn’t only a product. It’s the disappearance of a tiny daily suspense that lived in
-                    millions of lives - a shared habit that outlived cycles, headlines and skepticism.
                   </p>
                 </div>
 
-                {/* Column C (wide) */}
+                {/* Column C */}
                 <div className="max-[980px]:col-span-2 max-[860px]:col-span-1">
                   <div className="font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
                     And then something rare happens
@@ -450,56 +449,6 @@ export default function FinalDayPage() {
                   <p className="mt-2 text-[15px] leading-[1.62]">Nothing breaks. Nothing explodes. Nothing disappears.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
                     The system simply stops issuing draws - like a candle allowed to burn down instead of being blown out.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">
-                    The site stays online. The record stays visible. Every winner. Every day. Nineteen point one eight
-                    years - perfectly accounted for, as if it mattered enough to be kept.
-                  </p>
-
-                  <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/40 p-4">
-                    <div className="font-sans text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(18,16,12,0.70)]">
-                      A quiet line appears
-                    </div>
-                    <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">
-                      “XPOT completed its mission.”
-                    </div>
-                    <div className="mt-2 font-sans text-[13px] leading-[1.55] opacity-85">
-                      No ads. No upsell. No “v2 coming soon”. No bargaining. Just the truth - and the silence after.
-                    </div>
-                  </div>
-
-                  <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
-                    The architect
-                  </div>
-                  <p className="mt-2 text-[15px] leading-[1.62]">
-                    In the years that follow, the origin story becomes strangely simple. No hero speeches. No victory laps.
-                    Just a set of rules written once - then obeyed for nearly two decades.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">
-                    The person behind it is rarely discussed as a personality. Instead, they are remembered as a decision:
-                    the decision to stop. the decision to refuse inflation. the decision to never move the goalposts, even
-                    when the world begged for “more”.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">
-                    That restraint becomes the signature. In a culture of endless beginnings, the rarest thing is an
-                    ending that arrives on time.
-                  </p>
-
-                  <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
-                    Legacy
-                  </div>
-                  <p className="mt-2 text-[15px] leading-[1.62]">
-                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest prize, but as
-                    proof that trust can be engineered and kept.
-                  </p>
-                  <ul className="mt-3 list-disc pl-5 text-[15px] leading-[1.6]">
-                    <li>The game that never cheated</li>
-                    <li>The system that never inflated itself to survive</li>
-                    <li>The ending that made the beginning sacred</li>
-                  </ul>
-
-                  <p className="mt-4 font-sans text-[15px] font-black tracking-[-0.01em]">
-                    Most projects die because they don’t know how to end. XPOT ended because it said it would.
                   </p>
                 </div>
               </div>
@@ -519,7 +468,7 @@ export default function FinalDayPage() {
             id="xpot-fd-now"
             aria-hidden={era !== 'now'}
             className={[
-              'absolute inset-0 overflow-hidden rounded-2xl border border-white/10 shadow-[0_60px_180px_rgba(0,0,0,0.55)]',
+              'absolute inset-0 min-h-[740px] overflow-hidden rounded-2xl border border-white/10 shadow-[0_60px_180px_rgba(0,0,0,0.55)]',
               '[transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden]',
               'print:hidden',
               'p-7 max-[720px]:p-4 font-sans',
@@ -534,9 +483,14 @@ export default function FinalDayPage() {
                   <span>{meta.badge}</span>
                 </div>
 
-                {/* Personal imprint - keep it “initiated by”, not “funded by” */}
-                <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
-                  Initiated by <span className="text-white/90">@MorkeDrevos</span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white/85">
+                    {dayLabel}
+                  </span>
+
+                  <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
+                    Initiated by <span className="text-white/90">@MorkeDrevos</span>
+                  </div>
                 </div>
               </div>
 
@@ -544,6 +498,20 @@ export default function FinalDayPage() {
                 {meta.headline}
               </h2>
               <p className="mt-2 max-w-[74ch] text-[14px] leading-[1.55] opacity-90">{meta.deck}</p>
+
+              {dayPct != null && (
+                <div className="mt-4">
+                  <div className="h-2 overflow-hidden rounded-full border border-white/10 bg-white/[0.05]">
+                    <div
+                      className="h-full bg-white/60"
+                      style={{ width: `${dayPct}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
+                    {dayTotal ? `${dayTotal.toLocaleString()} days total. Every day recorded.` : 'Mission progress'}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <button
@@ -557,7 +525,7 @@ export default function FinalDayPage() {
                   className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[13px] font-black text-white/90 hover:bg-white/[0.07]"
                   href="/hub"
                 >
-                  Enter today’s XPOT
+                  Enter today's XPOT
                 </Link>
               </div>
             </header>
@@ -571,9 +539,7 @@ export default function FinalDayPage() {
                     <span>Draw countdown</span>
                   </div>
 
-                  <span
-                    className={['inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1', statusTone].join(' ')}
-                  >
+                  <span className={['inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1', statusTone].join(' ')}>
                     {live?.status ?? (liveErr ? 'OFFLINE' : 'LOADING')}
                   </span>
                 </div>
