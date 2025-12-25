@@ -1202,8 +1202,11 @@ function HomePageInner() {
           Eligibility (launch rule)
         </p>
         <p className="mt-1 text-sm font-semibold text-slate-100">
-          Hold at least <span className={GOLD_TEXT}>$100,000</span> worth of XPOT
-        </p>
+  Hold at least <span className={GOLD_TEXT}>100,000 XPOT</span>
+</p>
+<p className="mt-1 text-[12px] text-slate-400">
+  Minimum balance to qualify. Entry is claim-based in the hub. 
+</p>
         <p className="mt-1 text-[12px] text-slate-400">
           Entry is claim-based in the hub. No tickets. No checkout.
         </p>
