@@ -1262,17 +1262,49 @@ function HomePageInner() {
     </div>
   ) : null}
 
-  <div className="mt-6">
-    <RoyalContractBar mint={mint} />
-  </div>
-
-  <div className="mt-7 flex flex-wrap items-center gap-3">
-    <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`} title="Enter the hub">
+  {/* ACTION DOCK */}
+<div className="mt-7 grid gap-4">
+  <div className="flex flex-wrap items-center gap-3">
+    <Link
+      href={ROUTE_HUB}
+      className={`${BTN_GREEN} group px-6 py-3.5 text-sm`}
+      title="Enter the hub"
+    >
       Enter the hub
       <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
     </Link>
 
-    <div className="mt-6">
+    <Link
+      href={ROUTE_TOKENOMICS_RESERVE}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`
+        group inline-flex items-center gap-2 rounded-full
+        border ${GOLD_BORDER_SOFT} bg-white/[0.03]
+        px-5 py-3 text-[13px] font-semibold text-slate-100
+        shadow-[0_26px_110px_rgba(0,0,0,0.40)]
+        hover:bg-white/[0.06] transition
+      `}
+      title="Open Tokenomics (new tab)"
+    >
+      <span className="inline-flex items-center gap-2">
+        <span className="opacity-80 text-slate-200">View tokenomics</span>
+        <span className="opacity-60 text-slate-300">↗</span>
+      </span>
+
+      <span
+        className={`
+          inline-flex h-8 w-8 items-center justify-center rounded-full
+          border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
+          transition-transform group-hover:translate-x-0.5
+        `}
+      >
+        <ArrowRight className={`h-4 w-4 ${GOLD_TEXT}`} />
+      </span>
+    </Link>
+  </div>
+
+  {/* Run architecture strip */}
   <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/45 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
     <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
     <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(56,189,248,0.24),transparent)]" />
@@ -1316,16 +1348,14 @@ function HomePageInner() {
         `}
         title="Open Tokenomics (Protocol distribution reserve)"
       >
-        <span className="text-slate-100">View tokenomics</span>
-<span className="opacity-70 text-slate-300">↗</span>
-<ArrowRight className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`} />
+        Open reserve
+        <span className="opacity-70">↗</span>
+        <ArrowRight className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`} />
       </Link>
     </div>
   </div>
-</div>
-  </div>
 
-  <p className="mt-4 text-[11px] text-slate-500/95">
+  <p className="text-[11px] text-slate-500/95">
     Winners are shown by @handle and provable on-chain. Day flips at 22:00 (Madrid).
   </p>
 </div>
