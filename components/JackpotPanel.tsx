@@ -290,7 +290,7 @@ function useAnchoredTooltip<T extends HTMLElement>() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  return { ref, open, setOpen, rect, update };
+  return { ref, open, setOpen, rect };
 }
 
 function TooltipBubble({
@@ -328,7 +328,6 @@ function TooltipBubble({
 
   const anchorCenterX = rect.left + rect.width / 2;
 
-  // If we are close to screen edges, align the bubble to the icon (not centered).
   const EDGE_ZONE = 220;
 
   let left = 0;
@@ -534,7 +533,6 @@ export default function JackpotPanel({
   const [countdownMs, setCountdownMs] = useState<number>(0);
   const [countPulse, setCountPulse] = useState(false);
 
-  // After mount, compute the real cutoff once (DST-safe)
   useEffect(() => {
     if (!mounted) return;
     const nd = getNextMadridCutoffUtcMs(22, new Date());
@@ -997,16 +995,28 @@ export default function JackpotPanel({
         ref={slabRef}
         className="relative z-10 mt-5 overflow-hidden rounded-2xl border border-slate-800/80 bg-black/25 p-5"
       >
-        {/* Ultra-alive background system */}
+        {/* Alive background (cosmic engine + instrument panel + nebula luxury) */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="xpot-slab-edgeglow absolute inset-0" />
-          <div className="xpot-nebula-ribbon absolute -inset-[18%]" />
-          <div className="xpot-aurora absolute inset-0 opacity-95" />
-          <div className="xpot-stars absolute inset-0 opacity-[0.55]" />
-          <div className="xpot-grid absolute inset-0 opacity-40" />
+          {/* Nebula bloom */}
+          <div className="xpot-aurora absolute inset-0 opacity-90" />
+
+          {/* Energy core (subtle rotating engine) */}
+          <div className="xpot-core absolute inset-0" />
+          <div className="xpot-orbit absolute inset-0" />
+
+          {/* Instrument grid (parallax-ish drift) */}
+          <div className="xpot-grid absolute inset-0 opacity-45" />
+          <div className="xpot-grid2 absolute inset-0 opacity-35" />
+
+          {/* Stars + noise for depth */}
+          <div className="xpot-stars absolute inset-0 opacity-55" />
           <div className="xpot-noise absolute inset-0 opacity-[0.12]" />
-          <div className="xpot-scan absolute inset-0 opacity-[0.18]" />
-          <div className="xpot-sheen-slab absolute inset-0 opacity-[0.30]" />
+
+          {/* Scan + shimmer sweep for “data” life */}
+          <div className="xpot-scan absolute inset-0 opacity-[0.14]" />
+          <div className="xpot-data-shimmer absolute inset-0 opacity-[0.18]" />
+
+          {/* Vignette to keep it premium */}
           <div className="xpot-vignette absolute inset-0" />
         </div>
 
@@ -1016,7 +1026,7 @@ export default function JackpotPanel({
             {/* Pool capsule */}
             <div className="group relative inline-flex items-center gap-4 rounded-2xl bg-black/55 px-5 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)]">
               <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-80 xpot-capsule-glow" />
+              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
               <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-sheen" />
 
               <div className="relative flex flex-wrap items-center gap-3">
@@ -1065,7 +1075,7 @@ export default function JackpotPanel({
             ].join(' ')}
             style={{
               background:
-                'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.10), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.06), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(0,0,0,0.05))',
+                'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.08), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
             }}
           >
             {/* Alive halo on updates */}
@@ -1083,11 +1093,11 @@ export default function JackpotPanel({
               <div className="flex items-end gap-3">
                 <div
                   className={[
-                    'text-6xl sm:text-[4.55rem] font-semibold tabular-nums tracking-tight transition-transform transition-colors duration-200',
+                    'text-6xl sm:text-[4.25rem] font-semibold tabular-nums transition-transform transition-colors duration-200',
                     justUpdated ? 'scale-[1.01]' : '',
                     justPumped ? 'text-[#7CC8FF]' : 'text-white',
                   ].join(' ')}
-                  style={{ textShadow: '0 0 28px rgba(124,200,255,0.14)' }}
+                  style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
                 >
                   {displayUsdText}
                 </div>
@@ -1139,7 +1149,6 @@ export default function JackpotPanel({
               <span className="text-[11px] text-slate-600">22:00 Madrid</span>
             </div>
 
-            {/* Stronger, readable availability note */}
             {showUnavailable ? (
               <div className="mt-3">
                 <PriceUnavailableNote mode={hadError ? 'feed-error' : 'pending-pair'} />
@@ -1154,15 +1163,10 @@ export default function JackpotPanel({
             className="relative overflow-hidden rounded-2xl px-5 py-4 min-h-[170px] border border-slate-800/70 bg-black/25"
             style={{
               background:
-                'radial-gradient(circle_at_18%_18%, rgba(124,200,255,0.10), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.06), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.40), rgba(15,23,42,0.00))',
+                'radial-gradient(circle_at_18%_18%, rgba(124,200,255,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
               boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02)',
             }}
           >
-            <div className="pointer-events-none absolute inset-0">
-              <div className="xpot-meta-glow absolute -inset-10 opacity-[0.55]" />
-              <div className="xpot-sheen-meta absolute inset-0 opacity-[0.22]" />
-            </div>
-
             <div className="relative flex h-full flex-col">
               <div className="pt-2 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -1207,11 +1211,7 @@ export default function JackpotPanel({
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {/* Pulse */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="pointer-events-none absolute inset-0">
-              <div className="xpot-mini-glow absolute -inset-10 opacity-[0.35]" />
-            </div>
-
-            <div className="relative flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Pulse (global 1h)</p>
                 <div className="mt-1 flex items-baseline gap-2">
@@ -1225,7 +1225,7 @@ export default function JackpotPanel({
             </div>
 
             {spark ? (
-              <div className="relative mt-2">
+              <div className="mt-2">
                 <svg
                   width="100%"
                   height="34"
@@ -1246,17 +1246,13 @@ export default function JackpotPanel({
                 <p className="mt-1 text-[11px] text-slate-600">{localSparkLabel}</p>
               </div>
             ) : (
-              <p className="relative mt-2 text-[11px] text-slate-600">Collecting ticks…</p>
+              <p className="mt-2 text-[11px] text-slate-600">Collecting ticks…</p>
             )}
           </div>
 
           {/* 24h range */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="pointer-events-none absolute inset-0">
-              <div className="xpot-mini-glow absolute -inset-10 opacity-[0.28]" />
-            </div>
-
-            <div className="relative flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
                 {range24h ? (
@@ -1277,7 +1273,7 @@ export default function JackpotPanel({
             </div>
 
             {maxJackpotToday != null ? (
-              <p className="relative mt-2 text-[11px] text-slate-600">
+              <p className="mt-2 text-[11px] text-slate-600">
                 Session peak <span className="font-mono text-slate-200">{formatUsd(maxJackpotToday)}</span>
               </p>
             ) : null}
@@ -1285,11 +1281,7 @@ export default function JackpotPanel({
 
           {/* Next milestone */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="pointer-events-none absolute inset-0">
-              <div className="xpot-mini-glow absolute -inset-10 opacity-[0.30]" />
-            </div>
-
-            <div className="relative flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
                 <p className="mt-1 text-sm text-slate-100">
@@ -1311,7 +1303,7 @@ export default function JackpotPanel({
               </span>
             </div>
 
-            <div className="relative mt-3">
+            <div className="mt-3">
               <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
                 <div
                   className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.12)]"
@@ -1335,210 +1327,22 @@ export default function JackpotPanel({
         </div>
 
         <style jsx>{`
-          /* Slab edge glow (gives that “alive border” feel like your screenshot) */
-          .xpot-slab-edgeglow {
-            border-radius: 1rem;
-            padding: 1px;
-            background: linear-gradient(
-              110deg,
-              rgba(124, 200, 255, 0.28),
-              rgba(236, 72, 153, 0.16),
-              rgba(99, 102, 241, 0.16),
-              rgba(124, 200, 255, 0.28)
-            );
-            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            opacity: 0.65;
-            filter: blur(0px);
-            animation: xpotEdgeGlow 9.5s ease-in-out infinite;
-          }
-          @keyframes xpotEdgeGlow {
-            0% {
-              opacity: 0.52;
-              filter: saturate(1.05) brightness(1);
-            }
-            50% {
-              opacity: 0.82;
-              filter: saturate(1.25) brightness(1.08);
-            }
-            100% {
-              opacity: 0.52;
-              filter: saturate(1.05) brightness(1);
-            }
-          }
-
-          /* Big moving ribbon (the “super joy to watch” layer) */
-          .xpot-nebula-ribbon {
-            background: conic-gradient(
-              from 210deg at 50% 40%,
-              rgba(124, 200, 255, 0.0) 0deg,
-              rgba(124, 200, 255, 0.18) 30deg,
-              rgba(236, 72, 153, 0.14) 90deg,
-              rgba(99, 102, 241, 0.12) 150deg,
-              rgba(124, 200, 255, 0.10) 210deg,
-              rgba(124, 200, 255, 0.0) 320deg
-            );
-            filter: blur(26px);
-            transform: translate3d(0, 0, 0);
-            animation: xpotRibbon 14s ease-in-out infinite;
-            mix-blend-mode: screen;
-            opacity: 0.9;
-          }
-          @keyframes xpotRibbon {
-            0% {
-              transform: translate3d(-2%, -1%, 0) rotate(-6deg) scale(1.02);
-              opacity: 0.65;
-            }
-            45% {
-              transform: translate3d(2.5%, 1.5%, 0) rotate(9deg) scale(1.05);
-              opacity: 0.95;
-            }
-            100% {
-              transform: translate3d(-2%, -1%, 0) rotate(-6deg) scale(1.02);
-              opacity: 0.65;
-            }
-          }
-
-          /* Aurora field */
-          .xpot-aurora {
-            background: radial-gradient(circle_at_18%_22%, rgba(124, 200, 255, 0.18), transparent 55%),
-              radial-gradient(circle_at_82%_18%, rgba(236, 72, 153, 0.14), transparent 58%),
-              radial-gradient(circle_at_55%_85%, rgba(99, 102, 241, 0.12), transparent 60%);
-            filter: blur(10px);
-            transform: translate3d(0, 0, 0);
-            animation: xpotAurora 12s ease-in-out infinite;
-          }
-          @keyframes xpotAurora {
-            0% {
-              transform: translate3d(-1.5%, -1%, 0) scale(1);
-              opacity: 0.72;
-            }
-            50% {
-              transform: translate3d(2%, 1.2%, 0) scale(1.03);
-              opacity: 0.98;
-            }
-            100% {
-              transform: translate3d(-1.5%, -1%, 0) scale(1);
-              opacity: 0.72;
-            }
-          }
-
-          /* Starfield drift (subtle but makes it feel “alive”) */
-          .xpot-stars {
-            background-image:
-              radial-gradient(circle at 12% 22%, rgba(255, 255, 255, 0.18) 0.6px, transparent 1.2px),
-              radial-gradient(circle at 72% 18%, rgba(255, 255, 255, 0.14) 0.6px, transparent 1.2px),
-              radial-gradient(circle at 44% 64%, rgba(255, 255, 255, 0.12) 0.6px, transparent 1.2px),
-              radial-gradient(circle at 86% 72%, rgba(255, 255, 255, 0.10) 0.6px, transparent 1.2px),
-              radial-gradient(circle at 24% 80%, rgba(255, 255, 255, 0.10) 0.6px, transparent 1.2px);
-            background-size: 520px 320px;
-            animation: xpotStars 18s linear infinite;
-            opacity: 0.6;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotStars {
-            0% {
-              transform: translate3d(0, 0, 0);
-              opacity: 0.4;
-            }
-            50% {
-              transform: translate3d(-2.2%, 1.6%, 0);
-              opacity: 0.7;
-            }
-            100% {
-              transform: translate3d(0, 0, 0);
-              opacity: 0.4;
-            }
-          }
-
-          .xpot-grid {
-            background-image: linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
-            background-size: 44px 44px;
-            mask-image: radial-gradient(circle_at_40%_20%, black 0%, transparent 65%);
-          }
-
-          .xpot-noise {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
-            background-size: 180px 180px;
-            mix-blend-mode: overlay;
-          }
-
-          .xpot-scan {
-            background: linear-gradient(
-              180deg,
-              transparent 0%,
-              rgba(255, 255, 255, 0.040) 42%,
-              transparent 78%
-            );
-            transform: translateY(-30%);
-            animation: xpotScan 6.0s linear infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotScan {
-            0% {
-              transform: translateY(-35%);
-              opacity: 0.10;
-            }
-            30% {
-              opacity: 0.26;
-            }
-            100% {
-              transform: translateY(55%);
-              opacity: 0.12;
-            }
-          }
-
-          /* Slab sheen sweep */
-          .xpot-sheen-slab {
-            background: linear-gradient(
-              115deg,
-              transparent 0%,
-              rgba(255, 255, 255, 0.07) 18%,
-              rgba(255, 255, 255, 0.03) 28%,
-              transparent 44%
-            );
-            transform: translateX(-40%);
-            animation: xpotSheenSlab 9.6s ease-in-out infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotSheenSlab {
-            0% {
-              transform: translateX(-45%);
-              opacity: 0.10;
-            }
-            45% {
-              transform: translateX(35%);
-              opacity: 0.42;
-            }
-            100% {
-              transform: translateX(60%);
-              opacity: 0.12;
-            }
-          }
-
-          .xpot-vignette {
-            background: radial-gradient(circle_at_50%_20%, rgba(0, 0, 0, 0.0) 0%, rgba(0, 0, 0, 0.26) 62%),
-              radial-gradient(circle_at_50%_100%, rgba(0, 0, 0, 0.20) 0%, rgba(0, 0, 0, 0.46) 70%);
-          }
-
           /* Capsule border that feels alive */
           .xpot-capsule-border {
             padding: 1px;
             background: linear-gradient(
               120deg,
-              rgba(124, 200, 255, 0.38),
-              rgba(236, 72, 153, 0.24),
-              rgba(99, 102, 241, 0.24),
-              rgba(124, 200, 255, 0.38)
+              rgba(124, 200, 255, 0.35),
+              rgba(236, 72, 153, 0.22),
+              rgba(99, 102, 241, 0.22),
+              rgba(124, 200, 255, 0.35)
             );
             -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
             -webkit-mask-composite: xor;
             mask-composite: exclude;
             border-radius: 1rem;
             animation: xpotBorderDrift 6.8s ease-in-out infinite;
-            opacity: 0.82;
+            opacity: 0.78;
           }
           @keyframes xpotBorderDrift {
             0% {
@@ -1546,7 +1350,7 @@ export default function JackpotPanel({
               transform: translateY(0);
             }
             50% {
-              filter: saturate(1.28) brightness(1.10);
+              filter: saturate(1.25) brightness(1.08);
               transform: translateY(-0.5px);
             }
             100% {
@@ -1558,7 +1362,7 @@ export default function JackpotPanel({
           .xpot-capsule-glow {
             background: radial-gradient(circle_at_20%_30%, rgba(124, 200, 255, 0.14), transparent 60%),
               radial-gradient(circle_at_85%_25%, rgba(236, 72, 153, 0.10), transparent 62%),
-              linear-gradient(180deg, rgba(2, 6, 23, 0.38), rgba(0, 0, 0, 0.1));
+              linear-gradient(180deg, rgba(2, 6, 23, 0.35), rgba(0, 0, 0, 0.1));
             animation: xpotGlowDrift 9.5s ease-in-out infinite;
             mix-blend-mode: screen;
           }
@@ -1569,7 +1373,7 @@ export default function JackpotPanel({
             }
             50% {
               transform: translateX(1.5%);
-              opacity: 0.98;
+              opacity: 0.95;
             }
             100% {
               transform: translateX(-1%);
@@ -1577,9 +1381,225 @@ export default function JackpotPanel({
             }
           }
 
+          /* Nebula luxury (richer bloom, softer movement) */
+          .xpot-aurora {
+            background: radial-gradient(circle_at_18%_22%, rgba(124, 200, 255, 0.18), transparent 55%),
+              radial-gradient(circle_at_82%_18%, rgba(236, 72, 153, 0.14), transparent 58%),
+              radial-gradient(circle_at_55%_85%, rgba(99, 102, 241, 0.12), transparent 60%),
+              radial-gradient(circle_at_35%_55%, rgba(16, 185, 129, 0.06), transparent 62%);
+            filter: blur(12px);
+            transform: translate3d(0, 0, 0);
+            animation: xpotAurora 14s ease-in-out infinite;
+          }
+          @keyframes xpotAurora {
+            0% {
+              transform: translate3d(-1.8%, -1.2%, 0) scale(1);
+              opacity: 0.70;
+            }
+            50% {
+              transform: translate3d(2.4%, 1.4%, 0) scale(1.03);
+              opacity: 0.98;
+            }
+            100% {
+              transform: translate3d(-1.8%, -1.2%, 0) scale(1);
+              opacity: 0.70;
+            }
+          }
+
+          /* Cosmic engine (subtle rotating core + orbits) */
+          .xpot-core {
+            background: radial-gradient(circle_at_50%_45%, rgba(124, 200, 255, 0.16), transparent 38%),
+              radial-gradient(circle_at_55%_55%, rgba(236, 72, 153, 0.10), transparent 42%),
+              radial-gradient(circle_at_48%_62%, rgba(99, 102, 241, 0.10), transparent 44%);
+            filter: blur(10px);
+            mix-blend-mode: screen;
+            animation: xpotCoreSpin 18s linear infinite;
+            opacity: 0.85;
+          }
+          @keyframes xpotCoreSpin {
+            0% {
+              transform: rotate(0deg) scale(1);
+            }
+            50% {
+              transform: rotate(180deg) scale(1.03);
+            }
+            100% {
+              transform: rotate(360deg) scale(1);
+            }
+          }
+
+          .xpot-orbit {
+            background: conic-gradient(
+              from 90deg,
+              transparent 0%,
+              rgba(124, 200, 255, 0.10) 14%,
+              transparent 26%,
+              rgba(236, 72, 153, 0.08) 44%,
+              transparent 58%,
+              rgba(99, 102, 241, 0.08) 74%,
+              transparent 100%
+            );
+            mask-image: radial-gradient(circle_at_50%_45%, transparent 0%, black 34%, black 60%, transparent 72%);
+            filter: blur(8px);
+            mix-blend-mode: screen;
+            animation: xpotOrbit 10.5s linear infinite;
+            opacity: 0.55;
+          }
+          @keyframes xpotOrbit {
+            0% {
+              transform: rotate(0deg) translate3d(0, 0, 0);
+            }
+            100% {
+              transform: rotate(360deg) translate3d(0, 0, 0);
+            }
+          }
+
+          /* Instrument panel (grid drift + secondary grid for parallax) */
+          .xpot-grid {
+            background-image: linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: radial-gradient(circle_at_45%_22%, black 0%, transparent 68%);
+            animation: xpotGridDrift 18s linear infinite;
+            transform: translate3d(0, 0, 0);
+          }
+          .xpot-grid2 {
+            background-image: linear-gradient(rgba(124, 200, 255, 0.06) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(236, 72, 153, 0.05) 1px, transparent 1px);
+            background-size: 70px 70px;
+            mask-image: radial-gradient(circle_at_55%_30%, black 0%, transparent 72%);
+            animation: xpotGridDrift2 28s linear infinite;
+            transform: translate3d(0, 0, 0);
+            mix-blend-mode: screen;
+          }
+          @keyframes xpotGridDrift {
+            0% {
+              background-position: 0px 0px;
+              opacity: 0.38;
+            }
+            50% {
+              background-position: 44px 22px;
+              opacity: 0.52;
+            }
+            100% {
+              background-position: 88px 44px;
+              opacity: 0.38;
+            }
+          }
+          @keyframes xpotGridDrift2 {
+            0% {
+              background-position: 0px 0px;
+              opacity: 0.30;
+            }
+            50% {
+              background-position: -70px 35px;
+              opacity: 0.44;
+            }
+            100% {
+              background-position: -140px 70px;
+              opacity: 0.30;
+            }
+          }
+
+          /* Stars (tiny, luxury sparkle - not noisy) */
+          .xpot-stars {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+              radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+            background-size: 120px 120px, 220px 220px;
+            background-position: 10px 20px, 40px 80px;
+            filter: blur(0.2px);
+            animation: xpotStars 32s linear infinite;
+            opacity: 0.55;
+          }
+          @keyframes xpotStars {
+            0% {
+              transform: translate3d(0, 0, 0);
+              opacity: 0.45;
+            }
+            50% {
+              transform: translate3d(-1.2%, -0.6%, 0);
+              opacity: 0.62;
+            }
+            100% {
+              transform: translate3d(0, 0, 0);
+              opacity: 0.45;
+            }
+          }
+
+          .xpot-noise {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+            background-size: 180px 180px;
+            mix-blend-mode: overlay;
+          }
+
+          /* Scan (kept subtle) */
+          .xpot-scan {
+            background: linear-gradient(
+              180deg,
+              transparent 0%,
+              rgba(255, 255, 255, 0.035) 42%,
+              transparent 78%
+            );
+            transform: translateY(-30%);
+            animation: xpotScan 6.8s linear infinite;
+            mix-blend-mode: screen;
+          }
+          @keyframes xpotScan {
+            0% {
+              transform: translateY(-35%);
+              opacity: 0.07;
+            }
+            30% {
+              opacity: 0.20;
+            }
+            100% {
+              transform: translateY(55%);
+              opacity: 0.09;
+            }
+          }
+
+          /* Data shimmer (instrument panel highlight sweep) */
+          .xpot-data-shimmer {
+            background: linear-gradient(
+              110deg,
+              transparent 0%,
+              rgba(124, 200, 255, 0.10) 18%,
+              rgba(255, 255, 255, 0.06) 28%,
+              rgba(236, 72, 153, 0.08) 36%,
+              transparent 52%
+            );
+            transform: translateX(-60%);
+            animation: xpotShimmer 7.4s ease-in-out infinite;
+            mix-blend-mode: screen;
+            filter: blur(1px);
+          }
+          @keyframes xpotShimmer {
+            0% {
+              transform: translateX(-70%);
+              opacity: 0.00;
+            }
+            18% {
+              opacity: 0.45;
+            }
+            55% {
+              transform: translateX(48%);
+              opacity: 0.22;
+            }
+            100% {
+              transform: translateX(70%);
+              opacity: 0.00;
+            }
+          }
+
+          /* Premium vignette (keeps it luxury, avoids “gamey”) */
+          .xpot-vignette {
+            background: radial-gradient(circle_at_50%_35%, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.55));
+            opacity: 0.55;
+          }
+
           .xpot-pulse-halo {
-            background: radial-gradient(circle_at_40%_35%, rgba(124, 200, 255, 0.16), transparent 55%),
-              radial-gradient(circle_at_70%_45%, rgba(236, 72, 153, 0.12), transparent 60%);
+            background: radial-gradient(circle_at_40%_35%, rgba(124, 200, 255, 0.14), transparent 55%),
+              radial-gradient(circle_at_70%_45%, rgba(236, 72, 153, 0.10), transparent 60%);
             filter: blur(14px);
             animation: xpotHalo 0.55s ease-out 1;
           }
@@ -1643,93 +1663,19 @@ export default function JackpotPanel({
             }
           }
 
-          /* Meta card micro life */
-          .xpot-meta-glow {
-            background: radial-gradient(circle_at_20%_20%, rgba(124, 200, 255, 0.12), transparent 62%),
-              radial-gradient(circle_at_80%_20%, rgba(236, 72, 153, 0.08), transparent 62%),
-              radial-gradient(circle_at_55%_85%, rgba(99, 102, 241, 0.08), transparent 65%);
-            filter: blur(18px);
-            animation: xpotMetaDrift 12.5s ease-in-out infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotMetaDrift {
-            0% {
-              transform: translate3d(-1.5%, -1.2%, 0);
-              opacity: 0.35;
-            }
-            50% {
-              transform: translate3d(2%, 1.6%, 0);
-              opacity: 0.7;
-            }
-            100% {
-              transform: translate3d(-1.5%, -1.2%, 0);
-              opacity: 0.35;
-            }
-          }
-          .xpot-sheen-meta {
-            background: linear-gradient(
-              115deg,
-              transparent 0%,
-              rgba(255, 255, 255, 0.06) 18%,
-              rgba(255, 255, 255, 0.02) 28%,
-              transparent 44%
-            );
-            transform: translateX(-40%);
-            animation: xpotSheenMeta 11s ease-in-out infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotSheenMeta {
-            0% {
-              transform: translateX(-45%);
-              opacity: 0.10;
-            }
-            45% {
-              transform: translateX(35%);
-              opacity: 0.30;
-            }
-            100% {
-              transform: translateX(60%);
-              opacity: 0.10;
-            }
-          }
-
-          .xpot-mini-glow {
-            background: radial-gradient(circle_at_18%_22%, rgba(124, 200, 255, 0.10), transparent 60%),
-              radial-gradient(circle_at_82%_18%, rgba(236, 72, 153, 0.07), transparent 62%),
-              radial-gradient(circle_at_55%_85%, rgba(99, 102, 241, 0.06), transparent 65%);
-            filter: blur(18px);
-            animation: xpotMiniDrift 13.5s ease-in-out infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotMiniDrift {
-            0% {
-              transform: translate3d(0, 0, 0);
-              opacity: 0.25;
-            }
-            50% {
-              transform: translate3d(-2%, 1.3%, 0);
-              opacity: 0.55;
-            }
-            100% {
-              transform: translate3d(0, 0, 0);
-              opacity: 0.25;
-            }
-          }
-
           @media (prefers-reduced-motion: reduce) {
-            .xpot-slab-edgeglow,
-            .xpot-nebula-ribbon,
             .xpot-aurora,
+            .xpot-core,
+            .xpot-orbit,
+            .xpot-grid,
+            .xpot-grid2,
             .xpot-stars,
             .xpot-scan,
+            .xpot-data-shimmer,
             .xpot-sheen,
-            .xpot-sheen-slab,
             .xpot-dot,
             .xpot-capsule-border,
-            .xpot-capsule-glow,
-            .xpot-meta-glow,
-            .xpot-sheen-meta,
-            .xpot-mini-glow {
+            .xpot-capsule-glow {
               animation: none !important;
             }
           }
