@@ -443,16 +443,22 @@ function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
 
 function PriceUnavailableNote({
   compact,
+  mode = 'pending-pair',
 }: {
   compact?: boolean;
+  mode?: 'feed-error' | 'pending-pair';
 }) {
-  const title = 'TOKEN NOT TRADABLE YET';
+  const title =
+    mode === 'feed-error' ? 'PRICE FEED UNAVAILABLE' : 'TOKEN NOT TRADABLE YET';
 
-  const body =
-    'Price feed is temporarily unavailable. We will retry automatically.';
+  // ✅ Your requested 2nd line (for BOTH modes)
+  const body = 'Price feed is temporarily unavailable. We will retry automatically.';
 
+  // ✅ Your requested 3rd line for pending-pair
   const secondary =
-    'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
+    mode === 'feed-error'
+      ? 'If this persists, DexScreener may be rate limiting. Refresh later.'
+      : 'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
 
   return (
     <div
@@ -461,7 +467,6 @@ function PriceUnavailableNote({
         compact ? 'px-3 py-2' : 'px-4 py-3',
       ].join(' ')}
     >
-      {/* soft glow */}
       <div
         className="pointer-events-none absolute inset-0 opacity-70"
         style={{
@@ -470,18 +475,17 @@ function PriceUnavailableNote({
         }}
       />
 
-      {/* title */}
       <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">
         {title}
       </p>
 
-      {/* main message – lighter & readable */}
-      <p className="relative mt-2 text-[12px] text-slate-200/80">
+      {/* ✅ 2nd line lighter + readable */}
+      <p className="relative mt-2 text-[12px] text-amber-100/80">
         {body}
       </p>
 
-      {/* supporting explanation – clearly secondary */}
-      <p className="relative mt-1 text-[11px] italic text-slate-300/60">
+      {/* ✅ Your requested secondary styling */}
+      <p className="mt-1 text-[11px] italic text-slate-300/60">
         {secondary}
       </p>
     </div>
