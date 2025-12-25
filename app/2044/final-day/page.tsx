@@ -58,10 +58,11 @@ export default function FinalDayPage() {
         badge: 'ARCHIVE EDITION',
         dateLine: 'Saturday, 12 October 2044',
         section: 'Culture / Protocols',
-        headline: "XPOT's Final Day",
+        headline: "XPOT’s Final Day",
         deck:
-          'It did not collapse. It did not vanish. It did not betray anyone. It ended on schedule - after 19.18 years of daily continuity, and the world treated the last countdown like a national holiday.',
+          'It did not collapse. It did not vanish. It did not betray anyone. It simply reached the end of its promise - after 19.18 years of daily continuity.',
         byline: 'By The XPOT Desk',
+        price: '€3.00',
       };
     }
 
@@ -69,10 +70,11 @@ export default function FinalDayPage() {
       badge: 'PRESENT DAY',
       dateLine: 'Today',
       section: 'Live',
-      headline: 'The Final Draw is Approaching',
+      headline: 'A Daily Ritual With an Ending',
       deck:
-        'This is the live countdown. Flip to 2044 to read the archived edition - the one people shared, printed, and kept when the run finally ended.',
+        'This is the live countdown. When it reaches zero, the day’s winner is chosen - and the world moves one step closer to the Final Draw.',
       byline: 'XPOT',
+      price: '',
     };
   }, [era]);
 
@@ -183,13 +185,6 @@ export default function FinalDayPage() {
     'radial-gradient(900px_700px_at_85%_25%,rgba(236,72,153,0.12),transparent_62%),' +
     'radial-gradient(1000px_900px_at_50%_90%,rgba(16,185,129,0.08),transparent_60%),' +
     'linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0))]';
-
-  const closesIsoZ = useMemo(() => {
-    if (!live?.closesAt) return null;
-    const ms = Date.parse(live.closesAt);
-    if (!Number.isFinite(ms)) return null;
-    return new Date(ms).toISOString(); // ISO 8601 UTC format (YYYY-MM-DDTHH:MM:SSZ)
-  }, [live?.closesAt]);
 
   return (
     <main
@@ -302,7 +297,7 @@ export default function FinalDayPage() {
                   </span>
                 </div>
                 <div className="justify-self-center font-extrabold">{meta.dateLine}</div>
-                <div className="justify-self-end font-black">€3.00</div>
+                <div className="justify-self-end font-black">{meta.price}</div>
               </div>
 
               <div className="mt-4 text-center">
@@ -336,33 +331,32 @@ export default function FinalDayPage() {
                     <span className="float-left pr-2 text-[42px] font-black leading-[0.9] text-[rgba(18,16,12,0.92)]">
                       I
                     </span>
-                    t started like nothing.
+                    t’s the final day.
                   </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">
-                    A small ritual, a daily pull, a quiet promise: the clock would reach zero, and a winner would be
-                    chosen.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">Then days became months. Months became years.</p>
+                  <p className="mt-3 text-[15px] leading-[1.62]">Not a crash. Not a rug. Not a scandal.</p>
+                  <p className="mt-3 text-[15px] leading-[1.62]">A scheduled ending.</p>
 
                   <div className="mt-4 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
                     Continuity
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    For <strong>19.18 years</strong>, XPOT arrived on time. Through bubbles and boredom. Through wars,
-                    weddings, hospital corridors and long, ordinary Tuesdays. Through everything.
+                    For <strong>19.18 years</strong>, every single day, XPOT arrived on time. Same ritual. Same pause in
+                    conversation. Same pull in the stomach when the numbers fell toward zero.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    People did not just play it. They lived beside it. A shared clock for strangers who never met, but
-                    always counted down together.
+                    People didn’t only play it. They <em>kept time with it</em>. School runs. lunch breaks. late nights.
+                    A thousand ordinary days stitched into one shared clock.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    Parents taught it to kids the way they taught them to cross roads. Grandparents checked it like they
-                    checked the weather.
+                    By the last day, XPOT isn’t “a crypto project” anymore. It’s{' '}
+                    <strong>a daily ritual the planet learned together</strong>.
+                  </p>
+                  <p className="mt-3 text-[15px] leading-[1.62]">
+                    Not because of greed, but because it never asked anyone to believe in anything except the next day.
                   </p>
 
                   <blockquote className="mt-4 border-l-4 border-[rgba(18,16,12,0.35)] bg-[rgba(18,16,12,0.03)] px-3 py-3 italic">
-                    “It did not promise miracles. It promised a draw - daily - and it kept that promise until the last
-                    breath.”
+                    “It didn’t promise miracles. It promised a draw - daily - and it kept its word.”
                     <span className="mt-2 block font-sans text-[12px] font-black uppercase tracking-[0.10em] text-[rgba(18,16,12,0.65)] not-italic">
                       - Archive commentary, 2044
                     </span>
@@ -374,13 +368,10 @@ export default function FinalDayPage() {
                   <div className="font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
                     The final draw
                   </div>
-                  <p className="mt-2 text-[15px] leading-[1.62]">Everyone knows it is the last one.</p>
+                  <p className="mt-2 text-[15px] leading-[1.62]">Everyone knows it’s the last one.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    There are streams in kitchens and bars. Phones held up in crowded trains. People watching at work,
-                    pretending not to.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">
-                    Not because the jackpot got bigger. Because the ending made every previous day mean something.
+                    Streams everywhere. Millions watching live. Some crying before it even begins - not because they
+                    expect to win, but because they remember where they were when they first heard the sound.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/35 p-3">
@@ -406,21 +397,23 @@ export default function FinalDayPage() {
                   </div>
 
                   <p className="mt-4 text-[15px] leading-[1.62]">
-                    No last-minute twist. No forced sequel. No fireworks to distract from the truth.
+                    No boost. No fireworks. No panic patch. No last-minute “upgrade”. Just the same rules, carried all
+                    the way to the end.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The countdown enters its final minute and something spreads across the world - the same silence that
-                    falls in a stadium before a penalty.
+                    The countdown starts. And something changes in the room: people stop hoping for luck, and start
+                    listening for closure.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    When it hits zero, a winner is chosen. Someone ordinary. Someone random. Someone whose life will be
-                    divided into before and after - like always.
+                    When it hits zero, a winner is chosen. Someone ordinary. Someone unknown. Someone who will carry the
+                    last number like a scar and a medal at the same time.
                   </p>
+                  <p className="mt-3 text-[15px] leading-[1.62]">XPOT does what it promised. One final time.</p>
 
                   <div className="my-4 h-px bg-[linear-gradient(90deg,transparent,rgba(18,16,12,0.35),transparent)]" />
                   <p className="text-[14px] leading-[1.62] text-[rgba(18,16,12,0.78)]">
-                    What ends today is not only a product. It is a shared ritual - a daily habit that outlived cycles,
-                    headlines and cynicism.
+                    What ends today isn’t only a product. It’s the disappearance of a tiny daily suspense that lived in
+                    millions of lives - a shared habit that outlived cycles, headlines and skepticism.
                   </p>
                 </div>
 
@@ -429,23 +422,25 @@ export default function FinalDayPage() {
                   <div className="font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
                     And then something rare happens
                   </div>
-                  <p className="mt-2 text-[15px] leading-[1.62]">
-                    Nothing breaks. Nothing explodes. Nothing disappears behind an apology post.
-                  </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">The system simply stops issuing draws.</p>
+                  <p className="mt-2 text-[15px] leading-[1.62]">Nothing breaks. Nothing explodes. Nothing disappears.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The site stays online. The history stays visible. Every winner, every day, perfectly accounted for.
-                    The proof does not fade.
+                    The system simply stops issuing draws - like a candle allowed to burn down instead of being blown
+                    out.
+                  </p>
+                  <p className="mt-3 text-[15px] leading-[1.62]">
+                    The site stays online. The record stays visible. Every winner. Every day. Nineteen point one eight
+                    years - perfectly accounted for, as if it mattered enough to be kept.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/40 p-4">
                     <div className="font-sans text-[11px] font-black uppercase tracking-[0.18em] text-[rgba(18,16,12,0.70)]">
                       A quiet line appears
                     </div>
-                    <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">“XPOT completed its mission.”</div>
+                    <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">
+                      “XPOT completed its mission.”
+                    </div>
                     <div className="mt-2 font-sans text-[13px] leading-[1.55] opacity-85">
-                      No ads. No upsell. No “v2 coming soon”. Just the rarest thing in technology: an ending that tells
-                      the truth.
+                      No ads. No upsell. No “v2 coming soon”. No bargaining. Just the truth - and the silence after.
                     </div>
                   </div>
 
@@ -453,23 +448,25 @@ export default function FinalDayPage() {
                     The architect
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    The person who built it is not remembered for being loud. The archive names them an architect - of
-                    the longest fair game ever sustained.
+                    In the years that follow, the origin story becomes strangely simple. No hero speeches. No victory
+                    laps. Just a set of rules written once - then obeyed for nearly two decades.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The rules did not move. The supply did not inflate to survive. The promise did not become “forever”
-                    just to avoid saying goodbye.
+                    The person behind it is rarely discussed as a personality. Instead, they are remembered as a
+                    decision: the decision to stop. the decision to refuse inflation. the decision to never move the
+                    goalposts, even when the world begged for “more”.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    XPOT chose a rarer thing: a finite promise, honored all the way to the last second.
+                    That restraint becomes the signature. In a culture of endless beginnings, the rarest thing is an
+                    ending that arrives on time.
                   </p>
 
                   <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
                     Legacy
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    XPOT becomes studied - in economics, game theory and psychology - not as the biggest jackpot, but as
-                    proof that trust can be engineered and kept.
+                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest jackpot, but
+                    as proof that trust can be engineered and kept.
                   </p>
                   <ul className="mt-3 list-disc pl-5 text-[15px] leading-[1.6]">
                     <li>The game that never cheated</li>
@@ -478,13 +475,13 @@ export default function FinalDayPage() {
                   </ul>
 
                   <p className="mt-4 font-sans text-[15px] font-black tracking-[-0.01em]">
-                    Most projects die because they do not know how to end. XPOT ended because it said it would.
+                    Most projects die because they don’t know how to end. XPOT ended because it said it would.
                   </p>
                 </div>
               </div>
             </div>
 
-            <footer className="mt-5 flex items-center justify-center gap-3 font-sans text-[11px] font-black uppercase tracking-[0.16em] opacity-75 print:opacity-100">
+            <footer className="mt-5 flex flex-wrap items-center justify-center gap-3 font-sans text-[11px] font-black uppercase tracking-[0.16em] opacity-75 print:opacity-100">
               <span>XPOT TIMES / ARCHIVE EDITION</span>
               <span className="inline-block h-1 w-1 rounded-full bg-black/40 print:bg-black/60" />
               <span>Printed record layout</span>
@@ -507,9 +504,16 @@ export default function FinalDayPage() {
             ].join(' ')}
           >
             <header className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-[0_40px_120px_rgba(0,0,0,0.45)]">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em]">
-                <Radio size={14} className="opacity-90" />
-                <span>{meta.badge}</span>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em]">
+                  <Radio size={14} className="opacity-90" />
+                  <span>{meta.badge}</span>
+                </div>
+
+                {/* Optional: personal imprint without breaking the story */}
+                <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
+                  Initiated by <span className="text-white/90">@MorkeDrevos</span>
+                </div>
               </div>
 
               <h2 className="mt-4 text-[clamp(22px,3.2vw,34px)] font-black leading-[1.08] tracking-[-0.02em]">
@@ -529,7 +533,7 @@ export default function FinalDayPage() {
                   className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[13px] font-black text-white/90 hover:bg-white/[0.07]"
                   href="/hub"
                 >
-                  Enter today&apos;s XPOT
+                  Enter today’s draw
                 </Link>
               </div>
             </header>
@@ -540,7 +544,7 @@ export default function FinalDayPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] opacity-85">
                     <Timer size={14} />
-                    <span>Live countdown</span>
+                    <span>Draw countdown</span>
                   </div>
 
                   <span
@@ -586,7 +590,9 @@ export default function FinalDayPage() {
                   </div>
 
                   <div className="font-black">
-                    {closesIsoZ ? `Closes at (UTC): ${closesIsoZ}` : liveErr ?? 'Fetching live draw...'}
+                    {live?.closesAt
+                      ? `Closes at: ${new Date(live.closesAt).toUTCString()}`
+                      : liveErr ?? 'Fetching live draw...'}
                   </div>
                 </div>
 
@@ -601,16 +607,12 @@ export default function FinalDayPage() {
                 <div className="mt-2 h-px bg-[linear-gradient(90deg,transparent,rgba(236,72,153,0.50),transparent)] opacity-70" />
 
                 <p className="mt-4 text-[14px] leading-[1.6] opacity-90">
-                  This page is a live clock and a living story. It lets anyone feel the run - the tension, the cadence,
-                  the moment the timer reaches zero.
+                  XPOT is designed as a daily ritual with proof. One winner per day. One visible history. One ending.
                 </p>
-
-                <div className="mt-4 text-[12px] font-black uppercase tracking-[0.16em] opacity-80">How it works</div>
-                <ul className="mt-2 list-disc pl-5 text-[14px] leading-[1.65] opacity-90">
-                  <li>Countdown is pulled from the live draw endpoint</li>
-                  <li>Winners are provable on-chain</li>
-                  <li>Archive edition is designed for printing and sharing</li>
-                </ul>
+                <p className="mt-3 text-[14px] leading-[1.6] opacity-90">
+                  The archive edition is how the world remembers the ending. The live side is how the world feels it - one
+                  countdown at a time.
+                </p>
 
                 <div className="mt-4 text-[12px] font-black uppercase tracking-[0.16em] opacity-80">Shortcuts</div>
                 <ul className="mt-2 list-disc pl-5 text-[14px] leading-[1.65] opacity-90">
