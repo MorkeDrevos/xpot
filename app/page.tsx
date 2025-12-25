@@ -39,7 +39,7 @@ import XpotFooter from '@/components/XpotFooter';
 import { createPortal } from 'react-dom';
 
 import FinalDrawDate from '@/components/FinalDrawDate';
-import { RUN_DAYS, RUN_START_MADRID, RUN_END_MADRID, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
+import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_TERMS = '/terms';
