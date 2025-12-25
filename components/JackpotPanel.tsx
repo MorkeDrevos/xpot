@@ -1778,7 +1778,7 @@ export default function JackpotPanel({
             href="/hub"
             className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition"
           >
-            Enter now →
+            Enter today&apos;s XPOT now →
           </Link>
         </div>
 
