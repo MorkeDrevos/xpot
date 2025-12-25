@@ -1177,10 +1177,6 @@ function HomePageInner() {
                         </div>
                       ) : null}
 
-                      <div className="mt-6">
-                        <RoyalContractBar mint={mint} />
-                      </div>
-
                       <div className="mt-7 flex flex-wrap items-center gap-3">
                         <Link
                           href={ROUTE_HUB}
