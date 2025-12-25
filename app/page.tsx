@@ -1157,7 +1157,7 @@ function HomePageInner() {
                         </h1>
 
                         <p className="mt-3 text-[13px] leading-relaxed text-slate-400">
-                          Daily draws are the heartbeat. The Final Draw is the ending -{' '}
+                          The Final Draw is the ending -{' '}
                           <span className="text-slate-200">{RUN_END_EU}</span>.
                         </p>
                       </div>
@@ -1174,10 +1174,6 @@ function HomePageInner() {
                           Protocol layer
                         </Pill>
 
-                        <Pill tone="amber">
-                          <Timer className="h-3.5 w-3.5" />
-                          Next draw {countdown}
-                        </Pill>
                       </div>
 
                       <div className="mt-5">
