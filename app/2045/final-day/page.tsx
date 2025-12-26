@@ -94,7 +94,7 @@ export default function FinalDayPage() {
   }, [era]);
 
   const onFlip = useCallback(() => {
-    setEra((e) => (e === '2045' ? 'now' : '2045'));
+    setEra(e => (e === '2045' ? 'now' : '2045'));
   }, []);
 
   const onPrint = useCallback(() => {
@@ -206,8 +206,8 @@ export default function FinalDayPage() {
     live?.status === 'OPEN'
       ? 'bg-emerald-500/10 text-emerald-200 ring-emerald-500/20'
       : live?.status === 'COMPLETED'
-        ? 'bg-white/5 text-white/85 ring-white/15'
-        : 'bg-amber-500/10 text-amber-200 ring-amber-500/20';
+      ? 'bg-white/5 text-white/85 ring-white/15'
+      : 'bg-amber-500/10 text-amber-200 ring-amber-500/20';
 
   const dayLabel =
     live?.dayNumber && live?.dayTotal
@@ -301,10 +301,7 @@ export default function FinalDayPage() {
       </div>
 
       {/* Flip scene */}
-      <section
-        className="mx-auto max-w-[1120px] [perspective:1400px] print:[perspective:none]"
-        aria-label="Final Day story"
-      >
+      <section className="mx-auto max-w-[1120px] [perspective:1400px] print:[perspective:none]" aria-label="Final Day story">
         <div
           className={[
             'relative [transform-style:preserve-3d] motion-safe:transition-transform motion-safe:duration-[800ms]',
@@ -484,8 +481,8 @@ export default function FinalDayPage() {
                     The system simply stops issuing draws - like a candle allowed to burn down instead of being blown out.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The protocol remains accessible. The record remains visible. Every winner. Every day. Nineteen point
-                    one eight years - perfectly accounted for, as if it mattered enough to be kept.
+                    The site stays online. The record stays visible. Every winner. Every day. Nineteen point one eight
+                    years - perfectly accounted for, as if it mattered enough to be kept.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/40 p-4">
@@ -625,14 +622,14 @@ export default function FinalDayPage() {
 
                 {liveErr ? (
                   <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-bold text-white/80">
-                    {liveErr}. Protocol telemetry should return{' '}
+                    {liveErr}. Check that <span className="text-white/95">/api/draw/live</span> returns{' '}
                     <span className="text-white/95">dailyXpot</span>, <span className="text-white/95">dayNumber</span>,{' '}
                     <span className="text-white/95">dayTotal</span> and <span className="text-white/95">closesAt</span>.
                   </div>
                 ) : (
                   <>
                     <div className="mt-4 grid grid-cols-4 gap-2">
-                      {(['d', 'h', 'm', 's'] as const).map((k) => {
+                      {(['d', 'h', 'm', 's'] as const).map(k => {
                         const v =
                           cd == null
                             ? '--'
@@ -685,8 +682,8 @@ export default function FinalDayPage() {
                   XPOT is designed as a daily ritual with proof. One winner per day. One visible history. One ending.
                 </p>
                 <p className="mt-3 text-[14px] leading-[1.6] opacity-90">
-                  The archive edition is how the ecosystem remembers the ending. The live side is how the ecosystem feels it
-                  - one countdown at a time.
+                  The archive edition is how the world remembers the ending. The live side is how the world feels it - one
+                  countdown at a time.
                 </p>
 
                 <div className="mt-4 text-[12px] font-black uppercase tracking-[0.16em] opacity-80">Shortcuts</div>
