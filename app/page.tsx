@@ -1410,13 +1410,10 @@ function HomePageInner() {
 
                       {/* Headline */}
                       <div className="relative mt-4">
-                        <h1 className="text-balance text-[32px] font-semibold leading-[1.05] sm:text-[50px]">
-                          One protocol.
-                          <br />
-                          <span className="text-emerald-300 drop-shadow-[0_10px_40px_rgba(16,185,129,0.25)]">
-                            One daily XPOT draw.
-                          </span>
-                        </h1>
+                        <h1 className="text-4xl font-semibold tracking-tight">
+  One protocol.<br />
+  One daily <span className="xpot-gradient-text">XPOT</span> draw.
+</h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
                           Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
