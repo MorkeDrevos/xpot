@@ -1,235 +1,214 @@
-// components/XpotConnectXOverlay.tsx
+// components/HubLockOverlay.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { SignedIn, SignedOut, UserButton, useSignIn } from '@clerk/nextjs';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, ShieldCheck, X, Sparkles, Radio } from 'lucide-react';
-
-type Props = {
-  afterSignOutUrl?: string;
-  triggerClassName?: string;
-  redirectUrlComplete?: string;
-  title?: string;
-  subtitle?: string;
-};
+import Link from 'next/link';
+import { AnimatePresence, motion, useReducedMotion, type Transition } from 'framer-motion';
+import { ArrowRight, ShieldCheck, X as XIcon, Sparkles, Lock } from 'lucide-react';
+import { useSignIn } from '@clerk/nextjs';
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
+  'group inline-flex w-full items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold px-5 py-3 text-sm font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_GHOST =
-  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex w-full items-center justify-center rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.07]';
 
-export default function XpotConnectXOverlay({
-  afterSignOutUrl = '/',
-  redirectUrlComplete = '/hub',
-  triggerClassName = 'text-sm font-medium text-slate-200 hover:text-white transition',
-  title = 'Access the XPOT ecosystem',
-  subtitle = 'Connect X to link identity. No posting required.',
-}: Props) {
-  const [open, setOpen] = useState(false);
+export default function HubLockOverlay({
+  open,
+  reason,
+  showLinkX = false,
+}: {
+  open: boolean;
+  reason?: string;
+  showLinkX?: boolean;
+}) {
   const reduce = useReducedMotion();
   const { isLoaded, signIn } = useSignIn();
 
-  const transition = useMemo(() => {
-    return reduce
-      ? { duration: 0.15 }
-      : { type: 'spring', stiffness: 260, damping: 26 };
-  }, [reduce]);
-
-  // lock scroll while open
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  const transition: Transition = reduce
+    ? { duration: 0.15 }
+    : { type: 'spring', stiffness: 260, damping: 26 };
 
   async function handleContinueWithX() {
     if (!isLoaded || !signIn) return;
 
-    try {
-      await signIn.authenticateWithRedirect({
-        strategy: 'oauth_x',
-        redirectUrl: '/sso-callback',
-        redirectUrlComplete,
-      });
-      setOpen(false);
-    } catch (e) {
-      console.error('[XPOT] X sign-in failed', e);
-    }
+    await signIn.authenticateWithRedirect({
+      strategy: 'oauth_x',
+      redirectUrl: '/sso-callback',
+      redirectUrlComplete: '/hub',
+    });
   }
 
+  const title = showLinkX ? 'Link X to unlock the dashboard' : 'Connect X to enter today’s draw';
+  const sub =
+    reason ??
+    'One entry per X account per draw. XPOT reads your public handle only. No posting required.';
+
   return (
-    <>
-      <SignedOut>
-        <button onClick={() => setOpen(true)} className={triggerClassName}>
-          Sign in
-        </button>
-      </SignedOut>
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-[95] flex items-center justify-center px-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          {/* Global styles for premium overlay texture */}
+          <style jsx global>{`
+            @keyframes xpotOverlaySweep {
+              0% { transform: translateX(-140%) rotate(10deg); opacity: 0; }
+              12% { opacity: 0.35; }
+              55% { opacity: 0.14; }
+              100% { transform: translateX(160%) rotate(10deg); opacity: 0; }
+            }
+            @keyframes xpotOverlayPulse {
+              0%, 100% { opacity: 0.55; }
+              50% { opacity: 0.85; }
+            }
+            .xpot-overlay-noise {
+              background-image:
+                radial-gradient(circle at 20% 12%, rgba(56,189,248,0.18), transparent 55%),
+                radial-gradient(circle at 85% 30%, rgba(217,70,239,0.14), transparent 58%),
+                radial-gradient(circle at 50% 95%, rgba(245,158,11,0.10), transparent 60%),
+                radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06), transparent 55%);
+            }
+            .xpot-overlay-sweep::before{
+              content:"";
+              position:absolute;
+              top:-55%;
+              left:-60%;
+              width:55%;
+              height:240%;
+              opacity:0;
+              transform: rotate(10deg);
+              background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255,255,255,0.10),
+                rgba(56,189,248,0.10),
+                rgba(16,185,129,0.08),
+                transparent
+              );
+              animation: xpotOverlaySweep 1.7s ease-in-out infinite;
+              mix-blend-mode: screen;
+              pointer-events:none;
+            }
+          `}</style>
 
-      <SignedIn>
-        <UserButton afterSignOutUrl={afterSignOutUrl} />
-      </SignedIn>
+          {/* Backdrop: keep page visible, blur it, add premium vignette (no "cheap black sheet") */}
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-2xl" />
+          <div className="pointer-events-none absolute inset-0 xpot-overlay-noise opacity-90" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(0,0,0,0.80),transparent_60%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(0,0,0,0.60),transparent_55%)]" />
 
-      <AnimatePresence>
-        {open ? (
-          <div className="fixed inset-0 z-[9999]">
-            <style jsx global>{`
-              @keyframes xpotOverlaySweep {
-                0% { transform: translateX(-140%) rotate(12deg); opacity: 0; }
-                12% { opacity: 0.35; }
-                60% { opacity: 0.14; }
-                100% { transform: translateX(160%) rotate(12deg); opacity: 0; }
-              }
-              @keyframes xpotOverlayFloat {
-                0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-6px); }
-              }
-              .xpot-overlay-sweep::before{
-                content:"";
-                position:absolute;
-                top:-55%;
-                left:-60%;
-                width:55%;
-                height:240%;
-                opacity:0;
-                transform: rotate(12deg);
-                background: linear-gradient(
-                  90deg,
-                  transparent,
-                  rgba(255,255,255,0.10),
-                  rgba(56,189,248,0.10),
-                  rgba(16,185,129,0.09),
-                  rgba(255,215,0,0.06),
-                  transparent
-                );
-                animation: xpotOverlaySweep 1.8s ease-in-out infinite;
-                mix-blend-mode: screen;
-                pointer-events:none;
-              }
-            `}</style>
+          {/* Card */}
+          <motion.div
+            initial={{ y: 18, scale: 0.985, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: 12, scale: 0.99, opacity: 0 }}
+            transition={transition}
+            className="
+              relative w-full max-w-[460px]
+              overflow-hidden rounded-[30px]
+              border border-white/10
+              bg-[linear-gradient(to_bottom,rgba(2,6,23,0.78),rgba(2,6,23,0.56))]
+              shadow-[0_50px_160px_rgba(0,0,0,0.85)]
+              backdrop-blur-xl
+            "
+          >
+            <div className="xpot-overlay-sweep absolute inset-0" />
 
-            {/* Backdrop: show page behind + blur (XPOT vibe) */}
-            <button
-              type="button"
-              aria-label="Close"
-              onClick={() => setOpen(false)}
-              className="absolute inset-0"
-            >
-              <div className="absolute inset-0 bg-black/35" />
-              <div className="absolute inset-0 backdrop-blur-2xl" />
-              <div className="absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_20%_15%,rgba(16,185,129,0.18),transparent_58%),radial-gradient(circle_at_85%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_55%_92%,rgba(255,215,0,0.08),transparent_60%)]" />
-            </button>
+            {/* Inner glows */}
+            <div className="pointer-events-none absolute -top-28 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-sky-500/12 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-32 left-[12%] h-[420px] w-[420px] rounded-full bg-fuchsia-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
 
-            {/* Dialog */}
-            <div className="relative mx-auto flex h-full max-w-[520px] items-center px-5">
-              <motion.div
-                initial={{ opacity: 0, y: 18, scale: 0.985 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 14, scale: 0.99 }}
-                transition={transition}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Connect X"
-                onClick={e => e.stopPropagation()}
-                className="relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/55 shadow-[0_60px_180px_rgba(0,0,0,0.75)] backdrop-blur-xl"
-              >
-                <div className="xpot-overlay-sweep absolute inset-0" />
-
-                {/* Soft nebula bloom */}
-                <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_82%_28%,rgba(56,189,248,0.16),transparent_62%),radial-gradient(circle_at_52%_100%,rgba(255,215,0,0.09),transparent_64%)]" />
-
-                {/* Gold edge hint */}
-                <div className="pointer-events-none absolute inset-0 rounded-[32px] ring-1 ring-white/10" />
-                <div className="pointer-events-none absolute inset-0 rounded-[32px] ring-1 ring-amber-300/10" />
-
-                <div className="relative p-6">
-                  {/* Top row */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
-                      <span className="inline-flex h-2 w-2 items-center justify-center rounded-full bg-emerald-400/90 shadow-[0_0_0_4px_rgba(16,185,129,0.10)]" />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-200">
-                        Protocol access
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setOpen(false)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]"
-                      aria-label="Close"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {/* Title block */}
-                  <div className="mt-5">
-                    <h3 className="text-[20px] font-semibold text-slate-100">{title}</h3>
-                    <p className="mt-1 text-[12px] leading-relaxed text-slate-400">{subtitle}</p>
-                  </div>
-
-                  {/* Trust panel */}
-                  <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]"
-                        style={{ animation: reduce ? 'none' : 'xpotOverlayFloat 4.8s ease-in-out infinite' }}
-                      >
-                        <ShieldCheck className="h-5 w-5 text-emerald-200" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[12px] font-semibold text-slate-100">Secure identity link</p>
-                        <p className="mt-0.5 text-[11px] text-slate-400">
-                          XPOT reads your public handle only and ties it to your entries.
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                            <Radio className="h-3.5 w-3.5 text-emerald-200" />
-                            One identity
-                          </span>
-                          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                            <Sparkles className="h-3.5 w-3.5 text-amber-200" />
-                            Zero friction
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* CTA */}
-                  <div className="mt-5 space-y-2">
-                    <button
-                      type="button"
-                      onClick={handleContinueWithX}
-                      disabled={!isLoaded}
-                      className={`${BTN_PRIMARY} h-11 w-full text-[13px]`}
-                    >
-                      Continue with X
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setOpen(false)}
-                      className={`${BTN_GHOST} h-10 w-full text-[12px]`}
-                    >
-                      Not now
-                    </button>
-                  </div>
-
-                  <p className="mt-5 text-center text-[11px] text-slate-500">
-                    Want a different X account? Switch on x.com first then come back.
-                  </p>
+            {/* Header strip */}
+            <div className="relative px-6 pt-6">
+              <div className="flex items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
+                  <span
+                    className="h-2 w-2 rounded-full bg-emerald-400/90 shadow-[0_0_0_5px_rgba(16,185,129,0.10)]"
+                    style={{ animation: reduce ? 'none' : 'xpotOverlayPulse 1.8s ease-in-out infinite' }}
+                  />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-200">
+                    XPOT ACCESS
+                  </span>
                 </div>
-              </motion.div>
+
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-200" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                    Secure
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <h2 className="text-[19px] font-semibold text-slate-100">{title}</h2>
+                <p className="mt-2 text-[12.5px] leading-relaxed text-slate-400">{sub}</p>
+              </div>
+
+              {/* Value props */}
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <MiniPill icon={<Lock className="h-4 w-4" />} title="Gated" desc="X identity required" />
+                <MiniPill icon={<Sparkles className="h-4 w-4" />} title="Clean" desc="No posting needed" />
+                <MiniPill icon={<ShieldCheck className="h-4 w-4" />} title="Safe" desc="Public handle only" />
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 space-y-3">
+                <button
+                  type="button"
+                  onClick={handleContinueWithX}
+                  disabled={!isLoaded}
+                  className={BTN_PRIMARY}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <XIcon className="h-4 w-4" />
+                    {showLinkX ? 'Link X' : 'Continue with X'}
+                  </span>
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                <Link href="/" className={BTN_GHOST}>
+                  Back to homepage
+                </Link>
+              </div>
+
+              <p className="mt-5 pb-6 text-center text-[11px] text-slate-500">
+                Switching accounts? Change it on x.com then return here.
+              </p>
             </div>
-          </div>
-        ) : null}
-      </AnimatePresence>
-    </>
+
+            {/* Bottom hairline */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function MiniPill({
+  icon,
+  title,
+  desc,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+      <div className="flex items-center gap-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-200">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold text-slate-100">{title}</p>
+          <p className="mt-0.5 text-[10.5px] text-slate-500">{desc}</p>
+        </div>
+      </div>
+    </div>
   );
 }
