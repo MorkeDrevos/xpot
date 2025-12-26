@@ -1307,7 +1307,7 @@ function HomePageInner() {
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.60))]" />
 
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6">
+        <div className="relative z-10 w-full px-0">
           <div className="py-5 sm:py-7">
             <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
               <CosmicHeroBackdrop />
@@ -1388,7 +1388,7 @@ function HomePageInner() {
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
 
-                          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="relative flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                                 Eligibility
@@ -1569,7 +1569,7 @@ function HomePageInner() {
                               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                                 Eligibility
                               </p>
-                              <p className="mt-2 text-base font-semibold text-slate-50 sm:text-lg">
+                              <p className="mt-2 text-base font-semibold text-slate-50 sm:text-lg whitespace-nowrap">
   Hold XPOT
 </p>
                               <p className="mt-2 text-sm text-slate-400">No tickets, no purchase flow</p>
