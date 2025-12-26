@@ -1287,226 +1287,241 @@ function HomePageInner() {
                   lg:p-8
                 "
               >
-                {/* LEFT */}
-                <div className="flex flex-col justify-between gap-6">
-                  <div className="space-y-6">
-                    {/* Hero */}
-                    <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur sm:p-7">
-                      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(16,185,129,0.22),transparent)]" />
+{/* LEFT */}
+<div className="flex flex-col justify-between gap-6">
+  <div className="space-y-6">
+    {/* Hero */}
+    <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur sm:p-7">
+      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(16,185,129,0.22),transparent)]" />
 
-                      {/* Top line + pills */}
-                      <div className="relative flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          NO TICKETS · JUST XPOT HOLDINGS
-                        </p>
+      {/* ENTRY MECHANICS (restored) */}
+      <div className="relative mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+            ENTRY MECHANICS
+          </p>
+          <span className="hidden h-px flex-1 bg-white/10 sm:block" />
+        </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                            <ShieldCheck className="h-3.5 w-3.5" />
-                            Holdings-based
-                          </span>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+          • ELIGIBILITY • IDENTITY • PROOF
+        </p>
+      </div>
 
-                          <TinyTooltip label="Entry is verified on-chain in the hub (balance check) before you can claim.">
-                            <span className="inline-flex cursor-default items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                              <span className="opacity-70">?</span>
-                              Verified
-                            </span>
-                          </TinyTooltip>
-                        </div>
-                      </div>
+      <p className="relative text-[15px] leading-relaxed text-slate-300">
+        Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle and paid
+        on-chain. Built to scale into a rewards ecosystem for communities, creators and sponsors.
+      </p>
 
-                      {/* Headline */}
-                      <div className="relative mt-4">
-                        <h1 className="text-balance text-[32px] font-semibold leading-[1.05] sm:text-[50px]">
-                          One protocol.
-                          <br />
-                          <span className={GOLD_TEXT}>One daily XPOT draw.</span>
-                        </h1>
-
-                        <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
-                          Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
-                          - <FinalDrawDate className="text-slate-200" />.
-                          <span className="block mt-2 text-slate-300">
-                            We’re building toward becoming the world’s biggest game - one day at a time.
-                          </span>
-                        </p>
-                      </div>
-
-                      {/* Countdown capsule */}
-                      <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 ring-1 ring-white/[0.05]">
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                            Next draw
-                          </p>
-                          <p className="mt-1 text-[12px] text-slate-400">
-                            In <span className="font-semibold text-slate-200">{countdown}</span>
-                            <span className="text-slate-600"> · </span>
-                            <span className="text-slate-300">{cutoffLabel}</span>
-                          </p>
-                        </div>
-
-                        <span className="xpot-live-ring inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
-                          <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
-                          Live
-                        </span>
-                      </div>
-
-{/* Eligibility + Final draw (premium, less busy) */}
-<div className="relative mt-5 grid gap-4 lg:grid-cols-2">
-  {/* ELIGIBILITY (hub-verified, no minimum shown here) */}
-  <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
-    <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.11),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
-
-    <div className="relative flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Eligibility</p>
-        <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
-          Hold XPOT in a connected wallet. Eligibility is verified on-chain in the hub before you can claim entry.
+      {/* Top line + pill */}
+      <div className="relative mt-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+          NO TICKETS · JUST XPOT HOLDINGS
         </p>
 
-        <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-          <span>Cutoff:</span>
-          <span className="text-slate-200">{cutoffLabel}</span>
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Holdings-based
+        </span>
+      </div>
+
+      {/* Headline (green restored) */}
+      <div className="relative mt-4">
+        <h1 className="text-balance text-[32px] font-semibold leading-[1.05] sm:text-[50px]">
+          One protocol.
+          <br />
+          <span className="text-emerald-300 drop-shadow-[0_10px_40px_rgba(16,185,129,0.25)]">
+            One daily XPOT draw.
+          </span>
+        </h1>
+
+        <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
+          Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending -{' '}
+          <FinalDrawDate className="text-slate-200" />.
+          <span className="block mt-2 text-slate-300">
+            We’re building toward becoming the world’s biggest game - one day at a time.
+          </span>
+        </p>
+      </div>
+
+      {/* Countdown capsule */}
+      <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 ring-1 ring-white/[0.05]">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Next draw</p>
+          <p className="mt-1 text-[12px] text-slate-400">
+            In <span className="font-semibold text-slate-200">{countdown}</span>
+            <span className="text-slate-600"> · </span>
+            <span className="text-slate-300">{cutoffLabel}</span>
+          </p>
+        </div>
+
+        <span className="xpot-live-ring inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
+          <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
+          Live
+        </span>
+      </div>
+
+      {/* Eligibility + Final draw (premium, less busy) */}
+      <div className="relative mt-5 grid gap-4 lg:grid-cols-2">
+        {/* ELIGIBILITY (hub-verified, no minimum shown here) */}
+        <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
+          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.11),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
+
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Eligibility</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+                Hold XPOT in a connected wallet. Eligibility is verified on-chain in the hub before you can claim entry.
+              </p>
+
+              <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                <span>Cutoff:</span>
+                <span className="text-slate-200">{cutoffLabel}</span>
+              </div>
+            </div>
+
+            <span className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Verified in hub
+            </span>
+          </div>
+        </div>
+
+        {/* FINAL DRAW (DAY badge stands out) */}
+        <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
+          <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Final Draw</p>
+
+              <p className="mt-2 text-[12px] text-slate-400">
+                Ends <span className="text-slate-200">{RUN_END_EU}</span>
+              </p>
+
+              <p className="mt-1 text-[12px] text-slate-400">
+                <span className="text-slate-200">{run.daysRemaining}</span> days remaining
+              </p>
+            </div>
+
+            <div className="shrink-0 text-right">
+              <div
+                className={[
+                  'inline-flex items-center gap-2 rounded-full border px-4 py-2.5',
+                  GOLD_BORDER_SOFT,
+                  'bg-[rgba(var(--xpot-gold),0.12)]',
+                  'shadow-[0_22px_90px_rgba(var(--xpot-gold),0.22)]',
+                  GOLD_RING_SHADOW,
+                ].join(' ')}
+              >
+                <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
+                <span className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT}`}>Day</span>
+                <span className="font-mono text-[14px] text-slate-50">
+                  {run.day}/{RUN_DAYS}
+                </span>
+              </div>
+
+              <p className="mt-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">Run status</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <span className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-        <ShieldCheck className="h-3.5 w-3.5" />
-        Verified in hub
-      </span>
+      {bonusActive ? (
+        <div className="mt-5">
+          <BonusVault>
+            <BonusStrip variant="home" />
+          </BonusVault>
+        </div>
+      ) : null}
+
+      {/* CTA (Read terms removed) */}
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`} title="Enter the hub">
+          Enter the hub
+          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      </div>
     </div>
+
+    {/* RUNWAY / TOKENOMICS BANNER (restored as img 3 vibe) */}
+    <div className="relative overflow-hidden rounded-[28px] border border-slate-900/70 bg-slate-950/45 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
+      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(56,189,248,0.24),transparent)]" />
+
+      <div className="relative flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] shadow-[0_0_26px_rgba(var(--xpot-gold),0.16)]">
+            <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+          </span>
+
+          <div className="leading-tight">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-100">
+              <span className={GOLD_TEXT}>Built with a 10+ year rewards runway at launch</span>
+            </p>
+            <p className="mt-1 text-[12px] text-slate-400">
+              Protocol distribution reserve
+              <span className="text-slate-700"> • </span>
+              payouts stay on-chain
+              <span className="text-slate-700"> • </span>
+              <span className="text-slate-300">{cutoffLabel}</span>
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href={ROUTE_TOKENOMICS_RESERVE}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={[
+            'group inline-flex items-center gap-2 rounded-full',
+            'border border-[rgba(var(--xpot-gold),0.55)] bg-[rgba(var(--xpot-gold),0.06)]',
+            'px-5 py-2.5 text-[13px] font-semibold text-slate-100',
+            'shadow-[0_18px_70px_rgba(var(--xpot-gold),0.14)]',
+            'hover:bg-white/[0.06] transition',
+          ].join(' ')}
+          title="View tokenomics"
+        >
+          <span>View tokenomics</span>
+          <ArrowRight className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`} />
+        </Link>
+      </div>
+    </div>
+
+    {/* 3 CARDS STRIP (restored as img 4) */}
+    <div className="grid gap-4 lg:grid-cols-3">
+      <div className="rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Eligibility</p>
+        <p className="mt-3 text-lg font-semibold text-slate-50">Hold XPOT</p>
+        <p className="mt-2 text-sm text-slate-400">No tickets, no purchase flow</p>
+      </div>
+
+      <div className="rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Identity</p>
+        <p className="mt-3 text-lg font-semibold text-slate-50">Handle-based</p>
+        <p className="mt-2 text-sm text-slate-400">Winners shown by @handle</p>
+      </div>
+
+      <div className="rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Proof</p>
+        <p className="mt-3 text-lg font-semibold text-slate-50">On-chain</p>
+        <p className="mt-2 text-sm text-slate-400">Verify payouts in explorer</p>
+      </div>
+    </div>
+
+    <p className="px-1 text-[11px] text-slate-500/95">
+      Winners are shown by @handle and provable on-chain. Day flips at 22:00 (Madrid).
+    </p>
   </div>
 
-  {/* FINAL DRAW (DAY badge stands out) */}
-  <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
-    <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
-
-    <div className="relative flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Final Draw</p>
-
-        <p className="mt-2 text-[12px] text-slate-400">
-          Ends <span className="text-slate-200">{RUN_END_EU}</span>
-        </p>
-
-        <p className="mt-1 text-[12px] text-slate-400">
-          <span className="text-slate-200">{run.daysRemaining}</span> days remaining
-        </p>
-      </div>
-
-      <div className="shrink-0 text-right">
-        <div
-          className={[
-            'inline-flex items-center gap-2 rounded-full border px-3.5 py-2',
-            GOLD_BORDER_SOFT,
-            'bg-[rgba(var(--xpot-gold),0.10)]',
-            'shadow-[0_18px_70px_rgba(var(--xpot-gold),0.18)]',
-            GOLD_RING_SHADOW,
-          ].join(' ')}
-        >
-          <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
-          <span className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT}`}>Day</span>
-          <span className="font-mono text-[13px] text-slate-50">
-            {run.day}/{RUN_DAYS}
-          </span>
-        </div>
-
-        <p className="mt-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">Run status</p>
-      </div>
-    </div>
+  <div className="grid gap-3 sm:grid-cols-3">
+    <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
+    <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
+    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
   </div>
 </div>
-
-                      {bonusActive ? (
-                        <div className="mt-5">
-                          <BonusVault>
-                            <BonusStrip variant="home" />
-                          </BonusVault>
-                        </div>
-                      ) : null}
-
-                      <div className="mt-6 flex flex-wrap items-center gap-3">
-                        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`} title="Enter the hub">
-                          Enter the hub
-                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                        </Link>
-
-                        <Link
-                          href={ROUTE_TERMS}
-                          className="px-2 py-2 text-[12px] font-semibold text-slate-400 hover:text-slate-200 transition"
-                          title="Read the terms"
-                        >
-                          Read terms
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Run Architecture */}
-                    <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/45 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
-                      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(56,189,248,0.24),transparent)]" />
-
-                      <div className="relative flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`
-                              inline-flex h-10 w-10 items-center justify-center rounded-full
-                              border ${GOLD_BORDER_SOFT} bg-white/[0.03]
-                              shadow-[0_0_26px_rgba(var(--xpot-gold),0.16)]
-                            `}
-                          >
-                            <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
-                          </span>
-
-                          <div className="leading-tight">
-                            <p className={`text-[11px] font-semibold uppercase tracking-[0.26em] ${GOLD_TEXT}`}>
-                              Run architecture
-                            </p>
-                            <p className="mt-1 text-[12px] text-slate-400">
-                              Reserve-backed distribution
-                              <span className="text-slate-700"> • </span>
-                              Proof stays on-chain
-                              <span className="text-slate-700"> • </span>
-                              <span className="text-slate-300">{cutoffLabel}</span>
-                            </p>
-                          </div>
-                        </div>
-
-                        <Link
-                          href={ROUTE_TOKENOMICS_RESERVE}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`
-                            group inline-flex items-center gap-2 rounded-full
-                            border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
-                            px-4 py-2 text-[12px] font-semibold
-                            text-slate-100 shadow-[0_18px_60px_rgba(0,0,0,0.35)]
-                            hover:bg-white/[0.06] transition
-                          `}
-                          title="Open Tokenomics (Protocol distribution reserve)"
-                        >
-                          <ExternalLink className="h-4 w-4 text-slate-300/90" />
-                          <span className="text-slate-200">Open reserve</span>
-                          <ArrowRight
-                            className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`}
-                          />
-                        </Link>
-                      </div>
-                    </div>
-
-                    <p className="px-1 text-[11px] text-slate-500/95">
-                      Winners are shown by @handle and provable on-chain. Day flips at 22:00 (Madrid).
-                    </p>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
-                    <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
-                    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
-                  </div>
-                </div>
 
                 {/* RIGHT */}
                 <motion.div
