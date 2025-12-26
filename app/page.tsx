@@ -1410,9 +1410,10 @@ function HomePageInner() {
 
                       {/* Headline */}
                       <div className="relative mt-4">
-                        <h1 className="text-4xl font-semibold tracking-tight">
-  One protocol.<br />
-  One daily <span className="xpot-gradient-text">XPOT</span> draw.
+                        <h1 className="text-5xl font-semibold tracking-tight text-white">
+  One protocol.
+  <br />
+  One daily <span className="xpot-xpotword">XPOT</span> draw.
 </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
