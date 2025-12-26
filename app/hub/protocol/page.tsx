@@ -2,8 +2,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   Activity,
   ChartNoAxesCombined,
@@ -18,6 +18,10 @@ import {
   Info,
   Copy,
   Check,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Gauge,
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
@@ -54,12 +58,24 @@ type ProtocolState = {
 
 type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
+const LIVE_REFRESH_MS = 15_000;
+const PROTO_REFRESH_MS = 20_000;
+
+// Client-side sampling (no backend changes)
+type Sample = { t: number; v: number };
+const SAMPLE_MAX = 180; // ~60 min if sampling ~20s
+const KEY_PRICE = 'xpot_protocol_samples_price_v1';
+const KEY_LP = 'xpot_protocol_samples_lp_v1';
+const KEY_VOL = 'xpot_protocol_samples_vol_v1';
+
 function StatusPill({
   children,
   tone = 'slate',
+  className = '',
 }: {
   children: React.ReactNode;
   tone?: PillTone;
+  className?: string;
 }) {
   const cls =
     tone === 'emerald'
@@ -76,7 +92,7 @@ function StatusPill({
         inline-flex items-center gap-2
         rounded-full border px-3 py-1
         text-[10px] font-semibold uppercase tracking-[0.18em]
-        ${cls}
+        ${cls} ${className}
       `}
     >
       {children}
@@ -101,6 +117,12 @@ function fmtUsdCompact(n?: number) {
   const v = Number(n);
   if (!Number.isFinite(v)) return '—';
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
+function fmtUsd(n?: number, digits = 6) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '—';
+  return `$${v.toFixed(digits)}`;
 }
 
 function fmtPct(n?: number) {
@@ -151,20 +173,158 @@ function shortAddr(a: string) {
   return `${a.slice(0, 4)}…${a.slice(-4)}`;
 }
 
+function clamp01(n: number) {
+  return Math.max(0, Math.min(1, n));
+}
+
+function loadSamples(key: string): Sample[] {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const j = JSON.parse(raw);
+    if (!Array.isArray(j)) return [];
+    return j
+      .map((x: any) => ({ t: Number(x?.t), v: Number(x?.v) }))
+      .filter((s) => Number.isFinite(s.t) && Number.isFinite(s.v))
+      .slice(-SAMPLE_MAX);
+  } catch {
+    return [];
+  }
+}
+
+function saveSamples(key: string, arr: Sample[]) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(arr.slice(-SAMPLE_MAX)));
+  } catch {
+    // no-op
+  }
+}
+
+function pushSampleIntoState({
+  key,
+  v,
+  current,
+  setCurrent,
+}: {
+  key: string;
+  v?: number;
+  current: Sample[];
+  setCurrent: (next: Sample[]) => void;
+}) {
+  const num = Number(v);
+  if (!Number.isFinite(num)) return;
+
+  const now = Date.now();
+  const last = current[current.length - 1];
+
+  // avoid noisy duplicates
+  if (last && now - last.t < 6000 && Math.abs(last.v - num) < 1e-12) return;
+
+  const next = [...current, { t: now, v: num }].slice(-SAMPLE_MAX);
+  setCurrent(next);
+  saveSamples(key, next);
+}
+
+function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: number }) {
+  const width = 240;
+  const gid = useId();
+  const gradId = `xpotSpark_${gid}`;
+
+  const points = useMemo(() => {
+    if (!samples || samples.length < 2) return '';
+
+    const vs = samples.map((s) => s.v);
+    const min = Math.min(...vs);
+    const max = Math.max(...vs);
+
+    const span = max - min || 1;
+
+    const xs = samples.map((_, i) => (i / (samples.length - 1)) * (width - 8) + 4);
+    const ys = samples.map((s) => {
+      const y01 = (s.v - min) / span;
+      const y = (1 - clamp01(y01)) * (height - 10) + 5;
+      return y;
+    });
+
+    return xs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+  }, [samples, height]);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-transparent">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="block w-full"
+        style={{ height }}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="rgba(56,189,248,0.60)" />
+            <stop offset="50%" stopColor="rgba(52,211,153,0.60)" />
+            <stop offset="100%" stopColor="rgba(217,70,239,0.55)" />
+          </linearGradient>
+        </defs>
+
+        <path
+          d={points ? `M ${points.replaceAll(' ', ' L ')}` : ''}
+          fill="none"
+          stroke={`url(#${gradId})`}
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          opacity={points ? 0.9 : 0}
+        />
+
+        <path
+          d={points ? `M ${points.replaceAll(' ', ' L ')} L ${width - 4},${height - 5} L 4,${height - 5} Z` : ''}
+          fill={`url(#${gradId})`}
+          opacity={points ? 0.08 : 0}
+        />
+      </svg>
+
+      {!points ? (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Awaiting samples
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function XpotAmount({ amount }: { amount: number }) {
   const n = Number(amount);
   const text = Number.isFinite(n) ? n.toLocaleString() : '—';
   return (
     <span className="inline-flex items-baseline gap-3">
-      <span className="font-mono text-amber-200 tracking-[0.18em] text-lg sm:text-xl">
-        {text}
-      </span>
+      <span className="font-mono text-amber-200 tracking-[0.18em] text-lg sm:text-xl">{text}</span>
       <span className="text-slate-400 font-semibold tracking-[0.14em]">XPOT</span>
     </span>
   );
 }
 
+function SkeletonLine({ w = 'w-24' }: { w?: string }) {
+  return (
+    <span
+      className={`
+        inline-block h-5 ${w}
+        rounded-full
+        bg-white/[0.06]
+        shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]
+        overflow-hidden
+        relative
+        xpot-shimmer
+      `}
+      aria-hidden="true"
+    />
+  );
+}
+
 export default function HubProtocolPage() {
+  const reduceMotion = useReducedMotion();
+
   const [draw, setDraw] = useState<LiveDraw | null>(null);
   const [bonus, setBonus] = useState<BonusXPOT[]>([]);
   const [proto, setProto] = useState<ProtocolState | null>(null);
@@ -172,16 +332,34 @@ export default function HubProtocolPage() {
   const [loading, setLoading] = useState(true);
   const [protoLoading, setProtoLoading] = useState(true);
 
+  const [liveFetching, setLiveFetching] = useState(false);
+  const [protoFetching, setProtoFetching] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [protoError, setProtoError] = useState<string | null>(null);
 
   const [now, setNow] = useState(() => Date.now());
-
   const [copied, setCopied] = useState(false);
+
+  // Refresh telemetry
+  const [liveNextAt, setLiveNextAt] = useState(() => Date.now() + LIVE_REFRESH_MS);
+  const [protoNextAt, setProtoNextAt] = useState(() => Date.now() + PROTO_REFRESH_MS);
+  const [liveLatencyMs, setLiveLatencyMs] = useState<number | null>(null);
+  const [protoLatencyMs, setProtoLatencyMs] = useState<number | null>(null);
 
   // Avoid state updates after unmount and avoid out-of-order responses
   const liveReqId = useRef(0);
   const protoReqId = useRef(0);
+
+  // “tick” animation keys for numbers (only increments on value change)
+  const [lpKey, setLpKey] = useState(0);
+  const [pxKey, setPxKey] = useState(0);
+  const [volKey, setVolKey] = useState(0);
+
+  // Sparklines in memory (load once, then update state + persist)
+  const [priceSamples, setPriceSamples] = useState<Sample[]>([]);
+  const [lpSamples, setLpSamples] = useState<Sample[]>([]);
+  const [volSamples, setVolSamples] = useState<Sample[]>([]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -189,89 +367,160 @@ export default function HubProtocolPage() {
   }, []);
 
   useEffect(() => {
-    let alive = true;
-
-    async function load() {
-      const req = ++liveReqId.current;
-
-      try {
-        setError(null);
-
-        const ac = new AbortController();
-        const t = window.setTimeout(() => ac.abort(), 5500);
-
-        const [dRes, bRes] = await Promise.all([
-          fetch('/api/draw/live', { cache: 'no-store', signal: ac.signal }),
-          fetch('/api/bonus/live', { cache: 'no-store', signal: ac.signal }),
-        ]).finally(() => window.clearTimeout(t));
-
-        const d = await dRes.json().catch(() => ({}));
-        const b = await bRes.json().catch(() => ({}));
-
-        if (!alive || req !== liveReqId.current) return;
-
-        setDraw(d?.draw ?? null);
-        setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
-      } catch {
-        if (!alive) return;
-        setError('Failed to load live data. Please refresh.');
-      } finally {
-        if (alive) setLoading(false);
-      }
+    try {
+      setPriceSamples(loadSamples(KEY_PRICE));
+      setLpSamples(loadSamples(KEY_LP));
+      setVolSamples(loadSamples(KEY_VOL));
+    } catch {
+      // no-op
     }
-
-    load();
-    const t = window.setInterval(load, 15_000);
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
   }, []);
+
+  async function loadLive() {
+    const req = ++liveReqId.current;
+
+    try {
+      setLiveFetching(true);
+      setError(null);
+
+      const ac = new AbortController();
+      const t = window.setTimeout(() => ac.abort(), 5500);
+
+      const t0 = performance.now();
+      const [dRes, bRes] = await Promise.all([
+        fetch('/api/draw/live', { cache: 'no-store', signal: ac.signal }),
+        fetch('/api/bonus/live', { cache: 'no-store', signal: ac.signal }),
+      ]).finally(() => window.clearTimeout(t));
+      const t1 = performance.now();
+
+      if (req !== liveReqId.current) return;
+
+      setLiveLatencyMs(Math.round(t1 - t0));
+
+      const d = await dRes.json().catch(() => ({}));
+      const b = await bRes.json().catch(() => ({}));
+
+      if (req !== liveReqId.current) return;
+
+      setDraw(d?.draw ?? null);
+      setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
+    } catch {
+      if (req !== liveReqId.current) return;
+      setError('Failed to load live data. Please refresh.');
+    } finally {
+      if (req === liveReqId.current) setLiveFetching(false);
+      setLoading(false);
+      setLiveNextAt(Date.now() + LIVE_REFRESH_MS);
+    }
+  }
+
+  async function loadProto() {
+    const req = ++protoReqId.current;
+
+    try {
+      setProtoFetching(true);
+      setProtoError(null);
+
+      const ac = new AbortController();
+      const t = window.setTimeout(() => ac.abort(), 5500);
+
+      const t0 = performance.now();
+      const res = await fetch('/api/protocol/state', {
+        cache: 'no-store',
+        signal: ac.signal,
+      }).finally(() => window.clearTimeout(t));
+      const t1 = performance.now();
+
+      if (req !== protoReqId.current) return;
+
+      setProtoLatencyMs(Math.round(t1 - t0));
+
+      if (!res.ok) {
+        setProto(null);
+        return;
+      }
+
+      const j = await res.json().catch(() => ({}));
+      const next = (j?.state ?? j ?? null) as ProtocolState | null;
+
+      // Tick triggers only if changed vs previous proto
+      setProto((prev) => {
+        const prevLp = Number(prev?.lpUsd);
+        const prevPx = Number(prev?.priceUsd);
+        const prevVol = Number(prev?.volume24hUsd);
+
+        const nextLp = Number(next?.lpUsd);
+        const nextPx = Number(next?.priceUsd);
+        const nextVol = Number(next?.volume24hUsd);
+
+        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp) setLpKey((k) => k + 1);
+        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx) setPxKey((k) => k + 1);
+        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol) setVolKey((k) => k + 1);
+
+        return next;
+      });
+
+      // Samples: update in-memory + persist (no re-parsing storage each refresh)
+      if (next) {
+        pushSampleIntoState({
+          key: KEY_PRICE,
+          v: next.priceUsd,
+          current: priceSamples,
+          setCurrent: setPriceSamples,
+        });
+        pushSampleIntoState({
+          key: KEY_LP,
+          v: next.lpUsd,
+          current: lpSamples,
+          setCurrent: setLpSamples,
+        });
+        pushSampleIntoState({
+          key: KEY_VOL,
+          v: next.volume24hUsd,
+          current: volSamples,
+          setCurrent: setVolSamples,
+        });
+      }
+    } catch {
+      if (req !== protoReqId.current) return;
+      setProtoError('Protocol metrics unavailable.');
+      setProto(null);
+    } finally {
+      if (req === protoReqId.current) setProtoFetching(false);
+      setProtoLoading(false);
+      setProtoNextAt(Date.now() + PROTO_REFRESH_MS);
+    }
+  }
 
   useEffect(() => {
     let alive = true;
 
-    async function loadProto() {
-      const req = ++protoReqId.current;
+    (async () => {
+      await loadLive();
+      if (!alive) return;
+      await loadProto();
+    })();
 
-      try {
-        setProtoError(null);
+    const liveT = window.setInterval(() => {
+      if (!alive) return;
+      loadLive();
+    }, LIVE_REFRESH_MS);
 
-        const ac = new AbortController();
-        const t = window.setTimeout(() => ac.abort(), 5500);
+    const protoT = window.setInterval(() => {
+      if (!alive) return;
+      loadProto();
+    }, PROTO_REFRESH_MS);
 
-        const res = await fetch('/api/protocol/state', {
-          cache: 'no-store',
-          signal: ac.signal,
-        }).finally(() => window.clearTimeout(t));
-
-        if (!alive || req !== protoReqId.current) return;
-
-        if (!res.ok) {
-          setProto(null);
-          return;
-        }
-
-        const j = await res.json().catch(() => ({}));
-        setProto((j?.state ?? j ?? null) as ProtocolState | null);
-      } catch {
-        if (!alive) return;
-        setProtoError('Protocol metrics unavailable.');
-        setProto(null);
-      } finally {
-        if (alive) setProtoLoading(false);
-      }
-    }
-
-    loadProto();
-    const t = window.setInterval(loadProto, 20_000);
     return () => {
       alive = false;
-      window.clearInterval(t);
+      window.clearInterval(liveT);
+      window.clearInterval(protoT);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const liveIsOpen = draw?.status === 'OPEN';
+  const isRefreshing = liveFetching || protoFetching;
 
   // Single source of truth: draw.closesAt from DB-backed /api/draw/live
   const closesIn = useMemo(() => {
@@ -286,12 +535,28 @@ export default function HubProtocolPage() {
   const dailyUsdEstimate = useMemo(() => {
     const amt = Number(draw?.jackpotXpot);
     const px = Number(proto?.priceUsd);
-
-    // Prefer derived value. (If someone re-adds jackpotUsd in an old stub, we ignore it.)
     if (Number.isFinite(amt) && Number.isFinite(px)) return amt * px;
-
     return undefined;
   }, [draw?.jackpotXpot, proto?.priceUsd]);
+
+  const liveRefreshIn = useMemo(() => Math.max(0, liveNextAt - now), [liveNextAt, now]);
+  const protoRefreshIn = useMemo(() => Math.max(0, protoNextAt - now), [protoNextAt, now]);
+
+  const connectionTone = useMemo<PillTone>(() => {
+    const lat = Math.max(Number(liveLatencyMs ?? 0), Number(protoLatencyMs ?? 0));
+    if (!Number.isFinite(lat) || lat <= 0) return 'sky';
+    if (lat < 450) return 'emerald';
+    if (lat < 1200) return 'amber';
+    return 'slate';
+  }, [liveLatencyMs, protoLatencyMs]);
+
+  const connectionLabel = useMemo(() => {
+    const lat = Math.max(Number(liveLatencyMs ?? 0), Number(protoLatencyMs ?? 0));
+    if (!Number.isFinite(lat) || lat <= 0) return 'Telemetry';
+    if (lat < 450) return 'Fast link';
+    if (lat < 1200) return 'Stable link';
+    return 'Degraded link';
+  }, [liveLatencyMs, protoLatencyMs]);
 
   async function copyCA() {
     try {
@@ -303,6 +568,13 @@ export default function HubProtocolPage() {
     }
   }
 
+  async function manualRefresh() {
+    if (isRefreshing) return;
+    setLoading(true);
+    setProtoLoading(true);
+    await Promise.allSettled([loadLive(), loadProto()]);
+  }
+
   return (
     <XpotPageShell
       title="Protocol State"
@@ -311,21 +583,101 @@ export default function HubProtocolPage() {
       topBarProps={{ liveIsOpen }}
       headerClassName="bg-white/[0.015]"
     >
+      <style>{`
+        .xpot-protocol-scan::before{
+          content:"";
+          pointer-events:none;
+          position:absolute;
+          inset:-2px;
+          border-radius: 40px;
+          background: linear-gradient(to bottom,
+            transparent,
+            rgba(16,185,129,0.10),
+            rgba(56,189,248,0.07),
+            transparent
+          );
+          opacity: 0;
+          transform: translateY(-18%);
+          animation: xpotScan 6.2s ease-in-out infinite;
+          mix-blend-mode: screen;
+        }
+        @keyframes xpotScan{
+          0%{ opacity:0; transform: translateY(-18%); }
+          18%{ opacity:0.9; }
+          50%{ opacity:0.2; }
+          82%{ opacity:0.9; }
+          100%{ opacity:0; transform: translateY(18%); }
+        }
+        .xpot-live-pulse{
+          position: relative;
+        }
+        .xpot-live-pulse::after{
+          content:"";
+          position:absolute;
+          inset:-1px;
+          border-radius: 999px;
+          background: radial-gradient(circle at 30% 20%, rgba(52,211,153,0.18), transparent 55%),
+                      radial-gradient(circle at 70% 80%, rgba(56,189,248,0.16), transparent 60%),
+                      radial-gradient(circle at 50% 50%, rgba(217,70,239,0.10), transparent 60%);
+          opacity: 0.65;
+          filter: blur(10px);
+          animation: xpotPulse 2.8s ease-in-out infinite;
+          pointer-events:none;
+        }
+        @keyframes xpotPulse{
+          0%,100%{ transform: scale(1); opacity:0.55; }
+          50%{ transform: scale(1.03); opacity:0.80; }
+        }
+        .xpot-tick{
+          animation: xpotTick 260ms ease-out;
+        }
+        @keyframes xpotTick{
+          0%{ transform: translateY(0); filter: brightness(1); }
+          35%{ transform: translateY(-1px); filter: brightness(1.12); }
+          100%{ transform: translateY(0); filter: brightness(1); }
+        }
+        .xpot-shimmer::before{
+          content:"";
+          position:absolute;
+          inset:0;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,0.12),
+            transparent
+          );
+          transform: translateX(-120%);
+          animation: xpotShimmer 1.25s ease-in-out infinite;
+          pointer-events:none;
+        }
+        @keyframes xpotShimmer{
+          0%{ transform: translateX(-120%); opacity:0.0; }
+          25%{ opacity:0.8; }
+          100%{ transform: translateX(120%); opacity:0.0; }
+        }
+        @media (prefers-reduced-motion: reduce){
+          .xpot-protocol-scan::before,
+          .xpot-live-pulse::after,
+          .xpot-tick,
+          .xpot-shimmer::before{
+            animation: none !important;
+          }
+        }
+      `}</style>
+
       <section className="mt-2 space-y-6">
         {/* TOP STRIP */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.02] px-6 py-6 backdrop-blur-xl"
+          initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
+          animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.02] px-6 py-6 backdrop-blur-xl xpot-protocol-scan"
         >
           <div className="pointer-events-none absolute -top-36 left-16 h-[520px] w-[520px] rounded-full bg-sky-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -top-40 right-0 h-[520px] w-[520px] rounded-full bg-fuchsia-500/10 blur-3xl" />
 
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                Integrity overview
-              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Integrity overview</p>
               <p className="mt-2 text-sm text-slate-200/90">
                 A calm, real-time view of liquidity and execution - designed for trust, not hype.
               </p>
@@ -362,10 +714,45 @@ export default function HubProtocolPage() {
                   </>
                 ) : null}
               </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <StatusPill tone={connectionTone}>
+                  <Gauge className="h-3.5 w-3.5" />
+                  {connectionLabel}
+                  <span className="text-slate-300/80">
+                    {typeof liveLatencyMs === 'number' || typeof protoLatencyMs === 'number'
+                      ? `${Math.max(liveLatencyMs ?? 0, protoLatencyMs ?? 0)}ms`
+                      : ''}
+                  </span>
+                </StatusPill>
+
+                <StatusPill tone="sky">
+                  <Timer className="h-3.5 w-3.5" />
+                  Refresh:{' '}
+                  <span className="text-slate-200/80">live {Math.ceil(liveRefreshIn / 1000)}s</span>
+                  <span className="text-slate-500">/</span>
+                  <span className="text-slate-200/80">protocol {Math.ceil(protoRefreshIn / 1000)}s</span>
+                </StatusPill>
+
+                <button
+                  onClick={manualRefresh}
+                  type="button"
+                  disabled={isRefreshing}
+                  className="
+                    inline-flex items-center gap-2 rounded-full border border-white/10
+                    bg-white/[0.03] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em]
+                    text-slate-200/80 hover:text-slate-100 hover:bg-white/[0.06] transition
+                    disabled:opacity-60 disabled:cursor-not-allowed
+                  "
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing' : 'Refresh now'}
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'}>
+              <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'} className={liveIsOpen ? 'xpot-live-pulse' : ''}>
                 <Sparkles className="h-3.5 w-3.5" />
                 {liveIsOpen ? 'Live entries' : 'Standby'}
               </StatusPill>
@@ -379,39 +766,48 @@ export default function HubProtocolPage() {
                 <Activity className="h-3.5 w-3.5" />
                 {proto?.updatedAt ? `Updated ${formatMadridTime(proto.updatedAt)} (Madrid)` : 'Live'}
               </StatusPill>
+
+              <StatusPill tone={protoError ? 'amber' : 'emerald'}>
+                {protoError ? <WifiOff className="h-3.5 w-3.5" /> : <Wifi className="h-3.5 w-3.5" />}
+                {protoError ? 'Limited' : 'Connected'}
+              </StatusPill>
             </div>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               label="LP (USD)"
-              value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)}
+              loading={protoLoading}
+              value={fmtUsdCompact(proto?.lpUsd)}
               hint={protoLoading ? '' : pendingPair ? 'Pending first LP' : 'Total liquidity value'}
               icon={<Waves className="h-4 w-4 text-sky-300" />}
+              pulseKey={lpKey}
+              spark={<Sparkline samples={lpSamples} />}
             />
             <MetricCard
               label="LP change (24h)"
-              value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)}
-              hint={protoLoading ? '' : 'History module lands next'}
+              loading={protoLoading}
+              value={fmtPct(proto?.lpChange24hPct)}
+              hint={protoLoading ? '' : 'Stability band next'}
               icon={<ChartNoAxesCombined className="h-4 w-4 text-fuchsia-300" />}
             />
             <MetricCard
               label="Price (USD)"
-              value={
-                protoLoading
-                  ? 'Loading…'
-                  : Number.isFinite(Number(proto?.priceUsd))
-                  ? `$${Number(proto?.priceUsd).toFixed(6)}`
-                  : '—'
-              }
+              loading={protoLoading}
+              value={fmtUsd(proto?.priceUsd, 6)}
               hint={protoLoading ? '' : pendingPair ? 'Pending market' : 'Reference price'}
               icon={<Activity className="h-4 w-4 text-emerald-300" />}
+              pulseKey={pxKey}
+              spark={<Sparkline samples={priceSamples} />}
             />
             <MetricCard
               label="Volume (24h)"
-              value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)}
+              loading={protoLoading}
+              value={fmtUsdCompact(proto?.volume24hUsd)}
               hint={protoLoading ? '' : pendingPair ? 'No trades yet' : 'Observed volume'}
               icon={<Zap className="h-4 w-4 text-amber-300" />}
+              pulseKey={volKey}
+              spark={<Sparkline samples={volSamples} />}
             />
           </div>
 
@@ -424,15 +820,12 @@ export default function HubProtocolPage() {
                   <Info className="h-5 w-5 text-amber-300" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">
-                    Market pending
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Market pending</p>
                   <p className="mt-1 text-sm text-slate-200/85">
-                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will auto-populate once an LP exists.
+                    XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will
+                    auto-populate once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Nothing to do here - it goes live automatically.
-                  </p>
+                  <p className="mt-1 text-xs text-slate-400">Nothing to do here - it goes live automatically.</p>
                 </div>
               </div>
             </div>
@@ -441,8 +834,8 @@ export default function HubProtocolPage() {
 
         {/* MAIN XPOT */}
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
+          animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
           className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.02] px-6 py-6 backdrop-blur-xl"
         >
           <div className="pointer-events-none absolute -top-32 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
@@ -454,7 +847,7 @@ export default function HubProtocolPage() {
                 <p className="mt-1 text-xs text-slate-400">Today’s primary draw</p>
               </div>
 
-              <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'}>
+              <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'} className={liveIsOpen ? 'xpot-live-pulse' : ''}>
                 <Sparkles className="h-3.5 w-3.5" />
                 {liveIsOpen ? 'LIVE' : 'STANDBY'}
               </StatusPill>
@@ -463,17 +856,17 @@ export default function HubProtocolPage() {
             {error ? (
               <p className="mt-6 text-sm text-amber-300">{error}</p>
             ) : loading || !draw ? (
-              <p className="mt-6 text-sm text-slate-400">Loading live draw…</p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <MetricCard label="Daily reward" loading value="—" icon={<Crown className="h-4 w-4 text-amber-300" />} />
+                <MetricCard label="Closes in" loading value="—" icon={<Timer className="h-4 w-4 text-sky-300" />} />
+                <MetricCard label="Status" loading value="—" icon={<Sparkles className="h-4 w-4 text-emerald-300" />} />
+              </div>
             ) : (
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
                   label="Daily reward"
                   valueNode={<XpotAmount amount={Number(draw.jackpotXpot ?? 0)} />}
-                  hint={
-                    Number.isFinite(Number(dailyUsdEstimate))
-                      ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}`
-                      : '—'
-                  }
+                  hint={Number.isFinite(Number(dailyUsdEstimate)) ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}` : '—'}
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
@@ -514,11 +907,19 @@ export default function HubProtocolPage() {
 
           <div className="mt-4 space-y-3">
             {loading ? (
-              <p className="text-sm text-slate-400">Loading bonus XPOTs…</p>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-2">
+                    <SkeletonLine w="w-40" />
+                    <SkeletonLine w="w-56" />
+                  </div>
+                  <SkeletonLine w="w-20" />
+                </div>
+              </div>
             ) : bonus.length === 0 ? (
               <p className="text-sm text-slate-500">No bonus XPOTs scheduled.</p>
             ) : (
-              bonus.map(b => (
+              bonus.map((b) => (
                 <div
                   key={b.id}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
@@ -534,13 +935,7 @@ export default function HubProtocolPage() {
                   </div>
 
                   <StatusPill
-                    tone={
-                      b.status === 'CLAIMED'
-                        ? 'emerald'
-                        : b.status === 'CANCELLED'
-                        ? 'slate'
-                        : 'amber'
-                    }
+                    tone={b.status === 'CLAIMED' ? 'emerald' : b.status === 'CANCELLED' ? 'slate' : 'amber'}
                   >
                     {b.status === 'CLAIMED' ? (
                       <>
@@ -567,47 +962,40 @@ export default function HubProtocolPage() {
 
         {/* LIVE MARKET PANELS */}
         <section className="grid gap-6 lg:grid-cols-2">
-          <PremiumPanel
-            title="Liquidity"
-            subtitle="LP integrity and stability signals."
-            icon={<Waves className="h-5 w-5 text-sky-300" />}
-          >
+          <PremiumPanel title="Liquidity" subtitle="LP integrity and stability signals." icon={<Waves className="h-5 w-5 text-sky-300" />}>
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)} />
               <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
             </div>
 
             <div className="mt-5">
-              <GraphPlaceholder
-                title="LP trend (24h)"
-                note="Next: store hourly LP snapshots in DB and render a real 24h curve + stability band."
+              <GraphBlock
+                title="LP micro-trend"
+                badge="Live"
+                spark={<Sparkline samples={lpSamples} height={44} />}
+                note="Client-side sampled. Server-side 24h history can land next for a true banded stability chart."
               />
             </div>
           </PremiumPanel>
 
-          <PremiumPanel
-            title="Market"
-            subtitle="Reference price and volume behaviour."
-            icon={<Activity className="h-5 w-5 text-emerald-300" />}
-          >
+          <PremiumPanel title="Market" subtitle="Reference price and volume behaviour." icon={<Activity className="h-5 w-5 text-emerald-300" />}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <SoftKpi
-                label="Price"
-                value={
-                  protoLoading
-                    ? 'Loading…'
-                    : Number.isFinite(Number(proto?.priceUsd))
-                    ? `$${Number(proto?.priceUsd).toFixed(6)}`
-                    : '—'
-                }
-              />
+              <SoftKpi label="Price" value={protoLoading ? 'Loading…' : fmtUsd(proto?.priceUsd, 6)} />
               <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)} />
             </div>
 
-            <div className="mt-5">
-              <GraphPlaceholder
-                title="Price + volume"
-                note="Next: render a premium sparkline + 24h range once sampling is stored server-side."
+            <div className="mt-5 space-y-3">
+              <GraphBlock
+                title="Price micro-trend"
+                badge="Live"
+                spark={<Sparkline samples={priceSamples} height={44} />}
+                note="Client-side sampled. Shows movement once trading starts."
+              />
+              <GraphBlock
+                title="Volume micro-trend"
+                badge="Live"
+                spark={<Sparkline samples={volSamples} height={44} />}
+                note="Client-side sampled. Useful for spotting early liquidity and first bursts."
               />
             </div>
           </PremiumPanel>
@@ -623,13 +1011,21 @@ function MetricCard({
   valueNode,
   hint,
   icon,
+  pulseKey,
+  spark,
+  loading = false,
 }: {
   label: string;
   value?: string;
   valueNode?: React.ReactNode;
   hint?: string;
   icon?: React.ReactNode;
+  pulseKey?: number;
+  spark?: React.ReactNode;
+  loading?: boolean;
 }) {
+  const shouldTick = typeof pulseKey === 'number';
+
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
@@ -642,14 +1038,23 @@ function MetricCard({
       </div>
 
       <div className="mt-2">
-        {valueNode ? (
+        {loading ? (
+          <div className="space-y-2">
+            <SkeletonLine w="w-28" />
+            <span className="block h-3 w-44 rounded-full bg-white/[0.04] xpot-shimmer relative overflow-hidden" />
+          </div>
+        ) : valueNode ? (
           <div className="text-slate-100">{valueNode}</div>
         ) : (
-          <p className="text-lg font-semibold text-slate-100">{value ?? '—'}</p>
+          <p key={pulseKey ?? label} className={`text-lg font-semibold text-slate-100 ${shouldTick ? 'xpot-tick' : ''}`}>
+            {value ?? '—'}
+          </p>
         )}
       </div>
 
-      {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+      {!loading && hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+
+      {spark ? <div className="mt-3">{spark}</div> : null}
     </div>
   );
 }
@@ -690,28 +1095,44 @@ function PremiumPanel({
 }
 
 function SoftKpi({ label, value }: { label: string; value: string }) {
+  const isLoading = value === 'Loading…';
+
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
       <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-1 text-base font-semibold text-slate-100">{value}</p>
+      {isLoading ? (
+        <div className="mt-2">
+          <SkeletonLine w="w-28" />
+        </div>
+      ) : (
+        <p className="mt-1 text-base font-semibold text-slate-100">{value}</p>
+      )}
     </div>
   );
 }
 
-function GraphPlaceholder({ title, note }: { title: string; note: string }) {
+function GraphBlock({
+  title,
+  badge,
+  spark,
+  note,
+}: {
+  title: string;
+  badge: string;
+  spark: React.ReactNode;
+  note: string;
+}) {
   return (
     <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-slate-200">{title}</p>
         <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
           <ChartNoAxesCombined className="h-3.5 w-3.5 text-slate-200" />
-          Module
+          {badge}
         </span>
       </div>
 
-      <div className="mt-3 h-[160px] w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-transparent">
-        <div className="h-full w-full opacity-70 [background-image:linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:22px_22px]" />
-      </div>
+      <div className="mt-3">{spark}</div>
 
       <p className="mt-3 text-xs text-slate-400">{note}</p>
     </div>

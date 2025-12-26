@@ -41,12 +41,6 @@ type JackpotPanelProps = {
 
 type PriceSource = 'DexScreener';
 
-// Private-vault gold (muted, heavier, less neon)
-const VAULT_GOLD = {
-  rgb: '201 162 74', // bronze-gold
-  rgbSoft: '173 138 58', // deeper bronze for borders/shadows
-};
-
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
@@ -296,7 +290,7 @@ function useAnchoredTooltip<T extends HTMLElement>() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  return { ref, open, setOpen, rect, update };
+  return { ref, open, setOpen, rect };
 }
 
 function TooltipBubble({
@@ -334,7 +328,6 @@ function TooltipBubble({
 
   const anchorCenterX = rect.left + rect.width / 2;
 
-  // If we are close to screen edges, align the bubble to the icon (not centered).
   const EDGE_ZONE = 220;
 
   let left = 0;
@@ -389,11 +382,11 @@ function UsdEstimateBadge({ compact }: { compact?: boolean }) {
         aria-label="USD estimate info"
         className={
           compact
-            ? 'inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/50 bg-black/20 text-slate-400 hover:text-slate-200 transition'
+            ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/60 bg-black/25 text-slate-300 hover:text-white hover:border-slate-500/70 transition shadow-[0_10px_20px_rgba(0,0,0,0.25)]'
             : 'inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 hover:bg-slate-900/40 transition'
         }
       >
-        <Info className={compact ? 'h-3.5 w-3.5 opacity-90' : 'h-4 w-4 opacity-90'} />
+        <Info className={compact ? 'h-4 w-4 opacity-95' : 'h-4 w-4 opacity-90'} />
         {!compact && <span>USD estimate</span>}
       </button>
 
@@ -455,11 +448,12 @@ function PriceUnavailableNote({
   compact?: boolean;
   mode?: 'feed-error' | 'pending-pair';
 }) {
-  const title = 'PRICE PENDING';
-
-  const body = 'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
-
-  const secondary = 'Once the first LP goes live, USD pricing will auto-populate via DexScreener.';
+  const title = mode === 'feed-error' ? 'PRICE FEED UNAVAILABLE' : 'TOKEN NOT TRADABLE YET';
+  const body = 'Price feed is temporarily unavailable. We will retry automatically.';
+  const secondary =
+    mode === 'feed-error'
+      ? 'If this persists, DexScreener may be rate limiting. Refresh later.'
+      : 'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
 
   return (
     <div
@@ -477,10 +471,8 @@ function PriceUnavailableNote({
       />
 
       <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">{title}</p>
-
-      <p className="relative mt-2 text-[12px] text-amber-100">{body}</p>
-
-      <p className="relative mt-2 text-[11px] text-amber-200/80">{secondary}</p>
+      <p className="relative mt-2 text-[12px] text-amber-100/80">{body}</p>
+      <p className="mt-1 text-[11px] italic text-slate-300/60">{secondary}</p>
     </div>
   );
 }
@@ -539,7 +531,6 @@ export default function JackpotPanel({
   const [countdownMs, setCountdownMs] = useState<number>(0);
   const [countPulse, setCountPulse] = useState(false);
 
-  // After mount, compute the real cutoff once (DST-safe)
   useEffect(() => {
     if (!mounted) return;
     const nd = getNextMadridCutoffUtcMs(22, new Date());
@@ -943,8 +934,7 @@ export default function JackpotPanel({
 
   const showUnavailable = !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
 
-  const poolLabel = `${JACKPOT_XPOT.toLocaleString()} XPOT`;
-
+  const poolNumber = JACKPOT_XPOT.toLocaleString();
   const displayUsdText =
     displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd) ? '-' : formatUsd(displayJackpotUsd);
 
@@ -1002,53 +992,50 @@ export default function JackpotPanel({
         ref={slabRef}
         className="relative z-10 mt-5 overflow-hidden rounded-2xl border border-slate-800/80 bg-black/25 p-5"
       >
+        {/* Visible engine + alive background */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="xpot-engine absolute inset-0" />
+          <div className="xpot-aurora absolute inset-0 opacity-90" />
+          <div className="xpot-grid absolute inset-0 opacity-45" />
+          <div className="xpot-noise absolute inset-0 opacity-[0.14]" />
+          <div className="xpot-scan absolute inset-0 opacity-[0.18]" />
+          <div className="xpot-shimmer absolute inset-0 opacity-[0.55]" />
+        </div>
+
         {/* Marketing row */}
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Premium pool capsule (NEW) */}
-            <div
-              className="group relative inline-flex items-center gap-4 rounded-2xl bg-black/55 px-5 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)]"
-              style={{ border: `1px solid rgb(${VAULT_GOLD.rgbSoft} / 0.30)` }}
-            >
-              <div
-                className="pointer-events-none absolute inset-0 rounded-2xl opacity-90"
-                style={{
-                  background:
-                    `radial-gradient(circle_at_14%_35%, rgb(${VAULT_GOLD.rgb} / 0.16), transparent 60%),` +
-                    ` radial-gradient(circle_at_88%_18%, rgba(124,200,255,0.07), transparent 62%),` +
-                    ` linear-gradient(180deg, rgba(2,6,23,0.38), rgba(0,0,0,0.10))`,
-                }}
-              />
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-sheen" />
+            {/* Pool capsule (premium centered readout) */}
+<div className="group relative inline-flex max-w-full items-center">
+  <div className="relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-black/55 px-4 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl">
+    <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
+    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
+    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
+    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
 
-              <div className="relative flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-                  Today&apos;s XPOT
-                </span>
+    {/* Left tag */}
+    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+      Today&apos;s XPOT
+    </span>
 
-                <span
-                  className="font-mono text-2xl sm:text-3xl tracking-[0.20em] tabular-nums"
-                  style={{
-                    color: 'rgba(255,255,255,0.96)',
-                    textShadow: '0 0 22px rgba(124,200,255,0.06), 0 0 18px rgba(201,162,74,0.10)',
-                  }}
-                >
-                  {poolLabel}
-                </span>
+    {/* Center hero amount (centered, no “stretched” look) */}
+    <div className="min-w-0 px-1 text-center">
+      <span
+        className="xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white"
+        style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
+      >
+        <span className="xpot-pool-num">{JACKPOT_XPOT.toLocaleString()}</span>
+        <span className="xpot-pool-unit">XPOT</span>
+      </span>
+    </div>
 
-                <span
-                  className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
-                  style={{
-                    borderColor: `rgb(${VAULT_GOLD.rgbSoft} / 0.28)`,
-                    color: `rgb(${VAULT_GOLD.rgb} / 0.86)`,
-                    background: 'rgba(0,0,0,0.22)',
-                  }}
-                >
-                  Daily
-                </span>
-              </div>
-            </div>
+    {/* Right tag */}
+    <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+      Daily
+    </span>
+  </div>
+</div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1073,28 +1060,55 @@ export default function JackpotPanel({
             className={[
               'relative overflow-visible rounded-2xl border bg-black/30 px-5 py-4',
               justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
-              justPumped ? 'shadow-[0_0_28px_rgba(56,189,248,0.10)]' : 'shadow-none',
+              justPumped ? 'shadow-[0_0_34px_rgba(56,189,248,0.16)]' : 'shadow-none',
             ].join(' ')}
             style={{
               background:
-                'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.06), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.04), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
+                'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.08), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
             }}
           >
-            <div className="mt-4 flex items-end justify-between gap-3">
-              <div
-                className={[
-                  'text-5xl sm:text-6xl font-semibold tabular-nums transition-transform transition-colors duration-200',
-                  justUpdated ? 'scale-[1.01]' : '',
-                  justPumped ? 'text-[#7CC8FF]' : 'text-white',
-                ].join(' ')}
-                style={{ textShadow: '0 0 22px rgba(124,200,255,0.08)' }}
-              >
-                {displayUsdText}
+            {/* Alive halo on updates */}
+            <div
+              className={[
+                'pointer-events-none absolute -inset-6 opacity-0 transition-opacity duration-300',
+                justUpdated ? 'opacity-100' : '',
+              ].join(' ')}
+            >
+              <div className="xpot-pulse-halo absolute inset-0" />
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+              {/* USD value + INFO moved right after value (same line) */}
+              <div className="flex items-end gap-3">
+                <div
+                  className={[
+                    'xpot-usd-live text-6xl sm:text-[4.25rem] font-semibold tabular-nums transition-transform transition-colors duration-200',
+                    justUpdated ? 'scale-[1.01]' : '',
+                    justPumped ? 'text-[#7CC8FF]' : 'text-white',
+                  ].join(' ')}
+                  style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
+                >
+                  {displayUsdText}
+                </div>
+
+                <div className="mb-2 flex items-center gap-2">
+                  <UsdEstimateBadge compact />
+                  <span className="hidden sm:inline text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                    USD estimate
+                  </span>
+                </div>
               </div>
 
               <div className="mb-2 flex items-center gap-2">
-                <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">USD estimate</span>
-                <UsdEstimateBadge compact />
+                <span
+                  className={[
+                    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
+                    justUpdated ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]' : '',
+                  ].join(' ')}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+                  Live tick
+                </span>
               </div>
             </div>
 
@@ -1103,9 +1117,7 @@ export default function JackpotPanel({
               <span
                 className={[
                   'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
-                  countPulse
-                    ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]'
-                    : '',
+                  countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]' : '',
                 ].join(' ')}
               >
                 Next draw in
@@ -1116,7 +1128,7 @@ export default function JackpotPanel({
                   'font-mono text-sm tracking-[0.26em] transition-colors',
                   countPulse ? 'text-white' : 'text-slate-100',
                 ].join(' ')}
-                style={{ textShadow: '0 0 18px rgba(124,200,255,0.08)' }}
+                style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
               >
                 {mounted ? formatCountdown(countdownMs) : '00:00:00'}
               </span>
@@ -1124,10 +1136,9 @@ export default function JackpotPanel({
               <span className="text-[11px] text-slate-600">22:00 Madrid</span>
             </div>
 
-            {/* Stronger, readable availability note */}
             {showUnavailable ? (
               <div className="mt-3">
-                <PriceUnavailableNote mode={hadError ? 'feed-error' : 'pending-pair'} />
+                <PriceUnavailableNote />
               </div>
             ) : (
               <p className="mt-2 text-xs text-slate-500">Auto-updates from DexScreener ticks</p>
@@ -1136,47 +1147,27 @@ export default function JackpotPanel({
 
           {/* XPOT meta */}
           <div
-            className="relative overflow-hidden rounded-2xl px-5 py-4 min-h-[170px]"
+            className="relative overflow-hidden rounded-2xl px-5 py-4 min-h-[170px] border border-slate-800/70 bg-black/25"
             style={{
-              border: `1px solid rgb(${VAULT_GOLD.rgbSoft} / 0.20)`,
               background:
-                `radial-gradient(circle_at_18%_18%, rgb(${VAULT_GOLD.rgb} / 0.08), transparent 58%),` +
-                ` radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.04), transparent 62%),` +
-                ` linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))`,
+                'radial-gradient(circle_at_18%_18%, rgba(124,200,255,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
               boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02)',
             }}
           >
             <div className="relative flex h-full flex-col">
               <div className="pt-2 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30"
-                    style={{
-                      border: `1px solid rgb(${VAULT_GOLD.rgbSoft} / 0.22)`,
-                      boxShadow: '0 0 0 1px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.35)',
-                    }}
-                  >
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30 border border-slate-700/60 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
                     <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
                   </span>
 
                   <div className="leading-tight">
-                    <p
-                      className="text-[10px] uppercase tracking-[0.24em]"
-                      style={{ color: `rgb(${VAULT_GOLD.rgb} / 0.85)` }}
-                    >
-                      XPOT token
-                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-slate-200">XPOT token</p>
                     <p className="text-xs text-slate-300">Winners paid in XPOT</p>
                   </div>
                 </div>
 
-                <span
-                  className="inline-flex items-center gap-2 rounded-full bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
-                  style={{
-                    border: `1px solid rgb(${VAULT_GOLD.rgbSoft} / 0.22)`,
-                    color: `rgb(${VAULT_GOLD.rgb} / 0.86)`,
-                  }}
-                >
+                <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
                   <Sparkles className="h-3.5 w-3.5 opacity-90" />
                   Verified
                 </span>
@@ -1222,13 +1213,7 @@ export default function JackpotPanel({
 
             {spark ? (
               <div className="mt-2">
-                <svg
-                  width="100%"
-                  height="34"
-                  viewBox="0 0 560 54"
-                  className="block text-slate-300/70"
-                  aria-label="XPOT pulse sparkline (local ticks)"
-                >
+                <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70">
                   <polyline
                     fill="none"
                     stroke="currentColor"
@@ -1294,21 +1279,18 @@ export default function JackpotPanel({
                 </p>
               </div>
 
-              <span
-                className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/25"
-                style={{ border: `1px solid rgb(${VAULT_GOLD.rgbSoft} / 0.20)` }}
-              >
-                <Crown className="h-4 w-4 opacity-90" style={{ color: `rgb(${VAULT_GOLD.rgb} / 0.78)` }} />
+              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/60 bg-black/25">
+                <Crown className="h-4 w-4 opacity-90 text-slate-200/80" />
               </span>
             </div>
 
             <div className="mt-3">
               <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
                 <div
-                  className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.10)]"
+                  className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.12)]"
                   style={{
                     width: `${Math.round((progressToNext ?? 0) * 100)}%`,
-                    background: `linear-gradient(90deg, rgb(${VAULT_GOLD.rgb} / 0.30), rgba(124,200,255,0.55))`,
+                    background: 'linear-gradient(90deg, rgba(236,72,153,0.28), rgba(124,200,255,0.60))',
                   }}
                 />
               </div>
@@ -1326,16 +1308,275 @@ export default function JackpotPanel({
         </div>
 
         <style jsx>{`
+          /* Pool capsule typography – premium gold treatment */
+.xpot-pool-hero {
+  letter-spacing: 0.02em;
+}
+
+.xpot-pool-num {
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+
+  /* Mostly white, slight warmth */
+  color: rgba(255, 255, 255, 0.97);
+  text-shadow:
+    0 0 14px rgba(255, 255, 255, 0.06),
+    0 0 26px rgba(var(--xpot-gold), 0.08);
+}
+
+.xpot-pool-unit {
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+
+  /* XPOT gold – guaranteed */
+  color: #f5c77a;
+  text-shadow:
+    0 0 14px rgba(245, 199, 122, 0.45),
+    0 0 32px rgba(245, 199, 122, 0.25);
+}
+
+@media (min-width: 640px) {
+  .xpot-pool-num {
+    font-size: 30px;
+    letter-spacing: -0.015em;
+  }
+}
+
+          /* Visible cosmic engine layer (core + orbit ring + soft bloom) */
+          .xpot-engine {
+            opacity: 1;
+          }
+          .xpot-engine::before {
+            content: '';
+            position: absolute;
+            inset: -32%;
+            background: conic-gradient(
+              from 90deg,
+              rgba(124, 200, 255, 0.0),
+              rgba(124, 200, 255, 0.22),
+              rgba(236, 72, 153, 0.16),
+              rgba(99, 102, 241, 0.14),
+              rgba(124, 200, 255, 0.22),
+              rgba(124, 200, 255, 0.0)
+            );
+            filter: blur(22px);
+            transform: translate3d(0, 0, 0);
+            animation: xpotEngineSpin 10.5s linear infinite;
+            mix-blend-mode: screen;
+            opacity: 0.85;
+          }
+          .xpot-engine::after {
+            content: '';
+            position: absolute;
+            inset: -12%;
+            background: radial-gradient(circle_at_50%_50%, rgba(124, 200, 255, 0.14), transparent 55%),
+              radial-gradient(circle_at_60%_45%, rgba(236, 72, 153, 0.10), transparent 58%),
+              radial-gradient(circle_at_45%_60%, rgba(99, 102, 241, 0.08), transparent 62%);
+            filter: blur(10px);
+            animation: xpotEngineBreathe 5.8s ease-in-out infinite;
+            opacity: 0.95;
+          }
+          @keyframes xpotEngineSpin {
+            0% {
+              transform: rotate(0deg) scale(1);
+            }
+            100% {
+              transform: rotate(360deg) scale(1);
+            }
+          }
+          @keyframes xpotEngineBreathe {
+            0% {
+              transform: scale(0.985);
+              opacity: 0.72;
+            }
+            50% {
+              transform: scale(1.02);
+              opacity: 1;
+            }
+            100% {
+              transform: scale(0.985);
+              opacity: 0.72;
+            }
+          }
+
+          /* Slab aurora (richer + more visible) */
+          .xpot-aurora {
+            background: radial-gradient(circle_at_18%_22%, rgba(124, 200, 255, 0.20), transparent 55%),
+              radial-gradient(circle_at_82%_18%, rgba(236, 72, 153, 0.14), transparent 58%),
+              radial-gradient(circle_at_55%_85%, rgba(99, 102, 241, 0.12), transparent 60%);
+            filter: blur(10px);
+            transform: translate3d(0, 0, 0);
+            animation: xpotAurora 10.5s ease-in-out infinite;
+          }
+          @keyframes xpotAurora {
+            0% {
+              transform: translate3d(-1.5%, -1%, 0) scale(1);
+              opacity: 0.72;
+            }
+            50% {
+              transform: translate3d(2%, 1.2%, 0) scale(1.03);
+              opacity: 0.98;
+            }
+            100% {
+              transform: translate3d(-1.5%, -1%, 0) scale(1);
+              opacity: 0.72;
+            }
+          }
+
+          /* Animated grid parallax (instrument panel feel) */
+          .xpot-grid {
+            background-image: linear-gradient(rgba(148, 163, 184, 0.065) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(148, 163, 184, 0.065) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: radial-gradient(circle_at_45%_20%, black 0%, transparent 70%);
+            animation: xpotGridDrift 12s ease-in-out infinite;
+            transform: translate3d(0, 0, 0);
+          }
+          @keyframes xpotGridDrift {
+            0% {
+              background-position: 0px 0px;
+              opacity: 0.42;
+            }
+            50% {
+              background-position: 22px 14px;
+              opacity: 0.55;
+            }
+            100% {
+              background-position: 0px 0px;
+              opacity: 0.42;
+            }
+          }
+
+          .xpot-noise {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+            background-size: 180px 180px;
+            mix-blend-mode: overlay;
+          }
+
+          .xpot-scan {
+            background: linear-gradient(
+              180deg,
+              transparent 0%,
+              rgba(255, 255, 255, 0.045) 42%,
+              transparent 78%
+            );
+            transform: translateY(-30%);
+            animation: xpotScan 6.2s linear infinite;
+            mix-blend-mode: screen;
+          }
+          @keyframes xpotScan {
+            0% {
+              transform: translateY(-40%);
+              opacity: 0.08;
+            }
+            30% {
+              opacity: 0.28;
+            }
+            100% {
+              transform: translateY(60%);
+              opacity: 0.10;
+            }
+          }
+
+          /* Global shimmer pass */
+          .xpot-shimmer {
+            background: linear-gradient(
+              115deg,
+              transparent 0%,
+              rgba(255, 255, 255, 0.035) 18%,
+              rgba(255, 255, 255, 0.07) 28%,
+              rgba(255, 255, 255, 0.02) 38%,
+              transparent 52%
+            );
+            transform: translateX(-45%);
+            animation: xpotShimmer 7.4s ease-in-out infinite;
+            mix-blend-mode: screen;
+          }
+          @keyframes xpotShimmer {
+            0% {
+              transform: translateX(-55%);
+              opacity: 0.14;
+            }
+            45% {
+              transform: translateX(22%);
+              opacity: 0.62;
+            }
+            100% {
+              transform: translateX(55%);
+              opacity: 0.18;
+            }
+          }
+
+          /* Capsule border that feels alive */
+          .xpot-capsule-border {
+            padding: 1px;
+            background: linear-gradient(
+              120deg,
+              rgba(124, 200, 255, 0.35),
+              rgba(236, 72, 153, 0.22),
+              rgba(99, 102, 241, 0.22),
+              rgba(124, 200, 255, 0.35)
+            );
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            border-radius: 1rem;
+            animation: xpotBorderDrift 6.8s ease-in-out infinite;
+            opacity: 0.85;
+          }
+          @keyframes xpotBorderDrift {
+            0% {
+              filter: saturate(1.05) brightness(1);
+              transform: translateY(0);
+            }
+            50% {
+              filter: saturate(1.25) brightness(1.08);
+              transform: translateY(-0.5px);
+            }
+            100% {
+              filter: saturate(1.05) brightness(1);
+              transform: translateY(0);
+            }
+          }
+
+          .xpot-capsule-glow {
+            background: radial-gradient(circle_at_20%_30%, rgba(124, 200, 255, 0.14), transparent 60%),
+              radial-gradient(circle_at_85%_25%, rgba(236, 72, 153, 0.10), transparent 62%),
+              linear-gradient(180deg, rgba(2, 6, 23, 0.35), rgba(0, 0, 0, 0.1));
+            animation: xpotGlowDrift 9.2s ease-in-out infinite;
+            mix-blend-mode: screen;
+          }
+          @keyframes xpotGlowDrift {
+            0% {
+              transform: translateX(-1%);
+              opacity: 0.62;
+            }
+            50% {
+              transform: translateX(1.5%);
+              opacity: 0.95;
+            }
+            100% {
+              transform: translateX(-1%);
+              opacity: 0.62;
+            }
+          }
+
           .xpot-sheen {
             background: linear-gradient(
               115deg,
               transparent 0%,
-              rgba(255, 255, 255, 0.07) 18%,
-              rgba(255, 255, 255, 0.02) 28%,
+              rgba(255, 255, 255, 0.10) 18%,
+              rgba(255, 255, 255, 0.035) 28%,
               transparent 44%
             );
             transform: translateX(-30%);
-            animation: xpotSheen 7.8s ease-in-out infinite;
+            animation: xpotSheen 7.6s ease-in-out infinite;
             mix-blend-mode: screen;
           }
           @keyframes xpotSheen {
@@ -1344,8 +1585,30 @@ export default function JackpotPanel({
               opacity: 0.22;
             }
             45% {
-              transform: translateX(28%);
-              opacity: 0.62;
+              transform: translateX(24%);
+              opacity: 0.70;
+            }
+            100% {
+              transform: translateX(55%);
+              opacity: 0.18;
+            }
+          }
+
+          .xpot-capsule-shimmer {
+            background: radial-gradient(circle_at_20%_40%, rgba(124, 200, 255, 0.10), transparent 55%),
+              linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 35%, transparent 70%);
+            transform: translateX(-40%);
+            animation: xpotCapsuleShimmer 6.6s ease-in-out infinite;
+            mix-blend-mode: screen;
+          }
+          @keyframes xpotCapsuleShimmer {
+            0% {
+              transform: translateX(-55%);
+              opacity: 0.18;
+            }
+            50% {
+              transform: translateX(18%);
+              opacity: 0.60;
             }
             100% {
               transform: translateX(55%);
@@ -1355,7 +1618,7 @@ export default function JackpotPanel({
 
           .xpot-dot {
             animation: xpotDotPulse 3.1s ease-in-out infinite;
-            box-shadow: 0 0 12px rgba(56, 189, 248, 0.28);
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.30);
           }
           @keyframes xpotDotPulse {
             0% {
@@ -1363,7 +1626,7 @@ export default function JackpotPanel({
               opacity: 0.7;
             }
             50% {
-              transform: scale(1.22);
+              transform: scale(1.24);
               opacity: 1;
             }
             100% {
@@ -1372,10 +1635,125 @@ export default function JackpotPanel({
             }
           }
 
+          /* USD number: alive */
+          .xpot-usd-live {
+            position: relative;
+            display: inline-block;
+            transform-origin: 45% 70%;
+            animation: xpotUsdBreathe 4.8s ease-in-out infinite;
+          }
+          .xpot-usd-live::after {
+            content: '';
+            position: absolute;
+            inset: -10px -18px;
+            background: linear-gradient(
+              100deg,
+              transparent 0%,
+              rgba(255, 255, 255, 0.00) 30%,
+              rgba(255, 255, 255, 0.18) 42%,
+              rgba(124, 200, 255, 0.20) 48%,
+              rgba(255, 255, 255, 0.06) 54%,
+              transparent 70%
+            );
+            filter: blur(6px);
+            transform: translateX(-55%);
+            animation: xpotUsdSheen 5.6s ease-in-out infinite;
+            mix-blend-mode: screen;
+            pointer-events: none;
+            opacity: 0.70;
+          }
+          .xpot-usd-live::before {
+            content: '';
+            position: absolute;
+            inset: -12px -22px;
+            background: radial-gradient(circle_at_40%_45%, rgba(124, 200, 255, 0.14), transparent 60%),
+              radial-gradient(circle_at_70%_35%, rgba(236, 72, 153, 0.10), transparent 64%);
+            filter: blur(14px);
+            opacity: 0.55;
+            animation: xpotUsdGlow 3.9s ease-in-out infinite;
+            pointer-events: none;
+          }
+          @keyframes xpotUsdBreathe {
+            0% {
+              transform: translateY(0px) scale(1);
+              filter: saturate(1.02);
+            }
+            50% {
+              transform: translateY(-1px) scale(1.01);
+              filter: saturate(1.12);
+            }
+            100% {
+              transform: translateY(0px) scale(1);
+              filter: saturate(1.02);
+            }
+          }
+          @keyframes xpotUsdSheen {
+            0% {
+              transform: translateX(-65%);
+              opacity: 0.05;
+            }
+            35% {
+              opacity: 0.55;
+            }
+            60% {
+              opacity: 0.70;
+            }
+            100% {
+              transform: translateX(65%);
+              opacity: 0.10;
+            }
+          }
+          @keyframes xpotUsdGlow {
+            0% {
+              opacity: 0.30;
+              transform: scale(0.98);
+            }
+            50% {
+              opacity: 0.62;
+              transform: scale(1.02);
+            }
+            100% {
+              opacity: 0.30;
+              transform: scale(0.98);
+            }
+          }
+
+          .xpot-pulse-halo {
+            background: radial-gradient(circle_at_40%_35%, rgba(124, 200, 255, 0.14), transparent 55%),
+              radial-gradient(circle_at_70%_45%, rgba(236, 72, 153, 0.10), transparent 60%);
+            filter: blur(14px);
+            animation: xpotHalo 0.55s ease-out 1;
+          }
+          @keyframes xpotHalo {
+            0% {
+              transform: scale(0.98);
+              opacity: 0;
+            }
+            40% {
+              opacity: 1;
+            }
+            100% {
+              transform: scale(1.02);
+              opacity: 0;
+            }
+          }
+
           @media (prefers-reduced-motion: reduce) {
+            .xpot-aurora,
+            .xpot-scan,
             .xpot-sheen,
-            .xpot-dot {
-              animation: none;
+            .xpot-dot,
+            .xpot-capsule-border,
+            .xpot-capsule-glow,
+            .xpot-shimmer,
+            .xpot-grid,
+            .xpot-engine::before,
+            .xpot-engine::after,
+            .xpot-usd-live,
+            .xpot-usd-live::after,
+            .xpot-usd-live::before,
+            .xpot-capsule-shimmer {
+              animation: none !important;
             }
           }
         `}</style>
@@ -1411,7 +1789,7 @@ export default function JackpotPanel({
             href="/hub"
             className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition"
           >
-            Enter now →
+            Enter today&apos;s XPOT →
           </Link>
         </div>
 

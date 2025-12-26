@@ -2,10 +2,11 @@
 'use client';
 
 import Link from 'next/link';
-import XpotLogo from '@/components/XpotLogo';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createPortal } from 'react-dom';
+
+import XpotLogo from '@/components/XpotLogo';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -31,6 +32,7 @@ import {
   Loader2,
   ChevronRight,
   Info,
+  Hourglass,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -43,7 +45,7 @@ export type HubWalletStatus = {
   winner?: boolean;
 };
 
-type XpotTopBarProps = {
+export type XpotTopBarProps = {
   logoHref?: string;
 
   // Public pill (non-hub pages)
@@ -73,15 +75,18 @@ type XpotTopBarProps = {
 
 const XPOT_X_POST = 'https://x.com/xpotbet';
 
+// ✅ Correct route (your file is app/2045/final-day/page.tsx)
+const FINAL_DAY_HREF = '/2045/final-day';
+
+// ✅ Naming (pick one and keep it consistent everywhere)
+const FINAL_DAY_LABEL = 'Final Draw'; // alternatives: 'Finale' | 'Legacy' | 'Archive'
+
+// Shared routes
 const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
-
-// ✅ NEW: Transparency / mechanism page
 const MECHANISM_HREF = '/mechanism';
-
-// ✅ Health / Protocol State page (pick one, keep constant here)
-const PROTOCOL_HREF = '/hub/protocol'; // or '/hub/protocol-state'
+const PROTOCOL_HREF = '/hub/protocol';
 
 // ✅ Your real deployed CA
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
@@ -222,7 +227,7 @@ export default function XpotTopBar({
                     onOpenWalletModal={openWallet}
                   />
                 ) : (
-                  <>{rightSlot ? rightSlot : <PublicRight liveIsOpen={liveIsOpen} />}</>
+                  <>{rightSlot ? rightSlot : <PublicRight />}</>
                 )}
 
                 {/* Mobile menu button */}
@@ -264,7 +269,7 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- OFFICIAL CA CHIP (wide, low, no yellow tick) ---------------- */
+/* ---------------- OFFICIAL CA CHIP ---------------- */
 
 function shortenAddress(addr: string, left = 6, right = 6) {
   if (!addr) return '';
@@ -273,6 +278,7 @@ function shortenAddress(addr: string, left = 6, right = 6) {
 }
 
 function OfficialCAChip() {
+  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 6, 6), []);
 
@@ -281,68 +287,117 @@ function OfficialCAChip() {
       await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1100);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   return (
-    <div
-      className="
-        relative inline-flex items-center gap-3
-        rounded-full px-4 py-1.5
-        border border-white/10 bg-white/[0.03]
-        backdrop-blur-xl
-        shadow-[0_18px_60px_rgba(0,0,0,0.55)]
-      "
-      title={XPOT_OFFICIAL_CA}
-    >
-      <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
-
-      <span
-        className="
-          relative z-10 inline-flex h-8 w-8 items-center justify-center
-          rounded-full border border-emerald-400/15
-          bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.18),rgba(0,0,0,0.35))]
-          shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_14px_40px_rgba(0,0,0,0.55)]
-        "
-      >
-        <ShieldCheck className="h-4 w-4 text-emerald-200" />
-      </span>
-
-      <div className="relative z-10 flex flex-col leading-none pr-1">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.30em] text-emerald-200/90">
-          OFFICIAL CA
-        </span>
-        <span className="mt-1 font-mono text-[12px] text-slate-100/95">{addrShort}</span>
-      </div>
-
-      <span
-        className="
-          relative z-10 inline-flex items-center
-          rounded-full border border-white/10 bg-black/30
-          px-2.5 py-1
-          text-[10px] font-semibold uppercase tracking-[0.22em]
-          text-slate-200/80
-        "
-      >
-        VERIFIED
-      </span>
-
+    <div className="relative">
       <button
         type="button"
-        onClick={onCopy}
+        onClick={() => setOpen((v) => !v)}
         className="
-          relative z-10 inline-flex items-center justify-center
-          h-8 w-8 rounded-full
-          border border-white/10 bg-white/[0.04]
-          hover:bg-white/[0.07]
+          group relative inline-flex items-center gap-3
+          rounded-full px-4 py-2
+          border border-white/10 bg-white/[0.03]
+          backdrop-blur-xl
+          shadow-[0_18px_60px_rgba(0,0,0,0.55)]
+          hover:bg-white/[0.055]
+          transition
         "
-        aria-label="Copy official CA"
-        title="Copy official CA"
+        title="Status"
+        aria-haspopup="dialog"
+        aria-expanded={open}
       >
-        {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4 text-slate-100/90" />}
+        <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
+
+        <span
+          className="
+            relative z-10 inline-flex h-8 w-8 items-center justify-center
+            rounded-full border border-emerald-400/15
+            bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.20),rgba(0,0,0,0.35))]
+            shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_14px_40px_rgba(0,0,0,0.55)]
+          "
+        >
+          <ShieldCheck className="h-4 w-4 text-emerald-200" />
+        </span>
+
+        <div className="relative z-10 hidden min-w-0 flex-col leading-none sm:flex">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-200/85">Status</span>
+            <span className="inline-flex items-center rounded-full border border-emerald-400/15 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-emerald-100">
+              VERIFIED
+            </span>
+          </div>
+
+          <span className="mt-1 font-mono text-[12px] text-slate-100/90">{addrShort}</span>
+        </div>
+
+        <span className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200/80 group-hover:bg-white/[0.07] group-hover:text-slate-100 transition">
+          <ChevronDown className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`} />
+        </span>
       </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[90] cursor-default"
+            aria-label="Close status"
+            onMouseDown={() => setOpen(false)}
+          />
+
+          <div className="absolute right-0 z-[91] mt-3 w-[360px] overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+            <div className="p-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">OFFICIAL CONTRACT</p>
+                <p className="mt-2 font-mono text-sm text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onCopy}
+                    className="
+                      inline-flex items-center gap-2 rounded-full
+                      border border-white/10 bg-white/[0.04]
+                      px-3 py-2 text-xs font-semibold text-slate-100
+                      hover:bg-white/[0.07]
+                    "
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 text-emerald-200" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 text-slate-100/90" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+
+                  <Link
+                    href={PROTOCOL_HREF}
+                    className="
+                      ml-auto inline-flex items-center gap-2 rounded-full
+                      border border-white/10 bg-white/[0.04]
+                      px-3 py-2 text-xs font-semibold text-slate-100
+                      hover:bg-white/[0.07]
+                    "
+                  >
+                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                    Health
+                  </Link>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs text-slate-300/80">Verified contract and protocol status live in one place.</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -446,11 +501,18 @@ function PublicNavCenter({
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      <NavLink href="/hub/live" title={liveIsOpen ? 'Live draw is open' : 'Live view'}>
+      {/* Live */}
+      <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
         <LiveDot isOpen={liveIsOpen} />
-        <Radio className="h-4 w-4 text-emerald-300" />
+        <Radio className="h-[15px] w-[15px] text-emerald-300" />
         Live
       </NavLink>
+
+      {/* Final Draw (primary) */}
+      <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
+        <Hourglass className="h-[15px] w-[15px] text-amber-200" />
+        <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
+      </NavPill>
 
       {/* Learn dropdown (hover + click) */}
       <div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
@@ -467,7 +529,6 @@ function PublicNavCenter({
 
         {learnOpen && (
           <>
-            {/* click outside catcher */}
             <button
               type="button"
               aria-label="Close learn menu"
@@ -507,7 +568,6 @@ function PublicNavCenter({
                   Winners
                 </Link>
 
-                {/* ✅ NEW: Mechanism */}
                 <Link
                   href={MECHANISM_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
@@ -541,17 +601,17 @@ function PublicNavCenter({
 
 /* ---------------- Public: Right actions ---------------- */
 
-function PublicRight({ liveIsOpen }: { liveIsOpen: boolean }) {
+function PublicRight() {
   return (
     <div className="hidden items-center gap-3 xl:flex">
-      <NavPill href={PROTOCOL_HREF} title="Protocol health">
-        <ShieldCheck className="h-4 w-4 text-emerald-300" />
-        Health
-      </NavPill>
-
       <Link
         href="/hub"
-        className="rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-black hover:bg-slate-200"
+        className="
+          rounded-full bg-white px-6 py-2.5
+          text-[13px] font-semibold text-black
+          hover:bg-slate-200
+          shadow-[0_18px_60px_rgba(0,0,0,0.35)]
+        "
       >
         Enter today&apos;s XPOT →
       </Link>
@@ -566,18 +626,19 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      <NavLink href="/hub/live" title={liveIsOpen ? 'Live draw is open' : 'Live view'}>
+      {/* Live */}
+      <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
         <LiveDot isOpen={liveIsOpen} />
-        <Radio className="h-4 w-4 text-emerald-300" />
+        <Radio className="h-[15px] w-[15px] text-emerald-300" />
         Live
       </NavLink>
 
-      <NavLink href={PROTOCOL_HREF} title="Protocol health">
-        <ShieldCheck className="h-4 w-4 text-emerald-300" />
-        Health
-      </NavLink>
+      {/* ✅ Final Draw (ONLY ONCE) */}
+      <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
+        <Hourglass className="h-[15px] w-[15px] text-amber-200" />
+        <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
+      </NavPill>
 
-      {/* ✅ NEW: Mechanism */}
       <NavLink href={MECHANISM_HREF} title="How winners are picked">
         <Info className="h-4 w-4 text-slate-200" />
         Mechanism
@@ -620,6 +681,7 @@ function HubRight({
   return (
     <div className="hidden items-center gap-3 xl:flex">
       <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
+
       {clerkEnabled && (
         <SignOutButton redirectUrl="/">
           <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06]">
@@ -687,6 +749,7 @@ function HubWalletMenuInline({
         transition
       `}
       title={addr ?? undefined}
+      type="button"
     >
       <span
         aria-hidden
@@ -719,17 +782,20 @@ function HubWalletMenuInline({
         <div className="min-w-0 text-left">
           <div className="flex items-center gap-2">
             <span className="text-[13px] font-semibold text-slate-100">{label}</span>
+
             {hubWalletStatus?.winner && (
               <span className="hidden sm:inline-flex items-center rounded-full border border-amber-400/15 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-amber-100">
                 WINNER
               </span>
             )}
+
             {hubWalletStatus?.claimed && !hubWalletStatus?.winner && (
               <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-400/15 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-emerald-100">
                 TICKET
               </span>
             )}
           </div>
+
           <div className="mt-0.5 flex items-center gap-2">
             <span className="text-[11px] text-slate-300/70">{sublabel}</span>
           </div>
@@ -1064,9 +1130,10 @@ function MobileMenu({
             Hub
           </Link>
 
+          {/* Live -> Protocol */}
           <Link
             className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href="/hub/live"
+            href={PROTOCOL_HREF}
           >
             <span className="inline-flex items-center gap-2">
               <LiveDot isOpen={liveIsOpen} />
@@ -1077,15 +1144,14 @@ function MobileMenu({
 
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={PROTOCOL_HREF}
+            href={FINAL_DAY_HREF}
           >
             <span className="inline-flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-300" />
-              Health
+              <Hourglass className="h-4 w-4 text-amber-200" />
+              {FINAL_DAY_LABEL}
             </span>
           </Link>
 
-          {/* ✅ NEW: Mechanism */}
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={MECHANISM_HREF}
