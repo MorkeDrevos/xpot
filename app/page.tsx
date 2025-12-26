@@ -1557,7 +1557,7 @@ function HomePageInner() {
                         and paid on-chain.
                       </p>
 
-                      <div className="mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-3">
+                      <div className="mt-5 grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
                         {/* Card 1 */}
                         <div className="relative overflow-hidden rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.12),transparent_62%)]" />
