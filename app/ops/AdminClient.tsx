@@ -24,9 +24,9 @@ import {
 const MAX_TODAY_TICKETS = 7;
 const MAX_RECENT_WINNERS = 10;
 
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
+// ✅ Option A (recommended): Frontend now calls /api/ops/* (backend moved/renamed)
+const OPS_API = '/api/ops';
+const ops = (p: string) => `${OPS_API}${p.startsWith('/') ? '' : '/'}${p}`;
 
 type DrawStatus = 'open' | 'closed' | 'completed';
 
@@ -79,7 +79,7 @@ type AdminBonusDrop = {
   status: BonusDropStatus;
 };
 
-// Public live draw payload (fallback when /api/admin/today returns null)
+// Public live draw payload (fallback when ops today returns null)
 type LiveDrawPayload = {
   draw: {
     dailyXpot: number;
@@ -90,10 +90,6 @@ type LiveDrawPayload = {
     status: 'OPEN' | 'LOCKED' | 'COMPLETED';
   } | null;
 };
-
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
 
 const ADMIN_TOKEN_KEY = 'xpot_admin_token';
 
@@ -260,7 +256,7 @@ function CopyableWallet({ address }: { address: string }) {
 }
 
 // Map public live draw status to admin UI status
-function mapLiveStatus(s: LiveDrawPayload['draw'] extends infer D ? any : never): DrawStatus {
+function mapLiveStatus(s: any): DrawStatus {
   const status = String(s ?? '').toUpperCase();
   if (status === 'OPEN') return 'open';
   if (status === 'COMPLETED') return 'completed';
@@ -280,22 +276,12 @@ function toTodayDrawFromLive(live: LiveDrawPayload['draw']): TodayDraw | null {
   };
 }
 
-// ─────────────────────────────────────────────
 // Button styles (driven by globals.css)
-// Fix: gold CTAs now use vault gold tokens
-// ─────────────────────────────────────────────
-
 const BTN = 'xpot-btn';
 const BTN_VAULT = 'xpot-btn xpot-btn-vault';
 const BTN_UTILITY = 'xpot-btn';
 const BTN_DANGER = 'xpot-btn xpot-btn-danger';
-
-// Keep the signature ops "crown" look, but route through vault gold
 const BTN_CROWN = BTN_VAULT;
-
-// ─────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────
 
 export default function AdminPage() {
   const [adminToken, setAdminToken] = useState<string | null>(null);
@@ -303,11 +289,10 @@ export default function AdminPage() {
   const [tokenAccepted, setTokenAccepted] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
 
-  const [, setOpsMode] = useState<OpsMode>('MANUAL'); // requested mode (DB)
-  const [effectiveOpsMode, setEffectiveOpsMode] = useState<OpsMode>('MANUAL'); // what the system actually uses
+  const [, setOpsMode] = useState<OpsMode>('MANUAL');
+  const [effectiveOpsMode, setEffectiveOpsMode] = useState<OpsMode>('MANUAL');
   const [envAutoAllowed, setEnvAutoAllowed] = useState<boolean>(false);
 
-  // modal that re-prompts for admin key when switching mode
   const [modeModalOpen, setModeModalOpen] = useState(false);
   const [modePending, setModePending] = useState<OpsMode>('MANUAL');
   const [modeTokenInput, setModeTokenInput] = useState('');
@@ -395,36 +380,34 @@ export default function AdminPage() {
     }
   }, []);
 
-  // IMPORTANT FIX:
-  // - authedFetch now THROWS on failures instead of silently returning {ok:false}
-  //   This prevents "no draw" UI caused by swallowed API errors.
+  // IMPORTANT:
+  // - authedFetch THROWS on failures so UI doesn't silently show "no draw"
   async function authedFetch(input: string, init?: RequestInit) {
-  if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
+    if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
-  const headers = new Headers(init?.headers || {});
-  headers.set('Content-Type', 'application/json');
-  headers.set('x-xpot-admin-key', adminToken.trim());
+    const headers = new Headers(init?.headers || {});
+    headers.set('Content-Type', 'application/json');
+    headers.set('x-xpot-admin-key', adminToken.trim());
 
-  const res = await fetch(input, { ...init, headers });
+    const res = await fetch(input, { ...init, headers });
 
-  let data: any = null;
-  try {
-    data = await res.json();
-  } catch {
-    data = null;
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      const msg = data?.error || `Request failed (${res.status})`;
+      throw new Error(msg);
+    }
+
+    return data;
   }
-
-  if (!res.ok) {
-    const msg = data?.error || `Request failed (${res.status})`;
-    // Keep the reason visible in UI instead of silently returning ok:false
-    throw new Error(msg);
-  }
-
-  return data;
-}
 
   async function loadOpsMode() {
-    const data = await authedFetch('/api/admin/ops-mode');
+    const data = await authedFetch(ops('/ops-mode'));
 
     const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
     const eff = ((data as any).effectiveMode ?? m) as OpsMode;
@@ -436,7 +419,7 @@ export default function AdminPage() {
   }
 
   async function saveOpsMode(next: OpsMode) {
-    const data = await authedFetch('/api/admin/ops-mode', {
+    const data = await authedFetch(ops('/ops-mode'), {
       method: 'POST',
       body: JSON.stringify({ mode: next }),
     });
@@ -454,7 +437,7 @@ export default function AdminPage() {
     setUpcomingLoading(true);
     setUpcomingError(null);
     try {
-      const data = await authedFetch('/api/admin/bonus-upcoming');
+      const data = await authedFetch(ops('/bonus-upcoming'));
       setUpcomingDrops((data as any).upcoming ?? []);
     } catch (err: any) {
       console.error('[ADMIN] refresh upcoming error', err);
@@ -475,7 +458,7 @@ export default function AdminPage() {
 
     setCreatingDraw(true);
     try {
-      const data = await authedFetch('/api/admin/create-today-draw', { method: 'POST' });
+      const data = await authedFetch(ops('/create-today-draw'), { method: 'POST' });
       if (!data || (data as any).ok === false)
         throw new Error((data as any)?.error || 'Failed to create today’s draw');
       window.location.reload();
@@ -522,7 +505,7 @@ export default function AdminPage() {
 
     setBonusSubmitting(true);
     try {
-      const data = (await authedFetch('/api/admin/bonus-schedule', {
+      const data = (await authedFetch(ops('/bonus-schedule'), {
         method: 'POST',
         body: JSON.stringify({
           amountXpot: amountNumber,
@@ -557,10 +540,9 @@ export default function AdminPage() {
 
     setCancelingDropId(dropId);
     try {
-      const data = await authedFetch(
-        `/api/admin/bonus-cancel?id=${encodeURIComponent(dropId)}`,
-        { method: 'POST' },
-      );
+      const data = await authedFetch(`${ops('/bonus-cancel')}?id=${encodeURIComponent(dropId)}`, {
+        method: 'POST',
+      });
       if (data && (data as any).ok === false)
         throw new Error((data as any).error || 'Failed to cancel drop');
 
@@ -587,7 +569,7 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
-      const data = await authedFetch('/api/admin/pick-winner', { method: 'POST' });
+      const data = await authedFetch(ops('/pick-winner'), { method: 'POST' });
 
       const raw = (data as any).winner;
       if (!raw) throw new Error('No winner returned from API');
@@ -604,7 +586,7 @@ export default function AdminPage() {
       setPickSuccess(`Main XPOT winner: ${winner.ticketCode || '(no ticket)'} (${shortAddr})`);
 
       try {
-        const winnersData = await authedFetch('/api/admin/winners');
+        const winnersData = await authedFetch(ops('/winners'));
         setWinners((winnersData as any).winners ?? []);
       } catch (err) {
         console.error('[ADMIN] refresh winners after pick error', err);
@@ -633,7 +615,6 @@ export default function AdminPage() {
       return;
     }
 
-    // HARD BLOCK
     if (todayDraw.status !== 'open') {
       setBonusPickError('Bonus winners can only be picked while the draw is open.');
       return;
@@ -641,7 +622,7 @@ export default function AdminPage() {
 
     setIsPickingBonusWinner(true);
     try {
-      const data = await authedFetch('/api/admin/pick-bonus-winner', {
+      const data = await authedFetch(ops('/pick-bonus-winner'), {
         method: 'POST',
         body: JSON.stringify({
           drawId: todayDraw.id,
@@ -680,7 +661,7 @@ export default function AdminPage() {
 
     setIsReopeningDraw(true);
     try {
-      const data = await authedFetch('/api/admin/reopen-draw', { method: 'POST' });
+      const data = await authedFetch(ops('/reopen-draw'), { method: 'POST' });
       if (!data || (data as any).ok === false)
         throw new Error((data as any)?.error || 'Failed to reopen draw');
       setTodayDraw(prev => (prev ? { ...prev, status: 'open' } : prev));
@@ -709,12 +690,13 @@ export default function AdminPage() {
 
     setSavingPaidId(winnerId);
     try {
-      const data = await authedFetch('/api/admin/mark-paid', {
+      const data = await authedFetch(ops('/mark-paid'), {
         method: 'POST',
         body: JSON.stringify({ winnerId, txUrl }),
       });
 
-      if (data && (data as any).ok === false) throw new Error((data as any).error || 'Failed to mark as paid');
+      if (data && (data as any).ok === false)
+        throw new Error((data as any).error || 'Failed to mark as paid');
 
       setWinners(prev => prev.map(w => (w.id === winnerId ? { ...w, isPaidOut: true, txUrl } : w)));
     } catch (err: any) {
@@ -724,20 +706,18 @@ export default function AdminPage() {
     }
   }
 
-  // FIX:
-  // If /api/admin/today returns null (or your admin route is still using exact-midnight findUnique),
-  // fall back to /api/draw/live which now self-heals and always returns a draw.
+  // Fallback:
+  // 1) Try ops today (authed)
+  // 2) If missing/null, fall back to public live draw
   async function loadTodayWithFallback() {
-    // 1) Try admin today
     try {
-      const data = await authedFetch('/api/admin/today');
+      const data = await authedFetch(ops('/today'));
       const t = (data as any).today ?? null;
       if (t) return t as TodayDraw;
-    } catch (err) {
-      // swallow here, we still do fallback
+    } catch {
+      // ignore - fallback below
     }
 
-    // 2) Fallback to public live draw
     const res = await fetch('/api/draw/live', { cache: 'no-store' });
     const json = (await res.json()) as LiveDrawPayload;
     const mapped = toTodayDrawFromLive(json.draw);
@@ -753,7 +733,6 @@ export default function AdminPage() {
     let cancelled = false;
 
     async function loadAll() {
-      // Ops mode (kept wired even if UI is hidden)
       try {
         await loadOpsMode();
       } catch (err) {
@@ -777,7 +756,7 @@ export default function AdminPage() {
       setTicketsLoading(true);
       setTicketsError(null);
       try {
-        const data = await authedFetch('/api/admin/tickets');
+        const data = await authedFetch(ops('/tickets'));
         if (!cancelled) setTickets((data as any).tickets ?? []);
       } catch (err: any) {
         if (!cancelled) setTicketsError(err?.message || 'Failed to load tickets');
@@ -789,7 +768,7 @@ export default function AdminPage() {
       setWinnersLoading(true);
       setWinnersError(null);
       try {
-        const data = await authedFetch('/api/admin/winners');
+        const data = await authedFetch(ops('/winners'));
         if (!cancelled) setWinners((data as any).winners ?? []);
       } catch (err: any) {
         if (!cancelled) setWinnersError(err?.message || 'Failed to load winners');
@@ -801,7 +780,7 @@ export default function AdminPage() {
       setUpcomingLoading(true);
       setUpcomingError(null);
       try {
-        const data = await authedFetch('/api/admin/bonus-upcoming');
+        const data = await authedFetch(ops('/bonus-upcoming'));
         if (!cancelled) setUpcomingDrops((data as any).upcoming ?? []);
       } catch (err: any) {
         if (!cancelled) setUpcomingError(err?.message || 'Failed to load upcoming drops');
@@ -947,8 +926,6 @@ export default function AdminPage() {
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
-
-  // TEMP: manual-only until ops-mode + DB are re-enabled
   const isAutoActive = false;
 
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -999,7 +976,6 @@ export default function AdminPage() {
 
               {false && (
                 <>
-                  {/* OPS MODE (TEMP DISABLED) */}
                   {tokenAccepted && (
                     <div className="hidden sm:flex items-center gap-2">
                       <span
@@ -1341,7 +1317,11 @@ export default function AdminPage() {
                   </div>
 
                   <div className="mt-5 grid grid-cols-2 gap-3">
-                    <button type="submit" disabled={bonusSubmitting || !adminToken} className={`${BTN_VAULT} h-10 text-[13px]`}>
+                    <button
+                      type="submit"
+                      disabled={bonusSubmitting || !adminToken}
+                      className={`${BTN_VAULT} h-10 text-[13px]`}
+                    >
                       {bonusSubmitting ? 'Scheduling...' : 'Schedule bonus'}
                     </button>
 
@@ -1387,7 +1367,9 @@ export default function AdminPage() {
 
                       <span className="text-[11px] text-slate-400">
                         {nextBonusDrop.label} ·{' '}
-                        <span className="font-semibold text-slate-200">{nextBonusDrop.amountXpot.toLocaleString()} XPOT</span>
+                        <span className="font-semibold text-slate-200">
+                          {nextBonusDrop.amountXpot.toLocaleString()} XPOT
+                        </span>
                       </span>
                     </div>
                   )}
