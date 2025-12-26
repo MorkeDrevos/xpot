@@ -399,32 +399,29 @@ export default function AdminPage() {
   // - authedFetch now THROWS on failures instead of silently returning {ok:false}
   //   This prevents "no draw" UI caused by swallowed API errors.
   async function authedFetch(input: string, init?: RequestInit) {
-    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
+  if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
-    const headers = new Headers(init?.headers || {});
-    headers.set('Content-Type', 'application/json');
-    headers.set('x-xpot-admin-key', adminToken.trim());
+  const headers = new Headers(init?.headers || {});
+  headers.set('Content-Type', 'application/json');
+  headers.set('x-xpot-admin-key', adminToken.trim());
 
-    const res = await fetch(input, { ...init, headers, cache: 'no-store' });
+  const res = await fetch(input, { ...init, headers });
 
-    let data: any = null;
-    try {
-      data = await res.json();
-    } catch {
-      data = null;
-    }
-
-    if (!res.ok) {
-      throw new Error(data?.error || `Request failed (${res.status})`);
-    }
-
-    // Some admin APIs may return { ok:false } with 200
-    if (data && typeof data === 'object' && (data as any).ok === false) {
-      throw new Error((data as any).error || 'Request failed');
-    }
-
-    return data;
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
   }
+
+  if (!res.ok) {
+    const msg = data?.error || `Request failed (${res.status})`;
+    // Keep the reason visible in UI instead of silently returning ok:false
+    throw new Error(msg);
+  }
+
+  return data;
+}
 
   async function loadOpsMode() {
     const data = await authedFetch('/api/admin/ops-mode');
