@@ -37,7 +37,11 @@ import {
 // ─────────────────────────────────────────────
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.05] active:brightness-[0.98] disabled:cursor-not-allowed disabled:opacity-40';
+  'relative inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-slate-950 ' +
+  'bg-[linear-gradient(135deg,rgba(251,191,36,0.98),rgba(245,158,11,0.92),rgba(56,189,248,0.22))] ' +
+  'shadow-[0_22px_70px_rgba(251,191,36,0.18),0_18px_60px_rgba(0,0,0,0.55)] ' +
+  'ring-1 ring-amber-200/40 transition hover:brightness-[1.06] active:brightness-[0.98] ' +
+  'focus:outline-none focus:ring-2 focus:ring-amber-200/60 disabled:cursor-not-allowed disabled:opacity-45';
 
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition disabled:cursor-not-allowed disabled:opacity-40';
@@ -65,13 +69,6 @@ function shortWallet(addr: string) {
 
 function pad2(n: number) {
   return n.toString().padStart(2, '0');
-}
-
-function endOfLocalDayMs() {
-  const now = new Date();
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
-  return end.getTime();
 }
 
 function formatCountdown(ms: number) {
@@ -156,6 +153,71 @@ function useReducedMotion() {
     return () => m.removeEventListener?.('change', apply);
   }, []);
   return reduced;
+}
+
+// ─────────────────────────────────────────────
+// Madrid draw cutoff countdown (22:00 Europe/Madrid)
+// ─────────────────────────────────────────────
+
+function getTzOffsetMinutes(utcDate: Date, timeZone: string) {
+  try {
+    // e.g. "GMT+1" / "GMT+02:00"
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'shortOffset',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).formatToParts(utcDate);
+
+    const tz = parts.find(p => p.type === 'timeZoneName')?.value || 'GMT';
+    const m = tz.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+    if (!m) return 0;
+    const sign = m[1] === '-' ? -1 : 1;
+    const hh = Number(m[2] || 0);
+    const mm = Number(m[3] || 0);
+    return sign * (hh * 60 + mm);
+  } catch {
+    return 0;
+  }
+}
+
+function madridWallClockToUtcMs(y: number, m: number, d: number, hh: number, mm: number, ss: number) {
+  // Treat the provided wall-clock as if it were UTC, then subtract the Madrid offset at that instant.
+  const guessUtc = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
+  const offMin = getTzOffsetMinutes(guessUtc, 'Europe/Madrid');
+  return guessUtc.getTime() - offMin * 60_000;
+}
+
+function getMadridYmd(now = new Date()) {
+  // Read Madrid Y/M/D from Intl (safe across user locale)
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+
+  const y = Number(parts.find(p => p.type === 'year')?.value || '0');
+  const m = Number(parts.find(p => p.type === 'month')?.value || '0');
+  const d = Number(parts.find(p => p.type === 'day')?.value || '0');
+  return { y, m, d };
+}
+
+function nextMadridCutoffUtcMs(now = new Date()) {
+  const { y, m, d } = getMadridYmd(now);
+
+  const cutoffTodayUtc = madridWallClockToUtcMs(y, m, d, 22, 0, 0);
+  const nowMs = now.getTime();
+
+  if (nowMs < cutoffTodayUtc) return cutoffTodayUtc;
+
+  // next day (let Date handle month/year rollover)
+  const tmp = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  tmp.setUTCDate(tmp.getUTCDate() + 1);
+  const ny = tmp.getUTCFullYear();
+  const nm = tmp.getUTCMonth() + 1;
+  const nd = tmp.getUTCDate();
+  return madridWallClockToUtcMs(ny, nm, nd, 22, 0, 0);
 }
 
 // ─────────────────────────────────────────────
@@ -247,7 +309,7 @@ function TinyRow({
 }
 
 // ─────────────────────────────────────────────
-// Bonus hook (same endpoint as homepage)
+// Bonus hook
 // ─────────────────────────────────────────────
 
 type BonusUpcoming = {
@@ -570,11 +632,12 @@ export default function DashboardClient() {
   }, [isAuthedEnough, publicKey, connected]);
 
   // ─────────────────────────────────────────────
-  // Countdown ticker
+  // Countdown ticker (Madrid 22:00 cutoff)
   // ─────────────────────────────────────────────
   useEffect(() => {
     const tick = () => {
-      const ms = endOfLocalDayMs() - Date.now();
+      const target = nextMadridCutoffUtcMs(new Date());
+      const ms = target - Date.now();
       setCountdown(formatCountdown(ms));
     };
     tick();
@@ -634,14 +697,57 @@ export default function DashboardClient() {
   }, []);
 
   const fetchXpotBalance = useCallback(async (address: string) => {
-    const res = await fetch(`/api/xpot-balance?address=${address}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
-    const data: { balance: number } = await res.json();
-    return data.balance;
+    const endpoints = [
+      `/api/xpot-balance?address=${encodeURIComponent(address)}`,
+      `/api/xpot-balance?wallet=${encodeURIComponent(address)}`,
+      `/api/xpot-balance?owner=${encodeURIComponent(address)}`,
+    ];
+
+    let lastErr: unknown = null;
+
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) {
+          lastErr = new Error(`API error: ${res.status}`);
+          continue;
+        }
+
+        const data = (await res.json().catch(() => null)) as any;
+        // Accept multiple possible payload shapes defensively
+        const direct = data?.balance ?? data?.xpotBalance ?? data?.uiAmount ?? data?.amount;
+
+        if (typeof direct === 'number' && Number.isFinite(direct)) return direct;
+
+        if (typeof direct === 'string' && direct.trim() !== '' && !Number.isNaN(Number(direct))) {
+          return Number(direct);
+        }
+
+        // Common token-account shape: { amount: "123", decimals: 6 }
+        if (typeof data?.amount === 'string' && typeof data?.decimals === 'number') {
+          const raw = Number(data.amount);
+          if (Number.isFinite(raw)) {
+            return raw / Math.pow(10, Math.max(0, data.decimals));
+          }
+        }
+
+        // Fallback: { value: { uiAmount } }
+        const nested = data?.value?.uiAmount;
+        if (typeof nested === 'number' && Number.isFinite(nested)) return nested;
+
+        // If it returned “something” but no parseable balance, treat as 0 rather than error
+        return 0;
+      } catch (e) {
+        lastErr = e;
+        continue;
+      }
+    }
+
+    throw lastErr instanceof Error ? lastErr : new Error('Failed to load XPOT balance');
   }, []);
 
   const fetchHistory = useCallback(async (address: string) => {
-    const res = await fetch(`/api/tickets/history?wallet=${address}`, { cache: 'no-store' });
+    const res = await fetch(`/api/tickets/history?wallet=${encodeURIComponent(address)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load history');
     const data = await res.json();
     const tickets: Entry[] = Array.isArray(data.tickets)
@@ -1059,7 +1165,7 @@ export default function DashboardClient() {
             ),
           }}
         >
-          {/* HERO - “First Class” personal entry point */}
+          {/* HERO */}
           <section className="mt-6">
             <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/35 shadow-[0_50px_160px_rgba(0,0,0,0.6)] ring-1 ring-white/10 backdrop-blur-2xl">
               <div className="xpot-hero-sweep absolute inset-0" />
@@ -1103,6 +1209,9 @@ export default function DashboardClient() {
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Next draw in</p>
                       <p className="mt-1 font-mono text-lg text-slate-100">{countdown}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-300/50">
+                        22:00 Madrid cutoff
+                      </p>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -1146,7 +1255,6 @@ export default function DashboardClient() {
                         ? 'Unavailable'
                         : `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                     }
-                    mono={false}
                   />
                   <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                     <div>
@@ -1210,11 +1318,11 @@ export default function DashboardClient() {
             </div>
           </section>
 
-          {/* MAIN GRID - calmer, premium composition */}
+          {/* MAIN GRID */}
           <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            {/* LEFT - ACTION + PROOF */}
+            {/* LEFT */}
             <div className="space-y-6">
-              {/* TODAY TICKET - main ritual */}
+              {/* TODAY TICKET */}
               <LuxeCard accent="gold">
                 <LuxeTitle
                   title="Today’s XPOT"
@@ -1272,13 +1380,13 @@ export default function DashboardClient() {
                         type="button"
                         onClick={handleClaimTicket}
                         disabled={!walletConnected || claiming}
-                        className={`${BTN_PRIMARY} px-6 py-3 text-sm shadow-[0_30px_100px_rgba(0,0,0,0.45)]`}
+                        className={BTN_PRIMARY}
                       >
                         {claiming ? 'Generating…' : 'Claim today’s entry'}
                       </button>
 
                       <div className="text-xs text-slate-300/70">
-                        Draw closes at local day end. Come back for proof.
+                        Draw locks at <span className="font-semibold text-slate-100">22:00 Madrid</span>. Come back for proof.
                       </div>
                     </div>
 
@@ -1316,7 +1424,10 @@ export default function DashboardClient() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <TinyRow label="Status" value={<span className="font-semibold text-slate-100">IN DRAW</span>} />
-                      <TinyRow label="Issued" value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>} />
+                      <TinyRow
+                        label="Issued"
+                        value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>}
+                      />
                     </div>
                   </div>
                 )}
@@ -1357,15 +1468,10 @@ export default function DashboardClient() {
                       <p className="text-xs text-slate-300/70">No entries yet.</p>
                     ) : (
                       myTickets.map(t => (
-                        <div
-                          key={t.id}
-                          className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
-                        >
+                        <div key={t.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-mono text-sm text-slate-100">{t.code}</p>
-                            <StatusPill
-                              tone={t.status === 'in-draw' ? 'emerald' : t.status === 'won' ? 'sky' : 'slate'}
-                            >
+                            <StatusPill tone={t.status === 'in-draw' ? 'emerald' : t.status === 'won' ? 'sky' : 'slate'}>
                               {t.status.replace('-', ' ')}
                             </StatusPill>
                           </div>
@@ -1378,7 +1484,7 @@ export default function DashboardClient() {
               )}
             </div>
 
-            {/* RIGHT - CONCIERGE FEED */}
+            {/* RIGHT */}
             <div className="space-y-6">
               <LuxeCard accent="violet">
                 <LuxeTitle
