@@ -504,6 +504,116 @@ function Accordion({ items }: { items: { q: string; a: string }[] }) {
 }
 
 /* ─────────────────────────────────────────────
+   Premium cosmic backdrop (hero engine)
+───────────────────────────────────────────── */
+
+function CosmicHeroBackdrop() {
+  return (
+    <>
+      <style jsx global>{`
+        @keyframes xpotHeroRotate {
+          0% {
+            transform: translateZ(0) rotate(0deg) scale(1);
+          }
+          100% {
+            transform: translateZ(0) rotate(360deg) scale(1);
+          }
+        }
+        @keyframes xpotHeroSheen {
+          0% {
+            transform: translateX(-25%) translateY(-10%) rotate(8deg);
+            opacity: 0;
+          }
+          20% {
+            opacity: 0.28;
+          }
+          60% {
+            opacity: 0.18;
+          }
+          100% {
+            transform: translateX(25%) translateY(10%) rotate(8deg);
+            opacity: 0;
+          }
+        }
+        @keyframes xpotLivePulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.25);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(52, 211, 153, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+          }
+        }
+        .xpot-hero-engine {
+          position: absolute;
+          inset: -180px;
+          pointer-events: none;
+          opacity: 0.85;
+          filter: blur(0px);
+        }
+        .xpot-hero-engine::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 999px;
+          background: radial-gradient(circle at 30% 25%, rgba(16, 185, 129, 0.18), transparent 55%),
+            radial-gradient(circle at 70% 25%, rgba(56, 189, 248, 0.14), transparent 58%),
+            radial-gradient(circle at 55% 70%, rgba(var(--xpot-gold), 0.12), transparent 62%),
+            radial-gradient(circle at 30% 80%, rgba(139, 92, 246, 0.12), transparent 60%);
+          animation: xpotHeroRotate 44s linear infinite;
+          transform-origin: center;
+          opacity: 0.95;
+        }
+        .xpot-hero-engine::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 999px;
+          background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05), transparent 55%);
+          opacity: 0.55;
+          mix-blend-mode: screen;
+        }
+        .xpot-hero-grain {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.22;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+          background-size: 260px 260px;
+          mix-blend-mode: overlay;
+        }
+        .xpot-hero-sheen {
+          position: absolute;
+          inset: -60px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.06) 32%,
+            rgba(var(--xpot-gold), 0.08) 50%,
+            rgba(56, 189, 248, 0.06) 68%,
+            transparent 100%
+          );
+          transform: rotate(8deg);
+          animation: xpotHeroSheen 9.8s ease-in-out infinite;
+          mix-blend-mode: screen;
+          opacity: 0;
+        }
+        .xpot-live-ring {
+          animation: xpotLivePulse 2.2s ease-in-out infinite;
+        }
+      `}</style>
+
+      <div className="xpot-hero-engine" aria-hidden />
+      <div className="xpot-hero-sheen" aria-hidden />
+      <div className="xpot-hero-grain" aria-hidden />
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Madrid cutoff helpers
 ───────────────────────────────────────────── */
 
@@ -1010,21 +1120,29 @@ function HomePageInner() {
       <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+14px)]" />
 
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.08),rgba(0,0,0,0.55))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.60))]" />
 
         <div className="relative z-10 w-full px-0">
           <div className="py-5 sm:py-7">
             <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              <CosmicHeroBackdrop />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
-              <div className="relative z-10 grid gap-6 p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)] lg:p-8">
+              <div
+                className="
+                  relative z-10
+                  grid gap-6 p-6
+                  lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
+                  lg:p-8
+                "
+              >
                 {/* LEFT */}
                 <div className="flex flex-col justify-between gap-6">
                   <div className="space-y-6">
                     {/* Hero */}
                     <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur sm:p-7">
-                      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.14),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(16,185,129,0.24),transparent)]" />
+                      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
+                      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(16,185,129,0.22),transparent)]" />
 
                       {/* Top line + pills */}
                       <div className="relative flex flex-wrap items-center justify-between gap-3">
@@ -1048,8 +1166,8 @@ function HomePageInner() {
                       </div>
 
                       {/* Headline */}
-                      <div className="relative mt-5">
-                        <h1 className="text-balance text-[34px] font-semibold leading-[1.05] sm:text-[52px]">
+                      <div className="relative mt-4">
+                        <h1 className="text-balance text-[32px] font-semibold leading-[1.05] sm:text-[50px]">
                           One protocol.
                           <br />
                           <span className="text-emerald-300/90">One daily XPOT draw.</span>
@@ -1061,8 +1179,8 @@ function HomePageInner() {
                         </p>
                       </div>
 
-                      {/* Countdown capsule */}
-                      <div className="relative mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 ring-1 ring-white/[0.05]">
+                      {/* Countdown capsule (more alive) */}
+                      <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 ring-1 ring-white/[0.05]">
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
                             Next draw
@@ -1074,16 +1192,16 @@ function HomePageInner() {
                           </p>
                         </div>
 
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                          <Radio className="h-3.5 w-3.5 text-emerald-300/80" />
+                        <span className="xpot-live-ring inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
+                          <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
                           Live
                         </span>
                       </div>
 
                       {/* Eligibility + Final draw (clean, non-repeating) */}
-                      <div className="relative mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
+                      <div className="relative mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
-                          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
+                          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.11),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(var(--xpot-gold),0.09),transparent_62%)]" />
                           <div className="relative">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                               Eligibility
@@ -1106,7 +1224,7 @@ function HomePageInner() {
                         </div>
 
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
-                          <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
+                          <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.11),transparent_62%)]" />
 
                           <div className="relative flex items-start justify-between gap-3">
                             <div>
@@ -1132,14 +1250,14 @@ function HomePageInner() {
                       </div>
 
                       {bonusActive ? (
-                        <div className="mt-6">
+                        <div className="mt-5">
                           <BonusVault>
                             <BonusStrip variant="home" />
                           </BonusVault>
                         </div>
                       ) : null}
 
-                      <div className="mt-7 flex flex-wrap items-center gap-3">
+                      <div className="mt-6 flex flex-wrap items-center gap-3">
                         <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`} title="Enter the hub">
                           Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -1155,7 +1273,7 @@ function HomePageInner() {
                       </div>
                     </div>
 
-                    {/* Run Architecture */}
+                    {/* Run Architecture (slightly tighter) */}
                     <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/45 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
                       <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(56,189,248,0.24),transparent)]" />
@@ -1220,7 +1338,7 @@ function HomePageInner() {
                   </div>
                 </div>
 
-                {/* RIGHT */}
+                {/* RIGHT (bigger + more breathing room) */}
                 <div className="grid gap-4">
                   <PremiumCard className="p-5 sm:p-6" halo sheen>
                     <div className="mt-0">
@@ -1232,7 +1350,6 @@ function HomePageInner() {
                     <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
                   </PremiumCard>
 
-                  {/* Optional: keep contract bar available but not noisy in hero */}
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
