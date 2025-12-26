@@ -1387,7 +1387,7 @@ export default function DashboardClient() {
                   <div className="flex items-center gap-2">
                     <button
   type="button"
-  onClick={() => setWalletModalOpen(true)}
+  onClick={() => onOpenWalletModal?.()}
   className="
     group relative h-10
     inline-flex items-center justify-center gap-2
@@ -1405,7 +1405,7 @@ export default function DashboardClient() {
   "
 >
   <Wallet className="h-4 w-4 opacity-90 group-hover:opacity-100" />
-  <span>{walletConnected ? 'Change wallet' : 'Select wallet'}</span>
+  <span>Select wallet</span>
 </button>
 
                     <button
