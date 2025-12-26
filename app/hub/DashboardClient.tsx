@@ -11,7 +11,7 @@ import { useUser, SignOutButton } from '@clerk/nextjs';
 import GoldAmount from '@/components/GoldAmount';
 
 import XpotPageShell from '@/components/XpotPageShell';
-import PremiumWalletModal from '@/components/PremiumWalletModal';
+import LightConnectWalletModal from '@/components/LightConnectWalletModal';
 import HubLockOverlay from '@/components/HubLockOverlay';
 import BonusStrip from '@/components/BonusStrip';
 import { REQUIRED_XPOT } from '@/lib/xpot';
@@ -616,6 +616,9 @@ function safeStatusLabel(status: any) {
 export default function DashboardClient() {
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
+  const onOpenWalletModal = useCallback(() => setWalletModalOpen(true), []);
+  const onCloseWalletModal = useCallback(() => setWalletModalOpen(false), []);
+
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
@@ -1170,7 +1173,7 @@ export default function DashboardClient() {
         }
       `}</style>
 
-      <PremiumWalletModal open={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
+      <LightConnectWalletModal open={walletModalOpen} onClose={onCloseWalletModal} />
 
       <EntryCeremony
         open={showCeremony}
@@ -1231,7 +1234,7 @@ export default function DashboardClient() {
                 <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 backdrop-blur-xl">
                   <button
                     type="button"
-                    onClick={() => setWalletModalOpen(true)}
+                    onClick={onOpenWalletModal}
                     className="text-left leading-tight hover:opacity-90"
                   >
                     <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">
@@ -1387,7 +1390,7 @@ export default function DashboardClient() {
                   <div className="flex items-center gap-2">
                     <button
   type="button"
-  onClick={() => setWalletModalOpen(true)}
+  onClick={onOpenWalletModal}
   className="
     group relative h-10
     inline-flex items-center justify-center gap-2
