@@ -595,3 +595,21 @@ select {
   color: transparent;
   text-shadow: 0 10px 26px rgba(56, 189, 248, 0.08);
 }
+/* Subtle system-gradient just for the word XPOT */
+.xpot-xpotword {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(158, 240, 195, 0.92) 38%,
+    rgba(110, 231, 249, 0.90) 72%,
+    rgba(255, 255, 255, 0.92) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+
+  /* very soft lift, keeps it “in-system” */
+  text-shadow:
+    0 0 18px rgba(110, 231, 249, 0.10),
+    0 10px 26px rgba(0, 0, 0, 0.35);
+}
