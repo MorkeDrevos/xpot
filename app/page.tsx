@@ -1144,58 +1144,96 @@ function ParallaxConsoleCard({
 }
 
 function MissionBanner() {
-  const STORAGE_KEY = 'xpot_mission_hidden_day';
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  // 👇 bump this whenever you change copy/design and want everyone to see it again
+  const VERSION = 3;
 
-  const [hidden, setHidden] = useState<boolean | null>(null);
+  // 👇 how long a dismiss should last (e.g. 72h). Change to taste.
+  const DISMISS_TTL_MS = 72 * 60 * 60 * 1000;
+
+  const STORAGE_KEY = `xpot_mission_hidden_v${VERSION}`;
+
+  // null = unknown (before mount), false = show, true = hidden
+  const [hidden, setHidden] = useState<null | boolean>(null);
 
   useEffect(() => {
     try {
-      const storedDay = localStorage.getItem(STORAGE_KEY);
-      setHidden(storedDay === today);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        setHidden(false);
+        return;
+      }
+
+      // we store a timestamp string
+      const dismissedAt = Number(raw);
+      if (!Number.isFinite(dismissedAt)) {
+        // if storage got corrupted, reset it
+        localStorage.removeItem(STORAGE_KEY);
+        setHidden(false);
+        return;
+      }
+
+      const expired = Date.now() - dismissedAt > DISMISS_TTL_MS;
+      if (expired) {
+        localStorage.removeItem(STORAGE_KEY);
+        setHidden(false);
+        return;
+      }
+
+      setHidden(true);
     } catch {
+      // If storage is blocked, default to showing the banner
       setHidden(false);
     }
   }, []);
 
-  if (hidden === null || hidden) return null;
-
   function dismiss() {
-    try {
-      localStorage.setItem(STORAGE_KEY, today);
-    } catch {}
     setHidden(true);
+    try {
+      localStorage.setItem(STORAGE_KEY, String(Date.now()));
+    } catch {}
   }
 
-  // render JSX below...
-}
+  // Don’t render until we know (prevents “banner pops in” jitter)
+  if (hidden === null || hidden) return null;
 
   return (
-    <div className="relative border-y border-slate-900/60 bg-slate-950/55 backdrop-blur">
-      <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),radial-gradient(circle_at_82%_0%,rgba(56,189,248,0.16),transparent_62%)]" />
+    <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.03] px-5 py-4 ring-1 ring-white/[0.06]">
+      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.18),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
 
-      <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`}
-            >
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Mission
+      <div className="relative flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-400">
+            Mission
+          </p>
+
+          <p className="mt-2 text-sm text-slate-200">
+            XPOT is building the biggest daily game on the planet - handle-first, proof on-chain, and the story is public.
+            <span className="text-slate-500"> </span>
+            <span className="text-slate-300">
+              If you’re here early, you’re not “joining later” - you’re part of the origin.
             </span>
+          </p>
 
-            <p className="text-[12px] text-slate-200">
-  We’re aiming to become the <span className={GOLD_TEXT}>biggest game on the planet</span>.
-  <span className="text-slate-400"> You’re early. This is where it starts.</span>
-</p>
+          <p className="mt-2 text-[12px] text-slate-400">
+            Don’t watch the run. Be one of the names that made it real.
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Link
+              href="/hub"
+              className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-4 py-2 text-[12px] font-semibold text-slate-950 hover:bg-emerald-300 transition"
+            >
+              Enter the hub
+            </Link>
+
+            <button
+              type="button"
+              onClick={dismiss}
+              className="text-[12px] font-semibold text-slate-400 hover:text-slate-200 transition"
+            >
+              Dismiss
+            </button>
           </div>
-
-          <button
-            onClick={dismiss}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-          >
-            Dismiss
-          </button>
         </div>
       </div>
     </div>
