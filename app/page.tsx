@@ -1097,11 +1097,64 @@ function updateLines(prev: string[], tick: number, countdown: string, cutoffLabe
   return next;
 }
 
-function BonusVault({ children }: { children: ReactNode }) {
+function BonusVault({
+  children,
+  spotlight = true,
+}: {
+  children: ReactNode;
+  spotlight?: boolean;
+}) {
+  const halo = spotlight
+    ? 'opacity-95 blur-2xl'
+    : 'opacity-75 blur-2xl';
+
   return (
     <div className="relative">
-      {/* Stronger violet spotlight */}
-      <div className="pointer-events-none absolute -inset-12 opacity-90 blur-2xl bg-[radial-gradient(circle_at_22%_38%,rgba(139,92,246,0.26),transparent_64%),radial-gradient(circle_at_72%_30%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_85%_80%,rgba(var(--xpot-gold),0.12),transparent_66%)]" />
+      <style jsx global>{`
+        @keyframes xpotBonusSheen {
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.24;
+          }
+          60% {
+            opacity: 0.12;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-bonus-sheen {
+          position: absolute;
+          inset: -40px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(139, 92, 246, 0.14) 48%,
+            rgba(244, 63, 94, 0.08) 62%,
+            rgba(56, 189, 248, 0.06) 74%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          animation: xpotBonusSheen 10.5s ease-in-out infinite;
+          z-index: 2;
+        }
+      `}</style>
+
+      {/* Violet spotlight (+ tiny rose edge for urgency) */}
+      <div
+        className={[
+          'pointer-events-none absolute -inset-12',
+          halo,
+          "bg-[radial-gradient(circle_at_22%_38%,rgba(139,92,246,0.30),transparent_64%),radial-gradient(circle_at_78%_26%,rgba(244,63,94,0.12),transparent_60%),radial-gradient(circle_at_72%_30%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_85%_80%,rgba(var(--xpot-gold),0.12),transparent_66%)]",
+        ].join(' ')}
+      />
 
       <div className="relative overflow-hidden rounded-[28px] bg-white/[0.03] ring-1 ring-white/[0.06] shadow-[0_30px_110px_rgba(0,0,0,0.45)]">
         <div className="xpot-bonus-sheen" />
@@ -1112,7 +1165,6 @@ function BonusVault({ children }: { children: ReactNode }) {
 
         <div className="relative p-3 sm:p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            {/* Header label (now violet and louder) */}
             <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.18)]">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inset-0 rounded-full bg-violet-400/60 animate-ping" />
@@ -1121,7 +1173,6 @@ function BonusVault({ children }: { children: ReactNode }) {
               Bonus XPOT active
             </span>
 
-            {/* Keep this but give it a slight violet tint */}
             <span className="hidden sm:inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-100 ring-1 ring-violet-400/20">
               Same entry
               <span className="h-1 w-1 rounded-full bg-white/20" />
@@ -1132,12 +1183,11 @@ function BonusVault({ children }: { children: ReactNode }) {
           <div className="relative">{children}</div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            {/* REPLACED LINE (smarter, not “scheduled…”) */}
+            {/* smarter replacement */}
             <p className="text-[12px] text-slate-300">
-              Bonus is live for this window - same entry rules, payout verified on-chain.
+              Bonus window is live - same entry, extra payout, proof on-chain.
             </p>
 
-            {/* “Vault reveal” pill (violet) */}
             <span className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200 ring-1 ring-violet-400/20">
               <Sparkles className="h-3.5 w-3.5" />
               Vault reveal
@@ -1449,7 +1499,7 @@ function HomePageInner() {
 
                       {bonusActive ? (
   <div className="mt-5">
-    <BonusVault spotlight>
+    <BonusVault>
       <BonusStrip variant="home" />
     </BonusVault>
   </div>
