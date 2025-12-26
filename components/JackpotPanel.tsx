@@ -1308,7 +1308,7 @@ export default function JackpotPanel({
         </div>
 
         <style jsx>{`
-          /* Pool capsule typography (new classes in your JSX) */
+          /* Pool capsule typography – premium gold treatment */
 .xpot-pool-hero {
   letter-spacing: 0.02em;
 }
@@ -1319,7 +1319,12 @@ export default function JackpotPanel({
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.96);
+
+  /* Mostly white, slight warmth */
+  color: rgba(255, 255, 255, 0.97);
+  text-shadow:
+    0 0 14px rgba(255, 255, 255, 0.06),
+    0 0 26px rgba(var(--xpot-gold), 0.08);
 }
 
 .xpot-pool-unit {
@@ -1329,20 +1334,17 @@ export default function JackpotPanel({
   letter-spacing: 0.22em;
   text-transform: uppercase;
 
-  /* Gold */
-  color: rgba(var(--xpot-gold), 0.95);
+  /* Gold brand */
+  color: rgba(var(--xpot-gold), 0.98);
   text-shadow:
-    0 0 18px rgba(var(--xpot-gold), 0.22),
-    0 0 36px rgba(var(--xpot-gold), 0.14);
+    0 0 16px rgba(var(--xpot-gold), 0.35),
+    0 0 36px rgba(var(--xpot-gold), 0.18);
 }
 
 @media (min-width: 640px) {
   .xpot-pool-num {
     font-size: 30px;
     letter-spacing: -0.015em;
-  }
-  .xpot-pool-unit {
-    font-size: 12px;
   }
 }
 
