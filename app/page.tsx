@@ -1322,7 +1322,7 @@ function HomePageInner() {
                 "
               >
                 {/* LEFT */}
-                <div className="flex flex-col justify-between gap-6">
+<div className="flex flex-col justify-between gap-6 lg:pt-6">
                   <div className="space-y-6">
                     {/* HERO */}
                     <div className="relative p-2 sm:p-3">
