@@ -1164,7 +1164,7 @@ function MobileMenu({
             href={FINAL_DAY_HREF}
           >
             <span className="inline-flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-amber-200" />
+              <Hourglass className="h-4 w-4 text-amber-200" />
               {FINAL_DAY_LABEL}
             </span>
           </Link>
