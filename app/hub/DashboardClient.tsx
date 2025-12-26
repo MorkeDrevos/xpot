@@ -1172,7 +1172,7 @@ export default function DashboardClient() {
         }
       `}</style>
 
-      <LightConnectWalletModal open={walletModalOpen} onClose={onCloseWalletModal} />
+      <PremiumWalletModal open={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
 
       <EntryCeremony
         open={showCeremony}
