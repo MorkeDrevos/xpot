@@ -1245,7 +1245,16 @@ function HomePageInner() {
   const { countdown, cutoffLabel, nowMs } = useNextDraw();
 
   const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
-  const runLine = useMemo(() => `DAY ${run.day}/${RUN_DAYS}  (final: ${RUN_END_EU})`, [run.day]);
+
+const runLine = useMemo(
+  () => `DAY ${run.day}/${RUN_DAYS}`,
+  [run.day],
+);
+
+const finalEndDateOnly = useMemo(() => {
+  // RUN_END_EU example: "22/02/2045 22:00 (Madrid)"
+  return String(RUN_END_EU).replace(/\s\d{2}:\d{2}\s*\(Madrid\)\s*$/, '');
+}, [RUN_END_EU]);
 
   const reduceMotion = useReducedMotion();
   const { scrollY } = useScroll();
@@ -1262,6 +1271,9 @@ function HomePageInner() {
     const b = 0.22 + v * 0.06;
     return `0 40px 140px rgba(0,0,0,${a}), 0 14px 60px rgba(0,0,0,${b})`;
   });
+
+  // ...
+}
 
   useEffect(() => {
     const t = run.ended
@@ -1314,15 +1326,15 @@ function HomePageInner() {
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
               <div
-                className="
-                  relative z-10
-                  grid gap-6 p-6
-                  lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
-                  lg:p-8
-                "
-              >
+  className="
+    relative z-10
+    grid gap-6 p-6
+    lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
+    lg:p-8
+  "
+>
                 {/* LEFT */}
-<div className="flex flex-col justify-between gap-6 lg:pt-6">
+<div className="flex flex-col justify-between gap-6 lg:pt-8">
                   <div className="space-y-6">
                     {/* HERO */}
                     <div className="relative p-2 sm:p-3">
@@ -1371,8 +1383,6 @@ function HomePageInner() {
                           </p>
                           <p className="mt-1 text-[12px] text-slate-400">
                             In <span className="font-semibold text-slate-200">{countdown}</span>
-                            <span className="text-slate-600"> · </span>
-                            <span className="text-slate-300">{cutoffLabel}</span>
                           </p>
                         </div>
 
@@ -1419,7 +1429,9 @@ function HomePageInner() {
                               </p>
 
                               <p className="mt-2 text-[12px] text-slate-400">
-                                Ends <span className="text-slate-200">{RUN_END_EU}</span>
+                                <p className="mt-2 text-[12px] text-slate-400">
+  Ends <span className="text-slate-200">{RUN_END_EU_DATE_ONLY}</span>
+</p>
                               </p>
 
                               <p className="mt-1 text-[12px] text-slate-400">
