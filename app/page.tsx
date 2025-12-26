@@ -1388,7 +1388,7 @@ function HomePageInner() {
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
 
-                          <div className="relative flex items-start justify-between gap-3">
+                          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
                               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                                 Eligibility
@@ -1557,7 +1557,7 @@ function HomePageInner() {
                         and paid on-chain.
                       </p>
 
-                      <div className="mt-5 grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+                      <div className="mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-3">
                         {/* Card 1 */}
                         <div className="relative overflow-hidden rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.12),transparent_62%)]" />
@@ -1569,7 +1569,7 @@ function HomePageInner() {
                               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                                 Eligibility
                               </p>
-                              <p className="mt-2 text-base font-semibold text-slate-50 sm:text-lg whitespace-nowrap">
+                              <p className="mt-2 text-base font-semibold text-slate-50 sm:text-lg">
   Hold XPOT
 </p>
                               <p className="mt-2 text-sm text-slate-400">No tickets, no purchase flow</p>
