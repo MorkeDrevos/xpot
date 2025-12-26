@@ -1409,14 +1409,17 @@ export default function DashboardClient() {
 </button>
 
                     <button
-                      type="button"
-                      onClick={toggleSound}
-                      className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                      title={soundEnabled ? 'Sound on' : 'Sound off'}
-                    >
-                      {soundEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
-                      {soundEnabled ? 'Sound' : 'Muted'}
-                    </button>
+  type="button"
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setWalletModalOpen(true);
+  }}
+  className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+>
+  <Wallet className="mr-2 h-4 w-4" />
+  {walletConnected ? 'Change wallet' : 'Select wallet'}
+</button>
                   </div>
                 </div>
               </div>
