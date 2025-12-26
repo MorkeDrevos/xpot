@@ -1308,46 +1308,41 @@ export default function JackpotPanel({
         </div>
 
         <style jsx>{`
-          /* Pool capsule typography: premium, NOT stretched */
-.xpot-pool-hero,
-.xpot-pool-number {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 10px;
-  white-space: nowrap;
+          /* Pool capsule typography (new classes in your JSX) */
+.xpot-pool-hero {
+  letter-spacing: 0.02em;
 }
 
-.xpot-pool-num,
-.xpot-pool-amount {
+.xpot-pool-num {
   font-size: 22px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 20px rgba(124, 200, 255, 0.12);
+  color: rgba(255, 255, 255, 0.96);
 }
 
-.xpot-pool-unit,
-.xpot-pool-symbol {
+.xpot-pool-unit {
   font-size: 12px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.88);
-  opacity: 0.9;
+
+  /* Gold */
+  color: rgba(var(--xpot-gold), 0.95);
+  text-shadow:
+    0 0 18px rgba(var(--xpot-gold), 0.22),
+    0 0 36px rgba(var(--xpot-gold), 0.14);
 }
 
 @media (min-width: 640px) {
-  .xpot-pool-num,
-  .xpot-pool-amount {
-    font-size: 28px;
+  .xpot-pool-num {
+    font-size: 30px;
     letter-spacing: -0.015em;
   }
-  .xpot-pool-unit,
-  .xpot-pool-symbol {
-    font-size: 13px;
+  .xpot-pool-unit {
+    font-size: 12px;
   }
 }
 
