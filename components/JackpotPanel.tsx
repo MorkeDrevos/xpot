@@ -1334,11 +1334,11 @@ export default function JackpotPanel({
   letter-spacing: 0.22em;
   text-transform: uppercase;
 
-  /* Gold brand */
-  color: rgba(var(--xpot-gold), 0.98);
+  /* XPOT gold – guaranteed */
+  color: #f5c77a;
   text-shadow:
-    0 0 16px rgba(var(--xpot-gold), 0.35),
-    0 0 36px rgba(var(--xpot-gold), 0.18);
+    0 0 14px rgba(245, 199, 122, 0.45),
+    0 0 32px rgba(245, 199, 122, 0.25);
 }
 
 @media (min-width: 640px) {
