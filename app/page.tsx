@@ -1162,7 +1162,7 @@ function ParallaxConsoleCard({
   const tilt = useSpring(tiltRaw, { stiffness: 110, damping: 26, mass: 0.8 });
 
   return (
-    <div ref={ref} className="lg:sticky" style={{ top: stickyTop }}>
+    <div ref={ref} className="xl:sticky" style={{ top: stickyTop }}>
       <motion.div
         style={
           reduced
@@ -1314,13 +1314,13 @@ function HomePageInner() {
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
               <div
-                className="
-                  relative z-10
-                  grid gap-6 p-6
-                  lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
-                  lg:p-8
-                "
-              >
+  className="
+    relative z-10
+    grid gap-6 p-6
+    xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
+    lg:p-8
+  "
+>
                 {/* LEFT */}
                 <div className="flex flex-col justify-between gap-6">
                   <div className="space-y-6">
