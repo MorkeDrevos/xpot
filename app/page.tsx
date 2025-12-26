@@ -1276,7 +1276,7 @@ function HomePageInner() {
 
         <div className="relative z-10 w-full px-0">
           <div className="py-5 sm:py-7">
-            <div className="relative w-full overflow-hidden rounded-[38px] bg-transparent shadow-none backdrop-blur-0">
+            <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
               <CosmicHeroBackdrop />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
@@ -1284,12 +1284,11 @@ function HomePageInner() {
                 className="
                   relative z-10
                   grid gap-6 p-6
-                  lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
-                  lg:p-8
+lg:grid-cols-1
+lg:p-8
                 "
               >
                 {/* LEFT */}
-                <div className="flex flex-col justify-between gap-6">
                   <div className="space-y-6">
                     {/* Hero */}
                     <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur sm:p-7">
@@ -1491,7 +1490,6 @@ function HomePageInner() {
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
                     <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
                   </div>
-                </div>
 
                 {/* RIGHT */}
                 <motion.div
@@ -1508,14 +1506,9 @@ function HomePageInner() {
                 >
                   <ParallaxConsoleCard>
                     <motion.div style={reduceMotion ? undefined : { boxShadow: depthShadow as any }}>
-                      <PremiumCard className="p-5 sm:p-6" halo sheen>
-                        {/* Sweep overlay MUST be inside the card */}
-                        <div className="xpot-console-sweep" aria-hidden />
-
-                        <div className="relative z-10">
-                          <JackpotPanel variant="standalone" layout="wide" />
-                        </div>
-                      </PremiumCard>
+                      <div className="relative">
+  <JackpotPanel variant="standalone" layout="wide" />
+</div>
                     </motion.div>
                   </ParallaxConsoleCard>
 
