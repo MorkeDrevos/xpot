@@ -27,7 +27,6 @@ import {
   ChevronDown,
   Copy,
   Crown,
-  ExternalLink,
   Globe,
   ShieldCheck,
   Sparkles,
@@ -647,7 +646,6 @@ function CosmicHeroBackdrop() {
           animation: xpotLivePulse 2.2s ease-in-out infinite;
         }
 
-        /* Royal “mechanics” shine (subtle) */
         @keyframes xpotRoyalSheen {
           0% {
             transform: translateX(-55%) skewX(-12deg);
@@ -1243,18 +1241,14 @@ function HomePageInner() {
   useEffect(() => setMint(XPOT_CA), []);
 
   const { countdown, cutoffLabel, nowMs } = useNextDraw();
-
   const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
 
-const runLine = useMemo(
-  () => `DAY ${run.day}/${RUN_DAYS}`,
-  [run.day],
-);
+  const runLine = useMemo(() => `DAY ${run.day}/${RUN_DAYS}`, [run.day]);
 
-const finalEndDateOnly = useMemo(() => {
-  // RUN_END_EU example: "22/02/2045 22:00 (Madrid)"
-  return String(RUN_END_EU).replace(/\s\d{2}:\d{2}\s*\(Madrid\)\s*$/, '');
-}, [RUN_END_EU]);
+  const runEndDateOnly = useMemo(() => {
+    // RUN_END_EU example: "22/02/2045 22:00 (Madrid)"
+    return String(RUN_END_EU).replace(/\s\d{2}:\d{2}\s*\(Madrid\)\s*$/, '');
+  }, []);
 
   const reduceMotion = useReducedMotion();
   const { scrollY } = useScroll();
@@ -1272,9 +1266,7 @@ const finalEndDateOnly = useMemo(() => {
     return `0 40px 140px rgba(0,0,0,${a}), 0 14px 60px rgba(0,0,0,${b})`;
   });
 
-  // ...
-}
-
+  // single meta effect (removed duplicate)
   useEffect(() => {
     const t = run.ended
       ? `XPOT - Final Draw live (${RUN_END_EU})`
@@ -1326,15 +1318,15 @@ const finalEndDateOnly = useMemo(() => {
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
               <div
-  className="
-    relative z-10
-    grid gap-6 p-6
-    lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
-    lg:p-8
-  "
->
+                className="
+                  relative z-10
+                  grid gap-6 p-6
+                  lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
+                  lg:p-8
+                "
+              >
                 {/* LEFT */}
-<div className="flex flex-col justify-between gap-6 lg:pt-8">
+                <div className="flex flex-col justify-between gap-6 lg:pt-8">
                   <div className="space-y-6">
                     {/* HERO */}
                     <div className="relative p-2 sm:p-3">
@@ -1355,7 +1347,7 @@ const finalEndDateOnly = useMemo(() => {
                         </span>
                       </div>
 
-                      {/* Headline (green restored) */}
+                      {/* Headline */}
                       <div className="relative mt-4">
                         <h1 className="text-balance text-[32px] font-semibold leading-[1.05] sm:text-[50px]">
                           One protocol.
@@ -1366,9 +1358,8 @@ const finalEndDateOnly = useMemo(() => {
                         </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
-                          Daily draws are the heartbeat.{' '}
-                          <span className="text-slate-200">Final Draw</span> is the ending -{' '}
-                          <FinalDrawDate className="text-slate-200" />.
+                          Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
+                          - <FinalDrawDate className="text-slate-200" />.
                           <span className="mt-2 block text-slate-300">
                             We’re building toward becoming the world’s biggest game - one day at a time.
                           </span>
@@ -1413,8 +1404,6 @@ const finalEndDateOnly = useMemo(() => {
                                 <span className="text-slate-200">{cutoffLabel}</span>
                               </div>
                             </div>
-
-                            {/* removed: “VERIFIED IN HUB” pill */}
                           </div>
                         </div>
 
@@ -1429,9 +1418,7 @@ const finalEndDateOnly = useMemo(() => {
                               </p>
 
                               <p className="mt-2 text-[12px] text-slate-400">
-                                <p className="mt-2 text-[12px] text-slate-400">
-  Ends <span className="text-slate-200">{RUN_END_EU_DATE_ONLY}</span>
-</p>
+                                Ends <span className="text-slate-200">{runEndDateOnly}</span>
                               </p>
 
                               <p className="mt-1 text-[12px] text-slate-400">
@@ -1439,7 +1426,6 @@ const finalEndDateOnly = useMemo(() => {
                               </p>
                             </div>
 
-                            {/* removed: big “DAY 1/7000” pill */}
                             <div className="shrink-0 text-right">
                               <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Run status</p>
                               <p className="mt-2 font-mono text-[14px] text-slate-50">
@@ -1460,13 +1446,16 @@ const finalEndDateOnly = useMemo(() => {
 
                       {/* CTA */}
                       <div className="mt-6 flex flex-wrap items-center gap-3">
-                        <Link
-                          href={ROUTE_HUB}
-                          className={`${BTN_GREEN} group px-6 py-3.5 text-sm`}
-                          title="Enter the hub"
-                        >
+                        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`} title="Enter the hub">
                           Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                        </Link>
+
+                        <Link
+                          href={ROUTE_TERMS}
+                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+                        >
+                          Read terms
                         </Link>
                       </div>
                     </div>
@@ -1509,9 +1498,7 @@ const finalEndDateOnly = useMemo(() => {
                           title="View tokenomics"
                         >
                           <span>View tokenomics</span>
-                          <ArrowRight
-                            className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`}
-                          />
+                          <ArrowRight className={`h-4 w-4 ${GOLD_TEXT} transition-transform group-hover:translate-x-0.5`} />
                         </Link>
                       </div>
                     </div>
@@ -1555,9 +1542,7 @@ const finalEndDateOnly = useMemo(() => {
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                          Contract
-                        </p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
                         <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
                           Always verify the official mint before interacting.
                         </p>
@@ -1643,9 +1628,7 @@ const finalEndDateOnly = useMemo(() => {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
+              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -1761,9 +1744,7 @@ const finalEndDateOnly = useMemo(() => {
 
             <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}
-                >
+                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
                   <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
                 </span>
                 <div>
