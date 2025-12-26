@@ -79,6 +79,18 @@ type AdminBonusDrop = {
   status: BonusDropStatus;
 };
 
+// Public live draw payload (fallback when /api/admin/today returns null)
+type LiveDrawPayload = {
+  draw: {
+    dailyXpot: number;
+    dayNumber: number;
+    dayTotal: number;
+    drawDate: string; // ISO
+    closesAt: string; // ISO
+    status: 'OPEN' | 'LOCKED' | 'COMPLETED';
+  } | null;
+};
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
@@ -247,6 +259,27 @@ function CopyableWallet({ address }: { address: string }) {
   );
 }
 
+// Map public live draw status to admin UI status
+function mapLiveStatus(s: LiveDrawPayload['draw'] extends infer D ? any : never): DrawStatus {
+  const status = String(s ?? '').toUpperCase();
+  if (status === 'OPEN') return 'open';
+  if (status === 'COMPLETED') return 'completed';
+  return 'closed';
+}
+
+function toTodayDrawFromLive(live: LiveDrawPayload['draw']): TodayDraw | null {
+  if (!live) return null;
+  return {
+    id: `live:${live.drawDate}`,
+    date: live.drawDate,
+    status: mapLiveStatus(live.status),
+    jackpotUsd: 0,
+    rolloverUsd: 0,
+    ticketsCount: 0,
+    closesAt: live.closesAt,
+  };
+}
+
 // ─────────────────────────────────────────────
 // Button styles (driven by globals.css)
 // Fix: gold CTAs now use vault gold tokens
@@ -362,14 +395,17 @@ export default function AdminPage() {
     }
   }, []);
 
+  // IMPORTANT FIX:
+  // - authedFetch now THROWS on failures instead of silently returning {ok:false}
+  //   This prevents "no draw" UI caused by swallowed API errors.
   async function authedFetch(input: string, init?: RequestInit) {
-    if (!adminToken) return { ok: false, error: 'NO_ADMIN_TOKEN' };
+    if (!adminToken) throw new Error('NO_ADMIN_TOKEN');
 
     const headers = new Headers(init?.headers || {});
     headers.set('Content-Type', 'application/json');
     headers.set('x-xpot-admin-key', adminToken.trim());
 
-    const res = await fetch(input, { ...init, headers });
+    const res = await fetch(input, { ...init, headers, cache: 'no-store' });
 
     let data: any = null;
     try {
@@ -379,11 +415,12 @@ export default function AdminPage() {
     }
 
     if (!res.ok) {
-      return {
-        ok: false,
-        status: res.status,
-        error: data?.error || `Request failed (${res.status})`,
-      };
+      throw new Error(data?.error || `Request failed (${res.status})`);
+    }
+
+    // Some admin APIs may return { ok:false } with 200
+    if (data && typeof data === 'object' && (data as any).ok === false) {
+      throw new Error((data as any).error || 'Request failed');
     }
 
     return data;
@@ -690,6 +727,28 @@ export default function AdminPage() {
     }
   }
 
+  // FIX:
+  // If /api/admin/today returns null (or your admin route is still using exact-midnight findUnique),
+  // fall back to /api/draw/live which now self-heals and always returns a draw.
+  async function loadTodayWithFallback() {
+    // 1) Try admin today
+    try {
+      const data = await authedFetch('/api/admin/today');
+      const t = (data as any).today ?? null;
+      if (t) return t as TodayDraw;
+    } catch (err) {
+      // swallow here, we still do fallback
+    }
+
+    // 2) Fallback to public live draw
+    const res = await fetch('/api/draw/live', { cache: 'no-store' });
+    const json = (await res.json()) as LiveDrawPayload;
+    const mapped = toTodayDrawFromLive(json.draw);
+    if (mapped) return mapped;
+
+    return null;
+  }
+
   // ── Load Today, tickets, winners, upcoming ──
   useEffect(() => {
     if (!adminToken) return;
@@ -708,10 +767,11 @@ export default function AdminPage() {
       setTodayLoading(true);
       setTodayDrawError(null);
       try {
-        const data = await authedFetch('/api/admin/today');
-        if (!cancelled) setTodayDraw((data as any).today ?? null);
+        const t = await loadTodayWithFallback();
+        if (!cancelled) setTodayDraw(t);
       } catch (err: any) {
         if (!cancelled) setTodayDrawError(err?.message || 'Failed to load today');
+        if (!cancelled) setTodayDraw(null);
       } finally {
         if (!cancelled) setTodayLoading(false);
       }
