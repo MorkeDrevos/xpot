@@ -1426,21 +1426,36 @@ function HomePageInner() {
                       </div>
 
                       {/* Countdown capsule */}
-                      <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 ring-1 ring-white/[0.05]">
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                            Next draw
-                          </p>
-                          <p className="mt-1 text-[12px] text-slate-400">
-                            In <span className="font-semibold text-slate-200">{countdown}</span>
-                          </p>
-                        </div>
+<div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
+  {/* subtle internal glow */}
+  <div className="pointer-events-none absolute -inset-10 opacity-80 blur-2xl"
+    style={{
+      background:
+        'radial-gradient(circle_at_18%_40%, rgba(110,231,249,0.10), transparent 55%), radial-gradient(circle_at_86%_30%, rgba(16,185,129,0.10), transparent 52%)',
+    }}
+  />
 
-                        <span className="xpot-live-ring inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
-                          <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
-                          Live
-                        </span>
-                      </div>
+  <div className="relative flex flex-wrap items-center justify-between gap-3">
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+        Next draw
+      </p>
+
+      <p className="mt-1 flex items-baseline gap-2 text-[12px] text-slate-400">
+        <span className="text-slate-500">In</span>
+        <span className="font-semibold tabular-nums text-slate-100">
+          {countdown}
+        </span>
+        <span className="text-[11px] text-slate-500">Madrid 22:00</span>
+      </p>
+    </div>
+
+    <span className="xpot-live-ring inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
+      <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
+      Live
+    </span>
+  </div>
+</div>
 
                       {/* Eligibility + Final draw */}
                       <div className="relative mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
