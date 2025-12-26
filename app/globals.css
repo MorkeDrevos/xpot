@@ -582,3 +582,16 @@ select {
 .xpot-gradient-text {
   text-shadow: 0 0 12px rgba(110,231,249,0.08);
 }
+.xpot-xpotword {
+  background: linear-gradient(
+    135deg,
+    rgba(226, 232, 240, 0.92) 0%,
+    rgba(110, 231, 249, 0.82) 38%,
+    rgba(74, 222, 128, 0.82) 72%,
+    rgba(226, 232, 240, 0.92) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 10px 26px rgba(56, 189, 248, 0.08);
+}
