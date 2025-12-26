@@ -27,6 +27,7 @@ import {
   ChevronDown,
   Copy,
   Crown,
+  ExternalLink,
   Globe,
   ShieldCheck,
   Sparkles,
@@ -137,6 +138,33 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
   );
 
   return <NextDrawContext.Provider value={value}>{children}</NextDrawContext.Provider>;
+}
+
+function Pill({
+  children,
+  tone = 'slate',
+}: {
+  children: ReactNode;
+  tone?: 'slate' | 'emerald' | 'amber' | 'sky' | 'violet';
+}) {
+  const map: Record<string, string> = {
+    slate:
+      'border-slate-700/70 bg-slate-900/70 text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
+    emerald:
+      'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
+    amber: `${GOLD_BORDER} ${GOLD_BG_WASH} ${GOLD_TEXT} ${GOLD_RING_SHADOW}`,
+    sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
+    violet:
+      'border-violet-400/45 bg-violet-500/10 text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.16)]',
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 leading-none text-[10px] font-semibold uppercase tracking-[0.18em] ${map[tone]}`}
+    >
+      {children}
+    </span>
+  );
 }
 
 function TinyTooltip({ label, children }: { label: string; children: ReactNode }) {
@@ -420,8 +448,9 @@ function Step({
       <div className="relative flex items-center justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Step {n}</span>
 
-        {/* tag stays as a quiet label, not a pill */}
-        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${tagTone}`}>
+        <span
+          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${tagTone}`}
+        >
           {tag}
         </span>
       </div>
@@ -489,20 +518,56 @@ function CosmicHeroBackdrop() {
     <>
       <style jsx global>{`
         @keyframes xpotHeroRotate {
-          0% { transform: translateZ(0) rotate(0deg) scale(1); }
-          100% { transform: translateZ(0) rotate(360deg) scale(1); }
+          0% {
+            transform: translateZ(0) rotate(0deg) scale(1);
+          }
+          100% {
+            transform: translateZ(0) rotate(360deg) scale(1);
+          }
         }
         @keyframes xpotHeroSheen {
-          0% { transform: translateX(-25%) translateY(-10%) rotate(8deg); opacity: 0; }
-          20% { opacity: 0.28; }
-          60% { opacity: 0.18; }
-          100% { transform: translateX(25%) translateY(10%) rotate(8deg); opacity: 0; }
+          0% {
+            transform: translateX(-25%) translateY(-10%) rotate(8deg);
+            opacity: 0;
+          }
+          20% {
+            opacity: 0.28;
+          }
+          60% {
+            opacity: 0.18;
+          }
+          100% {
+            transform: translateX(25%) translateY(10%) rotate(8deg);
+            opacity: 0;
+          }
         }
+        @keyframes xpotLivePulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.25);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(52, 211, 153, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+          }
+        }
+
         @keyframes xpotConsoleSweep {
-          0% { transform: translateX(-55%) skewX(-12deg); opacity: 0; }
-          15% { opacity: 0.22; }
-          55% { opacity: 0.1; }
-          100% { transform: translateX(55%) skewX(-12deg); opacity: 0; }
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          15% {
+            opacity: 0.22;
+          }
+          55% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
         }
         .xpot-console-sweep {
           position: absolute;
@@ -511,9 +576,9 @@ function CosmicHeroBackdrop() {
           background: linear-gradient(
             100deg,
             transparent 0%,
-            rgba(255,255,255,0.05) 30%,
-            rgba(var(--xpot-gold),0.1) 48%,
-            rgba(56,189,248,0.06) 66%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(var(--xpot-gold), 0.1) 48%,
+            rgba(56, 189, 248, 0.06) 66%,
             transparent 100%
           );
           mix-blend-mode: screen;
@@ -528,17 +593,17 @@ function CosmicHeroBackdrop() {
           inset: -180px;
           pointer-events: none;
           opacity: 0.85;
+          filter: blur(0px);
         }
         .xpot-hero-engine::before {
           content: '';
           position: absolute;
           inset: 0;
           border-radius: 999px;
-          background:
-            radial-gradient(circle at 30% 25%, rgba(16,185,129,0.18), transparent 55%),
-            radial-gradient(circle at 70% 25%, rgba(56,189,248,0.14), transparent 58%),
-            radial-gradient(circle at 55% 70%, rgba(var(--xpot-gold),0.12), transparent 62%),
-            radial-gradient(circle at 30% 80%, rgba(139,92,246,0.12), transparent 60%);
+          background: radial-gradient(circle at 30% 25%, rgba(16, 185, 129, 0.18), transparent 55%),
+            radial-gradient(circle at 70% 25%, rgba(56, 189, 248, 0.14), transparent 58%),
+            radial-gradient(circle at 55% 70%, rgba(var(--xpot-gold), 0.12), transparent 62%),
+            radial-gradient(circle at 30% 80%, rgba(139, 92, 246, 0.12), transparent 60%);
           animation: xpotHeroRotate 44s linear infinite;
           transform-origin: center;
           opacity: 0.95;
@@ -548,7 +613,7 @@ function CosmicHeroBackdrop() {
           position: absolute;
           inset: 0;
           border-radius: 999px;
-          background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), transparent 55%);
+          background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05), transparent 55%);
           opacity: 0.55;
           mix-blend-mode: screen;
         }
@@ -568,14 +633,51 @@ function CosmicHeroBackdrop() {
           background: linear-gradient(
             100deg,
             transparent 0%,
-            rgba(255,255,255,0.06) 32%,
-            rgba(var(--xpot-gold),0.08) 50%,
-            rgba(56,189,248,0.06) 68%,
+            rgba(255, 255, 255, 0.06) 32%,
+            rgba(var(--xpot-gold), 0.08) 50%,
+            rgba(56, 189, 248, 0.06) 68%,
             transparent 100%
           );
           transform: rotate(8deg);
           animation: xpotHeroSheen 9.8s ease-in-out infinite;
           mix-blend-mode: screen;
+          opacity: 0;
+        }
+        .xpot-live-ring {
+          animation: xpotLivePulse 2.2s ease-in-out infinite;
+        }
+
+        /* Royal “mechanics” shine (subtle) */
+        @keyframes xpotRoyalSheen {
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.22;
+          }
+          60% {
+            opacity: 0.12;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-royal-sheen {
+          position: absolute;
+          inset: -40px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(var(--xpot-gold), 0.10) 50%,
+            rgba(56, 189, 248, 0.05) 70%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          animation: xpotRoyalSheen 14s ease-in-out infinite;
           opacity: 0;
         }
       `}</style>
@@ -809,22 +911,50 @@ function LiveControlRoom({
     <div className="relative">
       <style jsx global>{`
         @keyframes xpotPulse {
-          0% { transform: translateZ(0) scale(1); opacity: 0.85; }
-          50% { transform: translateZ(0) scale(1.02); opacity: 1; }
-          100% { transform: translateZ(0) scale(1); opacity: 0.85; }
+          0% {
+            transform: translateZ(0) scale(1);
+            opacity: 0.85;
+          }
+          50% {
+            transform: translateZ(0) scale(1.02);
+            opacity: 1;
+          }
+          100% {
+            transform: translateZ(0) scale(1);
+            opacity: 0.85;
+          }
         }
         @keyframes xpotScan {
-          0% { transform: translateY(-18%); opacity: 0; }
-          18% { opacity: 0.22; }
-          55% { opacity: 0.1; }
-          100% { transform: translateY(118%); opacity: 0; }
+          0% {
+            transform: translateY(-18%);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.22;
+          }
+          55% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateY(118%);
+            opacity: 0;
+          }
         }
         @keyframes xpotFlicker {
-          0% { opacity: 0.35; }
-          50% { opacity: 0.75; }
-          100% { opacity: 0.35; }
+          0% {
+            opacity: 0.35;
+          }
+          50% {
+            opacity: 0.75;
+          }
+          100% {
+            opacity: 0.35;
+          }
         }
-        .xpot-cr-scan { position: relative; isolation: isolate; }
+        .xpot-cr-scan {
+          position: relative;
+          isolation: isolate;
+        }
         .xpot-cr-scan::before {
           content: '';
           pointer-events: none;
@@ -844,7 +974,10 @@ function LiveControlRoom({
           mix-blend-mode: screen;
           z-index: 0;
         }
-        .xpot-cr-scan > * { position: relative; z-index: 1; }
+        .xpot-cr-scan > * {
+          position: relative;
+          z-index: 1;
+        }
         .xpot-cr-cursor {
           display: inline-block;
           width: 8px;
@@ -864,9 +997,15 @@ function LiveControlRoom({
           Control Room - session view
         </span>
 
-        <span className="inline-flex items-center gap-3">
+        <span className="inline-flex items-center gap-2">
           <span className="font-mono text-emerald-200/70">read-only</span>
-          <span className="inline-flex items-center gap-2 text-emerald-200">
+          <span
+            className={[
+              'inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1',
+              'text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200',
+              live ? 'shadow-[0_0_0_1px_rgba(16,185,129,0.18)]' : '',
+            ].join(' ')}
+          >
             <Radio className={`h-3.5 w-3.5 ${pulseCls}`} />
             LIVE
           </span>
@@ -978,7 +1117,7 @@ function BonusVault({ children }: { children: ReactNode }) {
               Bonus XPOT active
             </span>
 
-            <span className="hidden sm:inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+            <span className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200 ring-1 ring-white/10">
               Same entry
               <span className="h-1 w-1 rounded-full bg-white/20" />
               Paid on-chain
@@ -990,7 +1129,7 @@ function BonusVault({ children }: { children: ReactNode }) {
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <p className="text-[12px] text-slate-400">Scheduled bonus drop. Appears automatically when active.</p>
 
-            <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 ring-1 ring-emerald-400/15">
               <Sparkles className="h-3.5 w-3.5" />
               Vault reveal
             </span>
@@ -1072,7 +1211,9 @@ function MissionBanner() {
       <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+            <span
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`}
+            >
               <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
               Mission
             </span>
@@ -1190,19 +1331,19 @@ function HomePageInner() {
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(16,185,129,0.26),transparent)]" />
                       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.16),rgba(var(--xpot-gold),0.22),transparent)] opacity-70" />
 
-                      {/* Top line (no pills) */}
-                      <div className="relative flex items-center justify-between gap-3">
+                      {/* Top line + pill */}
+                      <div className="relative flex flex-wrap items-center justify-between gap-3">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          NO TICKETS - JUST XPOT HOLDINGS
+                          NO TICKETS · JUST XPOT HOLDINGS
                         </p>
 
-                        <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
                           <ShieldCheck className="h-3.5 w-3.5" />
                           Holdings-based
                         </span>
                       </div>
 
-                      {/* Headline */}
+                      {/* Headline (green restored) */}
                       <div className="relative mt-4">
                         <h1 className="text-balance text-[32px] font-semibold leading-[1.05] sm:text-[50px]">
                           One protocol.
@@ -1213,7 +1354,8 @@ function HomePageInner() {
                         </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
-                          Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending -{' '}
+                          Daily draws are the heartbeat.{' '}
+                          <span className="text-slate-200">Final Draw</span> is the ending -{' '}
                           <FinalDrawDate className="text-slate-200" />.
                           <span className="mt-2 block text-slate-300">
                             We’re building toward becoming the world’s biggest game - one day at a time.
@@ -1221,7 +1363,7 @@ function HomePageInner() {
                         </p>
                       </div>
 
-                      {/* Countdown capsule (no pill) */}
+                      {/* Countdown capsule */}
                       <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 ring-1 ring-white/[0.05]">
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
@@ -1234,10 +1376,66 @@ function HomePageInner() {
                           </p>
                         </div>
 
-                        <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
-                          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+                        <span className="xpot-live-ring inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
+                          <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
                           Live
                         </span>
+                      </div>
+
+                      {/* Eligibility + Final draw */}
+                      <div className="relative mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
+                        {/* ELIGIBILITY */}
+                        <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
+                          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
+
+                          <div className="relative flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                                Eligibility
+                              </p>
+                              <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+                                Hold XPOT in a connected wallet. Eligibility is verified on-chain in the hub.
+                              </p>
+
+                              <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                                <span>Cutoff:</span>
+                                <span className="text-slate-200">{cutoffLabel}</span>
+                              </div>
+                            </div>
+
+                            {/* removed: “VERIFIED IN HUB” pill */}
+                          </div>
+                        </div>
+
+                        {/* FINAL DRAW */}
+                        <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
+                          <div className="pointer-events-none absolute -inset-24 opacity-85 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.18),transparent_62%)]" />
+
+                          <div className="relative flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                                Final Draw
+                              </p>
+
+                              <p className="mt-2 text-[12px] text-slate-400">
+                                Ends <span className="text-slate-200">{RUN_END_EU}</span>
+                              </p>
+
+                              <p className="mt-1 text-[12px] text-slate-400">
+                                <span className="text-slate-200">{run.daysRemaining}</span> days remaining
+                              </p>
+                            </div>
+
+                            {/* removed: big “DAY 1/7000” pill */}
+                            <div className="shrink-0 text-right">
+                              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Run status</p>
+                              <p className="mt-2 font-mono text-[14px] text-slate-50">
+                                {run.day}/{RUN_DAYS}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       {bonusActive ? (
@@ -1305,85 +1503,6 @@ function HomePageInner() {
                         </Link>
                       </div>
                     </div>
-
-                    {/* ENTRY MECHANICS (this section was messy - keep it, but no pills) */}
-                    <div className="relative mt-5 rounded-[28px] border border-slate-900/70 bg-slate-950/45 p-6 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
-                      <div className="pointer-events-none absolute -inset-28 opacity-70 blur-3xl bg-[radial-gradient(circle_at_12%_20%,rgba(var(--xpot-gold),0.14),transparent_62%),radial-gradient(circle_at_86%_12%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_30%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
-
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          ENTRY MECHANICS
-                        </p>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          ELIGIBILITY - IDENTITY - PROOF
-                        </p>
-                      </div>
-
-                      <p className="mt-4 text-[15px] leading-relaxed text-slate-300">
-                        Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle
-                        and paid on-chain.
-                      </p>
-
-                      <div className="mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-3">
-                        <div className="relative overflow-hidden rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
-                          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.12),transparent_62%)]" />
-                          <div className="relative flex items-start gap-3">
-                            <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-950/25">
-                              <ShieldCheck className="h-5 w-5 text-emerald-200" />
-                            </span>
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                                Eligibility
-                              </p>
-                              <p className="mt-2 text-lg font-semibold text-slate-50">Hold XPOT</p>
-                              <p className="mt-2 text-sm text-slate-400">No tickets, no purchase flow</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="relative overflow-hidden rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
-                          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.10),transparent_62%)]" />
-                          <div className="relative flex items-start gap-3">
-                            <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-500/25 bg-sky-950/20">
-                              <Users className="h-5 w-5 text-sky-200" />
-                            </span>
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                                Identity
-                              </p>
-                              <p className="mt-2 text-lg font-semibold text-slate-50">Handle-first</p>
-                              <p className="mt-2 text-sm text-slate-400">Winners shown by @handle</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="relative overflow-hidden rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
-                          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
-                          <div className="relative flex items-start gap-3">
-                            <span
-                              className={[
-                                'mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl border',
-                                GOLD_BORDER_SOFT,
-                                GOLD_BG_WASH,
-                              ].join(' ')}
-                            >
-                              <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
-                            </span>
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                                Proof
-                              </p>
-                              <p className="mt-2 text-lg font-semibold text-slate-50">On-chain</p>
-                              <p className="mt-2 text-sm text-slate-400">Verify payouts in explorer</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <p className="mt-4 px-1 text-[11px] text-slate-500/95">
-                        Winners are shown by @handle and provable on-chain. Day flips at 22:00 (Madrid).
-                      </p>
-                    </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
@@ -1450,9 +1569,10 @@ function HomePageInner() {
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+              <Pill tone="amber">
+                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
                 The Final Draw
-              </p>
+              </Pill>
 
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
                 Daily draws with proof. One run ending with a finale.
@@ -1463,19 +1583,19 @@ function HomePageInner() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-300/90" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
                 Proof first
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Users className="h-3.5 w-3.5 text-sky-300/90" />
+              </Pill>
+              <Pill tone="sky">
+                <Users className="h-3.5 w-3.5" />
                 X identity
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Timer className="h-3.5 w-3.5 text-violet-300/90" />
+              </Pill>
+              <Pill tone="violet">
+                <Timer className="h-3.5 w-3.5" />
                 Daily cadence
-              </span>
+              </Pill>
             </div>
           </div>
 
@@ -1528,19 +1648,28 @@ function HomePageInner() {
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Finale</p>
+            <Pill tone="amber">
+              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+              Finale (ending)
+            </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">The Final Draw is the ending.</p>
             <p className="mt-2 text-sm text-slate-300">Daily draws build the arc. The finale builds the legend.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Identity</p>
+            <Pill tone="sky">
+              <Users className="h-3.5 w-3.5" />
+              Identity
+            </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">@handle-first.</p>
             <p className="mt-2 text-sm text-slate-300">Winners and history are shown by handle, not wallet profiles.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Proof</p>
+            <Pill tone="emerald">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Proof
+            </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
             <p className="mt-2 text-sm text-slate-300">Anyone can verify outcomes in an explorer.</p>
           </PremiumCard>
@@ -1552,7 +1681,10 @@ function HomePageInner() {
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Built to scale</p>
+              <Pill tone="violet">
+                <Blocks className="h-3.5 w-3.5" />
+                Built to scale
+              </Pill>
 
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
                 A daily engine with an ending, not a one-off giveaway.
@@ -1563,19 +1695,19 @@ function HomePageInner() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-300/90" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
                 Fair by design
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Globe className="h-3.5 w-3.5 text-sky-300/90" />
+              </Pill>
+              <Pill tone="sky">
+                <Globe className="h-3.5 w-3.5" />
                 Global-friendly
-              </span>
-              <span className="inline-flex items-center gap-2">
+              </Pill>
+              <Pill tone="amber">
                 <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
                 Finale-ready
-              </span>
+              </Pill>
             </div>
           </div>
 
@@ -1655,13 +1787,19 @@ function HomePageInner() {
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Players</p>
+            <Pill tone="amber">
+              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+              Players
+            </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">A serious run for serious entries.</p>
             <p className="mt-2 text-sm text-slate-300">Join the arc. Track the day count. Build toward the Final Draw.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Sponsors</p>
+            <Pill tone="sky">
+              <Globe className="h-3.5 w-3.5" />
+              Sponsors
+            </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
             <p className="mt-2 text-sm text-slate-300">
               Sponsor pools and bonuses with visibility and provable distribution on-chain.
@@ -1669,7 +1807,10 @@ function HomePageInner() {
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Communities</p>
+            <Pill tone="emerald">
+              <Zap className="h-3.5 w-3.5" />
+              Communities
+            </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
             <p className="mt-2 text-sm text-slate-300">A shared public story: @handle identity and an arc that ends.</p>
           </PremiumCard>
@@ -1681,22 +1822,25 @@ function HomePageInner() {
         <PremiumCard className="p-6 sm:p-8" halo={false}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Clarity</p>
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Clarity
+              </Pill>
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
                 Homepage is the story. Hub is the action. The Final Draw is the destination.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              <span className="inline-flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="amber">
                 <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
                 Final Draw
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Users className="h-3.5 w-3.5 text-sky-300/90" />
+              </Pill>
+              <Pill tone="sky">
+                <Users className="h-3.5 w-3.5" />
                 Identity
-              </span>
+              </Pill>
             </div>
           </div>
 
