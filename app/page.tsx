@@ -1352,17 +1352,17 @@ function HomePageInner() {
                         </span>
                       </div>
 
-{/* Eligibility + Final draw */}
-<div className="relative mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
-  {/* ELIGIBILITY (no minimum shown here) */}
+{/* Eligibility + Final draw (premium, less busy) */}
+<div className="relative mt-5 grid gap-4 lg:grid-cols-2">
+  {/* ELIGIBILITY (hub-verified, no minimum shown here) */}
   <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
-    <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.11),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(var(--xpot-gold),0.09),transparent_62%)]" />
+    <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.11),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
 
     <div className="relative flex items-start justify-between gap-3">
-      <div>
+      <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Eligibility</p>
         <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
-          Hold XPOT in a connected wallet. Eligibility is verified in the hub before you can claim entry.
+          Hold XPOT in a connected wallet. Eligibility is verified on-chain in the hub before you can claim entry.
         </p>
 
         <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
@@ -1372,60 +1372,48 @@ function HomePageInner() {
         </div>
       </div>
 
-      <span className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
+      <span className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
         <ShieldCheck className="h-3.5 w-3.5" />
         Verified in hub
       </span>
     </div>
   </div>
 
-  {/* FINAL DRAW (Day badge is the star) */}
+  {/* FINAL DRAW (DAY badge stands out) */}
   <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
-    <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.11),transparent_62%)]" />
+    <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
 
-    <div className="relative flex items-start justify-between gap-4">
+    <div className="relative flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Final Draw</p>
+
         <p className="mt-2 text-[12px] text-slate-400">
           Ends <span className="text-slate-200">{RUN_END_EU}</span>
         </p>
+
         <p className="mt-1 text-[12px] text-slate-400">
           <span className="text-slate-200">{run.daysRemaining}</span> days remaining
         </p>
-
-        <Link
-          href={ROUTE_TERMS}
-          className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-        >
-          Read terms
-          <ArrowRight className="h-3.5 w-3.5 text-slate-300" />
-        </Link>
       </div>
 
-      {/* Big Day badge */}
-      <div
-        className={[
-          'shrink-0 rounded-[18px] border px-4 py-3',
-          GOLD_BORDER_SOFT,
-          'bg-[radial-gradient(circle_at_30%_20%,rgba(var(--xpot-gold),0.18),transparent_62%),rgba(0,0,0,0.22)]',
-          'shadow-[0_18px_70px_rgba(0,0,0,0.45)]',
-          'ring-1 ring-white/[0.06]',
-        ].join(' ')}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
-            <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
-          </span>
-
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-            Day
+      <div className="shrink-0 text-right">
+        <div
+          className={[
+            'inline-flex items-center gap-2 rounded-full border px-3.5 py-2',
+            GOLD_BORDER_SOFT,
+            'bg-[rgba(var(--xpot-gold),0.10)]',
+            'shadow-[0_18px_70px_rgba(var(--xpot-gold),0.18)]',
+            GOLD_RING_SHADOW,
+          ].join(' ')}
+        >
+          <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
+          <span className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT}`}>Day</span>
+          <span className="font-mono text-[13px] text-slate-50">
+            {run.day}/{RUN_DAYS}
           </span>
         </div>
 
-        <div className="mt-2 font-mono">
-          <div className={`text-[22px] leading-none font-semibold ${GOLD_TEXT}`}>{run.day}</div>
-          <div className="mt-1 text-[11px] tracking-[0.18em] text-slate-400">/ {RUN_DAYS}</div>
-        </div>
+        <p className="mt-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">Run status</p>
       </div>
     </div>
   </div>
