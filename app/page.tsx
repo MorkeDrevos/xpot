@@ -1097,25 +1097,126 @@ function updateLines(prev: string[], tick: number, countdown: string, cutoffLabe
   return next;
 }
 
-function BonusVault({ children }: { children: ReactNode }) {
+function BonusVault({
+  children,
+  spotlight = false,
+}: {
+  children: ReactNode;
+  spotlight?: boolean;
+}) {
+  const frame = spotlight
+    ? [
+        'ring-1 ring-violet-400/25',
+        'border border-violet-400/20',
+        'bg-violet-950/20',
+        'shadow-[0_40px_140px_rgba(139,92,246,0.18)]',
+      ].join(' ')
+    : 'bg-white/[0.03] ring-1 ring-white/[0.06] shadow-[0_30px_110px_rgba(0,0,0,0.45)]';
+
+  const headerText = spotlight ? 'text-violet-100' : 'text-emerald-200/90';
+  const dotCore = spotlight ? 'bg-violet-300' : 'bg-emerald-400';
+  const dotPing = spotlight ? 'bg-violet-300/60' : 'bg-emerald-400/60';
+
   return (
     <div className="relative">
-      <div className="pointer-events-none absolute -inset-10 opacity-70 blur-2xl bg-[radial-gradient(circle_at_22%_38%,rgba(16,185,129,0.20),transparent_64%),radial-gradient(circle_at_72%_30%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_85%_80%,rgba(var(--xpot-gold),0.10),transparent_66%)]" />
+      <style jsx global>{`
+        @keyframes xpotBonusPulse {
+          0% {
+            transform: scale(1);
+            opacity: 0.85;
+          }
+          50% {
+            transform: scale(1.012);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 0.85;
+          }
+        }
+        @keyframes xpotBonusSweep {
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.22;
+          }
+          60% {
+            opacity: 0.12;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-bonus-sweep {
+          position: absolute;
+          inset: -40px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(139, 92, 246, 0.14) 48%,
+            rgba(244, 63, 94, 0.10) 60%,
+            rgba(var(--xpot-gold), 0.10) 72%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          animation: xpotBonusSweep 9.5s ease-in-out infinite;
+          z-index: 2;
+        }
+        .xpot-bonus-pulse {
+          animation: xpotBonusPulse 2.4s ease-in-out infinite;
+        }
+      `}</style>
 
-      <div className="relative overflow-hidden rounded-[28px] bg-white/[0.03] ring-1 ring-white/[0.06] shadow-[0_30px_110px_rgba(0,0,0,0.45)]">
-        <div className="xpot-bonus-sheen" />
+      {/* stronger “center stage” bloom */}
+      <div
+        className={[
+          'pointer-events-none absolute -inset-10 opacity-80 blur-2xl',
+          spotlight
+            ? 'bg-[radial-gradient(circle_at_22%_28%,rgba(139,92,246,0.30),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(244,63,94,0.14),transparent_64%),radial-gradient(circle_at_55%_85%,rgba(var(--xpot-gold),0.14),transparent_66%)]'
+            : 'bg-[radial-gradient(circle_at_22%_38%,rgba(16,185,129,0.20),transparent_64%),radial-gradient(circle_at_72%_30%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_85%_80%,rgba(var(--xpot-gold),0.10),transparent_66%)]',
+        ].join(' ')}
+      />
+
+      <div className={['relative overflow-hidden rounded-[28px]', frame, spotlight ? 'xpot-bonus-pulse' : ''].join(' ')}>
+        <div className="xpot-bonus-sweep" aria-hidden />
 
         <div className="relative p-3 sm:p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
+            <span
+              className={[
+                'inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em]',
+                headerText,
+              ].join(' ')}
+            >
               <span className="relative flex h-2 w-2">
-                <span className="absolute inset-0 rounded-full bg-emerald-400/60 animate-ping" />
-                <span className="relative h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+                <span className={['absolute inset-0 rounded-full animate-ping', dotPing].join(' ')} />
+                <span
+                  className={[
+                    'relative h-2 w-2 rounded-full',
+                    dotCore,
+                    spotlight
+                      ? 'shadow-[0_0_14px_rgba(139,92,246,0.9)]'
+                      : 'shadow-[0_0_12px_rgba(52,211,153,0.9)]',
+                  ].join(' ')}
+                />
               </span>
               Bonus XPOT active
             </span>
 
-            <span className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200 ring-1 ring-white/10">
+            <span
+              className={[
+                'hidden sm:inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ring-1',
+                spotlight
+                  ? 'bg-violet-500/10 text-violet-100 ring-violet-400/20'
+                  : 'bg-white/[0.04] text-slate-200 ring-white/10',
+              ].join(' ')}
+            >
               Same entry
               <span className="h-1 w-1 rounded-full bg-white/20" />
               Paid on-chain
@@ -1127,7 +1228,14 @@ function BonusVault({ children }: { children: ReactNode }) {
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <p className="text-[12px] text-slate-400">Scheduled bonus drop. Appears automatically when active.</p>
 
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 ring-1 ring-emerald-400/15">
+            <span
+              className={[
+                'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ring-1',
+                spotlight
+                  ? 'bg-violet-500/10 text-violet-100 ring-violet-400/20'
+                  : 'bg-emerald-500/10 text-emerald-200 ring-emerald-400/15',
+              ].join(' ')}
+            >
               <Sparkles className="h-3.5 w-3.5" />
               Vault reveal
             </span>
@@ -1437,12 +1545,12 @@ function HomePageInner() {
                       </div>
 
                       {bonusActive ? (
-                        <div className="mt-5">
-                          <BonusVault>
-                            <BonusStrip variant="home" />
-                          </BonusVault>
-                        </div>
-                      ) : null}
+  <div className="mt-5">
+    <BonusVault spotlight>
+      <BonusStrip variant="home" />
+    </BonusVault>
+  </div>
+) : null}
 
                       {/* CTA */}
                       <div className="mt-6 flex flex-wrap items-center gap-3">
