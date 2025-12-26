@@ -1005,29 +1005,37 @@ export default function JackpotPanel({
         {/* Marketing row */}
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Pool capsule - rebuilt to look premium and NOT stretched */}
-            <div className="group relative inline-flex items-center rounded-2xl bg-black/55 px-4 py-2.5 sm:px-5 sm:py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)]">
-              <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-sheen" />
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-capsule-shimmer" />
+            {/* Pool capsule (premium centered readout) */}
+<div className="group relative inline-flex max-w-full items-center">
+  <div className="relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-black/55 px-4 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl">
+    <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
+    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
+    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
+    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
 
-              <div className="relative flex items-center gap-3 sm:gap-4">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-                  Today&apos;s XPOT
-                </span>
+    {/* Left tag */}
+    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+      Today&apos;s XPOT
+    </span>
 
-                <span className="xpot-pool-number">
-                  <span className="xpot-pool-amount">{poolNumber}</span>
-                  <span className="xpot-pool-symbol">XPOT</span>
-                </span>
+    {/* Center hero amount (centered, no “stretched” look) */}
+    <div className="min-w-0 px-1 text-center">
+      <span
+        className="xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white"
+        style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
+      >
+        <span className="xpot-pool-num">{JACKPOT_XPOT.toLocaleString()}</span>
+        <span className="xpot-pool-unit">XPOT</span>
+      </span>
+    </div>
 
-                <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                  Daily
-                </span>
-              </div>
-            </div>
+    {/* Right tag */}
+    <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+      Daily
+    </span>
+  </div>
+</div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1301,37 +1309,47 @@ export default function JackpotPanel({
 
         <style jsx>{`
           /* Pool capsule typography: premium, NOT stretched */
-          .xpot-pool-number {
-            display: inline-flex;
-            align-items: baseline;
-            gap: 10px;
-            white-space: nowrap;
-          }
-          .xpot-pool-amount {
-            font-size: 22px;
-            line-height: 1;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            font-variant-numeric: tabular-nums;
-            text-shadow: 0 0 20px rgba(124, 200, 255, 0.12);
-          }
-          .xpot-pool-symbol {
-            font-size: 12px;
-            line-height: 1;
-            font-weight: 700;
-            letter-spacing: 0.22em;
-            text-transform: uppercase;
-            color: rgba(226, 232, 240, 0.88);
-          }
-          @media (min-width: 640px) {
-            .xpot-pool-amount {
-              font-size: 28px;
-              letter-spacing: -0.015em;
-            }
-            .xpot-pool-symbol {
-              font-size: 13px;
-            }
-          }
+.xpot-pool-hero,
+.xpot-pool-number {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.xpot-pool-num,
+.xpot-pool-amount {
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px rgba(124, 200, 255, 0.12);
+}
+
+.xpot-pool-unit,
+.xpot-pool-symbol {
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.88);
+  opacity: 0.9;
+}
+
+@media (min-width: 640px) {
+  .xpot-pool-num,
+  .xpot-pool-amount {
+    font-size: 28px;
+    letter-spacing: -0.015em;
+  }
+  .xpot-pool-unit,
+  .xpot-pool-symbol {
+    font-size: 13px;
+  }
+}
 
           /* Visible cosmic engine layer (core + orbit ring + soft bloom) */
           .xpot-engine {
