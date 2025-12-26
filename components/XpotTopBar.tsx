@@ -1033,7 +1033,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
               <p className="text-xs text-slate-300/70">
                 <span className="inline-flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-300/90" />
-                  We never see your seed phrase.
+                  Wallet connection is required for eligibility verification.
                 </span>
               </p>
 
