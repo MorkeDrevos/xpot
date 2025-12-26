@@ -505,30 +505,31 @@ function PublicNavCenter({
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      {/* ✅ Live label stays, but route goes to Protocol */}
-      <NavLink href={PROTOCOL_HREF} title="Protocol state">
-        <LiveDot isOpen={liveIsOpen} />
-        <Radio className="h-4 w-4 text-emerald-300" />
-        Live
-      </NavLink>
+      {/* Live */}
+<NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
+  <LiveDot isOpen={liveIsOpen} />
+  <Radio className="h-[15px] w-[15px] text-emerald-300" />
+  Live
+</NavLink>
 
-      <NavLink href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-       <Hourglass className="h-4 w-4 text-amber-200" />
-        {FINAL_DAY_LABEL}
-      </NavLink>
+{/* Final Draw (primary) */}
+<NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
+  <Hourglass className="h-[15px] w-[15px] text-amber-200" />
+  <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
+</NavPill>
 
-      {/* Learn dropdown (hover + click) */}
-      <div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
-        <button
-          type="button"
-          onClick={() => setLearnOpen(!learnOpen)}
-          className="inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition"
-          aria-haspopup="menu"
-          aria-expanded={learnOpen}
-        >
-          Learn
-          <ChevronDown className={`h-4 w-4 transition ${learnOpen ? 'rotate-180' : ''}`} />
-        </button>
+{/* Learn dropdown (hover + click) */}
+<div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
+  <button
+    type="button"
+    onClick={() => setLearnOpen(!learnOpen)}
+    className="inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition"
+    aria-haspopup="menu"
+    aria-expanded={learnOpen}
+  >
+    Learn
+    <ChevronDown className={`h-4 w-4 transition ${learnOpen ? 'rotate-180' : ''}`} />
+  </button>
 
         {learnOpen && (
           <>
