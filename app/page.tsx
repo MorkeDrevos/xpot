@@ -1352,26 +1352,20 @@ function HomePageInner() {
                         </span>
                       </div>
 
-                      {/* Eligibility + Final draw */}
-<div className="relative mt-5 grid gap-4 lg:grid-cols-2">
-  {/* Eligibility (no minimum on homepage) */}
-  <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-6 ring-1 ring-white/[0.05]">
-    <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
+{/* Eligibility + Final draw */}
+<div className="relative mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
+  {/* ELIGIBILITY (no minimum shown here) */}
+  <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
+    <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.11),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(var(--xpot-gold),0.09),transparent_62%)]" />
 
-    <div className="relative flex items-start justify-between gap-4">
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-          Eligibility
-        </p>
-
+    <div className="relative flex items-start justify-between gap-3">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Eligibility</p>
         <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
-          Hold XPOT in a connected wallet.
-          <span className="block text-slate-400">
-            Eligibility is verified on-chain in the hub before you can claim entry.
-          </span>
+          Hold XPOT in a connected wallet. Eligibility is verified in the hub before you can claim entry.
         </p>
 
-        <div className="mt-4 inline-flex items-center gap-2 text-[11px] text-slate-400">
+        <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
           <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
           <span>Cutoff:</span>
           <span className="text-slate-200">{cutoffLabel}</span>
@@ -1385,54 +1379,53 @@ function HomePageInner() {
     </div>
   </div>
 
-  {/* Final Draw (make Day 1/7000 a big deal) */}
-  <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-6 ring-1 ring-white/[0.05]">
-    <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+  {/* FINAL DRAW (Day badge is the star) */}
+  <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
+    <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.11),transparent_62%)]" />
 
-    {/* Hero Day Pill */}
-    <div className="relative mb-4 flex items-start justify-between gap-4">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-          Final Draw
-        </p>
+    <div className="relative flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Final Draw</p>
         <p className="mt-2 text-[12px] text-slate-400">
           Ends <span className="text-slate-200">{RUN_END_EU}</span>
         </p>
-      </div>
-
-      <div
-        className={[
-          'shrink-0 rounded-full border px-4 py-2',
-          GOLD_BORDER_SOFT,
-          'bg-[linear-gradient(180deg,rgba(var(--xpot-gold),0.12),rgba(0,0,0,0.10))]',
-          'shadow-[0_18px_70px_rgba(var(--xpot-gold),0.18)]',
-          'ring-1 ring-white/[0.06]',
-        ].join(' ')}
-        aria-label={`Day ${run.day} of ${RUN_DAYS}`}
-      >
-        <div className="flex items-center gap-2">
-          <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
-          <div className="leading-none">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200/80">
-              Day
-            </div>
-            <div className="mt-0.5 flex items-baseline gap-1">
-              <span className="font-mono text-[16px] text-slate-50">{run.day}</span>
-              <span className="font-mono text-[12px] text-slate-400">/{RUN_DAYS}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div className="relative flex items-end justify-between gap-4">
-      <div className="min-w-0">
-        <p className="text-[12px] text-slate-400">
+        <p className="mt-1 text-[12px] text-slate-400">
           <span className="text-slate-200">{run.daysRemaining}</span> days remaining
         </p>
-        <p className="mt-2 text-[12px] text-slate-500">
-          The run is public and progresses one draw per day at {cutoffLabel}.
-        </p>
+
+        <Link
+          href={ROUTE_TERMS}
+          className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+        >
+          Read terms
+          <ArrowRight className="h-3.5 w-3.5 text-slate-300" />
+        </Link>
+      </div>
+
+      {/* Big Day badge */}
+      <div
+        className={[
+          'shrink-0 rounded-[18px] border px-4 py-3',
+          GOLD_BORDER_SOFT,
+          'bg-[radial-gradient(circle_at_30%_20%,rgba(var(--xpot-gold),0.18),transparent_62%),rgba(0,0,0,0.22)]',
+          'shadow-[0_18px_70px_rgba(0,0,0,0.45)]',
+          'ring-1 ring-white/[0.06]',
+        ].join(' ')}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
+            <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
+          </span>
+
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+            Day
+          </span>
+        </div>
+
+        <div className="mt-2 font-mono">
+          <div className={`text-[22px] leading-none font-semibold ${GOLD_TEXT}`}>{run.day}</div>
+          <div className="mt-1 text-[11px] tracking-[0.18em] text-slate-400">/ {RUN_DAYS}</div>
+        </div>
       </div>
     </div>
   </div>
