@@ -568,3 +568,14 @@ select {
     radial-gradient(820px 260px at 52% 0%, rgba(var(--xpot-accent-secondary), 0.10), transparent 62%);
   filter: blur(0px);
 }
+.xpot-gradient-text {
+  background: linear-gradient(
+    135deg,
+    #9ef0c3 0%,
+    #6ee7f9 45%,
+    #4ade80 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
