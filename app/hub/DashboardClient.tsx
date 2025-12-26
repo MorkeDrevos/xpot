@@ -11,7 +11,6 @@ import { useUser, SignOutButton } from '@clerk/nextjs';
 import GoldAmount from '@/components/GoldAmount';
 
 import XpotPageShell from '@/components/XpotPageShell';
-import LightConnectWalletModal from '@/components/LightConnectWalletModal';
 import HubLockOverlay from '@/components/HubLockOverlay';
 import BonusStrip from '@/components/BonusStrip';
 import { REQUIRED_XPOT } from '@/lib/xpot';
