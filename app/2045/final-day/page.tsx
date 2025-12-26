@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Printer, Repeat2, Timer, Radio, ShieldCheck } from 'lucide-react';
 
-type Era = '2044' | 'now';
+type Era = '2045' | 'now';
 
 const STORAGE_KEY = 'xpot_final_day_era_v5';
 const LIVE_POLL_MS = 5000;
@@ -32,8 +32,8 @@ function formatCountdown(ms: number) {
   return { d, h, m, s };
 }
 
-// Correct weekday for 2044-10-12 is Wednesday
-const ARCHIVE_DATE_LINE = 'Wednesday, 12 October 2044';
+// ✅ Final day date line (7000-day run ending)
+const ARCHIVE_DATE_LINE = 'Thursday, 23 February 2045';
 
 function safeParseMs(iso: string | null | undefined) {
   if (!iso) return null;
@@ -42,7 +42,7 @@ function safeParseMs(iso: string | null | undefined) {
 }
 
 export default function FinalDayPage() {
-  const [era, setEra] = useState<Era>('2044');
+  const [era, setEra] = useState<Era>('2045');
 
   // Live draw state for "Now"
   const [live, setLive] = useState<LiveDraw | null>(null);
@@ -55,7 +55,7 @@ export default function FinalDayPage() {
   useEffect(() => {
     try {
       const v = window.localStorage.getItem(STORAGE_KEY);
-      if (v === '2044' || v === 'now') setEra(v);
+      if (v === '2045' || v === 'now') setEra(v);
     } catch {}
   }, []);
 
@@ -67,7 +67,7 @@ export default function FinalDayPage() {
   }, [era]);
 
   const meta = useMemo(() => {
-    if (era === '2044') {
+    if (era === '2045') {
       return {
         badge: 'ARCHIVE EDITION',
         dateLine: ARCHIVE_DATE_LINE,
@@ -93,12 +93,12 @@ export default function FinalDayPage() {
   }, [era]);
 
   const onFlip = useCallback(() => {
-    setEra(e => (e === '2044' ? 'now' : '2044'));
+    setEra(e => (e === '2045' ? 'now' : '2045'));
   }, []);
 
   const onPrint = useCallback(() => {
     // Always print the archive side
-    setEra('2044');
+    setEra('2045');
     window.setTimeout(() => {
       if (typeof window !== 'undefined') window.print();
     }, 60);
@@ -255,14 +255,14 @@ export default function FinalDayPage() {
             type="button"
             className={[
               'px-4 py-2 text-[12px] font-black uppercase tracking-[0.12em]',
-              era === '2044' ? 'bg-white/[0.08] text-white/95' : 'text-white/70 hover:text-white/90',
+              era === '2045' ? 'bg-white/[0.08] text-white/95' : 'text-white/70 hover:text-white/90',
             ].join(' ')}
-            onClick={() => setEra('2044')}
+            onClick={() => setEra('2045')}
             role="tab"
-            aria-selected={era === '2044'}
+            aria-selected={era === '2045'}
             aria-controls="xpot-fd-archive"
           >
-            2044
+            2045
           </button>
           <button
             type="button"
@@ -309,10 +309,10 @@ export default function FinalDayPage() {
             'print:[transform:none]',
           ].join(' ')}
         >
-          {/* FRONT: 2044 newspaper */}
+          {/* FRONT: 2045 newspaper */}
           <article
             id="xpot-fd-archive"
-            aria-hidden={era !== '2044'}
+            aria-hidden={era !== '2045'}
             className={[
               'overflow-hidden rounded-2xl border border-white/10 shadow-[0_60px_180px_rgba(0,0,0,0.55)]',
               '[backface-visibility:hidden] [-webkit-backface-visibility:hidden]',
@@ -392,7 +392,7 @@ export default function FinalDayPage() {
                       Scale
                     </div>
                     <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">
-                      By 2044, XPOT is the{' '}
+                      By 2045, XPOT is the{' '}
                       <span className="underline decoration-black/25">biggest game on the planet</span>.
                     </div>
                     <div className="mt-2 font-sans text-[13px] leading-[1.55] opacity-85">
@@ -411,7 +411,7 @@ export default function FinalDayPage() {
                   <blockquote className="mt-4 border-l-4 border-[rgba(18,16,12,0.35)] bg-[rgba(18,16,12,0.03)] px-3 py-3 italic">
                     “It didn’t promise miracles. It promised a daily draw - and it kept its word.”
                     <span className="mt-2 block font-sans text-[12px] font-black uppercase tracking-[0.10em] text-[rgba(18,16,12,0.65)] not-italic">
-                      - Archive commentary, 2044
+                      - Archive commentary, 2045
                     </span>
                   </blockquote>
                 </div>
@@ -561,9 +561,7 @@ export default function FinalDayPage() {
                 </div>
 
                 <div className="inline-flex items-center gap-3">
-                  <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
-                    {dayLabel}
-                  </div>
+                  <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">{dayLabel}</div>
 
                   <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
                     Initiated by <span className="text-white/90">@MorkeDrevos</span>
@@ -580,9 +578,9 @@ export default function FinalDayPage() {
                 <button
                   className="rounded-full bg-white px-4 py-2 text-[13px] font-black text-black hover:brightness-95"
                   type="button"
-                  onClick={() => setEra('2044')}
+                  onClick={() => setEra('2045')}
                 >
-                  Read the 2044 archive
+                  Read the 2045 archive
                 </button>
                 <Link
                   className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[13px] font-black text-white/90 hover:bg-white/[0.07]"
@@ -595,10 +593,7 @@ export default function FinalDayPage() {
               {/* Day progress */}
               <div className="mt-4">
                 <div className="h-2 overflow-hidden rounded-full border border-white/10 bg-white/[0.04]">
-                  <div
-                    className="h-full bg-white/25"
-                    style={{ width: `${Math.round(dayProgress * 10000) / 100}%` }}
-                  />
+                  <div className="h-full bg-white/25" style={{ width: `${Math.round(dayProgress * 10000) / 100}%` }} />
                 </div>
                 <div className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-white/55">
                   Progress to Day 7000
@@ -615,7 +610,12 @@ export default function FinalDayPage() {
                     <span>Draw countdown</span>
                   </div>
 
-                  <span className={['inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1', statusTone].join(' ')}>
+                  <span
+                    className={[
+                      'inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1',
+                      statusTone,
+                    ].join(' ')}
+                  >
                     {live?.status ?? (liveErr ? 'OFFLINE' : 'LOADING')}
                   </span>
                 </div>
@@ -644,9 +644,14 @@ export default function FinalDayPage() {
                         const label = k === 'd' ? 'Days' : k === 'h' ? 'Hours' : k === 'm' ? 'Minutes' : 'Seconds';
 
                         return (
-                          <div key={k} className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-center">
+                          <div
+                            key={k}
+                            className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-center"
+                          >
                             <div className="text-[22px] font-black tracking-[-0.02em]">{v}</div>
-                            <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">{label}</div>
+                            <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">
+                              {label}
+                            </div>
                           </div>
                         );
                       })}
