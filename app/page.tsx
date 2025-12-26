@@ -39,6 +39,7 @@ import { createPortal } from 'react-dom';
 
 import FinalDrawDate from '@/components/FinalDrawDate';
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
+import { useScroll, useTransform, useSpring } from 'framer-motion';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_TERMS = '/terms';
@@ -1067,6 +1068,84 @@ function BonusVault({ children }: { children: ReactNode }) {
   );
 }
 
+function ParallaxConsoleCard({
+  children,
+  stickyTop = 'calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+24px)',
+}: {
+  children: ReactNode;
+  stickyTop?: string;
+}) {
+  const reduced = useLocalReducedMotion();
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start end', 'end start'],
+  });
+
+  // Subtle “float” (kept small so it feels premium, not gimmicky)
+  const yRaw = useTransform(scrollYProgress, [0, 1], [10, -14]);
+  const y = useSpring(yRaw, { stiffness: 120, damping: 24, mass: 0.7 });
+
+  const tiltRaw = useTransform(scrollYProgress, [0, 1], [0.6, -0.6]);
+  const tilt = useSpring(tiltRaw, { stiffness: 110, damping: 26, mass: 0.8 });
+
+  return (
+    <div
+      ref={ref}
+      className="lg:sticky"
+      style={{ top: stickyTop }}
+    >
+      <style jsx global>{`
+        @keyframes xpotConsoleSweep {
+          0% { transform: translateX(-30%) skewX(-12deg); opacity: 0; }
+          12% { opacity: 0.22; }
+          55% { opacity: 0.10; }
+          100% { transform: translateX(30%) skewX(-12deg); opacity: 0; }
+        }
+        .xpot-console-sweep {
+          position: relative;
+          isolation: isolate;
+        }
+        .xpot-console-sweep::after {
+          content: '';
+          pointer-events: none;
+          position: absolute;
+          inset: -2px;
+          border-radius: 32px;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255,255,255,0.06) 32%,
+            rgba(var(--xpot-gold),0.08) 50%,
+            rgba(56,189,248,0.06) 68%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          animation: xpotConsoleSweep 10.8s ease-in-out infinite;
+          z-index: 2;
+        }
+      `}</style>
+
+      <motion.div
+        className="xpot-console-sweep"
+        style={
+          reduced
+            ? undefined
+            : {
+                y,
+                rotateX: tilt as any,
+                transformPerspective: 1200,
+              }
+        }
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+}
+
 function HomePageInner() {
   const bonusActive = useBonusActive();
 
@@ -1340,11 +1419,13 @@ function HomePageInner() {
 
                 {/* RIGHT (bigger + more breathing room) */}
                 <div className="grid gap-4">
-                  <PremiumCard className="p-5 sm:p-6" halo sheen>
-                    <div className="mt-0">
-                      <JackpotPanel variant="standalone" layout="wide" />
-                    </div>
-                  </PremiumCard>
+                  <ParallaxConsoleCard>
+  <PremiumCard className="p-5 sm:p-6" halo sheen>
+    <div className="mt-0">
+      <JackpotPanel variant="standalone" layout="wide" />
+    </div>
+  </PremiumCard>
+</ParallaxConsoleCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
                     <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
