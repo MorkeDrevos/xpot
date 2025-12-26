@@ -11,7 +11,7 @@ import {
   useContext,
 } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import {
   ArrowRight,
   Blocks,
@@ -547,6 +547,29 @@ function CosmicHeroBackdrop() {
             box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
           }
         }
+        @keyframes xpotConsoleSweep {
+  0% { transform: translateX(-55%) skewX(-12deg); opacity: 0; }
+  15% { opacity: 0.22; }
+  55% { opacity: 0.10; }
+  100% { transform: translateX(55%) skewX(-12deg); opacity: 0; }
+}
+.xpot-console-sweep {
+  position: absolute;
+  inset: -40px;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255,255,255,0.05) 30%,
+    rgba(var(--xpot-gold),0.10) 48%,
+    rgba(56,189,248,0.06) 66%,
+    transparent 100%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  filter: blur(0.2px);
+  animation: xpotConsoleSweep 12s ease-in-out infinite;
+}
         .xpot-hero-engine {
           position: absolute;
           inset: -180px;
@@ -1156,6 +1179,17 @@ function HomePageInner() {
 
   const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
   const runLine = useMemo(() => `DAY ${run.day}/${RUN_DAYS}  (final: ${RUN_END_EU})`, [run.day]);
+  
+  const reduceMotion = useReducedMotion();
+  const { scrollY } = useScroll();
+
+  // subtle “console float”
+  const floatY = useTransform(scrollY, [0, 900], [0, -18]);
+  const floatYSpring = useSpring(floatY, { stiffness: 80, damping: 22, mass: 0.6 });
+
+  // micro tilt (optional but sexy)
+  const tilt = useTransform(scrollY, [0, 900], [0, -0.25]);
+  const tiltSpring = useSpring(tilt, { stiffness: 70, damping: 20, mass: 0.6 });
 
   // Smart dynamic meta (client-safe)
   useEffect(() => {
@@ -1249,7 +1283,7 @@ function HomePageInner() {
                         <h1 className="text-balance text-[32px] font-semibold leading-[1.05] sm:text-[50px]">
                           One protocol.
                           <br />
-                          <span className="text-emerald-300/90">One daily XPOT draw.</span>
+                         <span className={GOLD_TEXT}>One daily XPOT draw.</span>
                         </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
@@ -1417,8 +1451,19 @@ function HomePageInner() {
                   </div>
                 </div>
 
-                {/* RIGHT (bigger + more breathing room) */}
-                <div className="grid gap-4">
+                {/* RIGHT (center console) */}
+<motion.div
+  className="grid gap-4"
+  style={
+    reduceMotion
+      ? undefined
+      : {
+          y: floatYSpring as any,
+          rotateZ: tiltSpring as any,
+          transformOrigin: '50% 10%',
+        }
+  }
+>
                   <ParallaxConsoleCard>
   <PremiumCard className="p-5 sm:p-6" halo sheen>
     <div className="mt-0">
