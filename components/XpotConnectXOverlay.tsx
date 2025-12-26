@@ -1,9 +1,10 @@
+// components/XpotConnectXOverlay.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { SignedIn, SignedOut, UserButton, useSignIn } from '@clerk/nextjs';
-import { AnimatePresence, motion, useReducedMotion, type Transition } from 'framer-motion';
-import { ArrowRight, ShieldCheck, X, Sparkles, Radio } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ArrowRight, ShieldCheck, Sparkles, X as XIcon } from 'lucide-react';
 
 type Props = {
   afterSignOutUrl?: string;
@@ -11,32 +12,31 @@ type Props = {
   redirectUrlComplete?: string;
   title?: string;
   subtitle?: string;
+  buttonLabel?: string;
 };
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex w-full items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold px-5 py-3 text-sm font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_GHOST =
-  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex w-full items-center justify-center rounded-full border border-white/10 bg-white/[0.05] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.10] disabled:cursor-not-allowed disabled:opacity-40';
+
+const PILL =
+  'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-200';
 
 export default function XpotConnectXOverlay({
   afterSignOutUrl = '/',
   redirectUrlComplete = '/hub',
   triggerClassName = 'text-sm font-medium text-slate-200 hover:text-white transition',
-  title = 'Access the XPOT ecosystem',
-  subtitle = 'Connect X to link identity. No posting required.',
+  title = 'Connect X to access the Holder Dashboard',
+  subtitle = 'XPOT uses your public X handle as your identity. No posting required.',
+  buttonLabel = 'Continue with X',
 }: Props) {
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
   const { isLoaded, signIn } = useSignIn();
 
-  // IMPORTANT: give Framer Motion a properly typed Transition
-  const transition = useMemo<Transition>(() => {
-    if (reduce) return { duration: 0.15 };
-    return { type: 'spring', stiffness: 260, damping: 26 };
-  }, [reduce]);
-
-  // lock scroll while open
+  // Lock scroll while open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -45,6 +45,10 @@ export default function XpotConnectXOverlay({
       document.body.style.overflow = prev;
     };
   }, [open]);
+
+  const transition: any = useMemo(() => {
+    return reduce ? { duration: 0.15 } : { type: 'spring', stiffness: 260, damping: 26 };
+  }, [reduce]);
 
   async function handleContinueWithX() {
     if (!isLoaded || !signIn) return;
@@ -55,6 +59,7 @@ export default function XpotConnectXOverlay({
         redirectUrl: '/sso-callback',
         redirectUrlComplete,
       });
+      // Usually redirects, but just in case:
       setOpen(false);
     } catch (e) {
       console.error('[XPOT] X sign-in failed', e);
@@ -64,7 +69,7 @@ export default function XpotConnectXOverlay({
   return (
     <>
       <SignedOut>
-        <button onClick={() => setOpen(true)} className={triggerClassName}>
+        <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
           Sign in
         </button>
       </SignedOut>
@@ -77,17 +82,13 @@ export default function XpotConnectXOverlay({
         {open ? (
           <div className="fixed inset-0 z-[9999]">
             <style jsx global>{`
-              @keyframes xpotOverlaySweep {
+              @keyframes xpotSweep {
                 0% { transform: translateX(-140%) rotate(12deg); opacity: 0; }
                 12% { opacity: 0.35; }
                 60% { opacity: 0.14; }
                 100% { transform: translateX(160%) rotate(12deg); opacity: 0; }
               }
-              @keyframes xpotOverlayFloat {
-                0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-6px); }
-              }
-              .xpot-overlay-sweep::before{
+              .xpot-sweep::before{
                 content:"";
                 position:absolute;
                 top:-55%;
@@ -100,18 +101,18 @@ export default function XpotConnectXOverlay({
                   90deg,
                   transparent,
                   rgba(255,255,255,0.10),
-                  rgba(56,189,248,0.10),
-                  rgba(16,185,129,0.09),
-                  rgba(255,215,0,0.06),
+                  rgba(56,189,248,0.12),
+                  rgba(16,185,129,0.10),
+                  rgba(255,215,0,0.08),
                   transparent
                 );
-                animation: xpotOverlaySweep 1.8s ease-in-out infinite;
+                animation: xpotSweep 1.8s ease-in-out infinite;
                 mix-blend-mode: screen;
                 pointer-events:none;
               }
             `}</style>
 
-            {/* Backdrop: show page behind + blur */}
+            {/* Backdrop: show the page behind + blur (like wallet modal) */}
             <button
               type="button"
               aria-label="Close"
@@ -124,7 +125,7 @@ export default function XpotConnectXOverlay({
             </button>
 
             {/* Dialog */}
-            <div className="relative mx-auto flex h-full max-w-[520px] items-center px-5">
+            <div className="relative mx-auto flex h-full max-w-[560px] items-center px-5">
               <motion.div
                 initial={{ opacity: 0, y: 18, scale: 0.985 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -136,20 +137,21 @@ export default function XpotConnectXOverlay({
                 onClick={e => e.stopPropagation()}
                 className="relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/55 shadow-[0_60px_180px_rgba(0,0,0,0.75)] backdrop-blur-xl"
               >
-                <div className="xpot-overlay-sweep absolute inset-0" />
+                <div className="xpot-sweep absolute inset-0" />
 
+                {/* Soft nebula bloom */}
                 <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_82%_28%,rgba(56,189,248,0.16),transparent_62%),radial-gradient(circle_at_52%_100%,rgba(255,215,0,0.09),transparent_64%)]" />
 
+                {/* Thin premium edge */}
                 <div className="pointer-events-none absolute inset-0 rounded-[32px] ring-1 ring-white/10" />
                 <div className="pointer-events-none absolute inset-0 rounded-[32px] ring-1 ring-amber-300/10" />
 
                 <div className="relative p-6">
+                  {/* Top row */}
                   <div className="flex items-center justify-between gap-3">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
-                      <span className="inline-flex h-2 w-2 items-center justify-center rounded-full bg-emerald-400/90 shadow-[0_0_0_4px_rgba(16,185,129,0.10)]" />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-200">
-                        Protocol access
-                      </span>
+                    <div className={PILL}>
+                      <span className="h-2 w-2 rounded-full bg-emerald-400/90 shadow-[0_0_0_4px_rgba(16,185,129,0.10)]" />
+                      CONNECT X
                     </div>
 
                     <button
@@ -158,60 +160,59 @@ export default function XpotConnectXOverlay({
                       className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]"
                       aria-label="Close"
                     >
-                      <X className="h-4 w-4" />
+                      <XIcon className="h-4 w-4" />
                     </button>
                   </div>
 
+                  {/* Title */}
                   <div className="mt-5">
                     <h3 className="text-[20px] font-semibold text-slate-100">{title}</h3>
                     <p className="mt-1 text-[12px] leading-relaxed text-slate-400">{subtitle}</p>
                   </div>
 
+                  {/* Info card (matches the wallet modal structure) */}
                   <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                     <div className="flex items-start gap-3">
-                      <div
-                        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]"
-                        style={{ animation: reduce ? 'none' : 'xpotOverlayFloat 4.8s ease-in-out infinite' }}
-                      >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
                         <ShieldCheck className="h-5 w-5 text-emerald-200" />
                       </div>
 
                       <div className="min-w-0">
                         <p className="text-[12px] font-semibold text-slate-100">Secure identity link</p>
                         <p className="mt-0.5 text-[11px] text-slate-400">
-                          XPOT reads your public handle only and ties it to your entries.
+                          XPOT reads your public X handle only. No DMs, no posting, no permissions beyond sign-in.
                         </p>
 
                         <div className="mt-3 flex flex-wrap gap-2">
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                            <Radio className="h-3.5 w-3.5 text-emerald-200" />
-                            One identity
+                            <Sparkles className="h-3.5 w-3.5 text-amber-200" />
+                            One handle, one identity
                           </span>
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                            <Sparkles className="h-3.5 w-3.5 text-amber-200" />
-                            Zero friction
+                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+                            Safe by design
                           </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
+                  {/* CTAs */}
                   <div className="mt-5 space-y-2">
                     <button
                       type="button"
                       onClick={handleContinueWithX}
                       disabled={!isLoaded}
-                      className={`${BTN_PRIMARY} h-11 w-full text-[13px]`}
+                      className={BTN_PRIMARY}
                     >
-                      Continue with X
+                      <span className="inline-flex items-center gap-2">
+                        <XIcon className="h-4 w-4" />
+                        {buttonLabel}
+                      </span>
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setOpen(false)}
-                      className={`${BTN_GHOST} h-10 w-full text-[12px]`}
-                    >
+                    <button type="button" onClick={() => setOpen(false)} className={BTN_GHOST}>
                       Not now
                     </button>
                   </div>
