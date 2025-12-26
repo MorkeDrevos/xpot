@@ -1143,6 +1143,56 @@ function ParallaxConsoleCard({
   );
 }
 
+function MissionBanner() {
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    try {
+      setHidden(localStorage.getItem('xpot_mission_hidden') === '1');
+    } catch {}
+  }, []);
+
+  if (hidden) return null;
+
+  function dismiss() {
+    setHidden(true);
+    try {
+      localStorage.setItem('xpot_mission_hidden', '1');
+    } catch {}
+  }
+
+  return (
+    <div className="relative border-y border-slate-900/60 bg-slate-950/55 backdrop-blur">
+      <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),radial-gradient(circle_at_82%_0%,rgba(56,189,248,0.16),transparent_62%)]" />
+
+      <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`}
+            >
+              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+              Mission
+            </span>
+
+            <p className="text-[12px] text-slate-200">
+              We’re aiming to become the <span className={GOLD_TEXT}>biggest game on the planet</span>.
+              <span className="text-slate-500"> We’re early – the run is live.</span>
+            </p>
+          </div>
+
+          <button
+            onClick={dismiss}
+            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomePageInner() {
   const bonusActive = useBonusActive();
 
@@ -1212,6 +1262,7 @@ function HomePageInner() {
   const hero = (
     <section className="relative">
       <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+14px)]" />
+      <MissionBanner />
 
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.60))]" />
@@ -1268,9 +1319,12 @@ function HomePageInner() {
                         </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
-                          Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the
-                          ending - <FinalDrawDate className="text-slate-200" />.
-                        </p>
+  Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending –{' '}
+  <FinalDrawDate className="text-slate-200" />.
+  <span className="block mt-2 text-slate-300">
+    We’re building toward becoming the world’s biggest game – one day at a time.
+  </span>
+</p>
                       </div>
 
                       {/* Countdown capsule */}
