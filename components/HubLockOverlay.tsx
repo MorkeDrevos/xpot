@@ -6,25 +6,25 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, ShieldCheck, X as XIcon, Radio, Sparkles } from 'lucide-react';
 import { useSignIn } from '@clerk/nextjs';
 
-const BTN_GHOST =
-  'inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]';
+const CTA_SIBLING =
+  'group relative w-full h-11 ' +
+  'inline-flex items-center justify-center gap-2 ' +
+  'rounded-full ' +
+  'bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] ' +
+  'border border-white/15 ' +
+  'text-[13px] font-semibold text-slate-100 ' +
+  'shadow-[0_10px_40px_rgba(0,0,0,0.45)] ' +
+  'transition ' +
+  'hover:border-emerald-300/40 hover:text-white ' +
+  'hover:shadow-[0_0_0_1px_rgba(16,185,129,0.25),0_20px_60px_rgba(0,0,0,0.55)] ' +
+  'active:scale-[0.985] ' +
+  'disabled:cursor-not-allowed disabled:opacity-40';
 
-const CTA_PRIMARY_SIBLING =
-  [
-    'group relative w-full h-11',
-    'inline-flex items-center justify-center gap-2',
-    'rounded-full',
-    'bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]',
-    'border border-white/15',
-    'text-[13px] font-semibold text-slate-100',
-    'shadow-[0_10px_40px_rgba(0,0,0,0.45)]',
-    'transition',
-    'hover:border-emerald-300/40',
-    'hover:text-white',
-    'hover:shadow-[0_0_0_1px_rgba(16,185,129,0.25),0_20px_60px_rgba(0,0,0,0.55)]',
-    'active:scale-[0.985]',
-    'disabled:opacity-40 disabled:cursor-not-allowed',
-  ].join(' ');
+const CTA_SECONDARY =
+  'inline-flex w-full items-center justify-center rounded-full ' +
+  'border border-white/10 bg-white/[0.03] ' +
+  'px-5 py-3 text-[12px] font-medium text-slate-300 ' +
+  'transition hover:bg-white/[0.06] hover:text-slate-200';
 
 export default function HubLockOverlay({
   open,
@@ -137,18 +137,12 @@ export default function HubLockOverlay({
 
                 {/* Actions */}
                 <div className="mt-5 space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleContinueWithX}
-                    disabled={!isLoaded}
-                    className={CTA_PRIMARY_SIBLING}
-                  >
-                    <XIcon className="h-4 w-4 opacity-90 group-hover:opacity-100" />
-                    <span>{showLinkX ? 'Link X' : 'Continue with X'}</span>
+                  <button type="button" onClick={handleContinueWithX} disabled={!isLoaded} className={CTA_SIBLING}>
+                    <span>Continue with X</span>
                     <ArrowRight className="h-4 w-4 opacity-70 group-hover:translate-x-0.5 transition-transform" />
                   </button>
 
-                  <Link href="/" className={BTN_GHOST}>
+                  <Link href="/" className={CTA_SECONDARY}>
                     Back to homepage
                   </Link>
                 </div>
