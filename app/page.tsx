@@ -1327,11 +1327,6 @@ function HomePageInner() {
           </span>
         </p>
 
-        {/* Entry mechanics sentence (restored vibe) */}
-        <p className="mt-4 text-[15px] leading-relaxed text-slate-300">
-          Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle and paid
-          on-chain. Built to scale into a rewards ecosystem for communities, creators and sponsors.
-        </p>
       </div>
 
       {/* Countdown capsule */}
@@ -1455,8 +1450,6 @@ function HomePageInner() {
               Protocol distribution reserve
               <span className="text-slate-700"> • </span>
               payouts stay on-chain
-              <span className="text-slate-700"> • </span>
-              daily cutoff 22:00 (Madrid)
             </p>
           </div>
         </div>
@@ -1497,7 +1490,7 @@ function HomePageInner() {
 
       <p className="text-[15px] leading-relaxed text-slate-300">
         Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle and paid
-        on-chain. Built to scale into a rewards ecosystem for communities, creators and sponsors.
+        on-chain. 
       </p>
     </div>
 
