@@ -37,11 +37,12 @@ import {
 // ─────────────────────────────────────────────
 
 const BTN_PRIMARY =
+  // Brighter, always-visible “first class” button
   'relative inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-slate-950 ' +
-  'bg-[linear-gradient(135deg,rgba(251,191,36,0.98),rgba(245,158,11,0.92),rgba(56,189,248,0.22))] ' +
-  'shadow-[0_22px_70px_rgba(251,191,36,0.18),0_18px_60px_rgba(0,0,0,0.55)] ' +
-  'ring-1 ring-amber-200/40 transition hover:brightness-[1.06] active:brightness-[0.98] ' +
-  'focus:outline-none focus:ring-2 focus:ring-amber-200/60 disabled:cursor-not-allowed disabled:opacity-45';
+  'bg-[linear-gradient(90deg,rgba(251,191,36,0.95),rgba(56,189,248,0.90),rgba(236,72,153,0.88))] ' +
+  'shadow-[0_30px_120px_rgba(0,0,0,0.55)] ring-1 ring-white/20 ' +
+  'transition hover:brightness-[1.06] active:brightness-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ' +
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60';
 
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition disabled:cursor-not-allowed disabled:opacity-40';
@@ -78,6 +79,89 @@ function formatCountdown(ms: number) {
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+}
+
+// ─────────────────────────────────────────────
+// Madrid cutoff logic (22:00 Europe/Madrid) - matches other pages
+// ─────────────────────────────────────────────
+
+const MADRID_TZ = 'Europe/Madrid';
+const MADRID_CUTOFF_HH = 22;
+const MADRID_CUTOFF_MM = 0;
+
+function getTzParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const pick = (type: string) => parts.find(p => p.type === type)?.value ?? '00';
+
+  return {
+    y: Number(pick('year')),
+    m: Number(pick('month')),
+    d: Number(pick('day')),
+    hh: Number(pick('hour')),
+    mm: Number(pick('minute')),
+    ss: Number(pick('second')),
+  };
+}
+
+function wallClockToUtcMs({
+  y,
+  m,
+  d,
+  hh,
+  mm,
+  ss,
+  timeZone,
+}: {
+  y: number;
+  m: number;
+  d: number;
+  hh: number;
+  mm: number;
+  ss: number;
+  timeZone: string;
+}) {
+  // Start with a UTC guess, then iteratively correct using the timezone’s formatted parts.
+  let t = Date.UTC(y, m - 1, d, hh, mm, ss);
+
+  for (let i = 0; i < 3; i++) {
+    const got = getTzParts(new Date(t), timeZone);
+    const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm; // stable ordering for diff
+    const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
+    const diffMin = gotTotal - wantTotal;
+    if (diffMin === 0) break;
+    t -= diffMin * 60_000;
+  }
+
+  return t;
+}
+
+function nextMadridCutoffUtcMs(now = new Date()) {
+  const madridNow = getTzParts(now, MADRID_TZ);
+  const nowMin = madridNow.hh * 60 + madridNow.mm;
+  const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
+
+  const baseDate = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
+  const madridTargetDay = getTzParts(baseDate, MADRID_TZ);
+
+  return wallClockToUtcMs({
+    y: madridTargetDay.y,
+    m: madridTargetDay.m,
+    d: madridTargetDay.d,
+    hh: MADRID_CUTOFF_HH,
+    mm: MADRID_CUTOFF_MM,
+    ss: 0,
+    timeZone: MADRID_TZ,
+  });
 }
 
 function StatusPill({
@@ -118,14 +202,10 @@ function WalletStatusHint() {
   if (connected) return null;
 
   if (!anyDetected) {
-    return (
-      <p className="mt-2 text-xs xpot-gold-text">
-        No Solana wallet detected. Install Phantom or Solflare to continue.
-      </p>
-    );
+    return <p className="mt-2 text-xs xpot-gold-text">No Solana wallet detected. Install Phantom or Solflare to continue.</p>;
   }
 
-  return <p className="mt-2 text-xs text-slate-400">Click “Select Wallet” and choose a wallet to connect.</p>;
+  return <p className="mt-2 text-xs text-slate-400">Click “Select wallet” and choose a wallet to connect.</p>;
 }
 
 async function safeCopy(text: string) {
@@ -156,72 +236,7 @@ function useReducedMotion() {
 }
 
 // ─────────────────────────────────────────────
-// Madrid draw cutoff countdown (22:00 Europe/Madrid)
-// ─────────────────────────────────────────────
-
-function getTzOffsetMinutes(utcDate: Date, timeZone: string) {
-  try {
-    // e.g. "GMT+1" / "GMT+02:00"
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      timeZoneName: 'shortOffset',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).formatToParts(utcDate);
-
-    const tz = parts.find(p => p.type === 'timeZoneName')?.value || 'GMT';
-    const m = tz.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
-    if (!m) return 0;
-    const sign = m[1] === '-' ? -1 : 1;
-    const hh = Number(m[2] || 0);
-    const mm = Number(m[3] || 0);
-    return sign * (hh * 60 + mm);
-  } catch {
-    return 0;
-  }
-}
-
-function madridWallClockToUtcMs(y: number, m: number, d: number, hh: number, mm: number, ss: number) {
-  // Treat the provided wall-clock as if it were UTC, then subtract the Madrid offset at that instant.
-  const guessUtc = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
-  const offMin = getTzOffsetMinutes(guessUtc, 'Europe/Madrid');
-  return guessUtc.getTime() - offMin * 60_000;
-}
-
-function getMadridYmd(now = new Date()) {
-  // Read Madrid Y/M/D from Intl (safe across user locale)
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now);
-
-  const y = Number(parts.find(p => p.type === 'year')?.value || '0');
-  const m = Number(parts.find(p => p.type === 'month')?.value || '0');
-  const d = Number(parts.find(p => p.type === 'day')?.value || '0');
-  return { y, m, d };
-}
-
-function nextMadridCutoffUtcMs(now = new Date()) {
-  const { y, m, d } = getMadridYmd(now);
-
-  const cutoffTodayUtc = madridWallClockToUtcMs(y, m, d, 22, 0, 0);
-  const nowMs = now.getTime();
-
-  if (nowMs < cutoffTodayUtc) return cutoffTodayUtc;
-
-  // next day (let Date handle month/year rollover)
-  const tmp = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-  tmp.setUTCDate(tmp.getUTCDate() + 1);
-  const ny = tmp.getUTCFullYear();
-  const nm = tmp.getUTCMonth() + 1;
-  const nd = tmp.getUTCDate();
-  return madridWallClockToUtcMs(ny, nm, nd, 22, 0, 0);
-}
-
-// ─────────────────────────────────────────────
-// Luxe shell pieces (anti-boxy, premium feel)
+// Luxe shell pieces
 // ─────────────────────────────────────────────
 
 function LuxeCard({
@@ -309,7 +324,7 @@ function TinyRow({
 }
 
 // ─────────────────────────────────────────────
-// Bonus hook
+// Bonus hook (same endpoint as homepage)
 // ─────────────────────────────────────────────
 
 type BonusUpcoming = {
@@ -456,9 +471,7 @@ function EntryCeremony({
 
         <div className="relative p-5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300/80">
-              Entry issued
-            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300/80">Entry issued</span>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
               <Radio className="h-3.5 w-3.5" />
               LIVE
@@ -481,9 +494,7 @@ function EntryCeremony({
             </div>
           </div>
 
-          <p className="mt-4 text-center text-xs text-slate-300/70">
-            Your daily entry is live. Come back after draw time for proof.
-          </p>
+          <p className="mt-4 text-center text-xs text-slate-300/70">Your daily entry is live. Come back after draw time for proof.</p>
         </div>
       </div>
     </div>
@@ -636,8 +647,8 @@ export default function DashboardClient() {
   // ─────────────────────────────────────────────
   useEffect(() => {
     const tick = () => {
-      const target = nextMadridCutoffUtcMs(new Date());
-      const ms = target - Date.now();
+      const cutoffUtc = nextMadridCutoffUtcMs(new Date());
+      const ms = cutoffUtc - Date.now();
       setCountdown(formatCountdown(ms));
     };
     tick();
@@ -697,53 +708,27 @@ export default function DashboardClient() {
   }, []);
 
   const fetchXpotBalance = useCallback(async (address: string) => {
-    const endpoints = [
-      `/api/xpot-balance?address=${encodeURIComponent(address)}`,
-      `/api/xpot-balance?wallet=${encodeURIComponent(address)}`,
-      `/api/xpot-balance?owner=${encodeURIComponent(address)}`,
-    ];
+    // Primary endpoint + defensive parsing + fallback query keys
+    const tryOne = async (url: string) => {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = (await res.json().catch(() => null)) as any;
+      const raw = data?.balance ?? data?.uiAmount ?? data?.amount ?? data?.value ?? 0;
+      const n = typeof raw === 'string' ? Number(raw) : typeof raw === 'number' ? raw : Number(raw ?? 0);
+      if (!Number.isFinite(n)) throw new Error('Balance parse failed');
+      return n;
+    };
 
-    let lastErr: unknown = null;
-
-    for (const url of endpoints) {
+    try {
+      return await tryOne(`/api/xpot-balance?address=${encodeURIComponent(address)}`);
+    } catch (e1) {
+      // Fallbacks (safe even if backend ignores / rejects)
       try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) {
-          lastErr = new Error(`API error: ${res.status}`);
-          continue;
-        }
-
-        const data = (await res.json().catch(() => null)) as any;
-        // Accept multiple possible payload shapes defensively
-        const direct = data?.balance ?? data?.xpotBalance ?? data?.uiAmount ?? data?.amount;
-
-        if (typeof direct === 'number' && Number.isFinite(direct)) return direct;
-
-        if (typeof direct === 'string' && direct.trim() !== '' && !Number.isNaN(Number(direct))) {
-          return Number(direct);
-        }
-
-        // Common token-account shape: { amount: "123", decimals: 6 }
-        if (typeof data?.amount === 'string' && typeof data?.decimals === 'number') {
-          const raw = Number(data.amount);
-          if (Number.isFinite(raw)) {
-            return raw / Math.pow(10, Math.max(0, data.decimals));
-          }
-        }
-
-        // Fallback: { value: { uiAmount } }
-        const nested = data?.value?.uiAmount;
-        if (typeof nested === 'number' && Number.isFinite(nested)) return nested;
-
-        // If it returned “something” but no parseable balance, treat as 0 rather than error
-        return 0;
-      } catch (e) {
-        lastErr = e;
-        continue;
+        return await tryOne(`/api/xpot-balance?wallet=${encodeURIComponent(address)}`);
+      } catch {
+        return await tryOne(`/api/xpot-balance?owner=${encodeURIComponent(address)}`);
       }
     }
-
-    throw lastErr instanceof Error ? lastErr : new Error('Failed to load XPOT balance');
   }, []);
 
   const fetchHistory = useCallback(async (address: string) => {
@@ -805,7 +790,7 @@ export default function DashboardClient() {
         const nextWinners = await fetchRecentWinners();
         setRecentWinners(nextWinners);
 
-        if (addr) {
+        if (addr && walletConnected) {
           try {
             setXpotBalance(null);
             const b = await fetchXpotBalance(addr);
@@ -846,7 +831,7 @@ export default function DashboardClient() {
         refreshingRef.current = false;
       }
     },
-    [isAuthedEnough, publicKey, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
+    [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
   );
 
   useEffect(() => {
@@ -995,7 +980,6 @@ export default function DashboardClient() {
       setShowCeremony(true);
 
       await markStreakDone();
-
       refreshAll('manual');
     } catch (err) {
       console.error('Error calling /api/tickets/claim', err);
@@ -1079,6 +1063,25 @@ export default function DashboardClient() {
           mix-blend-mode: screen;
           pointer-events:none;
         }
+        @keyframes xpotBtnSheen {
+          0% { transform: translateX(-140%) rotate(12deg); opacity: 0; }
+          12% { opacity: 0.22; }
+          60% { opacity: 0.10; }
+          100% { transform: translateX(160%) rotate(12deg); opacity: 0; }
+        }
+        .xpot-btn-sheen::before{
+          content:"";
+          position:absolute;
+          top:-70%;
+          left:-60%;
+          width:55%;
+          height:260%;
+          transform: rotate(12deg);
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), rgba(255,255,255,0.08), transparent);
+          animation: xpotBtnSheen 3.8s ease-in-out infinite;
+          mix-blend-mode: overlay;
+          pointer-events:none;
+        }
       `}</style>
 
       <PremiumWalletModal open={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
@@ -1139,9 +1142,7 @@ export default function DashboardClient() {
                     onClick={() => setWalletModalOpen(true)}
                     className="text-left leading-tight hover:opacity-90"
                   >
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">
-                      Wallet bay
-                    </div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">Wallet bay</div>
                     <div className="text-[13px] font-semibold text-slate-100">
                       {walletConnected ? 'Change wallet' : 'Select wallet'}
                     </div>
@@ -1193,25 +1194,19 @@ export default function DashboardClient() {
                     )}
 
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/70">
-                        {greeting}
-                      </p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/70">{greeting}</p>
                       <p className="mt-1 truncate text-xl font-semibold text-slate-100">
                         {handle ? `@${handle.replace(/^@/, '')}` : name}
                       </p>
-                      <p className="mt-1 text-xs text-slate-300/70">
-                        Your private cabin for daily XPOT proof, streaks and entries.
-                      </p>
+                      <p className="mt-1 text-xs text-slate-300/70">Your private cabin for daily XPOT proof, streaks and entries.</p>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-3 lg:w-[520px]">
+                  <div className="grid gap-3 sm:grid-cols-3 lg:w-[560px]">
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Next draw in</p>
                       <p className="mt-1 font-mono text-lg text-slate-100">{countdown}</p>
-                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-300/50">
-                        22:00 Madrid cutoff
-                      </p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-400/70">22:00 Madrid cutoff</p>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -1241,19 +1236,17 @@ export default function DashboardClient() {
                 </div>
 
                 <div className="mt-5 grid gap-3 lg:grid-cols-3">
-                  <TinyRow
-                    label="Wallet"
-                    value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
-                    mono
-                  />
+                  <TinyRow label="Wallet" value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'} mono />
                   <TinyRow
                     label="XPOT balance"
                     value={
-                      xpotBalance === null
-                        ? 'Checking…'
-                        : xpotBalance === 'error'
-                        ? 'Unavailable'
-                        : `${Math.floor(xpotBalance).toLocaleString()} XPOT`
+                      xpotBalance === null ? (
+                        'Checking…'
+                      ) : xpotBalance === 'error' ? (
+                        'Unavailable'
+                      ) : (
+                        `${Math.floor(xpotBalance).toLocaleString()} XPOT`
+                      )
                     }
                   />
                   <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -1294,11 +1287,7 @@ export default function DashboardClient() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setWalletModalOpen(true)}
-                      className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                    >
+                    <button type="button" onClick={() => setWalletModalOpen(true)} className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
                       <Wallet className="mr-2 h-4 w-4" />
                       {walletConnected ? 'Change wallet' : 'Select wallet'}
                     </button>
@@ -1322,7 +1311,6 @@ export default function DashboardClient() {
           <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             {/* LEFT */}
             <div className="space-y-6">
-              {/* TODAY TICKET */}
               <LuxeCard accent="gold">
                 <LuxeTitle
                   title="Today’s XPOT"
@@ -1380,14 +1368,12 @@ export default function DashboardClient() {
                         type="button"
                         onClick={handleClaimTicket}
                         disabled={!walletConnected || claiming}
-                        className={BTN_PRIMARY}
+                        className={`${BTN_PRIMARY} xpot-btn-sheen`}
                       >
                         {claiming ? 'Generating…' : 'Claim today’s entry'}
                       </button>
 
-                      <div className="text-xs text-slate-300/70">
-                        Draw locks at <span className="font-semibold text-slate-100">22:00 Madrid</span>. Come back for proof.
-                      </div>
+                      <div className="text-xs text-slate-300/70">Draw locks at 22:00 Madrid. Come back for proof.</div>
                     </div>
 
                     {claimError && <p className="mt-3 text-xs xpot-gold-text">{claimError}</p>}
@@ -1395,8 +1381,7 @@ export default function DashboardClient() {
                     {typeof xpotBalance === 'number' && !hasRequiredXpot && (
                       <p className="mt-3 text-xs text-slate-300/70">
                         Your wallet is below the minimum. You need{' '}
-                        <span className="font-semibold text-slate-100">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to
-                        claim today’s entry.
+                        <span className="font-semibold text-slate-100">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to claim today’s entry.
                       </p>
                     )}
                   </>
@@ -1424,18 +1409,13 @@ export default function DashboardClient() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <TinyRow label="Status" value={<span className="font-semibold text-slate-100">IN DRAW</span>} />
-                      <TinyRow
-                        label="Issued"
-                        value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>}
-                      />
+                      <TinyRow label="Issued" value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>} />
                     </div>
                   </div>
                 )}
 
                 {walletConnected && ticketClaimed && !todaysTicket && (
-                  <p className="mt-4 text-xs text-slate-300/70">
-                    Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.
-                  </p>
+                  <p className="mt-4 text-xs text-slate-300/70">Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.</p>
                 )}
 
                 {iWonToday && (
@@ -1445,7 +1425,6 @@ export default function DashboardClient() {
                 )}
               </LuxeCard>
 
-              {/* YOUR ENTRIES TODAY */}
               {walletConnected && (
                 <LuxeCard accent="sky">
                   <LuxeTitle
@@ -1544,9 +1523,7 @@ export default function DashboardClient() {
                 {bonusActive && upcomingBonus ? (
                   <div className="mt-4 rounded-[24px] border border-emerald-400/18 bg-emerald-950/20 p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
-                        Scheduled
-                      </span>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">Scheduled</span>
                       <span className="text-[11px] font-mono text-emerald-100/90">
                         {new Date(upcomingBonus.scheduledAt).toLocaleString('de-DE')}
                       </span>
@@ -1603,9 +1580,7 @@ export default function DashboardClient() {
 
                             <div className="min-w-0">
                               <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-300/70">
-                                {h ? `@${h}` : shortWallet(w.walletAddress)}
-                              </p>
+                              <p className="mt-1 text-xs text-slate-300/70">{h ? `@${h}` : shortWallet(w.walletAddress)}</p>
                             </div>
                           </div>
                         </div>
