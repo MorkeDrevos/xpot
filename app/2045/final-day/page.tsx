@@ -32,14 +32,15 @@ function formatCountdown(ms: number) {
   return { d, h, m, s };
 }
 
-// ✅ Final day date line (7000-day run ending)
-const ARCHIVE_DATE_LINE = 'Thursday, 23 February 2045';
-
 function safeParseMs(iso: string | null | undefined) {
   if (!iso) return null;
   const ms = Date.parse(iso);
   return Number.isFinite(ms) ? ms : null;
 }
+
+// ✅ Final Draw date must match lib/xpotRun.ts RUN_END = 2045-02-22 22:00 (Madrid)
+// 2045-02-22 is Wednesday
+const ARCHIVE_DATE_LINE = 'Wednesday, 22 February 2045';
 
 export default function FinalDayPage() {
   const [era, setEra] = useState<Era>('2045');
@@ -611,10 +612,9 @@ export default function FinalDayPage() {
                   </div>
 
                   <span
-                    className={[
-                      'inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1',
-                      statusTone,
-                    ].join(' ')}
+                    className={['inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1', statusTone].join(
+                      ' ',
+                    )}
                   >
                     {live?.status ?? (liveErr ? 'OFFLINE' : 'LOADING')}
                   </span>
@@ -634,24 +634,19 @@ export default function FinalDayPage() {
                           cd == null
                             ? '--'
                             : k === 'd'
-                            ? String(cd.d)
-                            : k === 'h'
-                            ? pad2(cd.h)
-                            : k === 'm'
-                            ? pad2(cd.m)
-                            : pad2(cd.s);
+                              ? String(cd.d)
+                              : k === 'h'
+                                ? pad2(cd.h)
+                                : k === 'm'
+                                  ? pad2(cd.m)
+                                  : pad2(cd.s);
 
                         const label = k === 'd' ? 'Days' : k === 'h' ? 'Hours' : k === 'm' ? 'Minutes' : 'Seconds';
 
                         return (
-                          <div
-                            key={k}
-                            className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-center"
-                          >
+                          <div key={k} className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-center">
                             <div className="text-[22px] font-black tracking-[-0.02em]">{v}</div>
-                            <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">
-                              {label}
-                            </div>
+                            <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] opacity-70">{label}</div>
                           </div>
                         );
                       })}
