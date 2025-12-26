@@ -75,8 +75,8 @@ export type XpotTopBarProps = {
 
 const XPOT_X_POST = 'https://x.com/xpotbet';
 
-// ✅ Route (your file is app/2044/final-day/page.tsx)
-const FINAL_DAY_HREF = '/2044/final-day';
+// ✅ Correct route (your file is app/2045/final-day/page.tsx)
+const FINAL_DAY_HREF = '/2045/final-day';
 
 // ✅ Naming (pick one and keep it consistent everywhere)
 const FINAL_DAY_LABEL = 'Final Draw'; // alternatives: 'Finale' | 'Legacy' | 'Archive'
@@ -262,7 +262,9 @@ export default function XpotTopBar({
       </header>
 
       {/* ✅ Light wallet popup (only used when parent does not supply onOpenWalletModal) */}
-      {!onOpenWalletModal && <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />}
+      {!onOpenWalletModal && (
+        <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
+      )}
     </>
   );
 }
@@ -631,15 +633,11 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         Live
       </NavLink>
 
-      {/* Final Draw (primary) */}
+      {/* ✅ Final Draw (ONLY ONCE) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
         <Hourglass className="h-[15px] w-[15px] text-amber-200" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
-
-      {/* ✅ Removed duplicate Final Draw boxed link (this caused the double button in hub pages) */}
-
-      {/* ✅ Removed Health link (Live now points to protocol) */}
 
       <NavLink href={MECHANISM_HREF} title="How winners are picked">
         <Info className="h-4 w-4 text-slate-200" />
@@ -937,7 +935,9 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-100">{connected ? 'Wallet connected' : 'No wallet connected'}</p>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {connected ? 'Wallet connected' : 'No wallet connected'}
+                  </p>
                   <p className="mt-1 truncate text-xs text-slate-300/70">{connected ? addr : 'Choose a wallet below'}</p>
                 </div>
 
@@ -998,7 +998,9 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
 
                         <div className="min-w-0 text-left">
                           <p className="truncate text-sm font-semibold text-slate-100">{String(name)}</p>
-                          <p className="mt-0.5 text-xs text-slate-300/70">{isActive && connected ? 'Active' : isInstalled ? 'Installed' : 'Available'}</p>
+                          <p className="mt-0.5 text-xs text-slate-300/70">
+                            {isActive && connected ? 'Active' : isInstalled ? 'Installed' : 'Available'}
+                          </p>
                         </div>
                       </div>
 
@@ -1121,11 +1123,14 @@ function MobileMenu({
         </div>
 
         <div className="space-y-2 px-5 py-5">
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href="/hub"
+          >
             Hub
           </Link>
 
-          {/* ✅ Live label stays, but route goes to Protocol */}
+          {/* Live -> Protocol */}
           <Link
             className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={PROTOCOL_HREF}
@@ -1137,42 +1142,61 @@ function MobileMenu({
             <Radio className="h-4 w-4 text-emerald-300" />
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={FINAL_DAY_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={FINAL_DAY_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Hourglass className="h-4 w-4 text-amber-200" />
               {FINAL_DAY_LABEL}
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={MECHANISM_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={MECHANISM_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Info className="h-4 w-4 text-slate-200" />
               Mechanism
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={TOKENOMICS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <PieChart className="h-4 w-4 text-emerald-300" />
               Tokenomics
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={ROADMAP_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Map className="h-4 w-4 text-sky-300" />
               Roadmap
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={WINNERS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-300" />
               Winners
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={XPOT_X_POST} target="_blank">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={XPOT_X_POST}
+            target="_blank"
+          >
             <span className="inline-flex items-center gap-2">
               <ExternalLink className="h-4 w-4" />
               Official X
@@ -1199,7 +1223,10 @@ function MobileMenu({
           )}
 
           <div className="pt-3">
-            <Link href="/hub" className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200">
+            <Link
+              href="/hub"
+              className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
+            >
               Enter today&apos;s XPOT →
             </Link>
           </div>
