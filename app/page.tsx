@@ -1290,18 +1290,20 @@ function HomePageInner() {
 {/* LEFT */}
 <div className="flex flex-col justify-between gap-6">
   <div className="space-y-6">
-    {/* Hero */}
+    {/* HERO */}
     <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur sm:p-7">
-      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(16,185,129,0.22),transparent)]" />
+      {/* royal bloom */}
+      <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.14),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(16,185,129,0.26),transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.16),rgba(var(--xpot-gold),0.22),transparent)] opacity-70" />
 
       {/* Top line + pill */}
-      <div className="relative mt-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="relative flex flex-wrap items-center justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
           NO TICKETS · JUST XPOT HOLDINGS
         </p>
 
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]">
           <ShieldCheck className="h-3.5 w-3.5" />
           Holdings-based
         </span>
@@ -1320,17 +1322,16 @@ function HomePageInner() {
         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
           Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending -{' '}
           <FinalDrawDate className="text-slate-200" />.
-          <span className="block mt-2 text-slate-300">
+          <span className="mt-2 block text-slate-300">
             We’re building toward becoming the world’s biggest game - one day at a time.
           </span>
         </p>
 
-
-      <p className="relative text-[15px] leading-relaxed text-slate-300">
-        Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle and paid
-        on-chain. Built to scale into a rewards ecosystem for communities, creators and sponsors.
-      </p>
-
+        {/* Entry mechanics sentence (restored vibe) */}
+        <p className="mt-4 text-[15px] leading-relaxed text-slate-300">
+          Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle and paid
+          on-chain. Built to scale into a rewards ecosystem for communities, creators and sponsors.
+        </p>
       </div>
 
       {/* Countdown capsule */}
@@ -1350,11 +1351,11 @@ function HomePageInner() {
         </span>
       </div>
 
-      {/* Eligibility + Final draw (premium, less busy) */}
+      {/* Eligibility + Final draw */}
       <div className="relative mt-5 grid gap-4 lg:grid-cols-2">
         {/* ELIGIBILITY (hub-verified, no minimum shown here) */}
         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
-          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.11),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
+          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
 
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -1379,7 +1380,7 @@ function HomePageInner() {
 
         {/* FINAL DRAW (DAY badge stands out) */}
         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
-          <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+          <div className="pointer-events-none absolute -inset-24 opacity-85 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.18),transparent_62%)]" />
 
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -1434,10 +1435,10 @@ function HomePageInner() {
       </div>
     </div>
 
-    {/* RUNWAY / TOKENOMICS BANNER (restored as img 3 vibe) */}
+    {/* TOKENOMICS / RESERVE BANNER (no more “10+ years”, mentions ending) */}
     <div className="relative overflow-hidden rounded-[28px] border border-slate-900/70 bg-slate-950/45 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
-      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(56,189,248,0.24),transparent)]" />
+      <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.10),rgba(56,189,248,0.22),transparent)]" />
 
       <div className="relative flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5">
         <div className="flex items-center gap-3">
@@ -1447,16 +1448,16 @@ function HomePageInner() {
 
           <div className="leading-tight">
             <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-100">
-  <span className={GOLD_TEXT}>Built as a daily reward protocol with an ending</span>
-</p>
+              <span className={GOLD_TEXT}>Built as a daily reward protocol with an ending</span>
+            </p>
 
-<p className="mt-1 text-[12px] text-slate-400">
-  Protocol distribution reserve
-  <span className="text-slate-700"> • </span>
-  payouts stay on-chain
-  <span className="text-slate-700"> • </span>
-  daily cutoff 22:00 (Madrid)
-</p>
+            <p className="mt-1 text-[12px] text-slate-400">
+              Protocol distribution reserve
+              <span className="text-slate-700"> • </span>
+              payouts stay on-chain
+              <span className="text-slate-700"> • </span>
+              daily cutoff 22:00 (Madrid)
+            </p>
           </div>
         </div>
 
@@ -1479,8 +1480,9 @@ function HomePageInner() {
       </div>
     </div>
 
-    {/* ENTRY MECHANICS (restored) */}
-      <div className="relative mb-5 flex flex-wrap items-center justify-between gap-3">
+    {/* ENTRY MECHANICS (restored like img 1) */}
+    <div>
+      <div className="relative mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
             ENTRY MECHANICS
@@ -1493,7 +1495,13 @@ function HomePageInner() {
         </p>
       </div>
 
-    {/* 3 CARDS STRIP (restored as img 4) */}
+      <p className="text-[15px] leading-relaxed text-slate-300">
+        Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle and paid
+        on-chain. Built to scale into a rewards ecosystem for communities, creators and sponsors.
+      </p>
+    </div>
+
+    {/* 3 CARDS STRIP (restored like img 4) */}
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Eligibility</p>
