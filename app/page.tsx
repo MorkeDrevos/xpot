@@ -1464,8 +1464,11 @@ function HomePageInner() {
         }
   }
 >
-                  <ParallaxConsoleCard>
+  <ParallaxConsoleCard>
   <PremiumCard className="p-5 sm:p-6" halo sheen>
+    {/* 👇 THIS is the sweep overlay */}
+    <div className="xpot-console-sweep" aria-hidden />
+
     <div className="mt-0">
       <JackpotPanel variant="standalone" layout="wide" />
     </div>
