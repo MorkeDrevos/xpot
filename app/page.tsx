@@ -1295,11 +1295,6 @@ function HomePageInner() {
       <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(16,185,129,0.22),transparent)]" />
 
-      <p className="relative text-[15px] leading-relaxed text-slate-300">
-        Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle and paid
-        on-chain. Built to scale into a rewards ecosystem for communities, creators and sponsors.
-      </p>
-
       {/* Top line + pill */}
       <div className="relative mt-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
@@ -1329,6 +1324,13 @@ function HomePageInner() {
             We’re building toward becoming the world’s biggest game - one day at a time.
           </span>
         </p>
+
+
+      <p className="relative text-[15px] leading-relaxed text-slate-300">
+        Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle and paid
+        on-chain. Built to scale into a rewards ecosystem for communities, creators and sponsors.
+      </p>
+
       </div>
 
       {/* Countdown capsule */}
@@ -1346,20 +1348,6 @@ function HomePageInner() {
           <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
           Live
         </span>
-      </div>
-
-{/* ENTRY MECHANICS (restored) */}
-      <div className="relative mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-            ENTRY MECHANICS
-          </p>
-          <span className="hidden h-px flex-1 bg-white/10 sm:block" />
-        </div>
-
-        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-          • ELIGIBILITY • IDENTITY • PROOF
-        </p>
       </div>
 
       {/* Eligibility + Final draw (premium, less busy) */}
@@ -1459,15 +1447,16 @@ function HomePageInner() {
 
           <div className="leading-tight">
             <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-100">
-              <span className={GOLD_TEXT}>Built with a 10+ year rewards runway at launch</span>
-            </p>
-            <p className="mt-1 text-[12px] text-slate-400">
-              Protocol distribution reserve
-              <span className="text-slate-700"> • </span>
-              payouts stay on-chain
-              <span className="text-slate-700"> • </span>
-              <span className="text-slate-300">{cutoffLabel}</span>
-            </p>
+  <span className={GOLD_TEXT}>Built as a daily reward protocol with an ending</span>
+</p>
+
+<p className="mt-1 text-[12px] text-slate-400">
+  Protocol distribution reserve
+  <span className="text-slate-700"> • </span>
+  payouts stay on-chain
+  <span className="text-slate-700"> • </span>
+  daily cutoff 22:00 (Madrid)
+</p>
           </div>
         </div>
 
@@ -1489,6 +1478,20 @@ function HomePageInner() {
         </Link>
       </div>
     </div>
+
+    {/* ENTRY MECHANICS (restored) */}
+      <div className="relative mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+            ENTRY MECHANICS
+          </p>
+          <span className="hidden h-px flex-1 bg-white/10 sm:block" />
+        </div>
+
+        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+          • ELIGIBILITY • IDENTITY • PROOF
+        </p>
+      </div>
 
     {/* 3 CARDS STRIP (restored as img 4) */}
     <div className="grid gap-4 lg:grid-cols-3">
