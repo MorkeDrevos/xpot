@@ -37,7 +37,6 @@ import {
 // ─────────────────────────────────────────────
 
 const BTN_PRIMARY =
-  // Brighter, always-visible “first class” button
   'relative inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-slate-950 ' +
   'bg-[linear-gradient(90deg,rgba(251,191,36,0.95),rgba(56,189,248,0.90),rgba(236,72,153,0.88))] ' +
   'shadow-[0_30px_120px_rgba(0,0,0,0.55)] ring-1 ring-white/20 ' +
@@ -82,7 +81,7 @@ function formatCountdown(ms: number) {
 }
 
 // ─────────────────────────────────────────────
-// Madrid cutoff logic (22:00 Europe/Madrid) - matches other pages
+// Madrid cutoff logic (22:00 Europe/Madrid)
 // ─────────────────────────────────────────────
 
 const MADRID_TZ = 'Europe/Madrid';
@@ -130,12 +129,11 @@ function wallClockToUtcMs({
   ss: number;
   timeZone: string;
 }) {
-  // Start with a UTC guess, then iteratively correct using the timezone’s formatted parts.
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
-    const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm; // stable ordering for diff
+    const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
     const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
     const diffMin = gotTotal - wantTotal;
     if (diffMin === 0) break;
@@ -202,7 +200,11 @@ function WalletStatusHint() {
   if (connected) return null;
 
   if (!anyDetected) {
-    return <p className="mt-2 text-xs xpot-gold-text">No Solana wallet detected. Install Phantom or Solflare to continue.</p>;
+    return (
+      <p className="mt-2 text-xs xpot-gold-text">
+        No Solana wallet detected. Install Phantom or Solflare to continue.
+      </p>
+    );
   }
 
   return <p className="mt-2 text-xs text-slate-400">Click “Select wallet” and choose a wallet to connect.</p>;
@@ -437,29 +439,57 @@ function EntryCeremony({
     <div className="fixed inset-0 z-[9999] flex items-center justify-center px-5">
       <style jsx global>{`
         @keyframes xpotCeremonySweep {
-          0% { transform: translateX(-140%) rotate(12deg); opacity: 0.0; }
-          10% { opacity: 0.35; }
-          55% { opacity: 0.14; }
-          100% { transform: translateX(160%) rotate(12deg); opacity: 0.0; }
+          0% {
+            transform: translateX(-140%) rotate(12deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.35;
+          }
+          55% {
+            opacity: 0.14;
+          }
+          100% {
+            transform: translateX(160%) rotate(12deg);
+            opacity: 0;
+          }
         }
         @keyframes xpotStampIn {
-          0% { transform: scale(1.2) rotate(-6deg); opacity: 0; filter: blur(2px); }
-          55% { transform: scale(0.98) rotate(2deg); opacity: 1; filter: blur(0px); }
-          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+          0% {
+            transform: scale(1.2) rotate(-6deg);
+            opacity: 0;
+            filter: blur(2px);
+          }
+          55% {
+            transform: scale(0.98) rotate(2deg);
+            opacity: 1;
+            filter: blur(0px);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
         }
-        .xpot-ceremony-sweep::before{
-          content:"";
-          position:absolute;
-          top:-55%;
-          left:-60%;
-          width:55%;
-          height:240%;
-          opacity:0;
+        .xpot-ceremony-sweep::before {
+          content: '';
+          position: absolute;
+          top: -55%;
+          left: -60%;
+          width: 55%;
+          height: 240%;
+          opacity: 0;
           transform: rotate(12deg);
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), rgba(56,189,248,0.12), rgba(16,185,129,0.10), transparent);
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.12),
+            rgba(56, 189, 248, 0.12),
+            rgba(16, 185, 129, 0.1),
+            transparent
+          );
           animation: xpotCeremonySweep 1.6s ease-in-out infinite;
           mix-blend-mode: screen;
-          pointer-events:none;
+          pointer-events: none;
         }
       `}</style>
 
@@ -471,7 +501,9 @@ function EntryCeremony({
 
         <div className="relative p-5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300/80">Entry issued</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300/80">
+              Entry issued
+            </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
               <Radio className="h-3.5 w-3.5" />
               LIVE
@@ -494,7 +526,9 @@ function EntryCeremony({
             </div>
           </div>
 
-          <p className="mt-4 text-center text-xs text-slate-300/70">Your daily entry is live. Come back after draw time for proof.</p>
+          <p className="mt-4 text-center text-xs text-slate-300/70">
+            Your daily entry is live. Come back after draw time for proof.
+          </p>
         </div>
       </div>
     </div>
@@ -502,7 +536,7 @@ function EntryCeremony({
 }
 
 // ─────────────────────────────────────────────
-// Types
+// Types + defensive normalizers (fixes crash on status.replace)
 // ─────────────────────────────────────────────
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
@@ -528,6 +562,52 @@ type RecentWinner = {
 
 type Mission = { title: string; desc: string; ymd?: string };
 type Streak = { days: number; todayDone: boolean; lastDoneYmd?: string | null };
+
+function normalizeStatus(s: any): EntryStatus {
+  const v = typeof s === 'string' ? s : '';
+  const lower = v.toLowerCase();
+
+  if (lower === 'in-draw' || lower === 'in_draw' || lower === 'open') return 'in-draw';
+  if (lower === 'won' || lower === 'winner') return 'won';
+  if (lower === 'claimed') return 'claimed';
+  if (lower === 'expired') return 'expired';
+  if (lower === 'not-picked' || lower === 'not_picked' || lower === 'lost') return 'not-picked';
+
+  // safest default (prevents UI crash + keeps “entry live” logic sane)
+  return 'in-draw';
+}
+
+function normalizeEntry(raw: any): Entry | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const id = typeof raw.id === 'string' ? raw.id : '';
+  const code = typeof raw.code === 'string' ? raw.code : '';
+  const walletAddress = typeof raw.walletAddress === 'string' ? raw.walletAddress : '';
+
+  // createdAt can be missing in some bad responses; still keep UI alive
+  const createdAt =
+    typeof raw.createdAt === 'string'
+      ? raw.createdAt
+      : typeof raw.created_at === 'string'
+      ? raw.created_at
+      : new Date().toISOString();
+
+  if (!id || !code || !walletAddress) return null;
+
+  return {
+    id,
+    code,
+    status: normalizeStatus(raw.status),
+    label: typeof raw.label === 'string' ? raw.label : '',
+    jackpotUsd: raw.jackpotUsd ?? raw.jackpot_usd ?? 0,
+    createdAt,
+    walletAddress,
+  };
+}
+
+function safeStatusLabel(status: any) {
+  return String(status ?? '').replace(/_/g, '-').replace('-', ' ');
+}
 
 // ─────────────────────────────────────────────
 // Page (CLIENT)
@@ -702,13 +782,15 @@ export default function DashboardClient() {
   const fetchTicketsToday = useCallback(async () => {
     const res = await fetch('/api/tickets/today', { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load tickets');
-    const data = await res.json();
-    const list: Entry[] = Array.isArray(data.tickets) ? data.tickets : [];
+    const data = await res.json().catch(() => ({} as any));
+
+    const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
+    const list = raw.map(normalizeEntry).filter(Boolean) as Entry[];
+
     return list;
   }, []);
 
   const fetchXpotBalance = useCallback(async (address: string) => {
-    // Primary endpoint + defensive parsing + fallback query keys
     const tryOne = async (url: string) => {
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -721,8 +803,7 @@ export default function DashboardClient() {
 
     try {
       return await tryOne(`/api/xpot-balance?address=${encodeURIComponent(address)}`);
-    } catch (e1) {
-      // Fallbacks (safe even if backend ignores / rejects)
+    } catch {
       try {
         return await tryOne(`/api/xpot-balance?wallet=${encodeURIComponent(address)}`);
       } catch {
@@ -734,36 +815,31 @@ export default function DashboardClient() {
   const fetchHistory = useCallback(async (address: string) => {
     const res = await fetch(`/api/tickets/history?wallet=${encodeURIComponent(address)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load history');
-    const data = await res.json();
-    const tickets: Entry[] = Array.isArray(data.tickets)
-      ? data.tickets.map((t: any) => ({
-          id: t.id,
-          code: t.code,
-          status: t.status as EntryStatus,
-          label: t.label ?? '',
-          jackpotUsd: t.jackpotUsd ?? 0,
-          createdAt: t.createdAt,
-          walletAddress: t.walletAddress,
-        }))
-      : [];
+    const data = await res.json().catch(() => ({} as any));
+
+    const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
+    const tickets = raw.map(normalizeEntry).filter(Boolean) as Entry[];
+
     return tickets;
   }, []);
 
   const fetchRecentWinners = useCallback(async () => {
     const res = await fetch('/api/winners/recent?limit=5', { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load recent winners');
-    const data = await res.json();
-    const winners: RecentWinner[] = Array.isArray(data.winners)
-      ? data.winners.map((w: any) => ({
-          id: w.id,
-          drawDate: w.drawDate,
-          ticketCode: w.ticketCode,
-          jackpotUsd: w.jackpotUsd ?? 0,
-          walletAddress: w.walletAddress,
-          handle: w.handle ?? null,
+    const data = await res.json().catch(() => ({} as any));
+
+    const winners: RecentWinner[] = Array.isArray((data as any).winners)
+      ? (data as any).winners.map((w: any) => ({
+          id: String(w?.id ?? ''),
+          drawDate: String(w?.drawDate ?? ''),
+          ticketCode: String(w?.ticketCode ?? ''),
+          jackpotUsd: Number(w?.jackpotUsd ?? 0),
+          walletAddress: String(w?.walletAddress ?? ''),
+          handle: w?.handle ?? null,
         }))
       : [];
-    return winners;
+
+    return winners.filter(w => w.id && w.ticketCode);
   }, []);
 
   const refreshAll = useCallback(
@@ -780,6 +856,7 @@ export default function DashboardClient() {
           setLoadingTickets(true);
           setTicketsError(null);
         }
+
         const nextTickets = await fetchTicketsToday();
         setEntries(nextTickets);
 
@@ -787,6 +864,7 @@ export default function DashboardClient() {
           setLoadingWinners(true);
           setWinnersError(null);
         }
+
         const nextWinners = await fetchRecentWinners();
         setRecentWinners(nextWinners);
 
@@ -877,7 +955,9 @@ export default function DashboardClient() {
       return;
     }
 
-    const myTicket = entries.find(t => t.walletAddress === currentWalletAddress && t.status === 'in-draw');
+    const myTicket = entries.find(
+      t => t.walletAddress === currentWalletAddress && normalizeStatus(t.status) === 'in-draw',
+    );
 
     if (myTicket) {
       setTicketClaimed(true);
@@ -960,16 +1040,21 @@ export default function DashboardClient() {
         return;
       }
 
-      const ticket: Entry = data.ticket;
-      const tickets: Entry[] | undefined = data.tickets;
+      const ticket = normalizeEntry(data.ticket) || null;
+      const ticketsRaw: any[] = Array.isArray(data.tickets) ? data.tickets : [];
+      const tickets = ticketsRaw.map(normalizeEntry).filter(Boolean) as Entry[];
 
-      if (Array.isArray(tickets) && tickets.length > 0) {
+      if (tickets.length > 0) {
         setEntries(tickets);
       } else if (ticket) {
         setEntries(prev => {
           const others = prev.filter(t => t.id !== ticket.id);
           return [ticket, ...others];
         });
+      } else {
+        // backend said ok but returned nothing usable - avoid crashing, just refresh
+        await refreshAll('manual');
+        return;
       }
 
       setTicketClaimed(true);
@@ -995,8 +1080,9 @@ export default function DashboardClient() {
     return entries.filter(e => e.walletAddress?.toLowerCase() === normalizedWallet);
   }, [entries, normalizedWallet]);
 
-  const winner = entries.find(e => e.status === 'won') || null;
-  const iWonToday = !!winner && !!normalizedWallet && winner.walletAddress?.toLowerCase() === normalizedWallet;
+  const winner = entries.find(e => normalizeStatus(e.status) === 'won') || null;
+  const iWonToday =
+    !!winner && !!normalizedWallet && winner.walletAddress?.toLowerCase() === normalizedWallet;
 
   async function toggleSound() {
     const next = !soundEnabled;
@@ -1077,7 +1163,7 @@ export default function DashboardClient() {
           width:55%;
           height:260%;
           transform: rotate(12deg);
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), rgba(255,255,255,0.08), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,_attach0.22), rgba(255,255,255,0.08), transparent);
           animation: xpotBtnSheen 3.8s ease-in-out infinite;
           mix-blend-mode: overlay;
           pointer-events:none;
@@ -1112,13 +1198,19 @@ export default function DashboardClient() {
                 <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:inline-flex">
                   {avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatar} alt={name} className="h-6 w-6 rounded-full border border-white/10 object-cover" />
+                    <img
+                      src={avatar}
+                      alt={name}
+                      className="h-6 w-6 rounded-full border border-white/10 object-cover"
+                    />
                   ) : (
                     <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-semibold text-slate-200">
                       {initialFromHandle(handle)}
                     </div>
                   )}
-                  <span className="text-xs font-semibold text-slate-200">@{(handle || 'x').replace(/^@/, '')}</span>
+                  <span className="text-xs font-semibold text-slate-200">
+                    @{(handle || 'x').replace(/^@/, '')}
+                  </span>
                 </div>
 
                 <button
@@ -1142,7 +1234,9 @@ export default function DashboardClient() {
                     onClick={() => setWalletModalOpen(true)}
                     className="text-left leading-tight hover:opacity-90"
                   >
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">Wallet bay</div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">
+                      Wallet bay
+                    </div>
                     <div className="text-[13px] font-semibold text-slate-100">
                       {walletConnected ? 'Change wallet' : 'Select wallet'}
                     </div>
@@ -1194,11 +1288,15 @@ export default function DashboardClient() {
                     )}
 
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/70">{greeting}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/70">
+                        {greeting}
+                      </p>
                       <p className="mt-1 truncate text-xl font-semibold text-slate-100">
                         {handle ? `@${handle.replace(/^@/, '')}` : name}
                       </p>
-                      <p className="mt-1 text-xs text-slate-300/70">Your private cabin for daily XPOT proof, streaks and entries.</p>
+                      <p className="mt-1 text-xs text-slate-300/70">
+                        Your private cabin for daily XPOT proof, streaks and entries.
+                      </p>
                     </div>
                   </div>
 
@@ -1206,7 +1304,9 @@ export default function DashboardClient() {
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Next draw in</p>
                       <p className="mt-1 font-mono text-lg text-slate-100">{countdown}</p>
-                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-400/70">22:00 Madrid cutoff</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-400/70">
+                        22:00 Madrid cutoff
+                      </p>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -1236,17 +1336,15 @@ export default function DashboardClient() {
                 </div>
 
                 <div className="mt-5 grid gap-3 lg:grid-cols-3">
-                  <TinyRow label="Wallet" value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'} mono />
+                  <TinyRow
+                    label="Wallet"
+                    value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
+                    mono
+                  />
                   <TinyRow
                     label="XPOT balance"
                     value={
-                      xpotBalance === null ? (
-                        'Checking…'
-                      ) : xpotBalance === 'error' ? (
-                        'Unavailable'
-                      ) : (
-                        `${Math.floor(xpotBalance).toLocaleString()} XPOT`
-                      )
+                      xpotBalance === null ? 'Checking…' : xpotBalance === 'error' ? 'Unavailable' : `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                     }
                   />
                   <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -1287,7 +1385,11 @@ export default function DashboardClient() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => setWalletModalOpen(true)} className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
+                    <button
+                      type="button"
+                      onClick={() => setWalletModalOpen(true)}
+                      className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                    >
                       <Wallet className="mr-2 h-4 w-4" />
                       {walletConnected ? 'Change wallet' : 'Select wallet'}
                     </button>
@@ -1415,7 +1517,9 @@ export default function DashboardClient() {
                 )}
 
                 {walletConnected && ticketClaimed && !todaysTicket && (
-                  <p className="mt-4 text-xs text-slate-300/70">Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.</p>
+                  <p className="mt-4 text-xs text-slate-300/70">
+                    Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.
+                  </p>
                 )}
 
                 {iWonToday && (
@@ -1450,8 +1554,10 @@ export default function DashboardClient() {
                         <div key={t.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-mono text-sm text-slate-100">{t.code}</p>
-                            <StatusPill tone={t.status === 'in-draw' ? 'emerald' : t.status === 'won' ? 'sky' : 'slate'}>
-                              {t.status.replace('-', ' ')}
+                            <StatusPill
+                              tone={normalizeStatus(t.status) === 'in-draw' ? 'emerald' : normalizeStatus(t.status) === 'won' ? 'sky' : 'slate'}
+                            >
+                              {safeStatusLabel(t.status)}
                             </StatusPill>
                           </div>
                           <p className="mt-1 text-xs text-slate-300/70">Issued {formatDateTime(t.createdAt)}</p>
@@ -1523,7 +1629,9 @@ export default function DashboardClient() {
                 {bonusActive && upcomingBonus ? (
                   <div className="mt-4 rounded-[24px] border border-emerald-400/18 bg-emerald-950/20 p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">Scheduled</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
+                        Scheduled
+                      </span>
                       <span className="text-[11px] font-mono text-emerald-100/90">
                         {new Date(upcomingBonus.scheduledAt).toLocaleString('de-DE')}
                       </span>
@@ -1617,16 +1725,16 @@ export default function DashboardClient() {
                           <p className="font-mono text-sm text-slate-100">{t.code}</p>
                           <StatusPill
                             tone={
-                              t.status === 'won'
+                              normalizeStatus(t.status) === 'won'
                                 ? 'sky'
-                                : t.status === 'claimed'
+                                : normalizeStatus(t.status) === 'claimed'
                                 ? 'emerald'
-                                : t.status === 'in-draw'
+                                : normalizeStatus(t.status) === 'in-draw'
                                 ? 'emerald'
                                 : 'slate'
                             }
                           >
-                            {t.status.replace('-', ' ')}
+                            {safeStatusLabel(t.status)}
                           </StatusPill>
                         </div>
                         <p className="mt-1 text-xs text-slate-300/70">{formatDateTime(t.createdAt)}</p>
