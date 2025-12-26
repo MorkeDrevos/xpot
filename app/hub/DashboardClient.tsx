@@ -1163,7 +1163,7 @@ export default function DashboardClient() {
           width:55%;
           height:260%;
           transform: rotate(12deg);
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,_attach0.22), rgba(255,255,255,0.08), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), rgba(255,255,255,0.08), transparent);
           animation: xpotBtnSheen 3.8s ease-in-out infinite;
           mix-blend-mode: overlay;
           pointer-events:none;
@@ -1409,17 +1409,14 @@ export default function DashboardClient() {
 </button>
 
                     <button
-  type="button"
-  onClick={(e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setWalletModalOpen(true);
-  }}
-  className={`${BTN_UTILITY} h-10 px-4 text-xs`}
->
-  <Wallet className="mr-2 h-4 w-4" />
-  {walletConnected ? 'Change wallet' : 'Select wallet'}
-</button>
+                      type="button"
+                      onClick={toggleSound}
+                      className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                      title={soundEnabled ? 'Sound on' : 'Sound off'}
+                    >
+                      {soundEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
+                      {soundEnabled ? 'Sound' : 'Muted'}
+                    </button>
                   </div>
                 </div>
               </div>
