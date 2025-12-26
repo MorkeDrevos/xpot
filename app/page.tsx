@@ -11,7 +11,14 @@ import {
   useContext,
 } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from 'framer-motion';
 import {
   ArrowRight,
   Blocks,
@@ -35,11 +42,10 @@ import JackpotPanel from '@/components/JackpotPanel';
 import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 import XpotFooter from '@/components/XpotFooter';
-import { createPortal } from 'react-dom';
-
 import FinalDrawDate from '@/components/FinalDrawDate';
+
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
-import { useScroll, useTransform, useSpring } from 'framer-motion';
+import { createPortal } from 'react-dom';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_TERMS = '/terms';
@@ -115,7 +121,6 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const nextDrawUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(nowMs)), [nowMs]);
-
   const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
 
   useEffect(() => {
@@ -505,7 +510,7 @@ function Accordion({ items }: { items: { q: string; a: string }[] }) {
 }
 
 /* ─────────────────────────────────────────────
-   Premium cosmic backdrop (hero engine)
+   Premium cosmic backdrop (hero engine + sweep)
 ───────────────────────────────────────────── */
 
 function CosmicHeroBackdrop() {
@@ -547,29 +552,43 @@ function CosmicHeroBackdrop() {
             box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
           }
         }
+
+        /* Sweep overlay (single source of truth) */
         @keyframes xpotConsoleSweep {
-  0% { transform: translateX(-55%) skewX(-12deg); opacity: 0; }
-  15% { opacity: 0.22; }
-  55% { opacity: 0.10; }
-  100% { transform: translateX(55%) skewX(-12deg); opacity: 0; }
-}
-.xpot-console-sweep {
-  position: absolute;
-  inset: -40px;
-  pointer-events: none;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    rgba(255,255,255,0.05) 30%,
-    rgba(var(--xpot-gold),0.10) 48%,
-    rgba(56,189,248,0.06) 66%,
-    transparent 100%
-  );
-  mix-blend-mode: screen;
-  opacity: 0;
-  filter: blur(0.2px);
-  animation: xpotConsoleSweep 12s ease-in-out infinite;
-}
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          15% {
+            opacity: 0.22;
+          }
+          55% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-console-sweep {
+          position: absolute;
+          inset: -40px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(var(--xpot-gold), 0.1) 48%,
+            rgba(56, 189, 248, 0.06) 66%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          filter: blur(0.2px);
+          animation: xpotConsoleSweep 12s ease-in-out infinite;
+          z-index: 2;
+        }
+
         .xpot-hero-engine {
           position: absolute;
           inset: -180px;
@@ -687,7 +706,6 @@ function getMadridUtcMsFromWallClock(
 }
 
 function ymdToSerialUtc(yy: number, mm: number, dd: number) {
-  // stable day serial independent of DST
   return Math.floor(Date.UTC(yy, mm - 1, dd) / 86_400_000);
 }
 
@@ -720,14 +738,13 @@ function calcRunProgress(now = new Date()) {
     now,
   );
 
-  // Choose the most recent cutoff "day" anchor (Madrid calendar date)
   const todayCutoffUtc = getMadridUtcMsFromWallClock(p.y, p.m, p.d, 22, 0, 0, now);
   const anchorYmd =
     now.getTime() >= todayCutoffUtc ? { y: p.y, m: p.m, d: p.d } : addYmdDays(p.y, p.m, p.d, -1);
 
   const started = now.getTime() >= runStartCutoffUtc;
 
-  let day = 0; // Day 0 until the first cutoff hits
+  let day = 0;
   if (started) {
     const diffDays =
       ymdToSerialUtc(anchorYmd.y, anchorYmd.m, anchorYmd.d) -
@@ -777,9 +794,7 @@ function setMeta(name: string, content: string) {
   tag.setAttribute('content', content);
 }
 
-/* Bonus visibility:
-   - Hide the entire block until an API reports "active".
-   - If endpoint fails, keep hidden (safe default). */
+/* Bonus visibility */
 function useBonusActive() {
   const [active, setActive] = useState(false);
 
@@ -815,10 +830,7 @@ function useBonusActive() {
   return active;
 }
 
-/* ─────────────────────────────────────────────
-   Reduced motion hook (local)
-───────────────────────────────────────────── */
-
+/* Reduced motion hook (local) */
 function useLocalReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -1106,7 +1118,6 @@ function ParallaxConsoleCard({
     offset: ['start end', 'end start'],
   });
 
-  // Subtle “float” (kept small so it feels premium, not gimmicky)
   const yRaw = useTransform(scrollYProgress, [0, 1], [10, -14]);
   const y = useSpring(yRaw, { stiffness: 120, damping: 24, mass: 0.7 });
 
@@ -1114,45 +1125,8 @@ function ParallaxConsoleCard({
   const tilt = useSpring(tiltRaw, { stiffness: 110, damping: 26, mass: 0.8 });
 
   return (
-    <div
-      ref={ref}
-      className="lg:sticky"
-      style={{ top: stickyTop }}
-    >
-      <style jsx global>{`
-        @keyframes xpotConsoleSweep {
-          0% { transform: translateX(-30%) skewX(-12deg); opacity: 0; }
-          12% { opacity: 0.22; }
-          55% { opacity: 0.10; }
-          100% { transform: translateX(30%) skewX(-12deg); opacity: 0; }
-        }
-        .xpot-console-sweep {
-          position: relative;
-          isolation: isolate;
-        }
-        .xpot-console-sweep::after {
-          content: '';
-          pointer-events: none;
-          position: absolute;
-          inset: -2px;
-          border-radius: 32px;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255,255,255,0.06) 32%,
-            rgba(var(--xpot-gold),0.08) 50%,
-            rgba(56,189,248,0.06) 68%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          opacity: 0;
-          animation: xpotConsoleSweep 10.8s ease-in-out infinite;
-          z-index: 2;
-        }
-      `}</style>
-
+    <div ref={ref} className="lg:sticky" style={{ top: stickyTop }}>
       <motion.div
-        className="xpot-console-sweep"
         style={
           reduced
             ? undefined
@@ -1179,17 +1153,24 @@ function HomePageInner() {
 
   const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
   const runLine = useMemo(() => `DAY ${run.day}/${RUN_DAYS}  (final: ${RUN_END_EU})`, [run.day]);
-  
+
   const reduceMotion = useReducedMotion();
   const { scrollY } = useScroll();
 
-  // subtle “console float”
+  // Subtle right-column motion
   const floatY = useTransform(scrollY, [0, 900], [0, -18]);
   const floatYSpring = useSpring(floatY, { stiffness: 80, damping: 22, mass: 0.6 });
 
-  // micro tilt (optional but sexy)
   const tilt = useTransform(scrollY, [0, 900], [0, -0.25]);
   const tiltSpring = useSpring(tilt, { stiffness: 70, damping: 20, mass: 0.6 });
+
+  // Ultra subtle depth shadow shift (Jackpot card only)
+  const depth = useTransform(scrollY, [0, 900], [0, 1]);
+  const depthShadow = useTransform(depth, v => {
+    const a = 0.55 + v * 0.06; // ultra subtle
+    const b = 0.22 + v * 0.06;
+    return `0 40px 140px rgba(0,0,0,${a}), 0 14px 60px rgba(0,0,0,${b})`;
+  });
 
   // Smart dynamic meta (client-safe)
   useEffect(() => {
@@ -1210,7 +1191,7 @@ function HomePageInner() {
     () => [
       {
         q: 'What is “The Final Draw” exactly?',
-        a: `It’s the finale of a 7000-day global XPOT run. Daily entries happen through the hub, and the run ends at ${RUN_END_EU}.`,
+        a: `It’s the finale of a 7000-day global XPOT run. Daily entries happen through the hub and the run ends at ${RUN_END_EU}.`,
       },
       {
         q: 'Do I need tickets to enter?',
@@ -1218,7 +1199,7 @@ function HomePageInner() {
       },
       {
         q: 'Why do winners show as @handle?',
-        a: 'XPOT is handle-first: winners and history are presented by X handle for a clean public layer, while claims remain self-custody and wallet-native.',
+        a: 'XPOT is handle-first: winners and history are presented by X handle for a clean public layer while claims remain self-custody and wallet-native.',
       },
       {
         q: 'How can anyone verify outcomes?',
@@ -1283,7 +1264,7 @@ function HomePageInner() {
                         <h1 className="text-balance text-[32px] font-semibold leading-[1.05] sm:text-[50px]">
                           One protocol.
                           <br />
-                         <span className={GOLD_TEXT}>One daily XPOT draw.</span>
+                          <span className={GOLD_TEXT}>One daily XPOT draw.</span>
                         </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
@@ -1292,7 +1273,7 @@ function HomePageInner() {
                         </p>
                       </div>
 
-                      {/* Countdown capsule (more alive) */}
+                      {/* Countdown capsule */}
                       <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 ring-1 ring-white/[0.05]">
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
@@ -1311,7 +1292,7 @@ function HomePageInner() {
                         </span>
                       </div>
 
-                      {/* Eligibility + Final draw (clean, non-repeating) */}
+                      {/* Eligibility + Final draw */}
                       <div className="relative mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.11),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(var(--xpot-gold),0.09),transparent_62%)]" />
@@ -1386,7 +1367,7 @@ function HomePageInner() {
                       </div>
                     </div>
 
-                    {/* Run Architecture (slightly tighter) */}
+                    {/* Run Architecture */}
                     <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/45 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
                       <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.10),rgba(56,189,248,0.24),transparent)]" />
@@ -1451,29 +1432,31 @@ function HomePageInner() {
                   </div>
                 </div>
 
-                {/* RIGHT (center console) */}
-<motion.div
-  className="grid gap-4"
-  style={
-    reduceMotion
-      ? undefined
-      : {
-          y: floatYSpring as any,
-          rotateZ: tiltSpring as any,
-          transformOrigin: '50% 10%',
-        }
-  }
->
-  <ParallaxConsoleCard>
-  <PremiumCard className="p-5 sm:p-6" halo sheen>
-    {/* 👇 THIS is the sweep overlay */}
-    <div className="xpot-console-sweep" aria-hidden />
+                {/* RIGHT */}
+                <motion.div
+                  className="grid gap-4"
+                  style={
+                    reduceMotion
+                      ? undefined
+                      : {
+                          y: floatYSpring as any,
+                          rotateZ: tiltSpring as any,
+                          transformOrigin: '50% 10%',
+                        }
+                  }
+                >
+                  <ParallaxConsoleCard>
+                    <motion.div style={reduceMotion ? undefined : { boxShadow: depthShadow as any }}>
+                      <PremiumCard className="p-5 sm:p-6" halo sheen>
+                        {/* Sweep overlay MUST be inside the card */}
+                        <div className="xpot-console-sweep" aria-hidden />
 
-    <div className="mt-0">
-      <JackpotPanel variant="standalone" layout="wide" />
-    </div>
-  </PremiumCard>
-</ParallaxConsoleCard>
+                        <div className="relative z-10">
+                          <JackpotPanel variant="standalone" layout="wide" />
+                        </div>
+                      </PremiumCard>
+                    </motion.div>
+                  </ParallaxConsoleCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
                     <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
@@ -1492,7 +1475,7 @@ function HomePageInner() {
                       <RoyalContractBar mint={mint} />
                     </div>
                   </PremiumCard>
-                </div>
+                </motion.div>
               </div>
             </div>
           </div>
@@ -1630,7 +1613,7 @@ function HomePageInner() {
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
                 XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and
-                sponsor pools, while keeping the same primitive and the same proof.
+                sponsor pools while keeping the same primitive and the same proof.
               </p>
             </div>
 
