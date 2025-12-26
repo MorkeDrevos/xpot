@@ -1525,12 +1525,6 @@ function HomePageInner() {
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
 
-                        <Link
-                          href={ROUTE_TERMS}
-                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-                        >
-                          Read terms
-                        </Link>
                       </div>
                     </div>
 
