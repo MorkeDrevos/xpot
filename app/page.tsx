@@ -1354,10 +1354,13 @@ function HomePageInner() {
 
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Eligibility</p>
-              <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
-                Hold XPOT in a connected wallet. Eligibility is verified on-chain in the hub.
-              </p>
+              <p className="mt-2 text-[12px] text-slate-400">
+  Ends <span className="text-slate-200">{RUN_END_EU}</span>
+</p>
+
+<p className="mt-1 text-[12px] text-slate-400">
+  <span className="text-slate-200">{run.daysRemaining}</span> days remaining
+</p>
 
               <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
@@ -1473,52 +1476,88 @@ function HomePageInner() {
       </div>
     </div>
 
-    {/* ENTRY MECHANICS (restored like img 1) */}
-    <div>
-      <div className="relative mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-            ENTRY MECHANICS
-          </p>
-          <span className="hidden h-px flex-1 bg-white/10 sm:block" />
-        </div>
+    {/* ENTRY MECHANICS */}
+<div className="relative mt-10 space-y-6">
+  {/* Header line */}
+  <div className="relative flex flex-wrap items-center justify-between gap-3">
+    <div className="flex min-w-0 items-center gap-4">
+      <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.38em] text-slate-400">
+        Entry mechanics
+      </p>
+      <span className="hidden h-px flex-1 bg-gradient-to-r from-white/20 via-white/5 to-transparent sm:block" />
+    </div>
 
-        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-          • ELIGIBILITY • IDENTITY • PROOF
-        </p>
-      </div>
+    <p className="text-[11px] font-semibold uppercase tracking-[0.38em] text-slate-400">
+      Eligibility · Identity · Proof
+    </p>
+  </div>
 
-      <p className="text-[15px] leading-relaxed text-slate-300">
-        Hold XPOT, verify eligibility in the hub and claim your entry. Winners are presented by X handle and paid
-        on-chain. 
+  {/* Doctrine text */}
+  <p className="max-w-4xl text-[15px] leading-relaxed text-slate-300">
+    Hold XPOT, verify eligibility in the hub and claim your entry.
+    <span className="text-slate-200"> Winners are presented by X handle</span> and
+    paid on-chain. XPOT is built as a protocol — not a purchase flow.
+  </p>
+
+  {/* Pillars */}
+  <div className="grid gap-6 lg:grid-cols-3">
+    {/* ELIGIBILITY */}
+    <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.025] px-7 py-6 shadow-[0_26px_120px_rgba(0,0,0,0.45)] backdrop-blur">
+      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.12),transparent_60%)]" />
+
+      <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+        Eligibility
+      </p>
+
+      <p className="mt-4 text-[22px] font-semibold tracking-tight text-slate-50">
+        Hold XPOT
+      </p>
+
+      <p className="mt-3 text-[14px] leading-relaxed text-slate-400">
+        No tickets. No checkout. Holding is your entry.
       </p>
     </div>
 
-    {/* 3 CARDS STRIP (restored like img 4) */}
-    <div className="grid gap-4 lg:grid-cols-3">
-      <div className="rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Eligibility</p>
-        <p className="mt-3 text-lg font-semibold text-slate-50">Hold XPOT</p>
-        <p className="mt-2 text-sm text-slate-400">No tickets, no purchase flow</p>
-      </div>
+    {/* IDENTITY */}
+    <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.025] px-7 py-6 shadow-[0_26px_120px_rgba(0,0,0,0.45)] backdrop-blur">
+      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_60%)]" />
 
-      <div className="rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Identity</p>
-        <p className="mt-3 text-lg font-semibold text-slate-50">Handle-based</p>
-        <p className="mt-2 text-sm text-slate-400">Winners shown by @handle</p>
-      </div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+        Identity
+      </p>
 
-      <div className="rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Proof</p>
-        <p className="mt-3 text-lg font-semibold text-slate-50">On-chain</p>
-        <p className="mt-2 text-sm text-slate-400">Verify payouts in explorer</p>
-      </div>
+      <p className="mt-4 text-[22px] font-semibold tracking-tight text-slate-50">
+        Handle-based
+      </p>
+
+      <p className="mt-3 text-[14px] leading-relaxed text-slate-400">
+        Winners are displayed publicly by @handle.
+      </p>
     </div>
 
-    <p className="px-1 text-[11px] text-slate-500/95">
-      Winners are shown by @handle and provable on-chain. Day flips at 22:00 (Madrid).
-    </p>
+    {/* PROOF */}
+    <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.025] px-7 py-6 shadow-[0_26px_120px_rgba(0,0,0,0.45)] backdrop-blur">
+      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_80%_20%,rgba(56,189,248,0.12),transparent_60%)]" />
+
+      <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+        Proof
+      </p>
+
+      <p className="mt-4 text-[22px] font-semibold tracking-tight text-slate-50">
+        On-chain
+      </p>
+
+      <p className="mt-3 text-[14px] leading-relaxed text-slate-400">
+        Payouts are verifiable directly in the explorer.
+      </p>
+    </div>
   </div>
+
+  {/* Footer note */}
+  <p className="pt-2 text-[11px] text-slate-500/90">
+    Winners are shown by @handle and provable on-chain. Day flips at 22:00 (Madrid).
+  </p>
+</div>
 
   <div className="grid gap-3 sm:grid-cols-3">
     <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
