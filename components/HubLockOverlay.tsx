@@ -1,4 +1,3 @@
-// components/HubLockOverlay.tsx
 'use client';
 
 import Link from 'next/link';
@@ -6,26 +5,26 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, ShieldCheck, X as XIcon, Radio, Sparkles } from 'lucide-react';
 import { useSignIn } from '@clerk/nextjs';
 
-const BTN_GHOST =
-  'inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]';
+const CTA_PRIMARY =
+  // “glass CTA” - this is the sibling style both X and Wallet CTAs will share
+  `
+  group relative w-full h-11
+  inline-flex items-center justify-center gap-2
+  rounded-full
+  bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.02))]
+  border border-white/15
+  text-[13px] font-semibold text-slate-100
+  shadow-[0_10px_40px_rgba(0,0,0,0.45)]
+  transition
+  hover:border-emerald-300/40
+  hover:text-white
+  hover:shadow-[0_0_0_1px_rgba(16,185,129,0.25),0_20px_60px_rgba(0,0,0,0.55)]
+  active:scale-[0.985]
+  disabled:cursor-not-allowed disabled:opacity-40
+  `;
 
-const CTA_SIBLING =
-  [
-    'group relative w-full h-11',
-    'inline-flex items-center justify-center gap-2',
-    'rounded-2xl',
-    'border border-white/12',
-    'bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.03))]',
-    'text-[13px] font-semibold text-slate-100',
-    'shadow-[0_10px_40px_rgba(0,0,0,0.45)]',
-    'transition',
-    'hover:border-emerald-300/35',
-    'hover:text-white',
-    'hover:shadow-[0_0_0_1px_rgba(16,185,129,0.22),0_20px_60px_rgba(0,0,0,0.55)]',
-    'active:scale-[0.985]',
-    'disabled:cursor-not-allowed disabled:opacity-40',
-    'overflow-hidden',
-  ].join(' ');
+const CTA_GHOST =
+  'inline-flex w-full items-center justify-center rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]';
 
 export default function HubLockOverlay({
   open,
@@ -89,7 +88,7 @@ export default function HubLockOverlay({
               <div className="pointer-events-none absolute inset-0 rounded-[32px] ring-1 ring-amber-300/10" />
 
               <div className="relative p-6">
-                {/* Header row (wallet-modal vibe) */}
+                {/* Header row */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
                     XPOT access
@@ -109,7 +108,7 @@ export default function HubLockOverlay({
                   <p className="mt-1 text-[12px] leading-relaxed text-slate-400">{sub}</p>
                 </div>
 
-                {/* Info panel (like wallet modal) */}
+                {/* Info panel */}
                 <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
@@ -138,23 +137,16 @@ export default function HubLockOverlay({
 
                 {/* Actions */}
                 <div className="mt-5 space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleContinueWithX}
-                    disabled={!isLoaded}
-                    className={CTA_SIBLING}
-                  >
-                    {/* sheen */}
-                    <span className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                      <span className="absolute -left-1/2 top-0 h-full w-1/2 rotate-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.14),transparent)] blur-[1px]" />
+                  <button type="button" onClick={handleContinueWithX} disabled={!isLoaded} className={CTA_PRIMARY}>
+                    <span className="absolute inset-0 rounded-full opacity-0 transition-opacity group-hover:opacity-100 bg-[radial-gradient(circle_at_50%_20%,rgba(16,185,129,0.20),transparent_55%)]" />
+                    <span className="relative inline-flex items-center gap-2">
+                      <XIcon className="h-4 w-4 opacity-90 group-hover:opacity-100" />
+                      <span>{showLinkX ? 'Link X' : 'Continue with X'}</span>
+                      <ArrowRight className="h-4 w-4 opacity-70 transition-transform group-hover:translate-x-0.5" />
                     </span>
-
-                    <XIcon className="h-4 w-4 opacity-90 group-hover:opacity-100" />
-                    <span>{showLinkX ? 'Link X' : 'Continue with X'}</span>
-                    <ArrowRight className="h-4 w-4 opacity-70 transition-transform group-hover:translate-x-0.5" />
                   </button>
 
-                  <Link href="/" className={BTN_GHOST}>
+                  <Link href="/" className={CTA_GHOST}>
                     Back to homepage
                   </Link>
                 </div>
