@@ -1144,22 +1144,31 @@ function ParallaxConsoleCard({
 }
 
 function MissionBanner() {
-  const [hidden, setHidden] = useState(false);
+  const STORAGE_KEY = 'xpot_mission_hidden_day';
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const [hidden, setHidden] = useState<boolean | null>(null);
 
   useEffect(() => {
     try {
-      setHidden(localStorage.getItem('xpot_mission_hidden') === '1');
-    } catch {}
+      const storedDay = localStorage.getItem(STORAGE_KEY);
+      setHidden(storedDay === today);
+    } catch {
+      setHidden(false);
+    }
   }, []);
 
-  if (hidden) return null;
+  if (hidden === null || hidden) return null;
 
   function dismiss() {
-    setHidden(true);
     try {
-      localStorage.setItem('xpot_mission_hidden', '1');
+      localStorage.setItem(STORAGE_KEY, today);
     } catch {}
+    setHidden(true);
   }
+
+  // render JSX below...
+}
 
   return (
     <div className="relative border-y border-slate-900/60 bg-slate-950/55 backdrop-blur">
@@ -1176,9 +1185,9 @@ function MissionBanner() {
             </span>
 
             <p className="text-[12px] text-slate-200">
-              We’re aiming to become the <span className={GOLD_TEXT}>biggest game on the planet</span>.
-              <span className="text-slate-500"> We’re early – the run is live.</span>
-            </p>
+  We’re aiming to become the <span className={GOLD_TEXT}>biggest game on the planet</span>.
+  <span className="text-slate-400"> You’re early. This is where it starts.</span>
+</p>
           </div>
 
           <button
