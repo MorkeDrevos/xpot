@@ -1383,7 +1383,7 @@ function HomePageInner() {
                       </div>
 
                       {/* Eligibility + Final draw */}
-                      <div className="relative mt-5 grid gap-4 2xl:grid-cols-2">
+                      <div className="relative mt-5 grid gap-4 xl:grid-cols-2">
                         {/* ELIGIBILITY */}
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
@@ -1557,7 +1557,7 @@ function HomePageInner() {
                         and paid on-chain.
                       </p>
 
-                      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                      <div className="mt-5 grid gap-4 xl:grid-cols-3">
                         {/* Card 1 */}
                         <div className="relative overflow-hidden rounded-[26px] bg-white/[0.03] px-6 py-5 ring-1 ring-white/[0.06] shadow-[0_18px_80px_rgba(0,0,0,0.35)]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.12),transparent_62%)]" />
@@ -1569,7 +1569,9 @@ function HomePageInner() {
                               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                                 Eligibility
                               </p>
-                              <p className="mt-2 text-lg font-semibold text-slate-50">Hold XPOT</p>
+                              <p className="mt-2 text-base font-semibold text-slate-50 sm:text-lg whitespace-nowrap">
+  Hold XPOT
+</p>
                               <p className="mt-2 text-sm text-slate-400">No tickets, no purchase flow</p>
                             </div>
                           </div>
