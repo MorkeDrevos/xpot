@@ -1195,11 +1195,6 @@ function HomePageInner() {
                         <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
                           NO TICKETS - JUST XPOT HOLDINGS
                         </p>
-
-                        <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                          Holdings-based
-                        </span>
                       </div>
 
                       {/* Headline */}
