@@ -448,13 +448,8 @@ function PriceUnavailableNote({
   compact?: boolean;
   mode?: 'feed-error' | 'pending-pair';
 }) {
-  const title =
-    mode === 'feed-error' ? 'PRICE FEED UNAVAILABLE' : 'TOKEN NOT TRADABLE YET';
-
-  // ✅ Your requested 2nd line (for BOTH modes)
+  const title = mode === 'feed-error' ? 'PRICE FEED UNAVAILABLE' : 'TOKEN NOT TRADABLE YET';
   const body = 'Price feed is temporarily unavailable. We will retry automatically.';
-
-  // ✅ Your requested 3rd line for pending-pair
   const secondary =
     mode === 'feed-error'
       ? 'If this persists, DexScreener may be rate limiting. Refresh later.'
@@ -475,19 +470,9 @@ function PriceUnavailableNote({
         }}
       />
 
-      <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">
-        {title}
-      </p>
-
-      {/* ✅ 2nd line lighter + readable */}
-      <p className="relative mt-2 text-[12px] text-amber-100/80">
-        {body}
-      </p>
-
-      {/* ✅ Your requested secondary styling */}
-      <p className="mt-1 text-[11px] italic text-slate-300/60">
-        {secondary}
-      </p>
+      <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">{title}</p>
+      <p className="relative mt-2 text-[12px] text-amber-100/80">{body}</p>
+      <p className="mt-1 text-[11px] italic text-slate-300/60">{secondary}</p>
     </div>
   );
 }
@@ -949,8 +934,7 @@ export default function JackpotPanel({
 
   const showUnavailable = !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
 
-  const poolLabel = `${JACKPOT_XPOT.toLocaleString()} XPOT`;
-
+  const poolNumber = JACKPOT_XPOT.toLocaleString();
   const displayUsdText =
     displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd) ? '-' : formatUsd(displayJackpotUsd);
 
@@ -1021,24 +1005,22 @@ export default function JackpotPanel({
         {/* Marketing row */}
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Pool capsule (tightened, less stretched) */}
-            <div className="group relative inline-flex items-center gap-4 rounded-2xl bg-black/55 px-5 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)]">
+            {/* Pool capsule - rebuilt to look premium and NOT stretched */}
+            <div className="group relative inline-flex items-center rounded-2xl bg-black/55 px-4 py-2.5 sm:px-5 sm:py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)]">
               <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
               <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
+              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-sheen" />
+              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-55 xpot-capsule-shimmer" />
 
-              <div className="relative flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+              <div className="relative flex items-center gap-3 sm:gap-4">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
                   Today&apos;s XPOT
                 </span>
 
-                <span
-                  className="font-mono text-[22px] sm:text-[30px] tabular-nums text-white xpot-pool-text"
-                  style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
-                >
-                  {poolLabel}
+                <span className="xpot-pool-number">
+                  <span className="xpot-pool-amount">{poolNumber}</span>
+                  <span className="xpot-pool-symbol">XPOT</span>
                 </span>
 
                 <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
@@ -1127,9 +1109,7 @@ export default function JackpotPanel({
               <span
                 className={[
                   'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
-                  countPulse
-                    ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]'
-                    : '',
+                  countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]' : '',
                 ].join(' ')}
               >
                 Next draw in
@@ -1225,13 +1205,7 @@ export default function JackpotPanel({
 
             {spark ? (
               <div className="mt-2">
-                <svg
-                  width="100%"
-                  height="34"
-                  viewBox="0 0 560 54"
-                  className="block text-slate-300/70"
-                  aria-label="XPOT pulse sparkline (local ticks)"
-                >
+                <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70">
                   <polyline
                     fill="none"
                     stroke="currentColor"
@@ -1326,13 +1300,36 @@ export default function JackpotPanel({
         </div>
 
         <style jsx>{`
-          /* Pool text: fix "stretched" feel (tracking was too high) */
-          .xpot-pool-text {
-            letter-spacing: 0.08em;
+          /* Pool capsule typography: premium, NOT stretched */
+          .xpot-pool-number {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 10px;
+            white-space: nowrap;
+          }
+          .xpot-pool-amount {
+            font-size: 22px;
+            line-height: 1;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 0 20px rgba(124, 200, 255, 0.12);
+          }
+          .xpot-pool-symbol {
+            font-size: 12px;
+            line-height: 1;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: rgba(226, 232, 240, 0.88);
           }
           @media (min-width: 640px) {
-            .xpot-pool-text {
-              letter-spacing: 0.10em;
+            .xpot-pool-amount {
+              font-size: 28px;
+              letter-spacing: -0.015em;
+            }
+            .xpot-pool-symbol {
+              font-size: 13px;
             }
           }
 
@@ -1472,7 +1469,7 @@ export default function JackpotPanel({
             }
           }
 
-          /* Global shimmer pass (subtle moving highlights across the whole slab) */
+          /* Global shimmer pass */
           .xpot-shimmer {
             background: linear-gradient(
               115deg,
@@ -1582,7 +1579,6 @@ export default function JackpotPanel({
             }
           }
 
-          /* Extra capsule shimmer so it looks "powered" */
           .xpot-capsule-shimmer {
             background: radial-gradient(circle_at_20%_40%, rgba(124, 200, 255, 0.10), transparent 55%),
               linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 35%, transparent 70%);
@@ -1624,7 +1620,7 @@ export default function JackpotPanel({
             }
           }
 
-          /* USD number: alive (breathing + sheen pass + gentle gradient bloom) */
+          /* USD number: alive */
           .xpot-usd-live {
             position: relative;
             display: inline-block;
