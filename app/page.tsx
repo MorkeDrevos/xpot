@@ -553,7 +553,6 @@ function CosmicHeroBackdrop() {
           }
         }
 
-        /* Sweep overlay (single source of truth) */
         @keyframes xpotConsoleSweep {
           0% {
             transform: translateX(-55%) skewX(-12deg);
@@ -980,7 +979,11 @@ function LiveControlRoom({
       </div>
 
       <div
-        className={`relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-4 pb-5 shadow-[0_18px_60px_rgba(15,23,42,0.9)] ${scanCls}`}
+        className={[
+          'relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20',
+          'p-4 pb-5 shadow-[0_18px_60px_rgba(15,23,42,0.9)]',
+          scanCls,
+        ].join(' ')}
       >
         <div className="pointer-events-none absolute -inset-20 opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_88%_30%,rgba(56,189,248,0.12),transparent_65%)]" />
 
@@ -988,8 +991,8 @@ function LiveControlRoom({
           {lines.join('\n')}
         </pre>
 
-        <div className="relative z-10 mt-3 text-[11px] leading-relaxed text-emerald-200/70">
-          Live cockpit feed - updates every <span className="font-mono text-emerald-100/90">1s</span>
+        <div className="relative z-10 mt-2 text-[11px] leading-snug text-emerald-200/75">
+          Live cockpit feed - updates every 1s
           <span className="xpot-cr-cursor" />
         </div>
       </div>
@@ -1143,7 +1146,6 @@ function ParallaxConsoleCard({
   );
 }
 
-/* ✅ FIXED: MissionBanner now returns correctly, no orphan return outside function */
 function MissionBanner() {
   const STORAGE_KEY = 'xpot_mission_hidden_day';
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -1214,22 +1216,19 @@ function HomePageInner() {
   const reduceMotion = useReducedMotion();
   const { scrollY } = useScroll();
 
-  // Subtle right-column motion
   const floatY = useTransform(scrollY, [0, 900], [0, -18]);
   const floatYSpring = useSpring(floatY, { stiffness: 80, damping: 22, mass: 0.6 });
 
   const tilt = useTransform(scrollY, [0, 900], [0, -0.25]);
   const tiltSpring = useSpring(tilt, { stiffness: 70, damping: 20, mass: 0.6 });
 
-  // Ultra subtle depth shadow shift (Jackpot card only)
   const depth = useTransform(scrollY, [0, 900], [0, 1]);
   const depthShadow = useTransform(depth, v => {
-    const a = 0.55 + v * 0.06; // ultra subtle
+    const a = 0.55 + v * 0.06;
     const b = 0.22 + v * 0.06;
     return `0 40px 140px rgba(0,0,0,${a}), 0 14px 60px rgba(0,0,0,${b})`;
   });
 
-  // Smart dynamic meta (client-safe)
   useEffect(() => {
     const t = run.ended
       ? `XPOT - Final Draw live (${RUN_END_EU})`
@@ -1284,11 +1283,12 @@ function HomePageInner() {
                 className="
                   relative z-10
                   grid gap-6 p-6
-lg:grid-cols-1
-lg:p-8
+                  lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
+                  lg:p-8
                 "
               >
                 {/* LEFT */}
+                <div className="flex flex-col justify-between gap-6">
                   <div className="space-y-6">
                     {/* Hero */}
                     <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur sm:p-7">
@@ -1326,9 +1326,9 @@ lg:p-8
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
                           Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
-                          – <FinalDrawDate className="text-slate-200" />.
+                          - <FinalDrawDate className="text-slate-200" />.
                           <span className="block mt-2 text-slate-300">
-                            We’re building toward becoming the world’s biggest game – one day at a time.
+                            We’re building toward becoming the world’s biggest game - one day at a time.
                           </span>
                         </p>
                       </div>
@@ -1490,6 +1490,7 @@ lg:p-8
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
                     <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
                   </div>
+                </div>
 
                 {/* RIGHT */}
                 <motion.div
@@ -1506,9 +1507,12 @@ lg:p-8
                 >
                   <ParallaxConsoleCard>
                     <motion.div style={reduceMotion ? undefined : { boxShadow: depthShadow as any }}>
-                      <div className="relative">
-  <JackpotPanel variant="standalone" layout="wide" />
-</div>
+                      <PremiumCard className="p-5 sm:p-6" halo sheen>
+                        <div className="xpot-console-sweep" aria-hidden />
+                        <div className="relative z-10">
+                          <JackpotPanel variant="standalone" layout="wide" />
+                        </div>
+                      </PremiumCard>
                     </motion.div>
                   </ParallaxConsoleCard>
 
