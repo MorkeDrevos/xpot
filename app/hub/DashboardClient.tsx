@@ -1386,13 +1386,27 @@ export default function DashboardClient() {
 
                   <div className="flex items-center gap-2">
                     <button
-                      type="button"
-                      onClick={() => setWalletModalOpen(true)}
-                      className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                    >
-                      <Wallet className="mr-2 h-4 w-4" />
-                      {walletConnected ? 'Change wallet' : 'Select wallet'}
-                    </button>
+  type="button"
+  onClick={() => setWalletModalOpen(true)}
+  className="
+    group relative h-10
+    inline-flex items-center justify-center gap-2
+    rounded-full
+    bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]
+    border border-white/15
+    px-4
+    text-[12px] font-semibold text-slate-100
+    shadow-[0_10px_40px_rgba(0,0,0,0.45)]
+    transition
+    hover:border-amber-300/40
+    hover:text-white
+    hover:shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_20px_60px_rgba(0,0,0,0.55)]
+    active:scale-[0.985]
+  "
+>
+  <Wallet className="h-4 w-4 opacity-90 group-hover:opacity-100" />
+  <span>{walletConnected ? 'Change wallet' : 'Select wallet'}</span>
+</button>
 
                     <button
                       type="button"
