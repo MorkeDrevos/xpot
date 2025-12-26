@@ -1427,16 +1427,21 @@ function HomePageInner() {
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(16,185,129,0.26),transparent)]" />
                       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.16),rgba(var(--xpot-gold),0.22),transparent)] opacity-70" />
 
-                      <div className="relative flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          NO TICKETS · JUST XPOT HOLDINGS
-                        </p>
+                      {/* Meta row (pills live here now) */}
+<div className="relative flex flex-wrap items-center gap-2">
+  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+    No tickets
+    <span className="text-slate-700"> · </span>
+    Holdings only
+  </span>
 
-                        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                          Holdings-based
-                        </span>
-                      </div>
+  <span className="hidden sm:inline h-4 w-px bg-white/10" />
+
+  <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
+    <ShieldCheck className="h-3.5 w-3.5" />
+    Holdings-based
+  </span>
+</div>
 
                       <div className="relative mt-4">
                         <h1 className="text-balance text-[32px] font-semibold leading-[1.05] sm:text-[50px]">
