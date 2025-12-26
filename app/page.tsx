@@ -1383,7 +1383,7 @@ function HomePageInner() {
                       </div>
 
                       {/* Eligibility + Final draw */}
-                      <div className="relative mt-5 grid gap-4 xl:grid-cols-2">
+                      <div className="relative mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
                         {/* ELIGIBILITY */}
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
@@ -1522,8 +1522,8 @@ function HomePageInner() {
                       </div>
                     </div>
 
-                    {/* ENTRY MECHANICS (royal upgrade) */}
-                    <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.02] p-6 ring-1 ring-white/[0.06] shadow-[0_26px_110px_rgba(0,0,0,0.45)] backdrop-blur">
+                    {/* Eligibility + Final draw */}
+<div className="relative mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
                       <div className="xpot-royal-sheen" aria-hidden />
                       <div className="pointer-events-none absolute -inset-28 opacity-70 blur-3xl bg-[radial-gradient(circle_at_12%_20%,rgba(var(--xpot-gold),0.14),transparent_62%),radial-gradient(circle_at_86%_12%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_30%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.08),transparent)]" />
