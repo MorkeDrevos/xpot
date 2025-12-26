@@ -1,35 +1,36 @@
+// components/PremiumWalletModal.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState, type WalletName } from '@solana/wallet-adapter-base';
-import { ChevronRight, ExternalLink, Shield, Wallet, X } from 'lucide-react';
+import { ArrowRight, ChevronRight, ExternalLink, Shield, Wallet, X } from 'lucide-react';
 
 function shortAddr(a: string) {
   if (!a) return a;
   return `${a.slice(0, 4)}…${a.slice(-4)}`;
 }
 
-// Shared “sibling” CTA styling (matches HubLockOverlay)
-const CTA_PRIMARY =
-  `
-  group relative
-  inline-flex items-center justify-center gap-2
-  rounded-full
-  bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.02))]
-  border border-white/15
-  font-semibold text-slate-100
-  shadow-[0_10px_40px_rgba(0,0,0,0.45)]
-  transition
-  hover:border-emerald-300/40
-  hover:text-white
-  hover:shadow-[0_0_0_1px_rgba(16,185,129,0.25),0_20px_60px_rgba(0,0,0,0.55)]
-  active:scale-[0.985]
-  disabled:cursor-not-allowed disabled:opacity-40
-  `;
+// Visually identical sibling to HubLockOverlay "Continue with X"
+const CTA_PRIMARY_SIBLING =
+  [
+    'group relative',
+    'inline-flex items-center justify-center gap-2',
+    'rounded-full',
+    'bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]',
+    'border border-white/15',
+    'text-[12px] font-semibold text-slate-100',
+    'shadow-[0_10px_40px_rgba(0,0,0,0.45)]',
+    'transition',
+    'hover:border-emerald-300/40',
+    'hover:text-white',
+    'hover:shadow-[0_0_0_1px_rgba(16,185,129,0.25),0_20px_60px_rgba(0,0,0,0.55)]',
+    'active:scale-[0.985]',
+    'disabled:cursor-not-allowed disabled:opacity-40',
+  ].join(' ');
 
-const CTA_GHOST =
-  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] transition disabled:cursor-not-allowed disabled:opacity-40';
+const BTN_GHOST =
+  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition disabled:cursor-not-allowed disabled:opacity-40';
 
 export default function PremiumWalletModal({
   open,
@@ -88,7 +89,7 @@ export default function PremiumWalletModal({
 
   return (
     <div className="fixed inset-0 z-[90]">
-      {/* Backdrop */}
+      {/* Backdrop (blur + dim) */}
       <button
         aria-label="Close"
         className="absolute inset-0 bg-black/60 backdrop-blur-2xl"
@@ -97,6 +98,7 @@ export default function PremiumWalletModal({
 
       {/* Center */}
       <div className="absolute inset-0 flex items-center justify-center px-4">
+        {/* Card */}
         <div
           className="
             relative w-full max-w-[420px]
@@ -155,7 +157,7 @@ export default function PremiumWalletModal({
                   <button
                     type="button"
                     onClick={() => disconnect().catch(() => {})}
-                    className={`${CTA_GHOST} h-9 px-4 text-[12px]`}
+                    className={`${BTN_GHOST} h-9 px-4 text-[12px]`}
                   >
                     Disconnect
                   </button>
@@ -218,13 +220,15 @@ export default function PremiumWalletModal({
                         {busy === String(name) ? (
                           <span className="text-[11px] text-slate-400">Opening...</span>
                         ) : installed ? (
-                          // Primary “Connect” CTA - now matches the X CTA
-                          <span className={`${CTA_PRIMARY} h-8 px-4 text-[12px]`}>
-                            <span className="absolute inset-0 rounded-full opacity-0 transition-opacity group-hover:opacity-100 bg-[radial-gradient(circle_at_50%_20%,rgba(16,185,129,0.20),transparent_55%)]" />
-                            <span className="relative">Connect</span>
+                          <span className={`${CTA_PRIMARY_SIBLING} h-8 px-4`}>
+                            <span className="inline-flex items-center gap-2">
+                              <Wallet className="h-4 w-4 opacity-90 group-hover:opacity-100" />
+                              <span>Connect</span>
+                              <ArrowRight className="h-4 w-4 opacity-70 group-hover:translate-x-0.5 transition-transform" />
+                            </span>
                           </span>
                         ) : (
-                          <span className={`${CTA_GHOST} h-8 px-4 text-[12px]`}>
+                          <span className={`${BTN_GHOST} h-8 px-4 text-[12px]`}>
                             <span className="inline-flex items-center gap-2">
                               <ExternalLink className="h-4 w-4" />
                               Install
@@ -251,7 +255,7 @@ export default function PremiumWalletModal({
 
             {/* Optional close CTA */}
             <div className="mt-4">
-              <button type="button" onClick={onClose} className={`${CTA_GHOST} h-10 w-full text-[12px]`}>
+              <button type="button" onClick={onClose} className={`${BTN_GHOST} h-10 w-full text-[12px]`}>
                 Close
               </button>
             </div>
