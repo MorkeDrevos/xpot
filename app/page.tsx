@@ -1276,7 +1276,7 @@ function HomePageInner() {
 
         <div className="relative z-10 w-full px-0">
           <div className="py-5 sm:py-7">
-            <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+            <div className="relative w-full overflow-hidden rounded-[38px] bg-transparent shadow-none backdrop-blur-0">
               <CosmicHeroBackdrop />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
