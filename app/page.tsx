@@ -1353,55 +1353,90 @@ function HomePageInner() {
                       </div>
 
                       {/* Eligibility + Final draw */}
-                      <div className="relative mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
-                        <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
-                          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.11),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(var(--xpot-gold),0.09),transparent_62%)]" />
-                          <div className="relative">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                              Eligibility
-                            </p>
+<div className="relative mt-5 grid gap-4 lg:grid-cols-2">
+  {/* Eligibility (no minimum on homepage) */}
+  <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-6 ring-1 ring-white/[0.05]">
+    <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
 
-                            <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
-                              Hold at least{' '}
-                              <span className={`font-semibold ${GOLD_TEXT}`}>
-                                {MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT
-                              </span>{' '}
-                              in a connected wallet to claim entry in the hub.
-                            </p>
+    <div className="relative flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+          Eligibility
+        </p>
 
-                            <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
-                              <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-                              <span>Cutoff:</span>
-                              <span className="text-slate-200">{cutoffLabel}</span>
-                            </div>
-                          </div>
-                        </div>
+        <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+          Hold XPOT in a connected wallet.
+          <span className="block text-slate-400">
+            Eligibility is verified on-chain in the hub before you can claim entry.
+          </span>
+        </p>
 
-                        <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
-                          <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.11),transparent_62%)]" />
+        <div className="mt-4 inline-flex items-center gap-2 text-[11px] text-slate-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+          <span>Cutoff:</span>
+          <span className="text-slate-200">{cutoffLabel}</span>
+        </div>
+      </div>
 
-                          <div className="relative flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                                Final Draw
-                              </p>
-                              <p className="mt-2 text-[12px] text-slate-400">
-                                Ends <span className="text-slate-200">{RUN_END_EU}</span>
-                              </p>
-                              <p className="mt-1 text-[12px] text-slate-400">
-                                <span className="text-slate-200">{run.daysRemaining}</span> days remaining
-                              </p>
-                            </div>
+      <span className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        Verified in hub
+      </span>
+    </div>
+  </div>
 
-                            <span
-                              className={`shrink-0 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`}
-                            >
-                              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                              Day {run.day}/{RUN_DAYS}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+  {/* Final Draw (make Day 1/7000 a big deal) */}
+  <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-6 ring-1 ring-white/[0.05]">
+    <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+
+    {/* Hero Day Pill */}
+    <div className="relative mb-4 flex items-start justify-between gap-4">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+          Final Draw
+        </p>
+        <p className="mt-2 text-[12px] text-slate-400">
+          Ends <span className="text-slate-200">{RUN_END_EU}</span>
+        </p>
+      </div>
+
+      <div
+        className={[
+          'shrink-0 rounded-full border px-4 py-2',
+          GOLD_BORDER_SOFT,
+          'bg-[linear-gradient(180deg,rgba(var(--xpot-gold),0.12),rgba(0,0,0,0.10))]',
+          'shadow-[0_18px_70px_rgba(var(--xpot-gold),0.18)]',
+          'ring-1 ring-white/[0.06]',
+        ].join(' ')}
+        aria-label={`Day ${run.day} of ${RUN_DAYS}`}
+      >
+        <div className="flex items-center gap-2">
+          <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
+          <div className="leading-none">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200/80">
+              Day
+            </div>
+            <div className="mt-0.5 flex items-baseline gap-1">
+              <span className="font-mono text-[16px] text-slate-50">{run.day}</span>
+              <span className="font-mono text-[12px] text-slate-400">/{RUN_DAYS}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="relative flex items-end justify-between gap-4">
+      <div className="min-w-0">
+        <p className="text-[12px] text-slate-400">
+          <span className="text-slate-200">{run.daysRemaining}</span> days remaining
+        </p>
+        <p className="mt-2 text-[12px] text-slate-500">
+          The run is public and progresses one draw per day at {cutoffLabel}.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 
                       {bonusActive ? (
                         <div className="mt-5">
