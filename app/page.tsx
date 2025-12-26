@@ -1383,7 +1383,7 @@ function HomePageInner() {
                       </div>
 
                       {/* Eligibility + Final draw */}
-                      <div className="relative mt-5 grid gap-4 lg:grid-cols-2">
+                      <div className="relative mt-5 grid gap-4 2xl:grid-cols-2">
                         {/* ELIGIBILITY */}
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
