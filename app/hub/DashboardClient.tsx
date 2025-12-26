@@ -37,16 +37,10 @@ import {
 // ─────────────────────────────────────────────
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.05] active:brightness-[0.98] disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:cursor-not-allowed disabled:opacity-40';
-
-const CARD =
-  'rounded-[28px] border border-slate-800/70 bg-slate-950/60 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]';
-
-const SUBCARD =
-  'rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3';
+  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition disabled:cursor-not-allowed disabled:opacity-40';
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
@@ -98,12 +92,12 @@ function StatusPill({
 }) {
   const cls =
     tone === 'emerald'
-      ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]'
+      ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]'
       : tone === 'amber'
-      ? 'xpot-pill-gold border shadow-[0_0_0_1px_rgba(255,255,255,0.03)] bg-white/[0.02]'
+      ? 'border-amber-400/20 bg-amber-500/[0.06] text-amber-200 shadow-[0_0_0_1px_rgba(251,191,36,0.10)]'
       : tone === 'sky'
-      ? 'border-sky-400/30 bg-sky-500/10 text-sky-200 shadow-[0_0_0_1px_rgba(56,189,248,0.12)]'
-      : 'border-white/10 bg-slate-800/70 text-slate-200 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]';
+      ? 'border-sky-400/25 bg-sky-500/10 text-sky-200 shadow-[0_0_0_1px_rgba(56,189,248,0.10)]'
+      : 'border-white/10 bg-white/[0.03] text-slate-200 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]';
 
   return (
     <span
@@ -114,15 +108,6 @@ function StatusPill({
     >
       {children}
     </span>
-  );
-}
-
-function TinyMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={SUBCARD}>
-      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
-    </div>
   );
 }
 
@@ -143,7 +128,7 @@ function WalletStatusHint() {
     );
   }
 
-  return <p className="mt-2 text-xs text-slate-500">Click “Select Wallet” and choose a wallet to connect.</p>;
+  return <p className="mt-2 text-xs text-slate-400">Click “Select Wallet” and choose a wallet to connect.</p>;
 }
 
 async function safeCopy(text: string) {
@@ -171,6 +156,94 @@ function useReducedMotion() {
     return () => m.removeEventListener?.('change', apply);
   }, []);
   return reduced;
+}
+
+// ─────────────────────────────────────────────
+// Luxe shell pieces (anti-boxy, premium feel)
+// ─────────────────────────────────────────────
+
+function LuxeCard({
+  children,
+  className = '',
+  accent = 'violet',
+}: {
+  children: React.ReactNode;
+  className?: string;
+  accent?: 'violet' | 'gold' | 'emerald' | 'sky' | 'neutral';
+}) {
+  const ring =
+    accent === 'gold'
+      ? 'ring-amber-300/10'
+      : accent === 'emerald'
+      ? 'ring-emerald-400/10'
+      : accent === 'sky'
+      ? 'ring-sky-400/10'
+      : accent === 'neutral'
+      ? 'ring-white/10'
+      : 'ring-violet-400/10';
+
+  const glow =
+    accent === 'gold'
+      ? 'bg-[radial-gradient(circle_at_20%_20%,rgba(251,191,36,0.18),transparent_55%),radial-gradient(circle_at_85%_40%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_40%_100%,rgba(236,72,153,0.08),transparent_62%)]'
+      : accent === 'emerald'
+      ? 'bg-[radial-gradient(circle_at_18%_30%,rgba(16,185,129,0.18),transparent_55%),radial-gradient(circle_at_78%_18%,rgba(56,189,248,0.10),transparent_58%),radial-gradient(circle_at_50%_100%,rgba(236,72,153,0.06),transparent_62%)]'
+      : accent === 'sky'
+      ? 'bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_80%_35%,rgba(99,102,241,0.10),transparent_60%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.06),transparent_62%)]'
+      : 'bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.18),transparent_55%),radial-gradient(circle_at_80%_35%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.06),transparent_62%)]';
+
+  return (
+    <div
+      className={[
+        'relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/40 shadow-[0_40px_140px_rgba(0,0,0,0.55)] ring-1 backdrop-blur-xl',
+        ring,
+        className,
+      ].join(' ')}
+    >
+      <div className={['pointer-events-none absolute -inset-24 opacity-80 blur-3xl', glow].join(' ')} />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.10] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:18px_18px]" />
+      <div className="pointer-events-none absolute inset-0 xpot-luxe-border" />
+      <div className="relative p-5">{children}</div>
+    </div>
+  );
+}
+
+function LuxeTitle({
+  title,
+  subtitle,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-100">{title}</p>
+        {subtitle ? <p className="mt-1 text-xs text-slate-300/70">{subtitle}</p> : null}
+      </div>
+      {right ? <div className="shrink-0">{right}</div> : null}
+    </div>
+  );
+}
+
+function TinyRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400/80">{label}</p>
+      <div className={mono ? 'font-mono text-sm text-slate-100' : 'text-sm font-semibold text-slate-100'}>
+        {value}
+      </div>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -317,11 +390,13 @@ function EntryCeremony({
 
       <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/70 shadow-[0_40px_140px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         <div className="xpot-ceremony-sweep absolute inset-0" />
-        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_80%_35%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_50%_100%,rgba(255,215,0,0.08),transparent_62%)]" />
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_80%_35%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_50%_100%,rgba(251,191,36,0.10),transparent_62%)]" />
 
         <div className="relative p-5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">Entry issued</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300/80">
+              Entry issued
+            </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
               <Radio className="h-3.5 w-3.5" />
               LIVE
@@ -344,7 +419,7 @@ function EntryCeremony({
             </div>
           </div>
 
-          <p className="mt-4 text-center text-xs text-slate-400">
+          <p className="mt-4 text-center text-xs text-slate-300/70">
             Your daily entry is live. Come back after draw time for proof.
           </p>
         </div>
@@ -850,8 +925,56 @@ export default function DashboardClient() {
     if (next) playChime();
   }
 
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 18) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
+
   return (
     <>
+      <style jsx global>{`
+        .xpot-luxe-border {
+          background:
+            linear-gradient(90deg, rgba(255,255,255,0.00), rgba(255,255,255,0.08), rgba(255,255,255,0.00)) 0 0 / 200% 1px no-repeat,
+            linear-gradient(180deg, rgba(255,255,255,0.00), rgba(255,255,255,0.06), rgba(255,255,255,0.00)) 0 0 / 1px 200% no-repeat;
+          mask-image: radial-gradient(circle at 22% 18%, rgba(0,0,0,1), rgba(0,0,0,0.2) 55%, rgba(0,0,0,0) 78%);
+          opacity: 0.9;
+          animation: xpotLuxeBorder 10s ease-in-out infinite;
+        }
+        @keyframes xpotLuxeBorder {
+          0% { background-position: 0% 0%, 0% 0%; opacity: 0.65; }
+          50% { background-position: 100% 0%, 0% 100%; opacity: 0.95; }
+          100% { background-position: 0% 0%, 0% 0%; opacity: 0.65; }
+        }
+        @keyframes xpotFloat {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-3px); }
+          100% { transform: translateY(0px); }
+        }
+        @keyframes xpotSweep {
+          0% { transform: translateX(-140%) rotate(10deg); opacity: 0.0; }
+          12% { opacity: 0.26; }
+          55% { opacity: 0.10; }
+          100% { transform: translateX(160%) rotate(10deg); opacity: 0.0; }
+        }
+        .xpot-hero-sweep::before{
+          content:"";
+          position:absolute;
+          top:-55%;
+          left:-60%;
+          width:55%;
+          height:240%;
+          opacity:0;
+          transform: rotate(10deg);
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), rgba(56,189,248,0.10), rgba(251,191,36,0.10), transparent);
+          animation: xpotSweep 2.8s ease-in-out infinite;
+          mix-blend-mode: screen;
+          pointer-events:none;
+        }
+      `}</style>
+
       <PremiumWalletModal open={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
 
       <EntryCeremony
@@ -904,13 +1027,15 @@ export default function DashboardClient() {
                   <span className="ml-1">History</span>
                 </Link>
 
-                <div className="rounded-full border border-slate-700/80 bg-slate-950/50 px-4 py-2">
+                <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 backdrop-blur-xl">
                   <button
                     type="button"
                     onClick={() => setWalletModalOpen(true)}
                     className="text-left leading-tight hover:opacity-90"
                   >
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Wallet bay</div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">
+                      Wallet bay
+                    </div>
                     <div className="text-[13px] font-semibold text-slate-100">
                       {walletConnected ? 'Change wallet' : 'Select wallet'}
                     </div>
@@ -934,109 +1059,85 @@ export default function DashboardClient() {
             ),
           }}
         >
-          {/* TOP RITUAL STRIP */}
-          <section className="mt-6 grid gap-4 lg:grid-cols-3">
-            {/* Mission */}
-            <section className={CARD}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Today’s mission</p>
-                  <p className="mt-1 text-xs text-slate-400">DB-driven and changes daily.</p>
-                </div>
-                <StatusPill tone="sky">
-                  <Target className="h-3.5 w-3.5" />
-                  Daily
-                </StatusPill>
-              </div>
+          {/* HERO - “First Class” personal entry point */}
+          <section className="mt-6">
+            <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/35 shadow-[0_50px_160px_rgba(0,0,0,0.6)] ring-1 ring-white/10 backdrop-blur-2xl">
+              <div className="xpot-hero-sweep absolute inset-0" />
+              <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_22%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_72%_28%,rgba(99,102,241,0.14),transparent_58%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.10),transparent_65%),radial-gradient(circle_at_90%_85%,rgba(236,72,153,0.08),transparent_62%)]" />
+              <div className="pointer-events-none absolute inset-0 opacity-[0.09] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:22px_22px]" />
 
-              <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
-                <p className="text-xs font-semibold text-slate-100">{mission.title}</p>
-                <p className="mt-1 text-xs text-slate-500">{mission.desc}</p>
-              </div>
+              <div className="relative p-6 sm:p-7">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-4">
+                    {avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={avatar}
+                        alt={name}
+                        className="h-12 w-12 rounded-full border border-white/10 object-cover shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
+                        style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
+                      />
+                    ) : (
+                      <div
+                        className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100"
+                        style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
+                      >
+                        {initialFromHandle(handle)}
+                      </div>
+                    )}
 
-              <p className="mt-3 text-[11px] text-slate-500">Later: this becomes truly personalized per holder.</p>
-            </section>
-
-            {/* Streak */}
-            <section className={CARD}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Daily streak</p>
-                  <p className="mt-1 text-xs text-slate-400">Healthy consistency - not a casino loop.</p>
-                </div>
-                <StatusPill tone={streak.todayDone ? 'emerald' : 'amber'}>
-                  <Flame className="h-3.5 w-3.5" />
-                  {streak.todayDone ? 'Today done' : 'Pending'}
-                </StatusPill>
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <TinyMeta label="Streak days" value={`${Math.max(0, streak.days)}`} />
-                <TinyMeta label="Reset logic" value="UTC day rule" />
-              </div>
-
-              <p className="mt-3 text-[11px] text-slate-500">
-                Streak increments when you claim today’s entry.
-              </p>
-            </section>
-
-            {/* Bonus XPOT */}
-            <section className={CARD}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Bonus XPOT</p>
-                  <p className="mt-1 text-xs text-slate-400">Shows automatically when a bonus drop is scheduled.</p>
-                </div>
-                {bonusActive ? (
-                  <StatusPill tone="emerald">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Active
-                  </StatusPill>
-                ) : (
-                  <StatusPill tone="slate">None</StatusPill>
-                )}
-              </div>
-
-              {bonusActive && upcomingBonus ? (
-                <div className="mt-4 rounded-[22px] border border-emerald-400/18 bg-emerald-950/20 p-3">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
-                      Scheduled
-                    </span>
-                    <span className="text-[11px] font-mono text-emerald-100/90">
-                      {new Date(upcomingBonus.scheduledAt).toLocaleString('de-DE')}
-                    </span>
-                  </div>
-                  <BonusStrip variant="home" />
-                </div>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3 text-xs text-slate-500">
-                  No bonus scheduled right now.
-                </div>
-              )}
-            </section>
-          </section>
-
-          {/* MAIN GRID */}
-          <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            {/* LEFT COLUMN */}
-            <div className="space-y-4">
-              {/* IDENTITY CARD */}
-              <section className={CARD}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">Connected identity</p>
-                    <p className="mt-1 text-xs text-slate-400">Wallet and X identity used for XPOT draws</p>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/70">
+                        {greeting}
+                      </p>
+                      <p className="mt-1 truncate text-xl font-semibold text-slate-100">
+                        {handle ? `@${handle.replace(/^@/, '')}` : name}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-300/70">
+                        Your private cabin for daily XPOT proof, streaks and entries.
+                      </p>
+                    </div>
                   </div>
 
-                  <StatusPill tone={handle ? 'emerald' : 'amber'}>
-                    <X className="h-3.5 w-3.5" />
-                    {handle ? `@${handle}` : 'X not linked'}
-                  </StatusPill>
+                  <div className="grid gap-3 sm:grid-cols-3 lg:w-[520px]">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Next draw in</p>
+                      <p className="mt-1 font-mono text-lg text-slate-100">{countdown}</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Cabin sync</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-100">
+                        {lastSyncedAt ? (
+                          <span key={syncPulse} className="inline-flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                            {new Date(lastSyncedAt).toLocaleTimeString('de-DE')}
+                          </span>
+                        ) : (
+                          'Syncing…'
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Status</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <StatusPill tone={ticketClaimed ? 'emerald' : 'amber'}>
+                          <Radio className="h-3.5 w-3.5" />
+                          {ticketClaimed ? 'Entry live' : 'Pending'}
+                        </StatusPill>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <TinyMeta
+                <div className="mt-5 grid gap-3 lg:grid-cols-3">
+                  <TinyRow
+                    label="Wallet"
+                    value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
+                    mono
+                  />
+                  <TinyRow
                     label="XPOT balance"
                     value={
                       xpotBalance === null
@@ -1045,140 +1146,183 @@ export default function DashboardClient() {
                         ? 'Unavailable'
                         : `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                     }
+                    mono={false}
                   />
-
-                  <div className={SUBCARD}>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Eligibility</p>
-                    <div className="mt-1">
-                      {typeof xpotBalance === 'number' ? (
-                        hasRequiredXpot ? (
-                          <StatusPill tone="emerald">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Eligible
-                          </StatusPill>
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Eligibility</p>
+                      <div className="mt-2">
+                        {typeof xpotBalance === 'number' ? (
+                          hasRequiredXpot ? (
+                            <StatusPill tone="emerald">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Eligible
+                            </StatusPill>
+                          ) : (
+                            <StatusPill tone="amber">
+                              <Sparkles className="h-3.5 w-3.5" />
+                              Not eligible
+                            </StatusPill>
+                          )
                         ) : (
-                          <StatusPill tone="amber">
-                            <Sparkles className="h-3.5 w-3.5" />
-                            Not eligible
-                          </StatusPill>
-                        )
-                      ) : (
-                        <StatusPill tone="slate">—</StatusPill>
-                      )}
+                          <StatusPill tone="slate">—</StatusPill>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Minimum</p>
+                      <p className="mt-1 text-xs text-slate-100">
+                        <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
+                      </p>
                     </div>
                   </div>
-
-                  <div className={SUBCARD}>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Wallet</p>
-                    <p className="mt-1 font-mono text-sm text-slate-100">
-                      {currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
-                    </p>
-                  </div>
                 </div>
 
-                <div className="mt-4 flex items-center gap-3">
-                  {avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatar} alt={name} className="h-9 w-9 rounded-full border border-slate-800 object-cover" />
-                  ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-800 bg-slate-900 text-slate-300">
-                      <X className="h-4 w-4" />
-                    </div>
-                  )}
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-2 text-xs text-slate-300/70">
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400/80" />
+                    Proof-first dashboard - everything here is DB-driven and live wired.
+                  </div>
 
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-100">{name}</p>
-                    <p className="text-xs text-slate-500">
-                      Holding requirement: <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWalletModalOpen(true)}
+                      className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                    >
+                      <Wallet className="mr-2 h-4 w-4" />
+                      {walletConnected ? 'Change wallet' : 'Select wallet'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={toggleSound}
+                      className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                      title={soundEnabled ? 'Sound on' : 'Sound off'}
+                    >
+                      {soundEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
+                      {soundEnabled ? 'Sound' : 'Muted'}
+                    </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          </section>
 
-                <div className="mt-4 flex items-center justify-between gap-3">
-                  <div className="text-xs text-slate-500">
-                    Next draw in <span className="font-mono text-slate-200">{countdown}</span>
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {lastSyncedAt ? (
-                      <span key={syncPulse} className="inline-flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-                        Synced {new Date(lastSyncedAt).toLocaleTimeString('de-DE')}
-                      </span>
-                    ) : (
-                      'Syncing…'
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* TODAY TICKET */}
-              <section className={CARD}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">Today’s XPOT</p>
-                    <p className="mt-1 text-xs text-slate-400">Claim a free entry if your wallet holds the minimum XPOT.</p>
-                  </div>
-
-                  <StatusPill tone={ticketClaimed ? 'emerald' : 'slate'}>
-                    <Ticket className="h-3.5 w-3.5" />
-                    {ticketClaimed ? 'Entry active' : 'Not claimed'}
-                  </StatusPill>
-                </div>
+          {/* MAIN GRID - calmer, premium composition */}
+          <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            {/* LEFT - ACTION + PROOF */}
+            <div className="space-y-6">
+              {/* TODAY TICKET - main ritual */}
+              <LuxeCard accent="gold">
+                <LuxeTitle
+                  title="Today’s XPOT"
+                  subtitle="Claim a free entry when your connected wallet meets the minimum."
+                  right={
+                    <StatusPill tone={ticketClaimed ? 'emerald' : 'slate'}>
+                      <Ticket className="h-3.5 w-3.5" />
+                      {ticketClaimed ? 'Entry active' : 'Not claimed'}
+                    </StatusPill>
+                  }
+                />
 
                 {!walletConnected && (
-                  <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3 text-xs text-slate-400">
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300/70">
                     Activate your wallet to check eligibility and claim today’s entry.
                   </div>
                 )}
 
                 {walletConnected && !ticketClaimed && (
                   <>
-                    <button
-                      type="button"
-                      onClick={handleClaimTicket}
-                      disabled={!walletConnected || claiming}
-                      className={`${BTN_PRIMARY} mt-4 px-6 py-3 text-sm`}
-                    >
-                      {claiming ? 'Generating…' : 'Claim today’s entry'}
-                    </button>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Requirement</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">
+                          <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
+                        </p>
+                        <p className="mt-1 text-xs text-slate-300/70">Held in the wallet you connect.</p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Your status</p>
+                        <div className="mt-2">
+                          {typeof xpotBalance === 'number' ? (
+                            hasRequiredXpot ? (
+                              <StatusPill tone="emerald">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Eligible
+                              </StatusPill>
+                            ) : (
+                              <StatusPill tone="amber">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Not eligible
+                              </StatusPill>
+                            )
+                          ) : (
+                            <StatusPill tone="slate">—</StatusPill>
+                          )}
+                        </div>
+                        <p className="mt-2 text-xs text-slate-300/70">Eligibility is checked via API on refresh.</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        type="button"
+                        onClick={handleClaimTicket}
+                        disabled={!walletConnected || claiming}
+                        className={`${BTN_PRIMARY} px-6 py-3 text-sm shadow-[0_30px_100px_rgba(0,0,0,0.45)]`}
+                      >
+                        {claiming ? 'Generating…' : 'Claim today’s entry'}
+                      </button>
+
+                      <div className="text-xs text-slate-300/70">
+                        Draw closes at local day end. Come back for proof.
+                      </div>
+                    </div>
 
                     {claimError && <p className="mt-3 text-xs xpot-gold-text">{claimError}</p>}
 
                     {typeof xpotBalance === 'number' && !hasRequiredXpot && (
-                      <p className="mt-3 text-xs text-slate-500">
+                      <p className="mt-3 text-xs text-slate-300/70">
                         Your wallet is below the minimum. You need{' '}
-                        <span className="font-semibold text-slate-200">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to claim today’s entry.
+                        <span className="font-semibold text-slate-100">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to
+                        claim today’s entry.
                       </p>
                     )}
                   </>
                 )}
 
                 {walletConnected && ticketClaimed && todaysTicket && (
-                  <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/80 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Your ticket code</p>
+                  <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/70">Your ticket code</p>
 
-                    <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-                      <p className="font-mono text-base text-slate-100">{todaysTicket.code}</p>
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                      <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3">
+                        <Ticket className="h-5 w-5 text-amber-200" />
+                        <p className="font-mono text-base text-slate-100">{todaysTicket.code}</p>
+                      </div>
 
                       <button
                         type="button"
                         onClick={() => handleCopyCode(todaysTicket)}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:bg-slate-900/70"
+                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-slate-200 hover:bg-white/[0.06]"
                       >
                         <Copy className="h-4 w-4" />
                         {copiedId === todaysTicket.id ? 'Copied' : 'Copy'}
                       </button>
                     </div>
 
-                    <p className="mt-2 text-xs text-slate-500">
-                      Status: <span className="font-semibold text-slate-200">IN DRAW</span>
-                      {' · '}Issued {formatDateTime(todaysTicket.createdAt)}
-                    </p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <TinyRow label="Status" value={<span className="font-semibold text-slate-100">IN DRAW</span>} />
+                      <TinyRow label="Issued" value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>} />
+                    </div>
                   </div>
                 )}
 
                 {walletConnected && ticketClaimed && !todaysTicket && (
-                  <p className="mt-4 text-xs text-slate-500">
+                  <p className="mt-4 text-xs text-slate-300/70">
                     Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.
                   </p>
                 )}
@@ -1188,76 +1332,154 @@ export default function DashboardClient() {
                     You won today’s XPOT. Check your wallet and the winners feed.
                   </div>
                 )}
-              </section>
+              </LuxeCard>
 
-              {/* TODAY ENTRIES (your wallet only) */}
+              {/* YOUR ENTRIES TODAY */}
               {walletConnected && (
-                <section className={CARD}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-100">Your entries today</p>
-                      <p className="mt-1 text-xs text-slate-400">Entries tied to your connected wallet.</p>
-                    </div>
-                    <StatusPill tone="sky">
-                      <Wallet className="h-3.5 w-3.5" />
-                      {myTickets.length}
-                    </StatusPill>
-                  </div>
+                <LuxeCard accent="sky">
+                  <LuxeTitle
+                    title="Your entries today"
+                    subtitle="Entries tied to your connected wallet."
+                    right={
+                      <StatusPill tone="sky">
+                        <Wallet className="h-3.5 w-3.5" />
+                        {myTickets.length}
+                      </StatusPill>
+                    }
+                  />
 
                   <div className="mt-4 space-y-2">
                     {loadingTickets ? (
-                      <p className="text-xs text-slate-500">Loading…</p>
+                      <p className="text-xs text-slate-300/70">Loading…</p>
                     ) : ticketsError ? (
                       <p className="text-xs xpot-gold-text">{ticketsError}</p>
                     ) : myTickets.length === 0 ? (
-                      <p className="text-xs text-slate-500">No entries yet.</p>
+                      <p className="text-xs text-slate-300/70">No entries yet.</p>
                     ) : (
                       myTickets.map(t => (
-                        <div key={t.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
+                        <div
+                          key={t.id}
+                          className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                        >
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-mono text-sm text-slate-100">{t.code}</p>
-                            <StatusPill tone={t.status === 'in-draw' ? 'emerald' : t.status === 'won' ? 'sky' : 'slate'}>
+                            <StatusPill
+                              tone={t.status === 'in-draw' ? 'emerald' : t.status === 'won' ? 'sky' : 'slate'}
+                            >
                               {t.status.replace('-', ' ')}
                             </StatusPill>
                           </div>
-                          <p className="mt-1 text-xs text-slate-500">Issued {formatDateTime(t.createdAt)}</p>
+                          <p className="mt-1 text-xs text-slate-300/70">Issued {formatDateTime(t.createdAt)}</p>
                         </div>
                       ))
                     )}
                   </div>
-                </section>
+                </LuxeCard>
               )}
             </div>
 
-            {/* RIGHT COLUMN */}
-            <div className="space-y-4">
-              {/* RECENT WINNERS */}
-              <section className={CARD}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">Recent winners</p>
-                    <p className="mt-1 text-xs text-slate-400">Latest completed draws across all holders.</p>
-                  </div>
-                  <StatusPill tone="emerald">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Live
-                  </StatusPill>
+            {/* RIGHT - CONCIERGE FEED */}
+            <div className="space-y-6">
+              <LuxeCard accent="violet">
+                <LuxeTitle
+                  title="Today’s mission"
+                  subtitle="A calm daily nudge, not a casino loop."
+                  right={
+                    <StatusPill tone="sky">
+                      <Target className="h-3.5 w-3.5" />
+                      Daily
+                    </StatusPill>
+                  }
+                />
+
+                <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
+                  <p className="text-xs font-semibold text-slate-100">{mission.title}</p>
+                  <p className="mt-1 text-xs text-slate-300/70">{mission.desc}</p>
                 </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Daily streak</p>
+                    <div className="mt-2">
+                      <StatusPill tone={streak.todayDone ? 'emerald' : 'amber'}>
+                        <Flame className="h-3.5 w-3.5" />
+                        {streak.todayDone ? 'Today done' : 'Pending'}
+                      </StatusPill>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-300/70">
+                      <span className="font-semibold text-slate-100">{Math.max(0, streak.days)}</span> day streak
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Reset logic</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-100">UTC day rule</p>
+                    <p className="mt-1 text-xs text-slate-300/70">Streak updates after you claim today’s entry.</p>
+                  </div>
+                </div>
+              </LuxeCard>
+
+              <LuxeCard accent="emerald">
+                <LuxeTitle
+                  title="Bonus XPOT"
+                  subtitle="Shows automatically when a bonus drop is scheduled."
+                  right={
+                    bonusActive ? (
+                      <StatusPill tone="emerald">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Active
+                      </StatusPill>
+                    ) : (
+                      <StatusPill tone="slate">None</StatusPill>
+                    )
+                  }
+                />
+
+                {bonusActive && upcomingBonus ? (
+                  <div className="mt-4 rounded-[24px] border border-emerald-400/18 bg-emerald-950/20 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
+                        Scheduled
+                      </span>
+                      <span className="text-[11px] font-mono text-emerald-100/90">
+                        {new Date(upcomingBonus.scheduledAt).toLocaleString('de-DE')}
+                      </span>
+                    </div>
+                    <BonusStrip variant="home" />
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300/70">
+                    No bonus scheduled right now.
+                  </div>
+                )}
+              </LuxeCard>
+
+              <LuxeCard accent="sky">
+                <LuxeTitle
+                  title="Recent winners"
+                  subtitle="Latest completed draws across all holders."
+                  right={
+                    <StatusPill tone="emerald">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Live
+                    </StatusPill>
+                  }
+                />
 
                 <div className="mt-4 space-y-2">
                   {loadingWinners ? (
-                    <p className="text-xs text-slate-500">Loading…</p>
+                    <p className="text-xs text-slate-300/70">Loading…</p>
                   ) : winnersError ? (
                     <p className="text-xs xpot-gold-text">{winnersError}</p>
                   ) : recentWinners.length === 0 ? (
-                    <p className="text-xs text-slate-500">No completed draws yet.</p>
+                    <p className="text-xs text-slate-300/70">No completed draws yet.</p>
                   ) : (
                     recentWinners.map(w => {
                       const h = w.handle ? w.handle.replace(/^@/, '') : null;
                       return (
-                        <div key={w.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
+                        <div key={w.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                           <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-slate-400">{formatDate(w.drawDate)}</p>
+                            <p className="text-xs text-slate-300/70">{formatDate(w.drawDate)}</p>
                             {h ? (
                               <StatusPill tone="sky">
                                 <X className="h-3.5 w-3.5" />
@@ -1268,14 +1490,16 @@ export default function DashboardClient() {
                             )}
                           </div>
 
-                          <div className="mt-2 flex items-center gap-3">
+                          <div className="mt-3 flex items-center gap-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100">
                               {initialFromHandle(h)}
                             </div>
 
                             <div className="min-w-0">
                               <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-500">{h ? `@${h}` : shortWallet(w.walletAddress)}</p>
+                              <p className="mt-1 text-xs text-slate-300/70">
+                                {h ? `@${h}` : shortWallet(w.walletAddress)}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -1283,33 +1507,31 @@ export default function DashboardClient() {
                     })
                   )}
                 </div>
-              </section>
+              </LuxeCard>
 
-              {/* WALLET HISTORY (quick view) */}
-              <section className={CARD}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">Your draw history</p>
-                    <p className="mt-1 text-xs text-slate-400">Past entries for this wallet (wins, not-picked, expired).</p>
-                  </div>
-
-                  <Link href="/hub/history" className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
-                    View all
-                  </Link>
-                </div>
+              <LuxeCard accent="neutral">
+                <LuxeTitle
+                  title="Your draw history"
+                  subtitle="Past entries for this wallet (wins, not-picked, expired)."
+                  right={
+                    <Link href="/hub/history" className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+                      View all
+                    </Link>
+                  }
+                />
 
                 <div className="mt-4 space-y-2">
                   {!walletConnected ? (
-                    <p className="text-xs text-slate-500">Connect your wallet to view history.</p>
+                    <p className="text-xs text-slate-300/70">Connect your wallet to view history.</p>
                   ) : loadingHistory ? (
-                    <p className="text-xs text-slate-500">Loading…</p>
+                    <p className="text-xs text-slate-300/70">Loading…</p>
                   ) : historyError ? (
                     <p className="text-xs xpot-gold-text">{historyError}</p>
                   ) : historyEntries.length === 0 ? (
-                    <p className="text-xs text-slate-500">No history yet.</p>
+                    <p className="text-xs text-slate-300/70">No history yet.</p>
                   ) : (
                     historyEntries.slice(0, 5).map(t => (
-                      <div key={t.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3">
+                      <div key={t.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
                           <p className="font-mono text-sm text-slate-100">{t.code}</p>
                           <StatusPill
@@ -1326,18 +1548,18 @@ export default function DashboardClient() {
                             {t.status.replace('-', ' ')}
                           </StatusPill>
                         </div>
-                        <p className="mt-1 text-xs text-slate-500">{formatDateTime(t.createdAt)}</p>
+                        <p className="mt-1 text-xs text-slate-300/70">{formatDateTime(t.createdAt)}</p>
                       </div>
                     ))
                   )}
                 </div>
-              </section>
+              </LuxeCard>
             </div>
           </section>
 
-          <footer className="mt-8 border-t border-slate-800/70 pt-4 text-xs text-slate-500">
+          <footer className="mt-8 border-t border-white/10 pt-4 text-xs text-slate-300/60">
             <span className="inline-flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+              <Sparkles className="h-3.5 w-3.5 text-slate-300/70" />
               XPOT is in Pre-Launch Mode. UI is final and wiring is live.
             </span>
           </footer>
