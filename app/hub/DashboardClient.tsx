@@ -1387,7 +1387,7 @@ export default function DashboardClient() {
                   <div className="flex items-center gap-2">
                     <button
   type="button"
-  onClick={() => onOpenWalletModal?.()}
+  onClick={() => setWalletModalOpen(true)}
   className="
     group relative h-10
     inline-flex items-center justify-center gap-2
