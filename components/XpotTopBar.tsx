@@ -33,7 +33,6 @@ import {
   ChevronRight,
   Info,
   Hourglass,
-  CalendarClock,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -77,7 +76,7 @@ export type XpotTopBarProps = {
 const XPOT_X_POST = 'https://x.com/xpotbet';
 
 // ✅ Route changed (your file is app/2044/final-day/page.tsx)
-const FINAL_DAY_HREF = '/2044/final-day';
+const FINAL_DAY_HREF = '/2045/final-day';
 
 // ✅ Naming (pick one and keep it consistent everywhere)
 const FINAL_DAY_LABEL = 'Final Draw'; // alternatives: 'Finale' | 'Legacy' | 'Archive'
@@ -637,10 +636,15 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         Live
       </NavLink>
 
-      <NavLink href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <CalendarClock className="h-4 w-4 text-amber-200" />
-        {FINAL_DAY_LABEL}
-      </NavLink>
+      <Link
+  className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+  href={FINAL_DAY_HREF}
+>
+  <span className="inline-flex items-center gap-2">
+    <Hourglass className="h-4 w-4 text-amber-200" />
+    {FINAL_DAY_LABEL}
+  </span>
+</Link>
 
       {/* ✅ Removed Health link (Live now points to protocol) */}
 
