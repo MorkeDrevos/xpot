@@ -1,8 +1,9 @@
 // app/layout.tsx
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import React from 'react';
 import { ClerkProvider } from '@clerk/nextjs';
-import './globals.css';
 
+import './globals.css';
 import Providers from './providers';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://xpot.bet';
@@ -19,12 +20,7 @@ export const metadata: Metadata = {
   applicationName: 'XPOT',
 
   icons: {
-    // You currently have: public/img/favicon.png
     icon: [{ url: '/img/favicon.png', type: 'image/png' }],
-
-    // Only keep this if you actually have an apple icon file.
-    // If you don’t, delete this to avoid 404 spam.
-    // apple: [{ url: '/img/apple-icon.png', type: 'image/png' }],
   },
 
   openGraph: {
@@ -47,10 +43,24 @@ export const metadata: Metadata = {
   ],
 };
 
+// Helps prevent weird mobile scroll/viewport issues (separate from metadata in Next)
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning className="h-full">
+      {/* IMPORTANT:
+          - make html/body full height
+          - keep scrolling enabled at the root (some modals/overlays can accidentally leave overflow:hidden behind)
+      */}
+      <body
+        className="h-full min-h-dvh overflow-y-auto overflow-x-hidden bg-[var(--xpot-bg-0)] text-[color:var(--xpot-text)]"
+        style={{ overflowY: 'auto' }}
+      >
         <ClerkProvider>
           <Providers>{children}</Providers>
         </ClerkProvider>
