@@ -927,13 +927,13 @@ function DashboardInner() {
   }, [isAuthedEnough, handle]);
 
   const fetchTicketsToday = useCallback(async () => {
-    const res = await fetch('/api/tickets/today', { cache: '
-    if (!res.ok) throw new Error('Failed to load tickets');
-    const data = await res.json().catch(() => ({} as any));
+  const res = await fetch('/api/tickets/today', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load tickets');
+  const data = await res.json().catch(() => ({} as any));
 
-    const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
-    return raw.map(normalizeEntry).filter(Boolean) as Entry[];
-  }, []);
+  const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
+  return raw.map(normalizeEntry).filter(Boolean) as Entry[];
+}, []);
 
   const fetchXpotBalance = useCallback(async (address: string): Promise<number | null> => {
     try {
