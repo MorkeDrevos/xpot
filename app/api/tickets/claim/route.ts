@@ -57,6 +57,7 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
+  // Iterate a couple times to handle DST offsets.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
@@ -74,6 +75,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   const nowMin = madridNow.hh * 60 + madridNow.mm;
   const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
 
+  // If it's before today's cutoff, next cutoff is today 22:00; otherwise it's tomorrow 22:00.
   const baseForNext = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
   const nextDayParts = getTzParts(baseForNext, MADRID_TZ);
 
@@ -87,14 +89,16 @@ function getMadridCutoffWindowUtc(now = new Date()) {
     timeZone: MADRID_TZ,
   });
 
+  const startUtcMs = endUtcMs - 24 * 60 * 60_000;
+
   return {
-    start: new Date(endUtcMs - 24 * 60 * 60_000),
+    start: new Date(startUtcMs),
     end: new Date(endUtcMs),
   };
 }
 
 // ─────────────────────────────────────────────
-// Helpers
+// Helpers – code + XPOT balance check
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -106,7 +110,7 @@ function makeCode() {
   return `XPOT-${chunk()}-${chunk()}`;
 }
 
-async function getXpotBalance(address: string): Promise<number> {
+async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw: bigint; decimals: number }> {
   const XPOT_MINT = process.env.XPOT_MINT;
   if (!XPOT_MINT) throw new Error('XPOT_MINT not configured');
 
@@ -124,7 +128,9 @@ async function getXpotBalance(address: string): Promise<number> {
   const json = await res.json().catch(() => null);
   const accounts = json?.result?.value ?? [];
 
-  if (!Array.isArray(accounts) || accounts.length === 0) return 0;
+  if (!Array.isArray(accounts) || accounts.length === 0) {
+    return { balance: 0, raw: 0n, decimals: 6 };
+  }
 
   let rawTotal = 0n;
   let decimals = 6;
@@ -134,11 +140,18 @@ async function getXpotBalance(address: string): Promise<number> {
     const tokenAmount = info?.tokenAmount;
     if (!tokenAmount?.amount) continue;
 
-    rawTotal += BigInt(tokenAmount.amount);
-    decimals = tokenAmount.decimals ?? decimals;
+    const amountStr: string = tokenAmount.amount;
+    const dec: number = tokenAmount.decimals ?? 6;
+
+    decimals = dec;
+    rawTotal += BigInt(amountStr);
   }
 
-  return Number(rawTotal) / Math.pow(10, decimals);
+  // Note: rawTotal can exceed Number.MAX_SAFE_INTEGER for huge balances.
+  // XPOT is 6 decimals so this is typically ok, but we keep raw too.
+  const balance = decimals >= 0 ? Number(rawTotal) / Math.pow(10, decimals) : Number(rawTotal);
+
+  return { balance, raw: rawTotal, decimals };
 }
 
 // ─────────────────────────────────────────────
@@ -148,19 +161,20 @@ async function getXpotBalance(address: string): Promise<number> {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({} as any));
-    const walletAddress: string | undefined =
-      body.walletAddress || body.wallet || body.address;
+
+    const walletAddress: string | undefined = body.walletAddress || body.wallet || body.address;
 
     if (!walletAddress || typeof walletAddress !== 'string') {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // XPOT eligibility check (ONLY thing we care about)
+    // 1) XPOT minimum check (server-side)
     let xpotBalance = 0;
     try {
-      xpotBalance = await getXpotBalance(walletAddress);
+      const b = await getXpotBalanceUi(walletAddress);
+      xpotBalance = b.balance;
 
-      if (!Number.isFinite(xpotBalance)) {
+      if (!(typeof xpotBalance === 'number' && Number.isFinite(xpotBalance))) {
         return NextResponse.json({ ok: false, error: 'XPOT_CHECK_FAILED' }, { status: 400 });
       }
 
@@ -176,11 +190,11 @@ export async function POST(req: NextRequest) {
         );
       }
     } catch (e) {
-      console.error('[XPOT] balance check failed', e);
+      console.error('[XPOT] XPOT balance check failed', e);
       return NextResponse.json({ ok: false, error: 'XPOT_CHECK_FAILED' }, { status: 400 });
     }
 
-    // Find open draw for current Madrid window
+    // 2) Find the open draw for the CURRENT MADRID CUTOFF WINDOW
     const { start, end } = getMadridCutoffWindowUtc(new Date());
 
     const draw = await prisma.draw.findFirst({
@@ -194,14 +208,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'NO_OPEN_DRAW' }, { status: 400 });
     }
 
-    // Ensure wallet exists
+    // 3) Ensure wallet row exists
     const wallet = await prisma.wallet.upsert({
       where: { address: walletAddress },
       update: {},
       create: { address: walletAddress },
     });
 
-    // Check existing ticket
+    // 4) Check if this wallet already has an IN_DRAW ticket for this draw
     let ticket = await prisma.ticket.findFirst({
       where: {
         drawId: draw.id,
@@ -211,6 +225,7 @@ export async function POST(req: NextRequest) {
       include: { wallet: true },
     });
 
+    // 5) If none yet, create one
     if (!ticket) {
       ticket = await prisma.ticket.create({
         data: {
@@ -223,6 +238,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // 6) Return the ticket
     return NextResponse.json(
       {
         ok: true,
@@ -233,6 +249,10 @@ export async function POST(req: NextRequest) {
           status: ticket.status,
           walletAddress: ticket.walletAddress,
           createdAt: ticket.createdAt,
+          wallet: {
+            id: ticket.wallet?.id ?? null,
+            address: ticket.wallet?.address ?? walletAddress,
+          },
         },
         tickets: [
           {
@@ -248,9 +268,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (err: any) {
     console.error('[XPOT] /tickets/claim error:', err);
-    return NextResponse.json(
-      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: err?.message || 'INTERNAL_ERROR' }, { status: 500 });
   }
 }
