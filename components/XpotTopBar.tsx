@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { createPortal } from 'react-dom';
 
 import XpotLogo from '@/components/XpotLogo';
+import { LanguageSwitcher, useI18n } from '@/lib/i18n';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -104,6 +105,8 @@ export default function XpotTopBar({
 }: XpotTopBarProps) {
   const pathname = usePathname() || '';
   const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
+
+  const { t } = useI18n();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [learnOpen, setLearnOpen] = useState(false);
@@ -214,6 +217,13 @@ export default function XpotTopBar({
 
               {/* RIGHT: Actions */}
               <div className="ml-auto flex items-center gap-3">
+                {/* ✅ Language switcher (desktop) */}
+                <div className="hidden xl:flex items-center">
+                  <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <LanguageSwitcher />
+                  </div>
+                </div>
+
                 {!isHub && (
                   <div className="hidden xl:flex">
                     <OfficialCAChip />
@@ -266,6 +276,33 @@ export default function XpotTopBar({
         <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
       )}
     </>
+  );
+}
+
+/* ---------------- Public right (simple, safe default) ---------------- */
+
+function PublicRight() {
+  const { t } = useI18n();
+
+  return (
+    <div className="hidden items-center gap-3 xl:flex">
+      <Link
+        href="/hub"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06]"
+      >
+        <Radio className="h-4 w-4 text-emerald-300" />
+        {t('nav.hub')}
+      </Link>
+
+      <Link
+        href={XPOT_X_POST}
+        target="_blank"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06]"
+      >
+        <ExternalLink className="h-4 w-4" />
+        X
+      </Link>
+    </div>
   );
 }
 
@@ -475,6 +512,8 @@ function PublicNavCenter({
   learnOpen: boolean;
   setLearnOpen: (v: boolean) => void;
 }) {
+  const { t } = useI18n();
+
   const openT = useRef<number | null>(null);
   const closeT = useRef<number | null>(null);
 
@@ -499,22 +538,20 @@ function PublicNavCenter({
 
   return (
     <nav className="flex items-center gap-7">
-      <NavLink href="/hub">Hub</NavLink>
+      <NavLink href="/hub">{t('nav.hub')}</NavLink>
 
-      {/* Live */}
-      <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
+      <NavLink href={PROTOCOL_HREF} title={t('nav.live')} className="gap-2">
         <LiveDot isOpen={liveIsOpen} />
         <Radio className="h-[15px] w-[15px] text-emerald-300" />
-        Live
+        {t('nav.live')}
       </NavLink>
 
-      {/* Final Draw (primary) */}
-      <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
+      <NavPill href={FINAL_DAY_HREF} title={t('nav.finalDraw')}>
         <Hourglass className="h-[15px] w-[15px] text-amber-200" />
-        <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
+        <span className="tracking-wide">{t('nav.finalDraw')}</span>
       </NavPill>
 
-      {/* Learn dropdown (hover + click) */}
+      {/* Learn dropdown */}
       <div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
         <button
           type="button"
@@ -523,7 +560,7 @@ function PublicNavCenter({
           aria-haspopup="menu"
           aria-expanded={learnOpen}
         >
-          Learn
+          {t('nav.learn')}
           <ChevronDown className={`h-4 w-4 transition ${learnOpen ? 'rotate-180' : ''}`} />
         </button>
 
@@ -538,57 +575,26 @@ function PublicNavCenter({
 
             <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
               <div className="p-2">
-                <Link
-                  href={TOKENOMICS_HREF}
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <PieChart className="h-4 w-4 text-emerald-300" />
-                  </span>
-                  Tokenomics
+                <Link href={TOKENOMICS_HREF} className="learn-item">
+                  {t('nav.tokenomics')}
                 </Link>
 
-                <Link
-                  href={ROADMAP_HREF}
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Map className="h-4 w-4 text-sky-300" />
-                  </span>
-                  Roadmap
+                <Link href={ROADMAP_HREF} className="learn-item">
+                  {t('nav.roadmap')}
                 </Link>
 
-                <Link
-                  href={WINNERS_HREF}
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Trophy className="h-4 w-4 text-amber-300" />
-                  </span>
-                  Winners
+                <Link href={WINNERS_HREF} className="learn-item">
+                  {t('nav.winners')}
                 </Link>
 
-                <Link
-                  href={MECHANISM_HREF}
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Info className="h-4 w-4 text-slate-200" />
-                  </span>
-                  Mechanism
+                <Link href={MECHANISM_HREF} className="learn-item">
+                  {t('nav.mechanism')}
                 </Link>
 
                 <div className="my-2 h-px bg-white/10" />
 
-                <Link
-                  href={XPOT_X_POST}
-                  target="_blank"
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <ExternalLink className="h-4 w-4 text-slate-200" />
-                  </span>
-                  Official X
+                <Link href={XPOT_X_POST} target="_blank" className="learn-item">
+                  {t('nav.officialX')}
                 </Link>
               </div>
             </div>
@@ -596,26 +602,6 @@ function PublicNavCenter({
         )}
       </div>
     </nav>
-  );
-}
-
-/* ---------------- Public: Right actions ---------------- */
-
-function PublicRight() {
-  return (
-    <div className="hidden items-center gap-3 xl:flex">
-      <Link
-        href="/hub"
-        className="
-          rounded-full bg-white px-6 py-2.5
-          text-[13px] font-semibold text-black
-          hover:bg-slate-200
-          shadow-[0_18px_60px_rgba(0,0,0,0.35)]
-        "
-      >
-        Enter today&apos;s XPOT →
-      </Link>
-    </div>
   );
 }
 
@@ -1123,6 +1109,11 @@ function MobileMenu({
         </div>
 
         <div className="space-y-2 px-5 py-5">
+          {/* ✅ Language switcher (mobile) */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <LanguageSwitcher />
+          </div>
+
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href="/hub"
