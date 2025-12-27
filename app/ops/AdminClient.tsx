@@ -1862,7 +1862,7 @@ export default function AdminPage() {
 
       {/* ULTRA PREMIUM LOCK MODAL */}
       {!tokenAccepted && (
-        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-[18vh] px-4">
+        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
           <div className="relative w-full max-w-md xpot-panel px-6 py-6 sm:px-8 sm:py-8">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
