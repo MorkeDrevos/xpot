@@ -37,12 +37,6 @@ import {
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
-// Types (shared)
-// ─────────────────────────────────────────────
-
-type XpotBalanceState = number | 'error' | null;
-
-// ─────────────────────────────────────────────
 // Small UI helpers
 // ─────────────────────────────────────────────
 
@@ -234,6 +228,9 @@ function initialFromHandle(h?: string | null) {
   return s ? s[0].toUpperCase() : 'X';
 }
 
+/**
+ * Reduced motion hook (safe with older Safari)
+ */
 function useReducedMotionPref() {
   const [reduced, setReduced] = useState(false);
 
@@ -408,7 +405,7 @@ function useBonusUpcoming() {
 }
 
 // ─────────────────────────────────────────────
-// Entry ceremony
+// Entry ceremony (2s shimmer + stamp + optional chime)
 // ─────────────────────────────────────────────
 
 function playChime() {
@@ -590,6 +587,8 @@ type RecentWinner = {
 type Mission = { title: string; desc: string; ymd?: string };
 type Streak = { days: number; todayDone: boolean; lastDoneYmd?: string | null };
 
+type XpotBalanceState = number | 'error' | null; // ✅ moved to top-level
+
 function normalizeStatus(s: any): EntryStatus {
   const v = typeof s === 'string' ? s : '';
   const lower = v.toLowerCase();
@@ -631,7 +630,7 @@ function normalizeEntry(raw: any): Entry | null {
 }
 
 function safeStatusLabel(status: any) {
-  return String(status ?? '').replace(/_/g, '-').replace(/-/g, ' ');
+  return String(status ?? '').replace(/_/g, '-').replace('-', ' ');
 }
 
 // ─────────────────────────────────────────────
@@ -834,6 +833,7 @@ function DashboardInner() {
     }
   }, []);
 
+  // Sync X identity into DB whenever user is loaded
   useEffect(() => {
     if (!isUserLoaded || !user) return;
     if (!handle) return;
@@ -847,6 +847,7 @@ function DashboardInner() {
     })();
   }, [isUserLoaded, user, handle]);
 
+  // Wire wallet -> DB whenever it connects
   useEffect(() => {
     if (!isAuthedEnough) return;
     if (!publicKey || !connected) return;
@@ -868,6 +869,7 @@ function DashboardInner() {
     })();
   }, [isAuthedEnough, publicKey, connected, refetchLinkedWallets]);
 
+  // Linked wallets initial fetch
   useEffect(() => {
     if (!isAuthedEnough) {
       setLinkedWallets([]);
@@ -878,6 +880,7 @@ function DashboardInner() {
     refetchLinkedWallets();
   }, [isAuthedEnough, refetchLinkedWallets]);
 
+  // Countdown ticker (Madrid 22:00 cutoff)
   useEffect(() => {
     const tick = () => {
       const cutoffUtc = nextMadridCutoffUtcMs(new Date());
@@ -889,6 +892,7 @@ function DashboardInner() {
     return () => clearInterval(t);
   }, []);
 
+  // Hub boot: preferences + streak + mission
   useEffect(() => {
     if (!isAuthedEnough) return;
 
@@ -896,9 +900,7 @@ function DashboardInner() {
 
     (async () => {
       try {
-        const mr = await fetch(`/api/hub/mission/today?seed=${encodeURIComponent(handle || '')}`, {
-  cache: 'no-store',
-});
+        const pr = await fetch('/api/me/preferences', { cache: 'no-store' });
         if (alive && pr.ok) {
           const pj = (await pr.json().catch(() => null)) as any;
           const se = pj?.preferences?.soundEnabled;
@@ -911,6 +913,7 @@ function DashboardInner() {
           if (sj?.streak) setStreak(sj.streak as Streak);
         }
 
+        // ✅ FIX: closing backtick (this was your unterminated string constant)
         const mr = await fetch(`/api/hub/mission/today?seed=${encodeURIComponent(handle || '')}`, {
           cache: 'no-store',
         });
@@ -928,14 +931,15 @@ function DashboardInner() {
     };
   }, [isAuthedEnough, handle]);
 
+  // Fetch helpers
   const fetchTicketsToday = useCallback(async () => {
-  const res = await fetch('/api/tickets/today', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load tickets');
-  const data = await res.json().catch(() => ({} as any));
+    const res = await fetch('/api/tickets/today', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to load tickets');
+    const data = await res.json().catch(() => ({} as any));
 
-  const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
-  return raw.map(normalizeEntry).filter(Boolean) as Entry[];
-}, []);
+    const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
+    return raw.map(normalizeEntry).filter(Boolean) as Entry[];
+  }, []);
 
   const fetchXpotBalance = useCallback(async (address: string): Promise<number | null> => {
     try {
@@ -1004,28 +1008,28 @@ function DashboardInner() {
         // Wallet-dependent data
         if (walletConnected && addr) {
           // BALANCE (throttled)
-const now = Date.now();
-const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
+          const now = Date.now();
+          const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
 
-if (shouldFetchBalance) {
-  try {
-    setXpotBalance(null);
+          if (shouldFetchBalance) {
+            try {
+              setXpotBalance(null);
 
-    const b = await fetchXpotBalance(addr);
+              const b = await fetchXpotBalance(addr);
 
-    if (typeof b === 'number') {
-      setXpotBalance(b);
-    } else {
-      setXpotBalance('error');
-    }
+              if (typeof b === 'number') {
+                setXpotBalance(b);
+              } else {
+                setXpotBalance('error');
+              }
 
-    lastBalanceFetchAtRef.current = now;
-  } catch (e) {
-    console.error('[XPOT] balance fetch failed', e);
-    setXpotBalance('error');
-    lastBalanceFetchAtRef.current = now;
-  }
-}
+              lastBalanceFetchAtRef.current = now;
+            } catch (e) {
+              console.error('[XPOT] balance fetch failed', e);
+              setXpotBalance('error');
+              lastBalanceFetchAtRef.current = now;
+            }
+          }
 
           // HISTORY
           try {
@@ -1167,42 +1171,38 @@ if (shouldFetchBalance) {
         const code = data.error as string | undefined;
 
         switch (code) {
-case 'NOT_ENOUGH_XPOT': {
-  const required =
-    typeof data.required === 'number' ? data.required : REQUIRED_XPOT;
+          case 'NOT_ENOUGH_XPOT': {
+            const required = typeof data.required === 'number' ? data.required : REQUIRED_XPOT;
+            const bal = typeof data.balance === 'number' ? data.balance : null;
 
-  const bal =
-    typeof data.balance === 'number' ? data.balance : null;
+            setClaimError(
+              bal === null
+                ? `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. We could not read your wallet balance right now.`
+                : `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. Your wallet currently has ${bal.toLocaleString()} XPOT.`,
+            );
+            break;
+          }
 
-  setClaimError(
-    bal === null
-      ? `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. We could not read your wallet balance right now.`
-      : `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. Your wallet currently has ${bal.toLocaleString()} XPOT.`,
-  );
-  break;
-}
+          case 'NOT_ENOUGH_SOL':
+          case 'XPOT_CHECK_FAILED':
+            setClaimError('We could not verify your XPOT balance right now. Please try again in a moment.');
+            break;
 
-  // Keep UX calm + XPOT-only even if backend ever returns something else
-  case 'NOT_ENOUGH_SOL':
-  case 'XPOT_CHECK_FAILED':
-    setClaimError('We could not verify your XPOT balance right now. Please try again in a moment.');
-    break;
+          case 'NO_OPEN_DRAW':
+            setClaimError('Today’s draw is not open yet. Please refresh and try again in a moment.');
+            break;
 
-  case 'NO_OPEN_DRAW':
-    setClaimError('Today’s draw is not open yet. Please refresh and try again in a moment.');
-    break;
+          case 'MISSING_WALLET':
+          case 'INVALID_BODY':
+            setClaimError('We could not read your wallet address. Please reconnect your wallet and try again.');
+            break;
 
-  case 'MISSING_WALLET':
-  case 'INVALID_BODY':
-    setClaimError('We could not read your wallet address. Please reconnect your wallet and try again.');
-    break;
+          default:
+            setClaimError('Entry request failed. Please try again.');
+        }
 
-  default:
-    setClaimError('Entry request failed. Please try again.');
-}
-
-console.error('Claim failed', res.status, text);
-return;
+        console.error('Claim failed', res.status, text);
+        return;
       }
 
       const ticket = normalizeEntry(data.ticket) || null;
@@ -1275,7 +1275,7 @@ return;
 
   return (
     <>
-      <style jsx global>{`
+       <style jsx global>{`
         .xpot-luxe-border {
           background:
             linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)) 0 0 /
