@@ -89,6 +89,9 @@ const ROADMAP_HREF = '/roadmap';
 const MECHANISM_HREF = '/mechanism';
 const PROTOCOL_HREF = '/hub/protocol';
 
+const [mounted, setMounted] = useState(false);
+useEffect(() => setMounted(true), []);
+
 // ✅ Your real deployed CA
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
@@ -216,40 +219,42 @@ export default function XpotTopBar({
               </div>
 
               {/* RIGHT: Actions */}
-              <div className="ml-auto flex items-center gap-3">
-                {/* ✅ Language switcher (desktop) */}
-                <div className="hidden xl:flex items-center">
-                  <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">
-                    <LanguageSwitcher />
-                  </div>
-                </div>
+<div className="ml-auto flex items-center gap-3">
+  {/* ✅ Language switcher (desktop) */}
+  {mounted && (
+    <div className="hidden xl:flex items-center">
+      <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">
+        <LanguageSwitcher />
+      </div>
+    </div>
+  )}
 
-                {!isHub && (
-                  <div className="hidden xl:flex">
-                    <OfficialCAChip />
-                  </div>
-                )}
+  {!isHub && (
+    <div className="hidden xl:flex">
+      <OfficialCAChip />
+    </div>
+  )}
 
-                {isHub ? (
-                  <HubRight
-                    clerkEnabled={clerkEnabled}
-                    hubWalletStatus={hubWalletStatus}
-                    onOpenWalletModal={openWallet}
-                  />
-                ) : (
-                  <>{rightSlot ? rightSlot : <PublicRight />}</>
-                )}
+  {isHub ? (
+    <HubRight
+      clerkEnabled={clerkEnabled}
+      hubWalletStatus={hubWalletStatus}
+      onOpenWalletModal={openWallet}
+    />
+  ) : (
+    <>{rightSlot ? rightSlot : <PublicRight />}</>
+  )}
 
-                {/* Mobile menu button */}
-                <button
-                  type="button"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] xl:hidden"
-                  onClick={() => setMobileOpen(true)}
-                  aria-label="Open menu"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              </div>
+  {/* Mobile menu button */}
+  <button
+    type="button"
+    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] xl:hidden"
+    onClick={() => setMobileOpen(true)}
+    aria-label="Open menu"
+  >
+    <Menu className="h-5 w-5" />
+  </button>
+</div>
             </div>
           </div>
         </div>
@@ -1110,9 +1115,14 @@ function MobileMenu({
 
         <div className="space-y-2 px-5 py-5">
           {/* ✅ Language switcher (mobile) */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-            <LanguageSwitcher />
-          </div>
+          <div className="space-y-2 px-5 py-5">
+  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+    <LanguageSwitcher />
+  </div>
+
+  <Link ... href="/hub">Hub</Link>
+  ...
+</div>
 
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
