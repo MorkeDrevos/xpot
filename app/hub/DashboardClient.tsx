@@ -702,7 +702,7 @@ function DashboardInner() {
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
-  const [xpotBalance, setXpotBalance] = useState<number | null>(null);
+  const [xpotBalance, setXpotBalance] = useState<number | 'error' | null>(null);
   const hasRequiredXpot = typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
@@ -712,7 +712,6 @@ function DashboardInner() {
   const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
-
   const [countdown, setCountdown] = useState('00:00:00');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncPulse, setSyncPulse] = useState(0);
@@ -1024,23 +1023,28 @@ function DashboardInner() {
         // Wallet-dependent data
         if (walletConnected && addr) {
           // BALANCE (throttled)
-          const now = Date.now();
-          const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
+const now = Date.now();
+const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
 
-          if (shouldFetchBalance) {
-            try {
-              setXpotBalance(null);
-const b = await fetchXpotBalance(addr);
-if (typeof b === 'number') {
-  setXpotBalance(b);
+if (shouldFetchBalance) {
+  try {
+    setXpotBalance(null);
+
+    const b = await fetchXpotBalance(addr);
+
+    if (typeof b === 'number') {
+      setXpotBalance(b);
+    } else {
+      setXpotBalance('error');
+    }
+
+    lastBalanceFetchAtRef.current = now;
+  } catch (e) {
+    console.error('[XPOT] balance fetch failed', e);
+    setXpotBalance('error');
+    lastBalanceFetchAtRef.current = now;
+  }
 }
-              lastBalanceFetchAtRef.current = now;
-            } catch (e) {
-              console.error('[XPOT] balance fetch failed', e);
-              setXpotBalance('error');
-              lastBalanceFetchAtRef.current = now;
-            }
-          }
 
           // HISTORY
           try {
@@ -1189,19 +1193,19 @@ if (typeof b === 'number') {
     );
     break;
 
-  // If backend ever returns this, we still keep the UX XPOT-only and calm.
+  // Keep UX calm + XPOT-only even if backend ever returns something else
   case 'NOT_ENOUGH_SOL':
   case 'XPOT_CHECK_FAILED':
     setClaimError('We could not verify your XPOT balance right now. Please try again in a moment.');
     break;
 
+  case 'NO_OPEN_DRAW':
+    setClaimError('Today’s draw is not open yet. Please refresh and try again in a moment.');
+    break;
+
   case 'MISSING_WALLET':
   case 'INVALID_BODY':
     setClaimError('We could not read your wallet address. Please reconnect your wallet and try again.');
-    break;
-
-  case 'NO_OPEN_DRAW':
-    setClaimError('Today’s draw is not open yet. Please refresh and try again in a moment.');
     break;
 
   default:
