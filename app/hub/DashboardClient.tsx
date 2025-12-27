@@ -1183,7 +1183,6 @@ function DashboardInner() {
             break;
           }
 
-          case 'NOT_ENOUGH_SOL':
           case 'XPOT_CHECK_FAILED':
             setClaimError('We could not verify your XPOT balance right now. Please try again in a moment.');
             break;
