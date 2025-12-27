@@ -897,8 +897,8 @@ export default function DashboardClient() {
         const nextWinners = await fetchRecentWinners();
         setRecentWinners(nextWinners);
 
-        // BALANCE (throttled)
-if (walletConnected && addr) {
+        if (walletConnected && addr) {
+  // ── BALANCE (throttled) ───────────────────
   const now = Date.now();
   const shouldFetchBalance =
     reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
@@ -918,8 +918,27 @@ if (walletConnected && addr) {
       lastBalanceFetchAtRef.current = now;
     }
   }
+
+  // ── HISTORY ──────────────────────────────
+  try {
+    if (reason === 'initial') setLoadingHistory(true);
+    setHistoryError(null);
+
+    const h = await fetchHistory(addr);
+    setHistoryEntries(h);
+  } catch (e) {
+    console.error('Failed to load history', e);
+    setHistoryError((e as Error).message ?? 'Failed to load history');
+    setHistoryEntries([]);
+  } finally {
+    setLoadingHistory(false);
+  }
 } else {
+  // wallet not connected
   setXpotBalance(null);
+  setHistoryEntries([]);
+  setHistoryError(null);
+  setLoadingHistory(false);
   lastBalanceFetchAtRef.current = 0;
 }
 
