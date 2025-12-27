@@ -3,13 +3,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ChevronLeft, Printer, Repeat2, Timer, Radio, ShieldCheck } from 'lucide-react';
 
 type Era = '2045' | 'now';
 
 const STORAGE_KEY = 'xpot_final_day_era_v5';
 const LIVE_POLL_MS = 5000;
+
+// RUN_START = 2025-12-25 22:00 Europe/Madrid == 2025-12-25T21:00:00Z (CET).
+// We use this for a *sanity check* and fallback day counter.
+// (Your canonical day number should come from backend or your shared run logic.)
+const RUN_START_UTC_MS = Date.parse('2025-12-25T21:00:00Z');
+const RUN_TOTAL_DAYS = 7000;
+const DAY_MS = 86_400_000;
 
 type LiveDraw = {
   dailyXpot: number;
@@ -36,7 +42,7 @@ function formatCountdown(ms: number) {
 /**
  * Tolerant ISO parsing:
  * - If backend sends "2025-12-27T01:23:03" (no timezone), Date.parse treats it as local time (bad).
- * - Force UTC by appending "Z" when no timezone info is present.
+ * - We force UTC by appending "Z" when no timezone info is present.
  */
 function safeParseMs(iso: string | null | undefined) {
   if (!iso) return null;
@@ -44,60 +50,20 @@ function safeParseMs(iso: string | null | undefined) {
   if (!s) return null;
 
   const hasTz =
-    s.endsWith('Z') ||
-    /[+-]\d{2}:\d{2}$/.test(s) ||
-    /[+-]\d{4}$/.test(s); // e.g. +0100
+    s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{4}$/.test(s); // e.g. +0100
 
   const normalized = hasTz ? s : `${s}Z`;
   const ms = Date.parse(normalized);
   return Number.isFinite(ms) ? ms : null;
 }
 
-/**
- * Madrid day index (matches protocol "day flips at 22:00 Europe/Madrid")
- * Trick: compute in Madrid wall-clock, then shift by -22 hours so the boundary becomes midnight.
- * This avoids timezone offset math and stays consistent with the "Madrid cutoff" idea.
- */
-const RUN_START_MADRID = { y: 2025, m: 12, d: 25, hh: 22, mm: 0 } as const;
-
-function getMadridParts(ms: number) {
-  const dtf = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-
-  const parts = dtf.formatToParts(new Date(ms));
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? '0');
-
-  return {
-    y: get('year'),
-    m: get('month'),
-    d: get('day'),
-    hh: get('hour'),
-    mm: get('minute'),
-  };
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
 }
 
-function daySerialAfterMadridCutoff(ms: number) {
-  const p = getMadridParts(ms);
-  const pseudoUtc = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, 0);
-  const shifted = pseudoUtc - 22 * 60 * 60 * 1000;
-  return Math.floor(shifted / 86400000);
-}
-
-const RUN_START_SERIAL = Math.floor(
-  (Date.UTC(RUN_START_MADRID.y, RUN_START_MADRID.m - 1, RUN_START_MADRID.d, RUN_START_MADRID.hh, RUN_START_MADRID.mm) -
-    22 * 60 * 60 * 1000) /
-    86400000,
-);
-
-function calcRunDayNumberFromNow(nowMs: number) {
-  return daySerialAfterMadridCutoff(nowMs) - RUN_START_SERIAL + 1;
+function computeDayNumberFromNowUtc(nowUtcMs: number) {
+  const raw = Math.floor((nowUtcMs - RUN_START_UTC_MS) / DAY_MS) + 1;
+  return clamp(raw, 1, RUN_TOTAL_DAYS);
 }
 
 // ✅ Final Draw date must match lib/xpotRun.ts RUN_END = 2045-02-22 22:00 (Madrid)
@@ -105,7 +71,6 @@ function calcRunDayNumberFromNow(nowMs: number) {
 const ARCHIVE_DATE_LINE = 'Wednesday, 22 February 2045';
 
 export default function FinalDayPage() {
-  const router = useRouter();
   const [era, setEra] = useState<Era>('2045');
 
   // Live draw state for "Now"
@@ -168,7 +133,7 @@ export default function FinalDayPage() {
     }, 60);
   }, []);
 
-  // Keyboard shortcuts: F = flip, P = print, Esc = back (make Esc reliable)
+  // Keyboard shortcuts: F = flip, P = print, Esc = back (extra-reliable)
   useEffect(() => {
     function isTypingTarget(t: EventTarget | null) {
       const el = t as HTMLElement | null;
@@ -177,55 +142,57 @@ export default function FinalDayPage() {
       return tag === 'input' || tag === 'textarea' || (el as any).isContentEditable;
     }
 
+    function goBack() {
+      try {
+        // Prefer history back (feels better) - fallback to home
+        if (window.history.length > 1) window.history.back();
+        else window.location.assign('/');
+      } catch {
+        try {
+          window.location.href = '/';
+        } catch {}
+      }
+    }
+
     function onKeyDown(e: KeyboardEvent) {
       if (isTypingTarget(e.target)) return;
 
       const k = e.key.toLowerCase();
-
       if (k === 'f') {
         e.preventDefault();
-        e.stopPropagation();
         onFlip();
         return;
       }
-
       if (k === 'p') {
         e.preventDefault();
-        e.stopPropagation();
         onPrint();
         return;
       }
-
       if (e.key === 'Escape') {
         e.preventDefault();
-        e.stopPropagation();
-
-        // Prefer Next router (works even when link interception is in play)
-        try {
-          router.push('/');
-          return;
-        } catch {}
-
-        // Hard fallback
-        try {
-          window.location.assign('/');
-        } catch {
-          try {
-            window.location.href = '/';
-          } catch {}
-        }
+        goBack();
       }
     }
 
-    // Capture on both document and window to beat focus/overlays
-    document.addEventListener('keydown', onKeyDown, true);
-    window.addEventListener('keydown', onKeyDown, true);
+    // Some overlays swallow keydown; keyup often still fires.
+    function onKeyUp(e: KeyboardEvent) {
+      if (isTypingTarget(e.target)) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        try {
+          if (window.history.length > 1) window.history.back();
+          else window.location.assign('/');
+        } catch {}
+      }
+    }
 
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
     return () => {
-      document.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('keyup', onKeyUp, true);
     };
-  }, [onFlip, onPrint, router]);
+  }, [onFlip, onPrint]);
 
   // Poll live draw (for "Now" side)
   useEffect(() => {
@@ -247,7 +214,6 @@ export default function FinalDayPage() {
 
         if (!res.ok) throw new Error(`HTTP_${res.status}`);
         const json = await res.json();
-
         if (!alive) return;
 
         if (!json?.draw?.closesAt) {
@@ -258,16 +224,15 @@ export default function FinalDayPage() {
         const d: LiveDraw = {
           dailyXpot: Number(json.draw.dailyXpot ?? 1_000_000),
           dayNumber: Number(json.draw.dayNumber ?? 0),
-          dayTotal: Number(json.draw.dayTotal ?? 7000),
+          dayTotal: Number(json.draw.dayTotal ?? RUN_TOTAL_DAYS),
           drawDate: String(json.draw.drawDate ?? ''),
           closesAt: String(json.draw.closesAt),
           status: (json.draw.status as LiveDraw['status']) ?? 'OPEN',
         };
 
-        // Basic sanity checks to avoid rendering crashes
         if (!safeParseMs(d.closesAt)) throw new Error('BAD_CLOSESAT');
         if (!Number.isFinite(d.dailyXpot)) throw new Error('BAD_DAILY');
-        if (!Number.isFinite(d.dayTotal) || d.dayTotal <= 0) d.dayTotal = 7000;
+        if (!Number.isFinite(d.dayTotal) || d.dayTotal <= 0) d.dayTotal = RUN_TOTAL_DAYS;
 
         setLive(d);
       } catch (e: any) {
@@ -294,9 +259,39 @@ export default function FinalDayPage() {
     return () => window.clearInterval(t);
   }, []);
 
-  const closesAtMs = safeParseMs(live?.closesAt);
+  // --- Day label sanity: prevent fake day numbers ---
+  const derivedDayTotal = useMemo(() => {
+    const api = live?.dayTotal;
+    return Number.isFinite(api) && (api as number) > 0 ? Number(api) : RUN_TOTAL_DAYS;
+  }, [live?.dayTotal]);
 
-  // If closesAt exists but is already in the past, treat UI as "syncing next draw" (don’t show a fake broken 00:00)
+  const derivedDayNumber = useMemo(() => {
+    const api = Number(live?.dayNumber ?? 0);
+    const fallback = computeDayNumberFromNowUtc(nowTs);
+
+    // If API dayNumber is valid and close to our sanity calc, trust it.
+    // If it’s off (your “Day 3” while reality is Day 2), use fallback.
+    if (Number.isFinite(api) && api >= 1 && api <= derivedDayTotal) {
+      if (Math.abs(api - fallback) <= 1) return api;
+    }
+    return fallback;
+  }, [live?.dayNumber, derivedDayTotal, nowTs]);
+
+  // --- Countdown robustness ---
+  const closesAtMsRaw = safeParseMs(live?.closesAt);
+
+  // If backend gives a past closesAt (completed draw), roll it forward by 24h steps until future.
+  const closesAtMs = useMemo(() => {
+    if (!closesAtMsRaw) return null;
+
+    let t = closesAtMsRaw;
+    if (t < nowTs - 1500) {
+      const jumps = Math.ceil((nowTs - t) / DAY_MS);
+      t = t + jumps * DAY_MS;
+    }
+    return t;
+  }, [closesAtMsRaw, nowTs]);
+
   const remainingMsRaw = closesAtMs ? closesAtMs - nowTs : null;
   const isPast = remainingMsRaw !== null ? remainingMsRaw <= -1500 : false;
   const remainingMs = remainingMsRaw === null ? null : Math.max(0, remainingMsRaw);
@@ -311,15 +306,12 @@ export default function FinalDayPage() {
           ? 'bg-white/5 text-white/85 ring-white/15'
           : 'bg-amber-500/10 text-amber-200 ring-amber-500/20';
 
-  const statusLabel = liveErr ? 'OFFLINE' : !live ? 'SYNCING' : isPast ? 'SYNCING' : (live.status ?? 'OPEN');
+  const statusLabel =
+    liveErr ? 'OFFLINE' : !live ? 'SYNCING' : isPast ? 'SYNCING' : (live.status ?? 'OPEN');
 
-  // Always derive Day X from Madrid cutoff logic (prevents “random” day numbers)
-  const dayTotal = Number.isFinite(live?.dayTotal) && (live?.dayTotal ?? 0) > 0 ? (live!.dayTotal as number) : 7000;
-  const dayNumberCalcRaw = calcRunDayNumberFromNow(nowTs);
-  const dayNumberCalc = Math.max(0, Math.min(dayTotal, dayNumberCalcRaw));
+  const dayLabel = `Day ${derivedDayNumber.toLocaleString()} of ${derivedDayTotal.toLocaleString()}`;
 
-  const dayLabel = dayNumberCalc > 0 ? `Day ${dayNumberCalc.toLocaleString()} of ${dayTotal.toLocaleString()}` : 'Day - of 7,000';
-  const dayProgress = dayNumberCalc > 0 && dayTotal > 0 ? Math.max(0, Math.min(1, dayNumberCalc / dayTotal)) : 0;
+  const dayProgress = Math.max(0, Math.min(1, derivedDayNumber / derivedDayTotal));
 
   const bgRoot =
     'bg-[#05070a] ' +
@@ -405,7 +397,10 @@ export default function FinalDayPage() {
       </div>
 
       {/* Flip scene */}
-      <section className="mx-auto max-w-[1120px] [perspective:1400px] print:[perspective:none]" aria-label="Final Day story">
+      <section
+        className="mx-auto max-w-[1120px] [perspective:1400px] print:[perspective:none]"
+        aria-label="Final Day story"
+      >
         <div
           className={[
             'relative [transform-style:preserve-3d] motion-safe:transition-transform motion-safe:duration-[800ms]',
@@ -446,7 +441,9 @@ export default function FinalDayPage() {
 
               <div className="mt-4 text-center">
                 <div className="font-sans text-[12px] font-black uppercase tracking-[0.22em] opacity-75">The</div>
-                <div className="mt-1 text-[clamp(36px,5vw,60px)] font-black leading-none tracking-[0.02em]">XPOT Times</div>
+                <div className="mt-1 text-[clamp(36px,5vw,60px)] font-black leading-none tracking-[0.02em]">
+                  XPOT Times
+                </div>
                 <div className="mt-2 font-sans text-[12px] font-black uppercase tracking-[0.14em] opacity-65">
                   Independent Archive Record
                 </div>
@@ -461,14 +458,18 @@ export default function FinalDayPage() {
             </header>
 
             <div className="pt-1">
-              <h1 className="text-[clamp(30px,4.2vw,52px)] font-black leading-[1.02] tracking-[-0.02em]">{meta.headline}</h1>
+              <h1 className="text-[clamp(30px,4.2vw,52px)] font-black leading-[1.02] tracking-[-0.02em]">
+                {meta.headline}
+              </h1>
               <p className="mt-3 max-w-[78ch] text-[17px] leading-[1.45] text-[rgba(18,16,12,0.82)]">{meta.deck}</p>
 
               <div className="mt-5 grid grid-cols-[1fr_1fr_1.25fr] gap-4 max-[980px]:grid-cols-2 max-[860px]:grid-cols-1">
                 {/* Column A */}
                 <div>
                   <p className="text-[16px] leading-[1.62]">
-                    <span className="float-left pr-2 text-[42px] font-black leading-[0.9] text-[rgba(18,16,12,0.92)]">I</span>
+                    <span className="float-left pr-2 text-[42px] font-black leading-[0.9] text-[rgba(18,16,12,0.92)]">
+                      I
+                    </span>
                     t’s the final day.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">Not a crash. Not a rug. Not a scandal.</p>
@@ -482,8 +483,8 @@ export default function FinalDayPage() {
                     conversation. Same pull in the stomach when the numbers fell toward zero.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    People didn’t only play it. They <em>kept time with it</em>. School runs. Lunch breaks. Late nights. A
-                    thousand ordinary days stitched into one shared clock.
+                    People didn’t only play it. They <em>kept time with it</em>. School runs. Lunch breaks. Late nights.
+                    A thousand ordinary days stitched into one shared clock.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/40 p-4">
@@ -491,7 +492,8 @@ export default function FinalDayPage() {
                       Scale
                     </div>
                     <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">
-                      By 2045, XPOT is the <span className="underline decoration-black/25">biggest game on the planet</span>.
+                      By 2045, XPOT is the{' '}
+                      <span className="underline decoration-black/25">biggest game on the planet</span>.
                     </div>
                     <div className="mt-2 font-sans text-[13px] leading-[1.55] opacity-85">
                       Not because it shouted the loudest - because it never missed a day.
@@ -499,7 +501,8 @@ export default function FinalDayPage() {
                   </div>
 
                   <p className="mt-4 text-[15px] leading-[1.62]">
-                    By the last day, XPOT isn’t “a crypto project” anymore. It’s <strong>a daily ritual the planet learned together</strong>.
+                    By the last day, XPOT isn’t “a crypto project” anymore. It’s{' '}
+                    <strong>a daily ritual the planet learned together</strong>.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
                     Not because of greed, but because it never asked anyone to believe in anything except the next day.
@@ -520,8 +523,8 @@ export default function FinalDayPage() {
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">Everyone knows it’s the last one.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    Streams everywhere. Millions watching live. Some crying before it even begins - not because they expect to win,
-                    but because they remember where they were when they first heard the sound.
+                    Streams everywhere. Millions watching live. Some crying before it even begins - not because they
+                    expect to win, but because they remember where they were when they first heard the sound.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/35 p-3">
@@ -547,36 +550,38 @@ export default function FinalDayPage() {
                   </div>
 
                   <p className="mt-4 text-[15px] leading-[1.62]">
-                    No boost. No fireworks. No panic patch. No last-minute “upgrade”. Just the same rules, carried all the way to the end.
+                    No boost. No fireworks. No panic patch. No last-minute “upgrade”. Just the same rules, carried all
+                    the way to the end.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The countdown starts. And something changes in the room: people stop hoping for luck, and start listening for closure.
+                    The countdown starts. And something changes in the room: people stop hoping for luck, and start
+                    listening for closure.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    When it hits zero, a winner is chosen. Someone ordinary. Someone unknown. Someone who will carry the last number like a scar
-                    and a medal at the same time.
+                    When it hits zero, a winner is chosen. Someone ordinary. Someone unknown. Someone who will carry the
+                    last number like a scar and a medal at the same time.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">XPOT does what it promised. One final time.</p>
 
                   <div className="my-4 h-px bg-[linear-gradient(90deg,transparent,rgba(18,16,12,0.35),transparent)]" />
                   <p className="text-[14px] leading-[1.62] text-[rgba(18,16,12,0.78)]">
-                    What ends today isn’t only a product. It’s the disappearance of a tiny daily suspense that lived in millions of lives - a shared
-                    habit that outlived cycles, headlines and skepticism.
+                    What ends today isn’t only a product. It’s the disappearance of a tiny daily suspense that lived in
+                    millions of lives - a shared habit that outlived cycles, headlines and skepticism.
                   </p>
                 </div>
 
                 {/* Column C (wide) */}
                 <div className="max-[980px]:col-span-2 max-[860px]:col-span-1">
                   <div className="font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
-                    Then the countdown ends
+                    Then the world goes quiet
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">Nothing breaks. Nothing explodes. Nothing disappears.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
                     The system simply stops issuing draws - like a candle allowed to burn down instead of being blown out.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The protocol remains accessible. The record remains visible. Every winner. Every day. Nineteen point one eight years - perfectly
-                    accounted for, as if it mattered enough to be kept.
+                    The protocol remains accessible. The record remains visible. Every winner. Every day. Nineteen point
+                    one eight years - perfectly accounted for, as if it mattered enough to be kept.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/40 p-4">
@@ -590,26 +595,28 @@ export default function FinalDayPage() {
                   </div>
 
                   <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
-                    The architect
+                    The architects
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    In the years that follow, the origin story becomes strangely simple. No hero speeches. No victory laps. Just a set of rules written
-                    once - then obeyed for nearly two decades.
+                    In the years that follow, the origin story becomes strangely simple. No hero speeches. No victory laps.
+                    Just a set of rules written once - then obeyed for nearly two decades.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The people behind it are rarely discussed as personalities. Instead, XPOT is remembered as a decision: the decision to stop. The
-                    decision to refuse inflation. The decision to never move the goalposts, even when the world begged for “more”.
+                    The people behind it are rarely discussed as personalities. Instead, XPOT is remembered as a decision:
+                    the decision to stop. The decision to refuse inflation. The decision to never move the goalposts, even
+                    when the world begged for “more”.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    That restraint becomes the signature. In a culture of endless beginnings, the rarest thing is an ending that arrives on time.
+                    That restraint becomes the signature. In a culture of endless beginnings, the rarest thing is an
+                    ending that arrives on time.
                   </p>
 
                   <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
                     Legacy
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest prize, but as proof that trust can be
-                    engineered and kept.
+                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest prize, but as
+                    proof that trust can be engineered and kept.
                   </p>
                   <ul className="mt-3 list-disc pl-5 text-[15px] leading-[1.6]">
                     <li>The game that never cheated</li>
@@ -662,7 +669,9 @@ export default function FinalDayPage() {
                 </div>
               </div>
 
-              <h2 className="mt-4 text-[clamp(22px,3.2vw,34px)] font-black leading-[1.08] tracking-[-0.02em]">{meta.headline}</h2>
+              <h2 className="mt-4 text-[clamp(22px,3.2vw,34px)] font-black leading-[1.08] tracking-[-0.02em]">
+                {meta.headline}
+              </h2>
               <p className="mt-2 max-w-[74ch] text-[14px] leading-[1.55] opacity-90">{meta.deck}</p>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -686,7 +695,9 @@ export default function FinalDayPage() {
                 <div className="h-2 overflow-hidden rounded-full border border-white/10 bg-white/[0.04]">
                   <div className="h-full bg-white/25" style={{ width: `${Math.round(dayProgress * 10000) / 100}%` }} />
                 </div>
-                <div className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-white/55">Progress to Day 7,000</div>
+                <div className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-white/55">
+                  Progress to Day 7,000
+                </div>
               </div>
             </header>
 
@@ -699,16 +710,20 @@ export default function FinalDayPage() {
                     <span>Draw countdown</span>
                   </div>
 
-                  <span className={['inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1', statusTone].join(' ')}>
+                  <span
+                    className={['inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1', statusTone].join(
+                      ' ',
+                    )}
+                  >
                     {statusLabel}
                   </span>
                 </div>
 
                 {liveErr ? (
                   <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-bold text-white/80">
-                    {liveErr}. Protocol telemetry should return <span className="text-white/95">dailyXpot</span>,{' '}
-                    <span className="text-white/95">dayNumber</span>, <span className="text-white/95">dayTotal</span> and{' '}
-                    <span className="text-white/95">closesAt</span>.
+                    {liveErr}. Protocol telemetry should return{' '}
+                    <span className="text-white/95">dailyXpot</span>, <span className="text-white/95">dayNumber</span>,{' '}
+                    <span className="text-white/95">dayTotal</span> and <span className="text-white/95">closesAt</span>.
                   </div>
                 ) : (
                   <>
@@ -746,9 +761,7 @@ export default function FinalDayPage() {
                       </div>
 
                       <div className="font-black">
-                        {live?.closesAt && !isPast
-                          ? `Closes at: ${new Date(safeParseMs(live.closesAt) ?? Date.now()).toUTCString()}`
-                          : 'Syncing next draw...'}
+                        {closesAtMs && !isPast ? `Closes at: ${new Date(closesAtMs).toUTCString()}` : 'Syncing next draw...'}
                       </div>
                     </div>
                   </>
@@ -768,7 +781,8 @@ export default function FinalDayPage() {
                   XPOT is designed as a daily ritual with proof. One winner per day. One visible history. One ending.
                 </p>
                 <p className="mt-3 text-[14px] leading-[1.6] opacity-90">
-                  The archive edition is how the ecosystem remembers the ending. The live side is how the ecosystem feels it - one countdown at a time.
+                  The archive edition is how the ecosystem remembers the ending. The live side is how the ecosystem feels it - one
+                  countdown at a time.
                 </p>
 
                 <div className="mt-4 text-[12px] font-black uppercase tracking-[0.16em] opacity-80">Shortcuts</div>
@@ -808,4 +822,4 @@ export default function FinalDayPage() {
       `}</style>
     </main>
   );
-}
+}   
