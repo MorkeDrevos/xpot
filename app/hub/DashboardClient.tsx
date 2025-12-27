@@ -4,8 +4,12 @@
 import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+
+import { PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import GoldAmount from '@/components/GoldAmount';
@@ -13,7 +17,7 @@ import GoldAmount from '@/components/GoldAmount';
 import XpotPageShell from '@/components/XpotPageShell';
 import HubLockOverlay from '@/components/HubLockOverlay';
 import BonusStrip from '@/components/BonusStrip';
-import { REQUIRED_XPOT } from '@/lib/xpot';
+import { REQUIRED_XPOT, TOKEN_MINT } from '@/lib/xpot';
 
 import {
   CheckCircle2,
@@ -535,7 +539,7 @@ function EntryCeremony({
 }
 
 // ─────────────────────────────────────────────
-// Types + defensive normalizers (fixes crash on status.replace)
+// Types + defensive normalizers
 // ─────────────────────────────────────────────
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
@@ -572,7 +576,6 @@ function normalizeStatus(s: any): EntryStatus {
   if (lower === 'expired') return 'expired';
   if (lower === 'not-picked' || lower === 'not_picked' || lower === 'lost') return 'not-picked';
 
-  // safest default (prevents UI crash + keeps “entry live” logic sane)
   return 'in-draw';
 }
 
@@ -583,7 +586,6 @@ function normalizeEntry(raw: any): Entry | null {
   const code = typeof raw.code === 'string' ? raw.code : '';
   const walletAddress = typeof raw.walletAddress === 'string' ? raw.walletAddress : '';
 
-  // createdAt can be missing in some bad responses; still keep UI alive
   const createdAt =
     typeof raw.createdAt === 'string'
       ? raw.createdAt
@@ -613,10 +615,10 @@ function safeStatusLabel(status: any) {
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  // Official wallet adapter modal
+  const { setVisible: setWalletModalVisible } = useWalletModal();
 
-  const onOpenWalletModal = useCallback(() => setWalletModalOpen(true), []);
-  const onCloseWalletModal = useCallback(() => setWalletModalOpen(false), []);
+  const onOpenWalletModal = useCallback(() => setWalletModalVisible(true), [setWalletModalVisible]);
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -632,6 +634,7 @@ export default function DashboardClient() {
   const [ceremonyCode, setCeremonyCode] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
+  const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
@@ -679,7 +682,6 @@ export default function DashboardClient() {
 
   const { bonus: upcomingBonus, active: bonusActive } = useBonusUpcoming();
 
-  // DB-driven streak + mission
   const [streak, setStreak] = useState<Streak>({ days: 0, todayDone: false });
   const [mission, setMission] = useState<Mission>({
     title: 'Loading…',
@@ -792,7 +794,42 @@ export default function DashboardClient() {
     return list;
   }, []);
 
-  const fetchXpotBalance = useCallback(async (address: string) => {
+  // Primary: read XPOT balance directly from chain (prevents “always 0” API bugs)
+  const fetchXpotBalanceOnChain = useCallback(
+    async (address: string) => {
+      if (!connection) throw new Error('No RPC connection');
+
+      const owner = new PublicKey(address);
+      const mint = new PublicKey(TOKEN_MINT);
+
+      const sumFrom = async (programId: PublicKey) => {
+        const res = await connection.getParsedTokenAccountsByOwner(
+          owner,
+          { mint },
+          { commitment: 'confirmed', programId },
+        );
+
+        let total = 0;
+        for (const it of res.value) {
+          const info: any = it.account?.data?.parsed?.info;
+          const ui = info?.tokenAmount?.uiAmount;
+          if (typeof ui === 'number' && Number.isFinite(ui)) total += ui;
+        }
+        return total;
+      };
+
+      // Try both token programs (classic + token-2022)
+      const [a, b] = await Promise.allSettled([sumFrom(TOKEN_PROGRAM_ID), sumFrom(TOKEN_2022_PROGRAM_ID)]);
+      const total =
+        (a.status === 'fulfilled' ? a.value : 0) + (b.status === 'fulfilled' ? b.value : 0);
+
+      return total;
+    },
+    [connection],
+  );
+
+  // Fallback: your API route (keep it as backup)
+  const fetchXpotBalanceViaApi = useCallback(async (address: string) => {
     const tryOne = async (url: string) => {
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -871,13 +908,25 @@ export default function DashboardClient() {
         setRecentWinners(nextWinners);
 
         if (addr && walletConnected) {
+          // Balance: chain first, API fallback
           try {
             setXpotBalance(null);
-            const b = await fetchXpotBalance(addr);
-            setXpotBalance(b);
+            const chainBal = await fetchXpotBalanceOnChain(addr);
+            if (Number.isFinite(chainBal)) {
+              setXpotBalance(chainBal);
+            } else {
+              const apiBal = await fetchXpotBalanceViaApi(addr);
+              setXpotBalance(apiBal);
+            }
           } catch (e) {
-            console.error('Error loading XPOT balance (via API)', e);
-            setXpotBalance('error');
+            console.error('Error loading XPOT balance', e);
+            try {
+              const apiBal = await fetchXpotBalanceViaApi(addr);
+              setXpotBalance(apiBal);
+            } catch (e2) {
+              console.error('XPOT balance fallback (API) failed', e2);
+              setXpotBalance('error');
+            }
           }
 
           try {
@@ -911,7 +960,16 @@ export default function DashboardClient() {
         refreshingRef.current = false;
       }
     },
-    [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
+    [
+      isAuthedEnough,
+      publicKey,
+      walletConnected,
+      fetchTicketsToday,
+      fetchRecentWinners,
+      fetchXpotBalanceOnChain,
+      fetchXpotBalanceViaApi,
+      fetchHistory,
+    ],
   );
 
   useEffect(() => {
@@ -949,7 +1007,6 @@ export default function DashboardClient() {
     };
   }, [isAuthedEnough, refreshAll]);
 
-  // Sync "today's ticket" state with DB
   useEffect(() => {
     if (!currentWalletAddress) {
       setTicketClaimed(false);
@@ -1054,7 +1111,6 @@ export default function DashboardClient() {
           return [ticket, ...others];
         });
       } else {
-        // backend said ok but returned nothing usable - avoid crashing, just refresh
         await refreshAll('manual');
         return;
       }
@@ -1083,8 +1139,7 @@ export default function DashboardClient() {
   }, [entries, normalizedWallet]);
 
   const winner = entries.find(e => normalizeStatus(e.status) === 'won') || null;
-  const iWonToday =
-    !!winner && !!normalizedWallet && winner.walletAddress?.toLowerCase() === normalizedWallet;
+  const iWonToday = !!winner && !!normalizedWallet && winner.walletAddress?.toLowerCase() === normalizedWallet;
 
   async function toggleSound() {
     const next = !soundEnabled;
@@ -1172,8 +1227,6 @@ export default function DashboardClient() {
         }
       `}</style>
 
-      <PremiumWalletModal open={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
-
       <EntryCeremony
         open={showCeremony}
         code={ceremonyCode}
@@ -1231,11 +1284,7 @@ export default function DashboardClient() {
                 </Link>
 
                 <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 backdrop-blur-xl">
-                  <button
-                    type="button"
-                    onClick={onOpenWalletModal}
-                    className="text-left leading-tight hover:opacity-90"
-                  >
+                  <button type="button" onClick={onOpenWalletModal} className="text-left leading-tight hover:opacity-90">
                     <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">
                       Wallet bay
                     </div>
@@ -1346,7 +1395,11 @@ export default function DashboardClient() {
                   <TinyRow
                     label="XPOT balance"
                     value={
-                      xpotBalance === null ? 'Checking…' : xpotBalance === 'error' ? 'Unavailable' : `${Math.floor(xpotBalance).toLocaleString()} XPOT`
+                      xpotBalance === null
+                        ? 'Checking…'
+                        : xpotBalance === 'error'
+                        ? 'Unavailable'
+                        : `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                     }
                   />
                   <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -1388,27 +1441,27 @@ export default function DashboardClient() {
 
                   <div className="flex items-center gap-2">
                     <button
-  type="button"
-  onClick={onOpenWalletModal}
-  className="
-    group relative h-10
-    inline-flex items-center justify-center gap-2
-    rounded-full
-    bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]
-    border border-white/15
-    px-4
-    text-[12px] font-semibold text-slate-100
-    shadow-[0_10px_40px_rgba(0,0,0,0.45)]
-    transition
-    hover:border-amber-300/40
-    hover:text-white
-    hover:shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_20px_60px_rgba(0,0,0,0.55)]
-    active:scale-[0.985]
-  "
->
-  <Wallet className="h-4 w-4 opacity-90 group-hover:opacity-100" />
-  <span>Select wallet</span>
-</button>
+                      type="button"
+                      onClick={onOpenWalletModal}
+                      className="
+                        group relative h-10
+                        inline-flex items-center justify-center gap-2
+                        rounded-full
+                        bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]
+                        border border-white/15
+                        px-4
+                        text-[12px] font-semibold text-slate-100
+                        shadow-[0_10px_40px_rgba(0,0,0,0.45)]
+                        transition
+                        hover:border-amber-300/40
+                        hover:text-white
+                        hover:shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_20px_60px_rgba(0,0,0,0.55)]
+                        active:scale-[0.985]
+                      "
+                    >
+                      <Wallet className="h-4 w-4 opacity-90 group-hover:opacity-100" />
+                      <span>Select wallet</span>
+                    </button>
 
                     <button
                       type="button"
@@ -1477,7 +1530,7 @@ export default function DashboardClient() {
                             <StatusPill tone="slate">—</StatusPill>
                           )}
                         </div>
-                        <p className="mt-2 text-xs text-slate-300/70">Eligibility is checked via API on refresh.</p>
+                        <p className="mt-2 text-xs text-slate-300/70">Eligibility is checked live from chain.</p>
                       </div>
                     </div>
 
@@ -1499,7 +1552,8 @@ export default function DashboardClient() {
                     {typeof xpotBalance === 'number' && !hasRequiredXpot && (
                       <p className="mt-3 text-xs text-slate-300/70">
                         Your wallet is below the minimum. You need{' '}
-                        <span className="font-semibold text-slate-100">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to claim today’s entry.
+                        <span className="font-semibold text-slate-100">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to
+                        claim today’s entry.
                       </p>
                     )}
                   </>
@@ -1527,7 +1581,10 @@ export default function DashboardClient() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <TinyRow label="Status" value={<span className="font-semibold text-slate-100">IN DRAW</span>} />
-                      <TinyRow label="Issued" value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>} />
+                      <TinyRow
+                        label="Issued"
+                        value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>}
+                      />
                     </div>
                   </div>
                 )}
@@ -1571,7 +1628,13 @@ export default function DashboardClient() {
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-mono text-sm text-slate-100">{t.code}</p>
                             <StatusPill
-                              tone={normalizeStatus(t.status) === 'in-draw' ? 'emerald' : normalizeStatus(t.status) === 'won' ? 'sky' : 'slate'}
+                              tone={
+                                normalizeStatus(t.status) === 'in-draw'
+                                  ? 'emerald'
+                                  : normalizeStatus(t.status) === 'won'
+                                  ? 'sky'
+                                  : 'slate'
+                              }
                             >
                               {safeStatusLabel(t.status)}
                             </StatusPill>
@@ -1704,7 +1767,9 @@ export default function DashboardClient() {
 
                             <div className="min-w-0">
                               <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-300/70">{h ? `@${h}` : shortWallet(w.walletAddress)}</p>
+                              <p className="mt-1 text-xs text-slate-300/70">
+                                {h ? `@${h}` : shortWallet(w.walletAddress)}
+                              </p>
                             </div>
                           </div>
                         </div>
