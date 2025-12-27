@@ -1,4 +1,4 @@
-1803// app/hub/DashboardClient.tsx
+// app/hub/DashboardClient.tsx
 'use client';
 
 import Link from 'next/link';
@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey } from '@solana/web3.js';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
 import { SignOutButton, useUser } from '@clerk/nextjs';
 
@@ -15,7 +15,7 @@ import BonusStrip from '@/components/BonusStrip';
 import GoldAmount from '@/components/GoldAmount';
 import HubLockOverlay from '@/components/HubLockOverlay';
 import XpotPageShell from '@/components/XpotPageShell';
-import { REQUIRED_XPOT, TOKEN_MINT } from '@/lib/xpot';
+import { REQUIRED_XPOT } from '@/lib/xpot';
 
 import {
   CheckCircle2,
@@ -31,12 +31,9 @@ import {
   VolumeX,
   Flame,
   Target,
-  Unlink as UnlinkIcon,
-  PlugZap,
-  ShieldCheck,
 } from 'lucide-react';
 
-// ✅ SSR-safe wallet modal (prevents “modal UI at bottom of page” issues)
+// ✅ SSR-safe WalletModal (so setVisible(true) actually shows the modal)
 const WalletModalDynamic = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then(m => m.WalletModal),
   { ssr: false },
@@ -269,7 +266,6 @@ function useReducedMotionPref() {
 
 // ─────────────────────────────────────────────
 // ✅ HARD SCROLL-LOCK FIX (dashboard only)
-// - WalletModal/overlays can leave body overflow hidden behind
 // ─────────────────────────────────────────────
 
 function unlockScroll() {
@@ -371,7 +367,7 @@ function TinyRow({
 }
 
 // ─────────────────────────────────────────────
-// Bonus hook (same endpoint as homepage)
+// Bonus hook
 // ─────────────────────────────────────────────
 
 type BonusUpcoming = {
@@ -426,7 +422,7 @@ function useBonusUpcoming() {
 }
 
 // ─────────────────────────────────────────────
-// Entry ceremony (2s shimmer + stamp + optional chime)
+// Entry ceremony
 // ─────────────────────────────────────────────
 
 function playChime() {
@@ -654,80 +650,31 @@ function safeStatusLabel(status: any) {
 }
 
 // ─────────────────────────────────────────────
-// Linked wallets (DB)
-// ─────────────────────────────────────────────
-
-type LinkedWallet = {
-  address: string;
-  createdAt?: string | null;
-  label?: string | null;
-  primary?: boolean | null;
-};
-
-function normalizeLinkedWallets(payload: any): LinkedWallet[] {
-  const raw = payload?.wallets ?? payload?.linkedWallets ?? payload ?? [];
-  if (!Array.isArray(raw)) return [];
-
-  const out: LinkedWallet[] = [];
-
-  for (const w of raw) {
-    if (typeof w === 'string') {
-      out.push({ address: w });
-      continue;
-    }
-    if (w && typeof w === 'object') {
-      const address = String(w.address ?? w.walletAddress ?? w.pubkey ?? '').trim();
-      if (!address) continue;
-      out.push({
-        address,
-        createdAt: w.createdAt ?? w.created_at ?? null,
-        label: w.label ?? null,
-        primary: Boolean(w.primary ?? w.isPrimary ?? false),
-      });
-    }
-  }
-
-  const seen = new Set<string>();
-  return out.filter(w => {
-    const k = w.address.toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-}
-
-// ─────────────────────────────────────────────
-// Inner page (must be under WalletModalProvider)
+// Inner page
 // ─────────────────────────────────────────────
 
 function DashboardInner() {
+  // Wallet modal (global provider is in app/providers.tsx)
   const walletModal = useWalletModal();
-  const { setVisible: setWalletModalVisible } = walletModal;
+  const setVisible =
+    (walletModal as any)?.setVisible as ((v: boolean) => void) | undefined;
 
-  // ✅ scroll unlock on mount + on unmount (dashboard only)
+  // scroll unlock on mount + on unmount (dashboard only)
   useEffect(() => {
     unlockScroll();
     return () => unlockScroll();
   }, []);
 
-  // ✅ if wallet modal closes but scroll remains locked, force unlock
+  // if wallet modal closes but scroll remains locked, force unlock
   useEffect(() => {
-    // walletModal.visible exists in @solana/wallet-adapter-react-ui
-    // If it’s missing for any reason, this still doesn’t break anything.
-    // @ts-ignore
-    const visible = walletModal?.visible;
+    const visible = (walletModal as any)?.visible;
     if (!visible) unlockScroll();
   }, [walletModal]);
 
   const onOpenWalletModal = useCallback(() => {
-    // before opening, ensure we are not stuck in hidden overflow from a previous crash
     unlockScroll();
-    setWalletModalVisible(true);
-  }, [setWalletModalVisible]);
-
-  // -----------------------
-  // (everything below is YOUR original file, unchanged except wallet modal + scroll unlock)
-  // -----------------------
+    setVisible?.(true);
+  }, [setVisible]);
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -795,131 +742,7 @@ function DashboardInner() {
     desc: 'Preparing today’s mission.',
   });
 
-  const [linkedWallets, setLinkedWallets] = useState<LinkedWallet[]>([]);
-  const [walletsLoading, setWalletsLoading] = useState(false);
-  const [walletsError, setWalletsError] = useState<string | null>(null);
-  const [unlinking, setUnlinking] = useState<string | null>(null);
-
-  const refetchLinkedWallets = useCallback(async () => {
-    if (!isAuthedEnough) return;
-    setWalletsLoading(true);
-    setWalletsError(null);
-
-    try {
-      const r = await fetch('/api/me/wallets', { cache: 'no-store' });
-      if (!r.ok) {
-        setLinkedWallets(currentWalletAddress ? [{ address: currentWalletAddress }] : []);
-        setWalletsLoading(false);
-        return;
-      }
-
-      const j = await r.json().catch(() => null);
-      const list = normalizeLinkedWallets(j);
-      setLinkedWallets(list.length ? list : currentWalletAddress ? [{ address: currentWalletAddress }] : []);
-    } catch (e) {
-      console.error('[XPOT] /api/me/wallets failed', e);
-      setWalletsError('Could not load linked wallets.');
-      setLinkedWallets(currentWalletAddress ? [{ address: currentWalletAddress }] : []);
-    } finally {
-      setWalletsLoading(false);
-    }
-  }, [isAuthedEnough, currentWalletAddress]);
-
-  const tryUnlinkWallet = useCallback(
-    async (address: string) => {
-      if (!isAuthedEnough) return;
-      setUnlinking(address);
-      setWalletsError(null);
-
-      try {
-        const r = await fetch('/api/me/wallet-unlink', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address }),
-        });
-
-        if (!r.ok) {
-          setWalletsError('Unlink endpoint not available yet. (Need /api/me/wallet-unlink)');
-          return;
-        }
-
-        const j = await r.json().catch(() => null);
-        if (j?.ok !== true) {
-          setWalletsError(j?.error ? String(j.error) : 'Could not unlink wallet.');
-          return;
-        }
-
-        if (currentWalletAddress && currentWalletAddress.toLowerCase() === address.toLowerCase()) {
-          try {
-            await disconnect();
-          } catch {
-            // ignore
-          }
-        }
-
-        await refetchLinkedWallets();
-      } catch (e) {
-        console.error('[XPOT] unlink failed', e);
-        setWalletsError('Could not unlink wallet.');
-      } finally {
-        setUnlinking(null);
-      }
-    },
-    [isAuthedEnough, currentWalletAddress, disconnect, refetchLinkedWallets],
-  );
-
-  useMemo(() => {
-    try {
-      return new PublicKey(TOKEN_MINT);
-    } catch {
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isUserLoaded || !user) return;
-    if (!handle) return;
-
-    (async () => {
-      try {
-        await fetch('/api/me/sync-x', { method: 'POST' });
-      } catch (e) {
-        console.error('[XPOT] Failed to sync X identity', e);
-      }
-    })();
-  }, [isUserLoaded, user, handle]);
-
-  useEffect(() => {
-    if (!isAuthedEnough) return;
-    if (!publicKey || !connected) return;
-
-    const address = publicKey.toBase58();
-
-    (async () => {
-      try {
-        await fetch('/api/me/wallet-sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address }),
-        });
-
-        refetchLinkedWallets();
-      } catch (e) {
-        console.error('[XPOT] Failed to sync wallet', e);
-      }
-    })();
-  }, [isAuthedEnough, publicKey, connected, refetchLinkedWallets]);
-
-  useEffect(() => {
-    if (!isAuthedEnough) {
-      setLinkedWallets([]);
-      setWalletsError(null);
-      setWalletsLoading(false);
-      return;
-    }
-    refetchLinkedWallets();
-  }, [isAuthedEnough, refetchLinkedWallets]);
-
+  // Keep countdown ticking
   useEffect(() => {
     const tick = () => {
       const cutoffUtc = nextMadridCutoffUtcMs(new Date());
@@ -931,6 +754,7 @@ function DashboardInner() {
     return () => clearInterval(t);
   }, []);
 
+  // Boot: preferences + streak + mission
   useEffect(() => {
     if (!isAuthedEnough) return;
 
@@ -1288,118 +1112,15 @@ function DashboardInner() {
     return 'Good evening';
   }, []);
 
-  const linkedCount = linkedWallets.length || (currentWalletAddress ? 1 : 0);
-
-  // ✅ also unlock scroll if lock overlay shows/hides or ceremony shows/hides
+  // Unlock scroll if lock overlay shows/hides or ceremony shows/hides
   useEffect(() => {
     if (!showLock && !showCeremony) unlockScroll();
   }, [showLock, showCeremony]);
 
   return (
     <>
-      <style jsx global>{`
-        .xpot-luxe-border {
-          background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)) 0
-              0 / 200% 1px no-repeat,
-            linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)) 0 0 /
-              1px 200% no-repeat;
-          mask-image: radial-gradient(circle at 22% 18%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.2) 55%, rgba(0, 0, 0, 0)
-            78%);
-          opacity: 0.9;
-          animation: xpotLuxeBorder 10s ease-in-out infinite;
-        }
-        @keyframes xpotLuxeBorder {
-          0% {
-            background-position: 0% 0%, 0% 0%;
-            opacity: 0.65;
-          }
-          50% {
-            background-position: 100% 0%, 0% 100%;
-            opacity: 0.95;
-          }
-          100% {
-            background-position: 0% 0%, 0% 0%;
-            opacity: 0.65;
-          }
-        }
-        @keyframes xpotFloat {
-          0% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-3px);
-          }
-          100% {
-            transform: translateY(0px);
-          }
-        }
-        @keyframes xpotSweep {
-          0% {
-            transform: translateX(-140%) rotate(10deg);
-            opacity: 0;
-          }
-          12% {
-            opacity: 0.26;
-          }
-          55% {
-            opacity: 0.1;
-          }
-          100% {
-            transform: translateX(160%) rotate(10deg);
-            opacity: 0;
-          }
-        }
-        .xpot-hero-sweep::before {
-          content: '';
-          position: absolute;
-          top: -55%;
-          left: -60%;
-          width: 55%;
-          height: 240%;
-          opacity: 0;
-          transform: rotate(10deg);
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.1),
-            rgba(56, 189, 248, 0.1),
-            rgba(251, 191, 36, 0.1),
-            transparent
-          );
-          animation: xpotSweep 2.8s ease-in-out infinite;
-          mix-blend-mode: screen;
-          pointer-events: none;
-        }
-        @keyframes xpotBtnSheen {
-          0% {
-            transform: translateX(-140%) rotate(12deg);
-            opacity: 0;
-          }
-          12% {
-            opacity: 0.22;
-          }
-          60% {
-            opacity: 0.1;
-          }
-          100% {
-            transform: translateX(160%) rotate(12deg);
-            opacity: 0;
-          }
-        }
-        .xpot-btn-sheen::before {
-          content: '';
-          position: absolute;
-          top: -70%;
-          left: -60%;
-          width: 55%;
-          height: 260%;
-          transform: rotate(12deg);
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08), transparent);
-          animation: xpotBtnSheen 3.8s ease-in-out infinite;
-          mix-blend-mode: overlay;
-          pointer-events: none;
-        }
-      `}</style>
+      {/* Wallet modal mount (global provider context is in app/providers.tsx) */}
+      <WalletModalDynamic />
 
       <EntryCeremony
         open={showCeremony}
@@ -1484,7 +1205,6 @@ function DashboardInner() {
           {/* HERO */}
           <section className="mt-6">
             <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/35 shadow-[0_50px_160px_rgba(0,0,0,0.6)] ring-1 ring-white/10 backdrop-blur-2xl">
-              <div className="xpot-hero-sweep absolute inset-0" />
               <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_22%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_72%_28%,rgba(99,102,241,0.14),transparent_58%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.10),transparent_65%),radial-gradient(circle_at_90%_85%,rgba(236,72,153,0.08),transparent_62%)]" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.09] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:22px_22px]" />
 
@@ -1497,13 +1217,9 @@ function DashboardInner() {
                         src={avatar}
                         alt={name}
                         className="h-12 w-12 rounded-full border border-white/10 object-cover shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
-                        style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
                       />
                     ) : (
-                      <div
-                        className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100"
-                        style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
-                      >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100">
                         {initialFromHandle(handle)}
                       </div>
                     )}
@@ -1515,9 +1231,7 @@ function DashboardInner() {
                       <p className="mt-1 truncate text-xl font-semibold text-slate-100">
                         {handle ? `@${handle.replace(/^@/, '')}` : name}
                       </p>
-                      <p className="mt-1 text-xs text-slate-300/70">
-                        Tickets are allocated per wallet. One XPOT account may link multiple wallets.
-                      </p>
+                      <p className="mt-1 text-xs text-slate-300/70">Tickets are allocated per wallet.</p>
                     </div>
                   </div>
 
@@ -1606,7 +1320,7 @@ function DashboardInner() {
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                   <div className="inline-flex items-center gap-2 text-xs text-slate-300/70">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-400/80" />
-                    Wallet roster is account-level. Entries are wallet-level.
+                    Entries are wallet-level.
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1820,132 +1534,6 @@ function DashboardInner() {
 
             {/* RIGHT */}
             <div className="space-y-6">
-              {/* Wallet roster */}
-              <LuxeCard accent="neutral">
-                <LuxeTitle
-                  title="Linked wallets"
-                  subtitle="One XPOT account may link multiple wallets. Tickets are per wallet."
-                  right={
-                    <StatusPill tone="sky">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      {linkedCount}
-                    </StatusPill>
-                  }
-                />
-
-                <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={onOpenWalletModal}
-                      className={`${BTN_UTILITY} h-9 px-4 text-xs`}
-                    >
-                      <PlugZap className="mr-2 h-4 w-4" />
-                      Add / switch wallet
-                    </button>
-
-                    {walletConnected ? (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await disconnect();
-                          } catch {
-                            // ignore
-                          }
-                        }}
-                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
-                      >
-                        <Wallet className="mr-2 h-4 w-4" />
-                        Disconnect session
-                      </button>
-                    ) : null}
-                  </div>
-
-                  {walletsError ? <p className="mt-3 text-xs xpot-gold-text">{walletsError}</p> : null}
-
-                  <div className="mt-4 space-y-2">
-                    {walletsLoading ? (
-                      <p className="text-xs text-slate-300/70">Loading…</p>
-                    ) : linkedWallets.length === 0 && !currentWalletAddress ? (
-                      <p className="text-xs text-slate-300/70">
-                        No wallets linked yet. Connect your first wallet to link it automatically.
-                      </p>
-                    ) : (
-                      (linkedWallets.length ? linkedWallets : currentWalletAddress ? [{ address: currentWalletAddress }] : [])
-                        .map(w => {
-                          const isCurrent =
-                            !!currentWalletAddress && w.address.toLowerCase() === currentWalletAddress.toLowerCase();
-                          return (
-                            <div
-                              key={w.address}
-                              className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/20 px-4 py-3"
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="truncate font-mono text-sm text-slate-100">{w.address}</p>
-                                  <p className="mt-1 text-xs text-slate-300/70">
-                                    {w.createdAt ? `Linked ${formatDateTime(w.createdAt)}` : 'Linked to your XPOT account'}
-                                  </p>
-                                </div>
-
-                                <div className="flex shrink-0 items-center gap-2">
-                                  {isCurrent ? (
-                                    <StatusPill tone="emerald">
-                                      <Radio className="h-3.5 w-3.5" />
-                                      Connected
-                                    </StatusPill>
-                                  ) : (
-                                    <StatusPill tone="slate">Linked</StatusPill>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="flex flex-wrap items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    await safeCopy(w.address);
-                                  }}
-                                  className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-                                >
-                                  <Copy className="mr-2 h-4 w-4" />
-                                  Copy
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => onOpenWalletModal()}
-                                  className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-                                  title="Use wallet adapter to switch to this wallet"
-                                >
-                                  <Wallet className="mr-2 h-4 w-4" />
-                                  Switch
-                                </button>
-
-                                <button
-  type="button"
-  onClick={() => tryUnlinkWallet(w.address)}
-  disabled
-  className={`${BTN_UTILITY} h-8 px-3 text-[11px] opacity-50 cursor-not-allowed`}
-  title="Unlink is not available yet"
->
-  <UnlinkIcon className="mr-2 h-4 w-4" />
-  Unlink
-</button>
-                              </div>
-                            </div>
-                          );
-                        })
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-3 text-xs text-slate-300/70">
-                  Tip: Connect more wallets to claim more daily entries. One entry per wallet per day.
-                </div>
-              </LuxeCard>
-
               <LuxeCard accent="violet">
                 <LuxeTitle
                   title="Today’s mission"
@@ -2063,7 +1651,9 @@ function DashboardInner() {
 
                             <div className="min-w-0">
                               <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-300/70">{h ? `@${h}` : shortWallet(w.walletAddress)}</p>
+                              <p className="mt-1 text-xs text-slate-300/70">
+                                {h ? `@${h}` : shortWallet(w.walletAddress)}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -2118,6 +1708,23 @@ function DashboardInner() {
                   )}
                 </div>
               </LuxeCard>
+
+              {walletConnected ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await disconnect();
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Disconnect session
+                </button>
+              ) : null}
             </div>
           </section>
 
@@ -2131,4 +1738,12 @@ function DashboardInner() {
       </div>
     </>
   );
+}
+
+// ─────────────────────────────────────────────
+// Page (CLIENT)
+// ─────────────────────────────────────────────
+
+export default function DashboardClient() {
+  return <DashboardInner />;
 }
