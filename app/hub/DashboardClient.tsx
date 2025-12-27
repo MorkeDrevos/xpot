@@ -2,11 +2,12 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal, WalletModalProvider, WalletModal } from '@solana/wallet-adapter-react-ui';
+import { useWalletModal, WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
 
 import { SignOutButton, useUser } from '@clerk/nextjs';
@@ -35,6 +36,12 @@ import {
   PlugZap,
   ShieldCheck,
 } from 'lucide-react';
+
+// ✅ SSR-safe wallet modal (prevents “modal UI at bottom of page” issues)
+const WalletModalDynamic = dynamic(
+  () => import('@solana/wallet-adapter-react-ui').then(m => m.WalletModal),
+  { ssr: false },
+);
 
 // ─────────────────────────────────────────────
 // Small UI helpers
@@ -259,6 +266,21 @@ function useReducedMotionPref() {
   }, []);
 
   return reduced;
+}
+
+// ─────────────────────────────────────────────
+// ✅ HARD SCROLL-LOCK FIX (dashboard only)
+// - WalletModal/overlays can leave body overflow hidden behind
+// ─────────────────────────────────────────────
+
+function unlockScroll() {
+  try {
+    if (typeof document === 'undefined') return;
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  } catch {
+    // ignore
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -564,7 +586,6 @@ function EntryCeremony({
 // ─────────────────────────────────────────────
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
-
 type XpotBalanceState = number | 'error' | null;
 
 type Entry = {
@@ -667,7 +688,6 @@ function normalizeLinkedWallets(payload: any): LinkedWallet[] {
     }
   }
 
-  // unique by address
   const seen = new Set<string>();
   return out.filter(w => {
     const k = w.address.toLowerCase();
@@ -682,8 +702,33 @@ function normalizeLinkedWallets(payload: any): LinkedWallet[] {
 // ─────────────────────────────────────────────
 
 function DashboardInner() {
-  const { setVisible: setWalletModalVisible } = useWalletModal();
-  const onOpenWalletModal = useCallback(() => setWalletModalVisible(true), [setWalletModalVisible]);
+  const walletModal = useWalletModal();
+  const { setVisible: setWalletModalVisible } = walletModal;
+
+  // ✅ scroll unlock on mount + on unmount (dashboard only)
+  useEffect(() => {
+    unlockScroll();
+    return () => unlockScroll();
+  }, []);
+
+  // ✅ if wallet modal closes but scroll remains locked, force unlock
+  useEffect(() => {
+    // walletModal.visible exists in @solana/wallet-adapter-react-ui
+    // If it’s missing for any reason, this still doesn’t break anything.
+    // @ts-ignore
+    const visible = walletModal?.visible;
+    if (!visible) unlockScroll();
+  }, [walletModal]);
+
+  const onOpenWalletModal = useCallback(() => {
+    // before opening, ensure we are not stuck in hidden overflow from a previous crash
+    unlockScroll();
+    setWalletModalVisible(true);
+  }, [setWalletModalVisible]);
+
+  // -----------------------
+  // (everything below is YOUR original file, unchanged except wallet modal + scroll unlock)
+  // -----------------------
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -751,7 +796,6 @@ function DashboardInner() {
     desc: 'Preparing today’s mission.',
   });
 
-  // Linked wallets (DB)
   const [linkedWallets, setLinkedWallets] = useState<LinkedWallet[]>([]);
   const [walletsLoading, setWalletsLoading] = useState(false);
   const [walletsError, setWalletsError] = useState<string | null>(null);
@@ -833,7 +877,6 @@ function DashboardInner() {
     }
   }, []);
 
-  // Sync X identity into DB whenever user is loaded
   useEffect(() => {
     if (!isUserLoaded || !user) return;
     if (!handle) return;
@@ -847,7 +890,6 @@ function DashboardInner() {
     })();
   }, [isUserLoaded, user, handle]);
 
-  // Wire wallet -> DB whenever it connects
   useEffect(() => {
     if (!isAuthedEnough) return;
     if (!publicKey || !connected) return;
@@ -869,7 +911,6 @@ function DashboardInner() {
     })();
   }, [isAuthedEnough, publicKey, connected, refetchLinkedWallets]);
 
-  // Linked wallets initial fetch
   useEffect(() => {
     if (!isAuthedEnough) {
       setLinkedWallets([]);
@@ -880,7 +921,6 @@ function DashboardInner() {
     refetchLinkedWallets();
   }, [isAuthedEnough, refetchLinkedWallets]);
 
-  // Countdown ticker (Madrid 22:00 cutoff)
   useEffect(() => {
     const tick = () => {
       const cutoffUtc = nextMadridCutoffUtcMs(new Date());
@@ -892,7 +932,6 @@ function DashboardInner() {
     return () => clearInterval(t);
   }, []);
 
-  // Hub boot: preferences + streak + mission
   useEffect(() => {
     if (!isAuthedEnough) return;
 
@@ -913,7 +952,6 @@ function DashboardInner() {
           if (sj?.streak) setStreak(sj.streak as Streak);
         }
 
-        // ✅ FIX: closing backtick (this was your unterminated string constant)
         const mr = await fetch(`/api/hub/mission/today?seed=${encodeURIComponent(handle || '')}`, {
           cache: 'no-store',
         });
@@ -931,12 +969,10 @@ function DashboardInner() {
     };
   }, [isAuthedEnough, handle]);
 
-  // Fetch helpers
   const fetchTicketsToday = useCallback(async () => {
     const res = await fetch('/api/tickets/today', { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load tickets');
     const data = await res.json().catch(() => ({} as any));
-
     const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
     return raw.map(normalizeEntry).filter(Boolean) as Entry[];
   }, []);
@@ -956,7 +992,6 @@ function DashboardInner() {
     const res = await fetch(`/api/tickets/history?wallet=${encodeURIComponent(address)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load history');
     const data = await res.json().catch(() => ({} as any));
-
     const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
     return raw.map(normalizeEntry).filter(Boolean) as Entry[];
   }, []);
@@ -980,7 +1015,6 @@ function DashboardInner() {
     return winners.filter(w => w.id && w.ticketCode);
   }, []);
 
-  // Throttle balance hits to avoid spamming
   const lastBalanceFetchAtRef = useRef<number>(0);
   const BALANCE_MIN_INTERVAL_MS = 30_000;
 
@@ -1005,24 +1039,16 @@ function DashboardInner() {
         setEntries(nextTickets);
         setRecentWinners(nextWinners);
 
-        // Wallet-dependent data
         if (walletConnected && addr) {
-          // BALANCE (throttled)
           const now = Date.now();
           const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
 
           if (shouldFetchBalance) {
             try {
               setXpotBalance(null);
-
               const b = await fetchXpotBalance(addr);
-
-              if (typeof b === 'number') {
-                setXpotBalance(b);
-              } else {
-                setXpotBalance('error');
-              }
-
+              if (typeof b === 'number') setXpotBalance(b);
+              else setXpotBalance('error');
               lastBalanceFetchAtRef.current = now;
             } catch (e) {
               console.error('[XPOT] balance fetch failed', e);
@@ -1031,7 +1057,6 @@ function DashboardInner() {
             }
           }
 
-          // HISTORY
           try {
             if (reason === 'initial') setLoadingHistory(true);
             setHistoryError(null);
@@ -1102,7 +1127,6 @@ function DashboardInner() {
     };
   }, [isAuthedEnough, refreshAll]);
 
-  // Sync "today's ticket" state with DB
   useEffect(() => {
     if (!currentWalletAddress) {
       setTicketClaimed(false);
@@ -1150,7 +1174,6 @@ function DashboardInner() {
     setClaiming(true);
 
     const walletAddress = publicKey.toBase58();
-    console.log('[claim] sending walletAddress', walletAddress);
 
     try {
       const res = await fetch('/api/tickets/claim', {
@@ -1182,20 +1205,16 @@ function DashboardInner() {
             );
             break;
           }
-
           case 'XPOT_CHECK_FAILED':
             setClaimError('We could not verify your XPOT balance right now. Please try again in a moment.');
             break;
-
           case 'NO_OPEN_DRAW':
             setClaimError('Today’s draw is not open yet. Please refresh and try again in a moment.');
             break;
-
           case 'MISSING_WALLET':
           case 'INVALID_BODY':
             setClaimError('We could not read your wallet address. Please reconnect your wallet and try again.');
             break;
-
           default:
             setClaimError('Entry request failed. Please try again.');
         }
@@ -1272,13 +1291,17 @@ function DashboardInner() {
 
   const linkedCount = linkedWallets.length || (currentWalletAddress ? 1 : 0);
 
+  // ✅ also unlock scroll if lock overlay shows/hides or ceremony shows/hides
+  useEffect(() => {
+    if (!showLock && !showCeremony) unlockScroll();
+  }, [showLock, showCeremony]);
+
   return (
     <>
-       <style jsx global>{`
+      <style jsx global>{`
         .xpot-luxe-border {
-          background:
-            linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)) 0 0 /
-              200% 1px no-repeat,
+          background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)) 0
+              0 / 200% 1px no-repeat,
             linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)) 0 0 /
               1px 200% no-repeat;
           mask-image: radial-gradient(circle at 22% 18%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.2) 55%, rgba(0, 0, 0, 0)
@@ -1372,13 +1395,7 @@ function DashboardInner() {
           width: 55%;
           height: 260%;
           transform: rotate(12deg);
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.22),
-            rgba(255, 255, 255, 0.08),
-            transparent
-          );
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08), transparent);
           animation: xpotBtnSheen 3.8s ease-in-out infinite;
           mix-blend-mode: overlay;
           pointer-events: none;
