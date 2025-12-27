@@ -1033,10 +1033,8 @@ export default function AdminPage() {
   if (!candidate) return;
 
   setIsSavingToken(true);
-  setTokenVerifyError(null);
 
   try {
-    // No remote verification step here (because ops-mode route doesn't exist).
     await acceptToken(candidate);
 
     // Optional: clear any previous banner state
@@ -1044,7 +1042,6 @@ export default function AdminPage() {
     setOpsApiBanner(null);
   } catch (err: any) {
     await revokeToken();
-    setTokenVerifyError(err?.message || 'Failed to unlock');
   } finally {
     setIsSavingToken(false);
   }
