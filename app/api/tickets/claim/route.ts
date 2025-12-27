@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { REQUIRED_XPOT } from '@/lib/xpot';
+import { PublicKey } from '@solana/web3.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,7 +99,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
 }
 
 // ─────────────────────────────────────────────
-// Helpers – code + XPOT balance check
+// Helpers – code + XPOT balance check (XPOT ONLY)
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -114,42 +115,51 @@ async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw
   const XPOT_MINT = process.env.XPOT_MINT;
   if (!XPOT_MINT) throw new Error('XPOT_MINT not configured');
 
-  const res = await fetch('https://api.mainnet-beta.solana.com', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'getTokenAccountsByOwner',
-      params: [address, { mint: XPOT_MINT }, { encoding: 'jsonParsed' }],
-    }),
-  });
+  // IMPORTANT: XPOT-only gating. No SOL checks anywhere.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
-  const json = await res.json().catch(() => null);
-  const accounts = json?.result?.value ?? [];
+  try {
+    const res = await fetch('https://api.mainnet-beta.solana.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getTokenAccountsByOwner',
+        params: [address, { mint: XPOT_MINT }, { encoding: 'jsonParsed' }],
+      }),
+    });
 
-  if (!Array.isArray(accounts) || accounts.length === 0) {
-    return { balance: 0, raw: 0n, decimals: 6 };
+    const json = await res.json().catch(() => null);
+    const accounts = json?.result?.value ?? [];
+
+    if (!Array.isArray(accounts) || accounts.length === 0) {
+      return { balance: 0, raw: 0n, decimals: 6 };
+    }
+
+    let rawTotal = 0n;
+    let decimals = 6;
+
+    for (const acc of accounts) {
+      const info = acc?.account?.data?.parsed?.info;
+      const tokenAmount = info?.tokenAmount;
+      if (!tokenAmount?.amount) continue;
+
+      const amountStr: string = tokenAmount.amount;
+      const dec: number = tokenAmount.decimals ?? 6;
+
+      decimals = dec;
+      rawTotal += BigInt(amountStr);
+    }
+
+    const balance = decimals >= 0 ? Number(rawTotal) / Math.pow(10, decimals) : Number(rawTotal);
+
+    return { balance, raw: rawTotal, decimals };
+  } finally {
+    clearTimeout(timeout);
   }
-
-  let rawTotal = 0n;
-  let decimals = 6;
-
-  for (const acc of accounts) {
-    const info = acc?.account?.data?.parsed?.info;
-    const tokenAmount = info?.tokenAmount;
-    if (!tokenAmount?.amount) continue;
-
-    const amountStr: string = tokenAmount.amount;
-    const dec: number = tokenAmount.decimals ?? 6;
-
-    decimals = dec;
-    rawTotal += BigInt(amountStr);
-  }
-
-  const balance = decimals >= 0 ? Number(rawTotal) / Math.pow(10, decimals) : Number(rawTotal);
-
-  return { balance, raw: rawTotal, decimals };
 }
 
 // ─────────────────────────────────────────────
@@ -160,13 +170,22 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({} as any));
 
-    const walletAddress: string | undefined = body.walletAddress || body.wallet || body.address;
+    const maybeAddr: unknown = body.walletAddress ?? body.wallet ?? body.address;
+    const rawAddr = typeof maybeAddr === 'string' ? maybeAddr.trim() : '';
 
-    if (!walletAddress || typeof walletAddress !== 'string') {
+    // Validate + canonicalize (prevents weird whitespace/format issues)
+    let walletAddress = '';
+    try {
+      walletAddress = rawAddr ? new PublicKey(rawAddr).toBase58() : '';
+    } catch {
+      walletAddress = '';
+    }
+
+    if (!walletAddress) {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // 1) XPOT minimum check (server-side)
+    // 1) XPOT minimum check (server-side) - XPOT ONLY
     let xpotBalance = 0;
 
     try {
