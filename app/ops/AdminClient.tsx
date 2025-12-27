@@ -1,9 +1,7 @@
-
 // app/ops/AdminClient.tsx
 'use client';
 
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
-import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
 import OperationsCenterBadge from '@/components/OperationsCenterBadge';
@@ -16,10 +14,8 @@ import {
   KeyRound,
   Loader2,
   RefreshCcw,
-  ShieldAlert,
   Ticket,
   Timer,
-  XCircle,
 } from 'lucide-react';
 
 const MAX_TODAY_TICKETS = 7;
@@ -43,8 +39,6 @@ type TodayDraw = {
   ticketsCount: number;
   closesAt?: string | null;
 };
-
-type OpsMode = 'MANUAL' | 'AUTO';
 
 type TicketStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
@@ -149,9 +143,7 @@ function UsdPill({
   return (
     <span className={cls}>
       <span className="font-mono text-[0.92em]">{value}</span>
-      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">
-        USD
-      </span>
+      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">USD</span>
     </span>
   );
 }
@@ -175,9 +167,7 @@ function XpotPill({
   return (
     <span className={cls}>
       <span className="font-mono tracking-[0.14em] text-[0.9em]">{amountStr}</span>
-      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">
-        {unit}
-      </span>
+      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">{unit}</span>
     </span>
   );
 }
@@ -295,16 +285,6 @@ export default function AdminPage() {
   const [tokenInput, setTokenInput] = useState('');
   const [tokenAccepted, setTokenAccepted] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
-
-  const [, setOpsMode] = useState<OpsMode>('MANUAL');
-  const [effectiveOpsMode, setEffectiveOpsMode] = useState<OpsMode>('MANUAL');
-  const [envAutoAllowed, setEnvAutoAllowed] = useState<boolean>(false);
-
-  const [modeModalOpen, setModeModalOpen] = useState(false);
-  const [modePending, setModePending] = useState<OpsMode>('MANUAL');
-  const [modeTokenInput, setModeTokenInput] = useState('');
-  const [modeSaving, setModeSaving] = useState(false);
-  const [modeError, setModeError] = useState<string | null>(null);
 
   const [todayDraw, setTodayDraw] = useState<TodayDraw | null>(null);
   const [todayDrawError, setTodayDrawError] = useState<string | null>(null);
@@ -429,36 +409,6 @@ export default function AdminPage() {
     setOpsApiBanner(null);
 
     return data;
-  }
-
-  async function loadOpsMode() {
-    // If we already discovered ops routes are missing, do not call again.
-    if (opsApiAvailable === false) return;
-
-    const data = await authedFetch(ops('/ops-mode'));
-
-    const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
-    const eff = ((data as any).effectiveMode ?? m) as OpsMode;
-    const allowed = !!(data as any).envAutoAllowed;
-
-    setOpsMode(m);
-    setEffectiveOpsMode(eff);
-    setEnvAutoAllowed(allowed);
-  }
-
-  async function saveOpsMode(next: OpsMode) {
-    const data = await authedFetch(ops('/ops-mode'), {
-      method: 'POST',
-      body: JSON.stringify({ mode: next }),
-    });
-
-    const m = ((data as any).mode ?? next) as OpsMode;
-    const eff = ((data as any).effectiveMode ?? m) as OpsMode;
-    const allowed = !!(data as any).envAutoAllowed;
-
-    setOpsMode(m);
-    setEffectiveOpsMode(eff);
-    setEnvAutoAllowed(allowed);
   }
 
   async function refreshUpcomingDrops() {
@@ -834,13 +784,6 @@ export default function AdminPage() {
     let cancelled = false;
 
     async function loadAll() {
-      // Ops mode (only if ops routes exist)
-      try {
-        await loadOpsMode();
-      } catch (err) {
-        console.error('[ADMIN] load ops mode error', err);
-      }
-
       // Today (always with fallback)
       setTodayLoading(true);
       setTodayDrawError(null);
@@ -1479,7 +1422,9 @@ export default function AdminPage() {
                   </div>
 
                   {bonusPickError && <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>}
-                  {bonusPickSuccess && <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>}
+                  {bonusPickSuccess && (
+                    <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>
+                  )}
 
                   {(bonusError || bonusSuccess) && (
                     <div className="mt-3 text-xs">
@@ -1495,7 +1440,9 @@ export default function AdminPage() {
             <div className="mt-5 xpot-card px-4 py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Upcoming bonus drops</p>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                    Upcoming bonus drops
+                  </p>
 
                   {nextBonusDrop && nextBonusCountdown && (
                     <div className="flex items-center gap-3">
@@ -1551,7 +1498,15 @@ export default function AdminPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Badge tone={d.status === 'SCHEDULED' ? 'sky' : d.status === 'FIRED' ? 'emerald' : 'red'}>
+                        <Badge
+                          tone={
+                            d.status === 'SCHEDULED'
+                              ? 'sky'
+                              : d.status === 'FIRED'
+                              ? 'emerald'
+                              : 'red'
+                          }
+                        >
                           {d.status}
                         </Badge>
 
@@ -1560,7 +1515,9 @@ export default function AdminPage() {
                             type="button"
                             className={`${BTN_DANGER} h-9 px-4 text-xs`}
                             onClick={() => handleCancelBonusDrop(d.id)}
-                            disabled={cancelingDropId === d.id || !tokenAccepted || opsApiAvailable === false}
+                            disabled={
+                              cancelingDropId === d.id || !tokenAccepted || opsApiAvailable === false
+                            }
                           >
                             {cancelingDropId === d.id ? 'Canceling...' : 'Cancel'}
                           </button>
@@ -1781,160 +1738,6 @@ export default function AdminPage() {
           </section>
         </div>
       </section>
-
-      {modeModalOpen && (
-        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
-          <div className="w-full max-w-md xpot-panel px-6 py-6">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-50">Switch ops mode</p>
-              <button
-                type="button"
-                className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-                onClick={() => setModeModalOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-
-            <p className="mt-2 text-xs text-slate-400">
-              Confirm your admin key to switch to{' '}
-              <span className="font-semibold text-slate-200">
-                {modePending === 'AUTO' ? 'AUTO' : 'MANUAL'}
-              </span>
-              .
-            </p>
-
-            {!envAutoAllowed && modePending === 'AUTO' && (
-              <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
-                AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won't take
-                effect until allowed.
-              </div>
-            )}
-
-            <div className="mt-4 space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                Admin key (re-enter)
-              </label>
-              <input
-                type="password"
-                className="xpot-input rounded-2xl"
-                value={modeTokenInput}
-                onChange={e => setModeTokenInput(e.target.value)}
-                placeholder="Paste admin token..."
-              />
-              {modeError && <p className="text-xs text-amber-300">{modeError}</p>}
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                className={`${BTN_UTILITY} flex-1 h-11 text-sm`}
-                onClick={() => setModeModalOpen(false)}
-                disabled={modeSaving}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className={`${BTN_VAULT} flex-1 h-11 text-sm`}
-                disabled={modeSaving || !modeTokenInput.trim()}
-                onClick={async () => {
-                  setModeError(null);
-                  setModeSaving(true);
-                  try {
-                    if (!adminToken || modeTokenInput.trim() !== adminToken.trim())
-                      throw new Error('Admin key mismatch.');
-                    await saveOpsMode(modePending);
-                    setModeModalOpen(false);
-                  } catch (err: any) {
-                    setModeError(err?.message || 'Failed to switch mode');
-                  } finally {
-                    setModeSaving(false);
-                  }
-                }}
-              >
-                {modeSaving ? 'Saving...' : 'Confirm switch'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ULTRA PREMIUM LOCK MODAL */}
-      {!tokenAccepted && (
-        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-[18vh] px-4">">
-          <div className="relative w-full max-w-md xpot-panel px-6 py-6 sm:px-8 sm:py-8">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <XpotLogoLottie className="h-[64px]" />
-                <span className="rounded-full border border-slate-700/70 bg-slate-950/80 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-slate-300">
-                  Operations Center
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-50">Unlock XPOT operations center</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Step inside the live XPOT control deck. Monitor today's round, entries, wallets and reward execution -
-                  secured behind your private <span className="font-semibold text-slate-200">admin key</span>.
-                </p>
-              </div>
-
-              <form onSubmit={handleUnlock} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Admin key</label>
-                  <div className="relative">
-                    <input
-                      type="password"
-                      autoFocus
-                      className="w-full rounded-2xl border border-slate-700/80 bg-slate-950/90 px-4 py-3 pr-20 text-sm text-slate-100 placeholder:text-slate-600 outline-none focus:border-emerald-400/80"
-                      value={tokenInput}
-                      onChange={e => setTokenInput(e.target.value)}
-                      placeholder="Paste your secret XPOT admin key..."
-                    />
-                    <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                      Secured
-                    </span>
-                  </div>
-
-                  <p className="text-[10px] text-slate-500">Your key is stored locally in this browser only.</p>
-                  <p className="text-[10px] text-slate-500">
-                    <span className="font-semibold text-slate-300">Never share your admin key</span> - it unlocks full
-                    XPOT operations.
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSavingToken || !tokenInput.trim()}
-                  className={`${BTN_VAULT} w-full rounded-2xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60`}
-                >
-                  {isSavingToken ? 'Verifying key...' : 'Unlock admin view'}
-                </button>
-              </form>
-
-              <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3 text-[11px] text-slate-400">
-                <div className="flex items-start gap-2">
-                  <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-300" />
-                  <p>If your token is wrong you'll just see request failures - nothing breaks.</p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setTokenInput('')}
-              className="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700/70 bg-slate-950/60 px-4 py-3 text-xs text-slate-300 hover:bg-slate-900/60"
-            >
-              <XCircle className="h-4 w-4" />
-              Clear input
-            </button>
-          </div>
-        </div>
-      )}
     </XpotPageShell>
   );
 }
