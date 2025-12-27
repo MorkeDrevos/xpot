@@ -225,34 +225,37 @@ function initialFromHandle(h?: string | null) {
   return s ? s[0].toUpperCase() : 'X';
 }
 
-// FIX: typed media query args (no implicit any)
-type MotionSuggests = MediaQueryList | MediaQueryListEvent | null;
-
+/**
+ * FIXED: TypeScript error "Parameter 'suggests' implicitly has an 'any' type."
+ * Also avoids any weirdness between MediaQueryList and MediaQueryListEvent.
+ */
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const m = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-    const apply = (suggests: MotionSuggests) => {
-      const next = suggests ? (suggests as any).matches : mql.matches;
-      setReduced(Boolean(next));
+    const apply = (matches?: boolean | null) => {
+      setReduced(Boolean(matches ?? m.matches));
     };
 
-    const handler = (e: MediaQueryListEvent) => apply(e);
+    const handler = (e: MediaQueryListEvent) => apply(e.matches);
 
-    apply(mql);
+    apply(m.matches);
 
-    if (mql.addEventListener) {
-      mql.addEventListener('change', handler);
-      return () => mql.removeEventListener('change', handler);
+    // Modern browsers
+    if (typeof m.addEventListener === 'function') {
+      m.addEventListener('change', handler);
+      return () => m.removeEventListener('change', handler);
     }
 
     // Safari fallback
-    (mql as any).addListener?.(handler);
-    return () => (mql as any).removeListener?.(handler);
+    // eslint-disable-next-line deprecation/deprecation
+    m.addListener(handler);
+    // eslint-disable-next-line deprecation/deprecation
+    return () => m.removeListener(handler);
   }, []);
 
   return reduced;
@@ -819,16 +822,13 @@ export default function DashboardClient() {
     return list;
   }, []);
 
-  // FIX: on-chain balance, correct signature (no { commitment, programId } object)
+  // Balance is computed directly from the connected RPC using parsed token accounts.
   const fetchXpotBalanceFromChain = useCallback(
     async (owner: PublicKey) => {
       if (!XPOT_MINT_PUBKEY) throw new Error('TOKEN_MINT is invalid');
 
-      const parsed = await connection.getParsedTokenAccountsByOwner(
-        owner,
-        { mint: XPOT_MINT_PUBKEY },
-        'confirmed',
-      );
+      // NOTE: Keep this signature simple to avoid web3.js type overload issues.
+      const parsed = await connection.getParsedTokenAccountsByOwner(owner, { mint: XPOT_MINT_PUBKEY }, 'confirmed');
 
       let total = 0;
 
@@ -887,6 +887,10 @@ export default function DashboardClient() {
     return winners.filter(w => w.id && w.ticketCode);
   }, []);
 
+  // Throttle on-chain balance hits so we do not spam RPC (helps avoid 403/ratelimits)
+  const lastBalanceFetchAtRef = useRef<number>(0);
+  const BALANCE_MIN_INTERVAL_MS = 30_000;
+
   const refreshAll = useCallback(
     async (reason: 'initial' | 'poll' | 'manual' = 'poll') => {
       if (!isAuthedEnough) return;
@@ -914,15 +918,24 @@ export default function DashboardClient() {
         setRecentWinners(nextWinners);
 
         if (publicKey && walletConnected) {
-          try {
-            setXpotBalance(null);
-            const b = await fetchXpotBalanceFromChain(publicKey);
-            setXpotBalance(b);
-          } catch (e) {
-            console.error('Error loading XPOT balance (on-chain)', e);
-            setXpotBalance('error');
+          // XPOT BALANCE (on-chain, throttled)
+          const now = Date.now();
+          const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
+
+          if (shouldFetchBalance) {
+            try {
+              setXpotBalance(null);
+              const b = await fetchXpotBalanceFromChain(publicKey);
+              setXpotBalance(b);
+              lastBalanceFetchAtRef.current = now;
+            } catch (e) {
+              console.error('Error loading XPOT balance (on-chain)', e);
+              setXpotBalance('error');
+              lastBalanceFetchAtRef.current = now;
+            }
           }
 
+          // HISTORY
           try {
             if (reason === 'initial') setLoadingHistory(true);
             setHistoryError(null);
@@ -1417,7 +1430,7 @@ export default function DashboardClient() {
                             </StatusPill>
                           )
                         ) : (
-                          <StatusPill tone="slate">—</StatusPill>
+                          <StatusPill tone="slate">-</StatusPill>
                         )}
                       </div>
                     </div>
@@ -1525,7 +1538,7 @@ export default function DashboardClient() {
                               </StatusPill>
                             )
                           ) : (
-                            <StatusPill tone="slate">—</StatusPill>
+                            <StatusPill tone="slate">-</StatusPill>
                           )}
                         </div>
                         <p className="mt-2 text-xs text-slate-300/70">Eligibility is checked on-chain on refresh.</p>
@@ -1579,7 +1592,10 @@ export default function DashboardClient() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <TinyRow label="Status" value={<span className="font-semibold text-slate-100">IN DRAW</span>} />
-                      <TinyRow label="Issued" value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>} />
+                      <TinyRow
+                        label="Issued"
+                        value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>}
+                      />
                     </div>
                   </div>
                 )}
