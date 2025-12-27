@@ -665,6 +665,8 @@ function normalizeLinkedWallets(payload: any): LinkedWallet[] {
     }
   }
 
+  type XpotBalanceState = number | 'error' | null;
+
   // unique by address
   const seen = new Set<string>();
   return out.filter(w => {
@@ -702,7 +704,7 @@ function DashboardInner() {
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
-  const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
+  const [xpotBalance, setXpotBalance] = useState<XpotBalanceState>(null);
   const hasRequiredXpot = typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
@@ -712,7 +714,6 @@ function DashboardInner() {
   const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
-
   const [countdown, setCountdown] = useState('00:00:00');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncPulse, setSyncPulse] = useState(0);
@@ -1024,22 +1025,28 @@ function DashboardInner() {
         // Wallet-dependent data
         if (walletConnected && addr) {
           // BALANCE (throttled)
-          const now = Date.now();
-          const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
+const now = Date.now();
+const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
 
-          if (shouldFetchBalance) {
-            try {
-              setXpotBalance(null);
-              const b = await fetchXpotBalance(addr);
-              if (typeof b === 'number') setXpotBalance(b);
-              else setXpotBalance('error');
-              lastBalanceFetchAtRef.current = now;
-            } catch (e) {
-              console.error('[XPOT] balance fetch failed', e);
-              setXpotBalance('error');
-              lastBalanceFetchAtRef.current = now;
-            }
-          }
+if (shouldFetchBalance) {
+  try {
+    setXpotBalance(null);
+
+    const b = await fetchXpotBalance(addr);
+
+    if (typeof b === 'number') {
+      setXpotBalance(b);
+    } else {
+      setXpotBalance('error');
+    }
+
+    lastBalanceFetchAtRef.current = now;
+  } catch (e) {
+    console.error('[XPOT] balance fetch failed', e);
+    setXpotBalance('error');
+    lastBalanceFetchAtRef.current = now;
+  }
+}
 
           // HISTORY
           try {
@@ -1160,6 +1167,7 @@ function DashboardInner() {
     setClaiming(true);
 
     const walletAddress = publicKey.toBase58();
+    console.log('[claim] sending walletAddress', walletAddress);
 
     try {
       const res = await fetch('/api/tickets/claim', {
@@ -1180,29 +1188,42 @@ function DashboardInner() {
         const code = data.error as string | undefined;
 
         switch (code) {
-          case 'NOT_ENOUGH_XPOT':
-            setClaimError(
-              `You need at least ${(data.required ?? REQUIRED_XPOT).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
-                data.balance ?? 0,
-              ).toLocaleString()} XPOT.`,
-            );
-            break;
-          case 'NOT_ENOUGH_SOL':
-            setClaimError('Your wallet needs some SOL for network fees before you can get today’s ticket.');
-            break;
-          case 'XPOT_CHECK_FAILED':
-            setClaimError('Could not verify your XPOT balance right now. Please try again in a moment.');
-            break;
-          case 'MISSING_WALLET':
-          case 'INVALID_BODY':
-            setClaimError('Something is wrong with your wallet address. Try reconnecting your wallet and trying again.');
-            break;
-          default:
-            setClaimError('Ticket request failed. Please try again.');
-        }
+case 'NOT_ENOUGH_XPOT': {
+  const required =
+    typeof data.required === 'number' ? data.required : REQUIRED_XPOT;
 
-        console.error('Claim failed', res.status, text);
-        return;
+  const bal =
+    typeof data.balance === 'number' ? data.balance : null;
+
+  setClaimError(
+    bal === null
+      ? `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. We could not read your wallet balance right now.`
+      : `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. Your wallet currently has ${bal.toLocaleString()} XPOT.`,
+  );
+  break;
+}
+
+  // Keep UX calm + XPOT-only even if backend ever returns something else
+  case 'NOT_ENOUGH_SOL':
+  case 'XPOT_CHECK_FAILED':
+    setClaimError('We could not verify your XPOT balance right now. Please try again in a moment.');
+    break;
+
+  case 'NO_OPEN_DRAW':
+    setClaimError('Today’s draw is not open yet. Please refresh and try again in a moment.');
+    break;
+
+  case 'MISSING_WALLET':
+  case 'INVALID_BODY':
+    setClaimError('We could not read your wallet address. Please reconnect your wallet and try again.');
+    break;
+
+  default:
+    setClaimError('Entry request failed. Please try again.');
+}
+
+console.error('Claim failed', res.status, text);
+return;
       }
 
       const ticket = normalizeEntry(data.ticket) || null;
