@@ -1176,7 +1176,6 @@ export default function JackpotPanel({
       </p>
     </div>
   </div>
-</div>>
 
               <div className="mt-4 sm:mt-auto pb-1 text-left sm:text-right">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
