@@ -565,6 +565,8 @@ function EntryCeremony({
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
+type XpotBalanceState = number | 'error' | null;
+
 type Entry = {
   id: string;
   code: string;
@@ -586,8 +588,6 @@ type RecentWinner = {
 
 type Mission = { title: string; desc: string; ymd?: string };
 type Streak = { days: number; todayDone: boolean; lastDoneYmd?: string | null };
-
-type XpotBalanceState = number | 'error' | null; // ✅ moved to top-level
 
 function normalizeStatus(s: any): EntryStatus {
   const v = typeof s === 'string' ? s : '';
@@ -1908,15 +1908,15 @@ function DashboardInner() {
                                 </button>
 
                                 <button
-                                  type="button"
-                                  onClick={() => tryUnlinkWallet(w.address)}
-                                  disabled={unlinking === w.address}
-                                  className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-                                  title="Remove this wallet from your XPOT account (requires /api/me/wallet-unlink)"
-                                >
-                                  <UnlinkIcon className="mr-2 h-4 w-4" />
-                                  {unlinking === w.address ? 'Unlinking…' : 'Unlink'}
-                                </button>
+  type="button"
+  onClick={() => tryUnlinkWallet(w.address)}
+  disabled
+  className={`${BTN_UTILITY} h-8 px-3 text-[11px] opacity-50 cursor-not-allowed`}
+  title="Unlink is not available yet"
+>
+  <UnlinkIcon className="mr-2 h-4 w-4" />
+  Unlink
+</button>
                               </div>
                             </div>
                           );
