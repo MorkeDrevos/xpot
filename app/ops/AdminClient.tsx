@@ -143,7 +143,9 @@ function UsdPill({
   return (
     <span className={cls}>
       <span className="font-mono text-[0.92em]">{value}</span>
-      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">USD</span>
+      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">
+        USD
+      </span>
     </span>
   );
 }
@@ -167,7 +169,9 @@ function XpotPill({
   return (
     <span className={cls}>
       <span className="font-mono tracking-[0.14em] text-[0.9em]">{amountStr}</span>
-      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">{unit}</span>
+      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">
+        {unit}
+      </span>
     </span>
   );
 }
@@ -360,7 +364,9 @@ export default function AdminPage() {
   const [serverSkewMs, setServerSkewMs] = useState(0);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') setIsDevHost(window.location.hostname.startsWith('dev.'));
+    if (typeof window !== 'undefined') {
+      setIsDevHost(window.location.hostname.startsWith('dev.'));
+    }
   }, []);
 
   // ── Load admin token ────────────────────────
@@ -397,17 +403,15 @@ export default function AdminPage() {
       if (res.status === 404) {
         setOpsApiAvailable(false);
         setOpsApiBanner(
-          'Ops API routes not found in this deployment (404). UI will run in read-only fallback mode until /api/ops/* is deployed.',
+          'Ops API routes not found in this deployment (404). Ops sections will run in fallback mode until /api/ops/* is deployed.',
         );
       }
       const msg = data?.error || `Request failed (${res.status})`;
       throw new Error(msg);
     }
 
-    // If we get here, ops API exists (at least for this route)
     setOpsApiAvailable(true);
     setOpsApiBanner(null);
-
     return data;
   }
 
@@ -432,7 +436,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Manually create today’s draw (dev) ──────
   async function handleCreateTodayDraw() {
     setTodayDrawError(null);
 
@@ -460,7 +463,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Schedule bonus XPOT ─────────────────────
   async function handleScheduleBonus(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBonusError(null);
@@ -477,14 +479,12 @@ export default function AdminPage() {
     }
 
     if (!todayDraw) {
-      setBonusError(
-        'No draw detected for today yet. Create today’s draw first or wait for auto-create.',
-      );
+      setBonusError('No draw detected for today yet.');
       return;
     }
 
     if (todayDraw.status !== 'open') {
-      setBonusError('Today’s draw is not open. Bonus drops can only be scheduled for an open draw.');
+      setBonusError('Today’s draw is not open.');
       return;
     }
 
@@ -526,7 +526,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Cancel scheduled bonus drop ─────────────
   async function handleCancelBonusDrop(dropId: string) {
     setCancelDropError(null);
 
@@ -559,7 +558,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Pick main winner (manual override) ───────
   async function handlePickMainWinner() {
     setPickError(null);
     setPickSuccess(null);
@@ -595,7 +593,6 @@ export default function AdminPage() {
         `Main XPOT winner: ${normalized.ticketCode || '(no ticket)'} (${shortAddr})`,
       );
 
-      // Only attempt winners refresh if ops routes exist.
       if (opsApiAvailable !== false) {
         try {
           const winnersData = await authedFetch(ops('/winners'));
@@ -670,7 +667,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Panic reopen draw ───────────────────────
   async function handleReopenDraw() {
     setTodayDrawError(null);
 
@@ -698,7 +694,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Mark winner as paid ─────────────────────
   async function handleMarkAsPaid(winnerId: string) {
     setMarkPaidError(null);
 
@@ -736,12 +731,8 @@ export default function AdminPage() {
     }
   }
 
-  // Always fetch live draw too, to:
-  // - provide fallback if ops routes are missing
-  // - compute server clock skew (countdown sync)
   async function fetchLiveDrawWithSkew(): Promise<LiveDrawPayload['draw']> {
     const res = await fetch('/api/draw/live', { cache: 'no-store' });
-    // Compute skew from Date header (best-effort)
     try {
       const hdr = res.headers.get('date');
       if (hdr) {
@@ -751,14 +742,10 @@ export default function AdminPage() {
     } catch {
       // ignore
     }
-
     const json = (await res.json()) as LiveDrawPayload;
     return json.draw;
   }
 
-  // Fallback:
-  // 1) Try ops today (authed) if ops API is available
-  // 2) Else use public live draw
   async function loadTodayWithFallback() {
     if (opsApiAvailable !== false) {
       try {
@@ -1027,10 +1014,8 @@ export default function AdminPage() {
 
       {/* ✅ FULL-WIDTH HERO (background runs across the whole screen) */}
       <section className="relative mt-4">
-        {/* full-bleed wrapper */}
         <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
           <div className="relative overflow-hidden border-y border-slate-800/60 bg-slate-950/40">
-            {/* ambient full-width bg */}
             <div
               className="pointer-events-none absolute inset-0 opacity-80"
               style={{
@@ -1042,7 +1027,6 @@ export default function AdminPage() {
             />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.30),rgba(2,6,23,0.75))]" />
 
-            {/* keep content aligned with page shell width */}
             <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
               <div className="relative">
                 <div
@@ -1065,13 +1049,12 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* subtle bottom fade into page */}
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-[linear-gradient(to_bottom,rgba(2,6,23,0),rgba(2,6,23,0.95))]" />
           </div>
         </div>
       </section>
 
-      {/* Admin key band */}
+      {/* Admin key band (no modal) */}
       <section className="relative mt-5">
         <div className="relative xpot-panel">
           <div className="xpot-nebula-halo" />
@@ -1162,7 +1145,9 @@ export default function AdminPage() {
 
                 <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Round status</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Round status
+                    </p>
                     <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
                       {todayLoading && <span>Loading...</span>}
                       {todayDraw && (
@@ -1185,21 +1170,27 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Entries in pool</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Entries in pool
+                    </p>
                     <p className="mt-1 font-mono text-slate-100">
                       {todayLoading ? '–' : todayDraw?.ticketsCount ?? 0}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Rollover amount</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Rollover amount
+                    </p>
                     <div className="mt-1">
                       <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today's XPOT (live)</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Today's XPOT (live)
+                    </p>
                     <div className="mt-1">
                       <UsdPill amount={liveJackpotUsd} size="sm" />
                     </div>
@@ -1213,7 +1204,9 @@ export default function AdminPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm sm:text-base">
-                          <span className="text-xs uppercase tracking-wide text-slate-500">Closes in</span>
+                          <span className="text-xs uppercase tracking-wide text-slate-500">
+                            Closes in
+                          </span>
                           <span
                             className={`
                               ml-2 mt-2 font-mono text-2xl font-semibold transition-all
@@ -1422,9 +1415,7 @@ export default function AdminPage() {
                   </div>
 
                   {bonusPickError && <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>}
-                  {bonusPickSuccess && (
-                    <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>
-                  )}
+                  {bonusPickSuccess && <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>}
 
                   {(bonusError || bonusSuccess) && (
                     <div className="mt-3 text-xs">
@@ -1440,9 +1431,7 @@ export default function AdminPage() {
             <div className="mt-5 xpot-card px-4 py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                    Upcoming bonus drops
-                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Upcoming bonus drops</p>
 
                   {nextBonusDrop && nextBonusCountdown && (
                     <div className="flex items-center gap-3">
@@ -1498,15 +1487,7 @@ export default function AdminPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Badge
-                          tone={
-                            d.status === 'SCHEDULED'
-                              ? 'sky'
-                              : d.status === 'FIRED'
-                              ? 'emerald'
-                              : 'red'
-                          }
-                        >
+                        <Badge tone={d.status === 'SCHEDULED' ? 'sky' : d.status === 'FIRED' ? 'emerald' : 'red'}>
                           {d.status}
                         </Badge>
 
@@ -1515,9 +1496,7 @@ export default function AdminPage() {
                             type="button"
                             className={`${BTN_DANGER} h-9 px-4 text-xs`}
                             onClick={() => handleCancelBonusDrop(d.id)}
-                            disabled={
-                              cancelingDropId === d.id || !tokenAccepted || opsApiAvailable === false
-                            }
+                            disabled={cancelingDropId === d.id || !tokenAccepted || opsApiAvailable === false}
                           >
                             {cancelingDropId === d.id ? 'Canceling...' : 'Cancel'}
                           </button>
@@ -1738,6 +1717,160 @@ export default function AdminPage() {
           </section>
         </div>
       </section>
+
+      {modeModalOpen && (
+        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
+          <div className="w-full max-w-md xpot-panel px-6 py-6">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-50">Switch ops mode</p>
+              <button
+                type="button"
+                className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+                onClick={() => setModeModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="mt-2 text-xs text-slate-400">
+              Confirm your admin key to switch to{' '}
+              <span className="font-semibold text-slate-200">
+                {modePending === 'AUTO' ? 'AUTO' : 'MANUAL'}
+              </span>
+              .
+            </p>
+
+            {!envAutoAllowed && modePending === 'AUTO' && (
+              <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
+                AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won't take
+                effect until allowed.
+              </div>
+            )}
+
+            <div className="mt-4 space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                Admin key (re-enter)
+              </label>
+              <input
+                type="password"
+                className="xpot-input rounded-2xl"
+                value={modeTokenInput}
+                onChange={e => setModeTokenInput(e.target.value)}
+                placeholder="Paste admin token..."
+              />
+              {modeError && <p className="text-xs text-amber-300">{modeError}</p>}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                className={`${BTN_UTILITY} flex-1 h-11 text-sm`}
+                onClick={() => setModeModalOpen(false)}
+                disabled={modeSaving}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className={`${BTN_VAULT} flex-1 h-11 text-sm`}
+                disabled={modeSaving || !modeTokenInput.trim()}
+                onClick={async () => {
+                  setModeError(null);
+                  setModeSaving(true);
+                  try {
+                    if (!adminToken || modeTokenInput.trim() !== adminToken.trim())
+                      throw new Error('Admin key mismatch.');
+                    await saveOpsMode(modePending);
+                    setModeModalOpen(false);
+                  } catch (err: any) {
+                    setModeError(err?.message || 'Failed to switch mode');
+                  } finally {
+                    setModeSaving(false);
+                  }
+                }}
+              >
+                {modeSaving ? 'Saving...' : 'Confirm switch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ULTRA PREMIUM LOCK MODAL */}
+      {!tokenAccepted && (
+        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
+          <div className="relative w-full max-w-md xpot-panel px-6 py-6 sm:px-8 sm:py-8">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <XpotLogoLottie className="h-[64px]" />
+                <span className="rounded-full border border-slate-700/70 bg-slate-950/80 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-slate-300">
+                  Operations Center
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-50">Unlock XPOT operations center</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Step inside the live XPOT control deck. Monitor today's round, entries, wallets and reward execution -
+                  secured behind your private <span className="font-semibold text-slate-200">admin key</span>.
+                </p>
+              </div>
+
+              <form onSubmit={handleUnlock} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Admin key</label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      autoFocus
+                      className="w-full rounded-2xl border border-slate-700/80 bg-slate-950/90 px-4 py-3 pr-20 text-sm text-slate-100 placeholder:text-slate-600 outline-none focus:border-emerald-400/80"
+                      value={tokenInput}
+                      onChange={e => setTokenInput(e.target.value)}
+                      placeholder="Paste your secret XPOT admin key..."
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                      Secured
+                    </span>
+                  </div>
+
+                  <p className="text-[10px] text-slate-500">Your key is stored locally in this browser only.</p>
+                  <p className="text-[10px] text-slate-500">
+                    <span className="font-semibold text-slate-300">Never share your admin key</span> - it unlocks full
+                    XPOT operations.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSavingToken || !tokenInput.trim()}
+                  className={`${BTN_VAULT} w-full rounded-2xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  {isSavingToken ? 'Verifying key...' : 'Unlock admin view'}
+                </button>
+              </form>
+
+              <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3 text-[11px] text-slate-400">
+                <div className="flex items-start gap-2">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-300" />
+                  <p>If your token is wrong you'll just see request failures - nothing breaks.</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setTokenInput('')}
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700/70 bg-slate-950/60 px-4 py-3 text-xs text-slate-300 hover:bg-slate-900/60"
+            >
+              <XCircle className="h-4 w-4" />
+              Clear input
+            </button>
+          </div>
+        </div>
+      )}
     </XpotPageShell>
   );
 }
