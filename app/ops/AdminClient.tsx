@@ -95,7 +95,6 @@ type LiveDrawPayload = {
 };
 
 const ADMIN_TOKEN_KEY = 'xpot_admin_token';
-
 const MADRID_TZ = 'Europe/Madrid';
 
 function formatDate(date: string | Date) {
@@ -294,6 +293,7 @@ export default function AdminPage() {
   const [tokenInput, setTokenInput] = useState('');
   const [tokenAccepted, setTokenAccepted] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
+  const [tokenVerifyError, setTokenVerifyError] = useState<string | null>(null);
 
   const [, setOpsMode] = useState<OpsMode>('MANUAL');
   const [effectiveOpsMode, setEffectiveOpsMode] = useState<OpsMode>('MANUAL');
@@ -382,15 +382,96 @@ export default function AdminPage() {
     if (typeof window !== 'undefined') setIsDevHost(window.location.hostname.startsWith('dev.'));
   }, []);
 
-  // ── Load admin token ────────────────────────
+  // ─────────────────────────────────────────────
+  // Token verification (fix: no more "any input logs in")
+  // ─────────────────────────────────────────────
+  async function verifyAdminToken(candidate: string) {
+    const token = candidate.trim();
+    if (!token) throw new Error('Admin key required');
+
+    // Use a real ops endpoint that requires the key.
+    // If ops is not deployed here (404), we MUST not unlock (can’t verify).
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    headers.set('x-xpot-admin-key', token);
+
+    const res = await fetch(ops('/ops-mode'), { headers, cache: 'no-store' });
+
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        setOpsApiAvailable(false);
+        setOpsApiBanner(
+          'Ops API routes not found in this deployment (404). Admin unlock is disabled here because the key cannot be verified.',
+        );
+        throw new Error('Ops API not deployed here');
+      }
+
+      // Typical invalid key case
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(data?.error || 'Invalid admin key');
+      }
+
+      throw new Error(data?.error || `Verification failed (${res.status})`);
+    }
+
+    // If we get here, ops API exists and key is valid
+    setOpsApiAvailable(true);
+    setOpsApiBanner(null);
+
+    return data;
+  }
+
+  async function acceptToken(token: string) {
+    const t = token.trim();
+    if (typeof window !== 'undefined') window.localStorage.setItem(ADMIN_TOKEN_KEY, t);
+    setAdminToken(t);
+    setTokenAccepted(true);
+    setTokenInput(t);
+  }
+
+  async function revokeToken() {
+    if (typeof window !== 'undefined') window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+    setAdminToken(null);
+    setTokenAccepted(false);
+    setTokenInput('');
+  }
+
+  // ── Load admin token (but re-verify before accepting) ─────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
     const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
-    if (stored) {
-      setAdminToken(stored);
-      setTokenAccepted(true);
-      setTokenInput(stored);
-    }
+    if (!stored) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setIsSavingToken(true);
+      setTokenVerifyError(null);
+      try {
+        await verifyAdminToken(stored);
+        if (!cancelled) await acceptToken(stored);
+      } catch (err: any) {
+        if (!cancelled) {
+          await revokeToken();
+          setTokenVerifyError(err?.message || 'Invalid admin key');
+        }
+      } finally {
+        if (!cancelled) setIsSavingToken(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // IMPORTANT:
@@ -419,6 +500,13 @@ export default function AdminPage() {
           'Ops API routes not found in this deployment (404). UI will run in read-only fallback mode until /api/ops/* is deployed.',
         );
       }
+
+      // If key is wrong/expired, lock back down (prevents "stuck loading" vibes)
+      if (res.status === 401 || res.status === 403) {
+        setTokenVerifyError(data?.error || 'Invalid admin key');
+        await revokeToken();
+      }
+
       const msg = data?.error || `Request failed (${res.status})`;
       throw new Error(msg);
     }
@@ -431,7 +519,6 @@ export default function AdminPage() {
   }
 
   async function loadOpsMode() {
-    // If we already discovered ops routes are missing, do not call again.
     if (opsApiAvailable === false) return;
 
     const data = await authedFetch(ops('/ops-mode'));
@@ -481,7 +568,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Manually create today’s draw (dev) ──────
   async function handleCreateTodayDraw() {
     setTodayDrawError(null);
 
@@ -509,7 +595,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Schedule bonus XPOT ─────────────────────
   async function handleScheduleBonus(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBonusError(null);
@@ -575,7 +660,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Cancel scheduled bonus drop ─────────────
   async function handleCancelBonusDrop(dropId: string) {
     setCancelDropError(null);
 
@@ -608,7 +692,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Pick main winner (manual override) ───────
   async function handlePickMainWinner() {
     setPickError(null);
     setPickSuccess(null);
@@ -644,7 +727,6 @@ export default function AdminPage() {
         `Main XPOT winner: ${normalized.ticketCode || '(no ticket)'} (${shortAddr})`,
       );
 
-      // Only attempt winners refresh if ops routes exist.
       if (opsApiAvailable !== false) {
         try {
           const winnersData = await authedFetch(ops('/winners'));
@@ -719,7 +801,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Panic reopen draw ───────────────────────
   async function handleReopenDraw() {
     setTodayDrawError(null);
 
@@ -747,7 +828,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Mark winner as paid ─────────────────────
   async function handleMarkAsPaid(winnerId: string) {
     setMarkPaidError(null);
 
@@ -785,12 +865,9 @@ export default function AdminPage() {
     }
   }
 
-  // Always fetch live draw too, to:
-  // - provide fallback if ops routes are missing
-  // - compute server clock skew (countdown sync)
   async function fetchLiveDrawWithSkew(): Promise<LiveDrawPayload['draw']> {
     const res = await fetch('/api/draw/live', { cache: 'no-store' });
-    // Compute skew from Date header (best-effort)
+
     try {
       const hdr = res.headers.get('date');
       if (hdr) {
@@ -805,9 +882,6 @@ export default function AdminPage() {
     return json.draw;
   }
 
-  // Fallback:
-  // 1) Try ops today (authed) if ops API is available
-  // 2) Else use public live draw
   async function loadTodayWithFallback() {
     if (opsApiAvailable !== false) {
       try {
@@ -833,14 +907,12 @@ export default function AdminPage() {
     let cancelled = false;
 
     async function loadAll() {
-      // Ops mode (only if ops routes exist)
       try {
         await loadOpsMode();
       } catch (err) {
         console.error('[ADMIN] load ops mode error', err);
       }
 
-      // Today (always with fallback)
       setTodayLoading(true);
       setTodayDrawError(null);
       try {
@@ -853,7 +925,6 @@ export default function AdminPage() {
         if (!cancelled) setTodayLoading(false);
       }
 
-      // If ops routes are missing, stop here (no more 404 spam).
       if (opsApiAvailable === false) {
         if (!cancelled) {
           setTickets([]);
@@ -871,7 +942,6 @@ export default function AdminPage() {
         return;
       }
 
-      // Tickets
       setTicketsLoading(true);
       setTicketsError(null);
       try {
@@ -883,7 +953,6 @@ export default function AdminPage() {
         if (!cancelled) setTicketsLoading(false);
       }
 
-      // Winners
       setWinnersLoading(true);
       setWinnersError(null);
       try {
@@ -895,7 +964,6 @@ export default function AdminPage() {
         if (!cancelled) setWinnersLoading(false);
       }
 
-      // Upcoming
       setUpcomingLoading(true);
       setUpcomingError(null);
       try {
@@ -1025,32 +1093,35 @@ export default function AdminPage() {
     setVisibleWinnerCount(prev => Math.min(prev + MAX_RECENT_WINNERS, winners.length));
   }
 
-  // ── Admin token handling ────────────────────
+  // ── Admin token handling (now verifies) ───────────────────────
   async function handleUnlock(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!tokenInput.trim()) return;
+    const candidate = tokenInput.trim();
+    if (!candidate) return;
 
     setIsSavingToken(true);
+    setTokenVerifyError(null);
+
     try {
-      if (typeof window !== 'undefined')
-        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
-      setAdminToken(tokenInput.trim());
-      setTokenAccepted(true);
+      await verifyAdminToken(candidate);
+      await acceptToken(candidate);
+
       // force re-discovery after unlock
       setOpsApiAvailable(null);
       setOpsApiBanner(null);
+    } catch (err: any) {
+      await revokeToken();
+      setTokenVerifyError(err?.message || 'Invalid admin key');
     } finally {
       setIsSavingToken(false);
     }
   }
 
-  function handleClearToken() {
-    if (typeof window !== 'undefined') window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-    setAdminToken(null);
-    setTokenAccepted(false);
-    setTokenInput('');
+  async function handleClearToken() {
+    await revokeToken();
     setOpsApiAvailable(null);
     setOpsApiBanner(null);
+    setTokenVerifyError(null);
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
@@ -1074,19 +1145,16 @@ export default function AdminPage() {
       subtitle="Control room for today's XPOT"
       rightSlot={<OperationsCenterBadge live={true} autoDraw={isAutoActive} />}
     >
-      {/* Ops API status banner (prevents silent 404 hell) */}
       {opsApiBanner && (
         <div className="mt-4 xpot-panel px-5 py-3 text-xs text-amber-200 border border-amber-400/20 bg-amber-500/[0.06]">
           {opsApiBanner}
         </div>
       )}
 
-      {/* ✅ FULL-WIDTH HERO (background runs across the whole screen) */}
+      {/* ✅ FULL-WIDTH HERO */}
       <section className="relative mt-4">
-        {/* full-bleed wrapper */}
         <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
           <div className="relative overflow-hidden border-y border-slate-800/60 bg-slate-950/40">
-            {/* ambient full-width bg */}
             <div
               className="pointer-events-none absolute inset-0 opacity-80"
               style={{
@@ -1098,7 +1166,6 @@ export default function AdminPage() {
             />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.30),rgba(2,6,23,0.75))]" />
 
-            {/* keep content aligned with page shell width */}
             <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
               <div className="relative">
                 <div
@@ -1121,7 +1188,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* subtle bottom fade into page */}
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-[linear-gradient(to_bottom,rgba(2,6,23,0),rgba(2,6,23,0.95))]" />
           </div>
         </div>
@@ -1171,7 +1237,7 @@ export default function AdminPage() {
                   disabled={isSavingToken || !tokenInput.trim()}
                   className={`${BTN} px-4 py-2 text-xs`}
                 >
-                  {tokenAccepted ? 'Update key' : 'Unlock'}
+                  {isSavingToken ? 'Verifying...' : tokenAccepted ? 'Update key' : 'Unlock'}
                 </button>
 
                 {tokenAccepted && (
@@ -1186,6 +1252,14 @@ export default function AdminPage() {
               </div>
             </form>
           </div>
+
+          {tokenVerifyError && (
+            <div className="px-4 pb-4 sm:px-6">
+              <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-amber-200">
+                {tokenVerifyError}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -1860,10 +1934,10 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ULTRA PREMIUM LOCK MODAL */}
+      {/* ULTRA PREMIUM LOCK MODAL (position fixed: not too high) */}
       {!tokenAccepted && (
-        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
-          <div className="relative w-full max-w-md xpot-panel px-6 py-6 sm:px-8 sm:py-8">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 backdrop-blur-md px-4 py-10">
+          <div className="relative w-full max-w-md xpot-panel px-6 py-6 sm:px-8 sm:py-8 translate-y-6">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <XpotLogoLottie className="h-[64px]" />
@@ -1899,6 +1973,12 @@ export default function AdminPage() {
                     </span>
                   </div>
 
+                  {tokenVerifyError && (
+                    <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-amber-200">
+                      {tokenVerifyError}
+                    </div>
+                  )}
+
                   <p className="text-[10px] text-slate-500">Your key is stored locally in this browser only.</p>
                   <p className="text-[10px] text-slate-500">
                     <span className="font-semibold text-slate-300">Never share your admin key</span> - it unlocks full
@@ -1918,7 +1998,7 @@ export default function AdminPage() {
               <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3 text-[11px] text-slate-400">
                 <div className="flex items-start gap-2">
                   <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-300" />
-                  <p>If your token is wrong you'll just see request failures - nothing breaks.</p>
+                  <p>If your key is wrong you'll get a verification error. No access is granted.</p>
                 </div>
               </div>
             </div>
