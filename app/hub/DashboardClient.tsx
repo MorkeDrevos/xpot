@@ -897,30 +897,37 @@ export default function DashboardClient() {
         const nextWinners = await fetchRecentWinners();
         setRecentWinners(nextWinners);
 
-        if (walletConnected && addr) {
-  try {
-    setXpotBalance(null);
-    const res = await fetch(`/api/xpot-balance?address=${encodeURIComponent(addr)}`, {
-      cache: 'no-store',
-    });
+        // BALANCE (throttled)
+if (walletConnected && addr) {
+  const now = Date.now();
+  const shouldFetchBalance =
+    reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
 
-    if (!res.ok) throw new Error('BALANCE_UNAVAILABLE');
+  if (shouldFetchBalance) {
+    try {
+      setXpotBalance(null);
 
-    const json = await res.json();
-    setXpotBalance(typeof json.balance === 'number' ? json.balance : null);
-  } catch (e) {
-    console.error('[XPOT] balance fetch failed', e);
-    setXpotBalance('error');
+      const b = await fetchXpotBalance(addr);
+      if (typeof b === 'number') setXpotBalance(b);
+      else setXpotBalance('error');
+
+      lastBalanceFetchAtRef.current = now;
+    } catch (e) {
+      console.error('[XPOT] balance fetch failed', e);
+      setXpotBalance('error');
+      lastBalanceFetchAtRef.current = now;
+    }
   }
 } else {
   setXpotBalance(null);
+  lastBalanceFetchAtRef.current = 0;
 }
 
           // HISTORY
           try {
             if (reason === 'initial') setLoadingHistory(true);
             setHistoryError(null);
-            const h = await fetchHistory(addr || publicKey.toBase58());
+            const h = await fetchHistory(addr);
             setHistoryEntries(h);
           } catch (e) {
             console.error('Failed to load history', e);
