@@ -1,7 +1,7 @@
 // app/api/tickets/claim/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { REQUIRED_XPOT } from '@/lib/xpot';
+import { REQUIRED_XPOT, TOKEN_MINT } from '@/lib/xpot';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,14 +57,11 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
-  // Iterate to handle DST offsets.
+  // Iterate a couple times to handle DST offsets.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
-
-    // crude but stable compare (minute precision)
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
     const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
-
     const diffMin = gotTotal - wantTotal;
     if (diffMin === 0) break;
     t -= diffMin * 60_000;
@@ -78,7 +75,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   const nowMin = madridNow.hh * 60 + madridNow.mm;
   const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
 
-  // If before today's cutoff -> next cutoff is today 22:00; else tomorrow 22:00.
+  // If it's before today's cutoff, next cutoff is today 22:00; otherwise it's tomorrow 22:00.
   const baseForNext = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
   const nextDayParts = getTzParts(baseForNext, MADRID_TZ);
 
@@ -113,16 +110,18 @@ function makeCode() {
   return `XPOT-${chunk()}-${chunk()}`;
 }
 
+/**
+ * Reads XPOT SPL token balance via RPC (mainnet).
+ * IMPORTANT: No SOL gating here. Only XPOT balance gating.
+ */
 async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw: bigint; decimals: number }> {
-  const XPOT_MINT = process.env.XPOT_MINT;
-  if (!XPOT_MINT) throw new Error('XPOT_MINT not configured');
+  // Single source of truth = lib/xpot.ts
+  const XPOT_MINT = TOKEN_MINT || process.env.XPOT_MINT;
+  if (!XPOT_MINT) throw new Error('XPOT mint not configured (TOKEN_MINT / XPOT_MINT)');
 
-  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-
-  const res = await fetch(rpcUrl, {
+  const res = await fetch('https://api.mainnet-beta.solana.com', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // owner can be base58 string
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
@@ -153,7 +152,7 @@ async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw
     rawTotal += BigInt(amountStr);
   }
 
-  const balance = Number(rawTotal) / Math.pow(10, decimals);
+  const balance = decimals >= 0 ? Number(rawTotal) / Math.pow(10, decimals) : Number(rawTotal);
   return { balance, raw: rawTotal, decimals };
 }
 
@@ -164,13 +163,14 @@ async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({} as any));
+
     const walletAddress: string | undefined = body.walletAddress || body.wallet || body.address;
 
     if (!walletAddress || typeof walletAddress !== 'string') {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // 1) XPOT minimum check (server-side) - XPOT ONLY, no SOL gating
+    // 1) XPOT minimum check (server-side) - XPOT ONLY
     let xpotBalance = 0;
 
     try {
@@ -218,30 +218,40 @@ export async function POST(req: NextRequest) {
       create: { address: walletAddress },
     });
 
-    // 4) Check if this wallet already has an IN_DRAW ticket for this draw
+    // 4) Ensure only ONE ticket per wallet per draw (race-safe)
     let ticket = await prisma.ticket.findFirst({
-      where: {
-        drawId: draw.id,
-        walletAddress,
-        status: 'IN_DRAW',
-      },
+      where: { drawId: draw.id, walletId: wallet.id },
       include: { wallet: true },
     });
 
-    // 5) If none yet, create one
     if (!ticket) {
-      ticket = await prisma.ticket.create({
-        data: {
-          code: makeCode(),
-          walletId: wallet.id,
-          walletAddress,
-          drawId: draw.id,
-        },
-        include: { wallet: true },
-      });
+      try {
+        ticket = await prisma.ticket.create({
+          data: {
+            code: makeCode(),
+            walletId: wallet.id,
+            walletAddress,
+            drawId: draw.id,
+          },
+          include: { wallet: true },
+        });
+      } catch (e: any) {
+        // If two requests race, unique constraint hits - just fetch the existing ticket
+        if (e?.code === 'P2002') {
+          ticket = await prisma.ticket.findFirst({
+            where: { drawId: draw.id, walletId: wallet.id },
+            include: { wallet: true },
+          });
+        } else {
+          throw e;
+        }
+      }
     }
 
-    // 6) Return the ticket
+    if (!ticket) {
+      return NextResponse.json({ ok: false, error: 'INTERNAL_ERROR' }, { status: 500 });
+    }
+
     return NextResponse.json(
       {
         ok: true,
