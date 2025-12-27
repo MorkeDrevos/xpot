@@ -33,7 +33,6 @@ enum WinnerKind {
   BONUS
 }
 
-// Ops mode for admin control (manual vs auto)
 enum OpsMode {
   MANUAL
   AUTO
@@ -54,20 +53,25 @@ model OpsConfig {
   mode OpsMode @default(MANUAL)
 }
 
-// User (optional identity, NOT tied to tickets)
+// User identity (Clerk/X). Tickets are NOT owned by User, they are owned by Wallet.
 model User {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  clerkId    String? @unique
+  // Clerk identity
+  clerkId String? @unique
+
+  // X identity (optional)
   xUserId    String? @unique
   xHandle    String? @unique
   xName      String?
   xAvatarUrl String?
 
+  // Linked wallets (optional)
   wallets Wallet[]
 
   @@index([xHandle])
+  @@index([clerkId])
 }
 
 // Wallet -> owns tickets
@@ -78,7 +82,7 @@ model Wallet {
   address String @unique
 
   userId String?
-  user   User?   @relation(fields: [userId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   tickets Ticket[]
 
@@ -90,12 +94,14 @@ model Draw {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  /// Calendar date of the draw (UTC day bucket)
+  /// Calendar date bucket (your server decides the bucket rules)
   drawDate DateTime @unique
 
   /// When the main XPOT closes for entries
   closesAt DateTime?
-  status   String   @default("open")
+
+  /// open | closed | completed (kept string to avoid enum migrations during iteration)
+  status String @default("open")
 
   tickets    Ticket[]
   winners    Winner[]
@@ -114,14 +120,14 @@ model Ticket {
 
   // Ticket must always have an owning wallet
   walletId String
-  wallet   Wallet @relation(fields: [walletId], references: [id])
+  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
-  // Snapshot of wallet address at creation time
+  // Snapshot of wallet address at creation time (rendering + audit)
   walletAddress String
   status        TicketStatus @default(IN_DRAW)
 
   drawId String
-  draw   Draw @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id], onDelete: Cascade)
 
   winners Winner[]
 
@@ -140,15 +146,15 @@ model Winner {
   createdAt DateTime @default(now())
 
   drawId String
-  draw   Draw @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id], onDelete: Cascade)
 
   ticketId String
-  ticket   Ticket @relation(fields: [ticketId], references: [id])
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   // Optional extra timestamp (you already have createdAt)
   date DateTime @default(now())
 
-  // Snapshots (keep them - makes rendering fast and stable)
+  // Snapshots (fast + stable rendering)
   ticketCode    String
   walletAddress String
 
@@ -173,7 +179,7 @@ model BonusDrop {
   createdAt DateTime @default(now())
 
   drawId String
-  draw   Draw @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id], onDelete: Cascade)
 
   label       String
   amountXpot  Int
@@ -191,9 +197,9 @@ model DrawEntry {
   createdAt DateTime @default(now())
 
   drawId String
-  draw   Draw @relation(fields: [drawId], references: [id])
+  draw   Draw @relation(fields: [drawId], references: [id], onDelete: Cascade)
 
-  // Clerk user id (string) - keeps this reliable even if User row doesn't exist yet
+  // Clerk user id (string) - reliable even if User row doesn't exist yet
   clerkId String
 
   // Public identity (by handle)
@@ -211,10 +217,11 @@ model DrawEntry {
 
   @@index([drawId, createdAt])
   @@index([xHandle])
+  @@index([clerkId])
 }
 
 // ─────────────────────────────────────────────
-// ✅ Missing models (fixes prisma.hubStreak + prisma.userPreference)
+// Missing models (these MUST exist if your routes use prisma.hubStreak / prisma.userPreference)
 // ─────────────────────────────────────────────
 
 // Hub streak tracking (used by /api/hub/streak)
@@ -223,13 +230,13 @@ model HubStreak {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Clerk user id (used by upsert where: { clerkId })
+  // used by upsert where: { clerkId }
   clerkId String @unique
 
-  // Consecutive days
+  // consecutive days
   days Int @default(0)
 
-  // The last UTC day the streak was recorded for (store as DateTime bucket)
+  // the last day bucket recorded (you can store UTC-midnight or your own bucket)
   lastDoneDay DateTime?
 
   @@index([clerkId])
@@ -241,7 +248,7 @@ model UserPreference {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Clerk user id (used by upsert where: { clerkId })
+  // used by upsert where: { clerkId }
   clerkId String @unique
 
   soundEnabled Boolean @default(true)
