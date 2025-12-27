@@ -2,19 +2,19 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
 
-import { useUser, SignOutButton } from '@clerk/nextjs';
-import GoldAmount from '@/components/GoldAmount';
+import { SignOutButton, useUser } from '@clerk/nextjs';
 
-import XpotPageShell from '@/components/XpotPageShell';
-import HubLockOverlay from '@/components/HubLockOverlay';
 import BonusStrip from '@/components/BonusStrip';
+import GoldAmount from '@/components/GoldAmount';
+import HubLockOverlay from '@/components/HubLockOverlay';
+import XpotPageShell from '@/components/XpotPageShell';
 import { REQUIRED_XPOT, TOKEN_MINT } from '@/lib/xpot';
 
 import {
@@ -822,40 +822,20 @@ export default function DashboardClient() {
     return list;
   }, []);
 
-  // Balance is computed directly from the connected RPC using parsed token accounts.
-  const fetchXpotBalanceFromChain = useCallback(
-    async (owner: PublicKey) => {
-      if (!XPOT_MINT_PUBKEY) throw new Error('TOKEN_MINT is invalid');
+  async function fetchXpotBalance(address: string): Promise<number | null> {
+  try {
+    const res = await fetch(`/api/xpot-balance?address=${encodeURIComponent(address)}`, {
+      cache: 'no-store',
+    });
 
-      // NOTE: Keep this signature simple to avoid web3.js type overload issues.
-      const parsed = await connection.getParsedTokenAccountsByOwner(owner, { mint: XPOT_MINT_PUBKEY }, 'confirmed');
+    if (!res.ok) return null;
 
-      let total = 0;
-
-      for (const it of parsed.value) {
-        const info = (it.account.data as any)?.parsed?.info;
-        const tokenAmount = info?.tokenAmount;
-        const uiAmount = tokenAmount?.uiAmount;
-
-        if (typeof uiAmount === 'number' && Number.isFinite(uiAmount)) {
-          total += uiAmount;
-          continue;
-        }
-
-        const amountStr = tokenAmount?.amount;
-        const decimals = tokenAmount?.decimals;
-        if (typeof amountStr === 'string' && typeof decimals === 'number') {
-          const amt = Number(amountStr);
-          if (Number.isFinite(amt) && decimals >= 0 && decimals <= 18) {
-            total += amt / Math.pow(10, decimals);
-          }
-        }
-      }
-
-      return total;
-    },
-    [connection, XPOT_MINT_PUBKEY],
-  );
+    const json = await res.json();
+    return typeof json.balance === 'number' ? json.balance : null;
+  } catch {
+    return null;
+  }
+}
 
   const fetchHistory = useCallback(async (address: string) => {
     const res = await fetch(`/api/tickets/history?wallet=${encodeURIComponent(address)}`, { cache: 'no-store' });
@@ -917,23 +897,24 @@ export default function DashboardClient() {
         const nextWinners = await fetchRecentWinners();
         setRecentWinners(nextWinners);
 
-        if (publicKey && walletConnected) {
-          // XPOT BALANCE (on-chain, throttled)
-          const now = Date.now();
-          const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
+        if (walletConnected && addr) {
+  try {
+    setXpotBalance(null);
+    const res = await fetch(`/api/xpot-balance?address=${encodeURIComponent(addr)}`, {
+      cache: 'no-store',
+    });
 
-          if (shouldFetchBalance) {
-            try {
-              setXpotBalance(null);
-              const b = await fetchXpotBalanceFromChain(publicKey);
-              setXpotBalance(b);
-              lastBalanceFetchAtRef.current = now;
-            } catch (e) {
-              console.error('Error loading XPOT balance (on-chain)', e);
-              setXpotBalance('error');
-              lastBalanceFetchAtRef.current = now;
-            }
-          }
+    if (!res.ok) throw new Error('BALANCE_UNAVAILABLE');
+
+    const json = await res.json();
+    setXpotBalance(typeof json.balance === 'number' ? json.balance : null);
+  } catch (e) {
+    console.error('[XPOT] balance fetch failed', e);
+    setXpotBalance('error');
+  }
+} else {
+  setXpotBalance(null);
+}
 
           // HISTORY
           try {
@@ -1547,9 +1528,9 @@ export default function DashboardClient() {
 
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <button
-                        type="button"
-                        onClick={handleClaimTicket}
-                        disabled={!walletConnected || claiming}
+  type="button"
+  onClick={handleClaimTicket}
+  disabled={!walletConnected || !hasRequiredXpot || claiming}
                         className={`${BTN_PRIMARY} xpot-btn-sheen`}
                       >
                         {claiming ? 'Generating…' : 'Claim today’s entry'}
