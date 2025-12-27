@@ -1,4 +1,4 @@
-// app/hub/DashboardClient.tsx
+1803// app/hub/DashboardClient.tsx
 'use client';
 
 import Link from 'next/link';
@@ -7,7 +7,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal, WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
 
 import { SignOutButton, useUser } from '@clerk/nextjs';
@@ -2131,18 +2130,5 @@ function DashboardInner() {
         </XpotPageShell>
       </div>
     </>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Page (CLIENT) - Provider wrapper
-// ─────────────────────────────────────────────
-
-export default function DashboardClient() {
-  return (
-    <WalletModalProvider>
-      <WalletModal />
-      <DashboardInner />
-    </WalletModalProvider>
   );
 }
