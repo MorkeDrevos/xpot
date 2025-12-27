@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { WalletReadyState } from '@solana/wallet-adapter-base';
-import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
 
@@ -226,8 +226,7 @@ function initialFromHandle(h?: string | null) {
 }
 
 /**
- * FIXED: TypeScript error "Parameter 'suggests' implicitly has an 'any' type."
- * Also avoids any weirdness between MediaQueryList and MediaQueryListEvent.
+ * Reduced motion hook (safe with older Safari)
  */
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -245,13 +244,11 @@ function useReducedMotion() {
 
     apply(m.matches);
 
-    // Modern browsers
     if (typeof m.addEventListener === 'function') {
       m.addEventListener('change', handler);
       return () => m.removeEventListener('change', handler);
     }
 
-    // Safari fallback
     // eslint-disable-next-line deprecation/deprecation
     m.addListener(handler);
     // eslint-disable-next-line deprecation/deprecation
@@ -560,7 +557,7 @@ function EntryCeremony({
 }
 
 // ─────────────────────────────────────────────
-// Types + defensive normalizers (fixes crash on status.replace)
+// Types + defensive normalizers
 // ─────────────────────────────────────────────
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
@@ -636,9 +633,7 @@ function safeStatusLabel(status: any) {
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
-  const { connection } = useConnection();
   const { setVisible: setWalletModalVisible } = useWalletModal();
-
   const onOpenWalletModal = useCallback(() => setWalletModalVisible(true), [setWalletModalVisible]);
 
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -708,7 +703,8 @@ export default function DashboardClient() {
     desc: 'Preparing today’s mission.',
   });
 
-  const XPOT_MINT_PUBKEY = useMemo(() => {
+  // keep this for validation/consistency (even if not used elsewhere yet)
+  useMemo(() => {
     try {
       return new PublicKey(TOKEN_MINT);
     } catch {
@@ -733,7 +729,7 @@ export default function DashboardClient() {
   }, [isUserLoaded, user, handle]);
 
   // ─────────────────────────────────────────────
-  // Wire wallet → DB whenever it connects
+  // Wire wallet -> DB whenever it connects
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) return;
@@ -769,7 +765,7 @@ export default function DashboardClient() {
   }, []);
 
   // ─────────────────────────────────────────────
-  // Hub boot: preferences + streak + mission (Prisma)
+  // Hub boot: preferences + streak + mission
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) return;
@@ -817,25 +813,19 @@ export default function DashboardClient() {
     const data = await res.json().catch(() => ({} as any));
 
     const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
-    const list = raw.map(normalizeEntry).filter(Boolean) as Entry[];
-
-    return list;
+    return raw.map(normalizeEntry).filter(Boolean) as Entry[];
   }, []);
 
-  async function fetchXpotBalance(address: string): Promise<number | null> {
-  try {
-    const res = await fetch(`/api/xpot-balance?address=${encodeURIComponent(address)}`, {
-      cache: 'no-store',
-    });
-
-    if (!res.ok) return null;
-
-    const json = await res.json();
-    return typeof json.balance === 'number' ? json.balance : null;
-  } catch {
-    return null;
-  }
-}
+  const fetchXpotBalance = useCallback(async (address: string): Promise<number | null> => {
+    try {
+      const res = await fetch(`/api/xpot-balance?address=${encodeURIComponent(address)}`, { cache: 'no-store' });
+      if (!res.ok) return null;
+      const json = await res.json().catch(() => null);
+      return json && typeof json.balance === 'number' ? json.balance : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const fetchHistory = useCallback(async (address: string) => {
     const res = await fetch(`/api/tickets/history?wallet=${encodeURIComponent(address)}`, { cache: 'no-store' });
@@ -843,9 +833,7 @@ export default function DashboardClient() {
     const data = await res.json().catch(() => ({} as any));
 
     const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
-    const tickets = raw.map(normalizeEntry).filter(Boolean) as Entry[];
-
-    return tickets;
+    return raw.map(normalizeEntry).filter(Boolean) as Entry[];
   }, []);
 
   const fetchRecentWinners = useCallback(async () => {
@@ -867,7 +855,7 @@ export default function DashboardClient() {
     return winners.filter(w => w.id && w.ticketCode);
   }, []);
 
-  // Throttle on-chain balance hits so we do not spam RPC (helps avoid 403/ratelimits)
+  // Throttle balance hits to avoid spamming
   const lastBalanceFetchAtRef = useRef<number>(0);
   const BALANCE_MIN_INTERVAL_MS = 30_000;
 
@@ -884,63 +872,34 @@ export default function DashboardClient() {
         if (reason === 'initial') {
           setLoadingTickets(true);
           setTicketsError(null);
-        }
-
-        const nextTickets = await fetchTicketsToday();
-        setEntries(nextTickets);
-
-        if (reason === 'initial') {
           setLoadingWinners(true);
           setWinnersError(null);
         }
 
-        const nextWinners = await fetchRecentWinners();
+        const [nextTickets, nextWinners] = await Promise.all([fetchTicketsToday(), fetchRecentWinners()]);
+        setEntries(nextTickets);
         setRecentWinners(nextWinners);
 
+        // Wallet-dependent data
         if (walletConnected && addr) {
-  // ── BALANCE (throttled) ───────────────────
-  const now = Date.now();
-  const shouldFetchBalance =
-    reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
+          // BALANCE (throttled)
+          const now = Date.now();
+          const shouldFetchBalance =
+            reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
 
-  if (shouldFetchBalance) {
-    try {
-      setXpotBalance(null);
-
-      const b = await fetchXpotBalance(addr);
-      if (typeof b === 'number') setXpotBalance(b);
-      else setXpotBalance('error');
-
-      lastBalanceFetchAtRef.current = now;
-    } catch (e) {
-      console.error('[XPOT] balance fetch failed', e);
-      setXpotBalance('error');
-      lastBalanceFetchAtRef.current = now;
-    }
-  }
-
-  // ── HISTORY ──────────────────────────────
-  try {
-    if (reason === 'initial') setLoadingHistory(true);
-    setHistoryError(null);
-
-    const h = await fetchHistory(addr);
-    setHistoryEntries(h);
-  } catch (e) {
-    console.error('Failed to load history', e);
-    setHistoryError((e as Error).message ?? 'Failed to load history');
-    setHistoryEntries([]);
-  } finally {
-    setLoadingHistory(false);
-  }
-} else {
-  // wallet not connected
-  setXpotBalance(null);
-  setHistoryEntries([]);
-  setHistoryError(null);
-  setLoadingHistory(false);
-  lastBalanceFetchAtRef.current = 0;
-}
+          if (shouldFetchBalance) {
+            try {
+              setXpotBalance(null);
+              const b = await fetchXpotBalance(addr);
+              if (typeof b === 'number') setXpotBalance(b);
+              else setXpotBalance('error');
+              lastBalanceFetchAtRef.current = now;
+            } catch (e) {
+              console.error('[XPOT] balance fetch failed', e);
+              setXpotBalance('error');
+              lastBalanceFetchAtRef.current = now;
+            }
+          }
 
           // HISTORY
           try {
@@ -949,7 +908,7 @@ export default function DashboardClient() {
             const h = await fetchHistory(addr);
             setHistoryEntries(h);
           } catch (e) {
-            console.error('Failed to load history', e);
+            console.error('[XPOT] history fetch failed', e);
             setHistoryError((e as Error).message ?? 'Failed to load history');
             setHistoryEntries([]);
           } finally {
@@ -960,6 +919,7 @@ export default function DashboardClient() {
           setHistoryEntries([]);
           setHistoryError(null);
           setLoadingHistory(false);
+          lastBalanceFetchAtRef.current = 0;
         }
 
         setLastSyncedAt(Date.now());
@@ -974,15 +934,7 @@ export default function DashboardClient() {
         refreshingRef.current = false;
       }
     },
-    [
-      isAuthedEnough,
-      publicKey,
-      walletConnected,
-      fetchTicketsToday,
-      fetchRecentWinners,
-      fetchXpotBalanceFromChain,
-      fetchHistory,
-    ],
+    [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
   );
 
   useEffect(() => {
@@ -1184,60 +1136,104 @@ export default function DashboardClient() {
       <style jsx global>{`
         .xpot-luxe-border {
           background:
-            linear-gradient(90deg, rgba(255,255,255,0.00), rgba(255,255,255,0.08), rgba(255,255,255,0.00)) 0 0 / 200% 1px no-repeat,
-            linear-gradient(180deg, rgba(255,255,255,0.00), rgba(255,255,255,0.06), rgba(255,255,255,0.00)) 0 0 / 1px 200% no-repeat;
-          mask-image: radial-gradient(circle at 22% 18%, rgba(0,0,0,1), rgba(0,0,0,0.2) 55%, rgba(0,0,0,0) 78%);
+            linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)) 0
+              0 / 200% 1px no-repeat,
+            linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)) 0
+              0 / 1px 200% no-repeat;
+          mask-image: radial-gradient(circle at 22% 18%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.2) 55%, rgba(0, 0, 0, 0) 78%);
           opacity: 0.9;
           animation: xpotLuxeBorder 10s ease-in-out infinite;
         }
         @keyframes xpotLuxeBorder {
-          0% { background-position: 0% 0%, 0% 0%; opacity: 0.65; }
-          50% { background-position: 100% 0%, 0% 100%; opacity: 0.95; }
-          100% { background-position: 0% 0%, 0% 0%; opacity: 0.65; }
+          0% {
+            background-position: 0% 0%, 0% 0%;
+            opacity: 0.65;
+          }
+          50% {
+            background-position: 100% 0%, 0% 100%;
+            opacity: 0.95;
+          }
+          100% {
+            background-position: 0% 0%, 0% 0%;
+            opacity: 0.65;
+          }
         }
         @keyframes xpotFloat {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-3px); }
-          100% { transform: translateY(0px); }
+          0% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-3px);
+          }
+          100% {
+            transform: translateY(0px);
+          }
         }
         @keyframes xpotSweep {
-          0% { transform: translateX(-140%) rotate(10deg); opacity: 0.0; }
-          12% { opacity: 0.26; }
-          55% { opacity: 0.10; }
-          100% { transform: translateX(160%) rotate(10deg); opacity: 0.0; }
+          0% {
+            transform: translateX(-140%) rotate(10deg);
+            opacity: 0;
+          }
+          12% {
+            opacity: 0.26;
+          }
+          55% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateX(160%) rotate(10deg);
+            opacity: 0;
+          }
         }
-        .xpot-hero-sweep::before{
-          content:"";
-          position:absolute;
-          top:-55%;
-          left:-60%;
-          width:55%;
-          height:240%;
-          opacity:0;
+        .xpot-hero-sweep::before {
+          content: '';
+          position: absolute;
+          top: -55%;
+          left: -60%;
+          width: 55%;
+          height: 240%;
+          opacity: 0;
           transform: rotate(10deg);
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), rgba(56,189,248,0.10), rgba(251,191,36,0.10), transparent);
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.1),
+            rgba(56, 189, 248, 0.1),
+            rgba(251, 191, 36, 0.1),
+            transparent
+          );
           animation: xpotSweep 2.8s ease-in-out infinite;
           mix-blend-mode: screen;
-          pointer-events:none;
+          pointer-events: none;
         }
         @keyframes xpotBtnSheen {
-          0% { transform: translateX(-140%) rotate(12deg); opacity: 0; }
-          12% { opacity: 0.22; }
-          60% { opacity: 0.10; }
-          100% { transform: translateX(160%) rotate(12deg); opacity: 0; }
+          0% {
+            transform: translateX(-140%) rotate(12deg);
+            opacity: 0;
+          }
+          12% {
+            opacity: 0.22;
+          }
+          60% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateX(160%) rotate(12deg);
+            opacity: 0;
+          }
         }
-        .xpot-btn-sheen::before{
-          content:"";
-          position:absolute;
-          top:-70%;
-          left:-60%;
-          width:55%;
-          height:260%;
+        .xpot-btn-sheen::before {
+          content: '';
+          position: absolute;
+          top: -70%;
+          left: -60%;
+          width: 55%;
+          height: 260%;
           transform: rotate(12deg);
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), rgba(255,255,255,0.08), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08), transparent);
           animation: xpotBtnSheen 3.8s ease-in-out infinite;
           mix-blend-mode: overlay;
-          pointer-events:none;
+          pointer-events: none;
         }
       `}</style>
 
@@ -1298,14 +1294,8 @@ export default function DashboardClient() {
                 </Link>
 
                 <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 backdrop-blur-xl">
-                  <button
-                    type="button"
-                    onClick={onOpenWalletModal}
-                    className="text-left leading-tight hover:opacity-90"
-                  >
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">
-                      Wallet bay
-                    </div>
+                  <button type="button" onClick={onOpenWalletModal} className="text-left leading-tight hover:opacity-90">
+                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">Wallet bay</div>
                     <div className="text-[13px] font-semibold text-slate-100">
                       {walletConnected ? 'Change wallet' : 'Select wallet'}
                     </div>
@@ -1554,9 +1544,9 @@ export default function DashboardClient() {
 
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <button
-  type="button"
-  onClick={handleClaimTicket}
-  disabled={!walletConnected || !hasRequiredXpot || claiming}
+                        type="button"
+                        onClick={handleClaimTicket}
+                        disabled={!walletConnected || !hasRequiredXpot || claiming}
                         className={`${BTN_PRIMARY} xpot-btn-sheen`}
                       >
                         {claiming ? 'Generating…' : 'Claim today’s entry'}
@@ -1599,10 +1589,7 @@ export default function DashboardClient() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <TinyRow label="Status" value={<span className="font-semibold text-slate-100">IN DRAW</span>} />
-                      <TinyRow
-                        label="Issued"
-                        value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>}
-                      />
+                      <TinyRow label="Issued" value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>} />
                     </div>
                   </div>
                 )}
@@ -1785,9 +1772,7 @@ export default function DashboardClient() {
 
                             <div className="min-w-0">
                               <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-300/70">
-                                {h ? `@${h}` : shortWallet(w.walletAddress)}
-                              </p>
+                              <p className="mt-1 text-xs text-slate-300/70">{h ? `@${h}` : shortWallet(w.walletAddress)}</p>
                             </div>
                           </div>
                         </div>
