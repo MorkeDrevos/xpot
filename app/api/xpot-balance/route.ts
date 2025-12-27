@@ -1,7 +1,9 @@
-// app/api/xpot-balance/route.ts
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
 export async function GET(req: Request) {
   try {
@@ -9,22 +11,15 @@ export async function GET(req: Request) {
     const address = searchParams.get('address');
 
     if (!address) {
-      return NextResponse.json(
-        { error: 'Missing address' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'MISSING_ADDRESS' }, { status: 400 });
     }
 
     const XPOT_MINT = process.env.XPOT_MINT;
     if (!XPOT_MINT) {
-      console.error('XPOT_MINT env var is not set');
-      return NextResponse.json(
-        { error: 'XPOT_MINT not configured' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'XPOT_MINT_NOT_SET' }, { status: 500 });
     }
 
-    const res = await fetch('https://api.mainnet-beta.solana.com', {
+    const res = await fetch(RPC_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -42,44 +37,26 @@ export async function GET(req: Request) {
     const json = await res.json();
     const accounts = json?.result?.value ?? [];
 
-    if (!Array.isArray(accounts) || accounts.length === 0) {
-      return NextResponse.json({
-        balance: 0,
-        raw: '0',
-        decimals: 6,
-      });
-    }
-
-    let rawTotal = 0n;
+    let raw = 0n;
     let decimals = 6;
 
     for (const acc of accounts) {
-      const info = acc?.account?.data?.parsed?.info;
-      const tokenAmount = info?.tokenAmount;
-      if (!tokenAmount?.amount) continue;
-
-      const amountStr: string = tokenAmount.amount;
-      const dec: number = tokenAmount.decimals ?? 6;
-
-      decimals = dec;
-      rawTotal += BigInt(amountStr);
+      const amt = acc?.account?.data?.parsed?.info?.tokenAmount;
+      if (!amt?.amount) continue;
+      decimals = amt.decimals ?? 6;
+      raw += BigInt(amt.amount);
     }
 
-    const balance =
-      decimals >= 0
-        ? Number(rawTotal) / Math.pow(10, decimals)
-        : Number(rawTotal);
+    const balance = Number(raw) / Math.pow(10, decimals);
 
     return NextResponse.json({
+      ok: true,
       balance,
-      raw: rawTotal.toString(),
+      raw: raw.toString(),
       decimals,
     });
-  } catch (err) {
-    console.error('XPOT balance API error:', err);
-    return NextResponse.json(
-      { error: 'Failed to fetch XPOT balance' },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error('[XPOT_BALANCE]', e);
+    return NextResponse.json({ error: 'BALANCE_FAILED' }, { status: 500 });
   }
 }
