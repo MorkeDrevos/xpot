@@ -501,12 +501,14 @@ function PublicNavCenter({
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      {/* Live */}
+      {/* Live (disabled until page ready) */}
+      {/*
       <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
         <LiveDot isOpen={liveIsOpen} />
         <Radio className="h-[15px] w-[15px] text-emerald-300" />
         Live
       </NavLink>
+      */}
 
       {/* Final Draw (primary) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
@@ -568,6 +570,8 @@ function PublicNavCenter({
                   Winners
                 </Link>
 
+                {/* Mechanism (disabled until page ready) */}
+                {/*
                 <Link
                   href={MECHANISM_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
@@ -577,6 +581,7 @@ function PublicNavCenter({
                   </span>
                   Mechanism
                 </Link>
+                */}
 
                 <div className="my-2 h-px bg-white/10" />
 
@@ -626,12 +631,14 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      {/* Live */}
+      {/* Live (disabled until page ready) */}
+      {/*
       <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
         <LiveDot isOpen={liveIsOpen} />
         <Radio className="h-[15px] w-[15px] text-emerald-300" />
         Live
       </NavLink>
+      */}
 
       {/* ✅ Final Draw (ONLY ONCE) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
@@ -639,10 +646,13 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
+      {/* Mechanism (disabled until page ready) */}
+      {/*
       <NavLink href={MECHANISM_HREF} title="How winners are picked">
         <Info className="h-4 w-4 text-slate-200" />
         Mechanism
       </NavLink>
+      */}
 
       <NavLink href={TOKENOMICS_HREF}>
         <PieChart className="h-4 w-4 text-emerald-300" />
@@ -1130,7 +1140,8 @@ function MobileMenu({
             Hub
           </Link>
 
-          {/* Live -> Protocol */}
+          {/* Live -> Protocol (disabled until page ready) */}
+          {/*
           <Link
             className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={PROTOCOL_HREF}
@@ -1141,6 +1152,7 @@ function MobileMenu({
             </span>
             <Radio className="h-4 w-4 text-emerald-300" />
           </Link>
+          */}
 
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
@@ -1152,6 +1164,8 @@ function MobileMenu({
             </span>
           </Link>
 
+          {/* Mechanism (disabled until page ready) */}
+          {/*
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={MECHANISM_HREF}
@@ -1161,6 +1175,7 @@ function MobileMenu({
               Mechanism
             </span>
           </Link>
+          */}
 
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
