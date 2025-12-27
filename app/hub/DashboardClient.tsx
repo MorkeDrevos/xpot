@@ -2,12 +2,12 @@
 'use client';
 
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { PublicKey } from '@solana/web3.js';
 
 import { SignOutButton, useUser } from '@clerk/nextjs';
 
@@ -15,7 +15,7 @@ import BonusStrip from '@/components/BonusStrip';
 import GoldAmount from '@/components/GoldAmount';
 import HubLockOverlay from '@/components/HubLockOverlay';
 import XpotPageShell from '@/components/XpotPageShell';
-import { REQUIRED_XPOT } from '@/lib/xpot';
+import { REQUIRED_XPOT, TOKEN_MINT } from '@/lib/xpot';
 
 import {
   CheckCircle2,
@@ -32,12 +32,6 @@ import {
   Flame,
   Target,
 } from 'lucide-react';
-
-// ✅ SSR-safe WalletModal (so setVisible(true) actually shows the modal)
-const WalletModalDynamic = dynamic(
-  () => import('@solana/wallet-adapter-react-ui').then(m => m.WalletModal),
-  { ssr: false },
-);
 
 // ─────────────────────────────────────────────
 // Small UI helpers
@@ -265,7 +259,7 @@ function useReducedMotionPref() {
 }
 
 // ─────────────────────────────────────────────
-// ✅ HARD SCROLL-LOCK FIX (dashboard only)
+// HARD SCROLL-LOCK FIX (dashboard only)
 // ─────────────────────────────────────────────
 
 function unlockScroll() {
@@ -367,7 +361,7 @@ function TinyRow({
 }
 
 // ─────────────────────────────────────────────
-// Bonus hook
+// Bonus hook (same endpoint as homepage)
 // ─────────────────────────────────────────────
 
 type BonusUpcoming = {
@@ -422,7 +416,7 @@ function useBonusUpcoming() {
 }
 
 // ─────────────────────────────────────────────
-// Entry ceremony
+// Entry ceremony (2s shimmer + stamp + optional chime)
 // ─────────────────────────────────────────────
 
 function playChime() {
@@ -650,31 +644,31 @@ function safeStatusLabel(status: any) {
 }
 
 // ─────────────────────────────────────────────
-// Inner page
+// Page (CLIENT) - NO provider wrapper here
+// Providers live in app/providers.tsx
+// ─────────────────────────────────────────────
+
+export default function DashboardClient() {
+  return <DashboardInner />;
+}
+
+// ─────────────────────────────────────────────
+// Inner page (uses global WalletModalProvider)
 // ─────────────────────────────────────────────
 
 function DashboardInner() {
-  // Wallet modal (global provider is in app/providers.tsx)
-  const walletModal = useWalletModal();
-  const setVisible =
-    (walletModal as any)?.setVisible as ((v: boolean) => void) | undefined;
+  const { setVisible: setWalletModalVisible } = useWalletModal();
 
-  // scroll unlock on mount + on unmount (dashboard only)
+  // ✅ scroll unlock on mount + on unmount (dashboard only)
   useEffect(() => {
     unlockScroll();
     return () => unlockScroll();
   }, []);
 
-  // if wallet modal closes but scroll remains locked, force unlock
-  useEffect(() => {
-    const visible = (walletModal as any)?.visible;
-    if (!visible) unlockScroll();
-  }, [walletModal]);
-
   const onOpenWalletModal = useCallback(() => {
     unlockScroll();
-    setVisible?.(true);
-  }, [setVisible]);
+    setWalletModalVisible(true);
+  }, [setWalletModalVisible]);
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -742,7 +736,29 @@ function DashboardInner() {
     desc: 'Preparing today’s mission.',
   });
 
-  // Keep countdown ticking
+  // Validate mint once (no side effects, just avoids crashes if TOKEN_MINT is wrong)
+  useMemo(() => {
+    try {
+      // eslint-disable-next-line no-new
+      new PublicKey(TOKEN_MINT);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isUserLoaded || !user) return;
+    if (!handle) return;
+
+    (async () => {
+      try {
+        await fetch('/api/me/sync-x', { method: 'POST' });
+      } catch (e) {
+        console.error('[XPOT] Failed to sync X identity', e);
+      }
+    })();
+  }, [isUserLoaded, user, handle]);
+
   useEffect(() => {
     const tick = () => {
       const cutoffUtc = nextMadridCutoffUtcMs(new Date());
@@ -754,7 +770,6 @@ function DashboardInner() {
     return () => clearInterval(t);
   }, []);
 
-  // Boot: preferences + streak + mission
   useEffect(() => {
     if (!isAuthedEnough) return;
 
@@ -1112,15 +1127,122 @@ function DashboardInner() {
     return 'Good evening';
   }, []);
 
-  // Unlock scroll if lock overlay shows/hides or ceremony shows/hides
+  // ✅ unlock scroll if lock overlay shows/hides or ceremony shows/hides
   useEffect(() => {
     if (!showLock && !showCeremony) unlockScroll();
   }, [showLock, showCeremony]);
 
   return (
     <>
-      {/* Wallet modal mount (global provider context is in app/providers.tsx) */}
-      <WalletModalDynamic />
+      <style jsx global>{`
+        .xpot-luxe-border {
+          background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)) 0
+              0 / 200% 1px no-repeat,
+            linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)) 0 0 /
+              1px 200% no-repeat;
+          mask-image: radial-gradient(circle at 22% 18%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.2) 55%, rgba(0, 0, 0, 0)
+            78%);
+          opacity: 0.9;
+          animation: xpotLuxeBorder 10s ease-in-out infinite;
+        }
+        @keyframes xpotLuxeBorder {
+          0% {
+            background-position: 0% 0%, 0% 0%;
+            opacity: 0.65;
+          }
+          50% {
+            background-position: 100% 0%, 0% 100%;
+            opacity: 0.95;
+          }
+          100% {
+            background-position: 0% 0%, 0% 0%;
+            opacity: 0.65;
+          }
+        }
+        @keyframes xpotFloat {
+          0% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-3px);
+          }
+          100% {
+            transform: translateY(0px);
+          }
+        }
+        @keyframes xpotSweep {
+          0% {
+            transform: translateX(-140%) rotate(10deg);
+            opacity: 0;
+          }
+          12% {
+            opacity: 0.26;
+          }
+          55% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateX(160%) rotate(10deg);
+            opacity: 0;
+          }
+        }
+        .xpot-hero-sweep::before {
+          content: '';
+          position: absolute;
+          top: -55%;
+          left: -60%;
+          width: 55%;
+          height: 240%;
+          opacity: 0;
+          transform: rotate(10deg);
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.1),
+            rgba(56, 189, 248, 0.1),
+            rgba(251, 191, 36, 0.1),
+            transparent
+          );
+          animation: xpotSweep 2.8s ease-in-out infinite;
+          mix-blend-mode: screen;
+          pointer-events: none;
+        }
+        @keyframes xpotBtnSheen {
+          0% {
+            transform: translateX(-140%) rotate(12deg);
+            opacity: 0;
+          }
+          12% {
+            opacity: 0.22;
+          }
+          60% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateX(160%) rotate(12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-btn-sheen::before {
+          content: '';
+          position: absolute;
+          top: -70%;
+          left: -60%;
+          width: 55%;
+          height: 260%;
+          transform: rotate(12deg);
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.22),
+            rgba(255, 255, 255, 0.08),
+            transparent
+          );
+          animation: xpotBtnSheen 3.8s ease-in-out infinite;
+          mix-blend-mode: overlay;
+          pointer-events: none;
+        }
+      `}</style>
 
       <EntryCeremony
         open={showCeremony}
@@ -1205,6 +1327,7 @@ function DashboardInner() {
           {/* HERO */}
           <section className="mt-6">
             <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/35 shadow-[0_50px_160px_rgba(0,0,0,0.6)] ring-1 ring-white/10 backdrop-blur-2xl">
+              <div className="xpot-hero-sweep absolute inset-0" />
               <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_22%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_72%_28%,rgba(99,102,241,0.14),transparent_58%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.10),transparent_65%),radial-gradient(circle_at_90%_85%,rgba(236,72,153,0.08),transparent_62%)]" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.09] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:22px_22px]" />
 
@@ -1217,9 +1340,13 @@ function DashboardInner() {
                         src={avatar}
                         alt={name}
                         className="h-12 w-12 rounded-full border border-white/10 object-cover shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
+                        style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
                       />
                     ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100">
+                      <div
+                        className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100"
+                        style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
+                      >
                         {initialFromHandle(handle)}
                       </div>
                     )}
@@ -1231,7 +1358,9 @@ function DashboardInner() {
                       <p className="mt-1 truncate text-xl font-semibold text-slate-100">
                         {handle ? `@${handle.replace(/^@/, '')}` : name}
                       </p>
-                      <p className="mt-1 text-xs text-slate-300/70">Tickets are allocated per wallet.</p>
+                      <p className="mt-1 text-xs text-slate-300/70">
+                        Tickets are allocated per wallet. One XPOT account may link multiple wallets.
+                      </p>
                     </div>
                   </div>
 
@@ -1320,7 +1449,7 @@ function DashboardInner() {
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                   <div className="inline-flex items-center gap-2 text-xs text-slate-300/70">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-400/80" />
-                    Entries are wallet-level.
+                    Ticket allocation is wallet-level.
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1708,23 +1837,6 @@ function DashboardInner() {
                   )}
                 </div>
               </LuxeCard>
-
-              {walletConnected ? (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await disconnect();
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                  className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                >
-                  <Wallet className="mr-2 h-4 w-4" />
-                  Disconnect session
-                </button>
-              ) : null}
             </div>
           </section>
 
@@ -1738,12 +1850,4 @@ function DashboardInner() {
       </div>
     </>
   );
-}
-
-// ─────────────────────────────────────────────
-// Page (CLIENT)
-// ─────────────────────────────────────────────
-
-export default function DashboardClient() {
-  return <DashboardInner />;
 }
