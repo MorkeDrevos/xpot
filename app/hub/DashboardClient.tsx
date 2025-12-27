@@ -587,9 +587,6 @@ type RecentWinner = {
 type Mission = { title: string; desc: string; ymd?: string };
 type Streak = { days: number; todayDone: boolean; lastDoneYmd?: string | null };
 
-// ✅ FIX: This must be at top-level (DashboardInner uses it)
-type XpotBalanceState = number | 'error' | null;
-
 function normalizeStatus(s: any): EntryStatus {
   const v = typeof s === 'string' ? s : '';
   const lower = v.toLowerCase();
@@ -705,7 +702,7 @@ function DashboardInner() {
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
-  const [xpotBalance, setXpotBalance] = useState<XpotBalanceState>(null);
+  const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
   const hasRequiredXpot = typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
@@ -715,6 +712,7 @@ function DashboardInner() {
   const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
   const [loadingWinners, setLoadingWinners] = useState(false);
   const [winnersError, setWinnersError] = useState<string | null>(null);
+
   const [countdown, setCountdown] = useState('00:00:00');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncPulse, setSyncPulse] = useState(0);
@@ -1027,21 +1025,14 @@ function DashboardInner() {
         if (walletConnected && addr) {
           // BALANCE (throttled)
           const now = Date.now();
-          const shouldFetchBalance =
-            reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
+          const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
 
           if (shouldFetchBalance) {
             try {
               setXpotBalance(null);
-
               const b = await fetchXpotBalance(addr);
-
-              if (typeof b === 'number') {
-                setXpotBalance(b);
-              } else {
-                setXpotBalance('error');
-              }
-
+              if (typeof b === 'number') setXpotBalance(b);
+              else setXpotBalance('error');
               lastBalanceFetchAtRef.current = now;
             } catch (e) {
               console.error('[XPOT] balance fetch failed', e);
@@ -1169,7 +1160,6 @@ function DashboardInner() {
     setClaiming(true);
 
     const walletAddress = publicKey.toBase58();
-    console.log('[claim] sending walletAddress', walletAddress);
 
     try {
       const res = await fetch('/api/tickets/claim', {
@@ -1190,36 +1180,25 @@ function DashboardInner() {
         const code = data.error as string | undefined;
 
         switch (code) {
-          case 'NOT_ENOUGH_XPOT': {
-            const required = typeof data.required === 'number' ? data.required : REQUIRED_XPOT;
-
-            const bal = typeof data.balance === 'number' ? data.balance : null;
-
+          case 'NOT_ENOUGH_XPOT':
             setClaimError(
-              bal === null
-                ? `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. We could not read your wallet balance right now.`
-                : `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. Your wallet currently has ${bal.toLocaleString()} XPOT.`,
+              `You need at least ${(data.required ?? REQUIRED_XPOT).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
+                data.balance ?? 0,
+              ).toLocaleString()} XPOT.`,
             );
             break;
-          }
-
-          // Keep UX calm + XPOT-only even if backend ever returns something else
           case 'NOT_ENOUGH_SOL':
+            setClaimError('Your wallet needs some SOL for network fees before you can get today’s ticket.');
+            break;
           case 'XPOT_CHECK_FAILED':
-            setClaimError('We could not verify your XPOT balance right now. Please try again in a moment.');
+            setClaimError('Could not verify your XPOT balance right now. Please try again in a moment.');
             break;
-
-          case 'NO_OPEN_DRAW':
-            setClaimError('Today’s draw is not open yet. Please refresh and try again in a moment.');
-            break;
-
           case 'MISSING_WALLET':
           case 'INVALID_BODY':
-            setClaimError('We could not read your wallet address. Please reconnect your wallet and try again.');
+            setClaimError('Something is wrong with your wallet address. Try reconnecting your wallet and trying again.');
             break;
-
           default:
-            setClaimError('Entry request failed. Please try again.');
+            setClaimError('Ticket request failed. Please try again.');
         }
 
         console.error('Claim failed', res.status, text);
@@ -1841,7 +1820,11 @@ function DashboardInner() {
 
                 <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <button type="button" onClick={onOpenWalletModal} className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+                    <button
+                      type="button"
+                      onClick={onOpenWalletModal}
+                      className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                    >
                       <PlugZap className="mr-2 h-4 w-4" />
                       Add / switch wallet
                     </button>
@@ -2093,7 +2076,7 @@ function DashboardInner() {
                     <p className="text-xs text-slate-300/70">Loading…</p>
                   ) : historyError ? (
                     <p className="text-xs xpot-gold-text">{historyError}</p>
-                    ) : historyEntries.length === 0 ? (
+                  ) : historyEntries.length === 0 ? (
                     <p className="text-xs text-slate-300/70">No history yet.</p>
                   ) : (
                     historyEntries.slice(0, 5).map(t => (
