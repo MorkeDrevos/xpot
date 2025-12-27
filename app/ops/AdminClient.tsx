@@ -147,7 +147,9 @@ function UsdPill({
   return (
     <span className={cls}>
       <span className="font-mono text-[0.92em]">{value}</span>
-      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">USD</span>
+      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">
+        USD
+      </span>
     </span>
   );
 }
@@ -171,7 +173,9 @@ function XpotPill({
   return (
     <span className={cls}>
       <span className="font-mono tracking-[0.14em] text-[0.9em]">{amountStr}</span>
-      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">{unit}</span>
+      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">
+        {unit}
+      </span>
     </span>
   );
 }
@@ -289,6 +293,7 @@ export default function AdminPage() {
   const [tokenInput, setTokenInput] = useState('');
   const [tokenAccepted, setTokenAccepted] = useState(false);
   const [isSavingToken, setIsSavingToken] = useState(false);
+  const [tokenVerifyError, setTokenVerifyError] = useState<string | null>(null);
 
   const [, setOpsMode] = useState<OpsMode>('MANUAL');
   const [effectiveOpsMode, setEffectiveOpsMode] = useState<OpsMode>('MANUAL');
@@ -373,22 +378,100 @@ export default function AdminPage() {
   // Server clock skew (ms). Used to sync countdown with server time (matches home page feel).
   const [serverSkewMs, setServerSkewMs] = useState(0);
 
-  // Keep latest live closesAt around, so countdown can still sync even if ops today is stale/missing closesAt.
-  const [liveClosesAtIso, setLiveClosesAtIso] = useState<string | null>(null);
-
   useEffect(() => {
     if (typeof window !== 'undefined') setIsDevHost(window.location.hostname.startsWith('dev.'));
   }, []);
 
-  // ── Load admin token ────────────────────────
+  // ─────────────────────────────────────────────
+  // Token verification (fix: no more "any input logs in")
+  // ─────────────────────────────────────────────
+  async function verifyAdminToken(candidate: string) {
+    const token = candidate.trim();
+    if (!token) throw new Error('Admin key required');
+
+    // Use a real ops endpoint that requires the key.
+    // If ops is not deployed here (404), we MUST not unlock (can’t verify).
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    headers.set('x-xpot-admin-key', token);
+
+    const res = await fetch(ops('/ops-mode'), { headers, cache: 'no-store' });
+
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        setOpsApiAvailable(false);
+        setOpsApiBanner(
+          'Ops API routes not found in this deployment (404). Admin unlock is disabled here because the key cannot be verified.',
+        );
+        throw new Error('Ops API not deployed here');
+      }
+
+      // Typical invalid key case
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(data?.error || 'Invalid admin key');
+      }
+
+      throw new Error(data?.error || `Verification failed (${res.status})`);
+    }
+
+    // If we get here, ops API exists and key is valid
+    setOpsApiAvailable(true);
+    setOpsApiBanner(null);
+
+    return data;
+  }
+
+  async function acceptToken(token: string) {
+    const t = token.trim();
+    if (typeof window !== 'undefined') window.localStorage.setItem(ADMIN_TOKEN_KEY, t);
+    setAdminToken(t);
+    setTokenAccepted(true);
+    setTokenInput(t);
+  }
+
+  async function revokeToken() {
+    if (typeof window !== 'undefined') window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+    setAdminToken(null);
+    setTokenAccepted(false);
+    setTokenInput('');
+  }
+
+  // ── Load admin token (but re-verify before accepting) ─────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
     const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
-    if (stored) {
-      setAdminToken(stored);
-      setTokenAccepted(true);
-      setTokenInput(stored);
-    }
+    if (!stored) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setIsSavingToken(true);
+      setTokenVerifyError(null);
+      try {
+        await verifyAdminToken(stored);
+        if (!cancelled) await acceptToken(stored);
+      } catch (err: any) {
+        if (!cancelled) {
+          await revokeToken();
+          setTokenVerifyError(err?.message || 'Invalid admin key');
+        }
+      } finally {
+        if (!cancelled) setIsSavingToken(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // IMPORTANT:
@@ -417,6 +500,13 @@ export default function AdminPage() {
           'Ops API routes not found in this deployment (404). UI will run in read-only fallback mode until /api/ops/* is deployed.',
         );
       }
+
+      // If key is wrong/expired, lock back down (prevents "stuck loading" vibes)
+      if (res.status === 401 || res.status === 403) {
+        setTokenVerifyError(data?.error || 'Invalid admin key');
+        await revokeToken();
+      }
+
       const msg = data?.error || `Request failed (${res.status})`;
       throw new Error(msg);
     }
@@ -478,7 +568,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Manually create today’s draw (dev) ──────
   async function handleCreateTodayDraw() {
     setTodayDrawError(null);
 
@@ -506,7 +595,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Schedule bonus XPOT ─────────────────────
   async function handleScheduleBonus(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBonusError(null);
@@ -572,7 +660,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Cancel scheduled bonus drop ─────────────
   async function handleCancelBonusDrop(dropId: string) {
     setCancelDropError(null);
 
@@ -605,7 +692,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Pick main winner (manual override) ───────
   async function handlePickMainWinner() {
     setPickError(null);
     setPickSuccess(null);
@@ -715,7 +801,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Panic reopen draw ───────────────────────
   async function handleReopenDraw() {
     setTodayDrawError(null);
 
@@ -743,7 +828,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Mark winner as paid ─────────────────────
   async function handleMarkAsPaid(winnerId: string) {
     setMarkPaidError(null);
 
@@ -781,9 +865,6 @@ export default function AdminPage() {
     }
   }
 
-  // Always fetch live draw too, to:
-  // - provide fallback if ops routes are missing
-  // - compute server clock skew (countdown sync)
   async function fetchLiveDrawWithSkew(): Promise<LiveDrawPayload['draw']> {
     const res = await fetch('/api/draw/live', { cache: 'no-store' });
 
@@ -798,48 +879,9 @@ export default function AdminPage() {
     }
 
     const json = (await res.json()) as LiveDrawPayload;
-
-    // keep latest closesAt so countdown can stay synced even if ops today is missing it
-    if (json?.draw?.closesAt) setLiveClosesAtIso(json.draw.closesAt);
-
     return json.draw;
   }
 
-  // Keep the live draw fresh (countdown + day flip should feel like home page)
-  useEffect(() => {
-    if (!tokenAccepted) return;
-
-    let cancelled = false;
-
-    async function tick() {
-      try {
-        const live = await fetchLiveDrawWithSkew();
-        if (cancelled) return;
-
-        // if todayDraw exists but closesAt missing/stale, patch it from live
-        if (live?.closesAt) {
-          setTodayDraw(prev => {
-            if (!prev) return prev;
-            if (!prev.closesAt || prev.closesAt !== live.closesAt) return { ...prev, closesAt: live.closesAt };
-            return prev;
-          });
-        }
-      } catch {
-        // ignore (live feed can be down; ops can still work)
-      }
-    }
-
-    tick();
-    const id = window.setInterval(tick, 15000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [tokenAccepted]);
-
-  // Fallback:
-  // 1) Try ops today (authed) if ops API is available
-  // 2) Else use public live draw
   async function loadTodayWithFallback() {
     if (opsApiAvailable !== false) {
       try {
@@ -861,7 +903,6 @@ export default function AdminPage() {
   // ── Load Today, tickets, winners, upcoming ──
   useEffect(() => {
     if (!adminToken) return;
-    if (!tokenAccepted) return;
 
     let cancelled = false;
 
@@ -901,7 +942,6 @@ export default function AdminPage() {
         return;
       }
 
-      // Tickets
       setTicketsLoading(true);
       setTicketsError(null);
       try {
@@ -913,7 +953,6 @@ export default function AdminPage() {
         if (!cancelled) setTicketsLoading(false);
       }
 
-      // Winners
       setWinnersLoading(true);
       setWinnersError(null);
       try {
@@ -925,7 +964,6 @@ export default function AdminPage() {
         if (!cancelled) setWinnersLoading(false);
       }
 
-      // Upcoming
       setUpcomingLoading(true);
       setUpcomingError(null);
       try {
@@ -944,21 +982,19 @@ export default function AdminPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken, opsApiAvailable, tokenAccepted]);
+  }, [adminToken, opsApiAvailable]);
 
   // ── Countdown (today draw closesAt) ─────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const closesIso = todayDraw?.closesAt || liveClosesAtIso;
-
-    if (!closesIso) {
+    if (!todayDraw?.closesAt) {
       setCountdownText(null);
       setCountdownSeconds(null);
       return;
     }
 
-    const targetTime = new Date(closesIso).getTime();
+    const targetTime = new Date(todayDraw.closesAt).getTime();
     if (!Number.isFinite(targetTime)) {
       setCountdownText(null);
       setCountdownSeconds(null);
@@ -983,7 +1019,7 @@ export default function AdminPage() {
     updateCountdown();
     const id = window.setInterval(updateCountdown, 1000);
     return () => window.clearInterval(id);
-  }, [todayDraw?.closesAt, liveClosesAtIso, serverSkewMs]);
+  }, [todayDraw?.closesAt, serverSkewMs]);
 
   // ── Next bonus countdown ────────────────────
   useEffect(() => {
@@ -1057,40 +1093,42 @@ export default function AdminPage() {
     setVisibleWinnerCount(prev => Math.min(prev + MAX_RECENT_WINNERS, winners.length));
   }
 
-  // ── Admin token handling ────────────────────
+  // ── Admin token handling (now verifies) ───────────────────────
   async function handleUnlock(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!tokenInput.trim()) return;
+    const candidate = tokenInput.trim();
+    if (!candidate) return;
 
     setIsSavingToken(true);
+    setTokenVerifyError(null);
+
     try {
-      if (typeof window !== 'undefined')
-        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
-      setAdminToken(tokenInput.trim());
-      setTokenAccepted(true);
+      await verifyAdminToken(candidate);
+      await acceptToken(candidate);
 
       // force re-discovery after unlock
       setOpsApiAvailable(null);
       setOpsApiBanner(null);
+    } catch (err: any) {
+      await revokeToken();
+      setTokenVerifyError(err?.message || 'Invalid admin key');
     } finally {
       setIsSavingToken(false);
     }
   }
 
-  function handleClearToken() {
-    if (typeof window !== 'undefined') window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-    setAdminToken(null);
-    setTokenAccepted(false);
-    setTokenInput('');
+  async function handleClearToken() {
+    await revokeToken();
     setOpsApiAvailable(null);
     setOpsApiBanner(null);
+    setTokenVerifyError(null);
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
   const isAutoActive = false;
 
   const DAY_MS = 24 * 60 * 60 * 1000;
-  const closesAtDate = (todayDraw?.closesAt || liveClosesAtIso) ? new Date((todayDraw?.closesAt || liveClosesAtIso) as string) : null;
+  const closesAtDate = todayDraw?.closesAt ? new Date(todayDraw.closesAt) : null;
   const now = new Date();
 
   let drawDateLabel = 'Draw date';
@@ -1101,805 +1139,805 @@ export default function AdminPage() {
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
 
-  // Keep "Entries in pool" synced even if today payload is stale
-  const entriesCount = ticketsLoading ? (todayDraw?.ticketsCount ?? 0) : (tickets.length || todayDraw?.ticketsCount || 0);
-
   return (
     <XpotPageShell
       title="Operations Center"
       subtitle="Control room for today's XPOT"
       rightSlot={<OperationsCenterBadge live={true} autoDraw={isAutoActive} />}
     >
-      {/* Ops API status banner (prevents silent 404 hell) */}
       {opsApiBanner && (
         <div className="mt-4 xpot-panel px-5 py-3 text-xs text-amber-200 border border-amber-400/20 bg-amber-500/[0.06]">
           {opsApiBanner}
         </div>
       )}
 
-      {/* ✅ Everything below is PRIVATE - do not render ops UI at all unless unlocked */}
-      {tokenAccepted && (
-        <>
-          {/* ✅ FULL-BLEED HERO (JackpotPanel spans edge-to-edge) */}
-          <section className="relative mt-4">
-            <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
-              <div className="relative overflow-hidden border-y border-slate-800/60 bg-slate-950/40">
+      {/* ✅ FULL-WIDTH HERO */}
+      <section className="relative mt-4">
+        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
+          <div className="relative overflow-hidden border-y border-slate-800/60 bg-slate-950/40">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-80"
+              style={{
+                background:
+                  'radial-gradient(900px 420px at 18% 35%, rgba(168,85,247,0.22), rgba(0,0,0,0) 62%),' +
+                  'radial-gradient(760px 380px at 78% 30%, rgba(56,189,248,0.16), rgba(0,0,0,0) 60%),' +
+                  'radial-gradient(900px 520px at 50% 100%, rgba(16,185,129,0.10), rgba(0,0,0,0) 62%)',
+              }}
+            />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.30),rgba(2,6,23,0.75))]" />
+
+            <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+              <div className="relative">
                 <div
-                  className="pointer-events-none absolute inset-0 opacity-80"
+                  className="absolute -inset-1 rounded-[32px] opacity-40 blur-2xl"
                   style={{
                     background:
-                      'radial-gradient(900px 420px at 18% 35%, rgba(168,85,247,0.22), rgba(0,0,0,0) 62%),' +
-                      'radial-gradient(760px 380px at 78% 30%, rgba(56,189,248,0.16), rgba(0,0,0,0) 60%),' +
-                      'radial-gradient(900px 520px at 50% 100%, rgba(16,185,129,0.10), rgba(0,0,0,0) 62%)',
+                      'radial-gradient(500px 220px at 30% 50%, rgba(168,85,247,0.22), rgba(0,0,0,0) 70%),' +
+                      'radial-gradient(520px 240px at 70% 45%, rgba(56,189,248,0.14), rgba(0,0,0,0) 72%)',
                   }}
                 />
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.30),rgba(2,6,23,0.75))]" />
-
-                {/* full width content (no max-w) */}
-                <div className="relative w-full px-3 sm:px-6 lg:px-8 py-6">
-                  <div className="relative">
-                    <div
-                      className="absolute -inset-1 rounded-[32px] opacity-40 blur-2xl"
-                      style={{
-                        background:
-                          'radial-gradient(500px 220px at 30% 50%, rgba(168,85,247,0.22), rgba(0,0,0,0) 70%),' +
-                          'radial-gradient(520px 240px at 70% 45%, rgba(56,189,248,0.14), rgba(0,0,0,0) 72%)',
-                      }}
+                <div className="relative rounded-[32px] border border-slate-800/70 bg-slate-950/35 shadow-[0_30px_90px_rgba(0,0,0,0.60)]">
+                  <div className="p-4 sm:p-6">
+                    <JackpotPanel
+                      isLocked={isDrawLocked}
+                      onJackpotUsdChange={setLiveJackpotUsd}
+                      variant="embedded"
                     />
-                    <div className="relative rounded-[32px] border border-slate-800/70 bg-slate-950/35 shadow-[0_30px_90px_rgba(0,0,0,0.60)]">
-                      <div className="p-4 sm:p-6">
-                        <JackpotPanel
-                          isLocked={isDrawLocked}
-                          onJackpotUsdChange={setLiveJackpotUsd}
-                          variant="embedded"
-                        />
-                      </div>
-                    </div>
                   </div>
                 </div>
-
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-[linear-gradient(to_bottom,rgba(2,6,23,0),rgba(2,6,23,0.95))]" />
               </div>
             </div>
-          </section>
 
-          {/* Admin key band */}
-          <section className="relative mt-5">
-            <div className="relative xpot-panel">
-              <div className="xpot-nebula-halo" />
-              <div className="relative z-10 flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-950/70 px-3 py-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                      Admin key
-                    </span>
-                    <StatusDot on={tokenAccepted} />
-                  </span>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-[linear-gradient(to_bottom,rgba(2,6,23,0),rgba(2,6,23,0.95))]" />
+          </div>
+        </div>
+      </section>
 
-                  <span className="text-xs text-slate-400">
-                    Stored locally in this browser only.
-                  </span>
+      {/* Admin key band */}
+      <section className="relative mt-5">
+        <div className="relative xpot-panel">
+          <div className="xpot-nebula-halo" />
+          <div className="relative z-10 flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full bg-slate-950/70 px-3 py-1">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  Admin key
+                </span>
+                <StatusDot on={tokenAccepted} />
+              </span>
 
-                  <span
-                    className={`hidden sm:inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
-                    shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] ${
-                      tokenAccepted
-                        ? 'border border-slate-600/60 bg-slate-800/50 text-slate-200'
-                        : 'border border-slate-700/70 bg-slate-900/60 text-slate-400'
-                    }`}
-                  >
-                    {tokenAccepted ? 'Access level confirmed' : 'Locked - token required'}
-                  </span>
-                </div>
+              <span className="text-xs text-slate-400">
+                Paste your private admin key to unlock XPOT operations.
+              </span>
 
-                <form onSubmit={handleUnlock} className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row">
-                  <input
-                    type="password"
-                    className="xpot-input flex-1 text-sm"
-                    value={tokenInput}
-                    onChange={e => setTokenInput(e.target.value)}
-                    placeholder="Paste admin token..."
-                  />
-
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      disabled={isSavingToken || !tokenInput.trim()}
-                      className={`${BTN} px-4 py-2 text-xs`}
-                    >
-                      Update key
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleClearToken}
-                      className={`${BTN} px-4 py-2 text-xs`}
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </section>
-
-          {/* Main grid */}
-          <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            {/* LEFT */}
-            <div className="space-y-4">
-              {/* XPOT CARD */}
-              <section className="relative xpot-card-primary" data-glow="purple">
-                <div className="xpot-nebula-halo" />
-                <div className="relative z-10 space-y-5 px-5 py-5 sm:px-6 sm:py-6">
-                  <div className="pt-1">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-100">Today's round</p>
-                        <p className="mt-1 text-xs text-slate-400">
-                          Live overview of today's XPOT draw, entries, rollovers and prize pool.
-                        </p>
-                      </div>
-
-                      {todayDraw && (
-                        <div className="flex flex-col items-end gap-1 text-xs">
-                          <span className="text-slate-500">{drawDateLabel}</span>
-                          <span className="font-mono text-slate-200">
-                            {drawDateValue ? formatDate(drawDateValue) : '–'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Round status</p>
-                        <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
-                          {todayLoading && <span>Loading...</span>}
-                          {todayDraw && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                                todayDraw.status === 'open'
-                                  ? 'bg-emerald-500/10 text-emerald-300'
-                                  : 'bg-slate-800 text-slate-300'
-                              }`}
-                            >
-                              {todayDraw.status.toUpperCase()}
-                            </span>
-                          )}
-                          {!todayLoading && !todayDraw && (
-                            <span className="text-xs font-normal text-amber-300">
-                              No XPOT round detected for today.
-                            </span>
-                          )}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Entries in pool</p>
-                        <p className="mt-1 font-mono text-slate-100">
-                          {todayLoading ? '–' : entriesCount}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Rollover amount</p>
-                        <div className="mt-1">
-                          <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today's XPOT (live)</p>
-                        <div className="mt-1">
-                          <UsdPill amount={liveJackpotUsd} size="sm" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 xpot-card px-3 py-3 text-xs text-slate-400">
-                      {todayDrawError && <p className="text-amber-300">{todayDrawError}</p>}
-
-                      {!todayDrawError && !todayLoading && (todayDraw?.closesAt || liveClosesAtIso) && (
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-sm sm:text-base">
-                              <span className="text-xs uppercase tracking-wide text-slate-500">Closes in</span>
-                              <span
-                                className={`
-                                  ml-2 mt-2 font-mono text-2xl font-semibold transition-all
-                                  ${
-                                    isWarningCritical
-                                      ? 'rounded-lg bg-[rgba(var(--xpot-gold),0.12)] px-2 py-0.5 text-[rgb(var(--xpot-gold-2))] animate-pulse'
-                                      : isWarningSoon
-                                      ? 'rounded-lg bg-[rgba(var(--xpot-gold),0.08)] px-2 py-0.5 text-[rgb(var(--xpot-gold-2))]'
-                                      : 'text-emerald-300'
-                                  }
-                                `}
-                              >
-                                {countdownText ?? '—'}
-                              </span>
-                            </p>
-                          </div>
-
-                          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                            {!isAutoActive && (
-                              <button
-                                type="button"
-                                disabled={
-                                  isPickingWinner ||
-                                  !adminToken ||
-                                  todayLoading ||
-                                  !todayDraw ||
-                                  todayDraw.status !== 'open'
-                                }
-                                onClick={handlePickMainWinner}
-                                className={`
-                                  ${BTN_CROWN} px-7 py-3 text-sm transition-all ease-out duration-300
-                                  ${
-                                    isWarningCritical
-                                      ? 'ring-2 ring-[rgba(var(--xpot-gold),0.32)] shadow-lg scale-[1.02]'
-                                      : ''
-                                  }
-                                `}
-                              >
-                                {isPickingWinner ? 'Picking winner...' : "Crown today's XPOT winner"}
-                              </button>
-                            )}
-
-                            {todayDraw && todayDraw.status === 'closed' && adminToken && !isAutoActive && (
-                              <button
-                                type="button"
-                                onClick={handleReopenDraw}
-                                disabled={isReopeningDraw}
-                                className={`${BTN_DANGER} px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]`}
-                              >
-                                {isReopeningDraw ? 'Reopening...' : 'Emergency reopen draw'}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {!todayDrawError && !todayLoading && !todayDraw && (
-                        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-slate-400 text-xs">
-                            No XPOT draw scheduled yet. The backend should auto-create one shortly.
-                          </p>
-
-                          {isDevHost && (
-                            <button
-                              type="button"
-                              onClick={handleCreateTodayDraw}
-                              disabled={creatingDraw || !adminToken}
-                              className={`${BTN_VAULT} px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-50`}
-                            >
-                              {creatingDraw ? "Creating today's draw..." : "Create today's draw (dev)"}
-                            </button>
-                          )}
-                        </div>
-                      )}
-
-                      {(pickError || pickSuccess) && (
-                        <div className="mt-2 text-xs">
-                          {pickError && <p className="text-amber-300">{pickError}</p>}
-                          {pickSuccess && <p className="text-emerald-300">{pickSuccess}</p>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Schedule bonus XPOT */}
-              <section className="xpot-panel px-5 py-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">Schedule bonus XPOT</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Line up hype bonuses from today's ticket pool. At the scheduled time, one extra winner will be picked.
-                    </p>
-
-                    <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                      Manual schedule - off-chain
-                    </p>
-                  </div>
-                </div>
-
-                <form onSubmit={handleScheduleBonus} className="mt-4 grid gap-4 lg:grid-cols-2">
-                  {/* LEFT */}
-                  <div className="space-y-3">
-                    <div className="xpot-card px-4 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Amount</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <input
-                          className="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400/70"
-                          value={bonusAmount}
-                          onChange={e => setBonusAmount(e.target.value)}
-                          inputMode="numeric"
-                        />
-                        <span className="text-xs text-slate-400">XPOT</span>
-                      </div>
-
-                      <div className="mt-3">
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Quick presets</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {[100000, 250000, 500000, 1000000].map(v => {
-                            const active = Number(bonusAmount) === v;
-                            return (
-                              <button
-                                key={v}
-                                type="button"
-                                onClick={() => setBonusAmount(String(v))}
-                                className={`rounded-full border px-4 py-2 text-xs transition ${
-                                  active
-                                    ? 'xpot-pill-gold border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
-                                    : 'border-slate-800/80 bg-slate-950/60 text-slate-300 hover:bg-slate-900/50'
-                                }`}
-                              >
-                                {v.toLocaleString()} XPOT
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* RIGHT */}
-                  <div className="space-y-3">
-                    <div className="xpot-card px-4 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Label</p>
-                      <input
-                        className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400/70"
-                        value={bonusLabel}
-                        onChange={e => setBonusLabel(e.target.value)}
-                        placeholder="Bonus XPOT"
-                      />
-                      <p className="mt-2 text-[11px] text-slate-500">
-                        Shown in the winners log so you can tell hype bonuses apart from the main XPOT.
-                      </p>
-
-                      <div className="mt-4">
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Timer</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {[5, 15, 30, 60].map(m => {
-                            const active = bonusDelayMinutes === m;
-                            return (
-                              <button
-                                key={m}
-                                type="button"
-                                onClick={() => setBonusDelayMinutes(m)}
-                                className={`rounded-full border px-4 py-2 text-xs transition ${
-                                  active
-                                    ? 'border-sky-400/50 bg-sky-500/10 text-sky-100'
-                                    : 'border-slate-800/80 bg-slate-950/60 text-slate-300 hover:bg-slate-900/50'
-                                }`}
-                              >
-                                {m === 60 ? '1 h' : `${m} min`}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="mt-5 grid grid-cols-2 gap-3">
-                        <button
-                          type="submit"
-                          disabled={bonusSubmitting || !adminToken || opsApiAvailable === false}
-                          className={`${BTN_VAULT} h-10 text-[13px]`}
-                        >
-                          {bonusSubmitting ? 'Scheduling...' : 'Schedule bonus'}
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={
-                            isPickingBonusWinner ||
-                            !adminToken ||
-                            !todayDraw ||
-                            todayDraw.status !== 'open' ||
-                            opsApiAvailable === false
-                          }
-                          onClick={handlePickBonusWinnerNow}
-                          className={`${BTN_CROWN} h-10 text-[13px] disabled:opacity-40 disabled:cursor-not-allowed`}
-                        >
-                          {todayDraw?.status !== 'open'
-                            ? 'Bonus locked'
-                            : isPickingBonusWinner
-                            ? 'Picking...'
-                            : 'Pick winner'}
-                        </button>
-                      </div>
-
-                      {bonusPickError && <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>}
-                      {bonusPickSuccess && <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>}
-
-                      {(bonusError || bonusSuccess) && (
-                        <div className="mt-3 text-xs">
-                          {bonusError && <p className="text-amber-300">{bonusError}</p>}
-                          {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </form>
-
-                {/* UPCOMING */}
-                <div className="mt-5 xpot-card px-4 py-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                      <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Upcoming bonus drops</p>
-
-                      {nextBonusDrop && nextBonusCountdown && (
-                        <div className="flex items-center gap-3">
-                          <Badge tone="sky">
-                            <Timer className="h-3.5 w-3.5" />
-                            Next bonus in {nextBonusCountdown}
-                          </Badge>
-
-                          <span className="text-[11px] text-slate-400">
-                            {nextBonusDrop.label} -{' '}
-                            <span className="font-semibold text-slate-200">
-                              {nextBonusDrop.amountXpot.toLocaleString()} XPOT
-                            </span>
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-                      onClick={refreshUpcomingDrops}
-                      disabled={!tokenAccepted || upcomingLoading || opsApiAvailable === false}
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        {upcomingLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCcw className="h-4 w-4" />
-                        )}
-                        Refresh
-                      </span>
-                    </button>
-                  </div>
-
-                  {upcomingError && <p className="mt-2 text-xs text-amber-300">{upcomingError}</p>}
-                  {cancelDropError && <p className="mt-2 text-xs text-amber-300">{cancelDropError}</p>}
-
-                  <div className="mt-3 space-y-2">
-                    {upcomingDrops.length === 0 ? (
-                      <p className="text-xs text-slate-500">No bonus drops scheduled yet.</p>
-                    ) : (
-                      upcomingDrops.map(d => (
-                        <div
-                          key={d.id}
-                          className="flex flex-col gap-2 rounded-2xl border border-slate-800/70 bg-slate-950/55 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-100">{d.label}</p>
-                            <p className="mt-1 text-xs text-slate-500">
-                              {formatDateTime(d.scheduledAt)} - {d.amountXpot.toLocaleString()} XPOT
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <Badge tone={d.status === 'SCHEDULED' ? 'sky' : d.status === 'FIRED' ? 'emerald' : 'red'}>
-                              {d.status}
-                            </Badge>
-
-                            {d.status === 'SCHEDULED' && (
-                              <button
-                                type="button"
-                                className={`${BTN_DANGER} h-9 px-4 text-xs`}
-                                onClick={() => handleCancelBonusDrop(d.id)}
-                                disabled={cancelingDropId === d.id || !tokenAccepted || opsApiAvailable === false}
-                              >
-                                {cancelingDropId === d.id ? 'Canceling...' : 'Cancel'}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* Today's XPOT entries */}
-              <section className="xpot-panel px-5 py-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">Today's XPOT entries</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Every entry that has been issued for the current XPOT round.
-                    </p>
-                  </div>
-
-                  <Badge tone="slate">
-                    <Ticket className="h-3.5 w-3.5" />
-                    {tickets.length}
-                  </Badge>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  {ticketsLoading ? (
-                    <p className="text-xs text-slate-500">Loading...</p>
-                  ) : ticketsError ? (
-                    <p className="text-xs text-amber-300">{ticketsError}</p>
-                  ) : tickets.length === 0 ? (
-                    <p className="text-xs text-slate-500">No entries yet for today's XPOT.</p>
-                  ) : (
-                    <>
-                      {visibleTickets.map(t => (
-                        <div key={t.id} className="xpot-card px-4 py-3">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="font-mono text-sm text-slate-100">{t.code}</p>
-                              <div className="mt-1">
-                                <CopyableWallet address={t.walletAddress} />
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                tone={
-                                  t.status === 'won'
-                                    ? 'sky'
-                                    : t.status === 'in-draw'
-                                    ? 'emerald'
-                                    : t.status === 'claimed'
-                                    ? 'emerald'
-                                    : t.status === 'expired'
-                                    ? 'red'
-                                    : 'slate'
-                                }
-                              >
-                                {t.status.replace('-', ' ')}
-                              </Badge>
-                            </div>
-                          </div>
-
-                          <p className="mt-2 text-xs text-slate-500">Issued {formatDateTime(t.createdAt)}</p>
-                        </div>
-                      ))}
-
-                      {visibleTicketCount < tickets.length && (
-                        <div className="pt-2">
-                          <button
-                            type="button"
-                            onClick={handleLoadMoreTickets}
-                            className={`${BTN_UTILITY} h-10 w-full text-sm`}
-                          >
-                            Load more entries
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </section>
+              <span
+                className={`hidden sm:inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
+                shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] ${
+                  tokenAccepted
+                    ? 'border border-slate-600/60 bg-slate-800/50 text-slate-200'
+                    : 'border border-slate-700/70 bg-slate-900/60 text-slate-400'
+                }`}
+              >
+                {tokenAccepted ? 'Access level confirmed' : 'Locked - token required'}
+              </span>
             </div>
 
-            {/* RIGHT */}
-            <div className="space-y-4">
-              {/* Winners */}
-              <section className="xpot-panel px-5 py-5">
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Recent XPOT winners</p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Internal log of executed rewards, payouts and winner tickets.
-                  </p>
-                </div>
+            <form onSubmit={handleUnlock} className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row">
+              <input
+                type="password"
+                className="xpot-input flex-1 text-sm"
+                value={tokenInput}
+                onChange={e => setTokenInput(e.target.value)}
+                placeholder="Paste admin token..."
+              />
 
-                {markPaidError && <p className="mt-3 text-xs text-amber-300">{markPaidError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={isSavingToken || !tokenInput.trim()}
+                  className={`${BTN} px-4 py-2 text-xs`}
+                >
+                  {isSavingToken ? 'Verifying...' : tokenAccepted ? 'Update key' : 'Unlock'}
+                </button>
 
-                <div className="mt-4 space-y-2">
-                  {winnersLoading ? (
-                    <p className="text-xs text-slate-500">Loading...</p>
-                  ) : winnersError ? (
-                    <p className="text-xs text-amber-300">{winnersError}</p>
-                  ) : winners.length === 0 ? (
-                    <div className="xpot-card px-4 py-3 text-xs text-slate-500">
-                      No completed draws yet. Once you pick winners and mark XPOT as paid, they'll appear here.
-                    </div>
-                  ) : (
-                    <>
-                      {visibleWinners.map(w => {
-                        const label = formatWinnerLabel(w);
-                        const isPaid = !!w.isPaidOut;
-
-                        return (
-                          <div key={w.id} className="xpot-card px-4 py-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-xs text-slate-400">
-                                  {formatDate(w.date)}
-                                  {label ? ` - ${label}` : ''}
-                                </p>
-                                <p className="mt-1 font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                                <div className="mt-1">
-                                  <CopyableWallet address={w.walletAddress} />
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col items-end gap-2">
-                                <XpotPill amount={w.payoutUsd ?? 0} size="sm" />
-                                <Badge tone={isPaid ? 'emerald' : 'gold'}>
-                                  {isPaid ? (
-                                    <>
-                                      <BadgeCheck className="h-3.5 w-3.5" />
-                                      Paid
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Info className="h-3.5 w-3.5" />
-                                      Unpaid
-                                    </>
-                                  )}
-                                </Badge>
-                              </div>
-                            </div>
-
-                            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-                              <input
-                                className="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-400/70"
-                                placeholder="Paste TX link (Solscan) ..."
-                                value={txInputs[w.id] ?? (w.txUrl ?? '')}
-                                onChange={e =>
-                                  setTxInputs(prev => ({
-                                    ...prev,
-                                    [w.id]: e.target.value,
-                                  }))
-                                }
-                                disabled={isPaid}
-                              />
-                              <button
-                                type="button"
-                                className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                                onClick={() => handleMarkAsPaid(w.id)}
-                                disabled={isPaid || savingPaidId === w.id || opsApiAvailable === false}
-                              >
-                                {savingPaidId === w.id ? 'Saving...' : 'Mark paid'}
-                              </button>
-                            </div>
-
-                            {w.txUrl && (
-                              <a
-                                href={w.txUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-2 inline-flex text-[11px] text-emerald-300 hover:text-emerald-200"
-                              >
-                                View TX
-                              </a>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {visibleWinnerCount < winners.length && (
-                        <div className="pt-2">
-                          <button
-                            type="button"
-                            onClick={handleLoadMoreWinners}
-                            className={`${BTN_UTILITY} h-10 w-full text-sm`}
-                          >
-                            Load more winners
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </section>
-
-              {/* Quick hints */}
-              <section className="xpot-panel px-5 py-5 text-xs text-slate-400">
-                <p className="font-semibold text-slate-200">Ops notes</p>
-                <ul className="mt-2 space-y-2">
-                  <li className="flex gap-2">
-                    <KeyRound className="h-4 w-4 text-slate-500" />
-                    Admin key is stored locally in your browser only.
-                  </li>
-                  <li className="flex gap-2">
-                    <CalendarClock className="h-4 w-4 text-slate-500" />
-                    Countdown is based on <span className="font-semibold text-slate-200">closesAt</span> and synced to server time.
-                  </li>
-                  <li className="flex gap-2">
-                    <Crown className="h-4 w-4 text-slate-500" />
-                    Manual crown button is disabled when auto-draw is enabled.
-                  </li>
-                </ul>
-              </section>
-            </div>
-          </section>
-
-          {modeModalOpen && (
-            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 backdrop-blur-md p-4">
-              <div className="w-full max-w-md xpot-panel px-6 py-6">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-50">Switch ops mode</p>
+                {tokenAccepted && (
                   <button
                     type="button"
-                    className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
-                    onClick={() => setModeModalOpen(false)}
+                    onClick={handleClearToken}
+                    className={`${BTN} px-4 py-2 text-xs`}
                   >
-                    Close
+                    Clear
                   </button>
-                </div>
-
-                <p className="mt-2 text-xs text-slate-400">
-                  Confirm your admin key to switch to{' '}
-                  <span className="font-semibold text-slate-200">
-                    {modePending === 'AUTO' ? 'AUTO' : 'MANUAL'}
-                  </span>
-                  .
-                </p>
-
-                {!envAutoAllowed && modePending === 'AUTO' && (
-                  <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
-                    AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won't take
-                    effect until allowed.
-                  </div>
                 )}
+              </div>
+            </form>
+          </div>
 
-                <div className="mt-4 space-y-2">
-                  <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    Admin key (re-enter)
-                  </label>
-                  <input
-                    type="password"
-                    className="xpot-input rounded-2xl"
-                    value={modeTokenInput}
-                    onChange={e => setModeTokenInput(e.target.value)}
-                    placeholder="Paste admin token..."
-                  />
-                  {modeError && <p className="text-xs text-amber-300">{modeError}</p>}
-                </div>
-
-                <div className="mt-4 flex gap-2">
-                  <button
-                    type="button"
-                    className={`${BTN_UTILITY} flex-1 h-11 text-sm`}
-                    onClick={() => setModeModalOpen(false)}
-                    disabled={modeSaving}
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`${BTN_VAULT} flex-1 h-11 text-sm`}
-                    disabled={modeSaving || !modeTokenInput.trim()}
-                    onClick={async () => {
-                      setModeError(null);
-                      setModeSaving(true);
-                      try {
-                        if (!adminToken || modeTokenInput.trim() !== adminToken.trim())
-                          throw new Error('Admin key mismatch.');
-                        await saveOpsMode(modePending);
-                        setModeModalOpen(false);
-                      } catch (err: any) {
-                        setModeError(err?.message || 'Failed to switch mode');
-                      } finally {
-                        setModeSaving(false);
-                      }
-                    }}
-                  >
-                    {modeSaving ? 'Saving...' : 'Confirm switch'}
-                  </button>
-                </div>
+          {tokenVerifyError && (
+            <div className="px-4 pb-4 sm:px-6">
+              <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-amber-200">
+                {tokenVerifyError}
               </div>
             </div>
           )}
-        </>
+        </div>
+      </section>
+
+      {/* Main grid */}
+      <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        {/* LEFT */}
+        <div className="space-y-4">
+          {/* XPOT CARD */}
+          <section className="relative xpot-card-primary" data-glow="purple">
+            <div className="xpot-nebula-halo" />
+            <div className="relative z-10 space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+              <div className="pt-1">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">Today's round</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Live overview of today's XPOT draw, entries, rollovers and prize pool.
+                    </p>
+                  </div>
+
+                  {todayDraw && (
+                    <div className="flex flex-col items-end gap-1 text-xs">
+                      <span className="text-slate-500">{drawDateLabel}</span>
+                      <span className="font-mono text-slate-200">
+                        {drawDateValue ? formatDate(drawDateValue) : '–'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Round status</p>
+                    <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
+                      {todayLoading && <span>Loading...</span>}
+                      {todayDraw && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                            todayDraw.status === 'open'
+                              ? 'bg-emerald-500/10 text-emerald-300'
+                              : 'bg-slate-800 text-slate-300'
+                          }`}
+                        >
+                          {todayDraw.status.toUpperCase()}
+                        </span>
+                      )}
+                      {!todayLoading && !todayDraw && (
+                        <span className="text-xs font-normal text-amber-300">
+                          No XPOT round detected for today.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Entries in pool</p>
+                    <p className="mt-1 font-mono text-slate-100">
+                      {todayLoading ? '–' : todayDraw?.ticketsCount ?? 0}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Rollover amount</p>
+                    <div className="mt-1">
+                      <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today's XPOT (live)</p>
+                    <div className="mt-1">
+                      <UsdPill amount={liveJackpotUsd} size="sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 xpot-card px-3 py-3 text-xs text-slate-400">
+                  {todayDrawError && <p className="text-amber-300">{todayDrawError}</p>}
+
+                  {!todayDrawError && !todayLoading && todayDraw && todayDraw.closesAt && (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm sm:text-base">
+                          <span className="text-xs uppercase tracking-wide text-slate-500">Closes in</span>
+                          <span
+                            className={`
+                              ml-2 mt-2 font-mono text-2xl font-semibold transition-all
+                              ${
+                                isWarningCritical
+                                  ? 'rounded-lg bg-[rgba(var(--xpot-gold),0.12)] px-2 py-0.5 text-[rgb(var(--xpot-gold-2))] animate-pulse'
+                                  : isWarningSoon
+                                  ? 'rounded-lg bg-[rgba(var(--xpot-gold),0.08)] px-2 py-0.5 text-[rgb(var(--xpot-gold-2))]'
+                                  : 'text-emerald-300'
+                              }
+                            `}
+                          >
+                            {countdownText}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                        {!isAutoActive && (
+                          <button
+                            type="button"
+                            disabled={
+                              isPickingWinner ||
+                              !adminToken ||
+                              todayLoading ||
+                              !todayDraw ||
+                              todayDraw.status !== 'open'
+                            }
+                            onClick={handlePickMainWinner}
+                            className={`
+                              ${BTN_CROWN} px-7 py-3 text-sm transition-all ease-out duration-300
+                              ${
+                                isWarningCritical
+                                  ? 'ring-2 ring-[rgba(var(--xpot-gold),0.32)] shadow-lg scale-[1.02]'
+                                  : ''
+                              }
+                            `}
+                          >
+                            {isPickingWinner ? 'Picking winner...' : "Crown today's XPOT winner"}
+                          </button>
+                        )}
+
+                        {todayDraw && todayDraw.status === 'closed' && adminToken && !isAutoActive && (
+                          <button
+                            type="button"
+                            onClick={handleReopenDraw}
+                            disabled={isReopeningDraw}
+                            className={`${BTN_DANGER} px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]`}
+                          >
+                            {isReopeningDraw ? 'Reopening...' : 'Emergency reopen draw'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {!todayDrawError && !todayLoading && !todayDraw && (
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-slate-400 text-xs">
+                        No XPOT draw scheduled yet. The backend should auto-create one shortly.
+                      </p>
+
+                      {isDevHost && (
+                        <button
+                          type="button"
+                          onClick={handleCreateTodayDraw}
+                          disabled={creatingDraw || !adminToken}
+                          className={`${BTN_VAULT} px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-50`}
+                        >
+                          {creatingDraw ? "Creating today's draw..." : "Create today's draw (dev)"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {(pickError || pickSuccess) && (
+                    <div className="mt-2 text-xs">
+                      {pickError && <p className="text-amber-300">{pickError}</p>}
+                      {pickSuccess && <p className="text-emerald-300">{pickSuccess}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Schedule bonus XPOT */}
+          <section className="xpot-panel px-5 py-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Schedule bonus XPOT</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Line up hype bonuses from today's ticket pool. At the scheduled time, one extra winner will be picked.
+                </p>
+
+                <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  Manual schedule - off-chain
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleScheduleBonus} className="mt-4 grid gap-4 lg:grid-cols-2">
+              {/* LEFT */}
+              <div className="space-y-3">
+                <div className="xpot-card px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Amount</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      className="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400/70"
+                      value={bonusAmount}
+                      onChange={e => setBonusAmount(e.target.value)}
+                      inputMode="numeric"
+                    />
+                    <span className="text-xs text-slate-400">XPOT</span>
+                  </div>
+
+                  <div className="mt-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Quick presets</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[100000, 250000, 500000, 1000000].map(v => {
+                        const active = Number(bonusAmount) === v;
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setBonusAmount(String(v))}
+                            className={`rounded-full border px-4 py-2 text-xs transition ${
+                              active
+                                ? 'xpot-pill-gold border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
+                                : 'border-slate-800/80 bg-slate-950/60 text-slate-300 hover:bg-slate-900/50'
+                            }`}
+                          >
+                            {v.toLocaleString()} XPOT
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT */}
+              <div className="space-y-3">
+                <div className="xpot-card px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Label</p>
+                  <input
+                    className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400/70"
+                    value={bonusLabel}
+                    onChange={e => setBonusLabel(e.target.value)}
+                    placeholder="Bonus XPOT"
+                  />
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    Shown in the winners log so you can tell hype bonuses apart from the main XPOT.
+                  </p>
+
+                  <div className="mt-4">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Timer</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[5, 15, 30, 60].map(m => {
+                        const active = bonusDelayMinutes === m;
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setBonusDelayMinutes(m)}
+                            className={`rounded-full border px-4 py-2 text-xs transition ${
+                              active
+                                ? 'border-sky-400/50 bg-sky-500/10 text-sky-100'
+                                : 'border-slate-800/80 bg-slate-950/60 text-slate-300 hover:bg-slate-900/50'
+                            }`}
+                          >
+                            {m === 60 ? '1 h' : `${m} min`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <button
+                      type="submit"
+                      disabled={bonusSubmitting || !adminToken || opsApiAvailable === false}
+                      className={`${BTN_VAULT} h-10 text-[13px]`}
+                    >
+                      {bonusSubmitting ? 'Scheduling...' : 'Schedule bonus'}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        isPickingBonusWinner ||
+                        !adminToken ||
+                        !todayDraw ||
+                        todayDraw.status !== 'open' ||
+                        opsApiAvailable === false
+                      }
+                      onClick={handlePickBonusWinnerNow}
+                      className={`${BTN_CROWN} h-10 text-[13px] disabled:opacity-40 disabled:cursor-not-allowed`}
+                    >
+                      {todayDraw?.status !== 'open'
+                        ? 'Bonus locked'
+                        : isPickingBonusWinner
+                        ? 'Picking...'
+                        : 'Pick winner'}
+                    </button>
+                  </div>
+
+                  {bonusPickError && <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>}
+                  {bonusPickSuccess && <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>}
+
+                  {(bonusError || bonusSuccess) && (
+                    <div className="mt-3 text-xs">
+                      {bonusError && <p className="text-amber-300">{bonusError}</p>}
+                      {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </form>
+
+            {/* UPCOMING */}
+            <div className="mt-5 xpot-card px-4 py-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Upcoming bonus drops</p>
+
+                  {nextBonusDrop && nextBonusCountdown && (
+                    <div className="flex items-center gap-3">
+                      <Badge tone="sky">
+                        <Timer className="h-3.5 w-3.5" />
+                        Next bonus in {nextBonusCountdown}
+                      </Badge>
+
+                      <span className="text-[11px] text-slate-400">
+                        {nextBonusDrop.label} -{' '}
+                        <span className="font-semibold text-slate-200">
+                          {nextBonusDrop.amountXpot.toLocaleString()} XPOT
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+                  onClick={refreshUpcomingDrops}
+                  disabled={!tokenAccepted || upcomingLoading || opsApiAvailable === false}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {upcomingLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCcw className="h-4 w-4" />
+                    )}
+                    Refresh
+                  </span>
+                </button>
+              </div>
+
+              {upcomingError && <p className="mt-2 text-xs text-amber-300">{upcomingError}</p>}
+              {cancelDropError && <p className="mt-2 text-xs text-amber-300">{cancelDropError}</p>}
+
+              <div className="mt-3 space-y-2">
+                {upcomingDrops.length === 0 ? (
+                  <p className="text-xs text-slate-500">No bonus drops scheduled yet.</p>
+                ) : (
+                  upcomingDrops.map(d => (
+                    <div
+                      key={d.id}
+                      className="flex flex-col gap-2 rounded-2xl border border-slate-800/70 bg-slate-950/55 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-100">{d.label}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {formatDateTime(d.scheduledAt)} - {d.amountXpot.toLocaleString()} XPOT
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge tone={d.status === 'SCHEDULED' ? 'sky' : d.status === 'FIRED' ? 'emerald' : 'red'}>
+                          {d.status}
+                        </Badge>
+
+                        {d.status === 'SCHEDULED' && (
+                          <button
+                            type="button"
+                            className={`${BTN_DANGER} h-9 px-4 text-xs`}
+                            onClick={() => handleCancelBonusDrop(d.id)}
+                            disabled={cancelingDropId === d.id || !tokenAccepted || opsApiAvailable === false}
+                          >
+                            {cancelingDropId === d.id ? 'Canceling...' : 'Cancel'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Today's XPOT entries */}
+          <section className="xpot-panel px-5 py-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Today's XPOT entries</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Every entry that has been issued for the current XPOT round.
+                </p>
+              </div>
+
+              <Badge tone="slate">
+                <Ticket className="h-3.5 w-3.5" />
+                {tickets.length}
+              </Badge>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {ticketsLoading ? (
+                <p className="text-xs text-slate-500">Loading...</p>
+              ) : ticketsError ? (
+                <p className="text-xs text-amber-300">{ticketsError}</p>
+              ) : tickets.length === 0 ? (
+                <p className="text-xs text-slate-500">No entries yet for today's XPOT.</p>
+              ) : (
+                <>
+                  {visibleTickets.map(t => (
+                    <div key={t.id} className="xpot-card px-4 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                          <div className="mt-1">
+                            <CopyableWallet address={t.walletAddress} />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            tone={
+                              t.status === 'won'
+                                ? 'sky'
+                                : t.status === 'in-draw'
+                                ? 'emerald'
+                                : t.status === 'claimed'
+                                ? 'emerald'
+                                : t.status === 'expired'
+                                ? 'red'
+                                : 'slate'
+                            }
+                          >
+                            {t.status.replace('-', ' ')}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <p className="mt-2 text-xs text-slate-500">Issued {formatDateTime(t.createdAt)}</p>
+                    </div>
+                  ))}
+
+                  {visibleTicketCount < tickets.length && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleLoadMoreTickets}
+                        className={`${BTN_UTILITY} h-10 w-full text-sm`}
+                      >
+                        Load more entries
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* RIGHT */}
+        <div className="space-y-4">
+          {/* Winners */}
+          <section className="xpot-panel px-5 py-5">
+            <div>
+              <p className="text-sm font-semibold text-slate-100">Recent XPOT winners</p>
+              <p className="mt-1 text-xs text-slate-400">
+                Internal log of executed rewards, payouts and winner tickets.
+              </p>
+            </div>
+
+            {markPaidError && <p className="mt-3 text-xs text-amber-300">{markPaidError}</p>}
+
+            <div className="mt-4 space-y-2">
+              {winnersLoading ? (
+                <p className="text-xs text-slate-500">Loading...</p>
+              ) : winnersError ? (
+                <p className="text-xs text-amber-300">{winnersError}</p>
+              ) : winners.length === 0 ? (
+                <div className="xpot-card px-4 py-3 text-xs text-slate-500">
+                  No completed draws yet. Once you pick winners and mark XPOT as paid, they'll appear here.
+                </div>
+              ) : (
+                <>
+                  {visibleWinners.map(w => {
+                    const label = formatWinnerLabel(w);
+                    const isPaid = !!w.isPaidOut;
+
+                    return (
+                      <div key={w.id} className="xpot-card px-4 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs text-slate-400">
+                              {formatDate(w.date)}
+                              {label ? ` - ${label}` : ''}
+                            </p>
+                            <p className="mt-1 font-mono text-sm text-slate-100">{w.ticketCode}</p>
+                            <div className="mt-1">
+                              <CopyableWallet address={w.walletAddress} />
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-2">
+                            <XpotPill amount={w.payoutUsd ?? 0} size="sm" />
+                            <Badge tone={isPaid ? 'emerald' : 'gold'}>
+                              {isPaid ? (
+                                <>
+                                  <BadgeCheck className="h-3.5 w-3.5" />
+                                  Paid
+                                </>
+                              ) : (
+                                <>
+                                  <Info className="h-3.5 w-3.5" />
+                                  Unpaid
+                                </>
+                              )}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+                          <input
+                            className="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-400/70"
+                            placeholder="Paste TX link (Solscan) ..."
+                            value={txInputs[w.id] ?? (w.txUrl ?? '')}
+                            onChange={e =>
+                              setTxInputs(prev => ({
+                                ...prev,
+                                [w.id]: e.target.value,
+                              }))
+                            }
+                            disabled={isPaid}
+                          />
+                          <button
+                            type="button"
+                            className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                            onClick={() => handleMarkAsPaid(w.id)}
+                            disabled={isPaid || savingPaidId === w.id || opsApiAvailable === false}
+                          >
+                            {savingPaidId === w.id ? 'Saving...' : 'Mark paid'}
+                          </button>
+                        </div>
+
+                        {w.txUrl && (
+                          <a
+                            href={w.txUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 inline-flex text-[11px] text-emerald-300 hover:text-emerald-200"
+                          >
+                            View TX
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {visibleWinnerCount < winners.length && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleLoadMoreWinners}
+                        className={`${BTN_UTILITY} h-10 w-full text-sm`}
+                      >
+                        Load more winners
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* Quick hints */}
+          <section className="xpot-panel px-5 py-5 text-xs text-slate-400">
+            <p className="font-semibold text-slate-200">Ops notes</p>
+            <ul className="mt-2 space-y-2">
+              <li className="flex gap-2">
+                <KeyRound className="h-4 w-4 text-slate-500" />
+                Admin key is stored locally in your browser only.
+              </li>
+              <li className="flex gap-2">
+                <CalendarClock className="h-4 w-4 text-slate-500" />
+                Countdown is based on <span className="font-semibold text-slate-200">closesAt</span> from today's draw and synced to server time.
+              </li>
+              <li className="flex gap-2">
+                <Crown className="h-4 w-4 text-slate-500" />
+                Manual crown button is disabled when auto-draw is enabled.
+              </li>
+            </ul>
+          </section>
+        </div>
+      </section>
+
+      {modeModalOpen && (
+        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
+          <div className="w-full max-w-md xpot-panel px-6 py-6">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-50">Switch ops mode</p>
+              <button
+                type="button"
+                className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+                onClick={() => setModeModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="mt-2 text-xs text-slate-400">
+              Confirm your admin key to switch to{' '}
+              <span className="font-semibold text-slate-200">
+                {modePending === 'AUTO' ? 'AUTO' : 'MANUAL'}
+              </span>
+              .
+            </p>
+
+            {!envAutoAllowed && modePending === 'AUTO' && (
+              <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
+                AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won't take
+                effect until allowed.
+              </div>
+            )}
+
+            <div className="mt-4 space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                Admin key (re-enter)
+              </label>
+              <input
+                type="password"
+                className="xpot-input rounded-2xl"
+                value={modeTokenInput}
+                onChange={e => setModeTokenInput(e.target.value)}
+                placeholder="Paste admin token..."
+              />
+              {modeError && <p className="text-xs text-amber-300">{modeError}</p>}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                className={`${BTN_UTILITY} flex-1 h-11 text-sm`}
+                onClick={() => setModeModalOpen(false)}
+                disabled={modeSaving}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className={`${BTN_VAULT} flex-1 h-11 text-sm`}
+                disabled={modeSaving || !modeTokenInput.trim()}
+                onClick={async () => {
+                  setModeError(null);
+                  setModeSaving(true);
+                  try {
+                    if (!adminToken || modeTokenInput.trim() !== adminToken.trim())
+                      throw new Error('Admin key mismatch.');
+                    await saveOpsMode(modePending);
+                    setModeModalOpen(false);
+                  } catch (err: any) {
+                    setModeError(err?.message || 'Failed to switch mode');
+                  } finally {
+                    setModeSaving(false);
+                  }
+                }}
+              >
+                {modeSaving ? 'Saving...' : 'Confirm switch'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* ULTRA PREMIUM LOCK MODAL (moved LOWER + centered) */}
+      {/* ULTRA PREMIUM LOCK MODAL (position fixed: not too high) */}
       {!tokenAccepted && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 backdrop-blur-md p-4">
-          <div className="relative w-full max-w-md translate-y-6 xpot-panel px-6 py-6 sm:px-8 sm:py-8">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 backdrop-blur-md px-4 py-10">
+          <div className="relative w-full max-w-md xpot-panel px-6 py-6 sm:px-8 sm:py-8 translate-y-6">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <XpotLogoLottie className="h-[64px]" />
@@ -1911,9 +1949,10 @@ export default function AdminPage() {
 
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-semibold text-slate-50">Restricted access</p>
+                <p className="text-sm font-semibold text-slate-50">Unlock XPOT operations center</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  This console is private. Enter your admin key to unlock the operations view.
+                  Step inside the live XPOT control deck. Monitor today's round, entries, wallets and reward execution -
+                  secured behind your private <span className="font-semibold text-slate-200">admin key</span>.
                 </p>
               </div>
 
@@ -1927,14 +1966,20 @@ export default function AdminPage() {
                       className="w-full rounded-2xl border border-slate-700/80 bg-slate-950/90 px-4 py-3 pr-20 text-sm text-slate-100 placeholder:text-slate-600 outline-none focus:border-emerald-400/80"
                       value={tokenInput}
                       onChange={e => setTokenInput(e.target.value)}
-                      placeholder="Paste your XPOT admin key..."
+                      placeholder="Paste your secret XPOT admin key..."
                     />
                     <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[10px] uppercase tracking-[0.18em] text-slate-500">
                       Secured
                     </span>
                   </div>
 
-                  <p className="text-[10px] text-slate-500">Stored locally in this browser only.</p>
+                  {tokenVerifyError && (
+                    <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-amber-200">
+                      {tokenVerifyError}
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-slate-500">Your key is stored locally in this browser only.</p>
                   <p className="text-[10px] text-slate-500">
                     <span className="font-semibold text-slate-300">Never share your admin key</span> - it unlocks full
                     XPOT operations.
@@ -1953,7 +1998,7 @@ export default function AdminPage() {
               <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3 text-[11px] text-slate-400">
                 <div className="flex items-start gap-2">
                   <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-300" />
-                  <p>If the key is wrong you'll see request failures - nothing breaks.</p>
+                  <p>If your key is wrong you'll get a verification error. No access is granted.</p>
                 </div>
               </div>
             </div>
