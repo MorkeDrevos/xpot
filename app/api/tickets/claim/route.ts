@@ -98,7 +98,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
 }
 
 // ─────────────────────────────────────────────
-// Helpers – code + XPOT balance check
+// Helpers – code + XPOT balance
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -147,9 +147,8 @@ async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw
     rawTotal += BigInt(amountStr);
   }
 
-  // Note: rawTotal can exceed Number.MAX_SAFE_INTEGER for huge balances.
-  // XPOT is 6 decimals so this is typically ok, but we keep raw too.
-  const balance = decimals >= 0 ? Number(rawTotal) / Math.pow(10, decimals) : Number(rawTotal);
+  const balance =
+    decimals >= 0 ? Number(rawTotal) / Math.pow(10, decimals) : Number(rawTotal);
 
   return { balance, raw: rawTotal, decimals };
 }
@@ -162,14 +161,16 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({} as any));
 
-    const walletAddress: string | undefined = body.walletAddress || body.wallet || body.address;
+    const walletAddress: string | undefined =
+      body.walletAddress || body.wallet || body.address;
 
     if (!walletAddress || typeof walletAddress !== 'string') {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // 1) XPOT minimum check (server-side)
+    // 0) XPOT minimum check (server-side) — XPOT ONLY, no SOL gating
     let xpotBalance = 0;
+
     try {
       const b = await getXpotBalanceUi(walletAddress);
       xpotBalance = b.balance;
@@ -194,7 +195,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'XPOT_CHECK_FAILED' }, { status: 400 });
     }
 
-    // 2) Find the open draw for the CURRENT MADRID CUTOFF WINDOW
+    // 1) Find the open draw for the CURRENT MADRID CUTOFF WINDOW
     const { start, end } = getMadridCutoffWindowUtc(new Date());
 
     const draw = await prisma.draw.findFirst({
@@ -208,14 +209,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'NO_OPEN_DRAW' }, { status: 400 });
     }
 
-    // 3) Ensure wallet row exists
+    // 2) Ensure wallet row exists
     const wallet = await prisma.wallet.upsert({
       where: { address: walletAddress },
       update: {},
       create: { address: walletAddress },
     });
 
-    // 4) Check if this wallet already has an IN_DRAW ticket for this draw
+    // 3) Check if this wallet already has an IN_DRAW ticket for this draw
     let ticket = await prisma.ticket.findFirst({
       where: {
         drawId: draw.id,
@@ -225,7 +226,7 @@ export async function POST(req: NextRequest) {
       include: { wallet: true },
     });
 
-    // 5) If none yet, create one
+    // 4) If none yet, create one
     if (!ticket) {
       ticket = await prisma.ticket.create({
         data: {
@@ -238,7 +239,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 6) Return the ticket
+    // 5) Return the ticket
     return NextResponse.json(
       {
         ok: true,
@@ -268,6 +269,9 @@ export async function POST(req: NextRequest) {
     );
   } catch (err: any) {
     console.error('[XPOT] /tickets/claim error:', err);
-    return NextResponse.json({ ok: false, error: err?.message || 'INTERNAL_ERROR' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
+      { status: 500 },
+    );
   }
 }
