@@ -89,13 +89,12 @@ const ROADMAP_HREF = '/roadmap';
 const MECHANISM_HREF = '/mechanism';
 const PROTOCOL_HREF = '/hub/protocol';
 
-const [mounted, setMounted] = useState(false);
-useEffect(() => setMounted(true), []);
-
 // ✅ Your real deployed CA
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
-export default function XpotTopBar({
+export default function XpotTopBar(...) {
+  const [langMounted, setLangMounted] = useState(false);
+  useEffect(() => setLangMounted(true), []);
   logoHref = '/',
   pillText = 'THE X-POWERED REWARD PROTOCOL',
   sloganRight,
