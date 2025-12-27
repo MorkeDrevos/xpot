@@ -12,10 +12,10 @@ const LIVE_POLL_MS = 5000;
 
 type LiveDraw = {
   dailyXpot: number;
-  dayNumber: number; // API value (may be 1-based)
+  dayNumber: number;
   dayTotal: number;
-  drawDate: string; // ISO
-  closesAt: string; // ISO
+  drawDate: string; // ISO-ish
+  closesAt: string; // ISO-ish
   status: 'OPEN' | 'LOCKED' | 'COMPLETED';
 };
 
@@ -32,25 +32,23 @@ function formatCountdown(ms: number) {
   return { d, h, m, s };
 }
 
-function hasTimezone(iso: string) {
-  // Ends with Z/z or a numeric offset like +01:00 / -05:00
-  return /([zZ]|[+\-]\d{2}:\d{2})$/.test(iso.trim());
-}
-
-function normalizeIso(iso: string) {
-  const s = String(iso || '').trim();
-  if (!s) return s;
-
-  // If backend returns an ISO without timezone, JS will treat it as local time
-  // which frequently breaks countdown. We assume UTC if tz is missing.
-  if (!hasTimezone(s)) return `${s}Z`;
-  return s;
-}
-
+/**
+ * Tolerant ISO parsing:
+ * - If backend sends "2025-12-27T01:23:03" (no timezone), Date.parse treats it as local time (bad).
+ * - We force UTC by appending "Z" when no timezone info is present.
+ */
 function safeParseMs(iso: string | null | undefined) {
   if (!iso) return null;
-  const norm = normalizeIso(iso);
-  const ms = Date.parse(norm);
+  const s = String(iso).trim();
+  if (!s) return null;
+
+  const hasTz =
+    s.endsWith('Z') ||
+    /[+-]\d{2}:\d{2}$/.test(s) ||
+    /[+-]\d{4}$/.test(s); // e.g. +0100
+
+  const normalized = hasTz ? s : `${s}Z`;
+  const ms = Date.parse(normalized);
   return Number.isFinite(ms) ? ms : null;
 }
 
@@ -121,35 +119,42 @@ export default function FinalDayPage() {
     }, 60);
   }, []);
 
-  // Keyboard shortcuts: F = flip, P = print, Esc = back
+  // Keyboard shortcuts: F = flip, P = print, Esc = back (make Esc reliable)
   useEffect(() => {
+    function isTypingTarget(t: EventTarget | null) {
+      const el = t as HTMLElement | null;
+      if (!el) return false;
+      const tag = (el.tagName || '').toLowerCase();
+      return tag === 'input' || tag === 'textarea' || (el as any).isContentEditable;
+    }
+
     function onKeyDown(e: KeyboardEvent) {
-      // Don’t hijack typical browser combos
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
 
       const k = e.key.toLowerCase();
-
       if (k === 'f') {
         e.preventDefault();
         onFlip();
         return;
       }
-
       if (k === 'p') {
         e.preventDefault();
         onPrint();
         return;
       }
-
       if (e.key === 'Escape') {
         e.preventDefault();
         try {
           window.location.assign('/');
-        } catch {}
+        } catch {
+          try {
+            window.location.href = '/';
+          } catch {}
+        }
       }
     }
 
-    // Capture helps when focus is inside nested elements
+    // Use document + capture so it still works more often
     document.addEventListener('keydown', onKeyDown, true);
     return () => document.removeEventListener('keydown', onKeyDown, true);
   }, [onFlip, onPrint]);
@@ -191,14 +196,10 @@ export default function FinalDayPage() {
           status: (json.draw.status as LiveDraw['status']) ?? 'OPEN',
         };
 
-        // Normalize date strings so countdown does not break when tz is omitted
-        d.closesAt = normalizeIso(d.closesAt);
-        d.drawDate = normalizeIso(d.drawDate);
-
         // Basic sanity checks to avoid rendering crashes
         if (!safeParseMs(d.closesAt)) throw new Error('BAD_CLOSESAT');
         if (!Number.isFinite(d.dailyXpot)) throw new Error('BAD_DAILY');
-        if (!Number.isFinite(d.dayNumber) || d.dayNumber < 0) d.dayNumber = 0;
+        if (!Number.isFinite(d.dayNumber) || d.dayNumber <= 0) d.dayNumber = 0;
         if (!Number.isFinite(d.dayTotal) || d.dayTotal <= 0) d.dayTotal = 7000;
 
         setLive(d);
@@ -226,39 +227,33 @@ export default function FinalDayPage() {
     return () => window.clearInterval(t);
   }, []);
 
-  // Display day number (fix common +1 offset from API)
-  const displayDayNumber = useMemo(() => {
-    const n = live?.dayNumber ?? 0;
-    // If API is 1-based, we want the UX to match your “Day 2” expectation
-    return n > 0 ? Math.max(0, n - 1) : 0;
-  }, [live?.dayNumber]);
-
   const closesAtMs = safeParseMs(live?.closesAt);
-  const remainingMs = closesAtMs ? Math.max(0, closesAtMs - nowTs) : null;
-  const cd = remainingMs !== null ? formatCountdown(remainingMs) : null;
 
-  // If backend reports OPEN but closesAt already passed, treat as “syncing”
-  const computedStatus: LiveDraw['status'] | 'SYNCING' | 'OFFLINE' =
-    liveErr ? 'OFFLINE' : !live ? 'SYNCING' : live.status === 'OPEN' && remainingMs === 0 ? 'SYNCING' : live.status;
+  // If closesAt exists but is already in the past, treat UI as "syncing next draw" (don’t show a fake broken 00:00)
+  const remainingMsRaw = closesAtMs ? closesAtMs - nowTs : null;
+  const isPast = remainingMsRaw !== null ? remainingMsRaw <= -1500 : false;
+  const remainingMs = remainingMsRaw === null ? null : Math.max(0, remainingMsRaw);
+  const cd = remainingMs !== null && !isPast ? formatCountdown(remainingMs) : null;
 
   const statusTone =
-    computedStatus === 'OPEN'
-      ? 'bg-emerald-500/10 text-emerald-200 ring-emerald-500/20'
-      : computedStatus === 'COMPLETED'
-        ? 'bg-white/5 text-white/85 ring-white/15'
-        : computedStatus === 'LOCKED'
-          ? 'bg-amber-500/10 text-amber-200 ring-amber-500/20'
-          : 'bg-white/5 text-white/80 ring-white/15';
+    liveErr || !live
+      ? 'bg-white/5 text-white/80 ring-white/15'
+      : live.status === 'OPEN'
+        ? 'bg-emerald-500/10 text-emerald-200 ring-emerald-500/20'
+        : live.status === 'COMPLETED'
+          ? 'bg-white/5 text-white/85 ring-white/15'
+          : 'bg-amber-500/10 text-amber-200 ring-amber-500/20';
+
+  const statusLabel =
+    liveErr ? 'OFFLINE' : !live ? 'SYNCING' : isPast ? 'SYNCING' : (live.status ?? 'OPEN');
 
   const dayLabel =
-    displayDayNumber && (live?.dayTotal ?? 0) > 0
-      ? `Day ${displayDayNumber.toLocaleString()} of ${(live?.dayTotal ?? 7000).toLocaleString()}`
-      : 'Day - of 7000';
+    live?.dayNumber && live?.dayTotal
+      ? `Day ${live.dayNumber.toLocaleString()} of ${live.dayTotal.toLocaleString()}`
+      : 'Day - of 7,000';
 
   const dayProgress =
-    displayDayNumber && live?.dayTotal
-      ? Math.max(0, Math.min(1, displayDayNumber / live.dayTotal))
-      : 0;
+    live?.dayNumber && live?.dayTotal ? Math.max(0, Math.min(1, live.dayNumber / live.dayTotal)) : 0;
 
   const bgRoot =
     'bg-[#05070a] ' +
@@ -549,7 +544,7 @@ export default function FinalDayPage() {
                     Just a set of rules written once - then obeyed for nearly two decades.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The people behind it are rarely discussed as personalities. Instead, they are remembered as a decision:
+                    The people behind it are rarely discussed as personalities. Instead, XPOT is remembered as a decision:
                     the decision to stop. The decision to refuse inflation. The decision to never move the goalposts, even
                     when the world begged for “more”.
                   </p>
@@ -610,8 +605,8 @@ export default function FinalDayPage() {
                 <div className="inline-flex items-center gap-3">
                   <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">{dayLabel}</div>
 
-                  {/* Mysterious + protocol-serious */}
-                  <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
+                  {/* Mysterious (no single-person credit) */}
+                  <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/60">
                     Operated by the protocol
                   </div>
                 </div>
@@ -644,7 +639,7 @@ export default function FinalDayPage() {
                   <div className="h-full bg-white/25" style={{ width: `${Math.round(dayProgress * 10000) / 100}%` }} />
                 </div>
                 <div className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-white/55">
-                  Progress to Day 7000
+                  Progress to Day 7,000
                 </div>
               </div>
             </header>
@@ -663,7 +658,7 @@ export default function FinalDayPage() {
                       ' ',
                     )}
                   >
-                    {computedStatus}
+                    {statusLabel}
                   </span>
                 </div>
 
@@ -678,7 +673,7 @@ export default function FinalDayPage() {
                     <div className="mt-4 grid grid-cols-4 gap-2">
                       {(['d', 'h', 'm', 's'] as const).map((k) => {
                         const v =
-                          cd == null || computedStatus === 'SYNCING'
+                          cd == null
                             ? '--'
                             : k === 'd'
                               ? String(cd.d)
@@ -709,11 +704,9 @@ export default function FinalDayPage() {
                       </div>
 
                       <div className="font-black">
-                        {computedStatus === 'SYNCING'
-                          ? 'Syncing next draw…'
-                          : live?.closesAt
-                            ? `Closes at: ${new Date(live.closesAt).toUTCString()}`
-                            : 'Fetching live draw...'}
+                        {live?.closesAt && !isPast
+                          ? `Closes at: ${new Date(safeParseMs(live.closesAt) ?? Date.now()).toUTCString()}`
+                          : 'Syncing next draw...'}
                       </div>
                     </div>
                   </>
