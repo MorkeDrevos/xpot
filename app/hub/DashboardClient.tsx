@@ -37,6 +37,12 @@ import {
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
+// Types (shared)
+// ─────────────────────────────────────────────
+
+type XpotBalanceState = number | 'error' | null;
+
+// ─────────────────────────────────────────────
 // Small UI helpers
 // ─────────────────────────────────────────────
 
@@ -228,9 +234,6 @@ function initialFromHandle(h?: string | null) {
   return s ? s[0].toUpperCase() : 'X';
 }
 
-/**
- * Reduced motion hook (safe with older Safari)
- */
 function useReducedMotionPref() {
   const [reduced, setReduced] = useState(false);
 
@@ -405,7 +408,7 @@ function useBonusUpcoming() {
 }
 
 // ─────────────────────────────────────────────
-// Entry ceremony (2s shimmer + stamp + optional chime)
+// Entry ceremony
 // ─────────────────────────────────────────────
 
 function playChime() {
@@ -628,7 +631,7 @@ function normalizeEntry(raw: any): Entry | null {
 }
 
 function safeStatusLabel(status: any) {
-  return String(status ?? '').replace(/_/g, '-').replace('-', ' ');
+  return String(status ?? '').replace(/_/g, '-').replace(/-/g, ' ');
 }
 
 // ─────────────────────────────────────────────
@@ -665,8 +668,6 @@ function normalizeLinkedWallets(payload: any): LinkedWallet[] {
     }
   }
 
-  type XpotBalanceState = number | 'error' | null;
-
   // unique by address
   const seen = new Set<string>();
   return out.filter(w => {
@@ -682,7 +683,6 @@ function normalizeLinkedWallets(payload: any): LinkedWallet[] {
 // ─────────────────────────────────────────────
 
 function DashboardInner() {
-  // ✅ FIX: this hook must be called UNDER WalletModalProvider (not in the same component that renders it)
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const onOpenWalletModal = useCallback(() => setWalletModalVisible(true), [setWalletModalVisible]);
 
@@ -764,7 +764,6 @@ function DashboardInner() {
     setWalletsError(null);
 
     try {
-      // If this endpoint doesn't exist yet, we fail gracefully.
       const r = await fetch('/api/me/wallets', { cache: 'no-store' });
       if (!r.ok) {
         setLinkedWallets(currentWalletAddress ? [{ address: currentWalletAddress }] : []);
@@ -791,7 +790,6 @@ function DashboardInner() {
       setWalletsError(null);
 
       try {
-        // If you don’t have this yet, UI will show a clean error and keep working.
         const r = await fetch('/api/me/wallet-unlink', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -809,7 +807,6 @@ function DashboardInner() {
           return;
         }
 
-        // If they unlinked the currently connected wallet, also disconnect session.
         if (currentWalletAddress && currentWalletAddress.toLowerCase() === address.toLowerCase()) {
           try {
             await disconnect();
@@ -829,7 +826,6 @@ function DashboardInner() {
     [isAuthedEnough, currentWalletAddress, disconnect, refetchLinkedWallets],
   );
 
-  // keep this for validation/consistency
   useMemo(() => {
     try {
       return new PublicKey(TOKEN_MINT);
@@ -838,9 +834,6 @@ function DashboardInner() {
     }
   }, []);
 
-  // ─────────────────────────────────────────────
-  // Sync X identity into DB whenever user is loaded
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isUserLoaded || !user) return;
     if (!handle) return;
@@ -854,9 +847,6 @@ function DashboardInner() {
     })();
   }, [isUserLoaded, user, handle]);
 
-  // ─────────────────────────────────────────────
-  // Wire wallet -> DB whenever it connects
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) return;
     if (!publicKey || !connected) return;
@@ -871,7 +861,6 @@ function DashboardInner() {
           body: JSON.stringify({ address }),
         });
 
-        // Refresh roster after syncing
         refetchLinkedWallets();
       } catch (e) {
         console.error('[XPOT] Failed to sync wallet', e);
@@ -879,9 +868,6 @@ function DashboardInner() {
     })();
   }, [isAuthedEnough, publicKey, connected, refetchLinkedWallets]);
 
-  // ─────────────────────────────────────────────
-  // Linked wallets initial fetch
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) {
       setLinkedWallets([]);
@@ -892,9 +878,6 @@ function DashboardInner() {
     refetchLinkedWallets();
   }, [isAuthedEnough, refetchLinkedWallets]);
 
-  // ─────────────────────────────────────────────
-  // Countdown ticker (Madrid 22:00 cutoff)
-  // ─────────────────────────────────────────────
   useEffect(() => {
     const tick = () => {
       const cutoffUtc = nextMadridCutoffUtcMs(new Date());
@@ -906,9 +889,6 @@ function DashboardInner() {
     return () => clearInterval(t);
   }, []);
 
-  // ─────────────────────────────────────────────
-  // Hub boot: preferences + streak + mission
-  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) return;
 
@@ -946,11 +926,8 @@ function DashboardInner() {
     };
   }, [isAuthedEnough, handle]);
 
-  // ─────────────────────────────────────────────
-  // Fetch helpers
-  // ─────────────────────────────────────────────
   const fetchTicketsToday = useCallback(async () => {
-    const res = await fetch('/api/tickets/today', { cache: 'no-store' });
+    const res = await fetch('/api/tickets/today', { cache: '
     if (!res.ok) throw new Error('Failed to load tickets');
     const data = await res.json().catch(() => ({} as any));
 
