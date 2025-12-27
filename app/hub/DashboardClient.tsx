@@ -132,6 +132,7 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
+  // small iterative correction for DST
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
@@ -226,7 +227,7 @@ function initialFromHandle(h?: string | null) {
 }
 
 /**
- * Reduced motion hook (safe with older Safari)
+ * FIXED: robust reduced-motion hook for Safari + modern browsers.
  */
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -557,7 +558,7 @@ function EntryCeremony({
 }
 
 // ─────────────────────────────────────────────
-// Types + defensive normalizers
+// Types + defensive normalizers (fixes crash on status.replace)
 // ─────────────────────────────────────────────
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
@@ -703,7 +704,6 @@ export default function DashboardClient() {
     desc: 'Preparing today’s mission.',
   });
 
-  // keep this for validation/consistency (even if not used elsewhere yet)
   useMemo(() => {
     try {
       return new PublicKey(TOKEN_MINT);
@@ -729,7 +729,7 @@ export default function DashboardClient() {
   }, [isUserLoaded, user, handle]);
 
   // ─────────────────────────────────────────────
-  // Wire wallet -> DB whenever it connects
+  // Wire wallet → DB whenever it connects
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) return;
@@ -765,7 +765,7 @@ export default function DashboardClient() {
   }, []);
 
   // ─────────────────────────────────────────────
-  // Hub boot: preferences + streak + mission
+  // Hub boot: preferences + streak + mission (Prisma)
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthedEnough) return;
@@ -813,15 +813,21 @@ export default function DashboardClient() {
     const data = await res.json().catch(() => ({} as any));
 
     const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
-    return raw.map(normalizeEntry).filter(Boolean) as Entry[];
+    const list = raw.map(normalizeEntry).filter(Boolean) as Entry[];
+
+    return list;
   }, []);
 
   const fetchXpotBalance = useCallback(async (address: string): Promise<number | null> => {
     try {
-      const res = await fetch(`/api/xpot-balance?address=${encodeURIComponent(address)}`, { cache: 'no-store' });
+      const res = await fetch(`/api/xpot-balance?address=${encodeURIComponent(address)}`, {
+        cache: 'no-store',
+      });
+
       if (!res.ok) return null;
-      const json = await res.json().catch(() => null);
-      return json && typeof json.balance === 'number' ? json.balance : null;
+
+      const json = (await res.json().catch(() => null)) as any;
+      return typeof json?.balance === 'number' ? json.balance : null;
     } catch {
       return null;
     }
@@ -833,7 +839,9 @@ export default function DashboardClient() {
     const data = await res.json().catch(() => ({} as any));
 
     const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
-    return raw.map(normalizeEntry).filter(Boolean) as Entry[];
+    const tickets = raw.map(normalizeEntry).filter(Boolean) as Entry[];
+
+    return tickets;
   }, []);
 
   const fetchRecentWinners = useCallback(async () => {
@@ -855,7 +863,7 @@ export default function DashboardClient() {
     return winners.filter(w => w.id && w.ticketCode);
   }, []);
 
-  // Throttle balance hits to avoid spamming
+  // Throttle balance hits so we do not spam (RPC/endpoint protection)
   const lastBalanceFetchAtRef = useRef<number>(0);
   const BALANCE_MIN_INTERVAL_MS = 30_000;
 
@@ -876,45 +884,41 @@ export default function DashboardClient() {
           setWinnersError(null);
         }
 
-        const [nextTickets, nextWinners] = await Promise.all([fetchTicketsToday(), fetchRecentWinners()]);
+        const nextTickets = await fetchTicketsToday();
         setEntries(nextTickets);
+
+        const nextWinners = await fetchRecentWinners();
         setRecentWinners(nextWinners);
 
-        // Wallet-dependent data
         if (walletConnected && addr) {
-          // BALANCE (throttled)
+          // ── BALANCE (throttled) ───────────────────
           const now = Date.now();
-          const shouldFetchBalance =
-            reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
+          const shouldFetchBalance = reason !== 'poll' || now - lastBalanceFetchAtRef.current > BALANCE_MIN_INTERVAL_MS;
 
           if (shouldFetchBalance) {
-            try {
-              setXpotBalance(null);
-              const b = await fetchXpotBalance(addr);
-              if (typeof b === 'number') setXpotBalance(b);
-              else setXpotBalance('error');
-              lastBalanceFetchAtRef.current = now;
-            } catch (e) {
-              console.error('[XPOT] balance fetch failed', e);
-              setXpotBalance('error');
-              lastBalanceFetchAtRef.current = now;
-            }
+            setXpotBalance(null);
+            const b = await fetchXpotBalance(addr);
+            if (typeof b === 'number') setXpotBalance(b);
+            else setXpotBalance('error');
+            lastBalanceFetchAtRef.current = now;
           }
 
-          // HISTORY
+          // ── HISTORY ──────────────────────────────
           try {
             if (reason === 'initial') setLoadingHistory(true);
             setHistoryError(null);
+
             const h = await fetchHistory(addr);
             setHistoryEntries(h);
           } catch (e) {
-            console.error('[XPOT] history fetch failed', e);
+            console.error('[hub] Failed to load history', e);
             setHistoryError((e as Error).message ?? 'Failed to load history');
             setHistoryEntries([]);
           } finally {
             setLoadingHistory(false);
           }
         } else {
+          // wallet not connected
           setXpotBalance(null);
           setHistoryEntries([]);
           setHistoryError(null);
@@ -1061,7 +1065,7 @@ export default function DashboardClient() {
             setClaimError('Ticket request failed. Please try again.');
         }
 
-        console.error('Claim failed', res.status, text);
+        console.error('[hub] Claim failed', res.status, text);
         return;
       }
 
@@ -1091,7 +1095,7 @@ export default function DashboardClient() {
       await markStreakDone();
       refreshAll('manual');
     } catch (err) {
-      console.error('Error calling /api/tickets/claim', err);
+      console.error('[hub] Error calling /api/tickets/claim', err);
       setClaimError('Unexpected error while getting your ticket. Please try again.');
     } finally {
       setClaiming(false);
@@ -1136,11 +1140,11 @@ export default function DashboardClient() {
       <style jsx global>{`
         .xpot-luxe-border {
           background:
-            linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)) 0
-              0 / 200% 1px no-repeat,
-            linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)) 0
-              0 / 1px 200% no-repeat;
-          mask-image: radial-gradient(circle at 22% 18%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.2) 55%, rgba(0, 0, 0, 0) 78%);
+            linear-gradient(90deg, rgba(255,255,255,0.00), rgba(255,255,255,0.08), rgba(255,255,255,0.00)) 0 0 /
+              200% 1px no-repeat,
+            linear-gradient(180deg, rgba(255,255,255,0.00), rgba(255,255,255,0.06), rgba(255,255,255,0.00)) 0 0 /
+              1px 200% no-repeat;
+          mask-image: radial-gradient(circle at 22% 18%, rgba(0,0,0,1), rgba(0,0,0,0.2) 55%, rgba(0,0,0,0) 78%);
           opacity: 0.9;
           animation: xpotLuxeBorder 10s ease-in-out infinite;
         }
@@ -1363,9 +1367,7 @@ export default function DashboardClient() {
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Next draw in</p>
                       <p className="mt-1 font-mono text-lg text-slate-100">{countdown}</p>
-                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-400/70">
-                        22:00 Madrid cutoff
-                      </p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-400/70">22:00 Madrid cutoff</p>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -1395,11 +1397,7 @@ export default function DashboardClient() {
                 </div>
 
                 <div className="mt-5 grid gap-3 lg:grid-cols-3">
-                  <TinyRow
-                    label="Wallet"
-                    value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
-                    mono
-                  />
+                  <TinyRow label="Wallet" value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'} mono />
                   <TinyRow
                     label="XPOT balance"
                     value={
@@ -1452,17 +1450,11 @@ export default function DashboardClient() {
                       type="button"
                       onClick={onOpenWalletModal}
                       className="
-                        group relative h-10
-                        inline-flex items-center justify-center gap-2
-                        rounded-full
+                        group relative h-10 inline-flex items-center justify-center gap-2 rounded-full
                         bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]
-                        border border-white/15
-                        px-4
-                        text-[12px] font-semibold text-slate-100
+                        border border-white/15 px-4 text-[12px] font-semibold text-slate-100
                         shadow-[0_10px_40px_rgba(0,0,0,0.45)]
-                        transition
-                        hover:border-amber-300/40
-                        hover:text-white
+                        transition hover:border-amber-300/40 hover:text-white
                         hover:shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_20px_60px_rgba(0,0,0,0.55)]
                         active:scale-[0.985]
                       "
