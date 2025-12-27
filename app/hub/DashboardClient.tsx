@@ -1,1774 +1,1237 @@
-// app/hub/DashboardClient.tsx
+// components/XpotTopBar.tsx
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { createPortal } from 'react-dom';
 
-import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletReadyState } from '@solana/wallet-adapter-base';
+import XpotLogo from '@/components/XpotLogo';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
-import GoldAmount from '@/components/GoldAmount';
-
-import XpotPageShell from '@/components/XpotPageShell';
-import HubLockOverlay from '@/components/HubLockOverlay';
-import BonusStrip from '@/components/BonusStrip';
-import { REQUIRED_XPOT } from '@/lib/xpot';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletReadyState } from '@solana/wallet-adapter-base';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
 import {
-  CheckCircle2,
-  Copy,
-  History,
+  ChevronDown,
+  ExternalLink,
   LogOut,
-  Sparkles,
-  Ticket,
-  Wallet,
-  X,
+  Menu,
+  PieChart,
   Radio,
-  Volume2,
-  VolumeX,
-  Flame,
-  Target,
+  Trophy,
+  Wallet,
+  Map,
+  X,
+  Crown,
+  Ticket,
+  Copy,
+  Check,
+  ShieldCheck,
+  XCircle,
+  Loader2,
+  ChevronRight,
+  Info,
+  Hourglass,
 } from 'lucide-react';
 
-// ─────────────────────────────────────────────
-// Small UI helpers
-// ─────────────────────────────────────────────
+type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
-const BTN_PRIMARY =
-  'relative inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-slate-950 ' +
-  'bg-[linear-gradient(90deg,rgba(251,191,36,0.95),rgba(56,189,248,0.90),rgba(236,72,153,0.88))] ' +
-  'shadow-[0_30px_120px_rgba(0,0,0,0.55)] ring-1 ring-white/20 ' +
-  'transition hover:brightness-[1.06] active:brightness-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ' +
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60';
+export type HubWalletStatus = {
+  label: string;
+  sublabel?: string;
+  tone?: HubWalletTone;
+  claimed?: boolean;
+  winner?: boolean;
+};
 
-const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition disabled:cursor-not-allowed disabled:opacity-40';
+export type XpotTopBarProps = {
+  logoHref?: string;
 
-function formatDate(date: string | Date) {
-  const d = new Date(date);
-  return d.toLocaleDateString('de-DE');
-}
+  // Public pill (non-hub pages)
+  pillText?: string;
 
-function formatDateTime(date: string | Date) {
-  const d = new Date(date);
-  return d.toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+  // Optional right slogan (non-hub pages)
+  sloganRight?: string;
 
-function shortWallet(addr: string) {
-  if (!addr || addr.length < 8) return addr;
-  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
-}
+  // Escape hatch (non-hub pages only)
+  rightSlot?: ReactNode;
 
-function pad2(n: number) {
-  return n.toString().padStart(2, '0');
-}
+  // Hub enhancements
+  hubWalletStatus?: HubWalletStatus;
 
-function formatCountdown(ms: number) {
-  if (ms <= 0) return '00:00:00';
-  const totalSeconds = Math.floor(ms / 1000);
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
-}
+  /**
+   * Optional external wallet modal opener (if you want to use a different modal).
+   * If not provided, XpotTopBar will use its own light popup.
+   */
+  onOpenWalletModal?: () => void;
 
-// ─────────────────────────────────────────────
-// Madrid cutoff logic (22:00 Europe/Madrid)
-// ─────────────────────────────────────────────
+  liveIsOpen?: boolean;
 
-const MADRID_TZ = 'Europe/Madrid';
-const MADRID_CUTOFF_HH = 22;
-const MADRID_CUTOFF_MM = 0;
+  // Banner
+  hasBanner?: boolean;
+  maxWidthClassName?: string;
+};
 
-function getTzParts(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).formatToParts(date);
+const XPOT_X_POST = 'https://x.com/xpotbet';
 
-  const pick = (type: string) => parts.find(p => p.type === type)?.value ?? '00';
+// ✅ Correct route (your file is app/2045/final-day/page.tsx)
+const FINAL_DAY_HREF = '/2045/final-day';
 
-  return {
-    y: Number(pick('year')),
-    m: Number(pick('month')),
-    d: Number(pick('day')),
-    hh: Number(pick('hour')),
-    mm: Number(pick('minute')),
-    ss: Number(pick('second')),
-  };
-}
+// ✅ Naming (pick one and keep it consistent everywhere)
+const FINAL_DAY_LABEL = 'Final Draw'; // alternatives: 'Finale' | 'Legacy' | 'Archive'
 
-function wallClockToUtcMs({
-  y,
-  m,
-  d,
-  hh,
-  mm,
-  ss,
-  timeZone,
-}: {
-  y: number;
-  m: number;
-  d: number;
-  hh: number;
-  mm: number;
-  ss: number;
-  timeZone: string;
-}) {
-  let t = Date.UTC(y, m - 1, d, hh, mm, ss);
+// Shared routes
+const WINNERS_HREF = '/winners';
+const TOKENOMICS_HREF = '/tokenomics';
+const ROADMAP_HREF = '/roadmap';
+const MECHANISM_HREF = '/mechanism';
+const PROTOCOL_HREF = '/hub/protocol';
 
-  for (let i = 0; i < 3; i++) {
-    const got = getTzParts(new Date(t), timeZone);
-    const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
-    const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
-    const diffMin = gotTotal - wantTotal;
-    if (diffMin === 0) break;
-    t -= diffMin * 60_000;
-  }
+// ✅ Your real deployed CA
+const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
-  return t;
-}
+export default function XpotTopBar({
+  logoHref = '/',
+  pillText = 'THE X-POWERED REWARD PROTOCOL',
+  sloganRight,
+  rightSlot,
+  hubWalletStatus,
+  onOpenWalletModal,
+  liveIsOpen = false,
+  hasBanner = true,
+  maxWidthClassName = 'max-w-[1440px]',
+}: XpotTopBarProps) {
+  const pathname = usePathname() || '';
+  const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
 
-function nextMadridCutoffUtcMs(now = new Date()) {
-  const madridNow = getTzParts(now, MADRID_TZ);
-  const nowMin = madridNow.hh * 60 + madridNow.mm;
-  const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [learnOpen, setLearnOpen] = useState(false);
 
-  const baseDate = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
-  const madridTargetDay = getTzParts(baseDate, MADRID_TZ);
+  // ✅ Internal light wallet popup (only used if onOpenWalletModal not provided)
+  const [lightWalletOpen, setLightWalletOpen] = useState(false);
+  const openWallet = useMemo(() => {
+    return onOpenWalletModal ? onOpenWalletModal : () => setLightWalletOpen(true);
+  }, [onOpenWalletModal]);
 
-  return wallClockToUtcMs({
-    y: madridTargetDay.y,
-    m: madridTargetDay.m,
-    d: madridTargetDay.d,
-    hh: MADRID_CUTOFF_HH,
-    mm: MADRID_CUTOFF_MM,
-    ss: 0,
-    timeZone: MADRID_TZ,
-  });
-}
+  const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
-function StatusPill({
-  children,
-  tone = 'slate',
-}: {
-  children: React.ReactNode;
-  tone?: 'slate' | 'emerald' | 'amber' | 'sky';
-}) {
-  const cls =
-    tone === 'emerald'
-      ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]'
-      : tone === 'amber'
-      ? 'border-amber-400/20 bg-amber-500/[0.06] text-amber-200 shadow-[0_0_0_1px_rgba(251,191,36,0.10)]'
-      : tone === 'sky'
-      ? 'border-sky-400/25 bg-sky-500/10 text-sky-200 shadow-[0_0_0_1px_rgba(56,189,248,0.10)]'
-      : 'border-white/10 bg-white/[0.03] text-slate-200 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]';
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  // Close menus on route change
+  useEffect(() => {
+    setMobileOpen(false);
+    setLearnOpen(false);
+  }, [pathname]);
+
+  // Close learn dropdown on escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setLearnOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // ✅ Publish real topbar height to CSS var for perfect page offsets
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const root = document.documentElement;
+
+    const measure = () => {
+      const el = headerRef.current;
+      if (!el) return;
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      if (h > 0) root.style.setProperty('--xpot-topbar-h', `${h}px`);
+    };
+
+    measure();
+    const raf1 = window.requestAnimationFrame(measure);
+    const raf2 = window.requestAnimationFrame(measure);
+
+    window.addEventListener('resize', measure);
+
+    let ro: ResizeObserver | null = null;
+    if ('ResizeObserver' in window) {
+      ro = new ResizeObserver(() => measure());
+      if (headerRef.current) ro.observe(headerRef.current);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+      window.removeEventListener('resize', measure);
+      if (ro) ro.disconnect();
+    };
+  }, [pathname, hasBanner]);
 
   return (
-    <span
-      className={[
-        'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
-        cls,
-      ].join(' ')}
-    >
-      {children}
+    <>
+      <header ref={headerRef} className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
+        {/* Topbar block ABOVE the divider so dropdown always wins stacking */}
+        <div className="relative z-[80] border-b border-white/5 bg-black/70 backdrop-blur-md">
+          <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
+            <div className="flex min-h-[104px] items-center gap-4">
+              {/* LEFT: Logo + optional pill */}
+              <div className="flex min-w-0 items-center gap-4">
+                <Link href={logoHref} className="flex shrink-0 items-center gap-3">
+                  <XpotLogo
+                    variant="light"
+                    width={460}
+                    height={120}
+                    priority
+                    className="h-[92px] max-h-[92px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
+                  />
+                </Link>
+
+                {/* Optional pill/slogan (public only) */}
+                {!isHub && (
+                  <div className="hidden min-w-0 items-center gap-3 lg:flex">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
+                      <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                      <span className="truncate opacity-85">{pillText}</span>
+                    </span>
+
+                    {sloganRight && (
+                      <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 2xl:inline-flex">
+                        {sloganRight}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* CENTER: Nav (desktop) */}
+              <div className="hidden flex-1 items-center justify-center gap-8 xl:flex">
+                {isHub ? (
+                  <HubNavCenter liveIsOpen={liveIsOpen} />
+                ) : (
+                  <PublicNavCenter liveIsOpen={liveIsOpen} learnOpen={learnOpen} setLearnOpen={setLearnOpen} />
+                )}
+              </div>
+
+              {/* RIGHT: Actions */}
+              <div className="ml-auto flex items-center gap-3">
+                {!isHub && (
+                  <div className="hidden xl:flex">
+                    <OfficialCAChip />
+                  </div>
+                )}
+
+                {isHub ? (
+                  <HubRight
+                    clerkEnabled={clerkEnabled}
+                    hubWalletStatus={hubWalletStatus}
+                    onOpenWalletModal={openWallet}
+                  />
+                ) : (
+                  <>{rightSlot ? rightSlot : <PublicRight />}</>
+                )}
+
+                {/* Mobile menu button */}
+                <button
+                  type="button"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] xl:hidden"
+                  onClick={() => setMobileOpen(true)}
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Premium divider - LOWER z so it never draws above dropdown */}
+        <div className="relative z-[10] h-[1px] w-full overflow-hidden">
+          <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.10),rgba(56,189,248,0.55),rgba(56,189,248,0.10))]" />
+        </div>
+
+        {/* Mobile drawer */}
+        <MobileMenu
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          isHub={isHub}
+          liveIsOpen={liveIsOpen}
+          clerkEnabled={clerkEnabled}
+          hubWalletStatus={hubWalletStatus}
+          onOpenWalletModal={openWallet}
+        />
+      </header>
+
+      {/* ✅ Light wallet popup (only used when parent does not supply onOpenWalletModal) */}
+      {!onOpenWalletModal && (
+        <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
+      )}
+    </>
+  );
+}
+
+/* ---------------- OFFICIAL CA CHIP ---------------- */
+
+function shortenAddress(addr: string, left = 6, right = 6) {
+  if (!addr) return '';
+  if (addr.length <= left + right + 3) return addr;
+  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
+}
+
+function OfficialCAChip() {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 6, 6), []);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1100);
+    } catch {}
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="
+          group relative inline-flex items-center gap-3
+          rounded-full px-4 py-2
+          border border-white/10 bg-white/[0.03]
+          backdrop-blur-xl
+          shadow-[0_18px_60px_rgba(0,0,0,0.55)]
+          hover:bg-white/[0.055]
+          transition
+        "
+        title="Status"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+      >
+        <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
+
+        <span
+          className="
+            relative z-10 inline-flex h-8 w-8 items-center justify-center
+            rounded-full border border-emerald-400/15
+            bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.20),rgba(0,0,0,0.35))]
+            shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_14px_40px_rgba(0,0,0,0.55)]
+          "
+        >
+          <ShieldCheck className="h-4 w-4 text-emerald-200" />
+        </span>
+
+        <div className="relative z-10 hidden min-w-0 flex-col leading-none sm:flex">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-200/85">Status</span>
+            <span className="inline-flex items-center rounded-full border border-emerald-400/15 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-emerald-100">
+              VERIFIED
+            </span>
+          </div>
+
+          <span className="mt-1 font-mono text-[12px] text-slate-100/90">{addrShort}</span>
+        </div>
+
+        <span className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200/80 group-hover:bg-white/[0.07] group-hover:text-slate-100 transition">
+          <ChevronDown className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`} />
+        </span>
+      </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[90] cursor-default"
+            aria-label="Close status"
+            onMouseDown={() => setOpen(false)}
+          />
+
+          <div className="absolute right-0 z-[91] mt-3 w-[360px] overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+            <div className="p-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">OFFICIAL CONTRACT</p>
+                <p className="mt-2 font-mono text-sm text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onCopy}
+                    className="
+                      inline-flex items-center gap-2 rounded-full
+                      border border-white/10 bg-white/[0.04]
+                      px-3 py-2 text-xs font-semibold text-slate-100
+                      hover:bg-white/[0.07]
+                    "
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 text-emerald-200" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 text-slate-100/90" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+
+                  <Link
+                    href={PROTOCOL_HREF}
+                    className="
+                      ml-auto inline-flex items-center gap-2 rounded-full
+                      border border-white/10 bg-white/[0.04]
+                      px-3 py-2 text-xs font-semibold text-slate-100
+                      hover:bg-white/[0.07]
+                    "
+                  >
+                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                    Health
+                  </Link>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs text-slate-300/80">Verified contract and protocol status live in one place.</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Shared ---------------- */
+
+function LiveDot({ isOpen }: { isOpen: boolean }) {
+  return (
+    <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
+      {isOpen ? (
+        <>
+          <span className="absolute inline-flex h-3 w-3 animate-ping rounded-full bg-emerald-400/60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+        </>
+      ) : (
+        <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
+      )}
     </span>
   );
 }
 
-function WalletStatusHint() {
-  const { wallets, connected } = useWallet();
-
-  const anyDetected = wallets.some(
-    w => w.readyState === WalletReadyState.Installed || w.readyState === WalletReadyState.Loadable,
-  );
-
-  if (connected) return null;
-
-  if (!anyDetected) {
-    return (
-      <p className="mt-2 text-xs xpot-gold-text">
-        No Solana wallet detected. Install Phantom or Solflare to continue.
-      </p>
-    );
-  }
-
-  return <p className="mt-2 text-xs text-slate-400">Click “Select wallet” and choose a wallet to connect.</p>;
-}
-
-async function safeCopy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function initialFromHandle(h?: string | null) {
-  const s = (h || '').replace(/^@/, '').trim();
-  return s ? s[0].toUpperCase() : 'X';
-}
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const m = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = () => setReduced(Boolean(m.matches));
-    apply();
-    m.addEventListener?.('change', apply);
-    return () => m.removeEventListener?.('change', apply);
-  }, []);
-  return reduced;
-}
-
-// ─────────────────────────────────────────────
-// Luxe shell pieces
-// ─────────────────────────────────────────────
-
-function LuxeCard({
+function NavLink({
+  href,
   children,
   className = '',
-  accent = 'violet',
-}: {
-  children: React.ReactNode;
-  className?: string;
-  accent?: 'violet' | 'gold' | 'emerald' | 'sky' | 'neutral';
-}) {
-  const ring =
-    accent === 'gold'
-      ? 'ring-amber-300/10'
-      : accent === 'emerald'
-      ? 'ring-emerald-400/10'
-      : accent === 'sky'
-      ? 'ring-sky-400/10'
-      : accent === 'neutral'
-      ? 'ring-white/10'
-      : 'ring-violet-400/10';
-
-  const glow =
-    accent === 'gold'
-      ? 'bg-[radial-gradient(circle_at_20%_20%,rgba(251,191,36,0.18),transparent_55%),radial-gradient(circle_at_85%_40%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_40%_100%,rgba(236,72,153,0.08),transparent_62%)]'
-      : accent === 'emerald'
-      ? 'bg-[radial-gradient(circle_at_18%_30%,rgba(16,185,129,0.18),transparent_55%),radial-gradient(circle_at_78%_18%,rgba(56,189,248,0.10),transparent_58%),radial-gradient(circle_at_50%_100%,rgba(236,72,153,0.06),transparent_62%)]'
-      : accent === 'sky'
-      ? 'bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_80%_35%,rgba(99,102,241,0.10),transparent_60%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.06),transparent_62%)]'
-      : 'bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.18),transparent_55%),radial-gradient(circle_at_80%_35%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.06),transparent_62%)]';
-
-  return (
-    <div
-      className={[
-        'relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/40 shadow-[0_40px_140px_rgba(0,0,0,0.55)] ring-1 backdrop-blur-xl',
-        ring,
-        className,
-      ].join(' ')}
-    >
-      <div className={['pointer-events-none absolute -inset-24 opacity-80 blur-3xl', glow].join(' ')} />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.10] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:18px_18px]" />
-      <div className="pointer-events-none absolute inset-0 xpot-luxe-border" />
-      <div className="relative p-5">{children}</div>
-    </div>
-  );
-}
-
-function LuxeTitle({
   title,
-  subtitle,
-  right,
+  external,
 }: {
-  title: string;
-  subtitle?: string;
-  right?: React.ReactNode;
+  href: string;
+  children: ReactNode;
+  className?: string;
+  title?: string;
+  external?: boolean;
 }) {
+  const base =
+    'inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition';
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-100">{title}</p>
-        {subtitle ? <p className="mt-1 text-xs text-slate-300/70">{subtitle}</p> : null}
-      </div>
-      {right ? <div className="shrink-0">{right}</div> : null}
-    </div>
+    <Link href={href} title={title} className={`${base} ${className}`} target={external ? '_blank' : undefined}>
+      {children}
+    </Link>
   );
 }
 
-function TinyRow({
-  label,
-  value,
-  mono = false,
+function NavPill({
+  href,
+  children,
+  title,
+  external,
 }: {
-  label: string;
-  value: React.ReactNode;
-  mono?: boolean;
+  href: string;
+  children: ReactNode;
+  title?: string;
+  external?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400/80">{label}</p>
-      <div className={mono ? 'font-mono text-sm text-slate-100' : 'text-sm font-semibold text-slate-100'}>
-        {value}
-      </div>
-    </div>
+    <Link
+      href={href}
+      title={title}
+      target={external ? '_blank' : undefined}
+      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06]"
+    >
+      {children}
+    </Link>
   );
 }
 
-// ─────────────────────────────────────────────
-// Bonus hook (same endpoint as homepage)
-// ─────────────────────────────────────────────
+/* ---------------- Public: Center nav ---------------- */
 
-type BonusUpcoming = {
-  id: string;
-  amountXpot: number;
-  scheduledAt: string;
-  status?: 'UPCOMING' | 'CLAIMED' | 'CANCELLED';
-  label?: string;
-};
+function PublicNavCenter({
+  liveIsOpen,
+  learnOpen,
+  setLearnOpen,
+}: {
+  liveIsOpen: boolean;
+  learnOpen: boolean;
+  setLearnOpen: (v: boolean) => void;
+}) {
+  const openT = useRef<number | null>(null);
+  const closeT = useRef<number | null>(null);
 
-function useBonusUpcoming() {
-  const [bonus, setBonus] = useState<BonusUpcoming | null>(null);
-  const [loading, setLoading] = useState(true);
+  const openSoon = () => {
+    if (closeT.current) window.clearTimeout(closeT.current);
+    if (openT.current) window.clearTimeout(openT.current);
+    openT.current = window.setTimeout(() => setLearnOpen(true), 70);
+  };
+
+  const closeSoon = () => {
+    if (openT.current) window.clearTimeout(openT.current);
+    if (closeT.current) window.clearTimeout(closeT.current);
+    closeT.current = window.setTimeout(() => setLearnOpen(false), 90);
+  };
 
   useEffect(() => {
-    let alive = true;
-
-    async function probe() {
-      try {
-        const r = await fetch('/api/bonus/upcoming', { cache: 'no-store' });
-        if (!alive) return;
-
-        if (!r.ok) {
-          setBonus(null);
-          setLoading(false);
-          return;
-        }
-
-        const data = (await r.json().catch(() => null)) as any;
-        const b = data?.bonus ?? null;
-
-        if (b?.scheduledAt) setBonus(b as BonusUpcoming);
-        else setBonus(null);
-
-        setLoading(false);
-      } catch {
-        if (!alive) return;
-        setBonus(null);
-        setLoading(false);
-      }
-    }
-
-    probe();
-    const t = window.setInterval(probe, 15_000);
     return () => {
-      alive = false;
-      window.clearInterval(t);
+      if (openT.current) window.clearTimeout(openT.current);
+      if (closeT.current) window.clearTimeout(closeT.current);
     };
   }, []);
 
-  return { bonus, loading, active: Boolean(bonus?.scheduledAt) };
+  return (
+    <nav className="flex items-center gap-7">
+      <NavLink href="/hub">Hub</NavLink>
+
+      {/* Live */}
+      <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
+        <LiveDot isOpen={liveIsOpen} />
+        <Radio className="h-[15px] w-[15px] text-emerald-300" />
+        Live
+      </NavLink>
+
+      {/* Final Draw (primary) */}
+      <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
+        <Hourglass className="h-[15px] w-[15px] text-amber-200" />
+        <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
+      </NavPill>
+
+      {/* Learn dropdown (hover + click) */}
+      <div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
+        <button
+          type="button"
+          onClick={() => setLearnOpen(!learnOpen)}
+          className="inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition"
+          aria-haspopup="menu"
+          aria-expanded={learnOpen}
+        >
+          Learn
+          <ChevronDown className={`h-4 w-4 transition ${learnOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {learnOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Close learn menu"
+              className="fixed inset-0 z-[90] cursor-default"
+              onMouseDown={() => setLearnOpen(false)}
+            />
+
+            <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+              <div className="p-2">
+                <Link
+                  href={TOKENOMICS_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <PieChart className="h-4 w-4 text-emerald-300" />
+                  </span>
+                  Tokenomics
+                </Link>
+
+                <Link
+                  href={ROADMAP_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Map className="h-4 w-4 text-sky-300" />
+                  </span>
+                  Roadmap
+                </Link>
+
+                <Link
+                  href={WINNERS_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Trophy className="h-4 w-4 text-amber-300" />
+                  </span>
+                  Winners
+                </Link>
+
+                <Link
+                  href={MECHANISM_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Info className="h-4 w-4 text-slate-200" />
+                  </span>
+                  Mechanism
+                </Link>
+
+                <div className="my-2 h-px bg-white/10" />
+
+                <Link
+                  href={XPOT_X_POST}
+                  target="_blank"
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <ExternalLink className="h-4 w-4 text-slate-200" />
+                  </span>
+                  Official X
+                </Link>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </nav>
+  );
 }
 
-// ─────────────────────────────────────────────
-// Entry ceremony (2s shimmer + stamp + optional chime)
-// ─────────────────────────────────────────────
+/* ---------------- Public: Right actions ---------------- */
 
-function playChime() {
-  try {
-    const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as any;
-    if (!AudioCtx) return;
-
-    const ctx = new AudioCtx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-
-    o.type = 'sine';
-    o.frequency.value = 880;
-
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
-
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.start();
-
-    setTimeout(() => {
-      o.stop();
-      ctx.close?.();
-    }, 300);
-  } catch {
-    // ignore
-  }
+function PublicRight() {
+  return (
+    <div className="hidden items-center gap-3 xl:flex">
+      <Link
+        href="/hub"
+        className="
+          rounded-full bg-white px-6 py-2.5
+          text-[13px] font-semibold text-black
+          hover:bg-slate-200
+          shadow-[0_18px_60px_rgba(0,0,0,0.35)]
+        "
+      >
+        Enter today&apos;s XPOT →
+      </Link>
+    </div>
+  );
 }
 
-function EntryCeremony({
-  open,
-  code,
-  onClose,
-  soundEnabled,
+/* ---------------- Hub: Center nav ---------------- */
+
+function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
+  return (
+    <nav className="flex items-center gap-7">
+      <NavLink href="/hub">Hub</NavLink>
+
+      {/* Live */}
+      <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
+        <LiveDot isOpen={liveIsOpen} />
+        <Radio className="h-[15px] w-[15px] text-emerald-300" />
+        Live
+      </NavLink>
+
+      {/* ✅ Final Draw (ONLY ONCE) */}
+      <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
+        <Hourglass className="h-[15px] w-[15px] text-amber-200" />
+        <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
+      </NavPill>
+
+      <NavLink href={MECHANISM_HREF} title="How winners are picked">
+        <Info className="h-4 w-4 text-slate-200" />
+        Mechanism
+      </NavLink>
+
+      <NavLink href={TOKENOMICS_HREF}>
+        <PieChart className="h-4 w-4 text-emerald-300" />
+        Tokenomics
+      </NavLink>
+
+      <NavLink href={ROADMAP_HREF}>
+        <Map className="h-4 w-4 text-sky-300" />
+        Roadmap
+      </NavLink>
+
+      <NavLink href={WINNERS_HREF}>
+        <Trophy className="h-4 w-4 text-amber-300" />
+        Winners
+      </NavLink>
+
+      <NavLink href={XPOT_X_POST} external title="Official XPOT X">
+        <ExternalLink className="h-4 w-4" />
+        X
+      </NavLink>
+    </nav>
+  );
+}
+
+/* ---------------- Hub: Right actions ---------------- */
+
+function HubRight({
+  clerkEnabled,
+  hubWalletStatus,
+  onOpenWalletModal,
 }: {
-  open: boolean;
-  code: string;
-  onClose: () => void;
-  soundEnabled: boolean;
+  clerkEnabled: boolean;
+  hubWalletStatus?: HubWalletStatus;
+  onOpenWalletModal?: () => void;
 }) {
-  const reduced = useReducedMotion();
+  return (
+    <div className="hidden items-center gap-3 xl:flex">
+      <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
+
+      {clerkEnabled && (
+        <SignOutButton redirectUrl="/">
+          <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06]">
+            <LogOut className="h-5 w-5" />
+            Log out
+          </button>
+        </SignOutButton>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Wallet button (premium + royal) ---------------- */
+
+function toneRing(tone: HubWalletTone) {
+  if (tone === 'emerald') return 'ring-emerald-400/20';
+  if (tone === 'amber') return 'ring-amber-400/20';
+  if (tone === 'sky') return 'ring-sky-400/20';
+  return 'ring-white/10';
+}
+
+function toneGlow(tone: HubWalletTone) {
+  if (tone === 'emerald') return 'from-emerald-400/20 via-emerald-300/10 to-transparent';
+  if (tone === 'amber') return 'from-amber-400/22 via-amber-300/10 to-transparent';
+  if (tone === 'sky') return 'from-sky-400/22 via-violet-400/10 to-transparent';
+  return 'from-white/12 via-white/8 to-transparent';
+}
+
+function HubWalletMenuInline({
+  hubWalletStatus,
+  onOpenWalletModal,
+}: {
+  hubWalletStatus?: HubWalletStatus;
+  onOpenWalletModal?: () => void;
+}) {
+  const { publicKey, connected } = useWallet();
+  const addr = connected && publicKey ? publicKey.toBase58() : null;
+
+  const label = hubWalletStatus?.label ?? (connected ? 'Wallet linked' : 'Select wallet');
+  const sublabel = hubWalletStatus?.sublabel ?? (addr ? shortWallet(addr) : 'Change wallet');
+
+  const tone: HubWalletTone =
+    hubWalletStatus?.winner ? 'sky' : hubWalletStatus?.claimed ? 'emerald' : connected ? 'sky' : 'amber';
+
+  const microIcon = hubWalletStatus?.winner ? (
+    <Crown className="h-4 w-4 text-amber-200" />
+  ) : hubWalletStatus?.claimed ? (
+    <Ticket className="h-4 w-4 text-emerald-200" />
+  ) : (
+    <Wallet className="h-4 w-4 text-slate-200" />
+  );
+
+  return (
+    <button
+      onClick={() => onOpenWalletModal?.()}
+      className={`
+        group relative overflow-hidden
+        rounded-full
+        border border-white/10
+        px-5 py-2.5
+        ring-1 ${toneRing(tone)}
+        bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))]
+        shadow-[0_18px_60px_rgba(0,0,0,0.55)]
+        hover:brightness-[1.04]
+        transition
+      `}
+      title={addr ?? undefined}
+      type="button"
+    >
+      <span
+        aria-hidden
+        className={`
+          pointer-events-none absolute inset-0 opacity-70
+          bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.10),transparent_45%)]
+        `}
+      />
+      <span
+        aria-hidden
+        className={`
+          pointer-events-none absolute -left-10 top-0 h-full w-40
+          bg-gradient-to-r ${toneGlow(tone)}
+          blur-xl opacity-60
+          group-hover:opacity-80
+          transition
+        `}
+      />
+      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/35" />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)]"
+      />
+
+      <div className="relative flex items-center gap-3">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/35 shadow-[0_10px_30px_rgba(0,0,0,0.55)]">
+          {microIcon}
+        </span>
+
+        <div className="min-w-0 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-semibold text-slate-100">{label}</span>
+
+            {hubWalletStatus?.winner && (
+              <span className="hidden sm:inline-flex items-center rounded-full border border-amber-400/15 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-amber-100">
+                WINNER
+              </span>
+            )}
+
+            {hubWalletStatus?.claimed && !hubWalletStatus?.winner && (
+              <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-400/15 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-emerald-100">
+                TICKET
+              </span>
+            )}
+          </div>
+
+          <div className="mt-0.5 flex items-center gap-2">
+            <span className="text-[11px] text-slate-300/70">{sublabel}</span>
+          </div>
+        </div>
+
+        <span className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200/80 group-hover:bg-white/[0.07] group-hover:text-slate-100 transition">
+          <ChevronRight className="h-4 w-4" />
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function shortWallet(addr: string) {
+  return addr ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : '';
+}
+
+/* ---------------- ✅ Light connect wallet popup ---------------- */
+
+function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { wallets, select, connect, connecting, connected, disconnect, publicKey, wallet: activeWallet } = useWallet();
+
+  const [mounted, setMounted] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [busyName, setBusyName] = useState<string | null>(null);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!open) return;
-    if (!reduced && soundEnabled) playChime();
-    const t = window.setTimeout(onClose, 2000);
-    return () => window.clearTimeout(t);
-  }, [open, onClose, soundEnabled, reduced]);
+
+    setAttempted(false);
+    setErrorMsg(null);
+    setBusyName(null);
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  const addr = connected && publicKey ? shortWallet(publicKey.toBase58()) : null;
+
+  const usableWallets = useMemo(() => {
+    return (wallets || []).filter((w) => w.readyState !== WalletReadyState.Unsupported);
+  }, [wallets]);
+
+  async function handlePick(name: WalletName) {
+    try {
+      if (connected && activeWallet?.adapter?.name === String(name)) {
+        onClose();
+        return;
+      }
+
+      setAttempted(true);
+      setErrorMsg(null);
+      setBusyName(String(name));
+
+      select(name);
+      await new Promise((r) => setTimeout(r, 50));
+      await connect();
+
+      setBusyName(null);
+      setErrorMsg(null);
+      onClose();
+    } catch (e: any) {
+      const msg =
+        typeof e?.message === 'string' && e.message.trim()
+          ? e.message
+          : 'Could not connect wallet. Please try again.';
+      setBusyName(null);
+      setErrorMsg(msg);
+    }
+  }
+
+  async function handleDisconnect() {
+    try {
+      await disconnect();
+      onClose();
+    } catch {
+      onClose();
+    }
+  }
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-label="Close wallet dialog"
+      />
+
+      <div className="fixed left-1/2 top-1/2 z-[121] w-[92vw] max-w-[520px] -translate-x-1/2 -translate-y-1/2">
+        <div
+          className="
+            relative overflow-hidden rounded-3xl
+            border border-white/10
+            bg-[radial-gradient(circle_at_15%_10%,rgba(255,255,255,0.10),rgba(255,255,255,0.03)_40%,rgba(0,0,0,0.55)_100%)]
+            shadow-[0_40px_140px_rgba(0,0,0,0.75)]
+            backdrop-blur-xl
+          "
+        >
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(56,189,248,0.0),rgba(56,189,248,0.55),rgba(236,72,153,0.35),rgba(56,189,248,0.0))]" />
+
+          <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-6">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">CONNECT WALLET</p>
+              <h3 className="mt-2 text-lg font-semibold text-white">Select a wallet to enter XPOT</h3>
+              <p className="mt-1 text-sm text-slate-300/80">Fast, simple, and clean. You can change it anytime.</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.07]"
+              aria-label="Close"
+            >
+              <XCircle className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="px-6 pb-6">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-100">
+                    {connected ? 'Wallet connected' : 'No wallet connected'}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-slate-300/70">{connected ? addr : 'Choose a wallet below'}</p>
+                </div>
+
+                {connected && (
+                  <button
+                    type="button"
+                    onClick={handleDisconnect}
+                    className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+                  >
+                    Disconnect
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {attempted && errorMsg && (
+              <div className="mt-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                {errorMsg}
+              </div>
+            )}
+
+            <div className="mt-4 space-y-2">
+              {usableWallets.map((w) => {
+                const name = w.adapter.name as WalletName;
+                const ready = w.readyState;
+                const isInstalled = ready === WalletReadyState.Installed || ready === WalletReadyState.Loadable;
+                const isActive = activeWallet?.adapter?.name === String(name);
+                const isBusy = connecting && busyName === String(name);
+
+                return (
+                  <button
+                    key={String(name)}
+                    type="button"
+                    onClick={() => handlePick(name)}
+                    disabled={connecting}
+                    className="
+                      group w-full rounded-2xl border border-white/10
+                      bg-white/[0.03] px-4 py-3
+                      hover:bg-white/[0.06]
+                      transition
+                      disabled:opacity-60 disabled:cursor-not-allowed
+                    "
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        {(w.adapter as any).icon ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={(w.adapter as any).icon}
+                            alt={`${String(name)} icon`}
+                            className="h-9 w-9 rounded-xl border border-white/10 bg-black/30"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-black/30">
+                            <Wallet className="h-4 w-4 text-slate-200" />
+                          </div>
+                        )}
+
+                        <div className="min-w-0 text-left">
+                          <p className="truncate text-sm font-semibold text-slate-100">{String(name)}</p>
+                          <p className="mt-0.5 text-xs text-slate-300/70">
+                            {isActive && connected ? 'Active' : isInstalled ? 'Installed' : 'Available'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className="
+                          inline-flex items-center gap-2 rounded-full
+                          border border-white/10 bg-black/30
+                          px-3 py-1.5 text-xs font-semibold text-slate-100
+                          group-hover:bg-black/25
+                        "
+                      >
+                        {isBusy ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Connecting
+                          </>
+                        ) : (
+                          <>
+                            Connect <span className="opacity-70">→</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-300/70">
+                <span className="inline-flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-300/90" />
+                  Wallet connection is required for eligibility verification.
+                </span>
+              </p>
+
+              {connecting && (
+                <p className="inline-flex items-center gap-2 text-xs text-slate-300/70">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Waiting for wallet approval...
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body,
+  );
+}
+
+/* ---------------- Mobile menu ---------------- */
+
+function MobileMenu({
+  open,
+  onClose,
+  isHub,
+  liveIsOpen,
+  clerkEnabled,
+  hubWalletStatus,
+  onOpenWalletModal,
+}: {
+  open: boolean;
+  onClose: () => void;
+  isHub: boolean;
+  liveIsOpen: boolean;
+  clerkEnabled: boolean;
+  hubWalletStatus?: HubWalletStatus;
+  onOpenWalletModal?: () => void;
+}) {
+  const { user, isLoaded } = useUser();
+  const externalAccounts = (user?.externalAccounts || []) as any[];
+
+  const xAccount = externalAccounts.find(
+    (acc) =>
+      String(acc.provider || '').toLowerCase().includes('twitter') ||
+      String(acc.provider || '').toLowerCase().includes('x'),
+  );
+
+  const handle = xAccount?.username || xAccount?.screenName || null;
+  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
+  const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
+  const initial = (displayHandle || 'X')[1] || 'X';
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-5">
-      <style jsx global>{`
-        @keyframes xpotCeremonySweep {
-          0% {
-            transform: translateX(-140%) rotate(12deg);
-            opacity: 0;
-          }
-          10% {
-            opacity: 0.35;
-          }
-          55% {
-            opacity: 0.14;
-          }
-          100% {
-            transform: translateX(160%) rotate(12deg);
-            opacity: 0;
-          }
-        }
-        @keyframes xpotStampIn {
-          0% {
-            transform: scale(1.2) rotate(-6deg);
-            opacity: 0;
-            filter: blur(2px);
-          }
-          55% {
-            transform: scale(0.98) rotate(2deg);
-            opacity: 1;
-            filter: blur(0px);
-          }
-          100% {
-            transform: scale(1) rotate(0deg);
-            opacity: 1;
-          }
-        }
-        .xpot-ceremony-sweep::before {
-          content: '';
-          position: absolute;
-          top: -55%;
-          left: -60%;
-          width: 55%;
-          height: 240%;
-          opacity: 0;
-          transform: rotate(12deg);
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.12),
-            rgba(56, 189, 248, 0.12),
-            rgba(16, 185, 129, 0.1),
-            transparent
-          );
-          animation: xpotCeremonySweep 1.6s ease-in-out infinite;
-          mix-blend-mode: screen;
-          pointer-events: none;
-        }
-      `}</style>
-
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/70 shadow-[0_40px_140px_rgba(0,0,0,0.75)] backdrop-blur-xl">
-        <div className="xpot-ceremony-sweep absolute inset-0" />
-        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_80%_35%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_50%_100%,rgba(251,191,36,0.10),transparent_62%)]" />
-
-        <div className="relative p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300/80">
-              Entry issued
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              <Radio className="h-3.5 w-3.5" />
-              LIVE
-            </span>
-          </div>
-
-          <div className="mt-4">
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-400/18 bg-emerald-950/25 px-4 py-3">
-              <Ticket className="h-5 w-5 text-emerald-200" />
-              <span className="font-mono text-base text-slate-100">{code}</span>
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-center">
-            <div
-              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-200"
-              style={{ animation: reduced ? 'none' : 'xpotStampIn 420ms ease-out both' }}
-            >
-              STAMPED IN
-            </div>
-          </div>
-
-          <p className="mt-4 text-center text-xs text-slate-300/70">
-            Your daily entry is live. Come back after draw time for proof.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Types + defensive normalizers (fixes crash on status.replace)
-// ─────────────────────────────────────────────
-
-type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
-
-type Entry = {
-  id: string;
-  code: string;
-  status: EntryStatus;
-  label?: string;
-  jackpotUsd?: string | number;
-  createdAt: string;
-  walletAddress: string;
-};
-
-type RecentWinner = {
-  id: string;
-  drawDate: string;
-  ticketCode: string;
-  jackpotUsd: number;
-  walletAddress: string;
-  handle?: string | null;
-};
-
-type Mission = { title: string; desc: string; ymd?: string };
-type Streak = { days: number; todayDone: boolean; lastDoneYmd?: string | null };
-
-function normalizeStatus(s: any): EntryStatus {
-  const v = typeof s === 'string' ? s : '';
-  const lower = v.toLowerCase();
-
-  if (lower === 'in-draw' || lower === 'in_draw' || lower === 'open') return 'in-draw';
-  if (lower === 'won' || lower === 'winner') return 'won';
-  if (lower === 'claimed') return 'claimed';
-  if (lower === 'expired') return 'expired';
-  if (lower === 'not-picked' || lower === 'not_picked' || lower === 'lost') return 'not-picked';
-
-  // safest default (prevents UI crash + keeps “entry live” logic sane)
-  return 'in-draw';
-}
-
-function normalizeEntry(raw: any): Entry | null {
-  if (!raw || typeof raw !== 'object') return null;
-
-  const id = typeof raw.id === 'string' ? raw.id : '';
-  const code = typeof raw.code === 'string' ? raw.code : '';
-  const walletAddress = typeof raw.walletAddress === 'string' ? raw.walletAddress : '';
-
-  // createdAt can be missing in some bad responses; still keep UI alive
-  const createdAt =
-    typeof raw.createdAt === 'string'
-      ? raw.createdAt
-      : typeof raw.created_at === 'string'
-      ? raw.created_at
-      : new Date().toISOString();
-
-  if (!id || !code || !walletAddress) return null;
-
-  return {
-    id,
-    code,
-    status: normalizeStatus(raw.status),
-    label: typeof raw.label === 'string' ? raw.label : '',
-    jackpotUsd: raw.jackpotUsd ?? raw.jackpot_usd ?? 0,
-    createdAt,
-    walletAddress,
-  };
-}
-
-function safeStatusLabel(status: any) {
-  return String(status ?? '').replace(/_/g, '-').replace('-', ' ');
-}
-
-// ─────────────────────────────────────────────
-// Page (CLIENT)
-// ─────────────────────────────────────────────
-
-export default function DashboardClient() {
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
-
-  const onOpenWalletModal = useCallback(() => setWalletModalOpen(true), []);
-  const onCloseWalletModal = useCallback(() => setWalletModalOpen(false), []);
-
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [loadingTickets, setLoadingTickets] = useState(true);
-  const [ticketsError, setTicketsError] = useState<string | null>(null);
-
-  const [ticketClaimed, setTicketClaimed] = useState(false);
-  const [todaysTicket, setTodaysTicket] = useState<Entry | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [claiming, setClaiming] = useState(false);
-  const [claimError, setClaimError] = useState<string | null>(null);
-
-  const [showCeremony, setShowCeremony] = useState(false);
-  const [ceremonyCode, setCeremonyCode] = useState('');
-  const [soundEnabled, setSoundEnabled] = useState(true);
-
-  const { publicKey, connected } = useWallet();
-  const walletConnected = !!publicKey && connected;
-  const currentWalletAddress = publicKey?.toBase58() ?? null;
-
-  const [xpotBalance, setXpotBalance] = useState<number | null | 'error'>(null);
-  const hasRequiredXpot = typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
-
-  const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
-  const [historyError, setHistoryError] = useState<string | null>(null);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
-  const [loadingWinners, setLoadingWinners] = useState(false);
-  const [winnersError, setWinnersError] = useState<string | null>(null);
-
-  const [countdown, setCountdown] = useState('00:00:00');
-  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
-  const [syncPulse, setSyncPulse] = useState(0);
-  const refreshingRef = useRef(false);
-
-  const { user, isLoaded: isUserLoaded } = useUser();
-  const isSignedIn = !!user;
-
-  const externalAccounts = (user?.externalAccounts || []) as any[];
-  const xAccount =
-    externalAccounts.find(acc => {
-      const provider = (acc.provider ?? '') as string;
-      const p = provider.toLowerCase();
-      return (
-        provider === 'oauth_x' ||
-        provider === 'oauth_twitter' ||
-        provider === 'twitter' ||
-        p.includes('twitter') ||
-        p === 'x' ||
-        p.includes('oauth_x')
-      );
-    }) || null;
-
-  const handle = xAccount?.username || xAccount?.screenName || null;
-  const avatar = xAccount?.imageUrl || user?.imageUrl || null;
-  const name = user?.fullName || handle || 'XPOT user';
-
-  const isAuthedEnough = isSignedIn && !!handle;
-  const showLock = isUserLoaded ? !isAuthedEnough : true;
-
-  const { bonus: upcomingBonus, active: bonusActive } = useBonusUpcoming();
-
-  // DB-driven streak + mission
-  const [streak, setStreak] = useState<Streak>({ days: 0, todayDone: false });
-  const [mission, setMission] = useState<Mission>({
-    title: 'Loading…',
-    desc: 'Preparing today’s mission.',
-  });
-
-  // ─────────────────────────────────────────────
-  // Sync X identity into DB whenever user is loaded
-  // ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!isUserLoaded || !user) return;
-    if (!handle) return;
-
-    (async () => {
-      try {
-        await fetch('/api/me/sync-x', { method: 'POST' });
-      } catch (e) {
-        console.error('[XPOT] Failed to sync X identity', e);
-      }
-    })();
-  }, [isUserLoaded, user, handle]);
-
-  // ─────────────────────────────────────────────
-  // Wire wallet → DB whenever it connects
-  // ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!isAuthedEnough) return;
-    if (!publicKey || !connected) return;
-
-    const address = publicKey.toBase58();
-
-    (async () => {
-      try {
-        await fetch('/api/me/wallet-sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address }),
-        });
-      } catch (e) {
-        console.error('[XPOT] Failed to sync wallet', e);
-      }
-    })();
-  }, [isAuthedEnough, publicKey, connected]);
-
-  // ─────────────────────────────────────────────
-  // Countdown ticker (Madrid 22:00 cutoff)
-  // ─────────────────────────────────────────────
-  useEffect(() => {
-    const tick = () => {
-      const cutoffUtc = nextMadridCutoffUtcMs(new Date());
-      const ms = cutoffUtc - Date.now();
-      setCountdown(formatCountdown(ms));
-    };
-    tick();
-    const t = setInterval(tick, 500);
-    return () => clearInterval(t);
-  }, []);
-
-  // ─────────────────────────────────────────────
-  // Hub boot: preferences + streak + mission (Prisma)
-  // ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!isAuthedEnough) return;
-
-    let alive = true;
-
-    (async () => {
-      try {
-        const pr = await fetch('/api/me/preferences', { cache: 'no-store' });
-        if (alive && pr.ok) {
-          const pj = (await pr.json().catch(() => null)) as any;
-          const se = pj?.preferences?.soundEnabled;
-          if (typeof se === 'boolean') setSoundEnabled(se);
-        }
-
-        const sr = await fetch('/api/hub/streak', { cache: 'no-store' });
-        if (alive && sr.ok) {
-          const sj = (await sr.json().catch(() => null)) as any;
-          if (sj?.streak) setStreak(sj.streak as Streak);
-        }
-
-        const mr = await fetch(`/api/hub/mission/today?seed=${encodeURIComponent(handle || '')}`, {
-          cache: 'no-store',
-        });
-        if (alive && mr.ok) {
-          const mj = (await mr.json().catch(() => null)) as any;
-          if (mj?.mission?.title) setMission(mj.mission as Mission);
-        }
-      } catch (e) {
-        console.error('[hub boot] failed', e);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [isAuthedEnough, handle]);
-
-  // ─────────────────────────────────────────────
-  // Fetch helpers
-  // ─────────────────────────────────────────────
-  const fetchTicketsToday = useCallback(async () => {
-    const res = await fetch('/api/tickets/today', { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to load tickets');
-    const data = await res.json().catch(() => ({} as any));
-
-    const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
-    const list = raw.map(normalizeEntry).filter(Boolean) as Entry[];
-
-    return list;
-  }, []);
-
-  const fetchXpotBalance = useCallback(async (address: string) => {
-    const tryOne = async (url: string) => {
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data = (await res.json().catch(() => null)) as any;
-      const raw = data?.balance ?? data?.uiAmount ?? data?.amount ?? data?.value ?? 0;
-      const n = typeof raw === 'string' ? Number(raw) : typeof raw === 'number' ? raw : Number(raw ?? 0);
-      if (!Number.isFinite(n)) throw new Error('Balance parse failed');
-      return n;
-    };
-
-    try {
-      return await tryOne(`/api/xpot-balance?address=${encodeURIComponent(address)}`);
-    } catch {
-      try {
-        return await tryOne(`/api/xpot-balance?wallet=${encodeURIComponent(address)}`);
-      } catch {
-        return await tryOne(`/api/xpot-balance?owner=${encodeURIComponent(address)}`);
-      }
-    }
-  }, []);
-
-  const fetchHistory = useCallback(async (address: string) => {
-    const res = await fetch(`/api/tickets/history?wallet=${encodeURIComponent(address)}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to load history');
-    const data = await res.json().catch(() => ({} as any));
-
-    const raw: any[] = Array.isArray((data as any).tickets) ? (data as any).tickets : [];
-    const tickets = raw.map(normalizeEntry).filter(Boolean) as Entry[];
-
-    return tickets;
-  }, []);
-
-  const fetchRecentWinners = useCallback(async () => {
-    const res = await fetch('/api/winners/recent?limit=5', { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to load recent winners');
-    const data = await res.json().catch(() => ({} as any));
-
-    const winners: RecentWinner[] = Array.isArray((data as any).winners)
-      ? (data as any).winners.map((w: any) => ({
-          id: String(w?.id ?? ''),
-          drawDate: String(w?.drawDate ?? ''),
-          ticketCode: String(w?.ticketCode ?? ''),
-          jackpotUsd: Number(w?.jackpotUsd ?? 0),
-          walletAddress: String(w?.walletAddress ?? ''),
-          handle: w?.handle ?? null,
-        }))
-      : [];
-
-    return winners.filter(w => w.id && w.ticketCode);
-  }, []);
-
-  const refreshAll = useCallback(
-    async (reason: 'initial' | 'poll' | 'manual' = 'poll') => {
-      if (!isAuthedEnough) return;
-      if (refreshingRef.current) return;
-
-      refreshingRef.current = true;
-
-      const addr = publicKey?.toBase58() ?? null;
-
-      try {
-        if (reason === 'initial') {
-          setLoadingTickets(true);
-          setTicketsError(null);
-        }
-
-        const nextTickets = await fetchTicketsToday();
-        setEntries(nextTickets);
-
-        if (reason === 'initial') {
-          setLoadingWinners(true);
-          setWinnersError(null);
-        }
-
-        const nextWinners = await fetchRecentWinners();
-        setRecentWinners(nextWinners);
-
-        if (addr && walletConnected) {
-          try {
-            setXpotBalance(null);
-            const b = await fetchXpotBalance(addr);
-            setXpotBalance(b);
-          } catch (e) {
-            console.error('Error loading XPOT balance (via API)', e);
-            setXpotBalance('error');
-          }
-
-          try {
-            if (reason === 'initial') setLoadingHistory(true);
-            setHistoryError(null);
-            const h = await fetchHistory(addr);
-            setHistoryEntries(h);
-          } catch (e) {
-            console.error('Failed to load history', e);
-            setHistoryError((e as Error).message ?? 'Failed to load history');
-            setHistoryEntries([]);
-          } finally {
-            setLoadingHistory(false);
-          }
-        } else {
-          setXpotBalance(null);
-          setHistoryEntries([]);
-          setHistoryError(null);
-          setLoadingHistory(false);
-        }
-
-        setLastSyncedAt(Date.now());
-        setSyncPulse(p => p + 1);
-      } catch (e) {
-        console.error('[XPOT] refreshAll error', e);
-        setTicketsError((e as Error).message ?? 'Failed to load tickets');
-        setWinnersError((e as Error).message ?? 'Failed to load recent winners');
-      } finally {
-        setLoadingTickets(false);
-        setLoadingWinners(false);
-        refreshingRef.current = false;
-      }
-    },
-    [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
-  );
-
-  useEffect(() => {
-    if (!isAuthedEnough) {
-      setEntries([]);
-      setLoadingTickets(false);
-      setTicketsError(null);
-
-      setRecentWinners([]);
-      setLoadingWinners(false);
-      setWinnersError(null);
-
-      setHistoryEntries([]);
-      setHistoryError(null);
-      setLoadingHistory(false);
-
-      setXpotBalance(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      await refreshAll('initial');
-    })();
-
-    const interval = setInterval(() => {
-      if (cancelled) return;
-      refreshAll('poll');
-    }, 8000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [isAuthedEnough, refreshAll]);
-
-  // Sync "today's ticket" state with DB
-  useEffect(() => {
-    if (!currentWalletAddress) {
-      setTicketClaimed(false);
-      setTodaysTicket(null);
-      return;
-    }
-
-    const myTicket = entries.find(
-      t => t.walletAddress === currentWalletAddress && normalizeStatus(t.status) === 'in-draw',
-    );
-
-    if (myTicket) {
-      setTicketClaimed(true);
-      setTodaysTicket(myTicket);
-    } else {
-      setTicketClaimed(false);
-      setTodaysTicket(null);
-    }
-  }, [entries, currentWalletAddress]);
-
-  async function handleCopyCode(entry: Entry) {
-    const ok = await safeCopy(entry.code);
-    if (!ok) return;
-    setCopiedId(entry.id);
-    setTimeout(() => setCopiedId(null), 1500);
-  }
-
-  async function markStreakDone() {
-    try {
-      const r = await fetch('/api/hub/streak', { method: 'POST' });
-      if (!r.ok) return;
-      const j = (await r.json().catch(() => null)) as any;
-      if (j?.streak) setStreak(j.streak as Streak);
-    } catch {
-      // ignore
-    }
-  }
-
-  async function handleClaimTicket() {
-    if (!isAuthedEnough) return;
-    if (!walletConnected || !publicKey) return;
-    if (loadingTickets || claiming) return;
-
-    setClaimError(null);
-    setClaiming(true);
-
-    const walletAddress = publicKey.toBase58();
-
-    try {
-      const res = await fetch('/api/tickets/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress }),
-      });
-
-      const text = await res.text();
-      let data: any = {};
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = {};
-      }
-
-      if (!res.ok || !data.ok) {
-        const code = data.error as string | undefined;
-
-        switch (code) {
-          case 'NOT_ENOUGH_XPOT':
-            setClaimError(
-              `You need at least ${(data.required ?? REQUIRED_XPOT).toLocaleString()} XPOT to get today’s ticket. Your wallet currently has ${Number(
-                data.balance ?? 0,
-              ).toLocaleString()} XPOT.`,
-            );
-            break;
-          case 'NOT_ENOUGH_SOL':
-            setClaimError('Your wallet needs some SOL for network fees before you can get today’s ticket.');
-            break;
-          case 'XPOT_CHECK_FAILED':
-            setClaimError('Could not verify your XPOT balance right now. Please try again in a moment.');
-            break;
-          case 'MISSING_WALLET':
-          case 'INVALID_BODY':
-            setClaimError('Something is wrong with your wallet address. Try reconnecting your wallet and trying again.');
-            break;
-          default:
-            setClaimError('Ticket request failed. Please try again.');
-        }
-
-        console.error('Claim failed', res.status, text);
-        return;
-      }
-
-      const ticket = normalizeEntry(data.ticket) || null;
-      const ticketsRaw: any[] = Array.isArray(data.tickets) ? data.tickets : [];
-      const tickets = ticketsRaw.map(normalizeEntry).filter(Boolean) as Entry[];
-
-      if (tickets.length > 0) {
-        setEntries(tickets);
-      } else if (ticket) {
-        setEntries(prev => {
-          const others = prev.filter(t => t.id !== ticket.id);
-          return [ticket, ...others];
-        });
-      } else {
-        // backend said ok but returned nothing usable - avoid crashing, just refresh
-        await refreshAll('manual');
-        return;
-      }
-
-      setTicketClaimed(true);
-      setTodaysTicket(ticket);
-      setClaimError(null);
-
-      setCeremonyCode(ticket?.code || '');
-      setShowCeremony(true);
-
-      await markStreakDone();
-      refreshAll('manual');
-    } catch (err) {
-      console.error('Error calling /api/tickets/claim', err);
-      setClaimError('Unexpected error while getting your ticket. Please try again.');
-    } finally {
-      setClaiming(false);
-    }
-  }
-
-  const normalizedWallet = currentWalletAddress?.toLowerCase();
-  const myTickets: Entry[] = useMemo(() => {
-    if (!normalizedWallet) return [];
-    return entries.filter(e => e.walletAddress?.toLowerCase() === normalizedWallet);
-  }, [entries, normalizedWallet]);
-
-  const winner = entries.find(e => normalizeStatus(e.status) === 'won') || null;
-  const iWonToday =
-    !!winner && !!normalizedWallet && winner.walletAddress?.toLowerCase() === normalizedWallet;
-
-  async function toggleSound() {
-    const next = !soundEnabled;
-    setSoundEnabled(next);
-
-    try {
-      await fetch('/api/me/preferences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ soundEnabled: next }),
-      });
-    } catch {
-      // ignore
-    }
-
-    if (next) playChime();
-  }
-
-  const greeting = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 18) return 'Good afternoon';
-    return 'Good evening';
-  }, []);
-
-  return (
     <>
-      <style jsx global>{`
-        .xpot-luxe-border {
-          background:
-            linear-gradient(90deg, rgba(255,255,255,0.00), rgba(255,255,255,0.08), rgba(255,255,255,0.00)) 0 0 / 200% 1px no-repeat,
-            linear-gradient(180deg, rgba(255,255,255,0.00), rgba(255,255,255,0.06), rgba(255,255,255,0.00)) 0 0 / 1px 200% no-repeat;
-          mask-image: radial-gradient(circle at 22% 18%, rgba(0,0,0,1), rgba(0,0,0,0.2) 55%, rgba(0,0,0,0) 78%);
-          opacity: 0.9;
-          animation: xpotLuxeBorder 10s ease-in-out infinite;
-        }
-        @keyframes xpotLuxeBorder {
-          0% { background-position: 0% 0%, 0% 0%; opacity: 0.65; }
-          50% { background-position: 100% 0%, 0% 100%; opacity: 0.95; }
-          100% { background-position: 0% 0%, 0% 0%; opacity: 0.65; }
-        }
-        @keyframes xpotFloat {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-3px); }
-          100% { transform: translateY(0px); }
-        }
-        @keyframes xpotSweep {
-          0% { transform: translateX(-140%) rotate(10deg); opacity: 0.0; }
-          12% { opacity: 0.26; }
-          55% { opacity: 0.10; }
-          100% { transform: translateX(160%) rotate(10deg); opacity: 0.0; }
-        }
-        .xpot-hero-sweep::before{
-          content:"";
-          position:absolute;
-          top:-55%;
-          left:-60%;
-          width:55%;
-          height:240%;
-          opacity:0;
-          transform: rotate(10deg);
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), rgba(56,189,248,0.10), rgba(251,191,36,0.10), transparent);
-          animation: xpotSweep 2.8s ease-in-out infinite;
-          mix-blend-mode: screen;
-          pointer-events:none;
-        }
-        @keyframes xpotBtnSheen {
-          0% { transform: translateX(-140%) rotate(12deg); opacity: 0; }
-          12% { opacity: 0.22; }
-          60% { opacity: 0.10; }
-          100% { transform: translateX(160%) rotate(12deg); opacity: 0; }
-        }
-        .xpot-btn-sheen::before{
-          content:"";
-          position:absolute;
-          top:-70%;
-          left:-60%;
-          width:55%;
-          height:260%;
-          transform: rotate(12deg);
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), rgba(255,255,255,0.08), transparent);
-          animation: xpotBtnSheen 3.8s ease-in-out infinite;
-          mix-blend-mode: overlay;
-          pointer-events:none;
-        }
-      `}</style>
-
-      <PremiumWalletModal open={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
-
-      <EntryCeremony
-        open={showCeremony}
-        code={ceremonyCode}
-        soundEnabled={soundEnabled}
-        onClose={() => setShowCeremony(false)}
+      <button
+        type="button"
+        className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-label="Close menu"
       />
-
-      <HubLockOverlay
-        open={showLock}
-        reason={
-          !isSignedIn
-            ? 'Sign in with X to access the Holder Dashboard.'
-            : 'Your account is signed in, but X is not linked. Link X to continue.'
-        }
-        showLinkX={isSignedIn && !handle}
-      />
-
-      <div className={showLock ? 'pointer-events-none select-none blur-[2px] opacity-95' : ''}>
-        <XpotPageShell
-          topBarProps={{
-            pillText: 'HOLDER DASHBOARD',
-            rightSlot: (
-              <div className="flex items-center gap-3">
-                <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 sm:inline-flex">
-                  {avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={avatar}
-                      alt={name}
-                      className="h-6 w-6 rounded-full border border-white/10 object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-semibold text-slate-200">
-                      {initialFromHandle(handle)}
-                    </div>
-                  )}
-                  <span className="text-xs font-semibold text-slate-200">
-                    @{(handle || 'x').replace(/^@/, '')}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={toggleSound}
-                  className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                  title={soundEnabled ? 'Sound on' : 'Sound off'}
-                >
-                  {soundEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
-                  {soundEnabled ? 'Sound' : 'Muted'}
-                </button>
-
-                <Link href="/hub/history" className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
-                  <History className="mr-2 h-4 w-4" />
-                  <span className="ml-1">History</span>
-                </Link>
-
-                <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 backdrop-blur-xl">
-                  <button
-                    type="button"
-                    onClick={onOpenWalletModal}
-                    className="text-left leading-tight hover:opacity-90"
-                  >
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">
-                      Wallet bay
-                    </div>
-                    <div className="text-[13px] font-semibold text-slate-100">
-                      {walletConnected ? 'Change wallet' : 'Select wallet'}
-                    </div>
-                  </button>
-                  <WalletStatusHint />
-                </div>
-
-                {isSignedIn ? (
-                  <SignOutButton redirectUrl="/">
-                    <button className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span className="ml-1">Log out</span>
-                    </button>
-                  </SignOutButton>
-                ) : (
-                  <Link href="/sign-in?redirect_url=/hub" className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
-                    <span>Sign in</span>
-                  </Link>
-                )}
+      <div className="fixed right-0 top-0 z-[81] h-full w-[92%] max-w-sm border-l border-white/10 bg-black/85 backdrop-blur-xl">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div className="flex items-center gap-3">
+            {isLoaded && avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatar} alt="X avatar" className="h-9 w-9 rounded-full border border-white/10" />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-slate-200">
+                {initial}
               </div>
-            ),
-          }}
-        >
-          {/* HERO */}
-          <section className="mt-6">
-            <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/35 shadow-[0_50px_160px_rgba(0,0,0,0.6)] ring-1 ring-white/10 backdrop-blur-2xl">
-              <div className="xpot-hero-sweep absolute inset-0" />
-              <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_22%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_72%_28%,rgba(99,102,241,0.14),transparent_58%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.10),transparent_65%),radial-gradient(circle_at_90%_85%,rgba(236,72,153,0.08),transparent_62%)]" />
-              <div className="pointer-events-none absolute inset-0 opacity-[0.09] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:22px_22px]" />
-
-              <div className="relative p-6 sm:p-7">
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex items-center gap-4">
-                    {avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={avatar}
-                        alt={name}
-                        className="h-12 w-12 rounded-full border border-white/10 object-cover shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
-                        style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
-                      />
-                    ) : (
-                      <div
-                        className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100"
-                        style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
-                      >
-                        {initialFromHandle(handle)}
-                      </div>
-                    )}
-
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300/70">
-                        {greeting}
-                      </p>
-                      <p className="mt-1 truncate text-xl font-semibold text-slate-100">
-                        {handle ? `@${handle.replace(/^@/, '')}` : name}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-300/70">
-                        Your private cabin for daily XPOT proof, streaks and entries.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3 lg:w-[560px]">
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Next draw in</p>
-                      <p className="mt-1 font-mono text-lg text-slate-100">{countdown}</p>
-                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-400/70">
-                        22:00 Madrid cutoff
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Cabin sync</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-100">
-                        {lastSyncedAt ? (
-                          <span key={syncPulse} className="inline-flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-                            {new Date(lastSyncedAt).toLocaleTimeString('de-DE')}
-                          </span>
-                        ) : (
-                          'Syncing…'
-                        )}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Status</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <StatusPill tone={ticketClaimed ? 'emerald' : 'amber'}>
-                          <Radio className="h-3.5 w-3.5" />
-                          {ticketClaimed ? 'Entry live' : 'Pending'}
-                        </StatusPill>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-3 lg:grid-cols-3">
-                  <TinyRow
-                    label="Wallet"
-                    value={currentWalletAddress ? shortWallet(currentWalletAddress) : 'Not connected'}
-                    mono
-                  />
-                  <TinyRow
-                    label="XPOT balance"
-                    value={
-                      xpotBalance === null ? 'Checking…' : xpotBalance === 'error' ? 'Unavailable' : `${Math.floor(xpotBalance).toLocaleString()} XPOT`
-                    }
-                  />
-                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Eligibility</p>
-                      <div className="mt-2">
-                        {typeof xpotBalance === 'number' ? (
-                          hasRequiredXpot ? (
-                            <StatusPill tone="emerald">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              Eligible
-                            </StatusPill>
-                          ) : (
-                            <StatusPill tone="amber">
-                              <Sparkles className="h-3.5 w-3.5" />
-                              Not eligible
-                            </StatusPill>
-                          )
-                        ) : (
-                          <StatusPill tone="slate">—</StatusPill>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Minimum</p>
-                      <p className="mt-1 text-xs text-slate-100">
-                        <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 text-xs text-slate-300/70">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400/80" />
-                    Proof-first dashboard - everything here is DB-driven and live wired.
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-  type="button"
-  onClick={onOpenWalletModal}
-  className="
-    group relative h-10
-    inline-flex items-center justify-center gap-2
-    rounded-full
-    bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]
-    border border-white/15
-    px-4
-    text-[12px] font-semibold text-slate-100
-    shadow-[0_10px_40px_rgba(0,0,0,0.45)]
-    transition
-    hover:border-amber-300/40
-    hover:text-white
-    hover:shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_20px_60px_rgba(0,0,0,0.55)]
-    active:scale-[0.985]
-  "
->
-  <Wallet className="h-4 w-4 opacity-90 group-hover:opacity-100" />
-  <span>Select wallet</span>
-</button>
-
-                    <button
-                      type="button"
-                      onClick={toggleSound}
-                      className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                      title={soundEnabled ? 'Sound on' : 'Sound off'}
-                    >
-                      {soundEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
-                      {soundEnabled ? 'Sound' : 'Muted'}
-                    </button>
-                  </div>
-                </div>
-              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-100">Menu</p>
+              <p className="truncate text-xs text-slate-400">{displayHandle ?? 'Guest'}</p>
             </div>
-          </section>
+          </div>
 
-          {/* MAIN GRID */}
-          <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            {/* LEFT */}
-            <div className="space-y-6">
-              <LuxeCard accent="gold">
-                <LuxeTitle
-                  title="Today’s XPOT"
-                  subtitle="Claim a free entry when your connected wallet meets the minimum."
-                  right={
-                    <StatusPill tone={ticketClaimed ? 'emerald' : 'slate'}>
-                      <Ticket className="h-3.5 w-3.5" />
-                      {ticketClaimed ? 'Entry active' : 'Not claimed'}
-                    </StatusPill>
-                  }
-                />
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06]"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-                {!walletConnected && (
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300/70">
-                    Activate your wallet to check eligibility and claim today’s entry.
-                  </div>
-                )}
+        <div className="space-y-2 px-5 py-5">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href="/hub"
+          >
+            Hub
+          </Link>
 
-                {walletConnected && !ticketClaimed && (
-                  <>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Requirement</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-100">
-                          <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
-                        </p>
-                        <p className="mt-1 text-xs text-slate-300/70">Held in the wallet you connect.</p>
-                      </div>
-
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Your status</p>
-                        <div className="mt-2">
-                          {typeof xpotBalance === 'number' ? (
-                            hasRequiredXpot ? (
-                              <StatusPill tone="emerald">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Eligible
-                              </StatusPill>
-                            ) : (
-                              <StatusPill tone="amber">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                Not eligible
-                              </StatusPill>
-                            )
-                          ) : (
-                            <StatusPill tone="slate">—</StatusPill>
-                          )}
-                        </div>
-                        <p className="mt-2 text-xs text-slate-300/70">Eligibility is checked via API on refresh.</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <button
-                        type="button"
-                        onClick={handleClaimTicket}
-                        disabled={!walletConnected || claiming}
-                        className={`${BTN_PRIMARY} xpot-btn-sheen`}
-                      >
-                        {claiming ? 'Generating…' : 'Claim today’s entry'}
-                      </button>
-
-                      <div className="text-xs text-slate-300/70">Draw locks at 22:00 Madrid. Come back for proof.</div>
-                    </div>
-
-                    {claimError && <p className="mt-3 text-xs xpot-gold-text">{claimError}</p>}
-
-                    {typeof xpotBalance === 'number' && !hasRequiredXpot && (
-                      <p className="mt-3 text-xs text-slate-300/70">
-                        Your wallet is below the minimum. You need{' '}
-                        <span className="font-semibold text-slate-100">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to claim today’s entry.
-                      </p>
-                    )}
-                  </>
-                )}
-
-                {walletConnected && ticketClaimed && todaysTicket && (
-                  <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/70">Your ticket code</p>
-
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                      <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3">
-                        <Ticket className="h-5 w-5 text-amber-200" />
-                        <p className="font-mono text-base text-slate-100">{todaysTicket.code}</p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleCopyCode(todaysTicket)}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-slate-200 hover:bg-white/[0.06]"
-                      >
-                        <Copy className="h-4 w-4" />
-                        {copiedId === todaysTicket.id ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
-
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <TinyRow label="Status" value={<span className="font-semibold text-slate-100">IN DRAW</span>} />
-                      <TinyRow label="Issued" value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>} />
-                    </div>
-                  </div>
-                )}
-
-                {walletConnected && ticketClaimed && !todaysTicket && (
-                  <p className="mt-4 text-xs text-slate-300/70">
-                    Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.
-                  </p>
-                )}
-
-                {iWonToday && (
-                  <div className="mt-4 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                    You won today’s XPOT. Check your wallet and the winners feed.
-                  </div>
-                )}
-              </LuxeCard>
-
-              {walletConnected && (
-                <LuxeCard accent="sky">
-                  <LuxeTitle
-                    title="Your entries today"
-                    subtitle="Entries tied to your connected wallet."
-                    right={
-                      <StatusPill tone="sky">
-                        <Wallet className="h-3.5 w-3.5" />
-                        {myTickets.length}
-                      </StatusPill>
-                    }
-                  />
-
-                  <div className="mt-4 space-y-2">
-                    {loadingTickets ? (
-                      <p className="text-xs text-slate-300/70">Loading…</p>
-                    ) : ticketsError ? (
-                      <p className="text-xs xpot-gold-text">{ticketsError}</p>
-                    ) : myTickets.length === 0 ? (
-                      <p className="text-xs text-slate-300/70">No entries yet.</p>
-                    ) : (
-                      myTickets.map(t => (
-                        <div key={t.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="font-mono text-sm text-slate-100">{t.code}</p>
-                            <StatusPill
-                              tone={normalizeStatus(t.status) === 'in-draw' ? 'emerald' : normalizeStatus(t.status) === 'won' ? 'sky' : 'slate'}
-                            >
-                              {safeStatusLabel(t.status)}
-                            </StatusPill>
-                          </div>
-                          <p className="mt-1 text-xs text-slate-300/70">Issued {formatDateTime(t.createdAt)}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </LuxeCard>
-              )}
-            </div>
-
-            {/* RIGHT */}
-            <div className="space-y-6">
-              <LuxeCard accent="violet">
-                <LuxeTitle
-                  title="Today’s mission"
-                  subtitle="A calm daily nudge, not a casino loop."
-                  right={
-                    <StatusPill tone="sky">
-                      <Target className="h-3.5 w-3.5" />
-                      Daily
-                    </StatusPill>
-                  }
-                />
-
-                <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs font-semibold text-slate-100">{mission.title}</p>
-                  <p className="mt-1 text-xs text-slate-300/70">{mission.desc}</p>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Daily streak</p>
-                    <div className="mt-2">
-                      <StatusPill tone={streak.todayDone ? 'emerald' : 'amber'}>
-                        <Flame className="h-3.5 w-3.5" />
-                        {streak.todayDone ? 'Today done' : 'Pending'}
-                      </StatusPill>
-                    </div>
-                    <p className="mt-2 text-xs text-slate-300/70">
-                      <span className="font-semibold text-slate-100">{Math.max(0, streak.days)}</span> day streak
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Reset logic</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-100">UTC day rule</p>
-                    <p className="mt-1 text-xs text-slate-300/70">Streak updates after you claim today’s entry.</p>
-                  </div>
-                </div>
-              </LuxeCard>
-
-              <LuxeCard accent="emerald">
-                <LuxeTitle
-                  title="Bonus XPOT"
-                  subtitle="Shows automatically when a bonus drop is scheduled."
-                  right={
-                    bonusActive ? (
-                      <StatusPill tone="emerald">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Active
-                      </StatusPill>
-                    ) : (
-                      <StatusPill tone="slate">None</StatusPill>
-                    )
-                  }
-                />
-
-                {bonusActive && upcomingBonus ? (
-                  <div className="mt-4 rounded-[24px] border border-emerald-400/18 bg-emerald-950/20 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
-                        Scheduled
-                      </span>
-                      <span className="text-[11px] font-mono text-emerald-100/90">
-                        {new Date(upcomingBonus.scheduledAt).toLocaleString('de-DE')}
-                      </span>
-                    </div>
-                    <BonusStrip variant="home" />
-                  </div>
-                ) : (
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300/70">
-                    No bonus scheduled right now.
-                  </div>
-                )}
-              </LuxeCard>
-
-              <LuxeCard accent="sky">
-                <LuxeTitle
-                  title="Recent winners"
-                  subtitle="Latest completed draws across all holders."
-                  right={
-                    <StatusPill tone="emerald">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Live
-                    </StatusPill>
-                  }
-                />
-
-                <div className="mt-4 space-y-2">
-                  {loadingWinners ? (
-                    <p className="text-xs text-slate-300/70">Loading…</p>
-                  ) : winnersError ? (
-                    <p className="text-xs xpot-gold-text">{winnersError}</p>
-                  ) : recentWinners.length === 0 ? (
-                    <p className="text-xs text-slate-300/70">No completed draws yet.</p>
-                  ) : (
-                    recentWinners.map(w => {
-                      const h = w.handle ? w.handle.replace(/^@/, '') : null;
-                      return (
-                        <div key={w.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-slate-300/70">{formatDate(w.drawDate)}</p>
-                            {h ? (
-                              <StatusPill tone="sky">
-                                <X className="h-3.5 w-3.5" />
-                                @{h}
-                              </StatusPill>
-                            ) : (
-                              <StatusPill tone="slate">wallet</StatusPill>
-                            )}
-                          </div>
-
-                          <div className="mt-3 flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100">
-                              {initialFromHandle(h)}
-                            </div>
-
-                            <div className="min-w-0">
-                              <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-300/70">{h ? `@${h}` : shortWallet(w.walletAddress)}</p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </LuxeCard>
-
-              <LuxeCard accent="neutral">
-                <LuxeTitle
-                  title="Your draw history"
-                  subtitle="Past entries for this wallet (wins, not-picked, expired)."
-                  right={
-                    <Link href="/hub/history" className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
-                      View all
-                    </Link>
-                  }
-                />
-
-                <div className="mt-4 space-y-2">
-                  {!walletConnected ? (
-                    <p className="text-xs text-slate-300/70">Connect your wallet to view history.</p>
-                  ) : loadingHistory ? (
-                    <p className="text-xs text-slate-300/70">Loading…</p>
-                  ) : historyError ? (
-                    <p className="text-xs xpot-gold-text">{historyError}</p>
-                  ) : historyEntries.length === 0 ? (
-                    <p className="text-xs text-slate-300/70">No history yet.</p>
-                  ) : (
-                    historyEntries.slice(0, 5).map(t => (
-                      <div key={t.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="font-mono text-sm text-slate-100">{t.code}</p>
-                          <StatusPill
-                            tone={
-                              normalizeStatus(t.status) === 'won'
-                                ? 'sky'
-                                : normalizeStatus(t.status) === 'claimed'
-                                ? 'emerald'
-                                : normalizeStatus(t.status) === 'in-draw'
-                                ? 'emerald'
-                                : 'slate'
-                            }
-                          >
-                            {safeStatusLabel(t.status)}
-                          </StatusPill>
-                        </div>
-                        <p className="mt-1 text-xs text-slate-300/70">{formatDateTime(t.createdAt)}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </LuxeCard>
-            </div>
-          </section>
-
-          <footer className="mt-8 border-t border-white/10 pt-4 text-xs text-slate-300/60">
+          {/* Live -> Protocol */}
+          <Link
+            className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={PROTOCOL_HREF}
+          >
             <span className="inline-flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-slate-300/70" />
-              XPOT is in Pre-Launch Mode. UI is final and wiring is live.
+              <LiveDot isOpen={liveIsOpen} />
+              Live
             </span>
-          </footer>
-        </XpotPageShell>
+            <Radio className="h-4 w-4 text-emerald-300" />
+          </Link>
+
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={FINAL_DAY_HREF}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Hourglass className="h-4 w-4 text-amber-200" />
+              {FINAL_DAY_LABEL}
+            </span>
+          </Link>
+
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={MECHANISM_HREF}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Info className="h-4 w-4 text-slate-200" />
+              Mechanism
+            </span>
+          </Link>
+
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={TOKENOMICS_HREF}
+          >
+            <span className="inline-flex items-center gap-2">
+              <PieChart className="h-4 w-4 text-emerald-300" />
+              Tokenomics
+            </span>
+          </Link>
+
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={ROADMAP_HREF}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Map className="h-4 w-4 text-sky-300" />
+              Roadmap
+            </span>
+          </Link>
+
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={WINNERS_HREF}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-amber-300" />
+              Winners
+            </span>
+          </Link>
+
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={XPOT_X_POST}
+            target="_blank"
+          >
+            <span className="inline-flex items-center gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Official X
+            </span>
+          </Link>
+
+          {isHub && (
+            <div className="pt-2">
+              <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
+            </div>
+          )}
+
+          {isHub && clerkEnabled && (
+            <div className="pt-2">
+              <SignOutButton redirectUrl="/">
+                <button className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]">
+                  <span className="inline-flex items-center gap-2">
+                    <LogOut className="h-5 w-5" />
+                    Log out
+                  </span>
+                </button>
+              </SignOutButton>
+            </div>
+          )}
+
+          <div className="pt-3">
+            <Link
+              href="/hub"
+              className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
+            >
+              Enter today&apos;s XPOT →
+            </Link>
+          </div>
+        </div>
       </div>
     </>
   );
