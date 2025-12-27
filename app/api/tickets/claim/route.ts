@@ -7,8 +7,6 @@ export const dynamic = 'force-dynamic';
 
 // ─────────────────────────────────────────────
 // Madrid cutoff logic (22:00 Europe/Madrid)
-// We use this to decide "today's draw window" deterministically,
-// so different machines/timezones don't disagree.
 // Window: [last cutoff, next cutoff)
 // ─────────────────────────────────────────────
 
@@ -59,11 +57,14 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
-  // Iterate a couple times to handle DST offsets.
+  // Iterate to handle DST offsets.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
+
+    // crude but stable compare (minute precision)
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
     const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
+
     const diffMin = gotTotal - wantTotal;
     if (diffMin === 0) break;
     t -= diffMin * 60_000;
@@ -77,7 +78,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   const nowMin = madridNow.hh * 60 + madridNow.mm;
   const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
 
-  // If it's before today's cutoff, next cutoff is today 22:00; otherwise it's tomorrow 22:00.
+  // If before today's cutoff -> next cutoff is today 22:00; else tomorrow 22:00.
   const baseForNext = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
   const nextDayParts = getTzParts(baseForNext, MADRID_TZ);
 
@@ -100,7 +101,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
 }
 
 // ─────────────────────────────────────────────
-// Helpers – code + balance checks
+// Helpers – code + XPOT balance check (XPOT-only gating)
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -112,31 +113,16 @@ function makeCode() {
   return `XPOT-${chunk()}-${chunk()}`;
 }
 
-async function getSolLamports(address: string): Promise<bigint> {
-  const res = await fetch('https://api.mainnet-beta.solana.com', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'getBalance',
-      params: [address, { commitment: 'confirmed' }],
-    }),
-  });
-
-  const json = await res.json().catch(() => null);
-  const v = json?.result?.value;
-  if (typeof v !== 'number' || !Number.isFinite(v)) return 0n;
-  return BigInt(Math.max(0, Math.floor(v)));
-}
-
 async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw: bigint; decimals: number }> {
   const XPOT_MINT = process.env.XPOT_MINT;
   if (!XPOT_MINT) throw new Error('XPOT_MINT not configured');
 
-  const res = await fetch('https://api.mainnet-beta.solana.com', {
+  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+
+  const res = await fetch(rpcUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    // owner can be base58 string
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
@@ -167,9 +153,7 @@ async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw
     rawTotal += BigInt(amountStr);
   }
 
-  const balance =
-    decimals >= 0 ? Number(rawTotal) / Math.pow(10, decimals) : Number(rawTotal);
-
+  const balance = Number(rawTotal) / Math.pow(10, decimals);
   return { balance, raw: rawTotal, decimals };
 }
 
@@ -180,42 +164,21 @@ async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({} as any));
-
-    const walletAddress: string | undefined =
-      body.walletAddress || body.wallet || body.address;
+    const walletAddress: string | undefined = body.walletAddress || body.wallet || body.address;
 
     if (!walletAddress || typeof walletAddress !== 'string') {
-      return NextResponse.json(
-        { ok: false, error: 'MISSING_WALLET' },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // 0) Optional lightweight SOL check (avoid "can't pay fees" surprises)
-    try {
-      const lamports = await getSolLamports(walletAddress);
-      const MIN_LAMPORTS = 5_000n; // tiny buffer
-      if (lamports < MIN_LAMPORTS) {
-        return NextResponse.json(
-          { ok: false, error: 'NOT_ENOUGH_SOL', lamports: lamports.toString() },
-          { status: 400 },
-        );
-      }
-    } catch {
-      // If SOL check fails, we don't hard-block (but could).
-    }
-
-    // 0b) XPOT minimum check (server-side)
+    // 1) XPOT minimum check (server-side) - XPOT ONLY, no SOL gating
     let xpotBalance = 0;
+
     try {
       const b = await getXpotBalanceUi(walletAddress);
       xpotBalance = b.balance;
 
       if (!(typeof xpotBalance === 'number' && Number.isFinite(xpotBalance))) {
-        return NextResponse.json(
-          { ok: false, error: 'XPOT_CHECK_FAILED' },
-          { status: 400 },
-        );
+        return NextResponse.json({ ok: false, error: 'XPOT_CHECK_FAILED' }, { status: 400 });
       }
 
       if (xpotBalance < REQUIRED_XPOT) {
@@ -231,13 +194,10 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       console.error('[XPOT] XPOT balance check failed', e);
-      return NextResponse.json(
-        { ok: false, error: 'XPOT_CHECK_FAILED' },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: 'XPOT_CHECK_FAILED' }, { status: 400 });
     }
 
-    // 1) Find the open draw for the CURRENT MADRID CUTOFF WINDOW
+    // 2) Find the open draw for the CURRENT MADRID CUTOFF WINDOW
     const { start, end } = getMadridCutoffWindowUtc(new Date());
 
     const draw = await prisma.draw.findFirst({
@@ -248,20 +208,17 @@ export async function POST(req: NextRequest) {
     });
 
     if (!draw) {
-      return NextResponse.json(
-        { ok: false, error: 'NO_OPEN_DRAW' },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: 'NO_OPEN_DRAW' }, { status: 400 });
     }
 
-    // 2) Ensure wallet row exists
+    // 3) Ensure wallet row exists
     const wallet = await prisma.wallet.upsert({
       where: { address: walletAddress },
       update: {},
       create: { address: walletAddress },
     });
 
-    // 3) Check if this wallet already has an IN_DRAW ticket for this draw
+    // 4) Check if this wallet already has an IN_DRAW ticket for this draw
     let ticket = await prisma.ticket.findFirst({
       where: {
         drawId: draw.id,
@@ -271,7 +228,7 @@ export async function POST(req: NextRequest) {
       include: { wallet: true },
     });
 
-    // 4) If none yet, create one
+    // 5) If none yet, create one
     if (!ticket) {
       ticket = await prisma.ticket.create({
         data: {
@@ -284,7 +241,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 5) Return the ticket (and optionally a minimal tickets list for the client)
+    // 6) Return the ticket
     return NextResponse.json(
       {
         ok: true,
@@ -314,9 +271,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (err: any) {
     console.error('[XPOT] /tickets/claim error:', err);
-    return NextResponse.json(
-      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: err?.message || 'INTERNAL_ERROR' }, { status: 500 });
   }
 }
