@@ -702,7 +702,7 @@ function DashboardInner() {
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
-  const [xpotBalance, setXpotBalance] = useState<number | 'error' | null>(null);
+  const [xpotBalance, setXpotBalance] = useState<XpotBalanceState>(null);
   const hasRequiredXpot = typeof xpotBalance === 'number' && xpotBalance >= REQUIRED_XPOT;
 
   const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
@@ -1165,6 +1165,7 @@ if (shouldFetchBalance) {
     setClaiming(true);
 
     const walletAddress = publicKey.toBase58();
+    console.log('[claim] sending walletAddress', walletAddress);
 
     try {
       const res = await fetch('/api/tickets/claim', {
@@ -1185,13 +1186,20 @@ if (shouldFetchBalance) {
         const code = data.error as string | undefined;
 
         switch (code) {
-  case 'NOT_ENOUGH_XPOT':
-    setClaimError(
-      `You need at least ${(data.required ?? REQUIRED_XPOT).toLocaleString()} XPOT to claim today’s entry. Your wallet currently has ${Number(
-        data.balance ?? 0,
-      ).toLocaleString()} XPOT.`,
-    );
-    break;
+case 'NOT_ENOUGH_XPOT': {
+  const required =
+    typeof data.required === 'number' ? data.required : REQUIRED_XPOT;
+
+  const bal =
+    typeof data.balance === 'number' ? data.balance : null;
+
+  setClaimError(
+    bal === null
+      ? `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. We could not read your wallet balance right now.`
+      : `You need at least ${required.toLocaleString()} XPOT to claim today’s entry. Your wallet currently has ${bal.toLocaleString()} XPOT.`,
+  );
+  break;
+}
 
   // Keep UX calm + XPOT-only even if backend ever returns something else
   case 'NOT_ENOUGH_SOL':
