@@ -225,18 +225,36 @@ function initialFromHandle(h?: string | null) {
   return s ? s[0].toUpperCase() : 'X';
 }
 
+// FIX: typed media query args (no implicit any)
+type MotionSuggests = MediaQueryList | MediaQueryListEvent | null;
+
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const m = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = (suggests: any) =>
-  setReduced(Boolean(suggests?.matches ?? m.matches));
+
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const apply = (suggests: MotionSuggests) => {
+      const next = suggests ? (suggests as any).matches : mql.matches;
+      setReduced(Boolean(next));
+    };
+
     const handler = (e: MediaQueryListEvent) => apply(e);
-    apply(null as any);
-    m.addEventListener?.('change', handler);
-    return () => m.removeEventListener?.('change', handler);
+
+    apply(mql);
+
+    if (mql.addEventListener) {
+      mql.addEventListener('change', handler);
+      return () => mql.removeEventListener('change', handler);
+    }
+
+    // Safari fallback
+    (mql as any).addListener?.(handler);
+    return () => (mql as any).removeListener?.(handler);
   }, []);
+
   return reduced;
 }
 
@@ -801,11 +819,11 @@ export default function DashboardClient() {
     return list;
   }, []);
 
-  // FIX: balance previously showed 0 because the API can be wrong / cached / mismatched.
-  // We now compute the balance directly from the connected RPC using parsed token accounts.
+  // FIX: on-chain balance, correct signature (no { commitment, programId } object)
   const fetchXpotBalanceFromChain = useCallback(
     async (owner: PublicKey) => {
       if (!XPOT_MINT_PUBKEY) throw new Error('TOKEN_MINT is invalid');
+
       const parsed = await connection.getParsedTokenAccountsByOwner(
         owner,
         { mint: XPOT_MINT_PUBKEY },
@@ -896,7 +914,6 @@ export default function DashboardClient() {
         setRecentWinners(nextWinners);
 
         if (publicKey && walletConnected) {
-          // XPOT BALANCE (on-chain, reliable)
           try {
             setXpotBalance(null);
             const b = await fetchXpotBalanceFromChain(publicKey);
@@ -906,7 +923,6 @@ export default function DashboardClient() {
             setXpotBalance('error');
           }
 
-          // HISTORY
           try {
             if (reason === 'initial') setLoadingHistory(true);
             setHistoryError(null);
