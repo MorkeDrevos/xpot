@@ -4,15 +4,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState, type WalletName } from '@solana/wallet-adapter-base';
-import { ChevronRight, ExternalLink, Shield, Wallet, X } from 'lucide-react';
+import { ArrowRight, ChevronRight, ExternalLink, Shield, Wallet, X } from 'lucide-react';
 
 function shortAddr(a: string) {
   if (!a) return a;
   return `${a.slice(0, 4)}…${a.slice(-4)}`;
 }
 
-const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-md hover:brightness-105 transition disabled:cursor-not-allowed disabled:opacity-40';
+const CTA_SIBLING =
+  'group relative inline-flex items-center justify-center gap-2 ' +
+  'rounded-full ' +
+  'bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] ' +
+  'border border-white/15 ' +
+  'text-[12px] font-semibold text-slate-100 ' +
+  'shadow-[0_10px_40px_rgba(0,0,0,0.45)] ' +
+  'transition ' +
+  'hover:border-emerald-300/40 hover:text-white ' +
+  'hover:shadow-[0_0_0_1px_rgba(16,185,129,0.25),0_20px_60px_rgba(0,0,0,0.55)] ' +
+  'active:scale-[0.985] ' +
+  'disabled:cursor-not-allowed disabled:opacity-40';
 
 const BTN_GHOST =
   'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition disabled:cursor-not-allowed disabled:opacity-40';
@@ -156,9 +166,7 @@ export default function PremiumWalletModal({
                 )}
               </div>
 
-              {connecting ? (
-                <p className="mt-2 text-[12px] text-amber-300">Waiting for wallet approval...</p>
-              ) : null}
+              {connecting ? <p className="mt-2 text-[12px] text-amber-300">Waiting for wallet approval...</p> : null}
             </div>
 
             {/* Wallet list */}
@@ -188,20 +196,14 @@ export default function PremiumWalletModal({
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
                           {w.adapter.icon ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={w.adapter.icon}
-                              alt=""
-                              className="h-6 w-6 rounded-md"
-                            />
+                            <img src={w.adapter.icon} alt="" className="h-6 w-6 rounded-md" />
                           ) : (
                             <Wallet className="h-5 w-5 text-slate-200" />
                           )}
                         </div>
 
                         <div className="min-w-0">
-                          <p className="truncate text-[13px] font-semibold text-slate-100">
-                            {String(name)}
-                          </p>
+                          <p className="truncate text-[13px] font-semibold text-slate-100">{String(name)}</p>
                           <p className="mt-0.5 text-[11px] text-slate-400">
                             {installed ? 'Installed' : 'Available'}
                             {isSelected ? ' - selected' : ''}
@@ -213,7 +215,11 @@ export default function PremiumWalletModal({
                         {busy === String(name) ? (
                           <span className="text-[11px] text-slate-400">Opening...</span>
                         ) : installed ? (
-                          <span className={`${BTN_PRIMARY} h-8 px-4 text-[12px]`}>Connect</span>
+                          <span className={`${CTA_SIBLING} h-8 px-4`}>
+                            <Wallet className="h-4 w-4 opacity-90 group-hover:opacity-100" />
+                            <span>Connect</span>
+                            <ArrowRight className="h-4 w-4 opacity-70 group-hover:translate-x-0.5 transition-transform" />
+                          </span>
                         ) : (
                           <span className={`${BTN_GHOST} h-8 px-4 text-[12px]`}>
                             <span className="inline-flex items-center gap-2">
