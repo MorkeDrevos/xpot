@@ -16,7 +16,6 @@ import { WalletReadyState, type WalletName } from '@solana/wallet-adapter-base';
 import {
   ChevronDown,
   ExternalLink,
-  Globe,
   LogOut,
   Menu,
   PieChart,
@@ -35,6 +34,8 @@ import {
   ChevronRight,
   Info,
   Hourglass,
+  Globe,
+  MoreHorizontal,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -81,7 +82,7 @@ const XPOT_X_POST = 'https://x.com/xpotbet';
 const FINAL_DAY_HREF = '/2045/final-day';
 
 // ✅ Naming (pick one and keep it consistent everywhere)
-const FINAL_DAY_LABEL = 'Final Draw'; // alternatives: 'Finale' | 'Legacy' | 'Archive'
+const FINAL_DAY_LABEL = 'Final Draw';
 
 // Shared routes
 const WINNERS_HREF = '/winners';
@@ -112,7 +113,7 @@ export default function XpotTopBar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [learnOpen, setLearnOpen] = useState(false);
 
-  // ✅ Guard for components that might read client-only state
+  // ✅ langMounted guard - prevents hydration weirdness for language UI
   const [langMounted, setLangMounted] = useState(false);
   useEffect(() => setLangMounted(true), []);
 
@@ -222,14 +223,13 @@ export default function XpotTopBar({
 
               {/* RIGHT: Actions */}
               <div className="ml-auto flex items-center gap-3">
-                {/* 🌍 Small globe language switch (desktop) */}
+                {/* ✅ Small globe (desktop) */}
                 {langMounted && (
                   <div className="hidden xl:flex">
-                    <LanguageGlobe />
+                    <LanguageGlobeMenu />
                   </div>
                 )}
 
-                {/* Status chip only on public pages */}
                 {!isHub && (
                   <div className="hidden xl:flex">
                     <OfficialCAChip />
@@ -285,45 +285,6 @@ export default function XpotTopBar({
   );
 }
 
-/* ---------------- 🌍 Globe language button (desktop) ---------------- */
-
-function LanguageGlobe() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06]"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title="Language"
-      >
-        <Globe className="h-4 w-4" />
-      </button>
-
-      {open && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[90] cursor-default"
-            aria-label="Close language menu"
-            onMouseDown={() => setOpen(false)}
-          />
-          <div className="absolute right-0 z-[91] mt-3 w-[260px] overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
-            <div className="p-2">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                <LanguageSwitcher />
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 /* ---------------- Public right (simple, safe default) ---------------- */
 
 function PublicRight() {
@@ -347,6 +308,54 @@ function PublicRight() {
         <ExternalLink className="h-4 w-4" />
         X
       </Link>
+    </div>
+  );
+}
+
+/* ---------------- Language globe menu (desktop) ---------------- */
+
+function LanguageGlobeMenu() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="
+          inline-flex h-10 w-10 items-center justify-center rounded-full
+          border border-white/10 bg-white/[0.03] text-slate-200
+          hover:bg-white/[0.06]
+          transition
+        "
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Language"
+        title="Language"
+      >
+        <Globe className="h-5 w-5" />
+      </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[90] cursor-default"
+            aria-label="Close language"
+            onMouseDown={() => setOpen(false)}
+          />
+          <div className="absolute right-0 z-[91] mt-3 w-[260px] overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+            <div className="p-2">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">LANGUAGE</p>
+                <div className="mt-3">
+                  <LanguageSwitcher />
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -546,7 +555,7 @@ function NavPill({
   );
 }
 
-/* ---------------- Public: Center nav ---------------- */
+/* ---------------- Public: Center nav (matches your “good” layout) ---------------- */
 
 function PublicNavCenter({
   liveIsOpen,
@@ -650,103 +659,79 @@ function PublicNavCenter({
   );
 }
 
-/* ---------------- Hub: Center nav (less busy + More dropdown) ---------------- */
+/* ---------------- Hub: Center nav (clean + “More” dropdown) ---------------- */
 
 function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setMoreOpen(false);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
   return (
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      {/* Live */}
       <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
         <LiveDot isOpen={liveIsOpen} />
         <Radio className="h-[15px] w-[15px] text-emerald-300" />
         Live
       </NavLink>
 
-      {/* Final Draw */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
         <Hourglass className="h-[15px] w-[15px] text-amber-200" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
-      {/* More dropdown (reduces clutter) */}
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setMoreOpen((v) => !v)}
-          className="inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition"
-          aria-haspopup="menu"
-          aria-expanded={moreOpen}
-          title="More"
-        >
-          More
-          <ChevronDown className={`h-4 w-4 transition ${moreOpen ? 'rotate-180' : ''}`} />
-        </button>
-
-        {moreOpen && (
-          <>
-            <button
-              type="button"
-              aria-label="Close more menu"
-              className="fixed inset-0 z-[90] cursor-default"
-              onMouseDown={() => setMoreOpen(false)}
-            />
-
-            <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
-              <div className="p-2">
-                <Link href={MECHANISM_HREF} className="learn-item">
-                  <span className="inline-flex items-center gap-2">
-                    <Info className="h-4 w-4 text-slate-200" />
-                    Mechanism
-                  </span>
-                </Link>
-
-                <Link href={TOKENOMICS_HREF} className="learn-item">
-                  <span className="inline-flex items-center gap-2">
-                    <PieChart className="h-4 w-4 text-emerald-300" />
-                    Tokenomics
-                  </span>
-                </Link>
-
-                <Link href={ROADMAP_HREF} className="learn-item">
-                  <span className="inline-flex items-center gap-2">
-                    <Map className="h-4 w-4 text-sky-300" />
-                    Roadmap
-                  </span>
-                </Link>
-
-                <Link href={WINNERS_HREF} className="learn-item">
-                  <span className="inline-flex items-center gap-2">
-                    <Trophy className="h-4 w-4 text-amber-300" />
-                    Winners
-                  </span>
-                </Link>
-
-                <div className="my-2 h-px bg-white/10" />
-
-                <Link href={XPOT_X_POST} target="_blank" className="learn-item">
-                  <span className="inline-flex items-center gap-2">
-                    <ExternalLink className="h-4 w-4" />
-                    X
-                  </span>
-                </Link>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+      <HubMoreMenu />
     </nav>
+  );
+}
+
+function HubMoreMenu() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+        More
+        <ChevronDown className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Close more menu"
+            className="fixed inset-0 z-[90] cursor-default"
+            onMouseDown={() => setOpen(false)}
+          />
+          <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+            <div className="p-2">
+              <Link href={MECHANISM_HREF} className="learn-item">
+                Mechanism
+              </Link>
+              <Link href={TOKENOMICS_HREF} className="learn-item">
+                Tokenomics
+              </Link>
+              <Link href={ROADMAP_HREF} className="learn-item">
+                Roadmap
+              </Link>
+              <Link href={WINNERS_HREF} className="learn-item">
+                Winners
+              </Link>
+
+              <div className="my-2 h-px bg-white/10" />
+
+              <Link href={XPOT_X_POST} target="_blank" className="learn-item">
+                Official X
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -1206,16 +1191,15 @@ function MobileMenu({
         </div>
 
         <div className="space-y-2 px-5 py-5">
-          {/* Language switcher (mobile) */}
+          {/* ✅ Language switcher (mobile) */}
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-            <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-300/80">
-              <Globe className="h-4 w-4" />
-              Language
-            </div>
             <LanguageSwitcher />
           </div>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href="/hub"
+          >
             Hub
           </Link>
 
@@ -1230,35 +1214,50 @@ function MobileMenu({
             <Radio className="h-4 w-4 text-emerald-300" />
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={FINAL_DAY_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={FINAL_DAY_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Hourglass className="h-4 w-4 text-amber-200" />
               {FINAL_DAY_LABEL}
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={MECHANISM_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={MECHANISM_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Info className="h-4 w-4 text-slate-200" />
               Mechanism
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={TOKENOMICS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <PieChart className="h-4 w-4 text-emerald-300" />
               Tokenomics
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={ROADMAP_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Map className="h-4 w-4 text-sky-300" />
               Roadmap
             </span>
           </Link>
 
-          <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
+          <Link
+            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+            href={WINNERS_HREF}
+          >
             <span className="inline-flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-300" />
               Winners
