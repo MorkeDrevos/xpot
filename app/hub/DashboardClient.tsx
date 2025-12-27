@@ -4,12 +4,10 @@
 import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-
 import { PublicKey } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import GoldAmount from '@/components/GoldAmount';
@@ -232,10 +230,11 @@ function useReducedMotion() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const m = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = () => setReduced(Boolean(m.matches));
-    apply();
-    m.addEventListener?.('change', apply);
-    return () => m.removeEventListener?.('change', apply);
+    const apply = suggests => setReduced(Boolean(suggests?.matches ?? m.matches));
+    const handler = (e: MediaQueryListEvent) => apply(e);
+    apply(null as any);
+    m.addEventListener?.('change', handler);
+    return () => m.removeEventListener?.('change', handler);
   }, []);
   return reduced;
 }
@@ -539,7 +538,7 @@ function EntryCeremony({
 }
 
 // ─────────────────────────────────────────────
-// Types + defensive normalizers
+// Types + defensive normalizers (fixes crash on status.replace)
 // ─────────────────────────────────────────────
 
 type EntryStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
@@ -615,7 +614,7 @@ function safeStatusLabel(status: any) {
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
-  // Official wallet adapter modal
+  const { connection } = useConnection();
   const { setVisible: setWalletModalVisible } = useWalletModal();
 
   const onOpenWalletModal = useCallback(() => setWalletModalVisible(true), [setWalletModalVisible]);
@@ -634,7 +633,6 @@ export default function DashboardClient() {
   const [ceremonyCode, setCeremonyCode] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
@@ -687,6 +685,14 @@ export default function DashboardClient() {
     title: 'Loading…',
     desc: 'Preparing today’s mission.',
   });
+
+  const XPOT_MINT_PUBKEY = useMemo(() => {
+    try {
+      return new PublicKey(TOKEN_MINT);
+    } catch {
+      return null;
+    }
+  }, []);
 
   // ─────────────────────────────────────────────
   // Sync X identity into DB whenever user is loaded
@@ -794,62 +800,43 @@ export default function DashboardClient() {
     return list;
   }, []);
 
-  // Primary: read XPOT balance directly from chain (prevents “always 0” API bugs)
-  const fetchXpotBalanceOnChain = useCallback(
-    async (address: string) => {
-      if (!connection) throw new Error('No RPC connection');
+  // FIX: balance previously showed 0 because the API can be wrong / cached / mismatched.
+  // We now compute the balance directly from the connected RPC using parsed token accounts.
+  const fetchXpotBalanceFromChain = useCallback(
+    async (owner: PublicKey) => {
+      if (!XPOT_MINT_PUBKEY) throw new Error('TOKEN_MINT is invalid');
+      const parsed = await connection.getParsedTokenAccountsByOwner(
+        owner,
+        { mint: XPOT_MINT_PUBKEY },
+        'confirmed',
+      );
 
-      const owner = new PublicKey(address);
-      const mint = new PublicKey(TOKEN_MINT);
+      let total = 0;
 
-      const sumFrom = async (programId: PublicKey) => {
-        const res = await connection.getParsedTokenAccountsByOwner(
-          owner,
-          { mint },
-          { commitment: 'confirmed', programId },
-        );
+      for (const it of parsed.value) {
+        const info = (it.account.data as any)?.parsed?.info;
+        const tokenAmount = info?.tokenAmount;
+        const uiAmount = tokenAmount?.uiAmount;
 
-        let total = 0;
-        for (const it of res.value) {
-          const info: any = it.account?.data?.parsed?.info;
-          const ui = info?.tokenAmount?.uiAmount;
-          if (typeof ui === 'number' && Number.isFinite(ui)) total += ui;
+        if (typeof uiAmount === 'number' && Number.isFinite(uiAmount)) {
+          total += uiAmount;
+          continue;
         }
-        return total;
-      };
 
-      // Try both token programs (classic + token-2022)
-      const [a, b] = await Promise.allSettled([sumFrom(TOKEN_PROGRAM_ID), sumFrom(TOKEN_2022_PROGRAM_ID)]);
-      const total =
-        (a.status === 'fulfilled' ? a.value : 0) + (b.status === 'fulfilled' ? b.value : 0);
+        const amountStr = tokenAmount?.amount;
+        const decimals = tokenAmount?.decimals;
+        if (typeof amountStr === 'string' && typeof decimals === 'number') {
+          const amt = Number(amountStr);
+          if (Number.isFinite(amt) && decimals >= 0 && decimals <= 18) {
+            total += amt / Math.pow(10, decimals);
+          }
+        }
+      }
 
       return total;
     },
-    [connection],
+    [connection, XPOT_MINT_PUBKEY],
   );
-
-  // Fallback: your API route (keep it as backup)
-  const fetchXpotBalanceViaApi = useCallback(async (address: string) => {
-    const tryOne = async (url: string) => {
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data = (await res.json().catch(() => null)) as any;
-      const raw = data?.balance ?? data?.uiAmount ?? data?.amount ?? data?.value ?? 0;
-      const n = typeof raw === 'string' ? Number(raw) : typeof raw === 'number' ? raw : Number(raw ?? 0);
-      if (!Number.isFinite(n)) throw new Error('Balance parse failed');
-      return n;
-    };
-
-    try {
-      return await tryOne(`/api/xpot-balance?address=${encodeURIComponent(address)}`);
-    } catch {
-      try {
-        return await tryOne(`/api/xpot-balance?wallet=${encodeURIComponent(address)}`);
-      } catch {
-        return await tryOne(`/api/xpot-balance?owner=${encodeURIComponent(address)}`);
-      }
-    }
-  }, []);
 
   const fetchHistory = useCallback(async (address: string) => {
     const res = await fetch(`/api/tickets/history?wallet=${encodeURIComponent(address)}`, { cache: 'no-store' });
@@ -907,32 +894,22 @@ export default function DashboardClient() {
         const nextWinners = await fetchRecentWinners();
         setRecentWinners(nextWinners);
 
-        if (addr && walletConnected) {
-          // Balance: chain first, API fallback
+        if (publicKey && walletConnected) {
+          // XPOT BALANCE (on-chain, reliable)
           try {
             setXpotBalance(null);
-            const chainBal = await fetchXpotBalanceOnChain(addr);
-            if (Number.isFinite(chainBal)) {
-              setXpotBalance(chainBal);
-            } else {
-              const apiBal = await fetchXpotBalanceViaApi(addr);
-              setXpotBalance(apiBal);
-            }
+            const b = await fetchXpotBalanceFromChain(publicKey);
+            setXpotBalance(b);
           } catch (e) {
-            console.error('Error loading XPOT balance', e);
-            try {
-              const apiBal = await fetchXpotBalanceViaApi(addr);
-              setXpotBalance(apiBal);
-            } catch (e2) {
-              console.error('XPOT balance fallback (API) failed', e2);
-              setXpotBalance('error');
-            }
+            console.error('Error loading XPOT balance (on-chain)', e);
+            setXpotBalance('error');
           }
 
+          // HISTORY
           try {
             if (reason === 'initial') setLoadingHistory(true);
             setHistoryError(null);
-            const h = await fetchHistory(addr);
+            const h = await fetchHistory(addr || publicKey.toBase58());
             setHistoryEntries(h);
           } catch (e) {
             console.error('Failed to load history', e);
@@ -966,8 +943,7 @@ export default function DashboardClient() {
       walletConnected,
       fetchTicketsToday,
       fetchRecentWinners,
-      fetchXpotBalanceOnChain,
-      fetchXpotBalanceViaApi,
+      fetchXpotBalanceFromChain,
       fetchHistory,
     ],
   );
@@ -1007,6 +983,7 @@ export default function DashboardClient() {
     };
   }, [isAuthedEnough, refreshAll]);
 
+  // Sync "today's ticket" state with DB
   useEffect(() => {
     if (!currentWalletAddress) {
       setTicketClaimed(false);
@@ -1284,7 +1261,11 @@ export default function DashboardClient() {
                 </Link>
 
                 <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 backdrop-blur-xl">
-                  <button type="button" onClick={onOpenWalletModal} className="text-left leading-tight hover:opacity-90">
+                  <button
+                    type="button"
+                    onClick={onOpenWalletModal}
+                    className="text-left leading-tight hover:opacity-90"
+                  >
                     <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">
                       Wallet bay
                     </div>
@@ -1530,7 +1511,7 @@ export default function DashboardClient() {
                             <StatusPill tone="slate">—</StatusPill>
                           )}
                         </div>
-                        <p className="mt-2 text-xs text-slate-300/70">Eligibility is checked live from chain.</p>
+                        <p className="mt-2 text-xs text-slate-300/70">Eligibility is checked on-chain on refresh.</p>
                       </div>
                     </div>
 
@@ -1581,10 +1562,7 @@ export default function DashboardClient() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <TinyRow label="Status" value={<span className="font-semibold text-slate-100">IN DRAW</span>} />
-                      <TinyRow
-                        label="Issued"
-                        value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>}
-                      />
+                      <TinyRow label="Issued" value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>} />
                     </div>
                   </div>
                 )}
