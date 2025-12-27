@@ -896,7 +896,9 @@ function DashboardInner() {
 
     (async () => {
       try {
-        const pr = await fetch('/api/me/preferences', { cache: 'no-store' });
+        const mr = await fetch(`/api/hub/mission/today?seed=${encodeURIComponent(handle || '')}`, {
+  cache: 'no-store',
+});
         if (alive && pr.ok) {
           const pj = (await pr.json().catch(() => null)) as any;
           const se = pj?.preferences?.soundEnabled;
