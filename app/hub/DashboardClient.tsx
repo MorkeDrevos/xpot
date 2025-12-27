@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal, WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { useWalletModal, WalletModalProvider, WalletModal } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
 
 import { SignOutButton, useUser } from '@clerk/nextjs';
@@ -2122,9 +2122,9 @@ function DashboardInner() {
 // ─────────────────────────────────────────────
 
 export default function DashboardClient() {
-  // ✅ FIX: Provider must wrap the component that calls useWalletModal()
   return (
     <WalletModalProvider>
+      <WalletModal />
       <DashboardInner />
     </WalletModalProvider>
   );
