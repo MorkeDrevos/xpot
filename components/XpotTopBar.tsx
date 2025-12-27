@@ -7,7 +7,6 @@ import { usePathname } from 'next/navigation';
 import { createPortal } from 'react-dom';
 
 import XpotLogo from '@/components/XpotLogo';
-import { LanguageSwitcher, useI18n } from '@/lib/i18n';
 
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -34,8 +33,6 @@ import {
   ChevronRight,
   Info,
   Hourglass,
-  Globe,
-  MoreHorizontal,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -82,7 +79,7 @@ const XPOT_X_POST = 'https://x.com/xpotbet';
 const FINAL_DAY_HREF = '/2045/final-day';
 
 // ✅ Naming (pick one and keep it consistent everywhere)
-const FINAL_DAY_LABEL = 'Final Draw';
+const FINAL_DAY_LABEL = 'Final Draw'; // alternatives: 'Finale' | 'Legacy' | 'Archive'
 
 // Shared routes
 const WINNERS_HREF = '/winners';
@@ -108,14 +105,8 @@ export default function XpotTopBar({
   const pathname = usePathname() || '';
   const isHub = pathname === '/hub' || pathname.startsWith('/hub/');
 
-  const { t } = useI18n();
-
   const [mobileOpen, setMobileOpen] = useState(false);
   const [learnOpen, setLearnOpen] = useState(false);
-
-  // ✅ langMounted guard - prevents hydration weirdness for language UI
-  const [langMounted, setLangMounted] = useState(false);
-  useEffect(() => setLangMounted(true), []);
 
   // ✅ Internal light wallet popup (only used if onOpenWalletModal not provided)
   const [lightWalletOpen, setLightWalletOpen] = useState(false);
@@ -223,13 +214,6 @@ export default function XpotTopBar({
 
               {/* RIGHT: Actions */}
               <div className="ml-auto flex items-center gap-3">
-                {/* ✅ Small globe (desktop) */}
-                {langMounted && (
-                  <div className="hidden xl:flex">
-                    <LanguageGlobeMenu />
-                  </div>
-                )}
-
                 {!isHub && (
                   <div className="hidden xl:flex">
                     <OfficialCAChip />
@@ -282,81 +266,6 @@ export default function XpotTopBar({
         <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
       )}
     </>
-  );
-}
-
-/* ---------------- Public right (simple, safe default) ---------------- */
-
-function PublicRight() {
-  const { t } = useI18n();
-
-  return (
-    <div className="hidden items-center gap-3 xl:flex">
-      <Link
-        href="/hub"
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06]"
-      >
-        <Radio className="h-4 w-4 text-emerald-300" />
-        {t('nav.hub')}
-      </Link>
-
-      <Link
-        href={XPOT_X_POST}
-        target="_blank"
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06]"
-      >
-        <ExternalLink className="h-4 w-4" />
-        X
-      </Link>
-    </div>
-  );
-}
-
-/* ---------------- Language globe menu (desktop) ---------------- */
-
-function LanguageGlobeMenu() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="
-          inline-flex h-10 w-10 items-center justify-center rounded-full
-          border border-white/10 bg-white/[0.03] text-slate-200
-          hover:bg-white/[0.06]
-          transition
-        "
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Language"
-        title="Language"
-      >
-        <Globe className="h-5 w-5" />
-      </button>
-
-      {open && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[90] cursor-default"
-            aria-label="Close language"
-            onMouseDown={() => setOpen(false)}
-          />
-          <div className="absolute right-0 z-[91] mt-3 w-[260px] overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
-            <div className="p-2">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">LANGUAGE</p>
-                <div className="mt-3">
-                  <LanguageSwitcher />
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
   );
 }
 
@@ -555,7 +464,7 @@ function NavPill({
   );
 }
 
-/* ---------------- Public: Center nav (matches your “good” layout) ---------------- */
+/* ---------------- Public: Center nav ---------------- */
 
 function PublicNavCenter({
   liveIsOpen,
@@ -566,8 +475,6 @@ function PublicNavCenter({
   learnOpen: boolean;
   setLearnOpen: (v: boolean) => void;
 }) {
-  const { t } = useI18n();
-
   const openT = useRef<number | null>(null);
   const closeT = useRef<number | null>(null);
 
@@ -592,20 +499,22 @@ function PublicNavCenter({
 
   return (
     <nav className="flex items-center gap-7">
-      <NavLink href="/hub">{t('nav.hub')}</NavLink>
+      <NavLink href="/hub">Hub</NavLink>
 
-      <NavLink href={PROTOCOL_HREF} title={t('nav.live')} className="gap-2">
+      {/* Live */}
+      <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
         <LiveDot isOpen={liveIsOpen} />
         <Radio className="h-[15px] w-[15px] text-emerald-300" />
-        {t('nav.live')}
+        Live
       </NavLink>
 
-      <NavPill href={FINAL_DAY_HREF} title={t('nav.finalDraw')}>
+      {/* Final Draw (primary) */}
+      <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
         <Hourglass className="h-[15px] w-[15px] text-amber-200" />
-        <span className="tracking-wide">{t('nav.finalDraw')}</span>
+        <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
-      {/* Learn dropdown */}
+      {/* Learn dropdown (hover + click) */}
       <div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
         <button
           type="button"
@@ -614,7 +523,7 @@ function PublicNavCenter({
           aria-haspopup="menu"
           aria-expanded={learnOpen}
         >
-          {t('nav.learn')}
+          Learn
           <ChevronDown className={`h-4 w-4 transition ${learnOpen ? 'rotate-180' : ''}`} />
         </button>
 
@@ -629,26 +538,57 @@ function PublicNavCenter({
 
             <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
               <div className="p-2">
-                <Link href={TOKENOMICS_HREF} className="learn-item">
-                  {t('nav.tokenomics')}
+                <Link
+                  href={TOKENOMICS_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <PieChart className="h-4 w-4 text-emerald-300" />
+                  </span>
+                  Tokenomics
                 </Link>
 
-                <Link href={ROADMAP_HREF} className="learn-item">
-                  {t('nav.roadmap')}
+                <Link
+                  href={ROADMAP_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Map className="h-4 w-4 text-sky-300" />
+                  </span>
+                  Roadmap
                 </Link>
 
-                <Link href={WINNERS_HREF} className="learn-item">
-                  {t('nav.winners')}
+                <Link
+                  href={WINNERS_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Trophy className="h-4 w-4 text-amber-300" />
+                  </span>
+                  Winners
                 </Link>
 
-                <Link href={MECHANISM_HREF} className="learn-item">
-                  {t('nav.mechanism')}
+                <Link
+                  href={MECHANISM_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Info className="h-4 w-4 text-slate-200" />
+                  </span>
+                  Mechanism
                 </Link>
 
                 <div className="my-2 h-px bg-white/10" />
 
-                <Link href={XPOT_X_POST} target="_blank" className="learn-item">
-                  {t('nav.officialX')}
+                <Link
+                  href={XPOT_X_POST}
+                  target="_blank"
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <ExternalLink className="h-4 w-4 text-slate-200" />
+                  </span>
+                  Official X
                 </Link>
               </div>
             </div>
@@ -659,79 +599,71 @@ function PublicNavCenter({
   );
 }
 
-/* ---------------- Hub: Center nav (clean + “More” dropdown) ---------------- */
+/* ---------------- Public: Right actions ---------------- */
+
+function PublicRight() {
+  return (
+    <div className="hidden items-center gap-3 xl:flex">
+      <Link
+        href="/hub"
+        className="
+          rounded-full bg-white px-6 py-2.5
+          text-[13px] font-semibold text-black
+          hover:bg-slate-200
+          shadow-[0_18px_60px_rgba(0,0,0,0.35)]
+        "
+      >
+        Enter today&apos;s XPOT →
+      </Link>
+    </div>
+  );
+}
+
+/* ---------------- Hub: Center nav ---------------- */
 
 function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
+      {/* Live */}
       <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
         <LiveDot isOpen={liveIsOpen} />
         <Radio className="h-[15px] w-[15px] text-emerald-300" />
         Live
       </NavLink>
 
+      {/* ✅ Final Draw (ONLY ONCE) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
         <Hourglass className="h-[15px] w-[15px] text-amber-200" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
-      <HubMoreMenu />
+      <NavLink href={MECHANISM_HREF} title="How winners are picked">
+        <Info className="h-4 w-4 text-slate-200" />
+        Mechanism
+      </NavLink>
+
+      <NavLink href={TOKENOMICS_HREF}>
+        <PieChart className="h-4 w-4 text-emerald-300" />
+        Tokenomics
+      </NavLink>
+
+      <NavLink href={ROADMAP_HREF}>
+        <Map className="h-4 w-4 text-sky-300" />
+        Roadmap
+      </NavLink>
+
+      <NavLink href={WINNERS_HREF}>
+        <Trophy className="h-4 w-4 text-amber-300" />
+        Winners
+      </NavLink>
+
+      <NavLink href={XPOT_X_POST} external title="Official XPOT X">
+        <ExternalLink className="h-4 w-4" />
+        X
+      </NavLink>
     </nav>
-  );
-}
-
-function HubMoreMenu() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 py-2 text-[13px] font-semibold leading-none text-slate-200/80 hover:text-white transition"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <MoreHorizontal className="h-4 w-4" />
-        More
-        <ChevronDown className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <>
-          <button
-            type="button"
-            aria-label="Close more menu"
-            className="fixed inset-0 z-[90] cursor-default"
-            onMouseDown={() => setOpen(false)}
-          />
-          <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
-            <div className="p-2">
-              <Link href={MECHANISM_HREF} className="learn-item">
-                Mechanism
-              </Link>
-              <Link href={TOKENOMICS_HREF} className="learn-item">
-                Tokenomics
-              </Link>
-              <Link href={ROADMAP_HREF} className="learn-item">
-                Roadmap
-              </Link>
-              <Link href={WINNERS_HREF} className="learn-item">
-                Winners
-              </Link>
-
-              <div className="my-2 h-px bg-white/10" />
-
-              <Link href={XPOT_X_POST} target="_blank" className="learn-item">
-                Official X
-              </Link>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
   );
 }
 
@@ -1191,11 +1123,6 @@ function MobileMenu({
         </div>
 
         <div className="space-y-2 px-5 py-5">
-          {/* ✅ Language switcher (mobile) */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-            <LanguageSwitcher />
-          </div>
-
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href="/hub"
@@ -1203,6 +1130,7 @@ function MobileMenu({
             Hub
           </Link>
 
+          {/* Live -> Protocol */}
           <Link
             className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             href={PROTOCOL_HREF}
