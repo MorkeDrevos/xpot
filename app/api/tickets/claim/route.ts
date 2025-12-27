@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { REQUIRED_XPOT } from '@/lib/xpot';
-import { PublicKey } from '@solana/web3.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,11 +57,14 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
-  // Iterate a couple times to handle DST offsets.
+  // Iterate to handle DST offsets.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
+
+    // crude but stable compare (minute precision)
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
     const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
+
     const diffMin = gotTotal - wantTotal;
     if (diffMin === 0) break;
     t -= diffMin * 60_000;
@@ -76,7 +78,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   const nowMin = madridNow.hh * 60 + madridNow.mm;
   const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
 
-  // If it's before today's cutoff, next cutoff is today 22:00; otherwise it's tomorrow 22:00.
+  // If before today's cutoff -> next cutoff is today 22:00; else tomorrow 22:00.
   const baseForNext = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
   const nextDayParts = getTzParts(baseForNext, MADRID_TZ);
 
@@ -99,7 +101,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
 }
 
 // ─────────────────────────────────────────────
-// Helpers – code + XPOT balance check (XPOT ONLY)
+// Helpers – code + XPOT balance check (XPOT-only gating)
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -115,51 +117,44 @@ async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw
   const XPOT_MINT = process.env.XPOT_MINT;
   if (!XPOT_MINT) throw new Error('XPOT_MINT not configured');
 
-  // IMPORTANT: XPOT-only gating. No SOL checks anywhere.
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
-  try {
-    const res = await fetch('https://api.mainnet-beta.solana.com', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'getTokenAccountsByOwner',
-        params: [address, { mint: XPOT_MINT }, { encoding: 'jsonParsed' }],
-      }),
-    });
+  const res = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // owner can be base58 string
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'getTokenAccountsByOwner',
+      params: [address, { mint: XPOT_MINT }, { encoding: 'jsonParsed' }],
+    }),
+  });
 
-    const json = await res.json().catch(() => null);
-    const accounts = json?.result?.value ?? [];
+  const json = await res.json().catch(() => null);
+  const accounts = json?.result?.value ?? [];
 
-    if (!Array.isArray(accounts) || accounts.length === 0) {
-      return { balance: 0, raw: 0n, decimals: 6 };
-    }
-
-    let rawTotal = 0n;
-    let decimals = 6;
-
-    for (const acc of accounts) {
-      const info = acc?.account?.data?.parsed?.info;
-      const tokenAmount = info?.tokenAmount;
-      if (!tokenAmount?.amount) continue;
-
-      const amountStr: string = tokenAmount.amount;
-      const dec: number = tokenAmount.decimals ?? 6;
-
-      decimals = dec;
-      rawTotal += BigInt(amountStr);
-    }
-
-    const balance = decimals >= 0 ? Number(rawTotal) / Math.pow(10, decimals) : Number(rawTotal);
-
-    return { balance, raw: rawTotal, decimals };
-  } finally {
-    clearTimeout(timeout);
+  if (!Array.isArray(accounts) || accounts.length === 0) {
+    return { balance: 0, raw: 0n, decimals: 6 };
   }
+
+  let rawTotal = 0n;
+  let decimals = 6;
+
+  for (const acc of accounts) {
+    const info = acc?.account?.data?.parsed?.info;
+    const tokenAmount = info?.tokenAmount;
+    if (!tokenAmount?.amount) continue;
+
+    const amountStr: string = tokenAmount.amount;
+    const dec: number = tokenAmount.decimals ?? 6;
+
+    decimals = dec;
+    rawTotal += BigInt(amountStr);
+  }
+
+  const balance = Number(rawTotal) / Math.pow(10, decimals);
+  return { balance, raw: rawTotal, decimals };
 }
 
 // ─────────────────────────────────────────────
@@ -169,23 +164,13 @@ async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({} as any));
+    const walletAddress: string | undefined = body.walletAddress || body.wallet || body.address;
 
-    const maybeAddr: unknown = body.walletAddress ?? body.wallet ?? body.address;
-    const rawAddr = typeof maybeAddr === 'string' ? maybeAddr.trim() : '';
-
-    // Validate + canonicalize (prevents weird whitespace/format issues)
-    let walletAddress = '';
-    try {
-      walletAddress = rawAddr ? new PublicKey(rawAddr).toBase58() : '';
-    } catch {
-      walletAddress = '';
-    }
-
-    if (!walletAddress) {
+    if (!walletAddress || typeof walletAddress !== 'string') {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // 1) XPOT minimum check (server-side) - XPOT ONLY
+    // 1) XPOT minimum check (server-side) - XPOT ONLY, no SOL gating
     let xpotBalance = 0;
 
     try {
