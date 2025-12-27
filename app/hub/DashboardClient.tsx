@@ -665,6 +665,8 @@ function normalizeLinkedWallets(payload: any): LinkedWallet[] {
     }
   }
 
+  type XpotBalanceState = number | 'error' | null;
+
   // unique by address
   const seen = new Set<string>();
   return out.filter(w => {
