@@ -230,7 +230,8 @@ function useReducedMotion() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const m = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = suggests => setReduced(Boolean(suggests?.matches ?? m.matches));
+    const apply = (suggests: any) =>
+  setReduced(Boolean(suggests?.matches ?? m.matches));
     const handler = (e: MediaQueryListEvent) => apply(e);
     apply(null as any);
     m.addEventListener?.('change', handler);
