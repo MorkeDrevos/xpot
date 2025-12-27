@@ -384,14 +384,15 @@ export default function AdminPage() {
 
   // ── Load admin token ────────────────────────
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
-    if (stored) {
-      setAdminToken(stored);
-      setTokenAccepted(true);
-      setTokenInput(stored);
-    }
-  }, []);
+  if (typeof window === 'undefined') return;
+  const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
+  if (stored) {
+    setAdminToken(stored.trim());
+    setTokenAccepted(true);
+    setTokenInput(stored.trim());
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   // IMPORTANT:
   // - authedFetch THROWS on failures so UI doesn't silently show "no draw"
@@ -1027,22 +1028,27 @@ export default function AdminPage() {
 
   // ── Admin token handling ────────────────────
   async function handleUnlock(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!tokenInput.trim()) return;
+  e.preventDefault();
+  const candidate = tokenInput.trim();
+  if (!candidate) return;
 
-    setIsSavingToken(true);
-    try {
-      if (typeof window !== 'undefined')
-        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
-      setAdminToken(tokenInput.trim());
-      setTokenAccepted(true);
-      // force re-discovery after unlock
-      setOpsApiAvailable(null);
-      setOpsApiBanner(null);
-    } finally {
-      setIsSavingToken(false);
-    }
+  setIsSavingToken(true);
+  setTokenVerifyError(null);
+
+  try {
+    // No remote verification step here (because ops-mode route doesn't exist).
+    await acceptToken(candidate);
+
+    // Optional: clear any previous banner state
+    setOpsApiAvailable(null);
+    setOpsApiBanner(null);
+  } catch (err: any) {
+    await revokeToken();
+    setTokenVerifyError(err?.message || 'Failed to unlock');
+  } finally {
+    setIsSavingToken(false);
   }
+}
 
   function handleClearToken() {
     if (typeof window !== 'undefined') window.localStorage.removeItem(ADMIN_TOKEN_KEY);
