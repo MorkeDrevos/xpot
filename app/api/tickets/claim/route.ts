@@ -1,7 +1,7 @@
 // app/api/tickets/claim/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { REQUIRED_XPOT } from '@/lib/xpot';
+import { REQUIRED_XPOT, TOKEN_MINT } from '@/lib/xpot';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,10 +94,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
 
   const startUtcMs = endUtcMs - 24 * 60 * 60_000;
 
-  return {
-    start: new Date(startUtcMs),
-    end: new Date(endUtcMs),
-  };
+  return { start: new Date(startUtcMs), end: new Date(endUtcMs) };
 }
 
 // ─────────────────────────────────────────────
@@ -127,7 +124,7 @@ async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw
       jsonrpc: '2.0',
       id: 1,
       method: 'getTokenAccountsByOwner',
-      params: [address, { mint: XPOT_MINT }, { encoding: 'jsonParsed' }],
+      params: [ownerAddress, { mint }, { encoding: 'jsonParsed' }],
     }),
   });
 
