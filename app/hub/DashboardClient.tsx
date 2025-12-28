@@ -35,8 +35,8 @@ import {
   ChevronUp,
   CalendarClock,
   ArrowDownRight,
-  ShieldCheck,
   ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -191,31 +191,32 @@ function StatusPill({
   const cls =
     tone === 'emerald'
       ? [
-          'border-emerald-300/22',
-          'bg-[linear-gradient(180deg,rgba(16,185,129,0.18),rgba(2,6,23,0.55))]',
+          'border-emerald-300/30',
+          'bg-[linear-gradient(180deg,rgba(16,185,129,0.24),rgba(2,6,23,0.58))]',
           'text-emerald-50',
-          'shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_18px_70px_rgba(16,185,129,0.10)]',
+          'shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_20px_90px_rgba(16,185,129,0.16)]',
         ].join(' ')
       : tone === 'amber'
       ? [
-          // premium XPOT gold (fixes PENDING looking grey)
-          'border-amber-300/28',
-          'bg-[linear-gradient(180deg,rgba(251,191,36,0.22),rgba(120,53,15,0.18),rgba(2,6,23,0.60))]',
+          // XPOT gold — never grey, always active
+          'border-amber-200/45',
+          'bg-[linear-gradient(180deg,rgba(251,191,36,0.34),rgba(245,158,11,0.18),rgba(2,6,23,0.66))]',
           'text-amber-50',
-          'shadow-[0_0_0_1px_rgba(251,191,36,0.14),0_18px_80px_rgba(251,191,36,0.12)]',
+          'shadow-[0_0_0_1px_rgba(251,191,36,0.20),0_24px_110px_rgba(251,191,36,0.18)]',
         ].join(' ')
       : tone === 'sky'
       ? [
-          'border-sky-200/22',
-          'bg-[linear-gradient(180deg,rgba(56,189,248,0.18),rgba(2,6,23,0.55))]',
+          'border-sky-200/30',
+          'bg-[linear-gradient(180deg,rgba(56,189,248,0.24),rgba(2,6,23,0.58))]',
           'text-sky-50',
-          'shadow-[0_0_0_1px_rgba(56,189,248,0.10),0_18px_70px_rgba(56,189,248,0.10)]',
+          'shadow-[0_0_0_1px_rgba(56,189,248,0.14),0_20px_90px_rgba(56,189,248,0.14)]',
         ].join(' ')
       : [
-          'border-slate-600/35',
-          'bg-[linear-gradient(180deg,rgba(148,163,184,0.10),rgba(2,6,23,0.60))]',
+          // slate = neutral / informational only
+          'border-slate-600/40',
+          'bg-[linear-gradient(180deg,rgba(148,163,184,0.14),rgba(2,6,23,0.64))]',
           'text-slate-50',
-          'shadow-[0_0_0_1px_rgba(148,163,184,0.08)]',
+          'shadow-[0_0_0_1px_rgba(148,163,184,0.12)]',
         ].join(' ');
 
   return (
@@ -224,7 +225,6 @@ function StatusPill({
         'inline-flex items-center gap-2 rounded-full border px-3 py-1',
         'text-[10px] font-semibold uppercase tracking-[0.18em]',
         'backdrop-blur-md',
-        // key: keep icons/text bright, not muted
         '[&_svg]:text-current',
         cls,
       ].join(' ')}
@@ -560,7 +560,7 @@ function EntryCeremony({
             transparent,
             rgba(255, 255, 255, 0.08),
             rgba(99, 102, 241, 0.12),
-            rgba(56, 189, 248, 0.10),
+            rgba(56, 189, 248, 0.1),
             rgba(16, 185, 129, 0.08),
             transparent
           );
@@ -843,8 +843,6 @@ function DashboardInner() {
   const [entriesHighlightPulse, setEntriesHighlightPulse] = useState(0);
   const reducedMotion = useReducedMotionPref();
 
-  // Scroll behavior: your previous scroll landed too high.
-  // Fix: use an offset scroll (accounts for sticky top bar) + a "block: start" feel without cutting the header.
   const SCROLL_OFFSET_PX = 120;
 
   const scrollToRef = useCallback(
@@ -855,25 +853,21 @@ function DashboardInner() {
       const offsetPx = opts?.offsetPx ?? SCROLL_OFFSET_PX;
       const highlight = opts?.highlight ?? false;
 
-      // Measure and scroll with offset (more reliable than scrollIntoView for sticky headers)
       const rect = el.getBoundingClientRect();
       const top = rect.top + window.scrollY - offsetPx;
 
       window.scrollTo({ top: Math.max(0, top), behavior: reducedMotion ? 'auto' : 'smooth' });
 
       if (highlight) {
-        // Pulse the card shortly after scroll starts/ends
         window.setTimeout(() => setEntriesHighlightPulse(p => p + 1), reducedMotion ? 0 : 220);
       }
     },
     [reducedMotion],
   );
 
-  // Set scope + auto-jump to the "Your entries today" section so the user sees the change
   const setScopeAndJump = useCallback(
     (scope: 'account' | 'wallet') => {
       setEntriesScope(scope);
-      // Wait a tick so React can commit state and the UI is in sync when scrolling
       window.setTimeout(() => {
         scrollToRef(entriesSectionRef as any, { offsetPx: 132, highlight: true });
       }, 60);
@@ -881,7 +875,7 @@ function DashboardInner() {
     [scrollToRef],
   );
 
-  // Validate mint once (no side effects, just avoids crashes if TOKEN_MINT is wrong)
+  // Validate mint once (no side effects)
   useMemo(() => {
     try {
       // eslint-disable-next-line no-new
@@ -1075,7 +1069,6 @@ function DashboardInner() {
     [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
   );
 
-  // Initial load + polling
   useEffect(() => {
     if (!isAuthedEnough) {
       setEntries([]);
@@ -1111,8 +1104,6 @@ function DashboardInner() {
     };
   }, [isAuthedEnough, refreshAll]);
 
-  // Wallet change / disconnect: force a manual refresh immediately
-  // This makes the dashboard feel "truthy" as you rotate wallets.
   const prevWalletAddrRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isAuthedEnough) return;
@@ -1124,16 +1115,13 @@ function DashboardInner() {
 
     prevWalletAddrRef.current = next;
 
-    // reset wallet-scoped UI quickly
     setTicketClaimed(false);
     setTodaysTicket(null);
     setClaimError(null);
     setCopiedId(null);
 
-    // If switching away from wallet mode and no wallet is connected, keep the scope on account
     if (!next && entriesScope === 'wallet') setEntriesScope('account');
 
-    // Force refresh so balance/history/tickets reconcile instantly
     window.setTimeout(() => {
       refreshAll('manual');
     }, 120);
@@ -1261,7 +1249,6 @@ function DashboardInner() {
       await markStreakDone();
       refreshAll('manual');
 
-      // After a successful claim, bring them to the entries card and highlight it
       window.setTimeout(() => {
         scrollToRef(entriesSectionRef as any, { offsetPx: 132, highlight: true });
       }, 240);
@@ -1275,7 +1262,6 @@ function DashboardInner() {
 
   const normalizedWallet = currentWalletAddress?.toLowerCase();
 
-  // Wallet-only tickets (used by history + wallet-specific display)
   const myTickets: Entry[] = useMemo(() => {
     if (!normalizedWallet) return [];
     return entries
@@ -1283,7 +1269,6 @@ function DashboardInner() {
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   }, [entries, normalizedWallet]);
 
-  // Account-wide grouping (today)
   const accountGroups = useMemo(() => {
     const map = new Map<string, Entry[]>();
     for (const e of entries) {
@@ -1298,7 +1283,6 @@ function DashboardInner() {
     }
     const wallets = Array.from(map.keys());
 
-    // Sort: connected wallet first, then by ticket count desc
     wallets.sort((a, b) => {
       const aIsCur = normalizedWallet && a === normalizedWallet ? 1 : 0;
       const bIsCur = normalizedWallet && b === normalizedWallet ? 1 : 0;
@@ -1343,12 +1327,10 @@ function DashboardInner() {
     return 'Good evening';
   }, []);
 
-  // unlock scroll if lock overlay shows/hides or ceremony shows/hides
   useEffect(() => {
     if (!showLock && !showCeremony) unlockScroll();
   }, [showLock, showCeremony]);
 
-  // Only auto-close on very small screens (never auto-open)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(max-width: 640px)');
@@ -1369,17 +1351,11 @@ function DashboardInner() {
 
   const cutoffUtcMs = useMemo(() => nextMadridCutoffUtcMs(new Date()), [syncPulse, countdown]);
 
-  // Auto-stop highlight after a short premium pulse
-  const entriesGlowActive = useMemo(() => {
-    // key-based animation trigger; actual timing is in CSS (650ms)
-    return entriesHighlightPulse > 0;
-  }, [entriesHighlightPulse]);
-
   return (
     <>
       <style jsx global>{`
         .xpot-luxe-border {
-          background: linear-gradient(90deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.10), rgba(148, 163, 184, 0)) 0
+          background: linear-gradient(90deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.1), rgba(148, 163, 184, 0)) 0
               0 / 200% 1px no-repeat,
             linear-gradient(180deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0)) 0 0 /
               1px 200% no-repeat;
@@ -1418,7 +1394,7 @@ function DashboardInner() {
             opacity: 0;
           }
           12% {
-            opacity: 0.20;
+            opacity: 0.2;
           }
           55% {
             opacity: 0.08;
@@ -1451,88 +1427,39 @@ function DashboardInner() {
           pointer-events: none;
         }
 
-        /* Sticky monitor: now loud-premium, easier to spot */
-        /* ----------------------------
-   Entries monitor: premium purple treatment
-   - no "breathing" (disable animations)
-   - one-time soft flash on open
------------------------------ */
+        /* Entries monitor: kill breathing */
+        .xpot-monitor-shell,
+        .xpot-monitor-shell * {
+          animation: none !important;
+        }
+        .xpot-monitor-shell {
+          border: 1px solid rgba(139, 92, 246, 0.32) !important;
+          background: rgba(2, 6, 23, 0.86) !important;
+          box-shadow: 0 40px 160px rgba(0, 0, 0, 0.78), 0 0 0 1px rgba(139, 92, 246, 0.1),
+            0 18px 80px rgba(99, 102, 241, 0.18);
+          backdrop-filter: blur(18px);
+        }
+        .xpot-monitor-ring {
+          pointer-events: none;
+          position: absolute;
+          inset: 0;
+          border-radius: 22px;
+          padding: 1px;
+          background: linear-gradient(90deg, rgba(99, 102, 241, 0.35), rgba(139, 92, 246, 0.28), rgba(236, 72, 153, 0.18));
+          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0.9;
+        }
 
-/* hard stop any animation inside monitor (prevents "breathing") */
-.xpot-monitor-shell,
-.xpot-monitor-shell * {
-  animation: none !important;
-}
-
-/* premium purple border + glow */
-.xpot-monitor-shell {
-  border: 1px solid rgba(139, 92, 246, 0.32) !important; /* violet */
-  background: rgba(2, 6, 23, 0.86) !important;
-  box-shadow:
-    0 40px 160px rgba(0, 0, 0, 0.78),
-    0 0 0 1px rgba(139, 92, 246, 0.10),
-    0 18px 80px rgba(99, 102, 241, 0.18); /* indigo/violet glow */
-  backdrop-filter: blur(18px);
-}
-
-/* subtle gradient ring overlay */
-.xpot-monitor-ring {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  border-radius: 22px;
-  padding: 1px;
-  background: linear-gradient(
-    90deg,
-    rgba(99, 102, 241, 0.35),
-    rgba(139, 92, 246, 0.28),
-    rgba(236, 72, 153, 0.18)
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0.9;
-}
-
-/* one-time flash */
-@keyframes xpotMonitorFlash {
-  0% {
-    box-shadow:
-      0 40px 160px rgba(0, 0, 0, 0.78),
-      0 0 0 1px rgba(139, 92, 246, 0.14),
-      0 0 0 rgba(99, 102, 241, 0.0);
-    transform: translateY(0px);
-  }
-  30% {
-    box-shadow:
-      0 40px 160px rgba(0, 0, 0, 0.78),
-      0 0 0 1px rgba(139, 92, 246, 0.22),
-      0 0 80px rgba(99, 102, 241, 0.30);
-    transform: translateY(-1px);
-  }
-  100% {
-    box-shadow:
-      0 40px 160px rgba(0, 0, 0, 0.78),
-      0 0 0 1px rgba(139, 92, 246, 0.10),
-      0 18px 80px rgba(99, 102, 241, 0.18);
-    transform: translateY(0px);
-  }
-}
-
-/* applied only when open */
-.xpot-monitor-flash {
-  animation: xpotMonitorFlash 650ms ease-out 1 !important;
-}
-
-        /* Entries-card confirmation pulse (650ms violet glow) */
         @keyframes xpotEntriesPulse {
           0% {
             box-shadow: 0 0 0 rgba(99, 102, 241, 0);
             transform: translateY(0px);
           }
           35% {
-            box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.22), 0 28px 120px rgba(99, 102, 241, 0.20),
-              0 18px 90px rgba(56, 189, 248, 0.10);
+            box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.22), 0 28px 120px rgba(99, 102, 241, 0.2),
+              0 18px 90px rgba(56, 189, 248, 0.1);
             transform: translateY(-1px);
           }
           100% {
@@ -1573,11 +1500,7 @@ function DashboardInner() {
                 >
                   {avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={avatar}
-                      alt={name}
-                      className={`h-6 w-6 rounded-full border ${BORDER_SOFT} object-cover`}
-                    />
+                    <img src={avatar} alt={name} className={`h-6 w-6 rounded-full border ${BORDER_SOFT} object-cover`} />
                   ) : (
                     <div
                       className={`flex h-6 w-6 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45 text-[11px] font-semibold text-slate-100`}
@@ -1789,11 +1712,7 @@ function DashboardInner() {
                         Claim
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => refreshAll('manual')}
-                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
-                      >
+                      <button type="button" onClick={() => refreshAll('manual')} className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         Refresh
                       </button>
@@ -1972,10 +1891,7 @@ function DashboardInner() {
               <div ref={entriesSectionRef as any}>
                 <LuxeCard
                   accent="sky"
-                  className={[
-                    // Pulse only when triggered (keyed by entriesHighlightPulse)
-                    entriesHighlightPulse ? 'xpot-entries-pulse' : '',
-                  ].join(' ')}
+                  className={[entriesHighlightPulse ? 'xpot-entries-pulse' : ''].join(' ')}
                   key={`entries-card-${entriesHighlightPulse}`}
                 >
                   <LuxeTitle
@@ -2077,9 +1993,7 @@ function DashboardInner() {
                                     <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">
                                       Wallet
                                     </span>
-                                    <span className="font-mono text-xs text-slate-100">
-                                      {shortWallet(t.walletAddress)}
-                                    </span>
+                                    <span className="font-mono text-xs text-slate-100">{shortWallet(t.walletAddress)}</span>
                                   </div>
                                 </div>
                               ))}
@@ -2218,9 +2132,7 @@ function DashboardInner() {
 
                             <div className="min-w-0">
                               <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-200/65">
-                                {h ? `@${h}` : shortWallet(w.walletAddress)}
-                              </p>
+                              <p className="mt-1 text-xs text-slate-200/65">{h ? `@${h}` : shortWallet(w.walletAddress)}</p>
                             </div>
                           </div>
                         </div>
@@ -2278,7 +2190,7 @@ function DashboardInner() {
             </div>
           </section>
 
-          {/* Global footer (structured like a site footer) */}
+          {/* Global footer */}
           <footer className={`mt-10 border-t ${BORDER_SOFT} pt-8 pb-6`}>
             <div className="grid gap-6 md:grid-cols-3">
               <div>
@@ -2357,14 +2269,13 @@ function DashboardInner() {
             </div>
           </footer>
 
-          {/* RIGHT-SIDE STICKY ENTRIES MONITOR (closed by default, now premium and visible) */}
+          {/* RIGHT-SIDE STICKY ENTRIES MONITOR */}
           <div className="fixed bottom-5 left-4 right-4 z-[60] sm:left-auto sm:right-6 sm:w-[380px]">
             <div className="xpot-monitor-shell xpot-monitor-beacon relative overflow-hidden rounded-[22px]">
               <div className="pointer-events-none absolute -inset-20 opacity-75 blur-3xl bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.16),transparent_58%),radial-gradient(circle_at_62%_20%,rgba(99,102,241,0.18),transparent_58%),radial-gradient(circle_at_85%_40%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_60%_110%,rgba(236,72,153,0.10),transparent_68%)]" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px]" />
 
               <div className="relative p-4">
-                {/* Visible "handle" row */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -2476,11 +2387,7 @@ function DashboardInner() {
                         Jump to claim
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => refreshAll('manual')}
-                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
-                      >
+                      <button type="button" onClick={() => refreshAll('manual')} className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         Refresh
                       </button>
