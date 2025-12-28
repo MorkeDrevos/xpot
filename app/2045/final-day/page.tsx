@@ -10,6 +10,10 @@ type Era = '2045' | 'now';
 const STORAGE_KEY = 'xpot_final_day_era_v5';
 const LIVE_POLL_MS = 5000;
 
+const RUN_TOTAL_DAYS = 7000;
+const DRAW_HOUR_MADRID = 22; // 22:00 Madrid time
+const MADRID_TZ = 'Europe/Madrid';
+
 type LiveDraw = {
   dailyXpot: number;
   dayNumber: number; // API value (may be 1-based)
@@ -54,9 +58,90 @@ function safeParseMs(iso: string | null | undefined) {
   return Number.isFinite(ms) ? ms : null;
 }
 
-// ✅ Final Draw date must match lib/xpotRun.ts RUN_END = 2045-02-22 22:00 (Madrid)
-// 2045-02-22 is Wednesday
-const ARCHIVE_DATE_LINE = 'Wednesday, 22 February 2045';
+// ─────────────────────────────────────────────
+// Madrid time helpers (no external libs)
+// ─────────────────────────────────────────────
+function getZonedParts(date: Date, timeZone: string) {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
+  const parts = dtf.formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    if (p.type !== 'literal') map[p.type] = p.value;
+  }
+
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+    second: Number(map.second),
+  };
+}
+
+function tzOffsetMinutes(timeZone: string, date: Date) {
+  // Trick: format the same instant in the target TZ, interpret that wall-clock as UTC,
+  // and the delta to the real instant is the offset.
+  const p = getZonedParts(date, timeZone);
+  const asUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  return (asUTC - date.getTime()) / 60000;
+}
+
+function zonedTimeToUtcMs(
+  timeZone: string,
+  y: number,
+  m: number,
+  d: number,
+  hh: number,
+  mm: number,
+  ss: number,
+) {
+  // Start with a UTC guess that matches the same wall-clock, then adjust by the TZ offset.
+  let guess = Date.UTC(y, m - 1, d, hh, mm, ss);
+  for (let i = 0; i < 2; i++) {
+    const off = tzOffsetMinutes(timeZone, new Date(guess));
+    guess = Date.UTC(y, m - 1, d, hh, mm, ss) - off * 60_000;
+  }
+  return guess;
+}
+
+function addDaysYmd(y: number, m: number, d: number, add: number) {
+  const ms = Date.UTC(y, m - 1, d) + add * 86_400_000;
+  const dt = new Date(ms);
+  return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() };
+}
+
+function daysBetweenYmd(a: { year: number; month: number; day: number }, b: { year: number; month: number; day: number }) {
+  const aMs = Date.UTC(a.year, a.month - 1, a.day);
+  const bMs = Date.UTC(b.year, b.month - 1, b.day);
+  return Math.floor((bMs - aMs) / 86_400_000);
+}
+
+function formatYmdDMY(ymd: { year: number; month: number; day: number }) {
+  return `${pad2(ymd.day)}/${pad2(ymd.month)}/${String(ymd.year)}`;
+}
+
+function formatArchiveDateLine(utcMs: number) {
+  const dtf = new Intl.DateTimeFormat('en-GB', {
+    timeZone: MADRID_TZ,
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+  // Example: "Wednesday, 22 February 2045"
+  return dtf.format(new Date(utcMs));
+}
 
 export default function FinalDayPage() {
   const [era, setEra] = useState<Era>('2045');
@@ -83,11 +168,53 @@ export default function FinalDayPage() {
     } catch {}
   }, [era]);
 
+  // ✅ RESET: run starts "today" (Madrid date) and first draw is 22:00 Madrid tonight
+  const runSchedule = useMemo(() => {
+    const now = new Date(nowTs);
+
+    const nowMadrid = getZonedParts(now, MADRID_TZ);
+    const runStartYmd = { year: nowMadrid.year, month: nowMadrid.month, day: nowMadrid.day };
+
+    const runStartUtcMs = zonedTimeToUtcMs(
+      MADRID_TZ,
+      runStartYmd.year,
+      runStartYmd.month,
+      runStartYmd.day,
+      DRAW_HOUR_MADRID,
+      0,
+      0,
+    );
+
+    // Final draw occurs on Day 7000 at 22:00 Madrid on (startDate + 6999 days)
+    const finalYmd = addDaysYmd(runStartYmd.year, runStartYmd.month, runStartYmd.day, RUN_TOTAL_DAYS - 1);
+    const finalDrawUtcMs = zonedTimeToUtcMs(MADRID_TZ, finalYmd.year, finalYmd.month, finalYmd.day, DRAW_HOUR_MADRID, 0, 0);
+
+    // Day numbering logic:
+    // - Before first draw tonight: Day 1
+    // - After 22:00 tonight: Day 2, etc.
+    const dayDiff = daysBetweenYmd(runStartYmd, { year: nowMadrid.year, month: nowMadrid.month, day: nowMadrid.day });
+    const drawsCompleted = nowTs >= runStartUtcMs ? Math.max(0, dayDiff + (nowMadrid.hour >= DRAW_HOUR_MADRID ? 1 : 0)) : 0;
+    const dayNumber = Math.min(RUN_TOTAL_DAYS, Math.max(1, drawsCompleted + 1));
+
+    const daysRemaining = Math.max(0, RUN_TOTAL_DAYS - dayNumber);
+
+    return {
+      runStartYmd,
+      runStartUtcMs,
+      finalYmd,
+      finalDrawUtcMs,
+      dayNumber,
+      daysRemaining,
+      endDateDMY: formatYmdDMY(finalYmd),
+      archiveDateLine: formatArchiveDateLine(finalDrawUtcMs),
+    };
+  }, [nowTs]);
+
   const meta = useMemo(() => {
     if (era === '2045') {
       return {
         badge: 'ARCHIVE EDITION',
-        dateLine: ARCHIVE_DATE_LINE,
+        dateLine: runSchedule.archiveDateLine,
         section: 'Culture / Protocols',
         headline: "XPOT’s Final Day",
         deck:
@@ -107,7 +234,7 @@ export default function FinalDayPage() {
       byline: 'XPOT',
       price: '',
     };
-  }, [era]);
+  }, [era, runSchedule.archiveDateLine]);
 
   const onFlip = useCallback(() => {
     setEra((e) => (e === '2045' ? 'now' : '2045'));
@@ -185,7 +312,7 @@ export default function FinalDayPage() {
         const d: LiveDraw = {
           dailyXpot: Number(json.draw.dailyXpot ?? 1_000_000),
           dayNumber: Number(json.draw.dayNumber ?? 0),
-          dayTotal: Number(json.draw.dayTotal ?? 7000),
+          dayTotal: Number(json.draw.dayTotal ?? RUN_TOTAL_DAYS),
           drawDate: String(json.draw.drawDate ?? ''),
           closesAt: String(json.draw.closesAt),
           status: (json.draw.status as LiveDraw['status']) ?? 'OPEN',
@@ -199,7 +326,7 @@ export default function FinalDayPage() {
         if (!safeParseMs(d.closesAt)) throw new Error('BAD_CLOSESAT');
         if (!Number.isFinite(d.dailyXpot)) throw new Error('BAD_DAILY');
         if (!Number.isFinite(d.dayNumber) || d.dayNumber < 0) d.dayNumber = 0;
-        if (!Number.isFinite(d.dayTotal) || d.dayTotal <= 0) d.dayTotal = 7000;
+        if (!Number.isFinite(d.dayTotal) || d.dayTotal <= 0) d.dayTotal = RUN_TOTAL_DAYS;
 
         setLive(d);
       } catch (e: any) {
@@ -226,12 +353,8 @@ export default function FinalDayPage() {
     return () => window.clearInterval(t);
   }, []);
 
-  // Display day number (fix common +1 offset from API)
-  const displayDayNumber = useMemo(() => {
-    const n = live?.dayNumber ?? 0;
-    // If API is 1-based, we want the UX to match your “Day 2” expectation
-    return n > 0 ? Math.max(0, n - 1) : 0;
-  }, [live?.dayNumber]);
+  // ✅ Display day number is now schedule-driven (reset to Day 1 today)
+  const displayDayNumber = useMemo(() => runSchedule.dayNumber, [runSchedule.dayNumber]);
 
   const closesAtMs = safeParseMs(live?.closesAt);
   const remainingMs = closesAtMs ? Math.max(0, closesAtMs - nowTs) : null;
@@ -250,15 +373,9 @@ export default function FinalDayPage() {
           ? 'bg-amber-500/10 text-amber-200 ring-amber-500/20'
           : 'bg-white/5 text-white/80 ring-white/15';
 
-  const dayLabel =
-    displayDayNumber && (live?.dayTotal ?? 0) > 0
-      ? `Day ${displayDayNumber.toLocaleString()} of ${(live?.dayTotal ?? 7000).toLocaleString()}`
-      : 'Day - of 7000';
+  const dayLabel = `Day ${displayDayNumber.toLocaleString()} of ${RUN_TOTAL_DAYS.toLocaleString()}`;
 
-  const dayProgress =
-    displayDayNumber && live?.dayTotal
-      ? Math.max(0, Math.min(1, displayDayNumber / live.dayTotal))
-      : 0;
+  const dayProgress = Math.max(0, Math.min(1, displayDayNumber / RUN_TOTAL_DAYS));
 
   const bgRoot =
     'bg-[#05070a] ' +
@@ -344,10 +461,7 @@ export default function FinalDayPage() {
       </div>
 
       {/* Flip scene */}
-      <section
-        className="mx-auto max-w-[1120px] [perspective:1400px] print:[perspective:none]"
-        aria-label="Final Day story"
-      >
+      <section className="mx-auto max-w-[1120px] [perspective:1400px] print:[perspective:none]" aria-label="Final Day story">
         <div
           className={[
             'relative [transform-style:preserve-3d] motion-safe:transition-transform motion-safe:duration-[800ms]',
@@ -610,9 +724,9 @@ export default function FinalDayPage() {
                 <div className="inline-flex items-center gap-3">
                   <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">{dayLabel}</div>
 
-                  {/* Mysterious + protocol-serious */}
+                  {/* shows final date explicitly (matches your screenshot intent) */}
                   <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
-                    Operated by the protocol
+                    Ends {runSchedule.endDateDMY}
                   </div>
                 </div>
               </div>
@@ -644,7 +758,7 @@ export default function FinalDayPage() {
                   <div className="h-full bg-white/25" style={{ width: `${Math.round(dayProgress * 10000) / 100}%` }} />
                 </div>
                 <div className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-white/55">
-                  Progress to Day 7000
+                  {runSchedule.daysRemaining.toLocaleString()} days remaining
                 </div>
               </div>
             </header>
