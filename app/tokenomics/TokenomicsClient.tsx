@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
@@ -36,7 +36,7 @@ const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
 const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
 
-// ✅ Buttons (updated)
+// ✅ Buttons
 const BTN_PRIMARY =
   'inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition ' +
   'border border-[rgba(var(--xpot-gold),0.35)] bg-[linear-gradient(180deg,rgba(var(--xpot-gold),0.18),rgba(var(--xpot-gold),0.08))] ' +
@@ -57,19 +57,18 @@ const VAULT_POLL_MS = 20_000;
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
 
-// Exact 10y requirement at 1M/day
-const TEN_YEARS_REQUIRED = DISTRIBUTION_DAILY_XPOT * DAYS_PER_YEAR * 10; // 3,650,000,000
-
 // ─────────────────────────────────────────────
 // ✅ Solscan proof targets for token controls
-// Fill these once, then the UI stays clean and verifiable.
 // ─────────────────────────────────────────────
-const XPOT_MINT_ACCOUNT = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoSUkUtHcJR1Ejko1'; // mint account (from your Solscan screenshot)
-const MINT_AUTHORITY_REVOKE_TX = '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtstnikBXTtTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwy8bpwNrRfuLvM';
-// If you did freeze revoke in terminal, paste that signature here:
-const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
+const XPOT_MINT_ACCOUNT = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoSUkUtHcJR1Ejko1';
+const MINT_AUTHORITY_REVOKE_TX =
+  '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtstnikBXTtTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwy8bpwNrRfuLvM';
 
-// Rewards reserve wallet (you sent this link)
+// Paste when you have them (from terminal)
+const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
+const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
+
+// Rewards reserve wallet
 const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 
 function solscanAccountUrl(account: string) {
@@ -80,7 +79,7 @@ function solscanTxUrl(sig: string) {
 }
 
 // ─────────────────────────────────────────────
-// ✅ Team vesting (Streamflow) - on-chain proof targets
+// ✅ Team vesting (Streamflow) - proof targets
 // ─────────────────────────────────────────────
 function getStreamflowContractUrl(contractAccount: string) {
   return `https://app.streamflow.finance/contract/solana/${contractAccount}`;
@@ -91,6 +90,10 @@ const TEAM_VESTING = {
   senderWallet: 'G17RehqUAgMcAxcnLUZyf6WzuPqsM82q9SC1aSkBUR7w',
   recipientWallet: '3DSuZP8d8a9f5CftdJvmJA1wxgzgxKULLDwZeRKC2Vh',
 };
+
+// Partners lock (add proof target once ready)
+// You can set this to a Streamflow contract, a timelock program account, or a dedicated escrow wallet.
+const PARTNERS_LOCK_PROOF: { label: string; href: string } | null = null;
 
 function Pill({ children, tone = 'slate' }: { children: ReactNode; tone?: PillTone }) {
   const map: Record<PillTone, string> = {
@@ -160,17 +163,15 @@ function timeAgo(tsMs: number) {
 function toneStroke(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.78)';
   if (tone === 'sky') return 'rgba(56,189,248,0.78)';
-  if (tone === 'amber') return 'rgba(250,204,21,0.78)'; // fallback gold
-  return 'rgba(148,163,184,0.68)'; // slate
+  if (tone === 'amber') return 'rgba(250,204,21,0.78)';
+  return 'rgba(148,163,184,0.68)';
 }
-
 function toneGlow(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
   if (tone === 'amber') return 'rgba(250,204,21,0.18)';
   return 'rgba(148,163,184,0.16)';
 }
-
 function toneRing(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
@@ -238,6 +239,39 @@ function ProofLinkPill({
   );
 }
 
+function TokenControlRow({
+  title,
+  status,
+  proofHref,
+  proofLabel,
+  placeholder,
+}: {
+  title: string;
+  status: 'Revoked' | 'Locked';
+  proofHref?: string | null;
+  proofLabel?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{title}</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-200">{status}</p>
+        </div>
+
+        {proofHref ? (
+          <ProofLinkPill href={proofHref} label={proofLabel ?? 'Proof'} tone="emerald" />
+        ) : (
+          <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
+            {placeholder ?? 'Add proof'}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Team vesting (12 months, monthly equal amounts)
 // + ✅ on-chain Streamflow proof panel
@@ -282,20 +316,19 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Team vesting schedule</p>
-          <p className="mt-1 text-[11px] text-slate-500">12 months, monthly equal unlocks. Schedule math below matches the on-chain vesting behaviour.</p>
+          <p className="mt-1 text-[11px] text-slate-500">12 months, monthly equal unlocks.</p>
         </div>
         <span className="rounded-full border border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--xpot-gold-2))]">
           12M linear
         </span>
       </div>
 
-      {/* ✅ On-chain proof block */}
       <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain vesting</p>
             <p className="mt-1 text-sm font-semibold text-slate-100">Streamflow contract (public)</p>
-            <p className="mt-1 text-xs text-slate-500">Tokens are held by the vesting contract (escrow) and unlock monthly to the payout wallet.</p>
+            <p className="mt-1 text-xs text-slate-500">Tokens are held in escrow and unlock monthly to the payout wallet.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -337,7 +370,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
         </div>
 
         <p className="mt-3 text-[11px] text-slate-600">
-          Important: the “Team” wallet balance will look lower after vesting creation because the tokens moved into escrow. That is expected.
+          Note: after vesting creation, the team wallet balance drops because tokens moved into escrow. That is expected.
         </p>
       </div>
 
@@ -400,9 +433,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
             </div>
           </div>
 
-          <p className="mt-3 text-[11px] text-slate-600">
-            Bars = monthly unlock. Line = cumulative vested %. Your actual vesting is verifiable via the Streamflow and Solscan buttons above.
-          </p>
+          <p className="mt-3 text-[11px] text-slate-600">Bars = monthly unlock. Line = cumulative vested %.</p>
         </div>
 
         <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
@@ -428,7 +459,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
   );
 }
 
-// /api/vaults exact schema (expanded - uiAmount is often null)
+// /api/vaults schema (expanded - uiAmount is often null)
 type ApiVaultTx = {
   signature: string;
   blockTime: number | null; // seconds
@@ -442,8 +473,8 @@ type ApiVaultEntry = {
   balance:
     | {
         amount: string; // raw integer in string
-        uiAmount: number | null; // Solana often returns null for large balances
-        uiAmountString?: string; // use this when uiAmount is null
+        uiAmount: number | null;
+        uiAmountString?: string;
         decimals: number;
       }
     | null;
@@ -1004,7 +1035,7 @@ function DonutAllocation({
                               </div>
 
                               <p className="mt-3 text-[11px] text-slate-500">
-                                Reserve size: {distributionReserve.toLocaleString('en-US')} XPOT (14% of supply). Daily distribution is fixed at {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT.
+                                Reserve size: {distributionReserve.toLocaleString('en-US')} XPOT. Daily distribution is fixed at {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT.
                                 Unused reserve stays in the reserve wallet and remains verifiable.
                               </p>
                             </div>
@@ -1012,9 +1043,15 @@ function DonutAllocation({
 
                           {a.key === 'team' && <TeamVestingPanel totalTeamTokens={teamTotalTokens} />}
 
-                          <VaultGroupPanel title="Vaults (live)" groupKey={vaultGroupKey} data={vaultData} isLoading={vaultLoading} hadError={vaultError} />
+                          <VaultGroupPanel
+                            title="Vaults (live)"
+                            groupKey={vaultGroupKey}
+                            data={vaultData}
+                            isLoading={vaultLoading}
+                            hadError={vaultError}
+                          />
 
-                          <p className="mt-3 text-[11px] text-slate-600">Design intent: dedicated vaults, timelocks and public wallets so this stays verifiable over time.</p>
+                          <p className="mt-3 text-[11px] text-slate-600">Design intent: dedicated vaults, locks and public wallets so this stays verifiable over time.</p>
                         </div>
                       </div>
                     </motion.div>
@@ -1032,8 +1069,6 @@ function DonutAllocation({
 /**
  * ✅ Next.js requirement:
  * `useSearchParams()` must be wrapped in a Suspense boundary.
- * We keep this page as a client component, but move the hook into an inner component
- * and render it inside <Suspense />.
  */
 function TokenomicsPageInner() {
   const searchParams = useSearchParams();
@@ -1074,9 +1109,10 @@ function TokenomicsPageInner() {
         label: 'Protocol distribution reserve',
         pct: 14,
         note: 'Pre-allocated XPOT reserved for long-term distribution.',
-        detail: `Protocol rule: ${fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT per day. Exact 10-year requirement: ${TEN_YEARS_REQUIRED.toLocaleString(
-          'en-US',
-        )} XPOT. No minting - unused reserve stays in the reserve wallet and remains verifiable.`,
+        detail:
+          `Protocol rule: ${fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT per day. ` +
+          `Reserve coverage at the fixed rule: ${runwayFixedYears.toFixed(2)} years. ` +
+          `Unused reserve stays in the reserve wallet and remains verifiable.`,
         tone: 'emerald',
       },
       {
@@ -1084,7 +1120,7 @@ function TokenomicsPageInner() {
         label: 'Treasury and runway',
         pct: 23,
         note: 'Operational runway for audits, infrastructure, legal and long-horizon execution.',
-        detail: 'This is operational runway (separate from the daily distribution reserve). It funds security, infrastructure and long-term execution without touching distribution.',
+        detail: 'Operational runway (separate from the daily distribution reserve). Funds security, infrastructure and long-horizon execution without touching distribution.',
         tone: 'slate',
       },
       {
@@ -1100,7 +1136,7 @@ function TokenomicsPageInner() {
         label: 'Strategic reserve',
         pct: 13,
         note: 'Buffer for unknowns and future opportunities.',
-        detail: 'This stays untouched by default. If it ever moves, it should be deliberate, transparent and reported with public wallets and a clear purpose.',
+        detail: 'Untouched by default. If it ever moves, it should be deliberate, transparent and reported with public wallets and a clear purpose.',
         tone: 'slate',
       },
       {
@@ -1111,8 +1147,6 @@ function TokenomicsPageInner() {
         detail:
           `Vesting is live on-chain via Streamflow: 12 months, monthly equal unlocks. ` +
           `Contract (escrow): ${shortAddr(TEAM_VESTING.contractAccount)}. ` +
-          `Sender: ${shortAddr(TEAM_VESTING.senderWallet)}. ` +
-          `Recipient (payout): ${shortAddr(TEAM_VESTING.recipientWallet)}. ` +
           `Open the expanded panel for the proof links.`,
         tone: 'amber',
       },
@@ -1133,7 +1167,7 @@ function TokenomicsPageInner() {
         tone: 'emerald',
       },
     ],
-    [],
+    [runwayFixedYears],
   );
 
   const sortedAllocation = useMemo(() => {
@@ -1169,7 +1203,6 @@ function TokenomicsPageInner() {
   };
 
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
   const getCardRef = (key: string) => (el: HTMLDivElement | null) => {
     cardRefs.current[key] = el;
   };
@@ -1220,7 +1253,7 @@ function TokenomicsPageInner() {
     });
   }, []);
 
-  // ✅ Deep-link support from home page: /tokenomics?tab=rewards&focus=reserve
+  // Deep-link support: /tokenomics?tab=rewards&focus=reserve
   const didAutoFocusRef = useRef(false);
   useEffect(() => {
     if (didAutoFocusRef.current) return;
@@ -1230,48 +1263,101 @@ function TokenomicsPageInner() {
 
     if (focus === 'reserve' || tab === 'rewards') {
       didAutoFocusRef.current = true;
-
-      // Let the page layout/refs settle first (prevents "scroll before ref")
       const t = window.setTimeout(() => openDistribution(), 120);
       return () => window.clearTimeout(t);
     }
   }, [searchParams, openDistribution]);
 
   // ─────────────────────────────────────────────
-  // ✅ Redesigned top section (less busy, more readable)
-  // - One headline block
-  // - One clean proof strip (3 cards)
-  // - Token controls includes Solscan proof links for revoke actions
+  // ✅ Redesigned top section
+  // - calm header
+  // - hero KPI focuses on 19.18 years
+  // - token controls + proof targets (mint/freeze/update + team/partners locked)
   // ─────────────────────────────────────────────
-  const proofCards = (
-    <div className="mt-7 grid gap-3 lg:grid-cols-3">
-      {/* Supply */}
-      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
-        <div className="flex items-start justify-between gap-3">
+  const heroTop = (
+    <div className="mt-7 grid gap-3 lg:grid-cols-[1.25fr_0.9fr]">
+      {/* LEFT: KPI (19.18 years) */}
+      <div className="rounded-[26px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
-            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
-            <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reserve coverage</p>
+
+            <div className="mt-3 flex items-end gap-3">
+              <p className="font-mono text-5xl font-semibold text-emerald-200 leading-none">{runwayFixedYears.toFixed(2)}</p>
+              <p className="pb-1 text-sm font-semibold text-slate-400">years</p>
+            </div>
+
+            <p className="mt-3 text-sm text-slate-300">
+              Fixed daily distribution: <span className="font-mono text-slate-100">{fmtInt(DISTRIBUTION_DAILY_XPOT)}</span> / day.
+              This is the runway of the <span className="font-semibold text-slate-100">distribution reserve</span>.
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+              <span className="inline-flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-300" />
+                Reserve size: <span className="font-mono text-slate-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')}</span> XPOT
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-white/20" />
+                Coverage: <span className="font-mono text-slate-200">{runwayFixedDays.toLocaleString('en-US')}</span> days
+              </span>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                Enter today&apos;s XPOT
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+
+              <button
+                type="button"
+                onClick={openDistribution}
+                className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+              >
+                View reserve proof
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
+
+              <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                Terms
+              </Link>
+            </div>
           </div>
-          <Pill tone="sky">
+
+          <Pill tone="emerald">
             <ShieldCheck className="h-3.5 w-3.5" />
-            Fixed
+            Verifiable
           </Pill>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
-          <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reserve wallet</p>
+            <p className="mt-1 font-mono text-xs text-slate-200">{shortAddr(REWARDS_RESERVE_WALLET)}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Solscan" tone="emerald" />
+              <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint account</p>
+            <p className="mt-1 font-mono text-xs text-slate-200">{shortAddr(XPOT_MINT_ACCOUNT)}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Solscan" tone="slate" />
+              <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+      {/* RIGHT: Token controls (revoked + locks) */}
+      <div className="rounded-[26px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
-            <p className="mt-2 text-sm font-semibold text-slate-100">Authorities revoked</p>
-            <p className="mt-1 text-xs text-slate-500">Every revoke has a public proof link.</p>
+            <p className="mt-2 text-sm font-semibold text-slate-100">Authorities revoked, allocations locked</p>
+            <p className="mt-1 text-xs text-slate-500">Everything here is backed by public proof targets.</p>
           </div>
           <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
             Locked
@@ -1279,74 +1365,71 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 grid gap-2">
-          <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint authority</p>
-                <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
-              </div>
-              {MINT_AUTHORITY_REVOKE_TX ? (
-                <ProofLinkPill href={solscanTxUrl(MINT_AUTHORITY_REVOKE_TX)} label="Solscan tx" tone="emerald" />
-              ) : (
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
-                  Add tx signature
-                </span>
-              )}
-            </div>
-            <p className="mt-2 text-[11px] text-slate-600">Proof target: set mintTokens authority to NULL on the mint account.</p>
-          </div>
+          <TokenControlRow
+            title="Mint authority"
+            status="Revoked"
+            proofHref={MINT_AUTHORITY_REVOKE_TX ? solscanTxUrl(MINT_AUTHORITY_REVOKE_TX) : null}
+            proofLabel="Solscan tx"
+            placeholder="Add mint tx"
+          />
+          <TokenControlRow
+            title="Freeze authority"
+            status="Revoked"
+            proofHref={FREEZE_AUTHORITY_REVOKE_TX ? solscanTxUrl(FREEZE_AUTHORITY_REVOKE_TX) : null}
+            proofLabel="Solscan tx"
+            placeholder="Paste freeze tx"
+          />
+          <TokenControlRow
+            title="Update authority"
+            status="Revoked"
+            proofHref={UPDATE_AUTHORITY_REVOKE_TX ? solscanTxUrl(UPDATE_AUTHORITY_REVOKE_TX) : null}
+            proofLabel="Solscan tx"
+            placeholder="Paste update tx"
+          />
 
           <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Freeze authority</p>
-                <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Team and partners</p>
+                <p className="mt-1 text-sm font-semibold text-emerald-200">Locked</p>
               </div>
-              {FREEZE_AUTHORITY_REVOKE_TX ? (
-                <ProofLinkPill href={solscanTxUrl(FREEZE_AUTHORITY_REVOKE_TX)} label="Solscan tx" tone="emerald" />
-              ) : (
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
-                  Paste freeze tx
-                </span>
-              )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={getStreamflowContractUrl(TEAM_VESTING.contractAccount)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+                >
+                  Team vesting <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70" />
+                </a>
+
+                {PARTNERS_LOCK_PROOF ? (
+                  <a
+                    href={PARTNERS_LOCK_PROOF.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center rounded-full border border-sky-400/25 bg-sky-500/10 px-3 py-1.5 text-[11px] font-semibold text-sky-200 hover:bg-sky-500/15 transition"
+                  >
+                    {PARTNERS_LOCK_PROOF.label} <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70" />
+                  </a>
+                ) : (
+                  <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
+                    Add partners proof
+                  </span>
+                )}
+              </div>
             </div>
-            <p className="mt-2 text-[11px] text-slate-600">Proof target: set freeze authority to NULL on the mint account.</p>
+
+            <p className="mt-2 text-[11px] text-slate-600">
+              Team = vested escrow (Streamflow). Partners = add a timelock/escrow proof target when ready.
+            </p>
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
             <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
           </div>
-        </div>
-      </div>
-
-      {/* Reserve */}
-      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve</p>
-            <p className="mt-2 font-mono text-xl font-semibold text-emerald-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</p>
-            <p className="mt-1 text-xs text-slate-500">Designated reserve wallet</p>
-          </div>
-          <Pill tone="emerald">
-            <Sparkles className="h-3.5 w-3.5" />
-            Proof
-          </Pill>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Reserve wallet" tone="emerald" />
-          <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-3">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Runway (fixed rule)</p>
-          <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
-            {runwayFixedYears.toFixed(2)} <span className="text-sm font-semibold text-slate-500">years</span>
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {fmtInt(DISTRIBUTION_DAILY_XPOT)} / day - {runwayFixedDays.toLocaleString('en-US')} days coverage
-          </p>
         </div>
       </div>
     </div>
@@ -1361,15 +1444,15 @@ function TokenomicsPageInner() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      {/* ✅ Redesigned hero - calmer, fewer blocks */}
+      {/* ✅ Calmer hero */}
       <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
         <div className="relative overflow-hidden border-b border-white/5 bg-[linear-gradient(180deg,rgba(10,7,4,0.96),rgba(0,0,0,0.94))]">
           <div
             className="
               pointer-events-none absolute inset-0
-              bg-[radial-gradient(circle_at_18%_22%,rgba(var(--xpot-gold),0.18),transparent_62%),
-                  radial-gradient(circle_at_78%_34%,rgba(56,189,248,0.10),transparent_66%),
-                  radial-gradient(circle_at_20%_85%,rgba(16,185,129,0.10),transparent_60%),
+              bg-[radial-gradient(circle_at_18%_22%,rgba(var(--xpot-gold),0.16),transparent_62%),
+                  radial-gradient(circle_at_76%_26%,rgba(168,85,247,0.10),transparent_64%),
+                  radial-gradient(circle_at_24%_86%,rgba(16,185,129,0.10),transparent_60%),
                   linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.78))]
             "
           />
@@ -1398,40 +1481,11 @@ function TokenomicsPageInner() {
                 </h1>
 
                 <p className="mt-4 text-sm leading-relaxed text-slate-300">
-                  XPOT is built around simple rules, public wallets and verifiable outcomes. If it cannot be proven on-chain, it should not exist.
+                  Simple rules. Public wallets. Verifiable outcomes. If it cannot be proven on-chain, it should not exist.
                 </p>
-
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
-                    Enter today&apos;s XPOT
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                  <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                    Terms
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={openDistribution}
-                    className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
-                  >
-                    View reserve
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                  <span className="inline-flex items-center gap-2">
-                    <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-                    Proof targets: mint account, revoke txs, reserve wallet
-                  </span>
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-1 w-1 rounded-full bg-white/20" />
-                    Exact 10-year requirement: <span className="font-mono text-slate-300">{TEN_YEARS_REQUIRED.toLocaleString('en-US')}</span>
-                  </span>
-                </div>
               </div>
 
-              {proofCards}
+              {heroTop}
 
               <div className="mt-8 h-px w-full bg-white/10" />
             </div>
@@ -1446,6 +1500,7 @@ function TokenomicsPageInner() {
               pointer-events-none absolute -inset-44 opacity-75 blur-3xl
               bg-[radial-gradient(circle_at_10%_30%,rgba(56,189,248,0.16),transparent_60%),
                   radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%),
+                  radial-gradient(circle_at_65%_10%,rgba(168,85,247,0.10),transparent_60%),
                   radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
             "
           />
@@ -1486,6 +1541,7 @@ function TokenomicsPageInner() {
             className="
               pointer-events-none absolute -inset-44 opacity-75 blur-3xl
               bg-[radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),
+                  radial-gradient(circle_at_80%_30%,rgba(168,85,247,0.10),transparent_62%),
                   radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%)]
             "
           />
@@ -1508,7 +1564,7 @@ function TokenomicsPageInner() {
                   Eligibility
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent with clear rules and verifiable outcomes.
+                  Holding XPOT is the eligibility requirement to enter. The system stays calm and transparent with clear rules and verifiable outcomes.
                 </p>
               </div>
 
@@ -1518,7 +1574,7 @@ function TokenomicsPageInner() {
                   Status and reputation
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future perks and sponsor drops.
+                  Your handle becomes a public identity. Participation history can build reputation that unlocks future perks and sponsor drops.
                 </p>
               </div>
 
@@ -1528,7 +1584,7 @@ function TokenomicsPageInner() {
                   Sponsor-funded rewards
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales without pay-to-enter mechanics.
+                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales cleanly.
                 </p>
               </div>
 
@@ -1586,7 +1642,7 @@ function TokenomicsPageInner() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v25</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v26</span>
         </div>
       </footer>
     </XpotPageShell>
@@ -1595,7 +1651,11 @@ function TokenomicsPageInner() {
 
 function TokenomicsFallback() {
   return (
-    <XpotPageShell title="Tokenomics" subtitle="Loading tokenomics..." topBarProps={{ pillText: 'TOKENOMICS', sloganRight: 'Protocol-grade distribution' }}>
+    <XpotPageShell
+      title="Tokenomics"
+      subtitle="Loading tokenomics..."
+      topBarProps={{ pillText: 'TOKENOMICS', sloganRight: 'Protocol-grade distribution' }}
+    >
       <div className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
         <p className="text-xs text-slate-400">Loading...</p>
       </div>
