@@ -1557,28 +1557,17 @@ function DashboardInner() {
               className={`relative overflow-hidden rounded-[32px] ${SURFACE} shadow-[0_55px_190px_rgba(0,0,0,0.75)] ring-1 ring-slate-700/25 backdrop-blur-2xl`}
             >
               <div className="xpot-hero-sweep absolute inset-0" />
-              <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_72%_28%,rgba(99,102,241,0.14),transparent_64%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.08),transparent_70%),radial-gradient(circle_at_90%_85%,rgba(236,72,153,0.06),transparent_70%)]" />
+              <div
+  className="pointer-events-none absolute -inset-28 blur-3xl opacity-95
+  bg-[radial-gradient(circle_at_12%_18%,rgba(56,189,248,0.18),transparent_60%),
+      radial-gradient(circle_at_62%_22%,rgba(99,102,241,0.20),transparent_62%),
+      radial-gradient(circle_at_40%_105%,rgba(236,72,153,0.12),transparent_70%),
+      radial-gradient(circle_at_92%_80%,rgba(251,191,36,0.10),transparent_72%)]"
+/>
               <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(rgba(255,255,255,0.50)_1px,transparent_1px)] [background-size:22px_22px]" />
               <div className="pointer-events-none absolute inset-0 xpot-luxe-border" />
 
               <div className="relative p-6 sm:p-7">
-
-              {/* PRIMARY ACTION - moved into hero */}
-<div ref={claimSectionRef as any} className="mt-6">
-  <LuxeCard accent="gold">
-    <LuxeTitle
-      title="Today’s XPOT"
-      subtitle="Claim a free entry when your connected wallet meets the minimum."
-      right={
-        <StatusPill tone={ticketClaimed ? 'emerald' : 'slate'}>
-          <Ticket className="h-3.5 w-3.5" />
-          {ticketClaimed ? 'Entry active' : 'Not claimed'}
-        </StatusPill>
-      }
-    />
-    {/* paste the SAME inner content from your existing Today’s XPOT card here */}
-  </LuxeCard>
-</div>
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-center gap-4">
                     {avatar ? (
