@@ -1428,66 +1428,77 @@ function DashboardInner() {
         }
 
         /* Sticky monitor: now loud-premium, easier to spot */
-        .xpot-monitor-shell {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(99,102,241,0.10),
-      rgba(15,23,42,0.92)
-    );
-  border: 1px solid rgba(168,85,247,0.35);
-  box-shadow:
-    inset 0 1px 0 rgba(168,85,247,0.18),
-    0 30px 120px rgba(0,0,0,0.75);
-  backdrop-filter: blur(16px);
+        /* ----------------------------
+   Entries monitor: premium purple treatment
+   - no "breathing" (disable animations)
+   - one-time soft flash on open
+----------------------------- */
+
+/* hard stop any animation inside monitor (prevents "breathing") */
+.xpot-monitor-shell,
+.xpot-monitor-shell * {
+  animation: none !important;
 }
-.xpot-monitor-shell::after {
-  content: '';
+
+/* premium purple border + glow */
+.xpot-monitor-shell {
+  border: 1px solid rgba(139, 92, 246, 0.32) !important; /* violet */
+  background: rgba(2, 6, 23, 0.86) !important;
+  box-shadow:
+    0 40px 160px rgba(0, 0, 0, 0.78),
+    0 0 0 1px rgba(139, 92, 246, 0.10),
+    0 18px 80px rgba(99, 102, 241, 0.18); /* indigo/violet glow */
+  backdrop-filter: blur(18px);
+}
+
+/* subtle gradient ring overlay */
+.xpot-monitor-ring {
+  pointer-events: none;
   position: absolute;
   inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: 0 0 0 1px rgba(168,85,247,0.25);
+  border-radius: 22px;
+  padding: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0.35),
+    rgba(139, 92, 246, 0.28),
+    rgba(236, 72, 153, 0.18)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.9;
 }
-        .xpot-monitor-shell::before {
-          content: '';
-          position: absolute;
-          inset: -1px;
-          border-radius: 22px;
-          padding: 1px;
-          background: linear-gradient(
-            90deg,
-            rgba(251, 191, 36, 0.35),
-            rgba(99, 102, 241, 0.55),
-            rgba(56, 189, 248, 0.40),
-            rgba(236, 72, 153, 0.30)
-          );
-          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          pointer-events: none;
-          opacity: 0.95;
-        }
-        @keyframes xpotMonitorBeacon {
-          0% {
-            opacity: 0.55;
-            transform: scale(1);
-            filter: blur(0px);
-          }
-          55% {
-            opacity: 0.90;
-            transform: scale(1.03);
-            filter: blur(0.2px);
-          }
-          100% {
-            opacity: 0.55;
-            transform: scale(1);
-            filter: blur(0px);
-          }
-        }
-        .xpot-monitor-beacon {
-          animation: xpotMonitorBeacon 2.6s ease-in-out infinite;
-        }
+
+/* one-time flash */
+@keyframes xpotMonitorFlash {
+  0% {
+    box-shadow:
+      0 40px 160px rgba(0, 0, 0, 0.78),
+      0 0 0 1px rgba(139, 92, 246, 0.14),
+      0 0 0 rgba(99, 102, 241, 0.0);
+    transform: translateY(0px);
+  }
+  30% {
+    box-shadow:
+      0 40px 160px rgba(0, 0, 0, 0.78),
+      0 0 0 1px rgba(139, 92, 246, 0.22),
+      0 0 80px rgba(99, 102, 241, 0.30);
+    transform: translateY(-1px);
+  }
+  100% {
+    box-shadow:
+      0 40px 160px rgba(0, 0, 0, 0.78),
+      0 0 0 1px rgba(139, 92, 246, 0.10),
+      0 18px 80px rgba(99, 102, 241, 0.18);
+    transform: translateY(0px);
+  }
+}
+
+/* applied only when open */
+.xpot-monitor-flash {
+  animation: xpotMonitorFlash 650ms ease-out 1 !important;
+}
 
         /* Entries-card confirmation pulse (650ms violet glow) */
         @keyframes xpotEntriesPulse {
