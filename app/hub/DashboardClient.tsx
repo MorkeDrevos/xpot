@@ -1299,17 +1299,18 @@ function DashboardInner() {
                 </Link>
 
                 <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 backdrop-blur-xl">
-                  
-                  
-                  {/* TEMP DISABLED – Change wallet (broken not opening modal)
-                  <button type="button" onClick={onOpenWalletModal} className="text-left leading-tight hover:opacity-90">
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">Wallet bay</div>
-                    <div className="text-[13px] font-semibold text-slate-100">
-                      {walletConnected ? 'Change wallet' : 'Select wallet'}
-                    </div>
-                  </button*/}
-                  <WalletStatusHint />
-                </div>
+  {/* TEMP DISABLED – Wallet selector (modal currently broken) */}
+  {false && (
+    <button type="button" onClick={onOpenWalletModal} className="text-left leading-tight hover:opacity-90">
+      <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">Wallet bay</div>
+      <div className="text-[13px] font-semibold text-slate-100">
+        {walletConnected ? 'Change wallet' : 'Select wallet'}
+      </div>
+    </button>
+  )}
+
+  <WalletStatusHint />
+</div>
 
                 {isSignedIn ? (
                   <SignOutButton redirectUrl="/">
