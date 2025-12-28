@@ -189,36 +189,34 @@ function StatusPill({
   tone?: 'slate' | 'emerald' | 'amber' | 'sky';
 }) {
   const cls =
-    tone === 'emerald'
-      ? [
-          'border-emerald-300/22',
-          'bg-[linear-gradient(180deg,rgba(16,185,129,0.18),rgba(2,6,23,0.55))]',
-          'text-emerald-50',
-          'shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_18px_70px_rgba(16,185,129,0.10)]',
-        ].join(' ')
-      : tone === 'amber'
-      ? [
-          // premium XPOT gold (fixes PENDING looking grey)
-          'border-amber-300/28',
-          'bg-[linear-gradient(180deg,rgba(251,191,36,0.22),rgba(120,53,15,0.18),rgba(2,6,23,0.60))]',
-          'text-amber-50',
-          'shadow-[0_0_0_1px_rgba(251,191,36,0.14),0_18px_80px_rgba(251,191,36,0.12)]',
-        ].join(' ')
-      : tone === 'sky'
-      ? [
-          'border-sky-200/22',
-          'bg-[linear-gradient(180deg,rgba(56,189,248,0.18),rgba(2,6,23,0.55))]',
-          'text-sky-50',
-          'shadow-[0_0_0_1px_rgba(56,189,248,0.10),0_18px_70px_rgba(56,189,248,0.10)]',
-        ].join(' ')
-      : [
-          'border-slate-600/35',
-          'bg-[linear-gradient(180deg,rgba(148,163,184,0.10),rgba(2,6,23,0.60))]',
-          'text-slate-50',
-          'shadow-[0_0_0_1px_rgba(148,163,184,0.08)]',
-        ].join(' ');
-
-  return (
+  tone === 'emerald'
+    ? [
+        'border-emerald-300/30',
+        'bg-[linear-gradient(180deg,rgba(16,185,129,0.22),rgba(2,6,23,0.58))]',
+        'text-emerald-50',
+        'shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_18px_80px_rgba(16,185,129,0.14)]',
+      ].join(' ')
+    : tone === 'amber'
+    ? [
+        // XPOT gold – strong, readable, never grey
+        'border-amber-200/45',
+        'bg-[linear-gradient(180deg,rgba(251,191,36,0.30),rgba(245,158,11,0.16),rgba(2,6,23,0.66))]',
+        'text-amber-50',
+        'shadow-[0_0_0_1px_rgba(251,191,36,0.18),0_22px_100px_rgba(251,191,36,0.16)]',
+      ].join(' ')
+    : tone === 'sky'
+    ? [
+        'border-sky-200/30',
+        'bg-[linear-gradient(180deg,rgba(56,189,248,0.22),rgba(2,6,23,0.58))]',
+        'text-sky-50',
+        'shadow-[0_0_0_1px_rgba(56,189,248,0.14),0_18px_80px_rgba(56,189,248,0.14)]',
+      ].join(' ')
+    : [
+        'border-slate-600/35',
+        'bg-[linear-gradient(180deg,rgba(148,163,184,0.12),rgba(2,6,23,0.62))]',
+        'text-slate-50',
+        'shadow-[0_0_0_1px_rgba(148,163,184,0.10)]',
+      ].join(' ');
     <span
       className={[
         'inline-flex items-center gap-2 rounded-full border px-3 py-1',
