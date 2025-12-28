@@ -1679,14 +1679,763 @@ function DashboardInner() {
                   </div>
                 </div>
 
-                {/* ...rest of your file stays EXACTLY the same ... */}
-                {/* I did not change any layout/logic below - only fixed imports + StatusPill gold rendering */}
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Account entries today</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <StatusPill tone="sky">
+                        <Ticket className="h-3.5 w-3.5" />
+                        {accountTicketsCount} ticket{accountTicketsCount === 1 ? '' : 's'}
+                      </StatusPill>
+                      <StatusPill tone="slate">
+                        <Wallet className="h-3.5 w-3.5" />
+                        {walletsEnteredCount} wallet{walletsEnteredCount === 1 ? '' : 's'}
+                      </StatusPill>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-200/65">Each eligible wallet can claim one entry per day.</p>
+                  </div>
+
+                  <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">One-tap</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => scrollToRef(entriesSectionRef as any, { offsetPx: 132, highlight: true })}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
+                        <ArrowDownRight className="mr-2 h-4 w-4" />
+                        Entries
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => scrollToRef(claimSectionRef as any, { offsetPx: 132 })}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
+                        <ArrowDownRight className="mr-2 h-4 w-4" />
+                        Claim
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => refreshAll('manual')}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
+                        <RefreshCcw className="mr-2 h-4 w-4" />
+                        Refresh
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const ics = makeIcsForCutoff(cutoffUtcMs);
+                          downloadTextFile('xpot-draw-cutoff.ics', ics, 'text/calendar');
+                        }}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                        title="Adds a calendar reminder for the draw cutoff"
+                      >
+                        <CalendarClock className="mr-2 h-4 w-4" />
+                        Reminder
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-200/65">No clutter. The monitor stays on the right.</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-2 text-xs text-slate-200/65">
+                    <span className="h-1.5 w-1.5 rounded-full bg-violet-300/75" />
+                    Ticket allocation is wallet-level.
+                  </div>
+
+                  {currentWalletAddress ? (
+                    <button
+                      type="button"
+                      onClick={() => safeCopy(currentWalletAddress)}
+                      className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      title="Copy connected wallet address"
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy wallet
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </section>
 
-          {/* KEEP EVERYTHING BELOW AS YOU PROVIDED (unchanged) */}
-          {/* NOTE: Your pasted file continues for many more lines; keep it as-is below this point. */}
+          {/* MAIN GRID */}
+          <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            {/* LEFT */}
+            <div className="space-y-6">
+              <div ref={claimSectionRef as any}>
+                <LuxeCard accent="gold">
+                  <LuxeTitle
+                    title="Today’s XPOT"
+                    subtitle="Claim a free entry when your connected wallet meets the minimum."
+                    right={
+                      <StatusPill tone={ticketClaimed ? 'emerald' : 'slate'}>
+                        <Ticket className="h-3.5 w-3.5" />
+                        {ticketClaimed ? 'Entry active' : 'Not claimed'}
+                      </StatusPill>
+                    }
+                  />
+
+                  {!walletConnected && (
+                    <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
+                      Connect your wallet using the top bar to check eligibility and claim today’s entry.
+                    </div>
+                  )}
+
+                  {walletConnected && !ticketClaimed && (
+                    <>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Requirement</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-100">
+                            <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
+                          </p>
+                          <p className="mt-1 text-xs text-slate-200/65">Held in the wallet you connect.</p>
+                        </div>
+
+                        <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Your status</p>
+                          <div className="mt-2">
+                            {typeof xpotBalance === 'number' ? (
+                              hasRequiredXpot ? (
+                                <StatusPill tone="emerald">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Eligible
+                                </StatusPill>
+                              ) : (
+                                <StatusPill tone="amber">
+                                  <Sparkles className="h-3.5 w-3.5" />
+                                  Not eligible
+                                </StatusPill>
+                              )
+                            ) : (
+                              <StatusPill tone="slate">-</StatusPill>
+                            )}
+                          </div>
+                          <p className="mt-2 text-xs text-slate-200/65">Eligibility is checked on refresh.</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <button
+                          type="button"
+                          onClick={handleClaimTicket}
+                          disabled={!walletConnected || !hasRequiredXpot || claiming}
+                          className={`${BTN_PRIMARY}`}
+                        >
+                          {claiming ? 'Generating…' : 'Claim today’s entry'}
+                        </button>
+
+                        <div className="text-xs text-slate-200/65">Draw locks at 22:00 Madrid.</div>
+                      </div>
+
+                      {claimError && <p className="mt-3 text-xs xpot-gold-text">{claimError}</p>}
+
+                      {typeof xpotBalance === 'number' && !hasRequiredXpot && (
+                        <p className="mt-3 text-xs text-slate-200/65">
+                          Your wallet is below the minimum. You need{' '}
+                          <span className="font-semibold text-slate-100">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to
+                          claim today’s entry.
+                        </p>
+                      )}
+                    </>
+                  )}
+
+                  {walletConnected && ticketClaimed && todaysTicket && (
+                    <div className={`mt-4 rounded-[24px] ${SURFACE_INNER} p-4`}>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-200/65">Your ticket code</p>
+
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                        <div
+                          className={`inline-flex items-center gap-3 rounded-2xl border ${BORDER_SOFTER} bg-slate-950/55 px-4 py-3`}
+                        >
+                          <Ticket className="h-5 w-5 text-amber-100" />
+                          <p className="font-mono text-base text-slate-100">{todaysTicket.code}</p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCode(todaysTicket)}
+                          className={`inline-flex items-center gap-2 rounded-full border ${BORDER_SOFT} bg-slate-950/45 px-4 py-2 text-xs text-slate-100 hover:bg-slate-900/45`}
+                        >
+                          <Copy className="h-4 w-4" />
+                          {copiedId === todaysTicket.id ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <TinyRow label="Status" value={<span className="font-semibold text-slate-100">IN DRAW</span>} />
+                        <TinyRow
+                          label="Issued"
+                          value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>}
+                        />
+                      </div>
+
+                      <div className="mt-3">
+                        <TinyRow label="Wallet" value={shortWallet(todaysTicket.walletAddress)} mono />
+                      </div>
+                    </div>
+                  )}
+
+                  {walletConnected && ticketClaimed && !todaysTicket && (
+                    <p className="mt-4 text-xs text-slate-200/65">
+                      Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.
+                    </p>
+                  )}
+
+                  {iWonToday && (
+                    <div className="mt-4 rounded-2xl border border-emerald-300/18 bg-emerald-950/35 px-4 py-3 text-sm text-emerald-100">
+                      You won today’s XPOT. Check your wallet and the winners feed.
+                    </div>
+                  )}
+                </LuxeCard>
+              </div>
+
+              <div ref={entriesSectionRef as any}>
+                <LuxeCard
+                  accent="sky"
+                  className={[
+                    // Pulse only when triggered (keyed by entriesHighlightPulse)
+                    entriesHighlightPulse ? 'xpot-entries-pulse' : '',
+                  ].join(' ')}
+                  key={`entries-card-${entriesHighlightPulse}`}
+                >
+                  <LuxeTitle
+                    title={entriesScope === 'wallet' ? 'Your entries today (this wallet)' : 'Your entries today (account)'}
+                    subtitle={
+                      entriesScope === 'wallet'
+                        ? 'Only tickets issued by the currently connected wallet.'
+                        : 'All tickets issued under your XPOT account, grouped by wallet.'
+                    }
+                    right={
+                      <StatusPill tone="sky">
+                        <Ticket className="h-3.5 w-3.5" />
+                        {entriesScope === 'wallet' ? myTickets.length : accountTicketsCount}
+                      </StatusPill>
+                    }
+                  />
+
+                  <div className="mt-4 space-y-2">
+                    {loadingTickets ? (
+                      <p className="text-xs text-slate-200/65">Loading…</p>
+                    ) : ticketsError ? (
+                      <p className="text-xs xpot-gold-text">{ticketsError}</p>
+                    ) : entriesScope === 'wallet' ? (
+                      !walletConnected ? (
+                        <p className="text-xs text-slate-200/65">Connect a wallet to view wallet-only entries.</p>
+                      ) : myTickets.length === 0 ? (
+                        <p className="text-xs text-slate-200/65">No entries for this wallet yet.</p>
+                      ) : (
+                        myTickets.map(t => (
+                          <div key={t.id} className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                              <StatusPill
+                                tone={
+                                  normalizeStatus(t.status) === 'in-draw'
+                                    ? 'emerald'
+                                    : normalizeStatus(t.status) === 'won'
+                                    ? 'sky'
+                                    : 'slate'
+                                }
+                              >
+                                {safeStatusLabel(t.status)}
+                              </StatusPill>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-200/65">Issued {formatDateTime(t.createdAt)}</p>
+                          </div>
+                        ))
+                      )
+                    ) : accountGroups.length === 0 ? (
+                      <p className="text-xs text-slate-200/65">No entries yet today.</p>
+                    ) : (
+                      accountGroups.map(group => {
+                        const isCurrent = !!normalizedWallet && group.walletLower === normalizedWallet;
+                        return (
+                          <div key={group.walletLower} className={`rounded-[24px] ${SURFACE_INNER} p-4`}>
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <StatusPill tone={isCurrent ? 'emerald' : 'slate'}>
+                                  <Wallet className="h-3.5 w-3.5" />
+                                  {shortWallet(group.walletAddress)}
+                                </StatusPill>
+                                {isCurrent ? (
+                                  <StatusPill tone="emerald">
+                                    <Radio className="h-3.5 w-3.5" />
+                                    Connected
+                                  </StatusPill>
+                                ) : null}
+                              </div>
+
+                              <StatusPill tone="sky">
+                                <Ticket className="h-3.5 w-3.5" />
+                                {group.tickets.length}
+                              </StatusPill>
+                            </div>
+
+                            <div className="mt-3 space-y-2">
+                              {group.tickets.map(t => (
+                                <div
+                                  key={t.id}
+                                  className={`rounded-2xl border ${BORDER_SOFTER} bg-slate-950/55 px-4 py-3`}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="truncate font-mono text-sm text-slate-100">{t.code}</p>
+                                    <StatusPill
+                                      tone={
+                                        normalizeStatus(t.status) === 'in-draw'
+                                          ? 'emerald'
+                                          : normalizeStatus(t.status) === 'won'
+                                          ? 'sky'
+                                          : 'slate'
+                                      }
+                                    >
+                                      {safeStatusLabel(t.status)}
+                                    </StatusPill>
+                                  </div>
+                                  <p className="mt-1 text-xs text-slate-200/65">Issued {formatDateTime(t.createdAt)}</p>
+
+                                  <div className="mt-2 flex items-center justify-between gap-2">
+                                    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">
+                                      Wallet
+                                    </span>
+                                    <span className="font-mono text-xs text-slate-100">
+                                      {shortWallet(t.walletAddress)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
+                    Tip: Connect another wallet and claim again to increase your ticket count for today.
+                  </div>
+                </LuxeCard>
+              </div>
+            </div>
+
+            {/* RIGHT */}
+            <div className="space-y-6">
+              <LuxeCard accent="violet">
+                <LuxeTitle
+                  title="Today’s mission"
+                  subtitle="A calm daily nudge, not a casino loop."
+                  right={
+                    <StatusPill tone="sky">
+                      <Target className="h-3.5 w-3.5" />
+                      Daily
+                    </StatusPill>
+                  }
+                />
+
+                <div className={`mt-4 rounded-[24px] ${SURFACE_INNER} p-4`}>
+                  <p className="text-xs font-semibold text-slate-100">{mission.title}</p>
+                  <p className="mt-1 text-xs text-slate-200/65">{mission.desc}</p>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Daily streak</p>
+                    <div className="mt-2">
+                      <StatusPill tone={streak.todayDone ? 'emerald' : 'amber'}>
+                        <Flame className="h-3.5 w-3.5" />
+                        {streak.todayDone ? 'Today done' : 'Pending'}
+                      </StatusPill>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-200/65">
+                      <span className="font-semibold text-slate-100">{Math.max(0, streak.days)}</span> day streak
+                    </p>
+                  </div>
+
+                  <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Reset logic</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-100">UTC day rule</p>
+                    <p className="mt-1 text-xs text-slate-200/65">Streak updates after you claim today’s entry.</p>
+                  </div>
+                </div>
+              </LuxeCard>
+
+              <LuxeCard accent="emerald">
+                <LuxeTitle
+                  title="Bonus XPOT"
+                  subtitle="Shows automatically when a bonus drop is scheduled."
+                  right={
+                    bonusActive ? (
+                      <StatusPill tone="emerald">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Active
+                      </StatusPill>
+                    ) : (
+                      <StatusPill tone="slate">None</StatusPill>
+                    )
+                  }
+                />
+
+                {bonusActive && upcomingBonus ? (
+                  <div className="mt-4 rounded-[24px] border border-emerald-300/14 bg-emerald-950/28 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-100/85">
+                        Scheduled
+                      </span>
+                      <span className="text-[11px] font-mono text-emerald-100/90">
+                        {new Date(upcomingBonus.scheduledAt).toLocaleString('de-DE')}
+                      </span>
+                    </div>
+                    <BonusStrip variant="home" />
+                  </div>
+                ) : (
+                  <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
+                    No bonus scheduled right now.
+                  </div>
+                )}
+              </LuxeCard>
+
+              <LuxeCard accent="sky">
+                <LuxeTitle
+                  title="Recent winners"
+                  subtitle="Latest completed draws across all holders."
+                  right={
+                    <StatusPill tone="emerald">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Live
+                    </StatusPill>
+                  }
+                />
+
+                <div className="mt-4 space-y-2">
+                  {loadingWinners ? (
+                    <p className="text-xs text-slate-200/65">Loading…</p>
+                  ) : winnersError ? (
+                    <p className="text-xs xpot-gold-text">{winnersError}</p>
+                  ) : recentWinners.length === 0 ? (
+                    <p className="text-xs text-slate-200/65">No completed draws yet.</p>
+                  ) : (
+                    recentWinners.map(w => {
+                      const h = w.handle ? w.handle.replace(/^@/, '') : null;
+                      return (
+                        <div key={w.id} className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-slate-200/65">{formatDate(w.drawDate)}</p>
+                            {h ? (
+                              <StatusPill tone="sky">
+                                <X className="h-3.5 w-3.5" />
+                                @{h}
+                              </StatusPill>
+                            ) : (
+                              <StatusPill tone="slate">wallet</StatusPill>
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex items-center gap-3">
+                            <div
+                              className={`flex h-9 w-9 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45 text-sm font-semibold text-slate-100`}
+                            >
+                              {initialFromHandle(h)}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
+                              <p className="mt-1 text-xs text-slate-200/65">
+                                {h ? `@${h}` : shortWallet(w.walletAddress)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </LuxeCard>
+
+              <LuxeCard accent="neutral">
+                <LuxeTitle
+                  title="Your draw history"
+                  subtitle="Past entries for this wallet (wins, not-picked, expired)."
+                  right={
+                    <Link href="/hub/history" className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+                      View all
+                    </Link>
+                  }
+                />
+
+                <div className="mt-4 space-y-2">
+                  {!walletConnected ? (
+                    <p className="text-xs text-slate-200/65">Connect your wallet in the top bar to view history.</p>
+                  ) : loadingHistory ? (
+                    <p className="text-xs text-slate-200/65">Loading…</p>
+                  ) : historyError ? (
+                    <p className="text-xs xpot-gold-text">{historyError}</p>
+                  ) : historyEntries.length === 0 ? (
+                    <p className="text-xs text-slate-200/65">No history yet.</p>
+                  ) : (
+                    historyEntries.slice(0, 5).map(t => (
+                      <div key={t.id} className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                          <StatusPill
+                            tone={
+                              normalizeStatus(t.status) === 'won'
+                                ? 'sky'
+                                : normalizeStatus(t.status) === 'claimed'
+                                ? 'emerald'
+                                : normalizeStatus(t.status) === 'in-draw'
+                                ? 'emerald'
+                                : 'slate'
+                            }
+                          >
+                            {safeStatusLabel(t.status)}
+                          </StatusPill>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-200/65">{formatDateTime(t.createdAt)}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </LuxeCard>
+            </div>
+          </section>
+
+          {/* Global footer (structured like a site footer) */}
+          <footer className={`mt-10 border-t ${BORDER_SOFT} pt-8 pb-6`}>
+            <div className="grid gap-6 md:grid-cols-3">
+              <div>
+                <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-200/70">
+                  <Sparkles className="h-4 w-4 text-violet-200/70" />
+                  XPOT
+                </div>
+                <p className="mt-3 text-sm text-slate-100">Holder Dashboard</p>
+                <p className="mt-2 text-xs text-slate-200/60">
+                  Pre-Launch mode. UI is final and wiring is live. Draw cutoff is 22:00 Madrid.
+                </p>
+
+                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-violet-300/14 bg-slate-950/45 px-3 py-2 text-xs text-slate-200/70">
+                  <ShieldCheck className="h-4 w-4 text-violet-200/70" />
+                  Wallet connection enables eligibility verification.
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200/60">Navigation</p>
+                <div className="mt-3 flex flex-col gap-2 text-sm">
+                  <Link href="/hub" className="text-slate-100 hover:text-white">
+                    Dashboard
+                  </Link>
+                  <Link href="/hub/history" className="text-slate-100 hover:text-white">
+                    History
+                  </Link>
+                  <Link href="/" className="text-slate-100 hover:text-white">
+                    Home
+                  </Link>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200/60">Tools</p>
+                <div className="mt-3 flex flex-col gap-2 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => refreshAll('manual')}
+                    className="inline-flex items-center gap-2 text-left text-slate-100 hover:text-white"
+                  >
+                    <RefreshCcw className="h-4 w-4 text-slate-200/70" />
+                    Manual refresh
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ics = makeIcsForCutoff(nextMadridCutoffUtcMs(new Date()));
+                      downloadTextFile('xpot-draw-cutoff.ics', ics, 'text/calendar');
+                    }}
+                    className="inline-flex items-center gap-2 text-left text-slate-100 hover:text-white"
+                  >
+                    <CalendarClock className="h-4 w-4 text-slate-200/70" />
+                    Download cutoff reminder
+                  </button>
+
+                  <a
+                    href="https://solscan.io"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 text-slate-100 hover:text-white"
+                  >
+                    <ExternalLink className="h-4 w-4 text-slate-200/70" />
+                    Solscan
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col items-start justify-between gap-3 border-t border-slate-700/25 pt-4 sm:flex-row sm:items-center">
+              <p className="text-xs text-slate-200/55">© {new Date().getFullYear()} XPOT. All rights reserved.</p>
+              <p className="text-xs text-slate-200/55">
+                Ticket allocation is per-wallet. One XPOT account may link multiple wallets.
+              </p>
+            </div>
+          </footer>
+
+          {/* RIGHT-SIDE STICKY ENTRIES MONITOR (closed by default, now premium and visible) */}
+          <div className="fixed bottom-5 left-4 right-4 z-[60] sm:left-auto sm:right-6 sm:w-[380px]">
+            <div className="xpot-monitor-shell xpot-monitor-beacon relative overflow-hidden rounded-[22px]">
+              <div className="pointer-events-none absolute -inset-20 opacity-75 blur-3xl bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.16),transparent_58%),radial-gradient(circle_at_62%_20%,rgba(99,102,241,0.18),transparent_58%),radial-gradient(circle_at_85%_40%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_60%_110%,rgba(236,72,153,0.10),transparent_68%)]" />
+              <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px]" />
+
+              <div className="relative p-4">
+                {/* Visible "handle" row */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-300/85 shadow-[0_0_0_3px_rgba(16,185,129,0.10),0_0_40px_rgba(16,185,129,0.35)]" />
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-100/85">
+                        Entries monitor
+                      </p>
+                      <StatusPill tone="emerald">
+                        <Radio className="h-3.5 w-3.5" />
+                        LIVE
+                      </StatusPill>
+                    </div>
+                    <p className="mt-1 truncate text-xs text-slate-200/65">
+                      Viewing: {entriesScope === 'wallet' ? 'this wallet' : 'account'}{' '}
+                      {entriesScope === 'account' ? '(grouped)' : ''}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => scrollToRef(entriesSectionRef as any, { offsetPx: 132, highlight: true })}
+                      className={`${BTN_UTILITY} h-9 px-3 text-xs`}
+                      title="Jump to entries"
+                    >
+                      <ArrowDownRight className="h-4 w-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMonitorOpen(v => !v)}
+                      className={`${BTN_UTILITY} h-9 px-3 text-xs`}
+                      title="Expand/Collapse"
+                    >
+                      {monitorOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {monitorOpen ? (
+                  <>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <StatusPill tone="sky">
+                        <Ticket className="h-3.5 w-3.5" />
+                        {entriesScope === 'wallet' ? myTickets.length : accountTicketsCount}
+                      </StatusPill>
+                      <StatusPill tone="slate">
+                        <Wallet className="h-3.5 w-3.5" />
+                        {walletsEnteredCount}
+                      </StatusPill>
+                      {walletConnected ? (
+                        <StatusPill tone="emerald">
+                          <Wallet className="h-3.5 w-3.5" />
+                          Wallet linked
+                        </StatusPill>
+                      ) : (
+                        <StatusPill tone="amber">
+                          <Wallet className="h-3.5 w-3.5" />
+                          Not linked
+                        </StatusPill>
+                      )}
+                    </div>
+
+                    <div className={`mt-3 inline-flex w-full rounded-full border ${BORDER_SOFT} bg-slate-950/45 p-1`}>
+                      <button
+                        type="button"
+                        onClick={() => setScopeAndJump('account')}
+                        className={[
+                          'flex-1 rounded-full px-4 py-2 text-xs font-semibold transition',
+                          entriesScope === 'account'
+                            ? 'bg-[linear-gradient(90deg,rgba(99,102,241,0.35),rgba(56,189,248,0.18))] text-slate-100 shadow-[0_18px_70px_rgba(99,102,241,0.18)]'
+                            : 'text-slate-200/75 hover:text-slate-100',
+                        ].join(' ')}
+                      >
+                        Account
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScopeAndJump('wallet')}
+                        disabled={!walletConnected}
+                        className={[
+                          'flex-1 rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-50',
+                          entriesScope === 'wallet'
+                            ? 'bg-[linear-gradient(90deg,rgba(251,191,36,0.18),rgba(99,102,241,0.32))] text-slate-100 shadow-[0_18px_70px_rgba(251,191,36,0.12)]'
+                            : 'text-slate-200/75 hover:text-slate-100',
+                        ].join(' ')}
+                        title={!walletConnected ? 'Connect a wallet to filter' : 'Show only the connected wallet'}
+                      >
+                        This wallet
+                      </button>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => scrollToRef(entriesSectionRef as any, { offsetPx: 132, highlight: true })}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
+                        <ArrowDownRight className="mr-2 h-4 w-4" />
+                        View entries
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => scrollToRef(claimSectionRef as any, { offsetPx: 132 })}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
+                        <ArrowDownRight className="mr-2 h-4 w-4" />
+                        Jump to claim
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => refreshAll('manual')}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
+                        <RefreshCcw className="mr-2 h-4 w-4" />
+                        Refresh
+                      </button>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-200/60">Auto refresh: on</p>
+                      <p className="text-[10px] text-slate-200/60">
+                        {lastSyncedAt ? `Last sync ${new Date(lastSyncedAt).toLocaleTimeString('de-DE')}` : 'Syncing…'}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-200/60">
+                      Tap arrow to open. Tap ↘ to jump.
+                    </p>
+                    <div className="inline-flex items-center gap-2">
+                      <StatusPill tone="sky">
+                        <Ticket className="h-3.5 w-3.5" />
+                        {entriesScope === 'wallet' ? myTickets.length : accountTicketsCount}
+                      </StatusPill>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </XpotPageShell>
       </div>
     </>
