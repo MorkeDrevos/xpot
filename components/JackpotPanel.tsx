@@ -1153,25 +1153,25 @@ export default function JackpotPanel({
           >
             <div className="relative flex h-full flex-col">
               {/* ✅ Header stack: VERIFIED first, XPOT TOKEN moved underneath */}
-              <div className="pt-2 flex flex-col gap-3">
-                <div className="flex items-start justify-end">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                    <Sparkles className="h-3.5 w-3.5 opacity-90" />
-                    Verified
-                  </span>
-                </div>
+              <div className="pt-2 flex items-start justify-end">
+  <div className="flex flex-col items-end gap-3">
+    <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+      <Sparkles className="h-3.5 w-3.5 opacity-90" />
+      Verified
+    </span>
 
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30 border border-slate-700/60 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
-                    <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
-                  </span>
+    <div className="flex items-center gap-2">
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30 border border-slate-700/60 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
+        <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
+      </span>
 
-                  <div className="leading-tight">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-slate-200">XPOT token</p>
-                    <p className="text-xs text-slate-300">Winners paid in XPOT</p>
-                  </div>
-                </div>
-              </div>
+      <div className="leading-tight text-right">
+        <p className="text-[10px] uppercase tracking-[0.24em] text-slate-200">XPOT token</p>
+        <p className="text-xs text-slate-300">Winners paid in XPOT</p>
+      </div>
+    </div>
+  </div>
+</div>
 
               <div className="mt-auto pb-1 text-right">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
