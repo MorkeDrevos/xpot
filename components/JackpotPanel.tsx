@@ -739,6 +739,7 @@ export default function JackpotPanel({
         }
       } catch (err) {
         if ((err as any)?.name === 'AbortError') return;
+        // eslint-disable-next-line no-console
         console.error('[XPOT] DexScreener price error:', err);
         if (aborted) return;
         setPriceUsd(null);
@@ -934,7 +935,6 @@ export default function JackpotPanel({
 
   const showUnavailable = !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
 
-  const poolNumber = JACKPOT_XPOT.toLocaleString();
   const displayUsdText =
     displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd) ? '-' : formatUsd(displayJackpotUsd);
 
@@ -1006,36 +1006,36 @@ export default function JackpotPanel({
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
             {/* Pool capsule (premium centered readout) */}
-<div className="group relative inline-flex max-w-full items-center">
-  <div className="relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-black/55 px-4 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl">
-    <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
-    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
-    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
-    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
+            <div className="group relative inline-flex max-w-full items-center">
+              <div className="relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-black/55 px-4 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl">
+                <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
+                <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
+                <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
+                <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
 
-    {/* Left tag */}
-    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-      <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-      Today&apos;s XPOT
-    </span>
+                {/* Left tag */}
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+                  Today&apos;s XPOT
+                </span>
 
-    {/* Center hero amount (centered, no “stretched” look) */}
-    <div className="min-w-0 px-1 text-center">
-      <span
-        className="xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white"
-        style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
-      >
-        <span className="xpot-pool-num">{JACKPOT_XPOT.toLocaleString()}</span>
-        <span className="xpot-pool-unit">XPOT</span>
-      </span>
-    </div>
+                {/* Center hero amount */}
+                <div className="min-w-0 px-1 text-center">
+                  <span
+                    className="xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white"
+                    style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
+                  >
+                    <span className="xpot-pool-num">{JACKPOT_XPOT.toLocaleString()}</span>
+                    <span className="xpot-pool-unit">XPOT</span>
+                  </span>
+                </div>
 
-    {/* Right tag */}
-    <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-      Daily
-    </span>
-  </div>
-</div>
+                {/* Right tag */}
+                <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                  Daily
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1051,7 +1051,7 @@ export default function JackpotPanel({
         <div
           className={
             isWide
-              ? 'relative mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]'
+              ? 'relative mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]'
               : 'relative mt-5 grid gap-4'
           }
         >
@@ -1145,35 +1145,40 @@ export default function JackpotPanel({
             )}
           </div>
 
-          {/* XPOT meta */}
+          {/* XPOT meta (responsive header stack: VERIFIED pill, then icon+text on next line) */}
           <div
-            className="relative overflow-hidden rounded-2xl px-5 py-4 min-h-[170px] border border-slate-800/70 bg-black/25"
+            className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/25 px-5 py-4"
             style={{
               background:
                 'radial-gradient(circle_at_18%_18%, rgba(124,200,255,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
               boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02)',
             }}
           >
-            <div className="relative flex h-full flex-col">
-              <div className="pt-2 flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
+            <div className="relative flex h-full flex-col gap-3">
+              {/* HEADER STACK */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-end">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                    <Sparkles className="h-3.5 w-3.5 opacity-90" />
+                    Verified
+                  </span>
+                </div>
+
+                {/* XPOT icon + text (forced next line under VERIFIED) */}
+                <div className="flex min-w-0 items-center gap-3">
                   <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30 border border-slate-700/60 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
                     <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
                   </span>
 
-                  <div className="leading-tight">
+                  <div className="min-w-0 leading-tight">
                     <p className="text-[10px] uppercase tracking-[0.24em] text-slate-200">XPOT token</p>
-                    <p className="text-xs text-slate-300">Winners paid in XPOT</p>
+                    <p className="text-xs text-slate-300 truncate">Winners paid in XPOT</p>
                   </div>
                 </div>
-
-                <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                  <Sparkles className="h-3.5 w-3.5 opacity-90" />
-                  Verified
-                </span>
               </div>
 
-              <div className="mt-auto pb-1 text-right">
+              {/* FOOTER USD INFO */}
+              <div className="mt-auto pt-1 text-left sm:text-right">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
                 <p className="mt-1 text-sm text-slate-300">
                   1 XPOT ≈{' '}
@@ -1182,9 +1187,9 @@ export default function JackpotPanel({
                   </span>
                 </p>
 
-                <div className="mt-2 flex items-center justify-end gap-2 text-[11px] text-slate-500">
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 sm:justify-end">
                   <span>{observedLabel}</span>
-                  <span className="text-slate-700">•</span>
+                  <span className="hidden sm:inline text-slate-700">•</span>
                   <span>
                     Source <span className="font-mono text-slate-200">{priceSource}</span>
                   </span>
@@ -1309,44 +1314,40 @@ export default function JackpotPanel({
 
         <style jsx>{`
           /* Pool capsule typography – premium gold treatment */
-.xpot-pool-hero {
-  letter-spacing: 0.02em;
-}
+          .xpot-pool-hero {
+            letter-spacing: 0.02em;
+          }
 
-.xpot-pool-num {
-  font-size: 22px;
-  line-height: 1;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
+          .xpot-pool-num {
+            font-size: 22px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
 
-  /* Mostly white, slight warmth */
-  color: rgba(255, 255, 255, 0.97);
-  text-shadow:
-    0 0 14px rgba(255, 255, 255, 0.06),
-    0 0 26px rgba(var(--xpot-gold), 0.08);
-}
+            /* Mostly white, slight warmth */
+            color: rgba(255, 255, 255, 0.97);
+            text-shadow: 0 0 14px rgba(255, 255, 255, 0.06), 0 0 26px rgba(var(--xpot-gold), 0.08);
+          }
 
-.xpot-pool-unit {
-  font-size: 12px;
-  line-height: 1;
-  font-weight: 800;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+          .xpot-pool-unit {
+            font-size: 12px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
 
-  /* XPOT gold – guaranteed */
-  color: #f5c77a;
-  text-shadow:
-    0 0 14px rgba(245, 199, 122, 0.45),
-    0 0 32px rgba(245, 199, 122, 0.25);
-}
+            /* XPOT gold – guaranteed */
+            color: #f5c77a;
+            text-shadow: 0 0 14px rgba(245, 199, 122, 0.45), 0 0 32px rgba(245, 199, 122, 0.25);
+          }
 
-@media (min-width: 640px) {
-  .xpot-pool-num {
-    font-size: 30px;
-    letter-spacing: -0.015em;
-  }
-}
+          @media (min-width: 640px) {
+            .xpot-pool-num {
+              font-size: 30px;
+              letter-spacing: -0.015em;
+            }
+          }
 
           /* Visible cosmic engine layer (core + orbit ring + soft bloom) */
           .xpot-engine {
@@ -1660,7 +1661,7 @@ export default function JackpotPanel({
             animation: xpotUsdSheen 5.6s ease-in-out infinite;
             mix-blend-mode: screen;
             pointer-events: none;
-            opacity: 0.70;
+            opacity: 0.7;
           }
           .xpot-usd-live::before {
             content: '';
@@ -1696,16 +1697,16 @@ export default function JackpotPanel({
               opacity: 0.55;
             }
             60% {
-              opacity: 0.70;
+              opacity: 0.7;
             }
             100% {
               transform: translateX(65%);
-              opacity: 0.10;
+              opacity: 0.1;
             }
           }
           @keyframes xpotUsdGlow {
             0% {
-              opacity: 0.30;
+              opacity: 0.3;
               transform: scale(0.98);
             }
             50% {
@@ -1713,7 +1714,7 @@ export default function JackpotPanel({
               transform: scale(1.02);
             }
             100% {
-              opacity: 0.30;
+              opacity: 0.3;
               transform: scale(0.98);
             }
           }
