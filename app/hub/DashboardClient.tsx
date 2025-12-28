@@ -6,7 +6,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { PublicKey } from '@solana/web3.js';
 
 import { SignOutButton, useUser } from '@clerk/nextjs';
@@ -208,7 +207,7 @@ function WalletStatusHint() {
     );
   }
 
-  return <p className="mt-2 text-xs text-slate-400">Click “Select wallet” and choose a wallet to connect.</p>;
+  return <p className="mt-2 text-xs text-slate-400">Use the wallet button in the top bar to connect.</p>;
 }
 
 async function safeCopy(text: string) {
@@ -653,22 +652,15 @@ export default function DashboardClient() {
 }
 
 // ─────────────────────────────────────────────
-// Inner page (uses global WalletModalProvider)
+// Inner page
 // ─────────────────────────────────────────────
 
 function DashboardInner() {
-  const { setVisible: setWalletModalVisible } = useWalletModal();
-
   // ✅ scroll unlock on mount + on unmount (dashboard only)
   useEffect(() => {
     unlockScroll();
     return () => unlockScroll();
   }, []);
-
-  const onOpenWalletModal = useCallback(() => {
-    unlockScroll();
-    setWalletModalVisible(true);
-  }, [setWalletModalVisible]);
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -684,7 +676,7 @@ function DashboardInner() {
   const [ceremonyCode, setCeremonyCode] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const { publicKey, connected, disconnect } = useWallet();
+  const { publicKey, connected } = useWallet();
   const walletConnected = !!publicKey && connected;
   const currentWalletAddress = publicKey?.toBase58() ?? null;
 
@@ -1298,20 +1290,6 @@ function DashboardInner() {
                   <span className="ml-1">History</span>
                 </Link>
 
-                <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 backdrop-blur-xl">
-  {/* TEMP DISABLED – Wallet selector (modal currently broken) */}
-  {false && (
-    <button type="button" onClick={onOpenWalletModal} className="text-left leading-tight hover:opacity-90">
-      <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300/70">Wallet bay</div>
-      <div className="text-[13px] font-semibold text-slate-100">
-        {walletConnected ? 'Change wallet' : 'Select wallet'}
-      </div>
-    </button>
-  )}
-
-  <WalletStatusHint />
-</div>
-
                 {isSignedIn ? (
                   <SignOutButton redirectUrl="/">
                     <button className={`${BTN_UTILITY} h-10 px-4 text-xs`}>
@@ -1365,6 +1343,7 @@ function DashboardInner() {
                       <p className="mt-1 text-xs text-slate-300/70">
                         Tickets are allocated per wallet. One XPOT account may link multiple wallets.
                       </p>
+                      <WalletStatusHint />
                     </div>
                   </div>
 
@@ -1456,40 +1435,15 @@ function DashboardInner() {
                     Ticket allocation is wallet-level.
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={onOpenWalletModal}
-                      className="
-                        group relative h-10
-                        inline-flex items-center justify-center gap-2
-                        rounded-full
-                        bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]
-                        border border-white/15
-                        px-4
-                        text-[12px] font-semibold text-slate-100
-                        shadow-[0_10px_40px_rgba(0,0,0,0.45)]
-                        transition
-                        hover:border-amber-300/40
-                        hover:text-white
-                        hover:shadow-[0_0_0_1px_rgba(251,191,36,0.25),0_20px_60px_rgba(0,0,0,0.55)]
-                        active:scale-[0.985]
-                      "
-                    >
-                      <Wallet className="h-4 w-4 opacity-90 group-hover:opacity-100" />
-                      <span>{walletConnected ? 'Change wallet' : 'Select wallet'}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={toggleSound}
-                      className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                      title={soundEnabled ? 'Sound on' : 'Sound off'}
-                    >
-                      {soundEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
-                      {soundEnabled ? 'Sound' : 'Muted'}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleSound}
+                    className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                    title={soundEnabled ? 'Sound on' : 'Sound off'}
+                  >
+                    {soundEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
+                    {soundEnabled ? 'Sound' : 'Muted'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1513,7 +1467,7 @@ function DashboardInner() {
 
                 {!walletConnected && (
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300/70">
-                    Activate your wallet to check eligibility and claim today’s entry.
+                    Connect your wallet using the top bar to check eligibility and claim today’s entry.
                   </div>
                 )}
 
@@ -1809,7 +1763,7 @@ function DashboardInner() {
 
                 <div className="mt-4 space-y-2">
                   {!walletConnected ? (
-                    <p className="text-xs text-slate-300/70">Connect your wallet to view history.</p>
+                    <p className="text-xs text-slate-300/70">Connect your wallet in the top bar to view history.</p>
                   ) : loadingHistory ? (
                     <p className="text-xs text-slate-300/70">Loading…</p>
                   ) : historyError ? (
