@@ -35,23 +35,31 @@ import {
   ChevronUp,
   CalendarClock,
   ArrowDownRight,
+  ShieldCheck,
+  ExternalLink,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
-// Small UI helpers
+// Small UI helpers (darker, no white borders)
 // ─────────────────────────────────────────────
 
-// Premium primary: dark, controlled, no bright outline
+const BORDER_SOFT = 'border-slate-700/35';
+const BORDER_SOFTER = 'border-slate-700/25';
+const SURFACE = `border ${BORDER_SOFT} bg-slate-950/55`;
+const SURFACE_INNER = `border ${BORDER_SOFTER} bg-slate-950/45`;
+
+// Added a bit more purple/violet to the primary gradient
 const BTN_PRIMARY =
-  'relative inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-slate-50 ' +
-  'bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(2,6,23,0.92))] ' +
-  'shadow-[0_30px_120px_rgba(0,0,0,0.62)] ring-1 ring-slate-700/50 ' +
-  'transition hover:brightness-[1.06] active:brightness-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ' +
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/35';
+  'relative inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-slate-950 ' +
+  'bg-[linear-gradient(90deg,rgba(251,191,36,0.92),rgba(99,102,241,0.90),rgba(56,189,248,0.86),rgba(236,72,153,0.84))] ' +
+  'shadow-[0_30px_120px_rgba(0,0,0,0.62)] ring-1 ring-violet-300/18 ' +
+  'transition hover:brightness-[1.05] active:brightness-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ' +
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/55';
 
 const BTN_UTILITY =
-  'inline-flex items-center justify-center rounded-full border border-slate-700/50 bg-slate-950/40 text-slate-100 ' +
-  'hover:bg-slate-900/35 transition disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex items-center justify-center rounded-full border border-slate-700/45 bg-slate-950/45 text-slate-200 ' +
+  'hover:bg-slate-900/45 transition disabled:cursor-not-allowed disabled:opacity-40 ' +
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/35';
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
@@ -85,10 +93,6 @@ function formatCountdown(ms: number) {
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
-}
-
-function clamp(n: number, a: number, b: number) {
-  return Math.max(a, Math.min(b, n));
 }
 
 // ─────────────────────────────────────────────
@@ -174,7 +178,7 @@ function nextMadridCutoffUtcMs(now = new Date()) {
 }
 
 // ─────────────────────────────────────────────
-// Premium pills (dark borders, no white outline)
+// Premium pills (darker, zero "white border" look)
 // ─────────────────────────────────────────────
 
 function StatusPill({
@@ -186,12 +190,12 @@ function StatusPill({
 }) {
   const cls =
     tone === 'emerald'
-      ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100 shadow-[0_0_0_1px_rgba(16,185,129,0.10)]'
+      ? 'border-emerald-300/18 bg-emerald-950/35 text-emerald-100 shadow-[0_0_0_1px_rgba(16,185,129,0.10)]'
       : tone === 'amber'
-      ? 'border-amber-400/18 bg-amber-500/10 text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.08)]'
+      ? 'border-amber-300/16 bg-amber-950/28 text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.08)]'
       : tone === 'sky'
-      ? 'border-sky-400/18 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.08)]'
-      : 'border-slate-700/55 bg-slate-950/35 text-slate-100 shadow-[0_0_0_1px_rgba(30,41,59,0.45)]';
+      ? 'border-sky-300/16 bg-sky-950/28 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.08)]'
+      : 'border-slate-700/40 bg-slate-950/40 text-slate-100 shadow-[0_0_0_1px_rgba(148,163,184,0.06)]';
 
   return (
     <span
@@ -285,7 +289,7 @@ function unlockScroll() {
 }
 
 // ─────────────────────────────────────────────
-// Luxe shell pieces
+// Luxe shell pieces (darker, no white strokes)
 // ─────────────────────────────────────────────
 
 function LuxeCard({
@@ -305,28 +309,28 @@ function LuxeCard({
       : accent === 'sky'
       ? 'ring-sky-300/8'
       : accent === 'neutral'
-      ? 'ring-slate-700/30'
-      : 'ring-violet-300/8';
+      ? 'ring-slate-500/10'
+      : 'ring-violet-300/10';
 
   const glow =
     accent === 'gold'
-      ? 'bg-[radial-gradient(circle_at_18%_18%,rgba(251,191,36,0.12),transparent_58%),radial-gradient(circle_at_85%_40%,rgba(56,189,248,0.08),transparent_62%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.06),transparent_64%)]'
+      ? 'bg-[radial-gradient(circle_at_18%_18%,rgba(251,191,36,0.12),transparent_60%),radial-gradient(circle_at_85%_40%,rgba(99,102,241,0.10),transparent_64%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.06),transparent_66%)]'
       : accent === 'emerald'
-      ? 'bg-[radial-gradient(circle_at_18%_30%,rgba(16,185,129,0.12),transparent_58%),radial-gradient(circle_at_78%_18%,rgba(56,189,248,0.08),transparent_62%),radial-gradient(circle_at_50%_100%,rgba(236,72,153,0.05),transparent_64%)]'
+      ? 'bg-[radial-gradient(circle_at_18%_30%,rgba(16,185,129,0.12),transparent_60%),radial-gradient(circle_at_78%_18%,rgba(99,102,241,0.10),transparent_64%),radial-gradient(circle_at_50%_100%,rgba(236,72,153,0.05),transparent_66%)]'
       : accent === 'sky'
-      ? 'bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.12),transparent_58%),radial-gradient(circle_at_80%_35%,rgba(99,102,241,0.08),transparent_62%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.05),transparent_64%)]'
-      : 'bg-[radial-gradient(circle_at_18%_18%,rgba(99,102,241,0.12),transparent_58%),radial-gradient(circle_at_82%_35%,rgba(56,189,248,0.08),transparent_62%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.05),transparent_64%)]';
+      ? 'bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.12),transparent_60%),radial-gradient(circle_at_80%_35%,rgba(99,102,241,0.12),transparent_64%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.06),transparent_66%)]'
+      : 'bg-[radial-gradient(circle_at_18%_18%,rgba(99,102,241,0.14),transparent_60%),radial-gradient(circle_at_82%_35%,rgba(56,189,248,0.08),transparent_64%),radial-gradient(circle_at_45%_100%,rgba(236,72,153,0.06),transparent_66%)]';
 
   return (
     <div
       className={[
-        'relative overflow-hidden rounded-[28px] border border-slate-700/40 bg-slate-950/65 shadow-[0_40px_140px_rgba(0,0,0,0.62)] ring-1 backdrop-blur-xl',
+        `relative overflow-hidden rounded-[28px] border ${BORDER_SOFT} bg-slate-950/65 shadow-[0_40px_150px_rgba(0,0,0,0.70)] ring-1 backdrop-blur-xl`,
         ring,
         className,
       ].join(' ')}
     >
-      <div className={['pointer-events-none absolute -inset-24 opacity-80 blur-3xl', glow].join(' ')} />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:18px_18px]" />
+      <div className={['pointer-events-none absolute -inset-24 opacity-85 blur-3xl', glow].join(' ')} />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(rgba(255,255,255,0.55)_1px,transparent_1px)] [background-size:18px_18px]" />
       <div className="pointer-events-none absolute inset-0 xpot-luxe-border" />
       <div className="relative p-5">{children}</div>
     </div>
@@ -363,8 +367,8 @@ function TinyRow({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">{label}</p>
+    <div className={`flex items-center justify-between gap-3 rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/65">{label}</p>
       <div className={mono ? 'font-mono text-sm text-slate-100' : 'text-sm font-semibold text-slate-100'}>
         {value}
       </div>
@@ -491,7 +495,7 @@ function EntryCeremony({
             opacity: 0;
           }
           10% {
-            opacity: 0.30;
+            opacity: 0.28;
           }
           55% {
             opacity: 0.12;
@@ -529,9 +533,10 @@ function EntryCeremony({
           background: linear-gradient(
             90deg,
             transparent,
-            rgba(255, 255, 255, 0.10),
+            rgba(255, 255, 255, 0.08),
+            rgba(99, 102, 241, 0.12),
             rgba(56, 189, 248, 0.10),
-            rgba(16, 185, 129, 0.09),
+            rgba(16, 185, 129, 0.08),
             transparent
           );
           animation: xpotCeremonySweep 1.6s ease-in-out infinite;
@@ -542,15 +547,15 @@ function EntryCeremony({
 
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-slate-700/45 bg-slate-950/85 shadow-[0_40px_140px_rgba(0,0,0,0.78)] backdrop-blur-xl">
+      <div
+        className={`relative w-full max-w-md overflow-hidden rounded-[28px] border ${BORDER_SOFT} bg-slate-950/85 shadow-[0_40px_160px_rgba(0,0,0,0.80)] backdrop-blur-xl`}
+      >
         <div className="xpot-ceremony-sweep absolute inset-0" />
-        <div className="pointer-events-none absolute -inset-24 opacity-65 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_80%_35%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_50%_100%,rgba(251,191,36,0.08),transparent_62%)]" />
+        <div className="pointer-events-none absolute -inset-24 opacity-65 blur-3xl bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.18),transparent_62%),radial-gradient(circle_at_80%_35%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_50%_100%,rgba(251,191,36,0.08),transparent_66%)]" />
 
         <div className="relative p-5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-200/80">
-              Entry issued
-            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-200/80">Entry issued</span>
             <StatusPill tone="emerald">
               <Radio className="h-3.5 w-3.5" />
               LIVE
@@ -558,7 +563,7 @@ function EntryCeremony({
           </div>
 
           <div className="mt-4">
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-400/18 bg-emerald-950/22 px-4 py-3">
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300/14 bg-emerald-950/30 px-4 py-3">
               <Ticket className="h-5 w-5 text-emerald-100" />
               <span className="font-mono text-base text-slate-100">{code}</span>
             </div>
@@ -566,7 +571,7 @@ function EntryCeremony({
 
           <div className="mt-4 flex items-center justify-center">
             <div
-              className="rounded-2xl border border-slate-700/55 bg-slate-950/35 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-100"
+              className="rounded-2xl border border-slate-700/35 bg-slate-950/45 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-100"
               style={{ animation: reduced ? 'none' : 'xpotStampIn 420ms ease-out both' }}
             >
               STAMPED IN
@@ -727,7 +732,7 @@ export default function DashboardClient() {
 // ─────────────────────────────────────────────
 
 function DashboardInner() {
-  // ✅ scroll unlock on mount + on unmount (dashboard only)
+  // scroll unlock on mount + on unmount (dashboard only)
   useEffect(() => {
     unlockScroll();
     return () => unlockScroll();
@@ -799,11 +804,10 @@ function DashboardInner() {
     desc: 'Preparing today’s mission.',
   });
 
-  // ✅ scope: account vs connected-wallet only
+  // scope: account vs connected-wallet only
   const [entriesScope, setEntriesScope] = useState<'account' | 'wallet'>('account');
 
-  // ✅ sticky monitor (right-side) open/close
-  // CLOSED BY DEFAULT (requested)
+  // RIGHT monitor: CLOSED by default on arrival
   const [monitorOpen, setMonitorOpen] = useState(false);
 
   // refs for clean "jump" actions
@@ -815,6 +819,18 @@ function DashboardInner() {
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
+
+  // Set scope + auto-jump to the "Your entries today" section so the user sees the change
+  const setScopeAndJump = useCallback(
+    (scope: 'account' | 'wallet') => {
+      setEntriesScope(scope);
+      // Wait a tick so React can commit state and the UI is in sync when scrolling
+      window.setTimeout(() => {
+        scrollToRef(entriesSectionRef as any);
+      }, 60);
+    },
+    [scrollToRef],
+  );
 
   // Validate mint once (no side effects, just avoids crashes if TOKEN_MINT is wrong)
   useMemo(() => {
@@ -1010,6 +1026,7 @@ function DashboardInner() {
     [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
   );
 
+  // Initial load + polling
   useEffect(() => {
     if (!isAuthedEnough) {
       setEntries([]);
@@ -1044,6 +1061,34 @@ function DashboardInner() {
       clearInterval(interval);
     };
   }, [isAuthedEnough, refreshAll]);
+
+  // Wallet change / disconnect: force a manual refresh immediately
+  // This makes the dashboard feel "truthy" as you rotate wallets.
+  const prevWalletAddrRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isAuthedEnough) return;
+
+    const prev = prevWalletAddrRef.current;
+    const next = currentWalletAddress;
+
+    if (prev === next) return;
+
+    prevWalletAddrRef.current = next;
+
+    // reset wallet-scoped UI quickly
+    setTicketClaimed(false);
+    setTodaysTicket(null);
+    setClaimError(null);
+    setCopiedId(null);
+
+    // If switching away from wallet mode and no wallet is connected, keep the scope on account
+    if (!next && entriesScope === 'wallet') setEntriesScope('account');
+
+    // Force refresh so balance/history/tickets reconcile instantly
+    window.setTimeout(() => {
+      refreshAll('manual');
+    }, 120);
+  }, [currentWalletAddress, isAuthedEnough, refreshAll, entriesScope]);
 
   useEffect(() => {
     if (!currentWalletAddress) {
@@ -1176,6 +1221,7 @@ function DashboardInner() {
 
   const normalizedWallet = currentWalletAddress?.toLowerCase();
 
+  // Wallet-only tickets (used by history + wallet-specific display)
   const myTickets: Entry[] = useMemo(() => {
     if (!normalizedWallet) return [];
     return entries
@@ -1183,6 +1229,7 @@ function DashboardInner() {
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   }, [entries, normalizedWallet]);
 
+  // Account-wide grouping (today)
   const accountGroups = useMemo(() => {
     const map = new Map<string, Entry[]>();
     for (const e of entries) {
@@ -1197,6 +1244,7 @@ function DashboardInner() {
     }
     const wallets = Array.from(map.keys());
 
+    // Sort: connected wallet first, then by ticket count desc
     wallets.sort((a, b) => {
       const aIsCur = normalizedWallet && a === normalizedWallet ? 1 : 0;
       const bIsCur = normalizedWallet && b === normalizedWallet ? 1 : 0;
@@ -1241,11 +1289,12 @@ function DashboardInner() {
     return 'Good evening';
   }, []);
 
+  // unlock scroll if lock overlay shows/hides or ceremony shows/hides
   useEffect(() => {
     if (!showLock && !showCeremony) unlockScroll();
   }, [showLock, showCeremony]);
 
-  // Do NOT auto-open the monitor anymore (keeps page clean on load)
+  // Only auto-close on very small screens (never auto-open)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(max-width: 640px)');
@@ -1269,30 +1318,55 @@ function DashboardInner() {
   return (
     <>
       <style jsx global>{`
-        /* Make the decorative border NOT read as a white frame */
         .xpot-luxe-border {
-          background:
-            linear-gradient(90deg, rgba(56,189,248,0), rgba(56,189,248,0.10), rgba(56,189,248,0)) 0 0 / 200% 1px no-repeat,
-            linear-gradient(180deg, rgba(99,102,241,0), rgba(99,102,241,0.08), rgba(99,102,241,0)) 0 0 / 1px 200% no-repeat;
-          mask-image: radial-gradient(circle at 22% 18%, rgba(0,0,0,1), rgba(0,0,0,0.24) 55%, rgba(0,0,0,0) 78%);
+          background: linear-gradient(90deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.10), rgba(148, 163, 184, 0)) 0
+              0 / 200% 1px no-repeat,
+            linear-gradient(180deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0)) 0 0 /
+              1px 200% no-repeat;
+          mask-image: radial-gradient(circle at 22% 18%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.22) 55%, rgba(0, 0, 0, 0) 78%);
           opacity: 0.55;
           animation: xpotLuxeBorder 12s ease-in-out infinite;
         }
         @keyframes xpotLuxeBorder {
-          0% { background-position: 0% 0%, 0% 0%; opacity: 0.45; }
-          50% { background-position: 100% 0%, 0% 100%; opacity: 0.62; }
-          100% { background-position: 0% 0%, 0% 0%; opacity: 0.45; }
+          0% {
+            background-position: 0% 0%, 0% 0%;
+            opacity: 0.45;
+          }
+          50% {
+            background-position: 100% 0%, 0% 100%;
+            opacity: 0.65;
+          }
+          100% {
+            background-position: 0% 0%, 0% 0%;
+            opacity: 0.45;
+          }
         }
         @keyframes xpotFloat {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-3px); }
-          100% { transform: translateY(0px); }
+          0% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-3px);
+          }
+          100% {
+            transform: translateY(0px);
+          }
         }
         @keyframes xpotSweep {
-          0% { transform: translateX(-140%) rotate(10deg); opacity: 0; }
-          12% { opacity: 0.22; }
-          55% { opacity: 0.08; }
-          100% { transform: translateX(160%) rotate(10deg); opacity: 0; }
+          0% {
+            transform: translateX(-140%) rotate(10deg);
+            opacity: 0;
+          }
+          12% {
+            opacity: 0.20;
+          }
+          55% {
+            opacity: 0.08;
+          }
+          100% {
+            transform: translateX(160%) rotate(10deg);
+            opacity: 0;
+          }
         }
         .xpot-hero-sweep::before {
           content: '';
@@ -1307,6 +1381,7 @@ function DashboardInner() {
             90deg,
             transparent,
             rgba(255, 255, 255, 0.06),
+            rgba(99, 102, 241, 0.12),
             rgba(56, 189, 248, 0.08),
             rgba(251, 191, 36, 0.08),
             transparent
@@ -1316,11 +1391,11 @@ function DashboardInner() {
           pointer-events: none;
         }
 
-        /* Sticky monitor: darker + slate border (no white outline) */
+        /* Sticky monitor: darker tone, no bright borders */
         .xpot-monitor-shell {
-          background: rgba(2, 6, 23, 0.82);
+          background: rgba(2, 6, 23, 0.84);
           border: 1px solid rgba(51, 65, 85, 0.55);
-          box-shadow: 0 44px 160px rgba(0, 0, 0, 0.74);
+          box-shadow: 0 40px 160px rgba(0, 0, 0, 0.75);
           backdrop-filter: blur(18px);
         }
       `}</style>
@@ -1348,20 +1423,26 @@ function DashboardInner() {
             pillText: 'HOLDER DASHBOARD',
             rightSlot: (
               <div className="flex items-center gap-3">
-                <div className="hidden items-center gap-2 rounded-full border border-slate-700/50 bg-slate-950/40 px-3 py-2 sm:inline-flex">
+                <div
+                  className={`hidden items-center gap-2 rounded-full border ${BORDER_SOFT} bg-slate-950/45 px-3 py-2 sm:inline-flex`}
+                >
                   {avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={avatar}
                       alt={name}
-                      className="h-6 w-6 rounded-full border border-slate-700/50 object-cover"
+                      className={`h-6 w-6 rounded-full border ${BORDER_SOFT} object-cover`}
                     />
                   ) : (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/50 bg-slate-950/35 text-[11px] font-semibold text-slate-100">
+                    <div
+                      className={`flex h-6 w-6 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45 text-[11px] font-semibold text-slate-100`}
+                    >
                       {initialFromHandle(handle)}
                     </div>
                   )}
-                  <span className="text-xs font-semibold text-slate-100">@{(handle || 'x').replace(/^@/, '')}</span>
+                  <span className="text-xs font-semibold text-slate-100">
+                    @{(handle || 'x').replace(/^@/, '')}
+                  </span>
                 </div>
 
                 <button
@@ -1397,10 +1478,12 @@ function DashboardInner() {
         >
           {/* HERO */}
           <section className="mt-6">
-            <div className="relative overflow-hidden rounded-[32px] border border-slate-700/40 bg-slate-950/70 shadow-[0_50px_180px_rgba(0,0,0,0.70)] ring-1 ring-slate-700/35 backdrop-blur-2xl">
+            <div
+              className={`relative overflow-hidden rounded-[32px] ${SURFACE} shadow-[0_55px_190px_rgba(0,0,0,0.75)] ring-1 ring-slate-700/25 backdrop-blur-2xl`}
+            >
               <div className="xpot-hero-sweep absolute inset-0" />
-              <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_18%_22%,rgba(56,189,248,0.12),transparent_58%),radial-gradient(circle_at_72%_28%,rgba(99,102,241,0.10),transparent_60%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.08),transparent_66%),radial-gradient(circle_at_90%_85%,rgba(236,72,153,0.06),transparent_64%)]" />
-              <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:22px_22px]" />
+              <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_72%_28%,rgba(99,102,241,0.14),transparent_64%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.08),transparent_70%),radial-gradient(circle_at_90%_85%,rgba(236,72,153,0.06),transparent_70%)]" />
+              <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(rgba(255,255,255,0.50)_1px,transparent_1px)] [background-size:22px_22px]" />
               <div className="pointer-events-none absolute inset-0 xpot-luxe-border" />
 
               <div className="relative p-6 sm:p-7">
@@ -1411,12 +1494,12 @@ function DashboardInner() {
                       <img
                         src={avatar}
                         alt={name}
-                        className="h-12 w-12 rounded-full border border-slate-700/50 object-cover shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
+                        className={`h-12 w-12 rounded-full border ${BORDER_SOFT} object-cover shadow-[0_24px_70px_rgba(0,0,0,0.55)]`}
                         style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
                       />
                     ) : (
                       <div
-                        className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-700/55 bg-slate-950/35 text-sm font-semibold text-slate-100"
+                        className={`flex h-12 w-12 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45 text-sm font-semibold text-slate-100`}
                         style={{ animation: 'xpotFloat 6s ease-in-out infinite' }}
                       >
                         {initialFromHandle(handle)}
@@ -1424,14 +1507,14 @@ function DashboardInner() {
                     )}
 
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-200/70">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-200/65">
                         {greeting}
                       </p>
                       <p className="mt-1 truncate text-xl font-semibold text-slate-100">
                         {handle ? `@${handle.replace(/^@/, '')}` : name}
                       </p>
 
-                      <p className="mt-1 text-xs text-slate-200/70">
+                      <p className="mt-1 text-xs text-slate-200/65">
                         Your XPOT account can link multiple wallets. Tickets are issued per wallet and grouped below.
                       </p>
 
@@ -1440,33 +1523,33 @@ function DashboardInner() {
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3 lg:w-[560px]">
-                    <div className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Next draw in</p>
+                    <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Next draw in</p>
                       <p className="mt-1 font-mono text-lg text-slate-100">{countdown}</p>
-                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-300/60">
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-300/55">
                         22:00 Madrid cutoff
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Cabin sync</p>
+                    <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Cabin sync</p>
                       <p className="mt-1 text-sm font-semibold text-slate-100">
                         {lastSyncedAt ? (
                           <span key={syncPulse} className="inline-flex items-center gap-2">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300/85" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300/80" />
                             {new Date(lastSyncedAt).toLocaleTimeString('de-DE')}
                           </span>
                         ) : (
                           'Syncing…'
                         )}
                       </p>
-                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-300/60">
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-300/55">
                         Auto refresh active
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Status</p>
+                    <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Status</p>
                       <div className="mt-2 flex items-center gap-2">
                         <StatusPill tone={ticketClaimed ? 'emerald' : 'amber'}>
                           <Radio className="h-3.5 w-3.5" />
@@ -1493,9 +1576,9 @@ function DashboardInner() {
                         : `${Math.floor(xpotBalance).toLocaleString()} XPOT`
                     }
                   />
-                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
+                  <div className={`flex items-center justify-between gap-3 rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Eligibility</p>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Eligibility</p>
                       <div className="mt-2">
                         {typeof xpotBalance === 'number' ? (
                           hasRequiredXpot ? (
@@ -1516,7 +1599,7 @@ function DashboardInner() {
                     </div>
 
                     <div className="text-right">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Minimum</p>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Minimum</p>
                       <p className="mt-1 text-xs text-slate-100">
                         <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
                       </p>
@@ -1525,8 +1608,8 @@ function DashboardInner() {
                 </div>
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Account entries today</p>
+                  <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Account entries today</p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <StatusPill tone="sky">
                         <Ticket className="h-3.5 w-3.5" />
@@ -1537,11 +1620,11 @@ function DashboardInner() {
                         {walletsEnteredCount} wallet{walletsEnteredCount === 1 ? '' : 's'}
                       </StatusPill>
                     </div>
-                    <p className="mt-2 text-xs text-slate-200/70">Each eligible wallet can claim one entry per day.</p>
+                    <p className="mt-2 text-xs text-slate-200/65">Each eligible wallet can claim one entry per day.</p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">One-tap</p>
+                  <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">One-tap</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -1561,7 +1644,11 @@ function DashboardInner() {
                         Claim
                       </button>
 
-                      <button type="button" onClick={() => refreshAll('manual')} className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+                      <button
+                        type="button"
+                        onClick={() => refreshAll('manual')}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         Refresh
                       </button>
@@ -1579,13 +1666,13 @@ function DashboardInner() {
                         Reminder
                       </button>
                     </div>
-                    <p className="mt-2 text-xs text-slate-200/70">No clutter. The monitor stays on the right.</p>
+                    <p className="mt-2 text-xs text-slate-200/65">No clutter. The monitor stays on the right.</p>
                   </div>
                 </div>
 
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 text-xs text-slate-200/70">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300/80" />
+                  <div className="inline-flex items-center gap-2 text-xs text-slate-200/65">
+                    <span className="h-1.5 w-1.5 rounded-full bg-violet-300/75" />
                     Ticket allocation is wallet-level.
                   </div>
 
@@ -1623,7 +1710,7 @@ function DashboardInner() {
                   />
 
                   {!walletConnected && (
-                    <div className="mt-4 rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3 text-xs text-slate-200/70">
+                    <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
                       Connect your wallet using the top bar to check eligibility and claim today’s entry.
                     </div>
                   )}
@@ -1631,16 +1718,16 @@ function DashboardInner() {
                   {walletConnected && !ticketClaimed && (
                     <>
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <div className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-                          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Requirement</p>
+                        <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Requirement</p>
                           <p className="mt-1 text-sm font-semibold text-slate-100">
                             <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
                           </p>
-                          <p className="mt-1 text-xs text-slate-200/70">Held in the wallet you connect.</p>
+                          <p className="mt-1 text-xs text-slate-200/65">Held in the wallet you connect.</p>
                         </div>
 
-                        <div className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-                          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Your status</p>
+                        <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Your status</p>
                           <div className="mt-2">
                             {typeof xpotBalance === 'number' ? (
                               hasRequiredXpot ? (
@@ -1658,7 +1745,7 @@ function DashboardInner() {
                               <StatusPill tone="slate">-</StatusPill>
                             )}
                           </div>
-                          <p className="mt-2 text-xs text-slate-200/70">Eligibility is checked on refresh.</p>
+                          <p className="mt-2 text-xs text-slate-200/65">Eligibility is checked on refresh.</p>
                         </div>
                       </div>
 
@@ -1672,13 +1759,13 @@ function DashboardInner() {
                           {claiming ? 'Generating…' : 'Claim today’s entry'}
                         </button>
 
-                        <div className="text-xs text-slate-200/70">Draw locks at 22:00 Madrid.</div>
+                        <div className="text-xs text-slate-200/65">Draw locks at 22:00 Madrid.</div>
                       </div>
 
                       {claimError && <p className="mt-3 text-xs xpot-gold-text">{claimError}</p>}
 
                       {typeof xpotBalance === 'number' && !hasRequiredXpot && (
-                        <p className="mt-3 text-xs text-slate-200/70">
+                        <p className="mt-3 text-xs text-slate-200/65">
                           Your wallet is below the minimum. You need{' '}
                           <span className="font-semibold text-slate-100">{REQUIRED_XPOT.toLocaleString()} XPOT</span> to
                           claim today’s entry.
@@ -1688,11 +1775,13 @@ function DashboardInner() {
                   )}
 
                   {walletConnected && ticketClaimed && todaysTicket && (
-                    <div className="mt-4 rounded-[24px] border border-slate-700/45 bg-slate-950/45 p-4">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-200/70">Your ticket code</p>
+                    <div className={`mt-4 rounded-[24px] ${SURFACE_INNER} p-4`}>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-200/65">Your ticket code</p>
 
                       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                        <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-700/50 bg-slate-950/55 px-4 py-3">
+                        <div
+                          className={`inline-flex items-center gap-3 rounded-2xl border ${BORDER_SOFTER} bg-slate-950/55 px-4 py-3`}
+                        >
                           <Ticket className="h-5 w-5 text-amber-100" />
                           <p className="font-mono text-base text-slate-100">{todaysTicket.code}</p>
                         </div>
@@ -1700,7 +1789,7 @@ function DashboardInner() {
                         <button
                           type="button"
                           onClick={() => handleCopyCode(todaysTicket)}
-                          className="inline-flex items-center gap-2 rounded-full border border-slate-700/50 bg-slate-950/40 px-4 py-2 text-xs text-slate-100 hover:bg-slate-900/35"
+                          className={`inline-flex items-center gap-2 rounded-full border ${BORDER_SOFT} bg-slate-950/45 px-4 py-2 text-xs text-slate-100 hover:bg-slate-900/45`}
                         >
                           <Copy className="h-4 w-4" />
                           {copiedId === todaysTicket.id ? 'Copied' : 'Copy'}
@@ -1722,13 +1811,13 @@ function DashboardInner() {
                   )}
 
                   {walletConnected && ticketClaimed && !todaysTicket && (
-                    <p className="mt-4 text-xs text-slate-200/70">
+                    <p className="mt-4 text-xs text-slate-200/65">
                       Your wallet has an entry today, but it hasn’t loaded yet. Refresh the page.
                     </p>
                   )}
 
                   {iWonToday && (
-                    <div className="mt-4 rounded-2xl border border-emerald-400/18 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                    <div className="mt-4 rounded-2xl border border-emerald-300/18 bg-emerald-950/35 px-4 py-3 text-sm text-emerald-100">
                       You won today’s XPOT. Check your wallet and the winners feed.
                     </div>
                   )}
@@ -1754,17 +1843,17 @@ function DashboardInner() {
 
                   <div className="mt-4 space-y-2">
                     {loadingTickets ? (
-                      <p className="text-xs text-slate-200/70">Loading…</p>
+                      <p className="text-xs text-slate-200/65">Loading…</p>
                     ) : ticketsError ? (
                       <p className="text-xs xpot-gold-text">{ticketsError}</p>
                     ) : entriesScope === 'wallet' ? (
                       !walletConnected ? (
-                        <p className="text-xs text-slate-200/70">Connect a wallet to view wallet-only entries.</p>
+                        <p className="text-xs text-slate-200/65">Connect a wallet to view wallet-only entries.</p>
                       ) : myTickets.length === 0 ? (
-                        <p className="text-xs text-slate-200/70">No entries for this wallet yet.</p>
+                        <p className="text-xs text-slate-200/65">No entries for this wallet yet.</p>
                       ) : (
                         myTickets.map(t => (
-                          <div key={t.id} className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
+                          <div key={t.id} className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
                             <div className="flex items-center justify-between gap-3">
                               <p className="font-mono text-sm text-slate-100">{t.code}</p>
                               <StatusPill
@@ -1779,20 +1868,17 @@ function DashboardInner() {
                                 {safeStatusLabel(t.status)}
                               </StatusPill>
                             </div>
-                            <p className="mt-1 text-xs text-slate-200/70">Issued {formatDateTime(t.createdAt)}</p>
+                            <p className="mt-1 text-xs text-slate-200/65">Issued {formatDateTime(t.createdAt)}</p>
                           </div>
                         ))
                       )
                     ) : accountGroups.length === 0 ? (
-                      <p className="text-xs text-slate-200/70">No entries yet today.</p>
+                      <p className="text-xs text-slate-200/65">No entries yet today.</p>
                     ) : (
                       accountGroups.map(group => {
                         const isCurrent = !!normalizedWallet && group.walletLower === normalizedWallet;
                         return (
-                          <div
-                            key={group.walletLower}
-                            className="rounded-[24px] border border-slate-700/45 bg-slate-950/45 p-4"
-                          >
+                          <div key={group.walletLower} className={`rounded-[24px] ${SURFACE_INNER} p-4`}>
                             <div className="flex flex-wrap items-center justify-between gap-3">
                               <div className="flex items-center gap-2">
                                 <StatusPill tone={isCurrent ? 'emerald' : 'slate'}>
@@ -1817,7 +1903,7 @@ function DashboardInner() {
                               {group.tickets.map(t => (
                                 <div
                                   key={t.id}
-                                  className="rounded-2xl border border-slate-700/45 bg-slate-950/55 px-4 py-3"
+                                  className={`rounded-2xl border ${BORDER_SOFTER} bg-slate-950/55 px-4 py-3`}
                                 >
                                   <div className="flex items-center justify-between gap-3">
                                     <p className="truncate font-mono text-sm text-slate-100">{t.code}</p>
@@ -1833,13 +1919,15 @@ function DashboardInner() {
                                       {safeStatusLabel(t.status)}
                                     </StatusPill>
                                   </div>
-                                  <p className="mt-1 text-xs text-slate-200/70">Issued {formatDateTime(t.createdAt)}</p>
+                                  <p className="mt-1 text-xs text-slate-200/65">Issued {formatDateTime(t.createdAt)}</p>
 
                                   <div className="mt-2 flex items-center justify-between gap-2">
-                                    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/60">
+                                    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">
                                       Wallet
                                     </span>
-                                    <span className="font-mono text-xs text-slate-100">{shortWallet(t.walletAddress)}</span>
+                                    <span className="font-mono text-xs text-slate-100">
+                                      {shortWallet(t.walletAddress)}
+                                    </span>
                                   </div>
                                 </div>
                               ))}
@@ -1850,7 +1938,7 @@ function DashboardInner() {
                     )}
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3 text-xs text-slate-200/70">
+                  <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
                     Tip: Connect another wallet and claim again to increase your ticket count for today.
                   </div>
                 </LuxeCard>
@@ -1871,29 +1959,29 @@ function DashboardInner() {
                   }
                 />
 
-                <div className="mt-4 rounded-[24px] border border-slate-700/45 bg-slate-950/45 p-4">
+                <div className={`mt-4 rounded-[24px] ${SURFACE_INNER} p-4`}>
                   <p className="text-xs font-semibold text-slate-100">{mission.title}</p>
-                  <p className="mt-1 text-xs text-slate-200/70">{mission.desc}</p>
+                  <p className="mt-1 text-xs text-slate-200/65">{mission.desc}</p>
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Daily streak</p>
+                  <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Daily streak</p>
                     <div className="mt-2">
                       <StatusPill tone={streak.todayDone ? 'emerald' : 'amber'}>
                         <Flame className="h-3.5 w-3.5" />
                         {streak.todayDone ? 'Today done' : 'Pending'}
                       </StatusPill>
                     </div>
-                    <p className="mt-2 text-xs text-slate-200/70">
+                    <p className="mt-2 text-xs text-slate-200/65">
                       <span className="font-semibold text-slate-100">{Math.max(0, streak.days)}</span> day streak
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/70">Reset logic</p>
+                  <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Reset logic</p>
                     <p className="mt-2 text-sm font-semibold text-slate-100">UTC day rule</p>
-                    <p className="mt-1 text-xs text-slate-200/70">Streak updates after you claim today’s entry.</p>
+                    <p className="mt-1 text-xs text-slate-200/65">Streak updates after you claim today’s entry.</p>
                   </div>
                 </div>
               </LuxeCard>
@@ -1915,7 +2003,7 @@ function DashboardInner() {
                 />
 
                 {bonusActive && upcomingBonus ? (
-                  <div className="mt-4 rounded-[24px] border border-emerald-400/18 bg-emerald-950/20 p-4">
+                  <div className="mt-4 rounded-[24px] border border-emerald-300/14 bg-emerald-950/28 p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-100/85">
                         Scheduled
@@ -1927,7 +2015,7 @@ function DashboardInner() {
                     <BonusStrip variant="home" />
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3 text-xs text-slate-200/70">
+                  <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
                     No bonus scheduled right now.
                   </div>
                 )}
@@ -1947,18 +2035,18 @@ function DashboardInner() {
 
                 <div className="mt-4 space-y-2">
                   {loadingWinners ? (
-                    <p className="text-xs text-slate-200/70">Loading…</p>
+                    <p className="text-xs text-slate-200/65">Loading…</p>
                   ) : winnersError ? (
                     <p className="text-xs xpot-gold-text">{winnersError}</p>
                   ) : recentWinners.length === 0 ? (
-                    <p className="text-xs text-slate-200/70">No completed draws yet.</p>
+                    <p className="text-xs text-slate-200/65">No completed draws yet.</p>
                   ) : (
                     recentWinners.map(w => {
                       const h = w.handle ? w.handle.replace(/^@/, '') : null;
                       return (
-                        <div key={w.id} className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
+                        <div key={w.id} className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
                           <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-slate-200/70">{formatDate(w.drawDate)}</p>
+                            <p className="text-xs text-slate-200/65">{formatDate(w.drawDate)}</p>
                             {h ? (
                               <StatusPill tone="sky">
                                 <X className="h-3.5 w-3.5" />
@@ -1970,13 +2058,15 @@ function DashboardInner() {
                           </div>
 
                           <div className="mt-3 flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/55 bg-slate-950/35 text-sm font-semibold text-slate-100">
+                            <div
+                              className={`flex h-9 w-9 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45 text-sm font-semibold text-slate-100`}
+                            >
                               {initialFromHandle(h)}
                             </div>
 
                             <div className="min-w-0">
                               <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-200/70">
+                              <p className="mt-1 text-xs text-slate-200/65">
                                 {h ? `@${h}` : shortWallet(w.walletAddress)}
                               </p>
                             </div>
@@ -2001,16 +2091,16 @@ function DashboardInner() {
 
                 <div className="mt-4 space-y-2">
                   {!walletConnected ? (
-                    <p className="text-xs text-slate-200/70">Connect your wallet in the top bar to view history.</p>
+                    <p className="text-xs text-slate-200/65">Connect your wallet in the top bar to view history.</p>
                   ) : loadingHistory ? (
-                    <p className="text-xs text-slate-200/70">Loading…</p>
+                    <p className="text-xs text-slate-200/65">Loading…</p>
                   ) : historyError ? (
                     <p className="text-xs xpot-gold-text">{historyError}</p>
                   ) : historyEntries.length === 0 ? (
-                    <p className="text-xs text-slate-200/70">No history yet.</p>
+                    <p className="text-xs text-slate-200/65">No history yet.</p>
                   ) : (
                     historyEntries.slice(0, 5).map(t => (
-                      <div key={t.id} className="rounded-2xl border border-slate-700/45 bg-slate-950/45 px-4 py-3">
+                      <div key={t.id} className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
                         <div className="flex items-center justify-between gap-3">
                           <p className="font-mono text-sm text-slate-100">{t.code}</p>
                           <StatusPill
@@ -2027,7 +2117,7 @@ function DashboardInner() {
                             {safeStatusLabel(t.status)}
                           </StatusPill>
                         </div>
-                        <p className="mt-1 text-xs text-slate-200/70">{formatDateTime(t.createdAt)}</p>
+                        <p className="mt-1 text-xs text-slate-200/65">{formatDateTime(t.createdAt)}</p>
                       </div>
                     ))
                   )}
@@ -2036,24 +2126,96 @@ function DashboardInner() {
             </div>
           </section>
 
-          <footer className="mt-8 border-t border-slate-800/50 pt-4 text-xs text-slate-200/60">
-            <span className="inline-flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-slate-200/70" />
-              XPOT is in Pre-Launch Mode. UI is final and wiring is live.
-            </span>
+          {/* Global footer (structured like a site footer) */}
+          <footer className={`mt-10 border-t ${BORDER_SOFT} pt-8 pb-6`}>
+            <div className="grid gap-6 md:grid-cols-3">
+              <div>
+                <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-200/70">
+                  <Sparkles className="h-4 w-4 text-violet-200/70" />
+                  XPOT
+                </div>
+                <p className="mt-3 text-sm text-slate-100">Holder Dashboard</p>
+                <p className="mt-2 text-xs text-slate-200/60">
+                  Pre-Launch mode. UI is final and wiring is live. Draw cutoff is 22:00 Madrid.
+                </p>
+
+                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-violet-300/14 bg-slate-950/45 px-3 py-2 text-xs text-slate-200/70">
+                  <ShieldCheck className="h-4 w-4 text-violet-200/70" />
+                  Wallet connection enables eligibility verification.
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200/60">Navigation</p>
+                <div className="mt-3 flex flex-col gap-2 text-sm">
+                  <Link href="/hub" className="text-slate-100 hover:text-white">
+                    Dashboard
+                  </Link>
+                  <Link href="/hub/history" className="text-slate-100 hover:text-white">
+                    History
+                  </Link>
+                  <Link href="/" className="text-slate-100 hover:text-white">
+                    Home
+                  </Link>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200/60">Tools</p>
+                <div className="mt-3 flex flex-col gap-2 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => refreshAll('manual')}
+                    className="inline-flex items-center gap-2 text-left text-slate-100 hover:text-white"
+                  >
+                    <RefreshCcw className="h-4 w-4 text-slate-200/70" />
+                    Manual refresh
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ics = makeIcsForCutoff(nextMadridCutoffUtcMs(new Date()));
+                      downloadTextFile('xpot-draw-cutoff.ics', ics, 'text/calendar');
+                    }}
+                    className="inline-flex items-center gap-2 text-left text-slate-100 hover:text-white"
+                  >
+                    <CalendarClock className="h-4 w-4 text-slate-200/70" />
+                    Download cutoff reminder
+                  </button>
+
+                  <a
+                    href="https://solscan.io"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 text-slate-100 hover:text-white"
+                  >
+                    <ExternalLink className="h-4 w-4 text-slate-200/70" />
+                    Solscan
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col items-start justify-between gap-3 border-t border-slate-700/25 pt-4 sm:flex-row sm:items-center">
+              <p className="text-xs text-slate-200/55">© {new Date().getFullYear()} XPOT. All rights reserved.</p>
+              <p className="text-xs text-slate-200/55">
+                Ticket allocation is per-wallet. One XPOT account may link multiple wallets.
+              </p>
+            </div>
           </footer>
 
-          {/* ✅ RIGHT-SIDE STICKY ENTRIES MONITOR (closed by default) */}
+          {/* RIGHT-SIDE STICKY ENTRIES MONITOR (closed by default, darker, no white borders) */}
           <div className="fixed bottom-5 left-4 right-4 z-[60] sm:left-auto sm:right-6 sm:w-[360px]">
             <div className="xpot-monitor-shell relative overflow-hidden rounded-[22px]">
-              <div className="pointer-events-none absolute -inset-20 opacity-65 blur-3xl bg-[radial-gradient(circle_at_15%_20%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(circle_at_82%_35%,rgba(16,185,129,0.08),transparent_60%),radial-gradient(circle_at_60%_110%,rgba(251,191,36,0.06),transparent_65%)]" />
-              <div className="pointer-events-none absolute inset-0 opacity-[0.05] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:18px_18px]" />
+              <div className="pointer-events-none absolute -inset-20 opacity-75 blur-3xl bg-[radial-gradient(circle_at_15%_20%,rgba(99,102,241,0.14),transparent_58%),radial-gradient(circle_at_70%_25%,rgba(56,189,248,0.12),transparent_58%),radial-gradient(circle_at_82%_40%,rgba(16,185,129,0.10),transparent_62%),radial-gradient(circle_at_60%_110%,rgba(236,72,153,0.08),transparent_68%)]" />
+              <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px]" />
 
               <div className="relative p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200/80">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200/75">
                         Entries monitor
                       </p>
                       <StatusPill tone="emerald">
@@ -2061,7 +2223,7 @@ function DashboardInner() {
                         Live
                       </StatusPill>
                     </div>
-                    <p className="mt-1 truncate text-xs text-slate-200/70">
+                    <p className="mt-1 truncate text-xs text-slate-200/60">
                       Viewing: {entriesScope === 'wallet' ? 'this wallet' : 'account'}{' '}
                       {entriesScope === 'account' ? '(grouped)' : ''}
                     </p>
@@ -2071,7 +2233,7 @@ function DashboardInner() {
                     type="button"
                     onClick={() => setMonitorOpen(v => !v)}
                     className={`${BTN_UTILITY} h-9 px-3 text-xs`}
-                    title={monitorOpen ? 'Collapse' : 'Expand'}
+                    title="Expand/Collapse"
                   >
                     {monitorOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
                   </button>
@@ -2101,28 +2263,28 @@ function DashboardInner() {
                       )}
                     </div>
 
-                    <div className="mt-3 inline-flex w-full rounded-full border border-slate-700/55 bg-slate-950/45 p-1">
+                    <div className={`mt-3 inline-flex w-full rounded-full border ${BORDER_SOFT} bg-slate-950/45 p-1`}>
                       <button
                         type="button"
-                        onClick={() => setEntriesScope('account')}
+                        onClick={() => setScopeAndJump('account')}
                         className={[
                           'flex-1 rounded-full px-4 py-2 text-xs font-semibold transition',
                           entriesScope === 'account'
                             ? 'bg-slate-900/55 text-slate-100'
-                            : 'text-slate-200/70 hover:text-slate-100',
+                            : 'text-slate-200/65 hover:text-slate-100',
                         ].join(' ')}
                       >
                         Account
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEntriesScope('wallet')}
+                        onClick={() => setScopeAndJump('wallet')}
                         disabled={!walletConnected}
                         className={[
                           'flex-1 rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-50',
                           entriesScope === 'wallet'
                             ? 'bg-slate-900/55 text-slate-100'
-                            : 'text-slate-200/70 hover:text-slate-100',
+                            : 'text-slate-200/65 hover:text-slate-100',
                         ].join(' ')}
                         title={!walletConnected ? 'Connect a wallet to filter' : 'Show only the connected wallet'}
                       >
@@ -2149,15 +2311,19 @@ function DashboardInner() {
                         Jump to claim
                       </button>
 
-                      <button type="button" onClick={() => refreshAll('manual')} className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+                      <button
+                        type="button"
+                        onClick={() => refreshAll('manual')}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         Refresh
                       </button>
                     </div>
 
                     <div className="mt-3 flex items-center justify-between gap-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-200/60">Auto refresh: on</p>
-                      <p className="text-[10px] text-slate-200/60">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">Auto refresh: on</p>
+                      <p className="text-[10px] text-slate-200/55">
                         {lastSyncedAt ? `Last sync ${new Date(lastSyncedAt).toLocaleTimeString('de-DE')}` : 'Syncing…'}
                       </p>
                     </div>
