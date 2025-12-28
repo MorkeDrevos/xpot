@@ -211,7 +211,8 @@ function StatusPill({
       ? [
           // make the “gold” read as gold everywhere (esp Safari)
           'border-amber-200/80',
-          'text-amber-50',
+          'text-white',
+'[&_svg]:text-white',
           // less muddy, more metallic
           'bg-[linear-gradient(180deg,rgba(255,214,102,0.72),rgba(251,191,36,0.42),rgba(245,158,11,0.22),rgba(2,6,23,0.70))]',
           // stronger outline + depth
