@@ -1461,12 +1461,14 @@ function DashboardInner() {
    - one-time soft flash on open
 ----------------------------- */
 
-/* hard stop any animation inside monitor (prevents "breathing") */
-.xpot-monitor-shell,
+/* stop looping animations, but allow the one-time flash */
 .xpot-monitor-shell * {
-  animation: none !important;
+  animation: none;
 }
 
+.xpot-monitor-shell.xpot-monitor-flash {
+  animation: xpotMonitorFlash 650ms ease-out 1 !important;
+}
 /* premium purple border + glow */
 .xpot-monitor-shell {
   border: 1px solid rgba(139, 92, 246, 0.32) !important; /* violet */
@@ -2362,7 +2364,15 @@ function DashboardInner() {
 
           {/* RIGHT-SIDE STICKY ENTRIES MONITOR (closed by default, now premium and visible) */}
           <div className="fixed bottom-5 left-4 right-4 z-[60] sm:left-auto sm:right-6 sm:w-[380px]">
-            <div className="xpot-monitor-shell xpot-monitor-beacon relative overflow-hidden rounded-[22px]">
+  <div
+    key={monitorFlashKey}
+    className={[
+      'xpot-monitor-shell xpot-monitor-beacon relative overflow-hidden rounded-[22px]',
+      monitorOpen ? 'xpot-monitor-flash' : '',
+    ].join(' ')}
+  >
+>
+  <div className="xpot-monitor-ring" />
               <div className="pointer-events-none absolute -inset-20 opacity-75 blur-3xl bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.16),transparent_58%),radial-gradient(circle_at_62%_20%,rgba(99,102,241,0.18),transparent_58%),radial-gradient(circle_at_85%_40%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_60%_110%,rgba(236,72,153,0.10),transparent_68%)]" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px]" />
 
