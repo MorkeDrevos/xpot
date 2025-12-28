@@ -15,6 +15,7 @@ const LIVE_POLL_MS = 5000;
 
 const RUN_TOTAL_DAYS = RUN_DAYS;
 const DRAW_HOUR_MADRID = 22; // 22:00 Madrid time
+const DRAW_MINUTE_MADRID = 0;
 const MADRID_TZ = 'Europe/Madrid';
 
 type LiveDraw = {
@@ -98,6 +99,7 @@ function tzOffsetMinutes(timeZone: string, date: Date) {
 
 function zonedTimeToUtcMs(timeZone: string, y: number, m: number, d: number, hh: number, mm: number, ss: number) {
   let guess = Date.UTC(y, m - 1, d, hh, mm, ss);
+  // 2-pass refinement handles DST edges well enough for our use
   for (let i = 0; i < 2; i++) {
     const off = tzOffsetMinutes(timeZone, new Date(guess));
     guess = Date.UTC(y, m - 1, d, hh, mm, ss) - off * 60_000;
@@ -123,6 +125,14 @@ function formatArchiveDateLine(utcMs: number) {
     year: 'numeric',
   });
   return dtf.format(new Date(utcMs));
+}
+
+function formatMadridCutoffLabel() {
+  return `Madrid ${pad2(DRAW_HOUR_MADRID)}:${pad2(DRAW_MINUTE_MADRID)}`;
+}
+
+function formatUtcIso(ms: number) {
+  return new Date(ms).toISOString();
 }
 
 export default function FinalDayPage() {
@@ -153,9 +163,9 @@ export default function FinalDayPage() {
   // ✅ Single-source schedule: lib/xpotRun.ts (matches homepage)
   // Rules:
   // - Current draw day: Day 1 immediately (even before the first draw happens)
-  // - Run status (completed draws): 0/7000 until 22:00 Madrid, then 1/7000, etc
+  // - Draw status (completed draws): 0/7000 until 22:00 Madrid, then 1/7000, etc
   // - Days remaining: 7000 until first draw happens, then 6999, etc
-  const runSchedule = useMemo(() => {
+  const drawSchedule = useMemo(() => {
     const now = new Date(nowTs);
     const nowMadrid = getZonedParts(now, MADRID_TZ);
 
@@ -191,7 +201,10 @@ export default function FinalDayPage() {
       const dayDiff = daysBetweenYmd(runStartYmd, nowYmd);
 
       // After 22:00 Madrid, today's draw is considered completed (count it).
-      const afterCutoff = nowMadrid.hour >= DRAW_HOUR_MADRID;
+      const afterCutoff =
+        nowMadrid.hour > DRAW_HOUR_MADRID ||
+        (nowMadrid.hour === DRAW_HOUR_MADRID && nowMadrid.minute >= DRAW_MINUTE_MADRID);
+
       completed = Math.max(0, dayDiff + (afterCutoff ? 1 : 0));
     }
 
@@ -199,6 +212,21 @@ export default function FinalDayPage() {
 
     const currentDayNumber = Math.min(RUN_TOTAL_DAYS, Math.max(1, completed + 1));
     const daysRemaining = Math.max(0, RUN_TOTAL_DAYS - completed);
+
+    // Next draw cutoff at 22:00 Madrid (today if before cutoff, otherwise tomorrow)
+    const afterCutoffNow =
+      nowMadrid.hour > DRAW_HOUR_MADRID ||
+      (nowMadrid.hour === DRAW_HOUR_MADRID && nowMadrid.minute >= DRAW_MINUTE_MADRID);
+
+    const nextCutoffUtcMs = zonedTimeToUtcMs(
+      MADRID_TZ,
+      nowMadrid.year,
+      nowMadrid.month,
+      nowMadrid.day + (afterCutoffNow ? 1 : 0),
+      DRAW_HOUR_MADRID,
+      DRAW_MINUTE_MADRID,
+      0,
+    );
 
     return {
       runStartUtcMs,
@@ -208,6 +236,8 @@ export default function FinalDayPage() {
       daysRemaining,
       endDateDMY,
       archiveDateLine: formatArchiveDateLine(runEndUtcMs),
+      nextCutoffUtcMs,
+      nowMadrid,
     };
   }, [nowTs]);
 
@@ -215,7 +245,7 @@ export default function FinalDayPage() {
     if (era === '2045') {
       return {
         badge: 'ARCHIVE EDITION',
-        dateLine: runSchedule.archiveDateLine,
+        dateLine: drawSchedule.archiveDateLine,
         section: 'Culture / Protocols',
         headline: "XPOT’s Final Day",
         deck:
@@ -235,7 +265,7 @@ export default function FinalDayPage() {
       byline: 'XPOT',
       price: '',
     };
-  }, [era, runSchedule.archiveDateLine]);
+  }, [era, drawSchedule.archiveDateLine]);
 
   const onFlip = useCallback(() => {
     setEra((e) => (e === '2045' ? 'now' : '2045'));
@@ -305,7 +335,18 @@ export default function FinalDayPage() {
 
         if (!alive) return;
 
-        if (!json?.draw?.closesAt) {
+        // If API doesn't have a closesAt yet (common early/protocol states),
+        // don't blank the UI - we fallback to schedule below.
+        if (!json?.draw) {
+          setLive(null);
+          return;
+        }
+
+        const closesAtRaw = json?.draw?.closesAt ? String(json.draw.closesAt) : '';
+        const drawDateRaw = json?.draw?.drawDate ? String(json.draw.drawDate) : '';
+
+        // If closesAt is missing, keep live as null so fallback schedule drives countdown.
+        if (!closesAtRaw) {
           setLive(null);
           return;
         }
@@ -314,8 +355,8 @@ export default function FinalDayPage() {
           dailyXpot: Number(json.draw.dailyXpot ?? 1_000_000),
           dayNumber: Number(json.draw.dayNumber ?? 0),
           dayTotal: Number(json.draw.dayTotal ?? RUN_TOTAL_DAYS),
-          drawDate: String(json.draw.drawDate ?? ''),
-          closesAt: String(json.draw.closesAt),
+          drawDate: drawDateRaw,
+          closesAt: closesAtRaw,
           status: (json.draw.status as LiveDraw['status']) ?? 'OPEN',
         };
 
@@ -324,8 +365,12 @@ export default function FinalDayPage() {
         d.drawDate = normalizeIso(d.drawDate);
 
         // Basic sanity checks to avoid rendering crashes
-        if (!safeParseMs(d.closesAt)) throw new Error('BAD_CLOSESAT');
-        if (!Number.isFinite(d.dailyXpot)) throw new Error('BAD_DAILY');
+        if (!safeParseMs(d.closesAt)) {
+          // If backend sends a weird date, prefer schedule fallback instead of breaking.
+          setLive(null);
+          return;
+        }
+        if (!Number.isFinite(d.dailyXpot)) d.dailyXpot = 1_000_000;
         if (!Number.isFinite(d.dayNumber) || d.dayNumber < 0) d.dayNumber = 0;
         if (!Number.isFinite(d.dayTotal) || d.dayTotal <= 0) d.dayTotal = RUN_TOTAL_DAYS;
 
@@ -354,13 +399,36 @@ export default function FinalDayPage() {
     return () => window.clearInterval(t);
   }, []);
 
-  const closesAtMs = safeParseMs(live?.closesAt);
+  // ─────────────────────────────────────────────
+  // Effective draw (LIVE when available, otherwise protocol schedule fallback)
+  // ─────────────────────────────────────────────
+  const effective = useMemo(() => {
+    if (live && safeParseMs(live.closesAt)) {
+      return { source: 'LIVE' as const, draw: live };
+    }
+
+    // Fallback schedule-driven draw object
+    const fallback: LiveDraw = {
+      dailyXpot: 1_000_000,
+      // For the UX here, tie "dayNumber" to the schedule day.
+      // (API dayNumber might be different; this fallback is only used when API is incomplete.)
+      dayNumber: drawSchedule.currentDayNumber,
+      dayTotal: RUN_TOTAL_DAYS,
+      drawDate: formatUtcIso(drawSchedule.nextCutoffUtcMs),
+      closesAt: formatUtcIso(drawSchedule.nextCutoffUtcMs),
+      status: 'OPEN',
+    };
+
+    return { source: 'SCHEDULE' as const, draw: fallback };
+  }, [live, drawSchedule.currentDayNumber, drawSchedule.nextCutoffUtcMs]);
+
+  const closesAtMs = safeParseMs(effective.draw.closesAt);
   const remainingMs = closesAtMs ? Math.max(0, closesAtMs - nowTs) : null;
   const cd = remainingMs !== null ? formatCountdown(remainingMs) : null;
 
   // If backend reports OPEN but closesAt already passed, treat as “syncing”
   const computedStatus: LiveDraw['status'] | 'SYNCING' | 'OFFLINE' =
-    liveErr ? 'OFFLINE' : !live ? 'SYNCING' : live.status === 'OPEN' && remainingMs === 0 ? 'SYNCING' : live.status;
+    liveErr ? 'OFFLINE' : !closesAtMs ? 'SYNCING' : effective.draw.status === 'OPEN' && remainingMs === 0 ? 'SYNCING' : effective.draw.status;
 
   const statusTone =
     computedStatus === 'OPEN'
@@ -372,11 +440,11 @@ export default function FinalDayPage() {
           : 'bg-white/5 text-white/80 ring-white/15';
 
   // ✅ Homepage-match labels
-  const dayLabel = `Day ${runSchedule.currentDayNumber.toLocaleString()} of ${RUN_TOTAL_DAYS.toLocaleString()}`;
-  const runStatusLabel = `${runSchedule.completedDraws.toLocaleString()}/${RUN_TOTAL_DAYS.toLocaleString()}`;
+  const dayLabel = `Day ${drawSchedule.currentDayNumber.toLocaleString()} of ${RUN_TOTAL_DAYS.toLocaleString()}`;
+  const drawStatusLabel = `${drawSchedule.completedDraws.toLocaleString()}/${RUN_TOTAL_DAYS.toLocaleString()}`;
 
   // ✅ Progress bar should represent completed draws (0 before 22:00)
-  const dayProgress = Math.max(0, Math.min(1, runSchedule.completedDraws / RUN_TOTAL_DAYS));
+  const dayProgress = Math.max(0, Math.min(1, drawSchedule.completedDraws / RUN_TOTAL_DAYS));
 
   const bgRoot =
     'bg-[#05070a] ' +
@@ -389,6 +457,8 @@ export default function FinalDayPage() {
     'radial-gradient(900px_700px_at_85%_25%,rgba(236,72,153,0.12),transparent_62%),' +
     'radial-gradient(1000px_900px_at_50%_90%,rgba(16,185,129,0.08),transparent_60%),' +
     'linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0))]';
+
+  const cutoffLabel = formatMadridCutoffLabel();
 
   return (
     <main
@@ -730,11 +800,11 @@ export default function FinalDayPage() {
 
                   {/* ✅ "0/7000" before 22:00 Madrid */}
                   <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
-                    Run status {runStatusLabel}
+                    Draw status {drawStatusLabel}
                   </div>
 
                   <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
-                    Ends {runSchedule.endDateDMY}
+                    Ends {drawSchedule.endDateDMY}
                   </div>
 
                   {/* Mysterious + protocol-serious */}
@@ -771,7 +841,7 @@ export default function FinalDayPage() {
                   <div className="h-full bg-white/25" style={{ width: `${Math.round(dayProgress * 10000) / 100}%` }} />
                 </div>
                 <div className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-white/55">
-                  {runSchedule.daysRemaining.toLocaleString()} days remaining
+                  {drawSchedule.daysRemaining.toLocaleString()} days remaining
                 </div>
               </div>
             </header>
@@ -785,20 +855,25 @@ export default function FinalDayPage() {
                     <span>Draw countdown</span>
                   </div>
 
-                  <span
-                    className={['inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1', statusTone].join(
-                      ' ',
-                    )}
-                  >
-                    {computedStatus}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={[
+                        'inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1',
+                        statusTone,
+                      ].join(' ')}
+                    >
+                      {computedStatus}
+                    </span>
+
+                    <span className="hidden sm:inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
+                      {effective.source === 'LIVE' ? 'Live feed' : 'Protocol schedule'}
+                    </span>
+                  </div>
                 </div>
 
                 {liveErr ? (
                   <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-bold text-white/80">
-                    {liveErr}. Protocol telemetry should return{' '}
-                    <span className="text-white/95">dailyXpot</span>, <span className="text-white/95">dayNumber</span>,{' '}
-                    <span className="text-white/95">dayTotal</span> and <span className="text-white/95">closesAt</span>.
+                    {liveErr}. Falling back to protocol schedule ({cutoffLabel}).
                   </div>
                 ) : (
                   <>
@@ -831,16 +906,14 @@ export default function FinalDayPage() {
                         <ShieldCheck size={14} className="opacity-90" />
                         <span>
                           Daily XPOT:{' '}
-                          <span className="font-black">{(live?.dailyXpot ?? 1_000_000).toLocaleString()} XPOT</span>
+                          <span className="font-black">{(effective.draw.dailyXpot ?? 1_000_000).toLocaleString()} XPOT</span>
                         </span>
                       </div>
 
                       <div className="font-black">
                         {computedStatus === 'SYNCING'
                           ? 'Syncing next draw…'
-                          : live?.closesAt
-                            ? `Closes at: ${new Date(live.closesAt).toUTCString()}`
-                            : 'Fetching live draw...'}
+                          : `Cutoff: ${cutoffLabel}`}
                       </div>
                     </div>
                   </>
