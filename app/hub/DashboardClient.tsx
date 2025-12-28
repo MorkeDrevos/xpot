@@ -30,6 +30,9 @@ import {
   VolumeX,
   Flame,
   Target,
+  ArrowUpRight,
+  Eye,
+  Layers,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -662,6 +665,8 @@ function DashboardInner() {
     return () => unlockScroll();
   }, []);
 
+  const entriesSectionRef = useRef<HTMLDivElement | null>(null);
+
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
@@ -728,8 +733,12 @@ function DashboardInner() {
     desc: 'Preparing today’s mission.',
   });
 
-  // ✅ NEW: toggle between account-wide vs connected-wallet-only display
+  // ✅ toggle between account-wide vs connected-wallet-only display
   const [entriesScope, setEntriesScope] = useState<'account' | 'wallet'>('account');
+
+  // ✅ NEW: tiny "live change" hint so users see it updating even if they are elsewhere
+  const [lastTicketCountSeen, setLastTicketCountSeen] = useState<number>(0);
+  const [liveBumpAt, setLiveBumpAt] = useState<number | null>(null);
 
   // Validate mint once (no side effects, just avoids crashes if TOKEN_MINT is wrong)
   useMemo(() => {
@@ -869,6 +878,19 @@ function DashboardInner() {
         }
 
         const [nextTickets, nextWinners] = await Promise.all([fetchTicketsToday(), fetchRecentWinners()]);
+
+        // Live bump detection (helps users notice updates even if the list is off-screen)
+        try {
+          const prevCount = lastTicketCountSeen;
+          const nextCount = nextTickets.length;
+          if (prevCount > 0 && nextCount > prevCount) {
+            setLiveBumpAt(Date.now());
+          }
+          setLastTicketCountSeen(nextCount);
+        } catch {
+          // ignore
+        }
+
         setEntries(nextTickets);
         setRecentWinners(nextWinners);
 
@@ -922,7 +944,16 @@ function DashboardInner() {
         refreshingRef.current = false;
       }
     },
-    [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
+    [
+      isAuthedEnough,
+      publicKey,
+      walletConnected,
+      fetchTicketsToday,
+      fetchRecentWinners,
+      fetchXpotBalance,
+      fetchHistory,
+      lastTicketCountSeen,
+    ],
   );
 
   useEffect(() => {
@@ -1099,7 +1130,7 @@ function DashboardInner() {
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   }, [entries, normalizedWallet]);
 
-  // ✅ NEW: account-wide grouping (today)
+  // Account-wide grouping (today)
   const accountGroups = useMemo(() => {
     const map = new Map<string, Entry[]>();
     for (const e of entries) {
@@ -1159,10 +1190,27 @@ function DashboardInner() {
     return 'Good evening';
   }, []);
 
-  // ✅ unlock scroll if lock overlay shows/hides or ceremony shows/hides
+  // unlock scroll if lock overlay shows/hides or ceremony shows/hides
   useEffect(() => {
     if (!showLock && !showCeremony) unlockScroll();
   }, [showLock, showCeremony]);
+
+  // Live bump auto-clear
+  useEffect(() => {
+    if (!liveBumpAt) return;
+    const t = window.setTimeout(() => setLiveBumpAt(null), 2200);
+    return () => window.clearTimeout(t);
+  }, [liveBumpAt]);
+
+  function scrollToEntries() {
+    try {
+      entriesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch {
+      // ignore
+    }
+  }
+
+  const showDock = !showLock;
 
   return (
     <>
@@ -1274,6 +1322,19 @@ function DashboardInner() {
           mix-blend-mode: overlay;
           pointer-events: none;
         }
+        @keyframes xpotBump {
+          0% {
+            transform: translateY(2px);
+            opacity: 0;
+          }
+          20% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(0px);
+            opacity: 1;
+          }
+        }
       `}</style>
 
       <EntryCeremony
@@ -1292,6 +1353,74 @@ function DashboardInner() {
         }
         showLinkX={isSignedIn && !handle}
       />
+
+      {/* ✅ NEW: Always-visible "Entries Dock" so View mode changes are visible even when scrolled */}
+      {showDock ? (
+        <div className="fixed bottom-4 left-0 right-0 z-[60] px-4">
+          <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3 rounded-[18px] border border-white/10 bg-slate-950/70 px-4 py-3 shadow-[0_30px_120px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                  <Layers className="h-3.5 w-3.5" />
+                  Entries monitor
+                </span>
+
+                <StatusPill tone="sky">
+                  <Ticket className="h-3.5 w-3.5" />
+                  {accountTicketsCount}
+                </StatusPill>
+
+                <StatusPill tone="slate">
+                  <Wallet className="h-3.5 w-3.5" />
+                  {walletsEnteredCount}
+                </StatusPill>
+
+                {liveBumpAt ? (
+                  <span
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200"
+                    style={{ animation: 'xpotBump 220ms ease-out both' }}
+                  >
+                    <Radio className="h-3.5 w-3.5" />
+                    Updated
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="mt-1 truncate text-xs text-slate-300/70">
+                {entriesScope === 'wallet'
+                  ? walletConnected
+                    ? `Viewing: this wallet (${shortWallet(currentWalletAddress || '')})`
+                    : 'Viewing: this wallet (connect a wallet to filter)'
+                  : 'Viewing: account (grouped by wallet)'}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEntriesScope('account');
+                  scrollToEntries();
+                }}
+                className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/[0.06] sm:inline-flex"
+              >
+                <Eye className="h-4 w-4" />
+                View entries
+                <ArrowUpRight className="h-4 w-4 opacity-80" />
+              </button>
+
+              <button
+                type="button"
+                onClick={scrollToEntries}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/[0.06]"
+              >
+                <ArrowUpRight className="h-4 w-4" />
+                Jump
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className={showLock ? 'pointer-events-none select-none blur-[2px] opacity-95' : ''}>
         <XpotPageShell
@@ -1381,7 +1510,6 @@ function DashboardInner() {
                         {handle ? `@${handle.replace(/^@/, '')}` : name}
                       </p>
 
-                      {/* ✅ clearer explanation */}
                       <p className="mt-1 text-xs text-slate-300/70">
                         Your XPOT account can link multiple wallets. Tickets are issued per wallet and shown below by wallet.
                       </p>
@@ -1410,6 +1538,9 @@ function DashboardInner() {
                         ) : (
                           'Syncing…'
                         )}
+                      </p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-400/70">
+                        {liveBumpAt ? 'New ticket detected' : 'Auto refresh active'}
                       </p>
                     </div>
 
@@ -1472,11 +1603,11 @@ function DashboardInner() {
                   </div>
                 </div>
 
-                {/* ✅ NEW: account-wide quick stats (premium + obvious) */}
+                {/* account-wide quick stats + view toggle + jump */}
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                     <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Account entries today</p>
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <StatusPill tone="sky">
                         <Ticket className="h-3.5 w-3.5" />
                         {accountTicketsCount} ticket{accountTicketsCount === 1 ? '' : 's'}
@@ -1485,10 +1616,27 @@ function DashboardInner() {
                         <Wallet className="h-3.5 w-3.5" />
                         {walletsEnteredCount} wallet{walletsEnteredCount === 1 ? '' : 's'}
                       </StatusPill>
+                      {liveBumpAt ? (
+                        <StatusPill tone="emerald">
+                          <Radio className="h-3.5 w-3.5" />
+                          Updating
+                        </StatusPill>
+                      ) : null}
                     </div>
-                    <p className="mt-2 text-xs text-slate-300/70">
-                      Each connected wallet can claim its own entry when eligible.
-                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={scrollToEntries}
+                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/[0.06]"
+                      >
+                        <ArrowUpRight className="h-4 w-4" />
+                        Jump to entries
+                      </button>
+
+                      <span className="text-xs text-slate-300/70">
+                        Each connected wallet can claim its own entry when eligible.
+                      </span>
+                    </div>
                   </div>
 
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -1551,6 +1699,170 @@ function DashboardInner() {
           <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             {/* LEFT */}
             <div className="space-y-6">
+              {/* ✅ FIX: make entries card first + sticky on desktop so View mode changes are always visible */}
+              <div ref={entriesSectionRef} className="lg:sticky lg:top-[92px] lg:z-10">
+                <LuxeCard accent="sky">
+                  <LuxeTitle
+                    title={entriesScope === 'wallet' ? 'Your entries today (this wallet)' : 'Your entries today (account)'}
+                    subtitle={
+                      entriesScope === 'wallet'
+                        ? 'Only tickets issued by the currently connected wallet.'
+                        : 'All tickets issued under your XPOT account, grouped by wallet.'
+                    }
+                    right={
+                      <StatusPill tone="sky">
+                        <Ticket className="h-3.5 w-3.5" />
+                        {entriesScope === 'wallet' ? myTickets.length : accountTicketsCount}
+                      </StatusPill>
+                    }
+                  />
+
+                  {/* sticky mini header inside card (mobile feel) */}
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <StatusPill tone="slate">
+                        <Wallet className="h-3.5 w-3.5" />
+                        {walletsEnteredCount} wallet{walletsEnteredCount === 1 ? '' : 's'}
+                      </StatusPill>
+                      {liveBumpAt ? (
+                        <StatusPill tone="emerald">
+                          <Radio className="h-3.5 w-3.5" />
+                          Updated
+                        </StatusPill>
+                      ) : null}
+                    </div>
+
+                    <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
+                      <button
+                        type="button"
+                        onClick={() => setEntriesScope('account')}
+                        className={[
+                          'rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+                          entriesScope === 'account'
+                            ? 'bg-white/[0.08] text-slate-100'
+                            : 'text-slate-300/70 hover:text-slate-200',
+                        ].join(' ')}
+                      >
+                        Account
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEntriesScope('wallet')}
+                        disabled={!walletConnected}
+                        className={[
+                          'rounded-full px-3 py-1.5 text-[11px] font-semibold transition disabled:opacity-50',
+                          entriesScope === 'wallet'
+                            ? 'bg-white/[0.08] text-slate-100'
+                            : 'text-slate-300/70 hover:text-slate-200',
+                        ].join(' ')}
+                        title={!walletConnected ? 'Connect a wallet to filter' : 'Show only the connected wallet'}
+                      >
+                        This wallet
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {loadingTickets ? (
+                      <p className="text-xs text-slate-300/70">Loading…</p>
+                    ) : ticketsError ? (
+                      <p className="text-xs xpot-gold-text">{ticketsError}</p>
+                    ) : entriesScope === 'wallet' ? (
+                      !walletConnected ? (
+                        <p className="text-xs text-slate-300/70">Connect a wallet to view wallet-only entries.</p>
+                      ) : myTickets.length === 0 ? (
+                        <p className="text-xs text-slate-300/70">No entries for this wallet yet.</p>
+                      ) : (
+                        myTickets.map(t => (
+                          <div key={t.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                              <StatusPill
+                                tone={
+                                  normalizeStatus(t.status) === 'in-draw'
+                                    ? 'emerald'
+                                    : normalizeStatus(t.status) === 'won'
+                                    ? 'sky'
+                                    : 'slate'
+                                }
+                              >
+                                {safeStatusLabel(t.status)}
+                              </StatusPill>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-300/70">Issued {formatDateTime(t.createdAt)}</p>
+                          </div>
+                        ))
+                      )
+                    ) : accountGroups.length === 0 ? (
+                      <p className="text-xs text-slate-300/70">No entries yet today.</p>
+                    ) : (
+                      accountGroups.map(group => {
+                        const isCurrent = !!normalizedWallet && group.walletLower === normalizedWallet;
+                        return (
+                          <div
+                            key={group.walletLower}
+                            className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <StatusPill tone={isCurrent ? 'emerald' : 'slate'}>
+                                  <Wallet className="h-3.5 w-3.5" />
+                                  {shortWallet(group.walletAddress)}
+                                </StatusPill>
+                                {isCurrent ? (
+                                  <StatusPill tone="emerald">
+                                    <Radio className="h-3.5 w-3.5" />
+                                    Connected
+                                  </StatusPill>
+                                ) : null}
+                              </div>
+
+                              <StatusPill tone="sky">
+                                <Ticket className="h-3.5 w-3.5" />
+                                {group.tickets.length}
+                              </StatusPill>
+                            </div>
+
+                            <div className="mt-3 space-y-2">
+                              {group.tickets.map(t => (
+                                <div key={t.id} className="rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="truncate font-mono text-sm text-slate-100">{t.code}</p>
+                                    <StatusPill
+                                      tone={
+                                        normalizeStatus(t.status) === 'in-draw'
+                                          ? 'emerald'
+                                          : normalizeStatus(t.status) === 'won'
+                                          ? 'sky'
+                                          : 'slate'
+                                      }
+                                    >
+                                      {safeStatusLabel(t.status)}
+                                    </StatusPill>
+                                  </div>
+                                  <p className="mt-1 text-xs text-slate-300/70">Issued {formatDateTime(t.createdAt)}</p>
+
+                                  <div className="mt-2 flex items-center justify-between gap-2">
+                                    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400/80">
+                                      Wallet
+                                    </span>
+                                    <span className="font-mono text-xs text-slate-200">{shortWallet(t.walletAddress)}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300/70">
+                    Tip: Connect another wallet and claim again to increase your ticket count for today.
+                  </div>
+                </LuxeCard>
+              </div>
+
               <LuxeCard accent="gold">
                 <LuxeTitle
                   title="Today’s XPOT"
@@ -1656,7 +1968,6 @@ function DashboardInner() {
                       />
                     </div>
 
-                    {/* ✅ NEW: show which wallet issued it */}
                     <div className="mt-3">
                       <TinyRow label="Wallet" value={shortWallet(todaysTicket.walletAddress)} mono />
                     </div>
@@ -1674,124 +1985,6 @@ function DashboardInner() {
                     You won today’s XPOT. Check your wallet and the winners feed.
                   </div>
                 )}
-              </LuxeCard>
-
-              {/* ✅ REPLACED: wallet-only box -> premium account-wide box with grouping + wallet filter */}
-              <LuxeCard accent="sky">
-                <LuxeTitle
-                  title={entriesScope === 'wallet' ? 'Your entries today (this wallet)' : 'Your entries today (account)'}
-                  subtitle={
-                    entriesScope === 'wallet'
-                      ? 'Only tickets issued by the currently connected wallet.'
-                      : 'All tickets issued under your XPOT account, grouped by wallet.'
-                  }
-                  right={
-                    <StatusPill tone="sky">
-                      <Ticket className="h-3.5 w-3.5" />
-                      {entriesScope === 'wallet' ? myTickets.length : accountTicketsCount}
-                    </StatusPill>
-                  }
-                />
-
-                <div className="mt-4 space-y-2">
-                  {loadingTickets ? (
-                    <p className="text-xs text-slate-300/70">Loading…</p>
-                  ) : ticketsError ? (
-                    <p className="text-xs xpot-gold-text">{ticketsError}</p>
-                  ) : entriesScope === 'wallet' ? (
-                    !walletConnected ? (
-                      <p className="text-xs text-slate-300/70">Connect a wallet to view wallet-only entries.</p>
-                    ) : myTickets.length === 0 ? (
-                      <p className="text-xs text-slate-300/70">No entries for this wallet yet.</p>
-                    ) : (
-                      myTickets.map(t => (
-                        <div key={t.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="font-mono text-sm text-slate-100">{t.code}</p>
-                            <StatusPill
-                              tone={
-                                normalizeStatus(t.status) === 'in-draw'
-                                  ? 'emerald'
-                                  : normalizeStatus(t.status) === 'won'
-                                  ? 'sky'
-                                  : 'slate'
-                              }
-                            >
-                              {safeStatusLabel(t.status)}
-                            </StatusPill>
-                          </div>
-                          <p className="mt-1 text-xs text-slate-300/70">Issued {formatDateTime(t.createdAt)}</p>
-                        </div>
-                      ))
-                    )
-                  ) : accountGroups.length === 0 ? (
-                    <p className="text-xs text-slate-300/70">No entries yet today.</p>
-                  ) : (
-                    accountGroups.map(group => {
-                      const isCurrent = !!normalizedWallet && group.walletLower === normalizedWallet;
-                      return (
-                        <div key={group.walletLower} className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <StatusPill tone={isCurrent ? 'emerald' : 'slate'}>
-                                <Wallet className="h-3.5 w-3.5" />
-                                {shortWallet(group.walletAddress)}
-                              </StatusPill>
-                              {isCurrent ? (
-                                <StatusPill tone="emerald">
-                                  <Radio className="h-3.5 w-3.5" />
-                                  Connected
-                                </StatusPill>
-                              ) : null}
-                            </div>
-
-                            <StatusPill tone="sky">
-                              <Ticket className="h-3.5 w-3.5" />
-                              {group.tickets.length}
-                            </StatusPill>
-                          </div>
-
-                          <div className="mt-3 space-y-2">
-                            {group.tickets.map(t => (
-                              <div
-                                key={t.id}
-                                className="rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3"
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <p className="truncate font-mono text-sm text-slate-100">{t.code}</p>
-                                  <StatusPill
-                                    tone={
-                                      normalizeStatus(t.status) === 'in-draw'
-                                        ? 'emerald'
-                                        : normalizeStatus(t.status) === 'won'
-                                        ? 'sky'
-                                        : 'slate'
-                                    }
-                                  >
-                                    {safeStatusLabel(t.status)}
-                                  </StatusPill>
-                                </div>
-                                <p className="mt-1 text-xs text-slate-300/70">Issued {formatDateTime(t.createdAt)}</p>
-
-                                <div className="mt-2 flex items-center justify-between gap-2">
-                                  <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400/80">
-                                    Wallet
-                                  </span>
-                                  <span className="font-mono text-xs text-slate-200">{shortWallet(t.walletAddress)}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* quick CTA to teach behaviour */}
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300/70">
-                  Tip: Connect another wallet and claim again to increase your ticket count for today.
-                </div>
               </LuxeCard>
             </div>
 
@@ -1980,6 +2173,9 @@ function DashboardInner() {
               XPOT is in Pre-Launch Mode. UI is final and wiring is live.
             </span>
           </footer>
+
+          {/* spacing so dock doesn't cover footer on mobile */}
+          <div className="h-20" />
         </XpotPageShell>
       </div>
     </>
