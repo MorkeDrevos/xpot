@@ -57,11 +57,14 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
-  // Iterate a couple times to handle DST offsets.
+  // Iterate to handle DST offsets.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
+
+    // crude but stable compare (minute precision)
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
     const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
+
     const diffMin = gotTotal - wantTotal;
     if (diffMin === 0) break;
     t -= diffMin * 60_000;
@@ -75,7 +78,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   const nowMin = madridNow.hh * 60 + madridNow.mm;
   const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
 
-  // If it's before today's cutoff, next cutoff is today 22:00; otherwise it's tomorrow 22:00.
+  // If before today's cutoff -> next cutoff is today 22:00; else tomorrow 22:00.
   const baseForNext = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
   const nextDayParts = getTzParts(baseForNext, MADRID_TZ);
 
@@ -95,7 +98,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
 }
 
 // ─────────────────────────────────────────────
-// Helpers – code + XPOT balance check (XPOT-only)
+// Helpers – code + XPOT balance check (XPOT-only gating)
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -107,15 +110,16 @@ function makeCode() {
   return `XPOT-${chunk()}-${chunk()}`;
 }
 
-type XpotBalance = { balance: number; raw: bigint; decimals: number };
+async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw: bigint; decimals: number }> {
+  const XPOT_MINT = process.env.XPOT_MINT;
+  if (!XPOT_MINT) throw new Error('XPOT_MINT not configured');
 
-async function getXpotBalanceUi(ownerAddress: string): Promise<XpotBalance> {
-  const rpc = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-  const mint = TOKEN_MINT; // ✅ single source of truth
+  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
-  const res = await fetch(rpc, {
+  const res = await fetch(rpcUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    // owner can be base58 string
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
@@ -147,12 +151,6 @@ async function getXpotBalanceUi(ownerAddress: string): Promise<XpotBalance> {
   }
 
   const balance = Number(rawTotal) / Math.pow(10, decimals);
-
-  // guard against NaN/Infinity
-  if (!Number.isFinite(balance)) {
-    return { balance: 0, raw: rawTotal, decimals };
-  }
-
   return { balance, raw: rawTotal, decimals };
 }
 
@@ -169,14 +167,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // 1) XPOT minimum check (server-side) - XPOT ONLY
+    // 1) XPOT minimum check (server-side) - XPOT ONLY, no SOL gating
     let xpotBalance = 0;
 
     try {
       const b = await getXpotBalanceUi(walletAddress);
       xpotBalance = b.balance;
 
-      if (!Number.isFinite(xpotBalance)) {
+      if (!(typeof xpotBalance === 'number' && Number.isFinite(xpotBalance))) {
         return NextResponse.json({ ok: false, error: 'XPOT_CHECK_FAILED' }, { status: 400 });
       }
 
