@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { REQUIRED_XPOT, TOKEN_MINT } from '@/lib/xpot';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // ─────────────────────────────────────────────
@@ -111,20 +112,21 @@ function makeCode() {
 }
 
 async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw: bigint; decimals: number }> {
-  const XPOT_MINT = process.env.XPOT_MINT;
-  if (!XPOT_MINT) throw new Error('XPOT_MINT not configured');
+  // Prefer env XPOT_MINT, fallback to TOKEN_MINT from your app constants
+  const mint = process.env.XPOT_MINT || TOKEN_MINT;
+  if (!mint) throw new Error('XPOT_MINT not configured');
 
   const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
   const res = await fetch(rpcUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // owner can be base58 string
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
       method: 'getTokenAccountsByOwner',
-      params: [ownerAddress, { mint }, { encoding: 'jsonParsed' }],
+      // owner = address (base58), mint = mint address (base58)
+      params: [address, { mint }, { encoding: 'jsonParsed' }],
     }),
   });
 
