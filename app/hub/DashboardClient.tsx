@@ -835,9 +835,6 @@ function DashboardInner() {
   // RIGHT monitor: CLOSED by default on arrival
   const [monitorOpen, setMonitorOpen] = useState(false);
 
-  // one-time purple flash key (forces re-mount to replay animation)
-  const [monitorFlashKey, setMonitorFlashKey] = useState(0);
-
   // refs for clean "jump" actions
   const entriesSectionRef = useRef<HTMLDivElement | null>(null);
   const claimSectionRef = useRef<HTMLDivElement | null>(null);
@@ -1461,14 +1458,12 @@ function DashboardInner() {
    - one-time soft flash on open
 ----------------------------- */
 
-/* stop looping animations, but allow the one-time flash */
+/* hard stop any animation inside monitor (prevents "breathing") */
+.xpot-monitor-shell,
 .xpot-monitor-shell * {
-  animation: none;
+  animation: none !important;
 }
 
-.xpot-monitor-shell.xpot-monitor-flash {
-  animation: xpotMonitorFlash 650ms ease-out 1 !important;
-}
 /* premium purple border + glow */
 .xpot-monitor-shell {
   border: 1px solid rgba(139, 92, 246, 0.32) !important; /* violet */
@@ -2364,44 +2359,50 @@ function DashboardInner() {
 
           {/* RIGHT-SIDE STICKY ENTRIES MONITOR (closed by default, now premium and visible) */}
           <div className="fixed bottom-5 left-4 right-4 z-[60] sm:left-auto sm:right-6 sm:w-[380px]">
-  <div
-    key={monitorFlashKey}
-    className={[
-      'xpot-monitor-shell xpot-monitor-beacon relative overflow-hidden rounded-[22px]',
-      monitorOpen ? 'xpot-monitor-flash' : '',
-    ].join(' ')}
-  >
-  <div className="xpot-monitor-ring" />
+            <div className="xpot-monitor-shell xpot-monitor-beacon relative overflow-hidden rounded-[22px]">
               <div className="pointer-events-none absolute -inset-20 opacity-75 blur-3xl bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.16),transparent_58%),radial-gradient(circle_at_62%_20%,rgba(99,102,241,0.18),transparent_58%),radial-gradient(circle_at_85%_40%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_60%_110%,rgba(236,72,153,0.10),transparent_68%)]" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px]" />
 
               <div className="relative p-4">
                 {/* Visible "handle" row */}
-<div className="flex items-center gap-2">
-  <button
-    type="button"
-    onClick={() => scrollToRef(entriesSectionRef as any, { offsetPx: 132, highlight: true })}
-    className={`${BTN_UTILITY} h-9 px-3 text-xs`}
-    title="Jump to entries"
-  >
-    <ArrowDownRight className="h-4 w-4" />
-  </button>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-300/85 shadow-[0_0_0_3px_rgba(16,185,129,0.10),0_0_40px_rgba(16,185,129,0.35)]" />
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-100/85">
+                        Entries monitor
+                      </p>
+                      <StatusPill tone="emerald">
+                        <Radio className="h-3.5 w-3.5" />
+                        LIVE
+                      </StatusPill>
+                    </div>
+                    <p className="mt-1 truncate text-xs text-slate-200/65">
+                      Viewing: {entriesScope === 'wallet' ? 'this wallet' : 'account'}{' '}
+                      {entriesScope === 'account' ? '(grouped)' : ''}
+                    </p>
+                  </div>
 
-  <button
-    type="button"
-    onClick={() =>
-      setMonitorOpen(v => {
-        const next = !v;
-        if (next) setMonitorFlashKey(k => k + 1); // one-time purple flash when opening
-        return next;
-      })
-    }
-    className={`${BTN_UTILITY} h-9 px-3 text-xs`}
-    title="Expand/Collapse"
-  >
-    {monitorOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-  </button>
-</div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => scrollToRef(entriesSectionRef as any, { offsetPx: 132, highlight: true })}
+                      className={`${BTN_UTILITY} h-9 px-3 text-xs`}
+                      title="Jump to entries"
+                    >
+                      <ArrowDownRight className="h-4 w-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMonitorOpen(v => !v)}
+                      className={`${BTN_UTILITY} h-9 px-3 text-xs`}
+                      title="Expand/Collapse"
+                    >
+                      {monitorOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
 
                 {monitorOpen ? (
                   <>
