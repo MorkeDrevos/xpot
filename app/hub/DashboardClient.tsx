@@ -188,20 +188,44 @@ function StatusPill({
   children: React.ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky';
 }) {
-  // Fix: richer premium gold (amber) - more readable, more "XPOT gold"
   const cls =
     tone === 'emerald'
-      ? 'border-emerald-300/18 bg-emerald-950/35 text-emerald-100 shadow-[0_0_0_1px_rgba(16,185,129,0.10)]'
+      ? [
+          'border-emerald-300/22',
+          'bg-[linear-gradient(180deg,rgba(16,185,129,0.18),rgba(2,6,23,0.55))]',
+          'text-emerald-50',
+          'shadow-[0_0_0_1px_rgba(16,185,129,0.10),0_18px_70px_rgba(16,185,129,0.10)]',
+        ].join(' ')
       : tone === 'amber'
-      ? 'border-amber-200/26 bg-[linear-gradient(180deg,rgba(120,53,15,0.38),rgba(15,23,42,0.22))] text-amber-50 shadow-[0_0_0_1px_rgba(251,191,36,0.14),0_18px_70px_rgba(251,191,36,0.10)]'
+      ? [
+          // premium XPOT gold (fixes PENDING looking grey)
+          'border-amber-300/28',
+          'bg-[linear-gradient(180deg,rgba(251,191,36,0.22),rgba(120,53,15,0.18),rgba(2,6,23,0.60))]',
+          'text-amber-50',
+          'shadow-[0_0_0_1px_rgba(251,191,36,0.14),0_18px_80px_rgba(251,191,36,0.12)]',
+        ].join(' ')
       : tone === 'sky'
-      ? 'border-sky-200/20 bg-sky-950/30 text-sky-50 shadow-[0_0_0_1px_rgba(56,189,248,0.10)]'
-      : 'border-slate-700/40 bg-slate-950/40 text-slate-100 shadow-[0_0_0_1px_rgba(148,163,184,0.06)]';
+      ? [
+          'border-sky-200/22',
+          'bg-[linear-gradient(180deg,rgba(56,189,248,0.18),rgba(2,6,23,0.55))]',
+          'text-sky-50',
+          'shadow-[0_0_0_1px_rgba(56,189,248,0.10),0_18px_70px_rgba(56,189,248,0.10)]',
+        ].join(' ')
+      : [
+          'border-slate-600/35',
+          'bg-[linear-gradient(180deg,rgba(148,163,184,0.10),rgba(2,6,23,0.60))]',
+          'text-slate-50',
+          'shadow-[0_0_0_1px_rgba(148,163,184,0.08)]',
+        ].join(' ');
 
   return (
     <span
       className={[
-        'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+        'inline-flex items-center gap-2 rounded-full border px-3 py-1',
+        'text-[10px] font-semibold uppercase tracking-[0.18em]',
+        'backdrop-blur-md',
+        // key: keep icons/text bright, not muted
+        '[&_svg]:text-current',
         cls,
       ].join(' ')}
     >
