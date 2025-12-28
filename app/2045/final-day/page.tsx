@@ -10,7 +10,7 @@ import { RUN_DAYS, RUN_END, RUN_START, getFinalDrawEUShort } from '@/lib/xpotRun
 type Era = '2045' | 'now';
 
 // ✅ bump key to reset any cached era from older run/version
-const STORAGE_KEY = 'xpot_final_day_era_v7';
+const STORAGE_KEY = 'xpot_final_day_era_v8';
 const LIVE_POLL_MS = 5000;
 
 const RUN_TOTAL_DAYS = RUN_DAYS;
@@ -47,11 +47,13 @@ function hasTimezone(iso: string) {
 
 // ─────────────────────────────────────────────
 // Madrid time helpers (no external libs)
+// - IMPORTANT: hourCycle:'h23' avoids the occasional "24" hour edge case
 // ─────────────────────────────────────────────
 function getZonedParts(date: Date, timeZone: string) {
-  const dtf = new Intl.DateTimeFormat('en-US', {
+  const dtf = new Intl.DateTimeFormat('en-GB', {
     timeZone,
     hour12: false,
+    hourCycle: 'h23',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -66,14 +68,25 @@ function getZonedParts(date: Date, timeZone: string) {
     if (p.type !== 'literal') map[p.type] = p.value;
   }
 
-  return {
-    year: Number(map.year),
-    month: Number(map.month),
-    day: Number(map.day),
-    hour: Number(map.hour),
-    minute: Number(map.minute),
-    second: Number(map.second),
-  };
+  // Defensive: some environments can still output "24"
+  let hour = Number(map.hour);
+  let year = Number(map.year);
+  let month = Number(map.month);
+  let day = Number(map.day);
+  const minute = Number(map.minute);
+  const second = Number(map.second);
+
+  if (hour === 24) {
+    hour = 0;
+    // push day forward safely
+    const bump = new Date(Date.UTC(year, month - 1, day) + 86_400_000);
+    const bumped = getZonedParts(bump, 'UTC');
+    year = bumped.year;
+    month = bumped.month;
+    day = bumped.day;
+  }
+
+  return { year, month, day, hour, minute, second };
 }
 
 function tzOffsetMinutes(timeZone: string, date: Date) {
@@ -84,11 +97,15 @@ function tzOffsetMinutes(timeZone: string, date: Date) {
 
 // Convert a wall-clock time in a timezone to UTC ms (iterative offset resolve)
 function zonedTimeToUtcMs(timeZone: string, y: number, m: number, d: number, hh: number, mm: number, ss: number) {
+  // First guess: treat the wall time as if it were UTC
   let guess = Date.UTC(y, m - 1, d, hh, mm, ss);
-  // 2-pass refinement handles DST edges well enough for our use
-  for (let i = 0; i < 2; i++) {
+
+  // Refine using the actual offset at that instant (DST-safe enough for our needs)
+  for (let i = 0; i < 3; i++) {
     const off = tzOffsetMinutes(timeZone, new Date(guess));
-    guess = Date.UTC(y, m - 1, d, hh, mm, ss) - off * 60_000;
+    const next = Date.UTC(y, m - 1, d, hh, mm, ss) - off * 60_000;
+    if (Math.abs(next - guess) < 500) break;
+    guess = next;
   }
   return guess;
 }
@@ -121,6 +138,7 @@ function formatMadridTimeShort(utcMs: number) {
   const dtf = new Intl.DateTimeFormat('en-GB', {
     timeZone: MADRID_TZ,
     hour12: false,
+    hourCycle: 'h23',
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -130,7 +148,7 @@ function formatMadridTimeShort(utcMs: number) {
 // ─────────────────────────────────────────────
 // Robust ISO parsing
 // - If tz is present: Date.parse
-// - If tz is missing: treat as Madrid local time (NOT UTC)
+// - If tz is missing: treat as Madrid wall time (NOT UTC)
 // ─────────────────────────────────────────────
 function parseIsoPartsNoTz(s: string) {
   // Accept: YYYY-MM-DDTHH:mm[:ss][.sss]
@@ -164,18 +182,43 @@ function safeParseUtcMsFromIso(iso: string | null | undefined) {
   return zonedTimeToUtcMs(MADRID_TZ, p.year, p.month, p.day, p.hh, p.mm, p.ss);
 }
 
+function addDaysYmd(ymd: { year: number; month: number; day: number }, add: number) {
+  const ms = Date.UTC(ymd.year, ymd.month - 1, ymd.day) + add * 86_400_000;
+  const d = new Date(ms);
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+
 // Next cutoff at 22:00 Madrid (today if before cutoff, else tomorrow)
 function nextCutoffUtcMs(nowMs: number) {
   const now = new Date(nowMs);
-  const p = getZonedParts(now, MADRID_TZ);
+  const madrid = getZonedParts(now, MADRID_TZ);
 
-  const todayCutoff = zonedTimeToUtcMs(MADRID_TZ, p.year, p.month, p.day, DRAW_HOUR_MADRID, DRAW_MINUTE_MADRID, 0);
-  if (nowMs < todayCutoff) return todayCutoff;
+  const todayCutoff = zonedTimeToUtcMs(
+    MADRID_TZ,
+    madrid.year,
+    madrid.month,
+    madrid.day,
+    DRAW_HOUR_MADRID,
+    DRAW_MINUTE_MADRID,
+    0,
+  );
 
-  // tomorrow (safe via Date rollover)
-  const tomorrow = new Date(Date.UTC(p.year, p.month - 1, p.day) + 86_400_000);
-  const t = getZonedParts(tomorrow, MADRID_TZ);
-  return zonedTimeToUtcMs(MADRID_TZ, t.year, t.month, t.day, DRAW_HOUR_MADRID, DRAW_MINUTE_MADRID, 0);
+  if (Number.isFinite(todayCutoff) && nowMs < todayCutoff) return todayCutoff;
+
+  const tomorrowYmd = addDaysYmd({ year: madrid.year, month: madrid.month, day: madrid.day }, 1);
+  const tomorrowCutoff = zonedTimeToUtcMs(
+    MADRID_TZ,
+    tomorrowYmd.year,
+    tomorrowYmd.month,
+    tomorrowYmd.day,
+    DRAW_HOUR_MADRID,
+    DRAW_MINUTE_MADRID,
+    0,
+  );
+
+  // Final guard: if something goes weird, return "now + 1h" rather than 0ms (prevents SYNCING + dashes)
+  if (!Number.isFinite(tomorrowCutoff)) return nowMs + 60 * 60 * 1000;
+  return tomorrowCutoff;
 }
 
 export default function FinalDayPage() {
@@ -204,10 +247,6 @@ export default function FinalDayPage() {
   }, [era]);
 
   // ✅ Single-source schedule: lib/xpotRun.ts (matches homepage)
-  // Rules:
-  // - Current draw day: Day 1 immediately (even before the first draw happens)
-  // - Draw status (completed draws): 0/7000 until 22:00 Madrid, then 1/7000, etc
-  // - Days remaining: 7000 until first draw happens, then 6999, etc
   const drawSchedule = useMemo(() => {
     const now = new Date(nowTs);
     const nowMadrid = getZonedParts(now, MADRID_TZ);
@@ -225,7 +264,6 @@ export default function FinalDayPage() {
     );
 
     const runEndUtcMs = zonedTimeToUtcMs(MADRID_TZ, RUN_END.y, RUN_END.m, RUN_END.d, RUN_END.hh, RUN_END.mm, 0);
-
     const endDateDMY = getFinalDrawEUShort();
 
     let completed = 0;
@@ -234,7 +272,6 @@ export default function FinalDayPage() {
       const nowYmd = { year: nowMadrid.year, month: nowMadrid.month, day: nowMadrid.day };
       const dayDiff = daysBetweenYmd(runStartYmd, nowYmd);
 
-      // After 22:00 Madrid, today's draw is considered completed (count it).
       const afterCutoff =
         nowMadrid.hour > DRAW_HOUR_MADRID ||
         (nowMadrid.hour === DRAW_HOUR_MADRID && nowMadrid.minute >= DRAW_MINUTE_MADRID);
@@ -290,7 +327,6 @@ export default function FinalDayPage() {
   }, []);
 
   const onPrint = useCallback(() => {
-    // Always print the archive side
     setEra('2045');
     window.setTimeout(() => {
       if (typeof window !== 'undefined') window.print();
@@ -348,11 +384,16 @@ export default function FinalDayPage() {
 
         if (!res.ok) throw new Error(`HTTP_${res.status}`);
         const json = await res.json();
-
         if (!alive) return;
 
-        if (!json?.draw?.closesAt) {
-          // no closesAt - fallback to schedule
+        // If API doesn't provide closesAt, we fallback (but we still clear live cleanly)
+        if (!json?.draw) {
+          setLive(null);
+          return;
+        }
+
+        const closesAtRaw = String(json?.draw?.closesAt ?? '').trim();
+        if (!closesAtRaw) {
           setLive(null);
           return;
         }
@@ -362,13 +403,13 @@ export default function FinalDayPage() {
           dayNumber: Number(json.draw.dayNumber ?? 0),
           dayTotal: Number(json.draw.dayTotal ?? RUN_TOTAL_DAYS),
           drawDate: String(json.draw.drawDate ?? ''),
-          closesAt: String(json.draw.closesAt ?? ''),
+          closesAt: closesAtRaw,
           status: (json.draw.status as LiveDraw['status']) ?? 'OPEN',
         };
 
         // Validate closesAt parse; if bad -> fallback to schedule
         const closesMs = safeParseUtcMsFromIso(d.closesAt);
-        if (!closesMs) {
+        if (!closesMs || !Number.isFinite(closesMs)) {
           setLive(null);
           return;
         }
@@ -411,12 +452,13 @@ export default function FinalDayPage() {
   const fallbackClosesAtMs = useMemo(() => nextCutoffUtcMs(nowTs), [nowTs]);
 
   const usingFallback = !liveClosesAtMs;
-  const closesAtMs = liveClosesAtMs ?? fallbackClosesAtMs;
+  const closesAtMs = (liveClosesAtMs && Number.isFinite(liveClosesAtMs) ? liveClosesAtMs : null) ?? fallbackClosesAtMs;
 
-  const remainingMs = Math.max(0, closesAtMs - nowTs);
+  // ✅ guard against NaN so we never get stuck in SYNCING with "--"
+  const remainingMs = Number.isFinite(closesAtMs) ? Math.max(0, closesAtMs - nowTs) : 0;
   const cd = formatCountdown(remainingMs);
 
-  // Status logic (keeps UI stable + avoids stuck SYNCING when we still have time)
+  // Status logic (stable)
   const computedStatus: LiveDraw['status'] | 'SYNCING' | 'OFFLINE' =
     liveErr
       ? 'OFFLINE'
@@ -426,7 +468,7 @@ export default function FinalDayPage() {
           ? 'OPEN'
           : live
             ? live.status
-            : 'SYNCING';
+            : 'OPEN';
 
   const statusTone =
     computedStatus === 'OPEN'
@@ -759,7 +801,6 @@ export default function FinalDayPage() {
                 <div className="inline-flex items-center gap-4">
                   <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">{dayLabel}</div>
 
-                  {/* ✅ "0/7000" before 22:00 Madrid */}
                   <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
                     Draw status {drawStatusLabel}
                   </div>
@@ -820,7 +861,6 @@ export default function FinalDayPage() {
                       className={[
                         'inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black ring-1',
                         statusTone,
-                        // extra visibility: subtle glow so it never disappears into the bg
                         'shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_10px_30px_rgba(0,0,0,0.35)]',
                       ].join(' ')}
                     >
@@ -867,7 +907,8 @@ export default function FinalDayPage() {
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={14} className="opacity-90" />
                     <span>
-                      Daily XPOT: <span className="font-black">{(live?.dailyXpot ?? 1_000_000).toLocaleString()} XPOT</span>
+                      Daily XPOT:{' '}
+                      <span className="font-black">{(live?.dailyXpot ?? 1_000_000).toLocaleString()} XPOT</span>
                     </span>
                   </div>
 
