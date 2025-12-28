@@ -1562,6 +1562,23 @@ function DashboardInner() {
               <div className="pointer-events-none absolute inset-0 xpot-luxe-border" />
 
               <div className="relative p-6 sm:p-7">
+
+              {/* PRIMARY ACTION - moved into hero */}
+<div ref={claimSectionRef as any} className="mt-6">
+  <LuxeCard accent="gold">
+    <LuxeTitle
+      title="Today’s XPOT"
+      subtitle="Claim a free entry when your connected wallet meets the minimum."
+      right={
+        <StatusPill tone={ticketClaimed ? 'emerald' : 'slate'}>
+          <Ticket className="h-3.5 w-3.5" />
+          {ticketClaimed ? 'Entry active' : 'Not claimed'}
+        </StatusPill>
+      }
+    />
+    {/* paste the SAME inner content from your existing Today’s XPOT card here */}
+  </LuxeCard>
+</div>
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-center gap-4">
                     {avatar ? (
