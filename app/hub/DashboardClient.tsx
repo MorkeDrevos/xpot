@@ -188,11 +188,13 @@ function StatusPill({
   children: React.ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky';
 }) {
-  // Base: keep text/icons crisp + add subtle text pop so "PENDING" never looks disabled.
   const base =
     'relative isolate inline-flex items-center gap-2 rounded-full border px-3 py-1 ' +
     'text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur-md ' +
     '[&_svg]:text-current ' +
+    // force crisp text (prevents “grey/disabled” look in Safari)
+    'text-opacity-100 opacity-100 ' +
+    '[text-shadow:0_1px_0_rgba(0,0,0,0.75)] ' +
     'drop-shadow-[0_1px_0_rgba(0,0,0,0.65)]';
 
   const cls =
@@ -200,34 +202,34 @@ function StatusPill({
       ? [
           'border-emerald-300/34',
           'text-emerald-50',
-          'bg-[linear-gradient(180deg,rgba(16,185,129,0.30),rgba(2,6,23,0.60))]',
+          'bg-[linear-gradient(180deg,rgba(16,185,129,0.34),rgba(2,6,23,0.62))]',
           'shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_22px_100px_rgba(16,185,129,0.16)]',
-          // inner highlight
           'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-70',
           'before:bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.16),transparent_58%)]',
         ].join(' ')
       : tone === 'amber'
-? [
-    'border-amber-200/70',
-    'text-amber-50',
-    // richer gold (less “muddy”)
-    'bg-[linear-gradient(180deg,rgba(251,191,36,0.62),rgba(245,158,11,0.26),rgba(2,6,23,0.72))]',
-    'shadow-[0_0_0_1px_rgba(251,191,36,0.34),0_30px_150px_rgba(251,191,36,0.22)]',
-    // crisp text (prevents grey look)
-    '[text-shadow:0_1px_0_rgba(0,0,0,0.70)]',
-
-    'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-90',
-    'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.22),transparent_55%)]',
-
-    // subtle sheen line
-    'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-50',
-    'after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.14),transparent)]',
-  ].join(' ')
+      ? [
+          // make the “gold” read as gold everywhere (esp Safari)
+          'border-amber-200/80',
+          'text-amber-50',
+          // less muddy, more metallic
+          'bg-[linear-gradient(180deg,rgba(255,214,102,0.72),rgba(251,191,36,0.42),rgba(245,158,11,0.22),rgba(2,6,23,0.70))]',
+          // stronger outline + depth
+          'shadow-[0_0_0_1px_rgba(251,191,36,0.38),0_26px_140px_rgba(251,191,36,0.20)]',
+          // inner bright cap (top-left)
+          'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-95',
+          'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.26),transparent_56%)]',
+          // metallic sheen band
+          'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-60',
+          'after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.16),transparent)]',
+          // keep it from looking “disabled” on dark cards
+          'ring-1 ring-amber-300/18',
+        ].join(' ')
       : tone === 'sky'
       ? [
           'border-sky-200/34',
           'text-sky-50',
-          'bg-[linear-gradient(180deg,rgba(56,189,248,0.30),rgba(2,6,23,0.60))]',
+          'bg-[linear-gradient(180deg,rgba(56,189,248,0.34),rgba(2,6,23,0.62))]',
           'shadow-[0_0_0_1px_rgba(56,189,248,0.18),0_22px_100px_rgba(56,189,248,0.14)]',
           'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-65',
           'before:bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.14),transparent_60%)]',
@@ -235,13 +237,13 @@ function StatusPill({
       : [
           'border-slate-600/42',
           'text-slate-50',
-          'bg-[linear-gradient(180deg,rgba(148,163,184,0.16),rgba(2,6,23,0.66))]',
+          'bg-[linear-gradient(180deg,rgba(148,163,184,0.18),rgba(2,6,23,0.68))]',
           'shadow-[0_0_0_1px_rgba(148,163,184,0.14)]',
           'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-55',
           'before:bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.10),transparent_62%)]',
         ].join(' ');
 
-  return <span className={[base, cls].join(' ')}>{children}</span>;
+  return <span className={`${base} ${cls}`}>{children}</span>;
 }
 
 function WalletStatusHint() {
