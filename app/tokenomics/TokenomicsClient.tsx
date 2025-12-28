@@ -21,12 +21,9 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Fingerprint,
-  Coins,
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
-import { TOKEN_MINT } from '@/lib/xpot';
 
 type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
@@ -64,25 +61,19 @@ const DAYS_PER_YEAR = 365;
 const TEN_YEARS_REQUIRED = DISTRIBUTION_DAILY_XPOT * DAYS_PER_YEAR * 10; // 3,650,000,000
 
 // ─────────────────────────────────────────────
-// ✅ Proof targets (Solscan)
-// IMPORTANT: Put the real revoke TX sigs here when you have them.
-// If left blank, UI shows “Add proof” and disables the button.
+// ✅ Solscan proof targets for token controls
+// Fill these once, then the UI stays clean and verifiable.
 // ─────────────────────────────────────────────
-const PROOFS = {
-  // Mint account itself (always available)
-  mint: TOKEN_MINT,
+const XPOT_MINT_ACCOUNT = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoSUkUtHcJR1Ejko1'; // mint account (from your Solscan screenshot)
+const MINT_AUTHORITY_REVOKE_TX = '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtstnikBXTtTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwy8bpwNrRfuLvM';
+// If you did freeze revoke in terminal, paste that signature here:
+const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
 
-  // These must be the *transaction signatures* that revoked authority.
-  mintAuthorityRevokeTx: '', // e.g. '4wJPx2HXwC1vPFVKH...'
-  freezeAuthorityRevokeTx: '', // e.g. '3TQZtCNBmpu23NFh...'
+// Rewards reserve wallet (you sent this link)
+const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 
-  // Optional: reserve wallet address (if you want the top to link straight to it)
-  // You can also rely on your /api/vaults group display further down.
-  rewardsReserveWallet: '', // e.g. '...'
-};
-
-function solscanAccountUrl(address: string) {
-  return `https://solscan.io/account/${address}`;
+function solscanAccountUrl(account: string) {
+  return `https://solscan.io/account/${account}`;
 }
 function solscanTxUrl(sig: string) {
   return `https://solscan.io/tx/${sig}`;
@@ -216,192 +207,34 @@ function SilentCopyButton({ text, className, title }: { text: string; className?
   );
 }
 
-// ─────────────────────────────────────────────
-// ✅ TOP REDESIGN: calm, proof-first strip (less busy)
-// ─────────────────────────────────────────────
-function ProofLink({
-  label,
+function ProofLinkPill({
   href,
-  disabled,
+  label,
+  tone = 'slate',
 }: {
-  label: string;
   href: string;
-  disabled?: boolean;
+  label: string;
+  tone?: 'slate' | 'emerald' | 'sky' | 'gold';
 }) {
+  const cls =
+    tone === 'emerald'
+      ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/15'
+      : tone === 'sky'
+        ? 'border-sky-400/25 bg-sky-500/10 text-sky-200 hover:bg-sky-500/15'
+        : tone === 'gold'
+          ? 'border-[rgba(var(--xpot-gold),0.32)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))] hover:bg-[rgba(var(--xpot-gold),0.14)]'
+          : 'border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06]';
+
   return (
     <a
       href={href}
       target="_blank"
       rel="noreferrer"
-      aria-disabled={disabled ? 'true' : 'false'}
-      className={[
-        'inline-flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs transition',
-        disabled
-          ? 'pointer-events-none border-white/10 bg-white/[0.02] text-slate-500'
-          : 'border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06]',
-      ].join(' ')}
+      className={`inline-flex items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${cls}`}
     >
-      <span className="truncate">{label}</span>
-      <ExternalLink className={['h-4 w-4', disabled ? 'text-slate-600' : 'text-slate-400'].join(' ')} />
+      {label}
+      <ExternalLink className="h-3.5 w-3.5 opacity-70" />
     </a>
-  );
-}
-
-function ProofCard({
-  title,
-  badge,
-  icon,
-  children,
-}: {
-  title: string;
-  badge?: ReactNode;
-  icon?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
-      <div
-        className="
-          pointer-events-none absolute -inset-24 opacity-70 blur-3xl
-          bg-[radial-gradient(circle_at_18%_18%,rgba(56,189,248,0.14),transparent_58%),
-              radial-gradient(circle_at_82%_70%,rgba(16,185,129,0.12),transparent_60%)]
-        "
-      />
-      <div className="relative z-10 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
-          {icon ? <div className="mt-2 flex items-center gap-2">{icon}</div> : null}
-        </div>
-        {badge ? <div className="shrink-0">{badge}</div> : null}
-      </div>
-      <div className="relative z-10 mt-3">{children}</div>
-    </div>
-  );
-}
-
-function TokenControlsProof() {
-  const hasMintTx = !!PROOFS.mintAuthorityRevokeTx?.trim();
-  const hasFreezeTx = !!PROOFS.freezeAuthorityRevokeTx?.trim();
-
-  return (
-    <ProofCard
-      title="Token controls"
-      badge={
-        <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
-          Locked
-        </span>
-      }
-      icon={
-        <p className="text-sm font-semibold text-slate-100">
-          <span className="inline-flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-emerald-300" />
-            Authority revoked
-          </span>
-        </p>
-      }
-    >
-      <p className="text-xs text-slate-500">
-        Every “revoked” claim has a public proof target. Use the Solscan links below.
-      </p>
-
-      <div className="mt-3 grid gap-2">
-        <ProofLink label="Mint account" href={solscanAccountUrl(PROOFS.mint)} />
-        <ProofLink
-          label={hasMintTx ? 'Mint authority revoke tx' : 'Mint authority revoke tx (add proof)'}
-          href={hasMintTx ? solscanTxUrl(PROOFS.mintAuthorityRevokeTx) : '#'}
-          disabled={!hasMintTx}
-        />
-        <ProofLink
-          label={hasFreezeTx ? 'Freeze authority revoke tx' : 'Freeze authority revoke tx (add proof)'}
-          href={hasFreezeTx ? solscanTxUrl(PROOFS.freezeAuthorityRevokeTx) : '#'}
-          disabled={!hasFreezeTx}
-        />
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-          <Lock className="h-3.5 w-3.5 text-slate-400" />
-          No minting
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-          <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-          No freezing
-        </span>
-      </div>
-    </ProofCard>
-  );
-}
-
-function SupplyProof({ supply }: { supply: number }) {
-  return (
-    <ProofCard
-      title="Supply"
-      badge={
-        <span className="rounded-full border border-slate-700/70 bg-slate-950/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-200">
-          Fixed
-        </span>
-      }
-      icon={
-        <p className="text-sm font-semibold text-slate-100">
-          <span className="inline-flex items-center gap-2">
-            <Coins className="h-4 w-4 text-sky-300" />
-            {supply.toLocaleString('en-US')}
-          </span>
-        </p>
-      }
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-slate-500">Fixed supply, minted once.</p>
-        <span className="font-mono text-[11px] text-slate-400">{shortAddr(PROOFS.mint)}</span>
-      </div>
-
-      <div className="mt-3 grid gap-2">
-        <ProofLink label="Mint on Solscan" href={solscanAccountUrl(PROOFS.mint)} />
-      </div>
-    </ProofCard>
-  );
-}
-
-function ReserveProof({ reserve, reserveWallet }: { reserve: number; reserveWallet: string }) {
-  const hasWallet = !!reserveWallet?.trim();
-  return (
-    <ProofCard
-      title="Rewards reserve"
-      badge={
-        <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
-          Verifiable
-        </span>
-      }
-      icon={
-        <p className="text-sm font-semibold text-emerald-200">
-          <span className="inline-flex items-center gap-2">
-            <Fingerprint className="h-4 w-4 text-emerald-300" />
-            {reserve.toLocaleString('en-US')} XPOT
-          </span>
-        </p>
-      }
-    >
-      <p className="text-xs text-slate-500">Designated reserve wallet (live balances available below).</p>
-
-      <div className="mt-3 grid gap-2">
-        <ProofLink
-          label={hasWallet ? 'Reserve wallet on Solscan' : 'Reserve wallet on Solscan (optional)'}
-          href={hasWallet ? solscanAccountUrl(reserveWallet) : '#'}
-          disabled={!hasWallet}
-        />
-      </div>
-
-      {hasWallet ? (
-        <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-          <p className="min-w-0 truncate font-mono text-[11px] text-slate-300">{reserveWallet}</p>
-          <SilentCopyButton text={reserveWallet} title="Copy reserve wallet" />
-        </div>
-      ) : (
-        <p className="mt-3 text-[11px] text-slate-600">
-          Tip: add <span className="font-mono text-slate-300">PROOFS.rewardsReserveWallet</span> if you want a direct link here.
-        </p>
-      )}
-    </ProofCard>
   );
 }
 
@@ -449,9 +282,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Team vesting schedule</p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            12 months, monthly equal unlocks. Schedule math below matches the on-chain vesting behaviour.
-          </p>
+          <p className="mt-1 text-[11px] text-slate-500">12 months, monthly equal unlocks. Schedule math below matches the on-chain vesting behaviour.</p>
         </div>
         <span className="rounded-full border border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--xpot-gold-2))]">
           12M linear
@@ -464,9 +295,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain vesting</p>
             <p className="mt-1 text-sm font-semibold text-slate-100">Streamflow contract (public)</p>
-            <p className="mt-1 text-xs text-slate-500">
-              Tokens are held by the vesting contract (escrow) and unlock monthly to the payout wallet.
-            </p>
+            <p className="mt-1 text-xs text-slate-500">Tokens are held by the vesting contract (escrow) and unlock monthly to the payout wallet.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -480,7 +309,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
             </a>
 
             <a
-              href={`https://solscan.io/account/${TEAM_VESTING.contractAccount}`}
+              href={solscanAccountUrl(TEAM_VESTING.contractAccount)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
@@ -496,10 +325,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
             { k: 'Recipient (payout wallet)', v: TEAM_VESTING.recipientWallet },
             { k: 'Contract (escrow)', v: TEAM_VESTING.contractAccount },
           ].map(row => (
-            <div
-              key={row.k}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2"
-            >
+            <div key={row.k} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
                 <p className="mt-1 font-mono text-xs text-slate-200">{row.v}</p>
@@ -800,7 +626,7 @@ function VaultGroupPanel({
                       </span>
 
                       <a
-                        href={`https://solscan.io/account/${v.address}`}
+                        href={solscanAccountUrl(v.address)}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 hover:text-slate-300 transition"
@@ -849,7 +675,7 @@ function VaultGroupPanel({
                         return (
                           <a
                             key={tx.signature}
-                            href={`https://solscan.io/tx/${tx.signature}`}
+                            href={solscanTxUrl(tx.signature)}
                             target="_blank"
                             rel="noreferrer"
                             className="group flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800/70 bg-slate-950/45 px-3 py-2 transition hover:bg-slate-950/60"
@@ -1178,25 +1004,17 @@ function DonutAllocation({
                               </div>
 
                               <p className="mt-3 text-[11px] text-slate-500">
-                                Reserve size: {distributionReserve.toLocaleString('en-US')} XPOT (14% of supply). Daily distribution is fixed at{' '}
-                                {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT. Unused reserve stays in the reserve wallet and remains verifiable.
+                                Reserve size: {distributionReserve.toLocaleString('en-US')} XPOT (14% of supply). Daily distribution is fixed at {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT.
+                                Unused reserve stays in the reserve wallet and remains verifiable.
                               </p>
                             </div>
                           )}
 
                           {a.key === 'team' && <TeamVestingPanel totalTeamTokens={teamTotalTokens} />}
 
-                          <VaultGroupPanel
-                            title="Vaults (live)"
-                            groupKey={vaultGroupKey}
-                            data={vaultData}
-                            isLoading={vaultLoading}
-                            hadError={vaultError}
-                          />
+                          <VaultGroupPanel title="Vaults (live)" groupKey={vaultGroupKey} data={vaultData} isLoading={vaultLoading} hadError={vaultError} />
 
-                          <p className="mt-3 text-[11px] text-slate-600">
-                            Design intent: dedicated vaults, timelocks and public wallets so this stays verifiable over time.
-                          </p>
+                          <p className="mt-3 text-[11px] text-slate-600">Design intent: dedicated vaults, timelocks and public wallets so this stays verifiable over time.</p>
                         </div>
                       </div>
                     </motion.div>
@@ -1266,8 +1084,7 @@ function TokenomicsPageInner() {
         label: 'Treasury and runway',
         pct: 23,
         note: 'Operational runway for audits, infrastructure, legal and long-horizon execution.',
-        detail:
-          'This is operational runway (separate from the daily distribution reserve). It funds security, infrastructure and long-term execution without touching distribution.',
+        detail: 'This is operational runway (separate from the daily distribution reserve). It funds security, infrastructure and long-term execution without touching distribution.',
         tone: 'slate',
       },
       {
@@ -1275,8 +1092,7 @@ function TokenomicsPageInner() {
         label: 'Liquidity and market ops',
         pct: 26,
         note: 'LP depth, market resilience and controlled expansion.',
-        detail:
-          'Used to seed and support liquidity, reduce fragility and keep price discovery healthy. The goal is stability and trust, not noise.',
+        detail: 'Used to seed and support liquidity, reduce fragility and keep price discovery healthy. The goal is stability and trust, not noise.',
         tone: 'sky',
       },
       {
@@ -1284,8 +1100,7 @@ function TokenomicsPageInner() {
         label: 'Strategic reserve',
         pct: 13,
         note: 'Buffer for unknowns and future opportunities.',
-        detail:
-          'This stays untouched by default. If it ever moves, it should be deliberate, transparent and reported with public wallets and a clear purpose.',
+        detail: 'This stays untouched by default. If it ever moves, it should be deliberate, transparent and reported with public wallets and a clear purpose.',
         tone: 'slate',
       },
       {
@@ -1306,8 +1121,7 @@ function TokenomicsPageInner() {
         label: 'Partners and creators',
         pct: 8,
         note: 'Creator-gated drops, sponsor pools and performance-based distribution.',
-        detail:
-          'Reserved for collaborations that measurably grow participation and sponsor demand. Distribution should be trackable and tied to outcomes.',
+        detail: 'Reserved for collaborations that measurably grow participation and sponsor demand. Distribution should be trackable and tied to outcomes.',
         tone: 'sky',
       },
       {
@@ -1423,6 +1237,121 @@ function TokenomicsPageInner() {
     }
   }, [searchParams, openDistribution]);
 
+  // ─────────────────────────────────────────────
+  // ✅ Redesigned top section (less busy, more readable)
+  // - One headline block
+  // - One clean proof strip (3 cards)
+  // - Token controls includes Solscan proof links for revoke actions
+  // ─────────────────────────────────────────────
+  const proofCards = (
+    <div className="mt-7 grid gap-3 lg:grid-cols-3">
+      {/* Supply */}
+      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
+            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
+            <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
+          </div>
+          <Pill tone="sky">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Fixed
+          </Pill>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
+          <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
+            <p className="mt-2 text-sm font-semibold text-slate-100">Authorities revoked</p>
+            <p className="mt-1 text-xs text-slate-500">Every revoke has a public proof link.</p>
+          </div>
+          <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+            Locked
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-2">
+          <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint authority</p>
+                <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
+              </div>
+              {MINT_AUTHORITY_REVOKE_TX ? (
+                <ProofLinkPill href={solscanTxUrl(MINT_AUTHORITY_REVOKE_TX)} label="Solscan tx" tone="emerald" />
+              ) : (
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
+                  Add tx signature
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-600">Proof target: set mintTokens authority to NULL on the mint account.</p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Freeze authority</p>
+                <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
+              </div>
+              {FREEZE_AUTHORITY_REVOKE_TX ? (
+                <ProofLinkPill href={solscanTxUrl(FREEZE_AUTHORITY_REVOKE_TX)} label="Solscan tx" tone="emerald" />
+              ) : (
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
+                  Paste freeze tx
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-600">Proof target: set freeze authority to NULL on the mint account.</p>
+          </div>
+
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
+            <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
+          </div>
+        </div>
+      </div>
+
+      {/* Reserve */}
+      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve</p>
+            <p className="mt-2 font-mono text-xl font-semibold text-emerald-200">{DISTRIBUTION_RESERVE.toLocaleString('en-US')} XPOT</p>
+            <p className="mt-1 text-xs text-slate-500">Designated reserve wallet</p>
+          </div>
+          <Pill tone="emerald">
+            <Sparkles className="h-3.5 w-3.5" />
+            Proof
+          </Pill>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Reserve wallet" tone="emerald" />
+          <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Runway (fixed rule)</p>
+          <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
+            {runwayFixedYears.toFixed(2)} <span className="text-sm font-semibold text-slate-500">years</span>
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {fmtInt(DISTRIBUTION_DAILY_XPOT)} / day - {runwayFixedDays.toLocaleString('en-US')} days coverage
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <XpotPageShell
       title="Tokenomics"
@@ -1432,107 +1361,77 @@ function TokenomicsPageInner() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      {/* ✅ TOP REDESIGN (less busy, more readable) */}
+      {/* ✅ Redesigned hero - calmer, fewer blocks */}
       <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
-        <div className="relative overflow-hidden border-b border-white/5 bg-[linear-gradient(180deg,rgba(6,6,10,0.92),rgba(0,0,0,0.94))]">
+        <div className="relative overflow-hidden border-b border-white/5 bg-[linear-gradient(180deg,rgba(10,7,4,0.96),rgba(0,0,0,0.94))]">
           <div
             className="
               pointer-events-none absolute inset-0
               bg-[radial-gradient(circle_at_18%_22%,rgba(var(--xpot-gold),0.18),transparent_62%),
-                  radial-gradient(circle_at_78%_34%,rgba(56,189,248,0.12),transparent_66%),
-                  radial-gradient(circle_at_90%_78%,rgba(16,185,129,0.12),transparent_66%),
-                  linear-gradient(180deg,rgba(0,0,0,0.12),rgba(0,0,0,0.78))]
+                  radial-gradient(circle_at_78%_34%,rgba(56,189,248,0.10),transparent_66%),
+                  radial-gradient(circle_at_20%_85%,rgba(16,185,129,0.10),transparent_60%),
+                  linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.78))]
             "
           />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
 
           <div className="relative mx-auto max-w-[1440px] px-4 sm:px-6">
-            <div className="pt-8 sm:pt-10 pb-8">
-              <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
-                {/* Left: message (shorter) */}
-                <div className="lg:col-span-6">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Pill tone="emerald">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Daily distribution
-                    </Pill>
-                    <Pill tone="sky">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      On-chain proofs
-                    </Pill>
-                    <Pill tone="amber">
-                      <Lock className="h-3.5 w-3.5" />
-                      Fixed supply
-                    </Pill>
-                  </div>
-
-                  <h1 className="mt-5 text-balance text-3xl font-semibold leading-tight sm:text-4xl">
-                    Proof-first tokenomics
-                    <span className="text-emerald-300"> built to last.</span>
-                  </h1>
-
-                  <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-300">
-                    Simple rules, public wallets, verifiable outcomes. This page is the map - Solscan is the proof.
-                  </p>
-
-                  <div className="mt-6 flex flex-wrap items-center gap-3">
-                    <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
-                      Enter today&apos;s XPOT
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={openDistribution}
-                      className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
-                    >
-                      View reserve
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </button>
-                    <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                      Terms
-                    </Link>
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
-                    <span className="inline-flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70" />
-                      Fixed rule: {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT / day
-                    </span>
-                    <span className="inline-flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-sky-300/70" />
-                      Coverage: {runwayFixedYears.toFixed(2)} years ({runwayFixedDays.toLocaleString('en-US')} days)
-                    </span>
-                  </div>
+            <div className="pt-8 sm:pt-10 pb-8 sm:pb-10">
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone="emerald">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Daily distribution
+                  </Pill>
+                  <Pill tone="sky">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    On-chain proof
+                  </Pill>
+                  <Pill tone="amber">
+                    <Lock className="h-3.5 w-3.5" />
+                    Fixed supply
+                  </Pill>
                 </div>
 
-                {/* Right: calm proof panel strip (3 cards) */}
-                <div className="lg:col-span-6">
-                  <div className="grid gap-3 lg:grid-cols-3">
-                    <SupplyProof supply={supply} />
-                    <TokenControlsProof />
-                    <ReserveProof reserve={DISTRIBUTION_RESERVE} reserveWallet={PROOFS.rewardsReserveWallet} />
-                  </div>
+                <h1 className="mt-5 text-balance text-3xl font-semibold leading-tight sm:text-4xl">
+                  A distribution designed to outlast noise.<span className="text-emerald-300"> Rewards come first.</span>
+                </h1>
 
-                  <div className="mt-3 rounded-[22px] border border-white/10 bg-black/25 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Constraint</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-100">10-year requirement</p>
-                        <p className="mt-2 font-mono text-lg font-semibold text-slate-100">{TEN_YEARS_REQUIRED.toLocaleString('en-US')}</p>
-                        <p className="mt-1 text-xs text-slate-500">Exact at 1,000,000/day</p>
-                      </div>
+                <p className="mt-4 text-sm leading-relaxed text-slate-300">
+                  XPOT is built around simple rules, public wallets and verifiable outcomes. If it cannot be proven on-chain, it should not exist.
+                </p>
 
-                      <a
-                        href="https://solscan.io"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-                      >
-                        Open Solscan <ExternalLink className="ml-2 h-4 w-4 text-slate-400" />
-                      </a>
-                    </div>
-                  </div>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                    Enter today&apos;s XPOT
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                  <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                    Terms
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={openDistribution}
+                    className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+                  >
+                    View reserve
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
+                    Proof targets: mint account, revoke txs, reserve wallet
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-1 w-1 rounded-full bg-white/20" />
+                    Exact 10-year requirement: <span className="font-mono text-slate-300">{TEN_YEARS_REQUIRED.toLocaleString('en-US')}</span>
+                  </span>
                 </div>
               </div>
+
+              {proofCards}
 
               <div className="mt-8 h-px w-full bg-white/10" />
             </div>
