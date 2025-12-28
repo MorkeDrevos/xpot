@@ -9,6 +9,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 
 import { SignOutButton, useUser } from '@clerk/nextjs';
+import { ShieldCheck } from 'lucide-react';
 
 import BonusStrip from '@/components/BonusStrip';
 import GoldAmount from '@/components/GoldAmount';
