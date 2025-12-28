@@ -1429,11 +1429,26 @@ function DashboardInner() {
 
         /* Sticky monitor: now loud-premium, easier to spot */
         .xpot-monitor-shell {
-          background: rgba(2, 6, 23, 0.88);
-          border: 1px solid rgba(139, 92, 246, 0.28);
-          box-shadow: 0 50px 190px rgba(0, 0, 0, 0.78);
-          backdrop-filter: blur(18px);
-        }
+  background:
+    linear-gradient(
+      180deg,
+      rgba(99,102,241,0.10),
+      rgba(15,23,42,0.92)
+    );
+  border: 1px solid rgba(168,85,247,0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(168,85,247,0.18),
+    0 30px 120px rgba(0,0,0,0.75);
+  backdrop-filter: blur(16px);
+}
+.xpot-monitor-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(168,85,247,0.25);
+}
         .xpot-monitor-shell::before {
           content: '';
           position: absolute;
