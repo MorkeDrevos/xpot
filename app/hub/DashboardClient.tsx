@@ -835,6 +835,9 @@ function DashboardInner() {
   // RIGHT monitor: CLOSED by default on arrival
   const [monitorOpen, setMonitorOpen] = useState(false);
 
+  // one-time purple flash key (forces re-mount to replay animation)
+  const [monitorFlashKey, setMonitorFlashKey] = useState(0);
+
   // refs for clean "jump" actions
   const entriesSectionRef = useRef<HTMLDivElement | null>(null);
   const claimSectionRef = useRef<HTMLDivElement | null>(null);
@@ -2365,44 +2368,31 @@ function DashboardInner() {
 
               <div className="relative p-4">
                 {/* Visible "handle" row */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-300/85 shadow-[0_0_0_3px_rgba(16,185,129,0.10),0_0_40px_rgba(16,185,129,0.35)]" />
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-100/85">
-                        Entries monitor
-                      </p>
-                      <StatusPill tone="emerald">
-                        <Radio className="h-3.5 w-3.5" />
-                        LIVE
-                      </StatusPill>
-                    </div>
-                    <p className="mt-1 truncate text-xs text-slate-200/65">
-                      Viewing: {entriesScope === 'wallet' ? 'this wallet' : 'account'}{' '}
-                      {entriesScope === 'account' ? '(grouped)' : ''}
-                    </p>
-                  </div>
+<div className="flex items-center gap-2">
+  <button
+    type="button"
+    onClick={() => scrollToRef(entriesSectionRef as any, { offsetPx: 132, highlight: true })}
+    className={`${BTN_UTILITY} h-9 px-3 text-xs`}
+    title="Jump to entries"
+  >
+    <ArrowDownRight className="h-4 w-4" />
+  </button>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => scrollToRef(entriesSectionRef as any, { offsetPx: 132, highlight: true })}
-                      className={`${BTN_UTILITY} h-9 px-3 text-xs`}
-                      title="Jump to entries"
-                    >
-                      <ArrowDownRight className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setMonitorOpen(v => !v)}
-                      className={`${BTN_UTILITY} h-9 px-3 text-xs`}
-                      title="Expand/Collapse"
-                    >
-                      {monitorOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
+  <button
+    type="button"
+    onClick={() =>
+      setMonitorOpen(v => {
+        const next = !v;
+        if (next) setMonitorFlashKey(k => k + 1); // one-time purple flash when opening
+        return next;
+      })
+    }
+    className={`${BTN_UTILITY} h-9 px-3 text-xs`}
+    title="Expand/Collapse"
+  >
+    {monitorOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+  </button>
+</div>
 
                 {monitorOpen ? (
                   <>
