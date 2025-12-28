@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
+import { TOKEN_MINT } from '@/lib/xpot';
 
 type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
@@ -61,6 +62,16 @@ const DAYS_PER_YEAR = 365;
 const TEN_YEARS_REQUIRED = DISTRIBUTION_DAILY_XPOT * DAYS_PER_YEAR * 10; // 3,650,000,000
 
 // ─────────────────────────────────────────────
+// ✅ Token control proofs (Solscan links)
+// Put the actual revoke TX signatures here (from Solscan history)
+// ─────────────────────────────────────────────
+const TOKEN_CONTROL_PROOFS = {
+  // tx signatures (optional but recommended)
+  mintAuthorityRevokeTx: '', // e.g. '5v...abc'
+  freezeAuthorityRevokeTx: '', // e.g. '3x...def'
+};
+
+// ─────────────────────────────────────────────
 // ✅ Team vesting (Streamflow) - on-chain proof targets
 // ─────────────────────────────────────────────
 function getStreamflowContractUrl(contractAccount: string) {
@@ -72,6 +83,13 @@ const TEAM_VESTING = {
   senderWallet: 'G17RehqUAgMcAxcnLUZyf6WzuPqsM82q9SC1aSkBUR7w',
   recipientWallet: '3DSuZP8d8a9f5CftdJvmJA1wxgzgxKULLDwZeRKC2Vh',
 };
+
+function getSolscanAccountUrl(addr: string) {
+  return `https://solscan.io/account/${addr}`;
+}
+function getSolscanTxUrl(sig: string) {
+  return `https://solscan.io/tx/${sig}`;
+}
 
 function Pill({ children, tone = 'slate' }: { children: ReactNode; tone?: PillTone }) {
   const map: Record<PillTone, string> = {
@@ -189,6 +207,136 @@ function SilentCopyButton({ text, className, title }: { text: string; className?
 }
 
 // ─────────────────────────────────────────────
+// ✅ Token controls (redesigned hero card)
+// ─────────────────────────────────────────────
+function TokenControlsCard() {
+  const mint = String(TOKEN_MINT ?? '').trim();
+
+  const mintTx = TOKEN_CONTROL_PROOFS.mintAuthorityRevokeTx.trim();
+  const freezeTx = TOKEN_CONTROL_PROOFS.freezeAuthorityRevokeTx.trim();
+
+  const rowBase =
+    'rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition ' +
+    'hover:bg-black/30';
+
+  const actionBtn =
+    'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold ' +
+    'text-slate-200 hover:bg-white/[0.06] transition';
+
+  const okPill =
+    'inline-flex items-center gap-1 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200';
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
+          <p className="mt-2 flex items-center gap-2 font-mono text-lg font-semibold leading-none text-slate-100">
+            <ShieldCheck className="h-4 w-4 text-sky-300" />
+            Authority revoked
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            Every “revoked” claim has a public proof target. Use Solscan links below.
+          </p>
+        </div>
+
+        <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200">
+          Locked
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {/* Mint authority revoke */}
+        <div className={rowBase}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint authority</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className={okPill}>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Revoked
+                </span>
+                <span className="text-xs text-slate-500">No additional supply can be minted</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {mintTx ? (
+                <a href={getSolscanTxUrl(mintTx)} target="_blank" rel="noreferrer" className={actionBtn} title={mintTx}>
+                  Revoke TX <ExternalLink className="ml-2 h-4 w-4 text-slate-400" />
+                </a>
+              ) : (
+                <a href={mint ? getSolscanAccountUrl(mint) : 'https://solscan.io'} target="_blank" rel="noreferrer" className={actionBtn}>
+                  Mint account <ExternalLink className="ml-2 h-4 w-4 text-slate-400" />
+                </a>
+              )}
+
+              {mintTx ? <SilentCopyButton text={mintTx} title="Copy revoke TX" /> : null}
+            </div>
+          </div>
+        </div>
+
+        {/* Freeze authority revoke */}
+        <div className={rowBase}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Freeze authority</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className={okPill}>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Revoked
+                </span>
+                <span className="text-xs text-slate-500">No accounts can be frozen</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {freezeTx ? (
+                <a href={getSolscanTxUrl(freezeTx)} target="_blank" rel="noreferrer" className={actionBtn} title={freezeTx}>
+                  Revoke TX <ExternalLink className="ml-2 h-4 w-4 text-slate-400" />
+                </a>
+              ) : (
+                <a href={mint ? getSolscanAccountUrl(mint) : 'https://solscan.io'} target="_blank" rel="noreferrer" className={actionBtn}>
+                  Mint account <ExternalLink className="ml-2 h-4 w-4 text-slate-400" />
+                </a>
+              )}
+
+              {freezeTx ? <SilentCopyButton text={freezeTx} title="Copy revoke TX" /> : null}
+            </div>
+          </div>
+        </div>
+
+        {/* Supply fixed */}
+        <div className={rowBase}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-200">
+                  Fixed
+                </span>
+                <span className="text-xs text-slate-500">Minted once, no inflation path</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <a href={mint ? getSolscanAccountUrl(mint) : 'https://solscan.io'} target="_blank" rel="noreferrer" className={actionBtn}>
+                View mint <ExternalLink className="ml-2 h-4 w-4 text-slate-400" />
+              </a>
+              {mint ? <SilentCopyButton text={mint} title="Copy mint address" /> : null}
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-1 text-[11px] text-slate-600">
+          Tip: paste the revoke TX signatures into <span className="font-mono text-slate-400">TOKEN_CONTROL_PROOFS</span> for direct proof links.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Team vesting (12 months, monthly equal amounts)
 // + ✅ on-chain Streamflow proof panel
 // ─────────────────────────────────────────────
@@ -263,7 +411,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
             </a>
 
             <a
-              href={`https://solscan.io/account/${TEAM_VESTING.contractAccount}`}
+              href={getSolscanAccountUrl(TEAM_VESTING.contractAccount)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
@@ -583,7 +731,7 @@ function VaultGroupPanel({
                       </span>
 
                       <a
-                        href={`https://solscan.io/account/${v.address}`}
+                        href={getSolscanAccountUrl(v.address)}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 hover:text-slate-300 transition"
@@ -1273,6 +1421,7 @@ function TokenomicsPageInner() {
                     <span className="text-[11px] text-slate-500">Allocation prioritises distribution, resilience and long-term execution.</span>
                   </div>
 
+                  {/* ✅ Redesigned: token controls now has Solscan proof links */}
                   <div className="mt-7 grid gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
                       <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
@@ -1280,39 +1429,7 @@ function TokenomicsPageInner() {
                       <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
-                          <p className="mt-2 flex items-center gap-2 font-mono text-lg font-semibold leading-none text-slate-100">
-                            <ShieldCheck className="h-4 w-4 text-sky-300" />
-                            Authority revoked
-                          </p>
-                        </div>
-                        <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200">
-                          Locked
-                        </span>
-                      </div>
-
-                      <div className="mt-3 grid gap-2">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mint</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
-                          </div>
-                          <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Freeze</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-200">Revoked</p>
-                          </div>
-                          <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Supply</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-200">Fixed</p>
-                          </div>
-                        </div>
-
-                        <p className="text-xs text-slate-500">No further supply can be minted or frozen</p>
-                      </div>
-                    </div>
+                    <TokenControlsCard />
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
                       <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rewards reserve</p>
@@ -1322,7 +1439,7 @@ function TokenomicsPageInner() {
                   </div>
                 </div>
 
-                {/* ✅ IMG2 fixed */}
+                {/* ✅ Right column snapshot (unchanged) */}
                 <div className="lg:col-span-4">
                   <div className="relative flex h-full flex-col rounded-[26px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_110px_rgba(0,0,0,0.40)] backdrop-blur-xl">
                     <div
