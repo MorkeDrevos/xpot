@@ -3,10 +3,11 @@
 export const RUN_DAYS = 7000;
 
 // Madrid wall-clock cutoffs (day flips at 22:00 Europe/Madrid)
-export const RUN_START = { y: 2025, m: 12, d: 25, hh: 22, mm: 0 } as const;
+// ✅ Reset: First draw is tonight at 22:00 Madrid on 2025-12-28
+export const RUN_START = { y: 2025, m: 12, d: 28, hh: 22, mm: 0 } as const;
 
-// If first draw is at RUN_START (Draw #1), then Draw #7000 is +6999 days:
-export const RUN_END = { y: 2045, m: 2, d: 22, hh: 22, mm: 0 } as const;
+// If Draw #1 is at RUN_START, then Draw #7000 is +6999 days:
+export const RUN_END = { y: 2045, m: 2, d: 25, hh: 22, mm: 0 } as const;
 
 function pad2(n: number) {
   return String(n).padStart(2, '0');
