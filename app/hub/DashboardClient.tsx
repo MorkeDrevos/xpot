@@ -728,6 +728,9 @@ function DashboardInner() {
     desc: 'Preparing today’s mission.',
   });
 
+  // ✅ NEW: toggle between account-wide vs connected-wallet-only display
+  const [entriesScope, setEntriesScope] = useState<'account' | 'wallet'>('account');
+
   // Validate mint once (no side effects, just avoids crashes if TOKEN_MINT is wrong)
   useMemo(() => {
     try {
@@ -1087,10 +1090,47 @@ function DashboardInner() {
   }
 
   const normalizedWallet = currentWalletAddress?.toLowerCase();
+
+  // Wallet-only tickets (used by history + wallet-specific display)
   const myTickets: Entry[] = useMemo(() => {
     if (!normalizedWallet) return [];
-    return entries.filter(e => e.walletAddress?.toLowerCase() === normalizedWallet);
+    return entries
+      .filter(e => e.walletAddress?.toLowerCase() === normalizedWallet)
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   }, [entries, normalizedWallet]);
+
+  // ✅ NEW: account-wide grouping (today)
+  const accountGroups = useMemo(() => {
+    const map = new Map<string, Entry[]>();
+    for (const e of entries) {
+      const w = (e.walletAddress || '').toLowerCase();
+      if (!w) continue;
+      if (!map.has(w)) map.set(w, []);
+      map.get(w)!.push(e);
+    }
+    for (const [k, arr] of map.entries()) {
+      arr.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      map.set(k, arr);
+    }
+    const wallets = Array.from(map.keys());
+
+    // Sort: connected wallet first, then by ticket count desc
+    wallets.sort((a, b) => {
+      const aIsCur = normalizedWallet && a === normalizedWallet ? 1 : 0;
+      const bIsCur = normalizedWallet && b === normalizedWallet ? 1 : 0;
+      if (aIsCur !== bIsCur) return bIsCur - aIsCur;
+      return (map.get(b)?.length ?? 0) - (map.get(a)?.length ?? 0);
+    });
+
+    return wallets.map(w => ({
+      walletLower: w,
+      walletAddress: map.get(w)?.[0]?.walletAddress ?? w,
+      tickets: map.get(w) ?? [],
+    }));
+  }, [entries, normalizedWallet]);
+
+  const accountTicketsCount = entries.length;
+  const walletsEnteredCount = accountGroups.length;
 
   const winner = entries.find(e => normalizeStatus(e.status) === 'won') || null;
   const iWonToday = !!winner && !!normalizedWallet && winner.walletAddress?.toLowerCase() === normalizedWallet;
@@ -1340,9 +1380,12 @@ function DashboardInner() {
                       <p className="mt-1 truncate text-xl font-semibold text-slate-100">
                         {handle ? `@${handle.replace(/^@/, '')}` : name}
                       </p>
+
+                      {/* ✅ clearer explanation */}
                       <p className="mt-1 text-xs text-slate-300/70">
-                        Tickets are allocated per wallet. One XPOT account may link multiple wallets.
+                        Your XPOT account can link multiple wallets. Tickets are issued per wallet and shown below by wallet.
                       </p>
+
                       <WalletStatusHint />
                     </div>
                   </div>
@@ -1426,6 +1469,61 @@ function DashboardInner() {
                         <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
                       </p>
                     </div>
+                  </div>
+                </div>
+
+                {/* ✅ NEW: account-wide quick stats (premium + obvious) */}
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Account entries today</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <StatusPill tone="sky">
+                        <Ticket className="h-3.5 w-3.5" />
+                        {accountTicketsCount} ticket{accountTicketsCount === 1 ? '' : 's'}
+                      </StatusPill>
+                      <StatusPill tone="slate">
+                        <Wallet className="h-3.5 w-3.5" />
+                        {walletsEnteredCount} wallet{walletsEnteredCount === 1 ? '' : 's'}
+                      </StatusPill>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-300/70">
+                      Each connected wallet can claim its own entry when eligible.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">View mode</p>
+                    <div className="mt-2 inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
+                      <button
+                        type="button"
+                        onClick={() => setEntriesScope('account')}
+                        className={[
+                          'rounded-full px-4 py-2 text-xs font-semibold transition',
+                          entriesScope === 'account'
+                            ? 'bg-white/[0.08] text-slate-100'
+                            : 'text-slate-300/70 hover:text-slate-200',
+                        ].join(' ')}
+                      >
+                        Account
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEntriesScope('wallet')}
+                        disabled={!walletConnected}
+                        className={[
+                          'rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-50',
+                          entriesScope === 'wallet'
+                            ? 'bg-white/[0.08] text-slate-100'
+                            : 'text-slate-300/70 hover:text-slate-200',
+                        ].join(' ')}
+                        title={!walletConnected ? 'Connect a wallet to filter' : 'Show only the connected wallet'}
+                      >
+                        This wallet
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-300/70">
+                      Account shows all tickets. Wallet shows only the connected wallet.
+                    </p>
                   </div>
                 </div>
 
@@ -1557,6 +1655,11 @@ function DashboardInner() {
                         value={<span className="text-slate-100">{formatDateTime(todaysTicket.createdAt)}</span>}
                       />
                     </div>
+
+                    {/* ✅ NEW: show which wallet issued it */}
+                    <div className="mt-3">
+                      <TinyRow label="Wallet" value={shortWallet(todaysTicket.walletAddress)} mono />
+                    </div>
                   </div>
                 )}
 
@@ -1573,26 +1676,33 @@ function DashboardInner() {
                 )}
               </LuxeCard>
 
-              {walletConnected && (
-                <LuxeCard accent="sky">
-                  <LuxeTitle
-                    title="Your entries today"
-                    subtitle="Entries tied to your connected wallet."
-                    right={
-                      <StatusPill tone="sky">
-                        <Wallet className="h-3.5 w-3.5" />
-                        {myTickets.length}
-                      </StatusPill>
-                    }
-                  />
+              {/* ✅ REPLACED: wallet-only box -> premium account-wide box with grouping + wallet filter */}
+              <LuxeCard accent="sky">
+                <LuxeTitle
+                  title={entriesScope === 'wallet' ? 'Your entries today (this wallet)' : 'Your entries today (account)'}
+                  subtitle={
+                    entriesScope === 'wallet'
+                      ? 'Only tickets issued by the currently connected wallet.'
+                      : 'All tickets issued under your XPOT account, grouped by wallet.'
+                  }
+                  right={
+                    <StatusPill tone="sky">
+                      <Ticket className="h-3.5 w-3.5" />
+                      {entriesScope === 'wallet' ? myTickets.length : accountTicketsCount}
+                    </StatusPill>
+                  }
+                />
 
-                  <div className="mt-4 space-y-2">
-                    {loadingTickets ? (
-                      <p className="text-xs text-slate-300/70">Loading…</p>
-                    ) : ticketsError ? (
-                      <p className="text-xs xpot-gold-text">{ticketsError}</p>
+                <div className="mt-4 space-y-2">
+                  {loadingTickets ? (
+                    <p className="text-xs text-slate-300/70">Loading…</p>
+                  ) : ticketsError ? (
+                    <p className="text-xs xpot-gold-text">{ticketsError}</p>
+                  ) : entriesScope === 'wallet' ? (
+                    !walletConnected ? (
+                      <p className="text-xs text-slate-300/70">Connect a wallet to view wallet-only entries.</p>
                     ) : myTickets.length === 0 ? (
-                      <p className="text-xs text-slate-300/70">No entries yet.</p>
+                      <p className="text-xs text-slate-300/70">No entries for this wallet yet.</p>
                     ) : (
                       myTickets.map(t => (
                         <div key={t.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -1613,10 +1723,76 @@ function DashboardInner() {
                           <p className="mt-1 text-xs text-slate-300/70">Issued {formatDateTime(t.createdAt)}</p>
                         </div>
                       ))
-                    )}
-                  </div>
-                </LuxeCard>
-              )}
+                    )
+                  ) : accountGroups.length === 0 ? (
+                    <p className="text-xs text-slate-300/70">No entries yet today.</p>
+                  ) : (
+                    accountGroups.map(group => {
+                      const isCurrent = !!normalizedWallet && group.walletLower === normalizedWallet;
+                      return (
+                        <div key={group.walletLower} className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <StatusPill tone={isCurrent ? 'emerald' : 'slate'}>
+                                <Wallet className="h-3.5 w-3.5" />
+                                {shortWallet(group.walletAddress)}
+                              </StatusPill>
+                              {isCurrent ? (
+                                <StatusPill tone="emerald">
+                                  <Radio className="h-3.5 w-3.5" />
+                                  Connected
+                                </StatusPill>
+                              ) : null}
+                            </div>
+
+                            <StatusPill tone="sky">
+                              <Ticket className="h-3.5 w-3.5" />
+                              {group.tickets.length}
+                            </StatusPill>
+                          </div>
+
+                          <div className="mt-3 space-y-2">
+                            {group.tickets.map(t => (
+                              <div
+                                key={t.id}
+                                className="rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="truncate font-mono text-sm text-slate-100">{t.code}</p>
+                                  <StatusPill
+                                    tone={
+                                      normalizeStatus(t.status) === 'in-draw'
+                                        ? 'emerald'
+                                        : normalizeStatus(t.status) === 'won'
+                                        ? 'sky'
+                                        : 'slate'
+                                    }
+                                  >
+                                    {safeStatusLabel(t.status)}
+                                  </StatusPill>
+                                </div>
+                                <p className="mt-1 text-xs text-slate-300/70">Issued {formatDateTime(t.createdAt)}</p>
+
+                                <div className="mt-2 flex items-center justify-between gap-2">
+                                  <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400/80">
+                                    Wallet
+                                  </span>
+                                  <span className="font-mono text-xs text-slate-200">{shortWallet(t.walletAddress)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* quick CTA to teach behaviour */}
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-slate-300/70">
+                  Tip: Connect another wallet and claim again to increase your ticket count for today.
+                </div>
+              </LuxeCard>
             </div>
 
             {/* RIGHT */}
