@@ -3,21 +3,11 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import {
-  ArrowRight,
-  Blocks,
-  ExternalLink,
-  Lock,
-  ShieldCheck,
-  Sparkles,
-  Stars,
-  Users,
-} from 'lucide-react';
+import { ArrowRight, Blocks, ExternalLink, ShieldCheck, Sparkles, Stars, Users } from 'lucide-react';
 
 type PillTone = 'emerald' | 'amber' | 'sky' | 'violet' | 'slate';
 
 const ROUTE_HUB = '/hub';
-const ROUTE_OPS = '/ops';
 const ROUTE_TERMS = '/terms';
 const ROUTE_PRIVACY = '/privacy';
 
@@ -34,12 +24,12 @@ function Pill({ tone, children }: { tone: PillTone; children: ReactNode }) {
     tone === 'emerald'
       ? 'border-emerald-400/20 bg-emerald-500/8 text-emerald-100'
       : tone === 'amber'
-      ? `${GOLD_BORDER_SOFT} ${GOLD_WASH} ${GOLD_TEXT} ${GOLD_RING}`
-      : tone === 'sky'
-      ? 'border-sky-400/20 bg-sky-500/8 text-sky-100'
-      : tone === 'violet'
-      ? 'border-violet-400/20 bg-violet-500/8 text-violet-100'
-      : 'border-white/10 bg-white/[0.04] text-slate-200';
+        ? `${GOLD_BORDER_SOFT} ${GOLD_WASH} ${GOLD_TEXT} ${GOLD_RING}`
+        : tone === 'sky'
+          ? 'border-sky-400/20 bg-sky-500/8 text-sky-100'
+          : tone === 'violet'
+            ? 'border-violet-400/20 bg-violet-500/8 text-violet-100'
+            : 'border-white/10 bg-white/[0.04] text-slate-200';
 
   return (
     <span
@@ -62,15 +52,13 @@ function FooterLinkPill({
 }: {
   href: string;
   children: ReactNode;
-  tone?: 'slate' | 'ops' | 'gold';
+  tone?: 'slate' | 'gold';
   icon?: ReactNode;
 }) {
   const base =
     'inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[12px] font-semibold transition';
   const cls =
-    tone === 'ops'
-      ? 'border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.06]'
-      : tone === 'gold'
+    tone === 'gold'
       ? `${GOLD_BORDER_SOFT} ${GOLD_WASH} ${GOLD_TEXT} hover:brightness-[1.07] ${GOLD_RING}`
       : 'border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.05]';
 
@@ -121,8 +109,8 @@ export default function XpotFooter() {
                   </p>
 
                   <p className="mt-2 text-sm text-slate-200/90">
-                    A minimal daily rewards primitive with handle-first identity and on-chain proof.
-                    No tickets. Self custody for claims. Verifiable payouts.
+                    A minimal daily rewards primitive with handle-first identity and on-chain proof. No tickets.
+                    Self custody for claims. Verifiable payouts.
                   </p>
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -145,8 +133,9 @@ export default function XpotFooter() {
                   </div>
 
                   <p className="mt-4 text-[11px] leading-relaxed text-slate-400">
-                    <span className="font-mono text-slate-200">.bet</span> is our brand definition: a commitment
-                    to outcomes you can verify. A bet on better systems, not a promise you cannot audit.
+                    <span className="font-mono text-slate-200">.bet</span> is our brand definition: a
+                    commitment to outcomes you can verify. A bet on better systems, not a promise you cannot
+                    audit.
                   </p>
                 </div>
 
@@ -166,14 +155,6 @@ export default function XpotFooter() {
                   </FooterLinkPill>
                   <FooterLinkPill href={ROUTE_PRIVACY} tone="gold">
                     Privacy
-                  </FooterLinkPill>
-
-                  <FooterLinkPill
-                    href={ROUTE_OPS}
-                    tone="ops"
-                    icon={<Lock className="h-4 w-4 text-amber-300" />}
-                  >
-                    Ops
                   </FooterLinkPill>
                 </div>
               </div>
