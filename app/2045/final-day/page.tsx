@@ -47,10 +47,10 @@ function hasTimezone(iso: string) {
 
 // ─────────────────────────────────────────────
 // Madrid time helpers (no external libs)
-// - IMPORTANT: hourCycle:'h23' avoids the occasional "24" hour edge case
+// IMPORTANT: hourCycle:'h23' prevents "24:xx" edge cases that can break cutoff math.
 // ─────────────────────────────────────────────
 function getZonedParts(date: Date, timeZone: string) {
-  const dtf = new Intl.DateTimeFormat('en-GB', {
+  const dtf = new Intl.DateTimeFormat('en-US', {
     timeZone,
     hour12: false,
     hourCycle: 'h23',
@@ -68,25 +68,19 @@ function getZonedParts(date: Date, timeZone: string) {
     if (p.type !== 'literal') map[p.type] = p.value;
   }
 
-  // Defensive: some environments can still output "24"
-  let hour = Number(map.hour);
-  let year = Number(map.year);
-  let month = Number(map.month);
-  let day = Number(map.day);
-  const minute = Number(map.minute);
-  const second = Number(map.second);
+  // Guard: some environments can still surface hour "24" at midnight.
+  // Clamp to 0 (good enough for our daily cutoff + iterative offset math).
+  const hourRaw = Number(map.hour);
+  const hour = hourRaw === 24 ? 0 : hourRaw;
 
-  if (hour === 24) {
-    hour = 0;
-    // push day forward safely
-    const bump = new Date(Date.UTC(year, month - 1, day) + 86_400_000);
-    const bumped = getZonedParts(bump, 'UTC');
-    year = bumped.year;
-    month = bumped.month;
-    day = bumped.day;
-  }
-
-  return { year, month, day, hour, minute, second };
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+    hour,
+    minute: Number(map.minute),
+    second: Number(map.second),
+  };
 }
 
 function tzOffsetMinutes(timeZone: string, date: Date) {
@@ -97,15 +91,11 @@ function tzOffsetMinutes(timeZone: string, date: Date) {
 
 // Convert a wall-clock time in a timezone to UTC ms (iterative offset resolve)
 function zonedTimeToUtcMs(timeZone: string, y: number, m: number, d: number, hh: number, mm: number, ss: number) {
-  // First guess: treat the wall time as if it were UTC
   let guess = Date.UTC(y, m - 1, d, hh, mm, ss);
-
-  // Refine using the actual offset at that instant (DST-safe enough for our needs)
-  for (let i = 0; i < 3; i++) {
+  // 2-pass refinement handles DST edges well enough for our use
+  for (let i = 0; i < 2; i++) {
     const off = tzOffsetMinutes(timeZone, new Date(guess));
-    const next = Date.UTC(y, m - 1, d, hh, mm, ss) - off * 60_000;
-    if (Math.abs(next - guess) < 500) break;
-    guess = next;
+    guess = Date.UTC(y, m - 1, d, hh, mm, ss) - off * 60_000;
   }
   return guess;
 }
@@ -148,7 +138,7 @@ function formatMadridTimeShort(utcMs: number) {
 // ─────────────────────────────────────────────
 // Robust ISO parsing
 // - If tz is present: Date.parse
-// - If tz is missing: treat as Madrid wall time (NOT UTC)
+// - If tz is missing: treat as Madrid local time (NOT UTC)
 // ─────────────────────────────────────────────
 function parseIsoPartsNoTz(s: string) {
   // Accept: YYYY-MM-DDTHH:mm[:ss][.sss]
@@ -182,43 +172,18 @@ function safeParseUtcMsFromIso(iso: string | null | undefined) {
   return zonedTimeToUtcMs(MADRID_TZ, p.year, p.month, p.day, p.hh, p.mm, p.ss);
 }
 
-function addDaysYmd(ymd: { year: number; month: number; day: number }, add: number) {
-  const ms = Date.UTC(ymd.year, ymd.month - 1, ymd.day) + add * 86_400_000;
-  const d = new Date(ms);
-  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
-}
-
 // Next cutoff at 22:00 Madrid (today if before cutoff, else tomorrow)
 function nextCutoffUtcMs(nowMs: number) {
   const now = new Date(nowMs);
-  const madrid = getZonedParts(now, MADRID_TZ);
+  const p = getZonedParts(now, MADRID_TZ);
 
-  const todayCutoff = zonedTimeToUtcMs(
-    MADRID_TZ,
-    madrid.year,
-    madrid.month,
-    madrid.day,
-    DRAW_HOUR_MADRID,
-    DRAW_MINUTE_MADRID,
-    0,
-  );
+  const todayCutoff = zonedTimeToUtcMs(MADRID_TZ, p.year, p.month, p.day, DRAW_HOUR_MADRID, DRAW_MINUTE_MADRID, 0);
+  if (nowMs < todayCutoff) return todayCutoff;
 
-  if (Number.isFinite(todayCutoff) && nowMs < todayCutoff) return todayCutoff;
-
-  const tomorrowYmd = addDaysYmd({ year: madrid.year, month: madrid.month, day: madrid.day }, 1);
-  const tomorrowCutoff = zonedTimeToUtcMs(
-    MADRID_TZ,
-    tomorrowYmd.year,
-    tomorrowYmd.month,
-    tomorrowYmd.day,
-    DRAW_HOUR_MADRID,
-    DRAW_MINUTE_MADRID,
-    0,
-  );
-
-  // Final guard: if something goes weird, return "now + 1h" rather than 0ms (prevents SYNCING + dashes)
-  if (!Number.isFinite(tomorrowCutoff)) return nowMs + 60 * 60 * 1000;
-  return tomorrowCutoff;
+  // tomorrow via Date rollover in UTC, then read Madrid YMD
+  const tomorrow = new Date(Date.UTC(p.year, p.month - 1, p.day) + 86_400_000);
+  const t = getZonedParts(tomorrow, MADRID_TZ);
+  return zonedTimeToUtcMs(MADRID_TZ, t.year, t.month, t.day, DRAW_HOUR_MADRID, DRAW_MINUTE_MADRID, 0);
 }
 
 export default function FinalDayPage() {
@@ -253,17 +218,9 @@ export default function FinalDayPage() {
 
     const runStartYmd = { year: RUN_START.y, month: RUN_START.m, day: RUN_START.d };
 
-    const runStartUtcMs = zonedTimeToUtcMs(
-      MADRID_TZ,
-      RUN_START.y,
-      RUN_START.m,
-      RUN_START.d,
-      RUN_START.hh,
-      RUN_START.mm,
-      0,
-    );
-
+    const runStartUtcMs = zonedTimeToUtcMs(MADRID_TZ, RUN_START.y, RUN_START.m, RUN_START.d, RUN_START.hh, RUN_START.mm, 0);
     const runEndUtcMs = zonedTimeToUtcMs(MADRID_TZ, RUN_END.y, RUN_END.m, RUN_END.d, RUN_END.hh, RUN_END.mm, 0);
+
     const endDateDMY = getFinalDrawEUShort();
 
     let completed = 0;
@@ -272,6 +229,7 @@ export default function FinalDayPage() {
       const nowYmd = { year: nowMadrid.year, month: nowMadrid.month, day: nowMadrid.day };
       const dayDiff = daysBetweenYmd(runStartYmd, nowYmd);
 
+      // After 22:00 Madrid, today's draw is considered completed (count it).
       const afterCutoff =
         nowMadrid.hour > DRAW_HOUR_MADRID ||
         (nowMadrid.hour === DRAW_HOUR_MADRID && nowMadrid.minute >= DRAW_MINUTE_MADRID);
@@ -327,6 +285,7 @@ export default function FinalDayPage() {
   }, []);
 
   const onPrint = useCallback(() => {
+    // Always print the archive side
     setEra('2045');
     window.setTimeout(() => {
       if (typeof window !== 'undefined') window.print();
@@ -384,16 +343,11 @@ export default function FinalDayPage() {
 
         if (!res.ok) throw new Error(`HTTP_${res.status}`);
         const json = await res.json();
+
         if (!alive) return;
 
-        // If API doesn't provide closesAt, we fallback (but we still clear live cleanly)
-        if (!json?.draw) {
-          setLive(null);
-          return;
-        }
-
-        const closesAtRaw = String(json?.draw?.closesAt ?? '').trim();
-        if (!closesAtRaw) {
+        if (!json?.draw?.closesAt) {
+          // no closesAt - fallback to schedule
           setLive(null);
           return;
         }
@@ -403,13 +357,13 @@ export default function FinalDayPage() {
           dayNumber: Number(json.draw.dayNumber ?? 0),
           dayTotal: Number(json.draw.dayTotal ?? RUN_TOTAL_DAYS),
           drawDate: String(json.draw.drawDate ?? ''),
-          closesAt: closesAtRaw,
+          closesAt: String(json.draw.closesAt ?? ''),
           status: (json.draw.status as LiveDraw['status']) ?? 'OPEN',
         };
 
         // Validate closesAt parse; if bad -> fallback to schedule
         const closesMs = safeParseUtcMsFromIso(d.closesAt);
-        if (!closesMs || !Number.isFinite(closesMs)) {
+        if (!closesMs) {
           setLive(null);
           return;
         }
@@ -445,21 +399,21 @@ export default function FinalDayPage() {
 
   // ─────────────────────────────────────────────
   // Countdown source:
-  // - Prefer live.closesAt (API)
+  // - Prefer live.closesAt (API), BUT treat past timestamps as invalid
   // - Fallback to next 22:00 Madrid (protocol schedule)
   // ─────────────────────────────────────────────
   const liveClosesAtMs = safeParseUtcMsFromIso(live?.closesAt);
-const fallbackClosesAtMs = useMemo(() => nextCutoffUtcMs(nowTs), [nowTs]);
+  const fallbackClosesAtMs = useMemo(() => nextCutoffUtcMs(nowTs), [nowTs]);
 
-// 🔥 NEW: treat stale API timestamps as invalid
-const isLiveStale =
-  !liveClosesAtMs || liveClosesAtMs <= nowTs;
+  // ✅ THIS is the missing logic that prevents the stuck "SYNCING + --" UI:
+  // If the API gives us a closesAt that is already in the past, it's stale -> ignore it.
+  const isLiveStale = !liveClosesAtMs || liveClosesAtMs <= nowTs;
 
-const usingFallback = isLiveStale;
-const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
+  const usingFallback = isLiveStale;
+  const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs;
 
-  // ✅ guard against NaN so we never get stuck in SYNCING with "--"
-  const remainingMs = Number.isFinite(closesAtMs) ? Math.max(0, closesAtMs - nowTs) : 0;
+  // ✅ guard against NaN so we never get stuck
+  const remainingMs = Number.isFinite(closesAtMs) ? Math.max(0, closesAtMs - nowTs) : Math.max(0, fallbackClosesAtMs - nowTs);
   const cd = formatCountdown(remainingMs);
 
   // Status logic (stable)
@@ -650,10 +604,12 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
                     Continuity
                   </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    For <strong>19.18 years</strong>, every single day, XPOT arrived on time. Same ritual. Same pause in conversation. Same pull in the stomach when the numbers fell toward zero.
+                    For <strong>19.18 years</strong>, every single day, XPOT arrived on time. Same ritual. Same pause in conversation.
+                    Same pull in the stomach when the numbers fell toward zero.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    People didn’t only play it. They <em>kept time with it</em>. School runs. Lunch breaks. Late nights. A thousand ordinary days stitched into one shared clock.
+                    People didn’t only play it. They <em>kept time with it</em>. School runs. Lunch breaks. Late nights. A thousand ordinary
+                    days stitched into one shared clock.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/40 p-4">
@@ -661,7 +617,9 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
                     <div className="mt-2 text-[18px] font-black tracking-[-0.01em]">
                       By 2045, XPOT is the <span className="underline decoration-black/25">biggest game on the planet</span>.
                     </div>
-                    <div className="mt-2 font-sans text-[13px] leading-[1.55] opacity-85">Not because it shouted the loudest - because it never missed a day.</div>
+                    <div className="mt-2 font-sans text-[13px] leading-[1.55] opacity-85">
+                      Not because it shouted the loudest - because it never missed a day.
+                    </div>
                   </div>
 
                   <p className="mt-4 text-[15px] leading-[1.62]">
@@ -684,7 +642,8 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
                   <div className="font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">The final draw</div>
                   <p className="mt-2 text-[15px] leading-[1.62]">Everyone knows it’s the last one.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    Streams everywhere. Millions watching live. Some crying before it even begins - not because they expect to win, but because they remember where they were when they first heard the sound.
+                    Streams everywhere. Millions watching live. Some crying before it even begins - not because they expect to win, but because they
+                    remember where they were when they first heard the sound.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/35 p-3">
@@ -716,13 +675,15 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
                     The countdown starts. And something changes in the room: people stop hoping for luck, and start listening for closure.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    When it hits zero, a winner is chosen. Someone ordinary. Someone unknown. Someone who will carry the last number like a scar and a medal at the same time.
+                    When it hits zero, a winner is chosen. Someone ordinary. Someone unknown. Someone who will carry the last number like a scar and a
+                    medal at the same time.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">XPOT does what it promised. One final time.</p>
 
                   <div className="my-4 h-px bg-[linear-gradient(90deg,transparent,rgba(18,16,12,0.35),transparent)]" />
                   <p className="text-[14px] leading-[1.62] text-[rgba(18,16,12,0.78)]">
-                    What ends today isn’t only a product. It’s the disappearance of a tiny daily suspense that lived in millions of lives - a shared habit that outlived cycles, headlines and skepticism.
+                    What ends today isn’t only a product. It’s the disappearance of a tiny daily suspense that lived in millions of lives - a shared habit
+                    that outlived cycles, headlines and skepticism.
                   </p>
                 </div>
 
@@ -734,7 +695,8 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
                     The system simply stops issuing draws - like a candle allowed to burn down instead of being blown out.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The protocol remains accessible. The record remains visible. Every winner. Every day. Nineteen point one eight years - perfectly accounted for, as if it mattered enough to be kept.
+                    The protocol remains accessible. The record remains visible. Every winner. Every day. Nineteen point one eight years - perfectly
+                    accounted for, as if it mattered enough to be kept.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/40 p-4">
@@ -747,10 +709,12 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
 
                   <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">The architect</div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    In the years that follow, the origin story becomes strangely simple. No hero speeches. No victory laps. Just a set of rules written once - then obeyed for nearly two decades.
+                    In the years that follow, the origin story becomes strangely simple. No hero speeches. No victory laps. Just a set of rules written once
+                    - then obeyed for nearly two decades.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The people behind it are rarely discussed as personalities. Instead, they are remembered as a decision: the decision to stop. The decision to refuse inflation. The decision to never move the goalposts, even when the world begged for “more”.
+                    The people behind it are rarely discussed as personalities. Instead, they are remembered as a decision: the decision to stop. The
+                    decision to refuse inflation. The decision to never move the goalposts, even when the world begged for “more”.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
                     That restraint becomes the signature. In a culture of endless beginnings, the rarest thing is an ending that arrives on time.
@@ -758,7 +722,8 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
 
                   <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">Legacy</div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest prize, but as proof that trust can be engineered and kept.
+                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest prize, but as proof that trust can be engineered
+                    and kept.
                   </p>
                   <ul className="mt-3 list-disc pl-5 text-[15px] leading-[1.6]">
                     <li>The game that never cheated</li>
@@ -805,9 +770,7 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
                 <div className="inline-flex items-center gap-4">
                   <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">{dayLabel}</div>
 
-                  <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
-                    Draw status {drawStatusLabel}
-                  </div>
+                  <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">Draw status {drawStatusLabel}</div>
 
                   <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
                     Ends {drawSchedule.endDateDMY}
@@ -819,9 +782,7 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
                 </div>
               </div>
 
-              <h2 className="mt-4 text-[clamp(22px,3.2vw,34px)] font-black leading-[1.08] tracking-[-0.02em]">
-                {meta.headline}
-              </h2>
+              <h2 className="mt-4 text-[clamp(22px,3.2vw,34px)] font-black leading-[1.08] tracking-[-0.02em]">{meta.headline}</h2>
               <p className="mt-2 max-w-[74ch] text-[14px] leading-[1.55] opacity-90">{meta.deck}</p>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -911,14 +872,11 @@ const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={14} className="opacity-90" />
                     <span>
-                      Daily XPOT:{' '}
-                      <span className="font-black">{(live?.dailyXpot ?? 1_000_000).toLocaleString()} XPOT</span>
+                      Daily XPOT: <span className="font-black">{(live?.dailyXpot ?? 1_000_000).toLocaleString()} XPOT</span>
                     </span>
                   </div>
 
-                  <div className="font-black">
-                    {computedStatus === 'SYNCING' ? 'Syncing next draw…' : `Cutoff: ${closesAtLabel}`}
-                  </div>
+                  <div className="font-black">{computedStatus === 'SYNCING' ? 'Syncing next draw…' : `Cutoff: ${closesAtLabel}`}</div>
                 </div>
 
                 <div className="pointer-events-none absolute inset-[-40px] opacity-90 blur-[12px]">
