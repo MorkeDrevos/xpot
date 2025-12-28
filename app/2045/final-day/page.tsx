@@ -449,10 +449,14 @@ export default function FinalDayPage() {
   // - Fallback to next 22:00 Madrid (protocol schedule)
   // ─────────────────────────────────────────────
   const liveClosesAtMs = safeParseUtcMsFromIso(live?.closesAt);
-  const fallbackClosesAtMs = useMemo(() => nextCutoffUtcMs(nowTs), [nowTs]);
+const fallbackClosesAtMs = useMemo(() => nextCutoffUtcMs(nowTs), [nowTs]);
 
-  const usingFallback = !liveClosesAtMs;
-  const closesAtMs = (liveClosesAtMs && Number.isFinite(liveClosesAtMs) ? liveClosesAtMs : null) ?? fallbackClosesAtMs;
+// 🔥 NEW: treat stale API timestamps as invalid
+const isLiveStale =
+  !liveClosesAtMs || liveClosesAtMs <= nowTs;
+
+const usingFallback = isLiveStale;
+const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs!;
 
   // ✅ guard against NaN so we never get stuck in SYNCING with "--"
   const remainingMs = Number.isFinite(closesAtMs) ? Math.max(0, closesAtMs - nowTs) : 0;
