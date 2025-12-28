@@ -189,40 +189,42 @@ function StatusPill({
   tone?: 'slate' | 'emerald' | 'amber' | 'sky';
 }) {
   const cls =
-  tone === 'emerald'
-    ? [
-        'border-emerald-300/30',
-        'bg-[linear-gradient(180deg,rgba(16,185,129,0.22),rgba(2,6,23,0.58))]',
-        'text-emerald-50',
-        'shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_18px_80px_rgba(16,185,129,0.14)]',
-      ].join(' ')
-    : tone === 'amber'
-    ? [
-        // XPOT gold – strong, readable, never grey
-        'border-amber-200/45',
-        'bg-[linear-gradient(180deg,rgba(251,191,36,0.30),rgba(245,158,11,0.16),rgba(2,6,23,0.66))]',
-        'text-amber-50',
-        'shadow-[0_0_0_1px_rgba(251,191,36,0.18),0_22px_100px_rgba(251,191,36,0.16)]',
-      ].join(' ')
-    : tone === 'sky'
-    ? [
-        'border-sky-200/30',
-        'bg-[linear-gradient(180deg,rgba(56,189,248,0.22),rgba(2,6,23,0.58))]',
-        'text-sky-50',
-        'shadow-[0_0_0_1px_rgba(56,189,248,0.14),0_18px_80px_rgba(56,189,248,0.14)]',
-      ].join(' ')
-    : [
-        'border-slate-600/35',
-        'bg-[linear-gradient(180deg,rgba(148,163,184,0.12),rgba(2,6,23,0.62))]',
-        'text-slate-50',
-        'shadow-[0_0_0_1px_rgba(148,163,184,0.10)]',
-      ].join(' ');
+    tone === 'emerald'
+      ? [
+          'border-emerald-300/30',
+          'bg-[linear-gradient(180deg,rgba(16,185,129,0.24),rgba(2,6,23,0.58))]',
+          'text-emerald-50',
+          'shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_20px_90px_rgba(16,185,129,0.16)]',
+        ].join(' ')
+      : tone === 'amber'
+      ? [
+          // XPOT gold — never grey, always active
+          'border-amber-200/45',
+          'bg-[linear-gradient(180deg,rgba(251,191,36,0.34),rgba(245,158,11,0.18),rgba(2,6,23,0.66))]',
+          'text-amber-50',
+          'shadow-[0_0_0_1px_rgba(251,191,36,0.20),0_24px_110px_rgba(251,191,36,0.18)]',
+        ].join(' ')
+      : tone === 'sky'
+      ? [
+          'border-sky-200/30',
+          'bg-[linear-gradient(180deg,rgba(56,189,248,0.24),rgba(2,6,23,0.58))]',
+          'text-sky-50',
+          'shadow-[0_0_0_1px_rgba(56,189,248,0.14),0_20px_90px_rgba(56,189,248,0.14)]',
+        ].join(' ')
+      : [
+          // slate = neutral / informational only
+          'border-slate-600/40',
+          'bg-[linear-gradient(180deg,rgba(148,163,184,0.14),rgba(2,6,23,0.64))]',
+          'text-slate-50',
+          'shadow-[0_0_0_1px_rgba(148,163,184,0.12)]',
+        ].join(' ');
+
+  return (
     <span
       className={[
         'inline-flex items-center gap-2 rounded-full border px-3 py-1',
         'text-[10px] font-semibold uppercase tracking-[0.18em]',
         'backdrop-blur-md',
-        // key: keep icons/text bright, not muted
         '[&_svg]:text-current',
         cls,
       ].join(' ')}
