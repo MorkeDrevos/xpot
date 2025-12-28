@@ -207,19 +207,22 @@ function StatusPill({
           'before:bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.16),transparent_58%)]',
         ].join(' ')
       : tone === 'amber'
-      ? [
-          // Gold that reads "active" even on dark nebula backgrounds (no grey wash)
-          'border-amber-200/60',
-          'text-amber-50',
-          'bg-[linear-gradient(180deg,rgba(251,191,36,0.52),rgba(245,158,11,0.22),rgba(2,6,23,0.66))]',
-          'shadow-[0_0_0_1px_rgba(251,191,36,0.28),0_26px_130px_rgba(251,191,36,0.22)]',
-          // inner highlight + subtle sheen
-          'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-85',
-          'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.22),transparent_55%)]',
-          'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-45',
-          'after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)]',
-          'after:translate-x-[-40%] after:animate-none',
-        ].join(' ')
+? [
+    'border-amber-200/70',
+    'text-amber-50',
+    // richer gold (less “muddy”)
+    'bg-[linear-gradient(180deg,rgba(251,191,36,0.62),rgba(245,158,11,0.26),rgba(2,6,23,0.72))]',
+    'shadow-[0_0_0_1px_rgba(251,191,36,0.34),0_30px_150px_rgba(251,191,36,0.22)]',
+    // crisp text (prevents grey look)
+    '[text-shadow:0_1px_0_rgba(0,0,0,0.70)]',
+
+    'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-90',
+    'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.22),transparent_55%)]',
+
+    // subtle sheen line
+    'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-50',
+    'after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.14),transparent)]',
+  ].join(' ')
       : tone === 'sky'
       ? [
           'border-sky-200/34',
