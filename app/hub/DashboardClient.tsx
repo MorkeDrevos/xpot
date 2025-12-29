@@ -35,8 +35,8 @@ import {
   ChevronUp,
   CalendarClock,
   ArrowDownRight,
-  ExternalLink,
   ShieldCheck,
+  ExternalLink,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -178,7 +178,7 @@ function nextMadridCutoffUtcMs(now = new Date()) {
 }
 
 // ─────────────────────────────────────────────
-// Premium pills (darker, zero "white border" look)
+// Premium pills (fix: amber "PENDING" must look gold, not grey)
 // ─────────────────────────────────────────────
 
 function StatusPill({
@@ -188,50 +188,64 @@ function StatusPill({
   children: React.ReactNode;
   tone?: 'slate' | 'emerald' | 'amber' | 'sky';
 }) {
+  const base =
+    'relative isolate inline-flex items-center gap-2 rounded-full border px-3 py-1 ' +
+    'text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur-md ' +
+    '[&_svg]:text-current ' +
+    // force crisp text (prevents “grey/disabled” look in Safari)
+    'text-opacity-100 opacity-100 ' +
+    '[text-shadow:0_1px_0_rgba(0,0,0,0.75)] ' +
+    'drop-shadow-[0_1px_0_rgba(0,0,0,0.65)]';
+
   const cls =
     tone === 'emerald'
       ? [
-          'border-emerald-300/30',
-          'bg-[linear-gradient(180deg,rgba(16,185,129,0.24),rgba(2,6,23,0.58))]',
+          'border-emerald-300/34',
           'text-emerald-50',
-          'shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_20px_90px_rgba(16,185,129,0.16)]',
+          'bg-[linear-gradient(180deg,rgba(16,185,129,0.34),rgba(2,6,23,0.62))]',
+          'shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_22px_100px_rgba(16,185,129,0.16)]',
+          'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-70',
+          'before:bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.16),transparent_58%)]',
         ].join(' ')
       : tone === 'amber'
-      ? [
-          // XPOT gold — never grey, always active
-          'border-amber-200/45',
-          'bg-[linear-gradient(180deg,rgba(251,191,36,0.34),rgba(245,158,11,0.18),rgba(2,6,23,0.66))]',
-          'text-amber-50',
-          'shadow-[0_0_0_1px_rgba(251,191,36,0.20),0_24px_110px_rgba(251,191,36,0.18)]',
-        ].join(' ')
+  ? [
+      'border-amber-200/80',
+
+      // TEXT MUST BE WHITE
+      'text-white',
+      '[&_svg]:text-white',
+      '[text-shadow:0_1px_0_rgba(0,0,0,0.75)]',
+
+      // gold shell only
+      'bg-[linear-gradient(180deg,rgba(255,214,102,0.72),rgba(251,191,36,0.42),rgba(245,158,11,0.22),rgba(2,6,23,0.70))]',
+      'shadow-[0_0_0_1px_rgba(251,191,36,0.38),0_26px_140px_rgba(251,191,36,0.20)]',
+      'ring-1 ring-amber-300/18',
+
+      // highlight + sheen
+      'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-95',
+      'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.26),transparent_56%)]',
+      'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-60',
+      'after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.16),transparent)]',
+    ].join(' ')
       : tone === 'sky'
       ? [
-          'border-sky-200/30',
-          'bg-[linear-gradient(180deg,rgba(56,189,248,0.24),rgba(2,6,23,0.58))]',
+          'border-sky-200/34',
           'text-sky-50',
-          'shadow-[0_0_0_1px_rgba(56,189,248,0.14),0_20px_90px_rgba(56,189,248,0.14)]',
+          'bg-[linear-gradient(180deg,rgba(56,189,248,0.34),rgba(2,6,23,0.62))]',
+          'shadow-[0_0_0_1px_rgba(56,189,248,0.18),0_22px_100px_rgba(56,189,248,0.14)]',
+          'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-65',
+          'before:bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.14),transparent_60%)]',
         ].join(' ')
       : [
-          // slate = neutral / informational only
-          'border-slate-600/40',
-          'bg-[linear-gradient(180deg,rgba(148,163,184,0.14),rgba(2,6,23,0.64))]',
+          'border-slate-600/42',
           'text-slate-50',
-          'shadow-[0_0_0_1px_rgba(148,163,184,0.12)]',
+          'bg-[linear-gradient(180deg,rgba(148,163,184,0.18),rgba(2,6,23,0.68))]',
+          'shadow-[0_0_0_1px_rgba(148,163,184,0.14)]',
+          'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-55',
+          'before:bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.10),transparent_62%)]',
         ].join(' ');
 
-  return (
-    <span
-      className={[
-        'inline-flex items-center gap-2 rounded-full border px-3 py-1',
-        'text-[10px] font-semibold uppercase tracking-[0.18em]',
-        'backdrop-blur-md',
-        '[&_svg]:text-current',
-        cls,
-      ].join(' ')}
-    >
-      {children}
-    </span>
-  );
+  return <span className={`${base} ${cls}`}>{children}</span>;
 }
 
 function WalletStatusHint() {
@@ -560,7 +574,7 @@ function EntryCeremony({
             transparent,
             rgba(255, 255, 255, 0.08),
             rgba(99, 102, 241, 0.12),
-            rgba(56, 189, 248, 0.1),
+            rgba(56, 189, 248, 0.10),
             rgba(16, 185, 129, 0.08),
             transparent
           );
@@ -694,7 +708,6 @@ function makeIcsForCutoff(nextCutoffUtcMs: number) {
   const end = new Date(nextCutoffUtcMs + 15 * 60_000);
 
   const toIcs = (d: Date) => {
-    // YYYYMMDDTHHMMSSZ
     const y = d.getUTCFullYear();
     const m = String(d.getUTCMonth() + 1).padStart(2, '0');
     const da = String(d.getUTCDate()).padStart(2, '0');
@@ -875,7 +888,6 @@ function DashboardInner() {
     [scrollToRef],
   );
 
-  // Validate mint once (no side effects)
   useMemo(() => {
     try {
       // eslint-disable-next-line no-new
@@ -1069,6 +1081,7 @@ function DashboardInner() {
     [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
   );
 
+  // Initial load + polling
   useEffect(() => {
     if (!isAuthedEnough) {
       setEntries([]);
@@ -1104,6 +1117,7 @@ function DashboardInner() {
     };
   }, [isAuthedEnough, refreshAll]);
 
+  // Wallet change / disconnect: force a manual refresh immediately
   const prevWalletAddrRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isAuthedEnough) return;
@@ -1351,12 +1365,16 @@ function DashboardInner() {
 
   const cutoffUtcMs = useMemo(() => nextMadridCutoffUtcMs(new Date()), [syncPulse, countdown]);
 
+  const entriesGlowActive = useMemo(() => {
+    return entriesHighlightPulse > 0;
+  }, [entriesHighlightPulse]);
+
   return (
     <>
       <style jsx global>{`
         .xpot-luxe-border {
-          background: linear-gradient(90deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.1), rgba(148, 163, 184, 0)) 0
-              0 / 200% 1px no-repeat,
+          background: linear-gradient(90deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.1), rgba(148, 163, 184, 0))
+              0 0 / 200% 1px no-repeat,
             linear-gradient(180deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0)) 0 0 /
               1px 200% no-repeat;
           mask-image: radial-gradient(circle at 22% 18%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.22) 55%, rgba(0, 0, 0, 0) 78%);
@@ -1427,29 +1445,18 @@ function DashboardInner() {
           pointer-events: none;
         }
 
-        /* Entries monitor: kill breathing */
+        /* Entries monitor: premium purple treatment - no breathing */
         .xpot-monitor-shell,
         .xpot-monitor-shell * {
           animation: none !important;
         }
+
         .xpot-monitor-shell {
           border: 1px solid rgba(139, 92, 246, 0.32) !important;
           background: rgba(2, 6, 23, 0.86) !important;
           box-shadow: 0 40px 160px rgba(0, 0, 0, 0.78), 0 0 0 1px rgba(139, 92, 246, 0.1),
             0 18px 80px rgba(99, 102, 241, 0.18);
           backdrop-filter: blur(18px);
-        }
-        .xpot-monitor-ring {
-          pointer-events: none;
-          position: absolute;
-          inset: 0;
-          border-radius: 22px;
-          padding: 1px;
-          background: linear-gradient(90deg, rgba(99, 102, 241, 0.35), rgba(139, 92, 246, 0.28), rgba(236, 72, 153, 0.18));
-          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          opacity: 0.9;
         }
 
         @keyframes xpotEntriesPulse {
@@ -1500,7 +1507,11 @@ function DashboardInner() {
                 >
                   {avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatar} alt={name} className={`h-6 w-6 rounded-full border ${BORDER_SOFT} object-cover`} />
+                    <img
+                      src={avatar}
+                      alt={name}
+                      className={`h-6 w-6 rounded-full border ${BORDER_SOFT} object-cover`}
+                    />
                   ) : (
                     <div
                       className={`flex h-6 w-6 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45 text-[11px] font-semibold text-slate-100`}
@@ -1550,7 +1561,13 @@ function DashboardInner() {
               className={`relative overflow-hidden rounded-[32px] ${SURFACE} shadow-[0_55px_190px_rgba(0,0,0,0.75)] ring-1 ring-slate-700/25 backdrop-blur-2xl`}
             >
               <div className="xpot-hero-sweep absolute inset-0" />
-              <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_72%_28%,rgba(99,102,241,0.14),transparent_64%),radial-gradient(circle_at_40%_100%,rgba(251,191,36,0.08),transparent_70%),radial-gradient(circle_at_90%_85%,rgba(236,72,153,0.06),transparent_70%)]" />
+              <div
+  className="pointer-events-none absolute -inset-28 blur-3xl opacity-95
+  bg-[radial-gradient(circle_at_12%_18%,rgba(56,189,248,0.18),transparent_60%),
+      radial-gradient(circle_at_62%_22%,rgba(99,102,241,0.20),transparent_62%),
+      radial-gradient(circle_at_40%_105%,rgba(236,72,153,0.12),transparent_70%),
+      radial-gradient(circle_at_92%_80%,rgba(251,191,36,0.10),transparent_72%)]"
+/>
               <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(rgba(255,255,255,0.50)_1px,transparent_1px)] [background-size:22px_22px]" />
               <div className="pointer-events-none absolute inset-0 xpot-luxe-border" />
 
@@ -1712,7 +1729,11 @@ function DashboardInner() {
                         Claim
                       </button>
 
-                      <button type="button" onClick={() => refreshAll('manual')} className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+                      <button
+                        type="button"
+                        onClick={() => refreshAll('manual')}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         Refresh
                       </button>
@@ -1891,7 +1912,10 @@ function DashboardInner() {
               <div ref={entriesSectionRef as any}>
                 <LuxeCard
                   accent="sky"
-                  className={[entriesHighlightPulse ? 'xpot-entries-pulse' : ''].join(' ')}
+                  className={[
+                    // Pulse only when triggered (keyed by entriesHighlightPulse)
+                    entriesHighlightPulse ? 'xpot-entries-pulse' : '',
+                  ].join(' ')}
                   key={`entries-card-${entriesHighlightPulse}`}
                 >
                   <LuxeTitle
@@ -1993,7 +2017,9 @@ function DashboardInner() {
                                     <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">
                                       Wallet
                                     </span>
-                                    <span className="font-mono text-xs text-slate-100">{shortWallet(t.walletAddress)}</span>
+                                    <span className="font-mono text-xs text-slate-100">
+                                      {shortWallet(t.walletAddress)}
+                                    </span>
                                   </div>
                                 </div>
                               ))}
@@ -2132,7 +2158,9 @@ function DashboardInner() {
 
                             <div className="min-w-0">
                               <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-200/65">{h ? `@${h}` : shortWallet(w.walletAddress)}</p>
+                              <p className="mt-1 text-xs text-slate-200/65">
+                                {h ? `@${h}` : shortWallet(w.walletAddress)}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -2190,7 +2218,7 @@ function DashboardInner() {
             </div>
           </section>
 
-          {/* Global footer */}
+          {/* Global footer (structured like a site footer) */}
           <footer className={`mt-10 border-t ${BORDER_SOFT} pt-8 pb-6`}>
             <div className="grid gap-6 md:grid-cols-3">
               <div>
@@ -2269,13 +2297,14 @@ function DashboardInner() {
             </div>
           </footer>
 
-          {/* RIGHT-SIDE STICKY ENTRIES MONITOR */}
+          {/* RIGHT-SIDE STICKY ENTRIES MONITOR (closed by default, now premium and visible) */}
           <div className="fixed bottom-5 left-4 right-4 z-[60] sm:left-auto sm:right-6 sm:w-[380px]">
             <div className="xpot-monitor-shell xpot-monitor-beacon relative overflow-hidden rounded-[22px]">
               <div className="pointer-events-none absolute -inset-20 opacity-75 blur-3xl bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.16),transparent_58%),radial-gradient(circle_at_62%_20%,rgba(99,102,241,0.18),transparent_58%),radial-gradient(circle_at_85%_40%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_60%_110%,rgba(236,72,153,0.10),transparent_68%)]" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px]" />
 
               <div className="relative p-4">
+                {/* Visible "handle" row */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -2387,7 +2416,11 @@ function DashboardInner() {
                         Jump to claim
                       </button>
 
-                      <button type="button" onClick={() => refreshAll('manual')} className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
+                      <button
+                        type="button"
+                        onClick={() => refreshAll('manual')}
+                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
+                      >
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         Refresh
                       </button>
