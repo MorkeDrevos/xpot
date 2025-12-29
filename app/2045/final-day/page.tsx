@@ -207,15 +207,11 @@ export default function FinalDayPage() {
   // Persist era
   useEffect(() => {
     try {
-      // NOTE: this is the "old" cached key. keep in sync with STORAGE_KEY.
       window.localStorage.setItem(STORAGE_KEY, era);
     } catch {}
   }, [era]);
 
   // ✅ Single-source schedule: lib/xpotRun.ts (matches homepage)
-  // FIX: start-day logic (22:00 start should still be Day 1 right after start)
-  // FIX: "Draw status" should show current draw number (1/7000) not completed (0/7000)
-  // FIX: "days remaining" should be remaining AFTER current day (Day 1 => 6999)
   const drawSchedule = useMemo(() => {
     const now = new Date(nowTs);
     const nowMadrid = getZonedParts(now, MADRID_TZ);
@@ -227,41 +223,39 @@ export default function FinalDayPage() {
 
     const endDateDMY = getFinalDrawEUShort();
 
-    // Determine if we're after today's 22:00 cutoff in Madrid
-    const afterCutoff =
-      nowMadrid.hour > DRAW_HOUR_MADRID || (nowMadrid.hour === DRAW_HOUR_MADRID && nowMadrid.minute >= DRAW_MINUTE_MADRID);
-
-    // Current draw number (1-based), aligned with "start is 22:00" semantics:
-    // - Immediately after RUN_START (which is at 22:00), we are still on Day 1.
-    // - Day increments only at the NEXT cutoff (next 22:00).
-    let currentDayNumber = 1;
+    let completed = 0;
 
     if (nowTs >= runStartUtcMs) {
       const nowYmd = { year: nowMadrid.year, month: nowMadrid.month, day: nowMadrid.day };
       const dayDiff = daysBetweenYmd(runStartYmd, nowYmd);
 
-      // If after cutoff, we are on (dayDiff + 1). If before cutoff, we are on (dayDiff),
-      // BUT never below 1.
-      // Examples:
-      // - start day 22:15 => dayDiff=0, afterCutoff=true => 1
-      // - next day 12:00  => dayDiff=1, afterCutoff=false => 1
-      // - next day 22:05  => dayDiff=1, afterCutoff=true => 2
-      currentDayNumber = Math.max(1, dayDiff + (afterCutoff ? 1 : 0));
+      // Important:
+      // RUN_START marks the beginning of Day 1 (not a completed draw).
+      // The first completed draw only happens at the NEXT 22:00 cutoff after RUN_START.
+      const afterCutoff =
+        nowMadrid.hour > DRAW_HOUR_MADRID ||
+        (nowMadrid.hour === DRAW_HOUR_MADRID && nowMadrid.minute >= DRAW_MINUTE_MADRID);
+
+      if (dayDiff <= 0) {
+        completed = 0;
+      } else {
+        completed = Math.max(0, dayDiff - (afterCutoff ? 0 : 1));
+      }
     }
 
-    currentDayNumber = Math.max(1, Math.min(RUN_TOTAL_DAYS, currentDayNumber));
+    completed = Math.min(RUN_TOTAL_DAYS, completed);
 
-    const completedDraws = Math.max(0, Math.min(RUN_TOTAL_DAYS, currentDayNumber - 1));
-    const daysRemaining = Math.max(0, RUN_TOTAL_DAYS - currentDayNumber);
+    const currentDayNumber = Math.min(RUN_TOTAL_DAYS, Math.max(1, completed + 1));
+    const daysRemaining = Math.max(0, RUN_TOTAL_DAYS - completed);
 
     return {
       runStartUtcMs,
       runEndUtcMs,
       currentDayNumber,
-      completedDraws,
+      completedDraws: completed,
       daysRemaining,
       endDateDMY,
-      archiveDateLine: formatArchiveDateLine(runEndUtcMs),
+      archiveDateLine: formatArchiveDateLine(runEndUtcMs), // "Wednesday, 26 February 2045"
       nowMadrid,
     };
   }, [nowTs]);
@@ -417,28 +411,27 @@ export default function FinalDayPage() {
   const liveClosesAtMs = safeParseUtcMsFromIso(live?.closesAt);
   const fallbackClosesAtMs = useMemo(() => nextCutoffUtcMs(nowTs), [nowTs]);
 
-  // ✅ If the API gives a closesAt already in the past, it's stale -> ignore it.
+  // ✅ If the API gives us a closesAt that is already in the past, it's stale -> ignore it.
   const isLiveStale = !liveClosesAtMs || liveClosesAtMs <= nowTs;
 
   const usingFallback = isLiveStale;
   const closesAtMs = usingFallback ? fallbackClosesAtMs : liveClosesAtMs;
 
   // ✅ guard against NaN so we never get stuck
-  const remainingMs = Number.isFinite(closesAtMs)
-    ? Math.max(0, closesAtMs - nowTs)
-    : Math.max(0, fallbackClosesAtMs - nowTs);
+  const remainingMs = Number.isFinite(closesAtMs) ? Math.max(0, closesAtMs - nowTs) : Math.max(0, fallbackClosesAtMs - nowTs);
   const cd = formatCountdown(remainingMs);
 
   // Status logic (stable)
-  const computedStatus: LiveDraw['status'] | 'SYNCING' | 'OFFLINE' = liveErr
-    ? 'OFFLINE'
-    : remainingMs === 0
-      ? 'SYNCING'
-      : usingFallback
-        ? 'OPEN'
-        : live
-          ? live.status
-          : 'OPEN';
+  const computedStatus: LiveDraw['status'] | 'SYNCING' | 'OFFLINE' =
+    liveErr
+      ? 'OFFLINE'
+      : remainingMs === 0
+        ? 'SYNCING'
+        : usingFallback
+          ? 'OPEN'
+          : live
+            ? live.status
+            : 'OPEN';
 
   const statusTone =
     computedStatus === 'OPEN'
@@ -451,9 +444,9 @@ export default function FinalDayPage() {
 
   // ✅ Homepage-match labels
   const dayLabel = `Day ${drawSchedule.currentDayNumber.toLocaleString()} of ${RUN_TOTAL_DAYS.toLocaleString()}`;
-  const drawStatusLabel = `${drawSchedule.currentDayNumber.toLocaleString()}/${RUN_TOTAL_DAYS.toLocaleString()}`;
+  const drawStatusLabel = `${drawSchedule.completedDraws.toLocaleString()}/${RUN_TOTAL_DAYS.toLocaleString()}`;
 
-  // ✅ Progress bar should represent completed draws (0 at Day 1)
+  // ✅ Progress bar should represent completed draws
   const dayProgress = Math.max(0, Math.min(1, drawSchedule.completedDraws / RUN_TOTAL_DAYS));
 
   const cutoffLabel = formatMadridCutoffLabel();
@@ -585,9 +578,7 @@ export default function FinalDayPage() {
               <div className="mt-4 text-center">
                 <div className="font-sans text-[12px] font-black uppercase tracking-[0.22em] opacity-75">The</div>
                 <div className="mt-1 text-[clamp(36px,5vw,60px)] font-black leading-none tracking-[0.02em]">XPOT Times</div>
-                <div className="mt-2 font-sans text-[12px] font-black uppercase tracking-[0.14em] opacity-65">
-                  Independent Archive Record
-                </div>
+                <div className="mt-2 font-sans text-[12px] font-black uppercase tracking-[0.14em] opacity-65">Independent Archive Record</div>
               </div>
 
               <div className="my-4 h-[2px] bg-[linear-gradient(90deg,transparent,rgba(18,16,12,0.45),transparent)] print:bg-black/20" />
@@ -612,9 +603,7 @@ export default function FinalDayPage() {
                   <p className="mt-3 text-[15px] leading-[1.62]">Not a crash. Not a rug. Not a scandal.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">A scheduled ending.</p>
 
-                  <div className="mt-4 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
-                    Continuity
-                  </div>
+                  <div className="mt-4 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">Continuity</div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
                     For <strong>19.18 years</strong>, every single day, XPOT arrived on time. Same ritual. Same pause in conversation. Same pull in the
                     stomach when the numbers fell toward zero.
@@ -635,7 +624,9 @@ export default function FinalDayPage() {
                   <p className="mt-4 text-[15px] leading-[1.62]">
                     By the last day, XPOT isn’t “a crypto project” anymore. It’s <strong>a daily ritual the planet learned together</strong>.
                   </p>
-                  <p className="mt-3 text-[15px] leading-[1.62]">Not because of greed, but because it never asked anyone to believe in anything except the next day.</p>
+                  <p className="mt-3 text-[15px] leading-[1.62]">
+                    Not because of greed, but because it never asked anyone to believe in anything except the next day.
+                  </p>
 
                   <blockquote className="mt-4 border-l-4 border-[rgba(18,16,12,0.35)] bg-[rgba(18,16,12,0.03)] px-3 py-3 italic">
                     “It didn’t promise miracles. It promised a daily draw - and it kept its word.”
@@ -683,28 +674,30 @@ export default function FinalDayPage() {
                     The countdown starts. And something changes in the room: people stop hoping for luck, and start listening for closure.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    When it hits zero, a winner is chosen. Someone ordinary. Someone unknown. Someone who will carry the last number like a scar and a medal at
-                    the same time.
+                    When it hits zero, a winner is chosen. Someone ordinary. Someone unknown. Someone who will carry the last number like a scar and a medal
+                    at the same time.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">XPOT does what it promised. One final time.</p>
 
                   <div className="my-4 h-px bg-[linear-gradient(90deg,transparent,rgba(18,16,12,0.35),transparent)]" />
                   <p className="text-[14px] leading-[1.62] text-[rgba(18,16,12,0.78)]">
-                    What ends today isn’t only a product. It’s the disappearance of a tiny daily suspense that lived in millions of lives - a shared habit that
-                    outlived cycles, headlines and skepticism.
+                    What ends today isn’t only a product. It’s the disappearance of a tiny daily suspense that lived in millions of lives - a shared habit
+                    that outlived cycles, headlines and skepticism.
                   </p>
                 </div>
 
                 {/* Column C (wide) */}
                 <div className="max-[980px]:col-span-2 max-[860px]:col-span-1">
-                  <div className="font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">Then something rare happens</div>
+                  <div className="font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">
+                    Then something rare happens
+                  </div>
                   <p className="mt-2 text-[15px] leading-[1.62]">Nothing breaks. Nothing explodes. Nothing disappears.</p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
                     The system simply stops issuing draws - like a candle allowed to burn down instead of being blown out.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The protocol remains accessible. The record remains visible. Every winner. Every day. Nineteen point one eight years - perfectly accounted
-                    for, as if it mattered enough to be kept.
+                    The protocol remains accessible. The record remains visible. Every winner. Every day. Nineteen point one eight years - perfectly
+                    accounted for, as if it mattered enough to be kept.
                   </p>
 
                   <div className="mt-4 rounded-2xl border border-[rgba(18,16,12,0.22)] bg-white/40 p-4">
@@ -717,12 +710,12 @@ export default function FinalDayPage() {
 
                   <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">The architect</div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    In the years that follow, the origin story becomes strangely simple. No hero speeches. No victory laps. Just a set of rules written once -
-                    then obeyed for nearly two decades.
+                    In the years that follow, the origin story becomes strangely simple. No hero speeches. No victory laps. Just a set of rules written once
+                    - then obeyed for nearly two decades.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
-                    The people behind it are rarely discussed as personalities. Instead, they are remembered as a decision: the decision to stop. The decision to
-                    refuse inflation. The decision to never move the goalposts, even when the world begged for “more”.
+                    The people behind it are rarely discussed as personalities. Instead, they are remembered as a decision: the decision to stop. The decision
+                    to refuse inflation. The decision to never move the goalposts, even when the world begged for “more”.
                   </p>
                   <p className="mt-3 text-[15px] leading-[1.62]">
                     That restraint becomes the signature. In a culture of endless beginnings, the rarest thing is an ending that arrives on time.
@@ -730,8 +723,8 @@ export default function FinalDayPage() {
 
                   <div className="mt-5 font-sans text-[12px] font-black uppercase tracking-[0.16em] text-[rgba(18,16,12,0.72)]">Legacy</div>
                   <p className="mt-2 text-[15px] leading-[1.62]">
-                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest prize, but as proof that trust can be engineered and
-                    kept.
+                    XPOT becomes studied - in economics, in game theory, in psychology. Not as the biggest prize, but as proof that trust can be engineered
+                    and kept.
                   </p>
                   <ul className="mt-3 list-disc pl-5 text-[15px] leading-[1.6]">
                     <li>The game that never cheated</li>
@@ -784,7 +777,14 @@ export default function FinalDayPage() {
                     Ends {drawSchedule.endDateDMY}
                   </div>
 
-                  <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">Operated by the protocol</div>
+                  {/* ✅ More dramatic: show weekday + full date of the ending */}
+                  <div className="hidden lg:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
+                    Final day {drawSchedule.archiveDateLine}
+                  </div>
+
+                  <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
+                    Operated by the protocol
+                  </div>
                 </div>
               </div>
 
@@ -799,7 +799,10 @@ export default function FinalDayPage() {
                 >
                   Read the 2045 archive
                 </button>
-                <Link className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[13px] font-black text-white/90 hover:bg-white/[0.07]" href="/hub">
+                <Link
+                  className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[13px] font-black text-white/90 hover:bg-white/[0.07]"
+                  href="/hub"
+                >
                   Enter today’s XPOT
                 </Link>
               </div>
