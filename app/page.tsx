@@ -312,6 +312,10 @@ function shortenAddress(addr: string, left = 6, right = 6) {
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
 
+function formatCompactNumber(n: number) {
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n);
+}
+
 function RoyalContractBar({ mint }: { mint: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -448,9 +452,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             </a>
           </div>
 
-          <p className="mt-3 font-mono text-[11px] text-slate-500">
-            mint: {shortenAddress(mint, 8, 8)}
-          </p>
+          <p className="mt-3 font-mono text-[11px] text-slate-500">mint: {shortenAddress(mint, 8, 8)}</p>
         </div>
       </div>
 
@@ -1421,7 +1423,9 @@ function HomePageInner() {
       },
       {
         q: 'Do I need tickets to enter?',
-        a: 'No tickets. Eligibility is holdings-based. Hold XPOT, verify eligibility in the hub and claim your entry.',
+        a: `No tickets. Eligibility is holdings-based. Hold XPOT (min ${formatCompactNumber(
+          MIN_ELIGIBLE_XPOT,
+        )}), verify eligibility in the hub and claim your entry.`,
       },
       {
         q: 'Why do winners show as @handle?',
@@ -1535,10 +1539,23 @@ function HomePageInner() {
                                 Hold XPOT in a connected wallet. Eligibility is verified on-chain in the hub.
                               </p>
 
-                              <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
-                                <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-                                <span>Cutoff:</span>
-                                <span className="text-slate-200">{cutoffLabel}</span>
+                              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                                  <span>Cutoff:</span>
+                                  <span className="text-slate-200">{cutoffLabel}</span>
+                                </span>
+
+                                <span className="text-slate-700">•</span>
+
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                                  <span>Min:</span>
+                                  <span className="font-mono text-slate-200">
+                                    {XPOT_SIGN}
+                                    {formatCompactNumber(MIN_ELIGIBLE_XPOT)}
+                                  </span>
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -1666,19 +1683,21 @@ function HomePageInner() {
                     <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
                   </PremiumCard>
 
+                  {/* ✅ FIX: move Contract block to LEFT (text + bar aligned left, OFFICIAL CONTRACT follows) */}
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex flex-col items-start gap-3">
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
                         <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
                           Always verify the official mint before interacting.
                         </p>
                       </div>
+
                       <RoyalContractBar mint={mint} />
                     </div>
                   </PremiumCard>
 
-                  {/* ✅ NEW: Trade on Jupiter (premium CTA) */}
+                  {/* ✅ Trade on Jupiter (premium CTA) */}
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
                     <TradeOnJupiterCard mint={mint} />
                   </PremiumCard>
@@ -1760,9 +1779,7 @@ function HomePageInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
+              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
