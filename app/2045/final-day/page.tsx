@@ -780,6 +780,10 @@ export default function FinalDayPage() {
 
                   <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">Draw status {drawStatusLabel}</div>
 
+                  <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
+                    Ends {drawSchedule.endDateDMY}
+                  </div>
+
                   <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">Operated by the protocol</div>
                 </div>
               </div>
