@@ -299,7 +299,7 @@ function MiniStat({
       : 'text-slate-200';
 
   return (
-    <div className="w-full rounded-2xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.05]">
+    <div className="rounded-2xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.05]">
       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <div className={`mt-1 font-mono text-sm ${toneCls}`}>{value}</div>
     </div>
@@ -361,7 +361,9 @@ function RoyalContractBar({ mint }: { mint: string }) {
               Official contract
             </span>
 
-            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 6, 6)}</span>
+            <span className="font-mono text-[12px] text-slate-100/90">
+              {shortenAddress(mint, 6, 6)}
+            </span>
           </span>
         </span>
 
@@ -448,12 +450,11 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             </a>
           </div>
 
-          <p className="mt-3 font-mono text-[11px] text-slate-500">mint: {shortenAddress(mint, 8, 8)}</p>
+          <p className="mt-3 font-mono text-[11px] text-slate-500">
+            mint: {shortenAddress(mint, 8, 8)}
+          </p>
         </div>
       </div>
-
-      {/* Optional: embed a chart later only if you set NEXT_PUBLIC_XPOT_DEXSCREENER_URL to an embed-safe URL.
-          Keeping homepage “premium” = link-first now. */}
     </div>
   );
 }
@@ -954,7 +955,6 @@ function useLocalReducedMotion() {
    Control room (read-only live view)
 ───────────────────────────────────────────── */
 
-// (unchanged) LiveControlRoom + helpers...
 function LiveControlRoom({
   countdown,
   cutoffLabel,
@@ -1629,13 +1629,29 @@ function HomePageInner() {
                     </div>
                   </div>
 
-                  {/* ✅ LEFT-ALIGNED LIKE YOUR IMAGE (fixed-ish widths, doesn't spread) */}
-                  <div className="max-w-[860px]">
-                    <div className="grid gap-3 sm:grid-cols-3 sm:justify-start sm:[grid-template-columns:repeat(3,minmax(0,260px))]">
-                      <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
-                      <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
-                      <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
-                    </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
+                    <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
+                    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
+                  </div>
+
+                  {/* ✅ MOVED LEFT: Contract + Trade cards (now sit under the left-side stats, like your screenshot vibe) */}
+                  <div className="grid gap-4">
+                    <PremiumCard className="p-5 sm:p-6" halo={false}>
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
+                          <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+                            Always verify the official mint before interacting.
+                          </p>
+                        </div>
+                        <RoyalContractBar mint={mint} />
+                      </div>
+                    </PremiumCard>
+
+                    <PremiumCard className="p-5 sm:p-6" halo={false}>
+                      <TradeOnJupiterCard mint={mint} />
+                    </PremiumCard>
                   </div>
                 </div>
 
@@ -1665,27 +1681,6 @@ function HomePageInner() {
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
                     <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
-                  </PremiumCard>
-
-                  {/* ✅ Contract: stack and keep the bar LEFT (like your pills) */}
-                  <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <div className="flex flex-col items-start gap-4">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
-                        <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-                          Always verify the official mint before interacting.
-                        </p>
-                      </div>
-
-                      <div className="w-full">
-                        <RoyalContractBar mint={mint} />
-                      </div>
-                    </div>
-                  </PremiumCard>
-
-                  {/* ✅ NEW: Trade on Jupiter (premium CTA) */}
-                  <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <TradeOnJupiterCard mint={mint} />
                   </PremiumCard>
                 </motion.div>
               </div>
