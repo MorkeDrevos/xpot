@@ -35,6 +35,8 @@ import {
   Zap,
   Timer,
   Radio,
+  ExternalLink,
+  TrendingUp,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -54,6 +56,16 @@ const XPOT_CA =
   process.env.NEXT_PUBLIC_XPOT_MINT ||
   process.env.NEXT_PUBLIC_XPOT_CA ||
   'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
+
+// Optional overrides (recommended once you know the exact pair/chart links)
+const XPOT_JUP_SWAP_URL =
+  process.env.NEXT_PUBLIC_XPOT_JUP_SWAP_URL || `https://jup.ag/swap/SOL-${XPOT_CA}`;
+
+const XPOT_DEXSCREENER_URL =
+  process.env.NEXT_PUBLIC_XPOT_DEXSCREENER_URL || `https://dexscreener.com/solana/${XPOT_CA}`;
+
+const XPOT_SOLSCAN_URL =
+  process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
 // XPOT denomination glyph (use for token-native amounts, keep $ only for USD)
 const XPOT_SIGN = '✕';
@@ -349,7 +361,9 @@ function RoyalContractBar({ mint }: { mint: string }) {
               Official contract
             </span>
 
-            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 6, 6)}</span>
+            <span className="font-mono text-[12px] text-slate-100/90">
+              {shortenAddress(mint, 6, 6)}
+            </span>
           </span>
         </span>
 
@@ -378,6 +392,68 @@ function RoyalContractBar({ mint }: { mint: string }) {
             </>
           )}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function TradeOnJupiterCard({ mint }: { mint: string }) {
+  return (
+    <div className="relative overflow-hidden">
+      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_16%_20%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_85%_25%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+
+      <div className="relative flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Trade</p>
+          <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+            Primary venue is Jupiter. Always verify the mint and use official links.
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <a
+              href={XPOT_JUP_SWAP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={[
+                BTN_GREEN,
+                'group px-5 py-2.5 text-[13px]',
+                'shadow-[0_18px_70px_rgba(16,185,129,0.25)]',
+              ].join(' ')}
+              title="Trade XPOT on Jupiter"
+            >
+              Trade on Jupiter
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </a>
+
+            <a
+              href={XPOT_DEXSCREENER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] text-slate-200 hover:bg-white/[0.06] transition"
+              title="View chart"
+            >
+              <TrendingUp className="h-4 w-4 text-slate-300" />
+              View chart
+              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+            </a>
+
+            <a
+              href={XPOT_SOLSCAN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] text-slate-200 hover:bg-white/[0.06] transition"
+              title="View on Solscan"
+            >
+              <ShieldCheck className="h-4 w-4 text-slate-300" />
+              Explorer
+              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+            </a>
+          </div>
+
+          <p className="mt-3 font-mono text-[11px] text-slate-500">
+            mint: {shortenAddress(mint, 8, 8)}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -1097,6 +1173,7 @@ function updateLines(prev: string[], tick: number, countdown: string, cutoffLabe
   return next;
 }
 
+// BonusVault (unchanged)...
 function BonusVault({
   children,
   spotlight = true,
@@ -1104,9 +1181,7 @@ function BonusVault({
   children: ReactNode;
   spotlight?: boolean;
 }) {
-  const halo = spotlight
-    ? 'opacity-95 blur-2xl'
-    : 'opacity-75 blur-2xl';
+  const halo = spotlight ? 'opacity-95 blur-2xl' : 'opacity-75 blur-2xl';
 
   return (
     <div className="relative">
@@ -1147,7 +1222,6 @@ function BonusVault({
         }
       `}</style>
 
-      {/* Violet spotlight (+ tiny rose edge for urgency) */}
       <div
         className={[
           'pointer-events-none absolute -inset-12',
@@ -1158,8 +1232,6 @@ function BonusVault({
 
       <div className="relative overflow-hidden rounded-[28px] bg-white/[0.03] ring-1 ring-white/[0.06] shadow-[0_30px_110px_rgba(0,0,0,0.45)]">
         <div className="xpot-bonus-sheen" />
-
-        {/* Violet “stage” border */}
         <div className="pointer-events-none absolute inset-0 rounded-[28px] ring-1 ring-violet-400/25" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(139,92,246,0.55),rgba(var(--xpot-gold),0.30),rgba(56,189,248,0.25),transparent)]" />
 
@@ -1183,10 +1255,7 @@ function BonusVault({
           <div className="relative">{children}</div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            {/* smarter replacement */}
-            <p className="text-[12px] text-slate-300">
-              Bonus window is live - same entry, extra payout, proof on-chain.
-            </p>
+            <p className="text-[12px] text-slate-300">Bonus window is live - same entry, extra payout, proof on-chain.</p>
 
             <span className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200 ring-1 ring-violet-400/20">
               <Sparkles className="h-3.5 w-3.5" />
@@ -1391,12 +1460,10 @@ function HomePageInner() {
                   <div className="space-y-6">
                     {/* HERO */}
                     <div className="relative p-2 sm:p-3">
-                      {/* royal bloom */}
                       <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.14),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(16,185,129,0.26),transparent)]" />
                       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.16),rgba(var(--xpot-gold),0.22),transparent)] opacity-70" />
 
-                      {/* Top line + pill */}
                       <div className="relative flex flex-wrap items-center justify-between gap-3">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
                           NO TICKETS · JUST XPOT HOLDINGS
@@ -1408,13 +1475,12 @@ function HomePageInner() {
                         </span>
                       </div>
 
-                      {/* Headline */}
                       <div className="relative mt-4">
                         <h1 className="text-5xl font-semibold tracking-tight text-white">
-  One protocol.
-  <br />
-  One daily <span className="xpot-xpotword">XPOT</span> draw.
-</h1>
+                          One protocol.
+                          <br />
+                          One daily <span className="xpot-xpotword">XPOT</span> draw.
+                        </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
                           Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
@@ -1425,41 +1491,36 @@ function HomePageInner() {
                         </p>
                       </div>
 
-                      {/* Countdown capsule */}
-<div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
-  {/* subtle internal glow */}
-  <div className="pointer-events-none absolute -inset-10 opacity-80 blur-2xl"
-    style={{
-      background:
-        'radial-gradient(circle_at_18%_40%, rgba(110,231,249,0.10), transparent 55%), radial-gradient(circle_at_86%_30%, rgba(16,185,129,0.10), transparent 52%)',
-    }}
-  />
+                      <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
+                        <div
+                          className="pointer-events-none absolute -inset-10 opacity-80 blur-2xl"
+                          style={{
+                            background:
+                              'radial-gradient(circle_at_18%_40%, rgba(110,231,249,0.10), transparent 55%), radial-gradient(circle_at_86%_30%, rgba(16,185,129,0.10), transparent 52%)',
+                          }}
+                        />
 
-  <div className="relative flex flex-wrap items-center justify-between gap-3">
-    <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-        Next draw
-      </p>
+                        <div className="relative flex flex-wrap items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                              Next draw
+                            </p>
 
-      <p className="mt-1 flex items-baseline gap-2 text-[12px] text-slate-400">
-        <span className="text-slate-500">In</span>
-        <span className="font-semibold tabular-nums text-slate-100">
-          {countdown}
-        </span>
-        <span className="text-[11px] text-slate-500">Madrid 22:00</span>
-      </p>
-    </div>
+                            <p className="mt-1 flex items-baseline gap-2 text-[12px] text-slate-400">
+                              <span className="text-slate-500">In</span>
+                              <span className="font-semibold tabular-nums text-slate-100">{countdown}</span>
+                              <span className="text-[11px] text-slate-500">Madrid 22:00</span>
+                            </p>
+                          </div>
 
-    <span className="xpot-live-ring inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
-      <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
-      Live
-    </span>
-  </div>
-</div>
+                          <span className="xpot-live-ring inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
+                            <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
+                            Live
+                          </span>
+                        </div>
+                      </div>
 
-                      {/* Eligibility + Final draw */}
                       <div className="relative mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
-                        {/* ELIGIBILITY */}
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
 
@@ -1481,7 +1542,6 @@ function HomePageInner() {
                           </div>
                         </div>
 
-                        {/* FINAL DRAW */}
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-85 blur-3xl bg-[radial-gradient(circle_at_70%_20%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_30%_0%,rgba(var(--xpot-gold),0.18),transparent_62%)]" />
 
@@ -1511,24 +1571,21 @@ function HomePageInner() {
                       </div>
 
                       {bonusActive ? (
-  <div className="mt-5">
-    <BonusVault>
-      <BonusStrip variant="home" />
-    </BonusVault>
-  </div>
-) : null}
+                        <div className="mt-5">
+                          <BonusVault>
+                            <BonusStrip variant="home" />
+                          </BonusVault>
+                        </div>
+                      ) : null}
 
-                      {/* CTA */}
                       <div className="mt-6 flex flex-wrap items-center gap-3">
                         <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`} title="Enter the hub">
                           Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
-
                       </div>
                     </div>
 
-                    {/* TOKENOMICS / RESERVE BANNER */}
                     <div className="relative overflow-hidden rounded-[28px] border border-slate-900/70 bg-slate-950/45 shadow-[0_26px_110px_rgba(0,0,0,0.42)] backdrop-blur">
                       <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_12%_18%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_70%_90%,rgba(16,185,129,0.10),transparent_62%)]" />
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.10),rgba(56,189,248,0.22),transparent)]" />
@@ -1577,6 +1634,25 @@ function HomePageInner() {
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
                     <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
                   </div>
+
+                  {/* ✅ MOVED LEFT: Contract + Trade cards (now sit under the left-side stats, like your screenshot vibe) */}
+                  <div className="grid gap-4">
+                    <PremiumCard className="p-5 sm:p-6" halo={false}>
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
+                          <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+                            Always verify the official mint before interacting.
+                          </p>
+                        </div>
+                        <RoyalContractBar mint={mint} />
+                      </div>
+                    </PremiumCard>
+
+                    <PremiumCard className="p-5 sm:p-6" halo={false}>
+                      <TradeOnJupiterCard mint={mint} />
+                    </PremiumCard>
+                  </div>
                 </div>
 
                 {/* RIGHT */}
@@ -1605,18 +1681,6 @@ function HomePageInner() {
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
                     <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
-                  </PremiumCard>
-
-                  <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
-                        <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-                          Always verify the official mint before interacting.
-                        </p>
-                      </div>
-                      <RoyalContractBar mint={mint} />
-                    </div>
                   </PremiumCard>
                 </motion.div>
               </div>
@@ -1696,7 +1760,9 @@ function HomePageInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public arc and provable outcomes.
+              </p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -1812,7 +1878,9 @@ function HomePageInner() {
 
             <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="flex items-center gap-3">
-                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
+                <span
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}
+                >
                   <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
                 </span>
                 <div>
