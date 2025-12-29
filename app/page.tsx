@@ -59,7 +59,7 @@ const XPOT_CA =
 
 // Optional overrides (recommended once you know the exact pair/chart links)
 const XPOT_JUP_SWAP_URL =
-  process.env.NEXT_PUBLIC_XPOT_JUP_SWAP_URL || `https://jup.ag/swap/SOL-${XPOT_CA}`;
+  process.env.NEXT_PUBLIC_XPOT_JUP_SWAP_URL || `https://jup.ag/?sell=So11111111111111111111111111111111111111112&buy=${XPOT_CA}`;
 
 const XPOT_DEXSCREENER_URL =
   process.env.NEXT_PUBLIC_XPOT_DEXSCREENER_URL || `https://dexscreener.com/solana/${XPOT_CA}`;
@@ -1095,7 +1095,8 @@ function LiveControlRoom({
       >
         <div className="pointer-events-none absolute -inset-20 opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_88%_30%,rgba(56,189,248,0.12),transparent_65%)]" />
 
-        <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
+        {/* FIX: was overflow-hidden causing half-clipped last line. Now scrollable + tiny padding to prevent crop */}
+        <pre className="relative z-10 max-h-60 overflow-auto whitespace-pre pr-2 pb-1 font-mono text-[11px] leading-relaxed text-emerald-100/90">
           {lines.join('\n')}
         </pre>
 
@@ -1113,6 +1114,21 @@ function LiveControlRoom({
 }
 
 function buildInitialLines(countdown: string, cutoffLabel: string, runLine: string) {
+  // LAST_WINNERS should always look "current" (relative to Madrid cutoff)
+  const now = new Date();
+  const p = getMadridParts(now);
+
+  // If we're before today's 22:00 Madrid cutoff, the latest completed draw is "yesterday" (Madrid).
+  const todayCutoffUtc = getMadridUtcMsFromWallClock(p.y, p.m, p.d, 22, 0, 0, now);
+  const lastDrawYmd = now.getTime() >= todayCutoffUtc ? { y: p.y, m: p.m, d: p.d } : addYmdDays(p.y, p.m, p.d, -1);
+  const prevDrawYmd = addYmdDays(lastDrawYmd.y, lastDrawYmd.m, lastDrawYmd.d, -1);
+
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  const fmt = (d: { y: number; m: number; d: number }) => `${d.y}-${pad2(d.m)}-${pad2(d.d)}`;
+
+  const d1 = fmt(lastDrawYmd);
+  const d2 = fmt(prevDrawYmd);
+
   return [
     `> XPOT_PROTOCOL`,
     `  run:            ${runLine}`,
@@ -1129,9 +1145,9 @@ function buildInitialLines(countdown: string, cutoffLabel: string, runLine: stri
     `  status:         run telemetry`,
     ``,
     `> LAST_WINNERS`,
-    `  #2025-12-18  winner   ${XPOT_SIGN}1,000,000`,
-    `  #2025-12-18  bonus    ${XPOT_SIGN}250,000`,
-    `  #2025-12-17  winner   ${XPOT_SIGN}1,000,000`,
+    `  #${d1}  winner   ${XPOT_SIGN}1,000,000`,
+    `  #${d1}  bonus    ${XPOT_SIGN}250,000`,
+    `  #${d2}  winner   ${XPOT_SIGN}1,000,000`,
   ];
 }
 
