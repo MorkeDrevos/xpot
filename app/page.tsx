@@ -1089,13 +1089,24 @@ function LiveControlRoom({
       <div
         className={[
           'relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20',
-          'p-4 pb-5 shadow-[0_18px_60px_rgba(15,23,42,0.9)]',
+          // ✅ extra bottom padding so nothing clips in tight layouts
+          'p-4 pb-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)]',
           scanCls,
         ].join(' ')}
       >
         <div className="pointer-events-none absolute -inset-20 opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_88%_30%,rgba(56,189,248,0.12),transparent_65%)]" />
 
-        <pre className="relative z-10 max-h-56 overflow-hidden font-mono text-[11px] leading-relaxed text-emerald-100/90">
+        {/* ✅ FIX: allow wrapping + scrolling so the last line never gets cut and long lines don't shove under edges */}
+        <pre
+          className="
+            relative z-10
+            max-h-56
+            overflow-auto
+            pr-2
+            whitespace-pre-wrap break-words
+            font-mono text-[11px] leading-relaxed text-emerald-100/90
+          "
+        >
           {lines.join('\n')}
         </pre>
 
