@@ -299,7 +299,7 @@ function MiniStat({
       : 'text-slate-200';
 
   return (
-    <div className="rounded-2xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.05]">
+    <div className="w-full rounded-2xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.05]">
       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <div className={`mt-1 font-mono text-sm ${toneCls}`}>{value}</div>
     </div>
@@ -310,10 +310,6 @@ function shortenAddress(addr: string, left = 6, right = 6) {
   if (!addr) return '';
   if (addr.length <= left + right + 3) return addr;
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
-}
-
-function formatCompactNumber(n: number) {
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n);
 }
 
 function RoyalContractBar({ mint }: { mint: string }) {
@@ -1423,9 +1419,7 @@ function HomePageInner() {
       },
       {
         q: 'Do I need tickets to enter?',
-        a: `No tickets. Eligibility is holdings-based. Hold XPOT (min ${formatCompactNumber(
-          MIN_ELIGIBLE_XPOT,
-        )}), verify eligibility in the hub and claim your entry.`,
+        a: 'No tickets. Eligibility is holdings-based. Hold XPOT, verify eligibility in the hub and claim your entry.',
       },
       {
         q: 'Why do winners show as @handle?',
@@ -1539,23 +1533,10 @@ function HomePageInner() {
                                 Hold XPOT in a connected wallet. Eligibility is verified on-chain in the hub.
                               </p>
 
-                              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-                                <span className="inline-flex items-center gap-2">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-                                  <span>Cutoff:</span>
-                                  <span className="text-slate-200">{cutoffLabel}</span>
-                                </span>
-
-                                <span className="text-slate-700">•</span>
-
-                                <span className="inline-flex items-center gap-2">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-                                  <span>Min:</span>
-                                  <span className="font-mono text-slate-200">
-                                    {XPOT_SIGN}
-                                    {formatCompactNumber(MIN_ELIGIBLE_XPOT)}
-                                  </span>
-                                </span>
+                              <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-400">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                                <span>Cutoff:</span>
+                                <span className="text-slate-200">{cutoffLabel}</span>
                               </div>
                             </div>
                           </div>
@@ -1648,10 +1629,13 @@ function HomePageInner() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
-                    <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
-                    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
+                  {/* ✅ LEFT-ALIGNED LIKE YOUR IMAGE (fixed-ish widths, doesn't spread) */}
+                  <div className="max-w-[860px]">
+                    <div className="grid gap-3 sm:grid-cols-3 sm:justify-start sm:[grid-template-columns:repeat(3,minmax(0,260px))]">
+                      <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
+                      <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
+                      <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
+                    </div>
                   </div>
                 </div>
 
@@ -1683,9 +1667,9 @@ function HomePageInner() {
                     <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
                   </PremiumCard>
 
-                  {/* ✅ FIX: move Contract block to LEFT (text + bar aligned left, OFFICIAL CONTRACT follows) */}
+                  {/* ✅ Contract: stack and keep the bar LEFT (like your pills) */}
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <div className="flex flex-col items-start gap-3">
+                    <div className="flex flex-col items-start gap-4">
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
                         <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
@@ -1693,11 +1677,13 @@ function HomePageInner() {
                         </p>
                       </div>
 
-                      <RoyalContractBar mint={mint} />
+                      <div className="w-full">
+                        <RoyalContractBar mint={mint} />
+                      </div>
                     </div>
                   </PremiumCard>
 
-                  {/* ✅ Trade on Jupiter (premium CTA) */}
+                  {/* ✅ NEW: Trade on Jupiter (premium CTA) */}
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
                     <TradeOnJupiterCard mint={mint} />
                   </PremiumCard>
@@ -1779,7 +1765,9 @@ function HomePageInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public arc and provable outcomes.
+              </p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
