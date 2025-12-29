@@ -773,10 +773,6 @@ export default function FinalDayPage() {
 
                   <div className="text-[11px] font-black uppercase tracking-[0.14em] text-white/70">Draw status {drawStatusLabel}</div>
 
-                  <div className="hidden sm:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
-                    Ends {drawSchedule.endDateDMY}
-                  </div>
-
                   {/* ✅ More dramatic: show weekday + full date of the ending */}
                   <div className="hidden lg:block text-[11px] font-black uppercase tracking-[0.14em] text-white/70">
                     Final day {drawSchedule.archiveDateLine}
