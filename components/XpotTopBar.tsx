@@ -512,7 +512,7 @@ function PublicNavCenter({
 
       {/* Final Draw (primary) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <Hourglass className="h-4 w-4 text-white opacity-80" />
+        <Hourglass className="h-[15px] w-[15px] text-amber-200" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
