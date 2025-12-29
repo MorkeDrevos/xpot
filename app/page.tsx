@@ -1145,9 +1145,8 @@ function buildInitialLines(countdown: string, cutoffLabel: string, runLine: stri
     `  status:         run telemetry`,
     ``,
     `> LAST_WINNERS`,
-    `  #${d1}  winner   ${XPOT_SIGN}1,000,000`,
-    `  #${d1}  bonus    ${XPOT_SIGN}250,000`,
-    `  #${d2}  winner   ${XPOT_SIGN}1,000,000`,
+`  #${d1}  winner   ${XPOT_SIGN}1,000,000`,
+`  #${d2}  winner   ${XPOT_SIGN}1,000,000`,
   ];
 }
 
