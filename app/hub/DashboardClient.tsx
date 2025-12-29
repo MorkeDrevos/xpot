@@ -208,25 +208,24 @@ function StatusPill({
           'before:bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.16),transparent_58%)]',
         ].join(' ')
       : tone === 'amber'
-  ? [
-      'border-amber-200/80',
-
-      // TEXT MUST BE WHITE
-      'text-white',
-      '[&_svg]:text-white',
-      '[text-shadow:0_1px_0_rgba(0,0,0,0.75)]',
-
-      // gold shell only
-      'bg-[linear-gradient(180deg,rgba(255,214,102,0.72),rgba(251,191,36,0.42),rgba(245,158,11,0.22),rgba(2,6,23,0.70))]',
-      'shadow-[0_0_0_1px_rgba(251,191,36,0.38),0_26px_140px_rgba(251,191,36,0.20)]',
-      'ring-1 ring-amber-300/18',
-
-      // highlight + sheen
-      'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-95',
-      'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.26),transparent_56%)]',
-      'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-60',
-      'after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.16),transparent)]',
-    ].join(' ')
+      ? [
+          // make the “gold” read as gold everywhere (esp Safari)
+          'border-amber-200/80',
+          'text-white',
+'[&_svg]:text-white',
+          // less muddy, more metallic
+          'bg-[linear-gradient(180deg,rgba(255,214,102,0.72),rgba(251,191,36,0.42),rgba(245,158,11,0.22),rgba(2,6,23,0.70))]',
+          // stronger outline + depth
+          'shadow-[0_0_0_1px_rgba(251,191,36,0.38),0_26px_140px_rgba(251,191,36,0.20)]',
+          // inner bright cap (top-left)
+          'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-95',
+          'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.26),transparent_56%)]',
+          // metallic sheen band
+          'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-60',
+          'after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.16),transparent)]',
+          // keep it from looking “disabled” on dark cards
+          'ring-1 ring-amber-300/18',
+        ].join(' ')
       : tone === 'sky'
       ? [
           'border-sky-200/34',
