@@ -1,7 +1,7 @@
 // app/api/tickets/claim/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { REQUIRED_XPOT, TOKEN_MINT } from '@/lib/xpot';
+import { REQUIRED_XPOT } from '@/lib/xpot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -99,7 +99,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
 }
 
 // ─────────────────────────────────────────────
-// Helpers – code + XPOT balance check (XPOT-only gating)
+// Helpers – code + XPOT balance check (single source of truth)
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -111,49 +111,29 @@ function makeCode() {
   return `XPOT-${chunk()}-${chunk()}`;
 }
 
-async function getXpotBalanceUi(address: string): Promise<{ balance: number; raw: bigint; decimals: number }> {
-  // Prefer env XPOT_MINT, fallback to TOKEN_MINT from your app constants
-  const mint = process.env.XPOT_MINT || TOKEN_MINT;
-  if (!mint) throw new Error('XPOT_MINT not configured');
+/**
+ * IMPORTANT FIX:
+ * Use the SAME balance endpoint as the dashboard UI uses.
+ * That removes mint mismatch bugs (env XPOT_MINT vs TOKEN_MINT vs old config).
+ */
+async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string): Promise<number | null> {
+  try {
+    const origin = req.nextUrl.origin;
+    const url = `${origin}/api/xpot-balance?address=${encodeURIComponent(address)}`;
 
-  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+    const r = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      // make sure this is always dynamic in Vercel
+      headers: { 'cache-control': 'no-store' },
+    });
 
-  const res = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'getTokenAccountsByOwner',
-      // owner = address (base58), mint = mint address (base58)
-      params: [address, { mint }, { encoding: 'jsonParsed' }],
-    }),
-  });
-
-  const json = await res.json().catch(() => null);
-  const accounts = json?.result?.value ?? [];
-
-  if (!Array.isArray(accounts) || accounts.length === 0) {
-    return { balance: 0, raw: 0n, decimals: 6 };
+    if (!r.ok) return null;
+    const j = (await r.json().catch(() => null)) as any;
+    return j && typeof j.balance === 'number' && Number.isFinite(j.balance) ? j.balance : null;
+  } catch {
+    return null;
   }
-
-  let rawTotal = 0n;
-  let decimals = 6;
-
-  for (const acc of accounts) {
-    const info = acc?.account?.data?.parsed?.info;
-    const tokenAmount = info?.tokenAmount;
-    if (!tokenAmount?.amount) continue;
-
-    const amountStr: string = tokenAmount.amount;
-    const dec: number = tokenAmount.decimals ?? 6;
-
-    decimals = dec;
-    rawTotal += BigInt(amountStr);
-  }
-
-  const balance = Number(rawTotal) / Math.pow(10, decimals);
-  return { balance, raw: rawTotal, decimals };
 }
 
 // ─────────────────────────────────────────────
@@ -170,30 +150,23 @@ export async function POST(req: NextRequest) {
     }
 
     // 1) XPOT minimum check (server-side) - XPOT ONLY, no SOL gating
-    let xpotBalance = 0;
+    const xpotBalance = await getXpotBalanceFromSameEndpoint(req, walletAddress);
 
-    try {
-      const b = await getXpotBalanceUi(walletAddress);
-      xpotBalance = b.balance;
-
-      if (!(typeof xpotBalance === 'number' && Number.isFinite(xpotBalance))) {
-        return NextResponse.json({ ok: false, error: 'XPOT_CHECK_FAILED' }, { status: 400 });
-      }
-
-      if (xpotBalance < REQUIRED_XPOT) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: 'NOT_ENOUGH_XPOT',
-            required: REQUIRED_XPOT,
-            balance: xpotBalance,
-          },
-          { status: 400 },
-        );
-      }
-    } catch (e) {
-      console.error('[XPOT] XPOT balance check failed', e);
+    if (xpotBalance === null) {
+      // This means the same endpoint your UI uses could not verify the balance.
       return NextResponse.json({ ok: false, error: 'XPOT_CHECK_FAILED' }, { status: 400 });
+    }
+
+    if (xpotBalance < REQUIRED_XPOT) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'NOT_ENOUGH_XPOT',
+          required: REQUIRED_XPOT,
+          balance: xpotBalance,
+        },
+        { status: 400 },
+      );
     }
 
     // 2) Find the open draw for the CURRENT MADRID CUTOFF WINDOW
