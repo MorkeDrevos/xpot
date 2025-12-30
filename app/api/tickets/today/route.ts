@@ -22,81 +22,154 @@ function toUiStatus(raw: any): UiStatus {
   return 'in-draw';
 }
 
+// ─────────────────────────────────────────────
+// Madrid cutoff logic (22:00 Europe/Madrid)
+// SAME BUCKET as /api/tickets/claim
+// ─────────────────────────────────────────────
+
+const MADRID_TZ = 'Europe/Madrid';
+const MADRID_CUTOFF_HH = 22;
+const MADRID_CUTOFF_MM = 0;
+
+function getTzParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const pick = (type: string) => parts.find(p => p.type === type)?.value ?? '00';
+
+  return {
+    y: Number(pick('year')),
+    m: Number(pick('month')),
+    d: Number(pick('day')),
+    hh: Number(pick('hour')),
+    mm: Number(pick('minute')),
+    ss: Number(pick('second')),
+  };
+}
+
+function wallClockToUtcMs({
+  y,
+  m,
+  d,
+  hh,
+  mm,
+  ss,
+  timeZone,
+}: {
+  y: number;
+  m: number;
+  d: number;
+  hh: number;
+  mm: number;
+  ss: number;
+  timeZone: string;
+}) {
+  let t = Date.UTC(y, m - 1, d, hh, mm, ss);
+
+  for (let i = 0; i < 3; i++) {
+    const got = getTzParts(new Date(t), timeZone);
+
+    const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
+    const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
+
+    const diffMin = gotTotal - wantTotal;
+    if (diffMin === 0) break;
+    t -= diffMin * 60_000;
+  }
+
+  return t;
+}
+
+function getMadridCutoffWindowUtc(now = new Date()) {
+  const madridNow = getTzParts(now, MADRID_TZ);
+  const nowMin = madridNow.hh * 60 + madridNow.mm;
+  const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
+
+  const baseForNext = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
+  const nextDayParts = getTzParts(baseForNext, MADRID_TZ);
+
+  const endUtcMs = wallClockToUtcMs({
+    y: nextDayParts.y,
+    m: nextDayParts.m,
+    d: nextDayParts.d,
+    hh: MADRID_CUTOFF_HH,
+    mm: MADRID_CUTOFF_MM,
+    ss: 0,
+    timeZone: MADRID_TZ,
+  });
+
+  const startUtcMs = endUtcMs - 24 * 60 * 60_000;
+  return { start: new Date(startUtcMs), end: new Date(endUtcMs) };
+}
+
+function getDrawBucketUtc(now = new Date()) {
+  const { end } = getMadridCutoffWindowUtc(now);
+  const insideWindow = new Date(end.getTime() - 1);
+  const p = getTzParts(insideWindow, MADRID_TZ);
+  return new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
+}
+
 export async function GET() {
   try {
-    // ✅ account-level identity (Clerk)
+    // Must be signed in (account-level)
     const { userId: clerkId } = auth();
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    // Resolve app User
+    // Resolve your internal User row (by clerkId)
     const appUser = await prisma.user.findUnique({
       where: { clerkId },
       select: { id: true },
     });
 
     if (!appUser?.id) {
-      return NextResponse.json({ ok: true, draw: null, tickets: [] });
+      // No linked wallets yet, so no account tickets
+      return NextResponse.json({ ok: true, draw: null, tickets: [] }, { status: 200 });
     }
 
-    // Fetch wallets linked to this user
+    // Wallets linked to this account
     const wallets = await prisma.wallet.findMany({
       where: { userId: appUser.id },
-      select: { id: true, address: true },
+      select: { id: true },
     });
 
     if (!wallets.length) {
-      return NextResponse.json({ ok: true, draw: null, tickets: [] });
+      return NextResponse.json({ ok: true, draw: null, tickets: [] }, { status: 200 });
     }
 
-    // Today in UTC (same as your current endpoint)
-    const now = new Date();
-    const yyyy = now.getUTCFullYear();
-    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const dd = String(now.getUTCDate()).padStart(2, '0');
+    const walletIds = wallets.map(w => w.id);
 
-    const start = new Date(`${yyyy}-${mm}-${dd}T00:00:00.000Z`);
-    const end = new Date(`${yyyy}-${mm}-${dd}T23:59:59.999Z`);
+    // Draw bucket (Madrid cutoff logic)
+    const drawDate = getDrawBucketUtc(new Date());
 
-    const drawRecord = await prisma.draw.findFirst({
-      where: {
-        drawDate: { gte: start, lte: end },
-      },
-      orderBy: { drawDate: 'asc' },
-      select: {
-        id: true,
-        drawDate: true,
-        status: true,
-        jackpotUsd: true,
-        rolloverUsd: true,
+    const draw = await prisma.draw.findUnique({
+      where: { drawDate },
+      include: {
         tickets: {
-          where: {
-            walletId: { in: wallets.map(w => w.id) },
-          },
+          where: { walletId: { in: walletIds } },
           orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            code: true,
-            status: true,
-            label: true,
-            createdAt: true,
-            walletAddress: true,
-          },
         },
       },
     });
 
-    if (!drawRecord) {
-      return NextResponse.json({ ok: true, draw: null, tickets: [] });
+    if (!draw) {
+      return NextResponse.json({ ok: true, draw: null, tickets: [] }, { status: 200 });
     }
 
-    const tickets = (drawRecord.tickets ?? []).map(t => ({
+    const tickets = (draw.tickets ?? []).map(t => ({
       id: t.id,
       code: t.code,
       status: toUiStatus(t.status),
-      label: t.label ?? 'Ticket for today’s draw',
-      jackpotUsd: drawRecord.jackpotUsd ?? 0,
+      label: 'Ticket for today’s draw',
       createdAt: t.createdAt,
       walletAddress: String(t.walletAddress ?? ''),
     }));
@@ -104,11 +177,10 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       draw: {
-        id: drawRecord.id,
-        drawDate: drawRecord.drawDate,
-        status: String(drawRecord.status ?? 'open'),
-        jackpotUsd: drawRecord.jackpotUsd ?? 0,
-        rolloverUsd: drawRecord.rolloverUsd ?? 0,
+        id: draw.id,
+        drawDate: draw.drawDate,
+        status: String(draw.status ?? 'open'),
+        closesAt: draw.closesAt ?? null,
       },
       tickets,
     });
