@@ -248,3 +248,26 @@ model UserPreference {
 
   @@index([clerkId])
 }
+
+model Draw {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// Calendar date of the draw (UTC day bucket)
+  drawDate DateTime @unique
+
+  /// When the main XPOT closes for entries
+  closesAt DateTime?
+  status   String   @default("open")
+
+  // ✅ add these (your API and UI already use them)
+  jackpotUsd   Float @default(0)
+  rolloverUsd  Float @default(0)
+
+  tickets    Ticket[]
+  winners    Winner[]
+  bonusDrops BonusDrop[]
+
+  // Public lobby entrants for this draw (X handles)
+  entries DrawEntry[]
+}
