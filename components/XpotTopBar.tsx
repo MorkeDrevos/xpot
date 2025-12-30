@@ -72,7 +72,7 @@ export type XpotTopBarProps = {
   hasBanner?: boolean;
   maxWidthClassName?: string;
 };
-const GOLD_ICON = 'text-[rgb(var(--xpot-gold-2))]';
+
 const XPOT_X_POST = 'https://x.com/xpotbet';
 
 // ✅ Correct route (your file is app/2045/final-day/page.tsx)
@@ -512,7 +512,7 @@ function PublicNavCenter({
 
       {/* Final Draw (primary) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <Hourglass className={`h-4 w-4 ${GOLD_ICON}`} />
+        <Hourglass className="h-[15px] w-[15px] text-amber-200" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
@@ -565,7 +565,7 @@ function PublicNavCenter({
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
                 >
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Trophy className={`h-4 w-4 ${GOLD_ICON}`} />
+                    <Trophy className="h-4 w-4 text-amber-300" />
                   </span>
                   Winners
                 </Link>
@@ -642,7 +642,7 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
 
       {/* ✅ Final Draw (ONLY ONCE) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <Hourglass className={`h-[15px] w-[15px] ${GOLD_ICON}`} />
+        <Hourglass className="h-[15px] w-[15px] text-amber-200" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
@@ -665,7 +665,7 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
       </NavLink>
 
       <NavLink href={WINNERS_HREF}>
-        <Trophy className={`h-4 w-4 ${GOLD_ICON}`} />
+        <Trophy className="h-4 w-4 text-amber-300" />
         Winners
       </NavLink>
 
@@ -1159,7 +1159,7 @@ function MobileMenu({
             href={FINAL_DAY_HREF}
           >
             <span className="inline-flex items-center gap-2">
-              <Hourglass className={`h-4 w-4 ${GOLD_ICON}`} />
+              <Hourglass className="h-4 w-4 text-amber-200" />
               {FINAL_DAY_LABEL}
             </span>
           </Link>
@@ -1202,7 +1202,7 @@ function MobileMenu({
             href={WINNERS_HREF}
           >
             <span className="inline-flex items-center gap-2">
-             <Trophy className={`h-4 w-4 ${GOLD_ICON}`} />
+              <Trophy className="h-4 w-4 text-amber-300" />
               Winners
             </span>
           </Link>
