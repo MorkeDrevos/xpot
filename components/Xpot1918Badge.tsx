@@ -3,35 +3,30 @@
 export default function Xpot1918Badge({
   className = '',
   label = '19.18 YEARS',
+  subdued = true,
 }: {
   className?: string;
   label?: string;
+  subdued?: boolean;
 }) {
   return (
     <span
       className={[
-        'relative inline-flex items-center',
-        'rounded-full',
-        'border border-emerald-400/18',
-        'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.18),rgba(0,0,0,0.30)_55%,rgba(0,0,0,0.22)_100%)]',
-        'px-3 py-1',
-        'shadow-[0_18px_55px_rgba(16,185,129,0.10)]',
-        'ring-1 ring-black/35',
+        'inline-flex items-center rounded-full',
+        // smaller + calmer
+        'px-2.5 py-1',
+        'text-[10px] sm:text-[11px] font-semibold uppercase',
+        'tracking-[0.16em]',
+        // micro, not shouting
+        subdued
+          ? 'border border-emerald-400/12 bg-emerald-300/8 text-emerald-100/90'
+          : 'border border-emerald-400/18 bg-emerald-300/10 text-[rgb(var(--xpot-gold-2))]',
+        'shadow-[0_10px_30px_rgba(0,0,0,0.30)]',
+        'ring-1 ring-black/30',
         className,
       ].join(' ')}
     >
-      <strong
-        className={[
-          'relative z-10',
-          'font-semibold',
-          'text-[rgb(var(--xpot-gold-2))]',
-          'tracking-[0.12em]',
-          'uppercase',
-          'whitespace-nowrap',
-        ].join(' ')}
-      >
-        {label}
-      </strong>
+      {label}
     </span>
   );
 }
