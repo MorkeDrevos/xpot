@@ -1,8 +1,8 @@
 // components/XpotPageShell.tsx
 'use client';
 
-import { ReactNode, ComponentProps, useEffect, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { ReactNode, ComponentProps, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
 import PreLaunchBanner from '@/components/PreLaunchBanner';
 import XpotTopBar from '@/components/XpotTopBar';
@@ -39,7 +39,18 @@ type XpotPageShellProps = {
 
   // Optional: disable ambient background on special pages
   ambientBg?: boolean;
+
+  // ✅ Premium auto-refresh (client-side router.refresh)
+  autoRefresh?: boolean;
+  autoRefreshIntervalMs?: number;
+
+  // Optional: show subtle "LIVE refresh" indicator pill
+  showAutoRefreshPill?: boolean;
 };
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
 
 export default function XpotPageShell({
   title,
@@ -64,11 +75,17 @@ export default function XpotPageShell({
 
   pageTag,
   ambientBg = true,
+
+  // ✅ defaults: enabled and smooth
+  autoRefresh = true,
+  autoRefreshIntervalMs = 15_000,
+  showAutoRefreshPill = true,
 }: XpotPageShellProps) {
   void showAtmosphere;
   void showOpsThemeSwitcher;
 
   const pathname = usePathname();
+  const router = useRouter();
 
   const inferredTag = useMemo(() => {
     if (typeof pathname !== 'string') return undefined;
@@ -113,6 +130,72 @@ export default function XpotPageShell({
     : showTopBar
       ? 'calc(var(--xpot-header-offset,168px) + 24px)'
       : 'calc(var(--xpot-header-offset,56px) + 24px)';
+
+  // ─────────────────────────────────────────────
+  // Premium auto-refresh (soft refresh, no reload)
+  // - Pauses when tab is hidden
+  // - Adds slight jitter so many clients do not slam at same millisecond
+  // - Small pill indicator with pulse
+  // ─────────────────────────────────────────────
+
+  const [refreshPulse, setRefreshPulse] = useState(false);
+  const lastRefreshAtRef = useRef<number>(0);
+  const timerRef = useRef<number | null>(null);
+
+  const intervalMs = useMemo(() => {
+    // Keep sane boundaries so we never DoS ourselves
+    return clamp(autoRefreshIntervalMs, 5_000, 120_000);
+  }, [autoRefreshIntervalMs]);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    if (typeof window === 'undefined') return;
+
+    const clear = () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+
+    const scheduleNext = () => {
+      clear();
+
+      const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      if (hidden) return;
+
+      // ±12% jitter (premium feel, avoids thundering herd)
+      const jitter = Math.round(intervalMs * 0.12);
+      const delay = intervalMs + Math.round((Math.random() * 2 - 1) * jitter);
+
+      timerRef.current = window.setTimeout(() => {
+        const now = Date.now();
+
+        // Safety: do not refresh more often than 4s even if something misfires
+        if (now - lastRefreshAtRef.current >= 4_000) {
+          lastRefreshAtRef.current = now;
+
+          // visual pulse for the indicator
+          setRefreshPulse(true);
+          window.setTimeout(() => setRefreshPulse(false), 650);
+
+          router.refresh();
+        }
+
+        scheduleNext();
+      }, delay) as unknown as number;
+    };
+
+    const onVis = () => scheduleNext();
+
+    scheduleNext();
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      clear();
+    };
+  }, [autoRefresh, intervalMs, router]);
 
   return (
     <div
@@ -171,6 +254,35 @@ export default function XpotPageShell({
             <XpotTopBar {...topBarProps} />
           </div>
         )}
+
+        {/* ✅ Premium auto-refresh indicator (subtle, XPOT style) */}
+        {autoRefresh && showAutoRefreshPill ? (
+          <div
+            className="pointer-events-none fixed right-4 top-[calc(var(--xpot-header-offset,168px)+14px)] z-[80] hidden sm:block"
+            aria-hidden
+          >
+            <div
+              className={[
+                'inline-flex items-center gap-2 rounded-full border px-3 py-1',
+                'border-white/10 bg-white/[0.04] backdrop-blur-md',
+                'shadow-[0_18px_70px_rgba(0,0,0,0.45)]',
+                refreshPulse ? 'ring-2 ring-emerald-400/25' : '',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'h-2 w-2 rounded-full',
+                  refreshPulse
+                    ? 'bg-emerald-300 shadow-[0_0_0_6px_rgba(16,185,129,0.12)]'
+                    : 'bg-emerald-300/70 shadow-[0_0_0_4px_rgba(16,185,129,0.08)]',
+                ].join(' ')}
+              />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                Live refresh
+              </span>
+            </div>
+          </div>
+        ) : null}
 
         {/* ✅ Full-bleed hero: edge-to-edge.
             IMPORTANT: do NOT pad by header offset here if your hero already includes its own spacer. */}
