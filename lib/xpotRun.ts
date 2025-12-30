@@ -14,7 +14,7 @@ function pad2(n: number) {
   return String(n).padStart(2, '0');
 }
 
-// Add whole days based on the *calendar date* (UTC-safe day stepping)
+// Add whole days based on the calendar date (UTC-safe day stepping)
 // We intentionally ignore DST here because we're moving the date, not the wall-clock time.
 function addDaysToYmd(ymd: { y: number; m: number; d: number }, days: number) {
   const base = Date.UTC(ymd.y, ymd.m - 1, ymd.d);
@@ -25,13 +25,21 @@ function addDaysToYmd(ymd: { y: number; m: number; d: number }, days: number) {
 /**
  * End of run (Final Draw cutoff).
  *
- * IMPORTANT:
- * If "Day 1 starts at RUN_START (22:00 Madrid)",
- * then the Final Draw happens after RUN_DAYS full days have elapsed:
- * RUN_END = RUN_START date + RUN_DAYS days (same 22:00 cutoff time).
+ * Counting rule used here:
+ * - Day 1 starts at RUN_START (22:00 Madrid)
+ * - Day N is RUN_START date + (N - 1) days
+ *
+ * Therefore:
+ * - Day 7000 = RUN_START date + 6999 days
+ *
+ * With RUN_START = 2025-12-31 22:00 Madrid:
+ * - Final Draw = 28/02/2045 22:00 Madrid (Tuesday)
  */
 export const RUN_END: RunDt = (() => {
-  const endYmd = addDaysToYmd({ y: RUN_START.y, m: RUN_START.m, d: RUN_START.d }, RUN_DAYS);
+  const endYmd = addDaysToYmd(
+    { y: RUN_START.y, m: RUN_START.m, d: RUN_START.d },
+    RUN_DAYS - 1
+  );
   return { ...endYmd, hh: RUN_START.hh, mm: RUN_START.mm };
 })();
 
