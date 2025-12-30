@@ -1330,8 +1330,14 @@ function MissionBanner() {
       <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),radial-gradient(circle_at_82%_0%,rgba(56,189,248,0.16),transparent_62%)]" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
-        {/* RotatingAnnouncement now owns: Status pill + message + View Reserves button(s) */}
-        <RotatingAnnouncement />
+        <RotatingAnnouncement
+          reservesHref="/tokenomics?tab=rewards&focus=reserve"
+          explorerHref={`https://solscan.io/token/${
+            process.env.NEXT_PUBLIC_XPOT_MINT ||
+            process.env.NEXT_PUBLIC_XPOT_CA ||
+            'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1'
+          }`}
+        />
       </div>
     </div>
   );
