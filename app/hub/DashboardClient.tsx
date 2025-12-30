@@ -508,11 +508,17 @@ function EntryCeremony({
   code,
   onClose,
   soundEnabled,
+  countdown,
+  cutoffLabel,
+  sharePath = '/hub',
 }: {
   open: boolean;
   code: string;
   onClose: () => void;
   soundEnabled: boolean;
+  countdown: string;
+  cutoffLabel: string;
+  sharePath?: string;
 }) {
   const reduced = useReducedMotionPref();
 
@@ -1480,11 +1486,14 @@ function DashboardInner() {
       `}</style>
 
       <EntryCeremony
-        open={showCeremony}
-        code={ceremonyCode}
-        soundEnabled={soundEnabled}
-        onClose={() => setShowCeremony(false)}
-      />
+  open={showCeremony}
+  code={ceremonyCode}
+  soundEnabled={soundEnabled}
+  onClose={() => setShowCeremony(false)}
+  countdown={countdown}
+  cutoffLabel="22:00 Madrid cutoff"
+  sharePath="/hub"
+/>
 
       <HubLockOverlay
         open={showLock}
