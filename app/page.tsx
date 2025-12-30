@@ -1500,9 +1500,6 @@ function HomePageInner() {
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
                           Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
                           - <FinalDrawDate className="text-slate-200" />.
-                          <span className="mt-2 block text-slate-300">
-                            We’re building toward becoming the world’s biggest game - one day at a time.
-                          </span>
                         </p>
                       </div>
 
