@@ -44,6 +44,7 @@ import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 import XpotFooter from '@/components/XpotFooter';
 import FinalDrawDate from '@/components/FinalDrawDate';
+import RotatingAnnouncement from '@/components/RotatingAnnouncement';
 
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
 import { createPortal } from 'react-dom';
@@ -1361,10 +1362,9 @@ function MissionBanner() {
               Mission
             </span>
 
-            <p className="text-[12px] text-slate-200">
-              We’re aiming to become the <span className={GOLD_TEXT}>biggest game on the planet</span>.
-              <span className="text-slate-400"> You’re early. This is where it starts.</span>
-            </p>
+            <p className="text-sm text-slate-300">
+  <RotatingAnnouncement />
+</p>
           </div>
 
           <button
