@@ -248,10 +248,189 @@ function ProofLinkPill({
 }
 
 // ─────────────────────────────────────────────
-// ✅ Partners vesting panel (8 months) - Streamflow proof
-// (Removed Solscan contract button - you said it's basically 404/wrong)
+// ✅ Smaller, aligned gold amount line (fixes img3)
 // ─────────────────────────────────────────────
-function PartnersVestingPanel() {
+function GoldAmountLine({
+  amount,
+  suffix = 'XPOT',
+  className,
+}: {
+  amount: string;
+  suffix?: string;
+  className?: string;
+}) {
+  return (
+    <p className={className ?? ''}>
+      <span className="inline-flex items-baseline gap-2 font-mono leading-none">
+        <span className="text-[15px] sm:text-base font-semibold text-[rgb(var(--xpot-gold-2))]">{amount}</span>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{suffix}</span>
+      </span>
+    </p>
+  );
+}
+
+type VestRow = { m: number; monthly: number; cumulative: number; pct: number };
+
+function buildLinearRows(totalTokens: number, months: number) {
+  const safeMonths = Math.max(1, Math.floor(months));
+  const perMonth = totalTokens / safeMonths;
+
+  const out: VestRow[] = [];
+  let cum = 0;
+  for (let i = 1; i <= safeMonths; i++) {
+    cum += perMonth;
+    out.push({
+      m: i,
+      monthly: perMonth,
+      cumulative: cum,
+      pct: totalTokens > 0 ? (cum / totalTokens) * 100 : 0,
+    });
+  }
+
+  return { perMonth, rows: out };
+}
+
+// ─────────────────────────────────────────────
+// ✅ Shared vesting chart + schedule (Team + Partners)
+// ─────────────────────────────────────────────
+function LinearVestingChartAndSchedule({
+  months,
+  totalTokens,
+  tone = 'gold',
+}: {
+  months: number;
+  totalTokens: number;
+  tone?: 'gold' | 'sky';
+}) {
+  const { perMonth, rows } = useMemo(() => buildLinearRows(totalTokens, months), [totalTokens, months]);
+
+  const maxMonthly = perMonth || 1;
+  const w = 560;
+  const h = 170;
+  const pad = 18;
+  const barW = (w - pad * 2) / Math.max(1, months);
+
+  const points = rows
+    .map((r, idx) => {
+      const x = pad + barW * idx + barW / 2;
+      const y = pad + (1 - r.pct / 100) * (h - pad * 2);
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  const barGradientId = tone === 'sky' ? 'vestBarsSky' : 'vestBarsGold';
+
+  return (
+    <div className="mt-3 grid gap-3 lg:grid-cols-2">
+      <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Monthly unlock</p>
+            <GoldAmountLine amount={fmtInt(perMonth)} />
+          </div>
+
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total vested</p>
+            <p className="mt-1 font-mono text-[12px] font-semibold text-slate-100 leading-none">{fmtInt(totalTokens)} XPOT</p>
+          </div>
+        </div>
+
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/25">
+          <div className="w-full overflow-x-auto">
+            <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block">
+              <defs>
+                <linearGradient id={barGradientId} x1="0" y1="0" x2="1" y2="0">
+                  {tone === 'sky' ? (
+                    <>
+                      <stop offset="0%" stopColor="rgba(56,189,248,0.85)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0.10)" />
+                    </>
+                  ) : (
+                    <>
+                      <stop offset="0%" stopColor="rgba(var(--xpot-gold),0.85)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0.10)" />
+                    </>
+                  )}
+                </linearGradient>
+              </defs>
+
+              <rect x="0" y="0" width={w} height={h} fill="rgba(2,2,10,0.35)" />
+
+              {[0.25, 0.5, 0.75].map(p => (
+                <line
+                  key={p}
+                  x1={pad}
+                  x2={w - pad}
+                  y1={pad + p * (h - pad * 2)}
+                  y2={pad + p * (h - pad * 2)}
+                  stroke="rgba(255,255,255,0.06)"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {rows.map(r => {
+                const x = pad + barW * (r.m - 1) + 5;
+                const barH = (r.monthly / maxMonthly) * (h - pad * 2);
+                const y = h - pad - barH;
+                const bw = Math.max(6, barW - 10);
+                return (
+                  <rect
+                    key={r.m}
+                    x={x}
+                    y={y}
+                    width={bw}
+                    height={barH}
+                    rx="8"
+                    fill={`url(#${barGradientId})`}
+                    opacity="0.9"
+                  />
+                );
+              })}
+
+              <polyline points={points} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" />
+
+              {rows.map(r => {
+                const idx = r.m - 1;
+                const x = pad + barW * idx + barW / 2;
+                const y = pad + (1 - r.pct / 100) * (h - pad * 2);
+                return <circle key={r.m} cx={x} cy={y} r="3.2" fill="rgba(255,255,255,0.70)" />;
+              })}
+            </svg>
+          </div>
+        </div>
+
+        <p className="mt-3 text-[11px] text-slate-600">Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow above.</p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Schedule</p>
+
+        <div className="mt-3 grid gap-2">
+          {rows.map(r => (
+            <div key={r.m} className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2 text-xs">
+              <span className="font-mono text-slate-300">Month {r.m}</span>
+              <span className="font-mono text-slate-200">{fmtInt(r.monthly)} XPOT</span>
+              <span className="text-slate-500">{r.pct.toFixed(0)}%</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-slate-800/70 bg-black/25 p-3">
+          <p className="text-xs text-slate-300">Simple rule: no cliffs, no tricks.</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            1/{Math.max(1, Math.floor(months))} unlocks monthly, equal amounts.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// ✅ Partners vesting panel (8 months) - Streamflow proof
+// ✅ Now includes the missing "Monthly unlock / Total vested / schedule" block (img1)
+// ─────────────────────────────────────────────
+function PartnersVestingPanel({ totalPartnersTokens }: { totalPartnersTokens: number }) {
   const vestUrl = getStreamflowContractUrl(PARTNERS_VESTING.contractAccount);
 
   return (
@@ -262,7 +441,7 @@ function PartnersVestingPanel() {
           <p className="mt-1 text-[11px] text-slate-500">Vesting is live on-chain via Streamflow (8 months). Public proof link below.</p>
         </div>
 
-        <span className="rounded-full border border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--xpot-gold-2))]">
+        <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200">
           8M vesting
         </span>
       </div>
@@ -297,6 +476,9 @@ function PartnersVestingPanel() {
 
         <p className="mt-3 text-[11px] text-slate-600">Design intent: vesting stays public, simple and verifiable.</p>
       </div>
+
+      {/* ✅ Missing block added for Partners (matches Team UX) */}
+      <LinearVestingChartAndSchedule months={8} totalTokens={totalPartnersTokens} tone="sky" />
     </div>
   );
 }
@@ -304,41 +486,8 @@ function PartnersVestingPanel() {
 // ─────────────────────────────────────────────
 // Team vesting (12 months, monthly equal amounts)
 // + ✅ on-chain Streamflow proof panel
-// (Removed Solscan contract button - you said it's basically 404/wrong)
 // ─────────────────────────────────────────────
 function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
-  const months = 12;
-  const perMonth = totalTeamTokens / months;
-
-  const rows = useMemo(() => {
-    const out: { m: number; monthly: number; cumulative: number; pct: number }[] = [];
-    let cum = 0;
-    for (let i = 1; i <= months; i++) {
-      cum += perMonth;
-      out.push({
-        m: i,
-        monthly: perMonth,
-        cumulative: cum,
-        pct: (cum / totalTeamTokens) * 100,
-      });
-    }
-    return out;
-  }, [perMonth, totalTeamTokens]);
-
-  const maxMonthly = perMonth || 1;
-  const w = 560;
-  const h = 170;
-  const pad = 18;
-  const barW = (w - pad * 2) / months;
-
-  const points = rows
-    .map((r, idx) => {
-      const x = pad + barW * idx + barW / 2;
-      const y = pad + (1 - r.pct / 100) * (h - pad * 2);
-      return `${x},${y}`;
-    })
-    .join(' ');
-
   const streamflowUrl = getStreamflowContractUrl(TEAM_VESTING.contractAccount);
 
   return (
@@ -395,87 +544,8 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
         </p>
       </div>
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Monthly unlock</p>
-              <p className="mt-1 font-mono text-lg font-semibold text-[rgb(var(--xpot-gold-2))]">
-                {fmtInt(perMonth)} <span className="text-xs text-slate-500">XPOT</span>
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total vested</p>
-              <p className="mt-1 font-mono text-sm font-semibold text-slate-100">{fmtInt(totalTeamTokens)} XPOT</p>
-            </div>
-          </div>
-
-          <div className="mt-3 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/25">
-            <div className="w-full overflow-x-auto">
-              <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block">
-                <defs>
-                  <linearGradient id="teamBars" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="rgba(var(--xpot-gold),0.85)" />
-                    <stop offset="100%" stopColor="rgba(255,255,255,0.10)" />
-                  </linearGradient>
-                </defs>
-
-                <rect x="0" y="0" width={w} height={h} fill="rgba(2,2,10,0.35)" />
-
-                {[0.25, 0.5, 0.75].map(p => (
-                  <line
-                    key={p}
-                    x1={pad}
-                    x2={w - pad}
-                    y1={pad + p * (h - pad * 2)}
-                    y2={pad + p * (h - pad * 2)}
-                    stroke="rgba(255,255,255,0.06)"
-                    strokeWidth="1"
-                  />
-                ))}
-
-                {rows.map(r => {
-                  const x = pad + barW * (r.m - 1) + 5;
-                  const barH = (r.monthly / maxMonthly) * (h - pad * 2);
-                  const y = h - pad - barH;
-                  const bw = Math.max(6, barW - 10);
-                  return <rect key={r.m} x={x} y={y} width={bw} height={barH} rx="8" fill="url(#teamBars)" opacity="0.9" />;
-                })}
-
-                <polyline points={points} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" />
-
-                {rows.map(r => {
-                  const idx = r.m - 1;
-                  const x = pad + barW * idx + barW / 2;
-                  const y = pad + (1 - r.pct / 100) * (h - pad * 2);
-                  return <circle key={r.m} cx={x} cy={y} r="3.2" fill="rgba(255,255,255,0.70)" />;
-                })}
-              </svg>
-            </div>
-          </div>
-
-          <p className="mt-3 text-[11px] text-slate-600">Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow above.</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Schedule</p>
-
-          <div className="mt-3 grid gap-2">
-            {rows.map(r => (
-              <div key={r.m} className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2 text-xs">
-                <span className="font-mono text-slate-300">Month {r.m}</span>
-                <span className="font-mono text-slate-200">{fmtInt(r.monthly)} XPOT</span>
-                <span className="text-slate-500">{r.pct.toFixed(0)}%</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-3 rounded-2xl border border-slate-800/70 bg-black/25 p-3">
-            <p className="text-xs text-slate-300">Simple rule: no cliffs, no tricks.</p>
-            <p className="mt-1 text-[11px] text-slate-500">1/12 unlocks monthly, equal amounts.</p>
-          </div>
-        </div>
-      </div>
+      {/* ✅ Uses shared component with fixed alignment + smaller gold numbers */}
+      <LinearVestingChartAndSchedule months={12} totalTokens={totalTeamTokens} tone="gold" />
     </div>
   );
 }
@@ -810,6 +880,7 @@ function DonutAllocation({
   distributionReserve,
   getCardRef,
   teamTotalTokens,
+  partnersTotalTokens,
 }: {
   items: Allocation[];
   selectedKey: string | null;
@@ -831,6 +902,7 @@ function DonutAllocation({
   getCardRef: (key: string) => (el: HTMLDivElement | null) => void;
 
   teamTotalTokens: number;
+  partnersTotalTokens: number;
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -1022,7 +1094,7 @@ function DonutAllocation({
                           <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
 
                           {a.key === 'team' && <TeamVestingPanel totalTeamTokens={teamTotalTokens} />}
-                          {a.key === 'partners' && <PartnersVestingPanel />}
+                          {a.key === 'partners' && <PartnersVestingPanel totalPartnersTokens={partnersTotalTokens} />}
 
                           <VaultGroupPanel title="Vaults (live)" groupKey={vaultGroupKey} data={vaultData} isLoading={vaultLoading} hadError={vaultError} />
 
@@ -1056,6 +1128,9 @@ function TokenomicsPageInner() {
 
   const TEAM_PCT = 9;
   const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100);
+
+  const PARTNERS_PCT = 8;
+  const PARTNERS_TOTAL_TOKENS = supply * (PARTNERS_PCT / 100);
 
   const yearsOfRunway = useCallback(
     (daily: number) => {
@@ -1256,7 +1331,6 @@ function TokenomicsPageInner() {
               {runwayFixedYears.toFixed(2)} <span className="text-base font-semibold text-slate-500">years</span>
             </p>
 
-            {/* ✅ Add XPOT after 1,000,000 */}
             <p className="mt-1 text-xs text-slate-500">
               {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT / day - {runwayFixedDays.toLocaleString('en-US')} days coverage
             </p>
@@ -1289,9 +1363,6 @@ function TokenomicsPageInner() {
           </span>
         </div>
 
-        {/* ✅ Removed the ugly "Revoke signatures are linked..." paragraph */}
-        {/* ✅ Removed the 3 links (Solscan tx / Solscan metadata / Solscan metadata) */}
-
         <div className="mt-4 grid gap-2">
           {[
             {
@@ -1320,7 +1391,6 @@ function TokenomicsPageInner() {
                   <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
                 </div>
 
-                {/* ✅ Keep it clean: single subtle proof link, not 3 different buttons */}
                 <a
                   href={row.href}
                   target="_blank"
@@ -1336,8 +1406,6 @@ function TokenomicsPageInner() {
             </div>
           ))}
         </div>
-
-        {/* ✅ No bottom "Mint account / Metadata view / Copy" row here anymore */}
       </div>
 
       <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
@@ -1353,7 +1421,7 @@ function TokenomicsPageInner() {
           </Pill>
         </div>
 
-        {/* ✅ Keep mint account link ONLY here (no duplication in Token controls) */}
+        {/* ✅ Single Mint account link only here (no duplication elsewhere) */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
           <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
@@ -1421,7 +1489,6 @@ function TokenomicsPageInner() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
 
-                  {/* ✅ Terms opens in new tab */}
                   <Link href={ROUTE_TERMS} target="_blank" rel="noopener noreferrer" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
                     Terms
                   </Link>
@@ -1491,6 +1558,7 @@ function TokenomicsPageInner() {
                 distributionReserve={DISTRIBUTION_RESERVE}
                 getCardRef={getCardRef}
                 teamTotalTokens={TEAM_TOTAL_TOKENS}
+                partnersTotalTokens={PARTNERS_TOTAL_TOKENS}
               />
             </div>
           </div>
@@ -1603,7 +1671,7 @@ function TokenomicsPageInner() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v29</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v30</span>
         </div>
       </footer>
     </XpotPageShell>
