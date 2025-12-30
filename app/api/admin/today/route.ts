@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/app/api/admin/_auth';
-import { ensureTodayDraw } from '@/lib/ensureTodayDraw';
+import { ensureActiveDraw } from '@/lib/ensureActiveDraw';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1) Make sure today's draw exists (creates if missing)
-    const draw = await ensureTodayDraw();
+    const draw = await ensureActiveDraw();
 
     // 2) Count tickets for this draw
     const ticketsCount = await prisma.ticket.count({
