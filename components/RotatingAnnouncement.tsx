@@ -27,6 +27,7 @@ export default function RotatingAnnouncement({
 }: {
   reservesHref?: string;
 }) {
+  // ✅ LOCKED: announcement bar is now dedicated to 19.18 only
   const a = useMemo<Announcement>(
     () => ({
       before: 'Reserve Coverage:',
@@ -40,14 +41,21 @@ export default function RotatingAnnouncement({
   const showAfter = !!a.after;
   const afterNeedsSpace = needsSpaceBetween(a.after);
 
-  // Smaller, subtle "LEFT style"
-  const BTN_SOFT =
+  // ✅ Smaller + subtle (matches the LEFT style, not the big filled one)
+  const BTN_SOFT_SM =
     'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] ' +
     'px-4 py-2 text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-200 ' +
     'hover:bg-white/[0.06] transition';
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div
+      className={[
+        // Mobile: stack + centered
+        'flex flex-col items-center gap-2 text-center',
+        // Desktop: row layout
+        'sm:flex-row sm:justify-between sm:text-left sm:gap-3',
+      ].join(' ')}
+    >
       {/* LEFT: Status pill */}
       <span
         className={[
@@ -64,8 +72,9 @@ export default function RotatingAnnouncement({
       {/* CENTER: announcement */}
       <span
         className={[
-          'min-w-0 flex-1',
-          'inline-flex items-center gap-2',
+          'min-w-0',
+          'inline-flex flex-wrap items-center justify-center gap-2',
+          'sm:flex-1 sm:justify-center',
           'text-[12px] sm:text-[13px]',
           'leading-[1.25]',
           'font-medium',
@@ -76,14 +85,16 @@ export default function RotatingAnnouncement({
       >
         {showBefore && <span className="whitespace-pre-wrap text-white/70">{a.before} </span>}
 
+        {/* 19.18 micro-badge */}
         <span
           className={[
-            'relative inline-flex items-center shrink-0',
+            'relative inline-flex items-center',
             'rounded-full',
             'border border-emerald-400/20',
             'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.22),rgba(0,0,0,0.28)_55%,rgba(0,0,0,0.20)_100%)]',
             'px-3 py-1',
             'shadow-[0_18px_55px_rgba(16,185,129,0.10)]',
+            'shrink-0',
           ].join(' ')}
         >
           <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
@@ -109,10 +120,16 @@ export default function RotatingAnnouncement({
         )}
       </span>
 
-      {/* RIGHT: only reserves button */}
-      <div className="flex items-center gap-2">
+      {/* RIGHT: only View reserves (NO Explorer) */}
+      <div className="flex items-center justify-center">
         {reservesHref ? (
-          <a href={reservesHref} target="_blank" rel="noreferrer" className={BTN_SOFT} title="Open reserves">
+          <a
+            href={reservesHref}
+            target="_blank"
+            rel="noreferrer"
+            className={BTN_SOFT_SM}
+            title="Open reserves"
+          >
             View reserves
             <ExternalLink className="h-4 w-4 opacity-80" />
           </a>
