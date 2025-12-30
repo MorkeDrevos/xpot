@@ -46,7 +46,6 @@ export async function GET() {
   try {
     const draw = await ensureActiveDraw(new Date());
 
-    // Hard invariant for TS + runtime safety
     if (!draw.closesAt) throw new Error('Invariant violation: draw.closesAt is null');
 
     const dayNumber = dayNumberFromDrawDate(draw.drawDate);
