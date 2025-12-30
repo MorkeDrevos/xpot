@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   if (auth) return auth;
 
   try {
-    // 1) Make sure today's draw exists (creates if missing)
+    // 1) Make sure today's active draw exists (creates if missing)
     const draw = await ensureActiveDraw(new Date());
 
     // 2) Count tickets for this draw
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       where: { drawId: draw.id },
     });
 
-    // 3) Payload for admin dashboard
+    // 3) Build payload for admin dashboard
     const payload = {
       id: draw.id,
       date: draw.drawDate.toISOString(),
@@ -30,11 +30,20 @@ export async function GET(req: NextRequest) {
       closesAt: draw.closesAt,
     };
 
-    return NextResponse.json({ ok: true, today: payload }, { status: 200 });
+    return NextResponse.json(
+      {
+        ok: true,
+        today: payload,
+      },
+      { status: 200 },
+    );
   } catch (err: any) {
     console.error('[XPOT] /admin/today error:', err);
     return NextResponse.json(
-      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
+      {
+        ok: false,
+        error: err?.message || 'INTERNAL_ERROR',
+      },
       { status: 500 },
     );
   }
