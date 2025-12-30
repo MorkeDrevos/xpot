@@ -44,6 +44,7 @@ import BonusStrip from '@/components/BonusStrip';
 import XpotPageShell from '@/components/XpotPageShell';
 import XpotFooter from '@/components/XpotFooter';
 import FinalDrawDate from '@/components/FinalDrawDate';
+import RotatingAnnouncement from '@/components/RotatingAnnouncement';
 
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
 import { createPortal } from 'react-dom';
@@ -1361,10 +1362,9 @@ function MissionBanner() {
               Mission
             </span>
 
-            <p className="text-[12px] text-slate-200">
-              We’re aiming to become the <span className={GOLD_TEXT}>biggest game on the planet</span>.
-              <span className="text-slate-400"> You’re early. This is where it starts.</span>
-            </p>
+            <p className="text-sm text-slate-300">
+  <RotatingAnnouncement />
+</p>
           </div>
 
           <button
@@ -1500,9 +1500,6 @@ function HomePageInner() {
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
                           Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
                           - <FinalDrawDate className="text-slate-200" />.
-                          <span className="mt-2 block text-slate-300">
-                            We’re building toward becoming the world’s biggest game - one day at a time.
-                          </span>
                         </p>
                       </div>
 
