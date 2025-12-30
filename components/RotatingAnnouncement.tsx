@@ -2,66 +2,81 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-type RotatingAnnouncementProps = {
-  className?: string;
-  intervalMs?: number; // how long each message stays visible
+type Announcement = {
+  before?: string;
+  highlight: string;
+  after?: string;
 };
 
 export default function RotatingAnnouncement({
-  className = '',
-  intervalMs = 12000, // ✅ slower (12s)
-}: RotatingAnnouncementProps) {
-  // ✅ message 1 = original from the mission bar (img 2)
-  // ✅ message 2 = the one you want to move from the left line (img 1)
-  const messages = useMemo(
+  intervalMs = 14000, // slower, premium
+}: {
+  intervalMs?: number;
+}) {
+  const announcements = useMemo<Announcement[]>(
     () => [
-      `We're aiming to become the biggest game on the planet. You're early. This is where it starts.`,
-      `We're building toward becoming the world's biggest game - one day at a time.`,
-      // If you want the "Tuesday" line to rotate in too, add it here as a 3rd message:
-      // `Daily draws are the heartbeat. Final Draw is the ending - Tuesday, 28/02/2045 22:00 (Madrid).`,
+      {
+        before: "We're aiming to become the ",
+        highlight: 'biggest game on the planet',
+        after: ". You're early. This is where it starts.",
+      },
+      {
+        before: "We're building toward becoming the ",
+        highlight: "world's biggest game",
+        after: ' - one day at a time.',
+      },
+      {
+        before: 'Daily draws are the heartbeat. Final Draw is the ending - ',
+        highlight: 'Tuesday, 28/02/2045 22:00',
+        after: ' (Madrid).',
+      },
     ],
     [],
   );
 
   const [idx, setIdx] = useState(0);
-  const [show, setShow] = useState(true);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    if (messages.length <= 1) return;
+    const FADE_MS = 800;
 
-    // ✅ Smooth cycle: visible -> fade out -> swap -> fade in
-    const FADE_MS = 700;
+    const fadeOut = window.setTimeout(() => {
+      setVisible(false);
+    }, intervalMs - FADE_MS);
 
-    const t1 = window.setTimeout(() => setShow(false), intervalMs - FADE_MS);
-    const t2 = window.setTimeout(() => {
-      setIdx((i) => (i + 1) % messages.length);
-      setShow(true);
+    const swap = window.setTimeout(() => {
+      setIdx((i) => (i + 1) % announcements.length);
+      setVisible(true);
     }, intervalMs);
 
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      window.clearTimeout(fadeOut);
+      window.clearTimeout(swap);
     };
-  }, [idx, intervalMs, messages.length]);
+  }, [idx, intervalMs, announcements.length]);
+
+  const a = announcements[idx];
 
   return (
     <span
       className={[
-        // ✅ premium type: slightly tighter tracking + stronger weight + better contrast
-        'inline-flex min-w-0 items-center',
-        'text-[13px] sm:text-[14px]',
-        'font-semibold',
+        'inline-flex items-center',
+        'text-[14px]',
+        'font-medium',
         'tracking-[-0.01em]',
-        'text-white/85',
-        'drop-shadow-[0_1px_0_rgba(0,0,0,0.55)]',
-        // ✅ smooth transition: opacity + slight vertical drift
-        'transition-all duration-700 ease-out',
-        show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[2px]',
-        className,
+        'text-white/80',
+        'transition-all duration-800 ease-out',
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[2px]',
       ].join(' ')}
       aria-live="polite"
     >
-      <span className="min-w-0 truncate">{messages[idx]}</span>
+      {a.before && <span>{a.before}</span>}
+
+      <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">
+        {a.highlight}
+      </strong>
+
+      {a.after && <span>{a.after}</span>}
     </span>
   );
 }
