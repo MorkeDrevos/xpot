@@ -53,197 +53,187 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
   return (
     <div
       ref={ref}
-      className="fixed inset-x-0 top-0 z-[60] hidden sm:block"
-      aria-label="XPOT live status banner"
+      className="
+        fixed inset-x-0 top-0 z-[60]
+        hidden sm:block
+      "
+      aria-label="XPOT pre-launch banner"
     >
       <div
         className="
           relative
           border-b border-white/10
-          bg-black/35
+          bg-black/50
           backdrop-blur-xl
-          shadow-[0_10px_26px_rgba(0,0,0,0.30)]
+          shadow-[0_10px_30px_rgba(0,0,0,0.35)]
         "
       >
         {/* Premium animated layers */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {/* Deep gradient bed */}
           <div className="absolute inset-0 xpot-banner-bed" />
+          {/* Conic glow */}
           <div className="absolute inset-0 xpot-banner-conic" />
+          {/* Sheen */}
           <div className="absolute inset-0 xpot-banner-sheen" />
-          <div className="absolute inset-0 xpot-banner-noise opacity-[0.12]" />
+          {/* Micro noise */}
+          <div className="absolute inset-0 xpot-banner-noise opacity-[0.16]" />
+          {/* Edge vignette */}
           <div className="absolute inset-0 xpot-banner-vignette" />
         </div>
 
         <div className="mx-auto max-w-[1440px] px-4">
-          <div className="flex h-10 items-center justify-center">
+          <div className="flex h-12 items-center justify-center">
             <div className="relative flex items-center justify-center gap-3">
-              {/* calmer / smaller status pill */}
-              <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold tracking-[0.22em] text-white/75">
+              <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold tracking-[0.22em] text-white/80">
                 <span className="xpot-banner-dot" />
                 STATUS
               </span>
 
-              <p className="flex items-center justify-center gap-3 text-center text-[11px] font-semibold uppercase tracking-[0.30em] text-white/80">
-                {/* LIVE pulse (subtle, premium) */}
-                <span className="relative inline-flex items-center gap-2">
-                  <span className="xpot-live-pulse" aria-hidden />
-                  <span className="text-white/90">LIVE</span>
-                </span>
+              <p className="flex items-center justify-center gap-3 text-center text-[12px] font-semibold uppercase tracking-[0.32em] text-white/85">
+  {/* LIVE pulse */}
+  <span className="relative flex items-center gap-2">
+    <span className="relative flex h-2.5 w-2.5">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/40" />
+      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
+    </span>
+    <span className="text-white">LIVE</span>
+  </span>
 
-                <span className="text-white/30">•</span>
-                <span>CONTRACT DEPLOYED</span>
-                <span className="text-white/30">•</span>
-                <span>TRADING ACTIVE</span>
-              </p>
+  <span className="text-white/35">•</span>
+  <span>CONTRACT DEPLOYED</span>
+  <span className="text-white/35">•</span>
+  <span>TRADING ACTIVE</span>
+</p>
             </div>
           </div>
         </div>
       </div>
 
       <style jsx global>{`
+        /* ====== Motion safety ====== */
         @media (prefers-reduced-motion: reduce) {
           .xpot-banner-bed,
           .xpot-banner-conic,
           .xpot-banner-sheen,
-          .xpot-banner-dot,
-          .xpot-live-pulse {
+          .xpot-banner-dot {
             animation: none !important;
           }
         }
 
+        /* ====== Layers ====== */
+
+        /* Bed: subtle premium wash (no harsh purple bar) */
         .xpot-banner-bed {
           background:
-            radial-gradient(1100px 56px at 12% 50%, rgba(56, 189, 248, 0.14), transparent 62%),
-            radial-gradient(900px 56px at 56% 40%, rgba(99, 102, 241, 0.14), transparent 64%),
-            radial-gradient(900px 56px at 90% 55%, rgba(236, 72, 153, 0.10), transparent 66%),
-            linear-gradient(90deg, rgba(2, 6, 23, 0.92), rgba(2, 6, 23, 0.66), rgba(2, 6, 23, 0.92));
-          filter: saturate(1.03);
+            radial-gradient(1200px 60px at 10% 50%, rgba(56, 189, 248, 0.22), transparent 60%),
+            radial-gradient(900px 70px at 55% 35%, rgba(99, 102, 241, 0.22), transparent 62%),
+            radial-gradient(900px 70px at 90% 60%, rgba(236, 72, 153, 0.18), transparent 65%),
+            linear-gradient(90deg, rgba(2, 6, 23, 0.92), rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.92));
+          filter: saturate(1.05);
         }
 
+        /* Conic glow: very soft, slow drift */
         .xpot-banner-conic {
           background: conic-gradient(
             from 180deg at 50% 50%,
-            rgba(56, 189, 248, 0.12),
-            rgba(99, 102, 241, 0.12),
-            rgba(236, 72, 153, 0.08),
-            rgba(56, 189, 248, 0.12)
+            rgba(56, 189, 248, 0.18),
+            rgba(99, 102, 241, 0.18),
+            rgba(236, 72, 153, 0.14),
+            rgba(56, 189, 248, 0.18)
           );
-          opacity: 0.42;
+          opacity: 0.55;
           mix-blend-mode: screen;
           transform: translateZ(0);
-          animation: xpotBannerConic 18s ease-in-out infinite;
-          filter: blur(16px);
+          animation: xpotBannerConic 14s ease-in-out infinite;
+          filter: blur(14px);
         }
 
         @keyframes xpotBannerConic {
           0% {
-            transform: translate3d(0, 0, 0) scale(1.03) rotate(0deg);
-            opacity: 0.36;
+            transform: translate3d(0, 0, 0) scale(1.06) rotate(0deg);
+            opacity: 0.45;
           }
           50% {
-            transform: translate3d(0, 0, 0) scale(1.07) rotate(6deg);
-            opacity: 0.50;
+            transform: translate3d(0, 0, 0) scale(1.1) rotate(8deg);
+            opacity: 0.62;
           }
           100% {
-            transform: translate3d(0, 0, 0) scale(1.03) rotate(0deg);
-            opacity: 0.36;
+            transform: translate3d(0, 0, 0) scale(1.06) rotate(0deg);
+            opacity: 0.45;
           }
         }
 
+        /* Sheen: smooth background-position shimmer (no translate jank) */
         .xpot-banner-sheen {
           background: linear-gradient(
             110deg,
             transparent 0%,
-            rgba(255, 255, 255, 0.05) 18%,
-            rgba(255, 255, 255, 0.09) 24%,
-            rgba(255, 255, 255, 0.05) 30%,
+            rgba(255, 255, 255, 0.06) 18%,
+            rgba(255, 255, 255, 0.12) 24%,
+            rgba(255, 255, 255, 0.06) 30%,
             transparent 55%
           );
           background-size: 220% 100%;
           background-position: 120% 0%;
-          opacity: 0.62;
+          opacity: 0.75;
           will-change: background-position;
-          animation: xpotBannerSheen 8.6s linear infinite;
+          animation: xpotBannerSheen 6.8s linear infinite;
         }
 
         @keyframes xpotBannerSheen {
           0% {
             background-position: 120% 0%;
-            opacity: 0.48;
+            opacity: 0.55;
           }
           45% {
-            opacity: 0.70;
+            opacity: 0.8;
           }
           100% {
             background-position: -120% 0%;
-            opacity: 0.48;
+            opacity: 0.55;
           }
         }
 
+        /* Noise: tiny SVG grain */
         .xpot-banner-noise {
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");
-          background-size: 240px 240px;
+          background-size: 220px 220px;
           mix-blend-mode: overlay;
           filter: contrast(1.05);
         }
 
+        /* Vignette to keep edges clean */
         .xpot-banner-vignette {
           background: linear-gradient(
             90deg,
-            rgba(0, 0, 0, 0.48) 0%,
-            rgba(0, 0, 0, 0.12) 20%,
-            rgba(0, 0, 0, 0.12) 80%,
-            rgba(0, 0, 0, 0.48) 100%
+            rgba(0, 0, 0, 0.45) 0%,
+            rgba(0, 0, 0, 0.12) 18%,
+            rgba(0, 0, 0, 0.12) 82%,
+            rgba(0, 0, 0, 0.45) 100%
           );
-          opacity: 0.92;
+          opacity: 0.9;
         }
 
+        /* Small premium dot */
         .xpot-banner-dot {
-          width: 7px;
-          height: 7px;
+          width: 8px;
+          height: 8px;
           border-radius: 999px;
-          background: rgba(34, 197, 94, 0.82);
-          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.10), 0 0 14px rgba(34, 197, 94, 0.26);
-          animation: xpotBannerDot 2.4s ease-in-out infinite;
+          background: rgba(34, 197, 94, 0.9);
+          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12), 0 0 18px rgba(34, 197, 94, 0.35);
+          animation: xpotBannerDot 1.8s ease-in-out infinite;
         }
 
         @keyframes xpotBannerDot {
           0%,
           100% {
-            transform: scale(0.94);
-            opacity: 0.80;
+            transform: scale(0.92);
+            opacity: 0.85;
           }
           50% {
             transform: scale(1.06);
             opacity: 1;
-          }
-        }
-
-        /* ✅ subtle LIVE pulse (calmer than ping) */
-        .xpot-live-pulse {
-          width: 8px;
-          height: 8px;
-          border-radius: 999px;
-          background: rgba(34, 197, 94, 0.88);
-          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-          animation: xpotLivePulse 2.8s ease-in-out infinite;
-        }
-
-        @keyframes xpotLivePulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0), 0 0 12px rgba(34, 197, 94, 0.16);
-            opacity: 0.84;
-            transform: scale(0.98);
-          }
-          55% {
-            box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.085), 0 0 16px rgba(34, 197, 94, 0.20);
-            opacity: 1;
-            transform: scale(1.02);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0), 0 0 12px rgba(34, 197, 94, 0.16);
-            opacity: 0.84;
-            transform: scale(0.98);
           }
         }
       `}</style>
