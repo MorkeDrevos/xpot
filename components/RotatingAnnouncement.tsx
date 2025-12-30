@@ -3,31 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 
 type Announcement = {
-  before?: string;
-  highlight: string;
-  after?: string;
+  before?: string; // plain text BEFORE highlight (no trailing space needed)
+  highlight: string; // highlighted phrase
+  after?: string; // plain text AFTER highlight (can start with punctuation)
 };
 
-function isPunctuationStart(s: string) {
-  // If the next segment starts with punctuation, we do NOT want to prepend a space.
-  // Includes common punctuation and closing punctuation.
-  return /^[\.\,\!\?\:\;\)\]\}]/.test(s);
-}
-
-function endsWithSpace(s: string) {
-  return /\s$/.test(s);
-}
-
-function startsWithSpace(s: string) {
-  return /^\s/.test(s);
-}
-
-function joinWithSmartSpace(left?: string, right?: string) {
-  if (!left || !right) return false;
-  if (endsWithSpace(left)) return false; // already has trailing space
-  if (startsWithSpace(right)) return false; // already has leading space
-  if (isPunctuationStart(right)) return false; // don't insert space before punctuation
-  return true;
+function needsSpaceBetween(before?: string) {
+  if (!before) return false;
+  // If before already ends with whitespace, we don't add an extra space
+  return !/\s$/.test(before);
 }
 
 export default function RotatingAnnouncement({
@@ -38,19 +22,20 @@ export default function RotatingAnnouncement({
   const announcements = useMemo<Announcement[]>(
     () => [
       {
-        before: "We're aiming to become the",
-        highlight: 'biggest game on the planet',
-        after: ". You're early. This is where it starts.",
+        before: "We're aiming to build the world's biggest game",
+        highlight: 'one day at a time',
+        after: '. You are early - this is where it starts.',
       },
       {
-        before: "We're building toward becoming the",
-        highlight: "world's biggest game",
-        after: ' - one day at a time.',
+        before: 'XPOT is live',
+        highlight: 'contract deployed, trading active',
+        after: '. The protocol is being built in public.',
       },
       {
-        before: 'Daily draws are the heartbeat. Final Draw is the ending -',
-        highlight: 'Tuesday, 28/02/2045 22:00',
-        after: ' (Madrid).',
+        // ✅ 3rd announcement: start promoting 19.18 (as requested)
+        before: 'Next milestone',
+        highlight: '19.18',
+        after: ' - we push volume and momentum until we hit it.',
       },
     ],
     [],
@@ -79,47 +64,42 @@ export default function RotatingAnnouncement({
 
   const a = announcements[idx];
 
-  const needSpaceBeforeHighlight = joinWithSmartSpace(a.before, a.highlight);
-  const needSpaceBeforeAfter = joinWithSmartSpace(a.highlight, a.after);
-
   return (
     <span
       className={[
         'inline-flex items-center',
-        'min-w-0',
-        'text-[12px] sm:text-[13px] 2xl:text-[13px]',
+        // ✅ smaller + cleaner
+        'text-[12.5px] sm:text-[13px]',
         'leading-[1.35]',
         'font-medium',
-        'tracking-[-0.008em]',
-        'text-white/78',
-        'antialiased',
+        'tracking-[-0.005em]',
+        'text-white/80',
         'transition-all duration-800 ease-out',
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[2px]',
+        // ✅ make spacing more consistent
+        'whitespace-nowrap',
       ].join(' ')}
       aria-live="polite"
     >
-      {a.before ? <span className="truncate">{a.before}</span> : null}
+      {a.before && <span>{a.before}</span>}
 
-      {needSpaceBeforeHighlight ? ' ' : null}
+      {/* ✅ Force exactly one space between before and highlight */}
+      {a.before && needsSpaceBetween(a.before) && <span aria-hidden>{' '}</span>}
 
       <strong
         className={[
+          // ✅ keep highlight premium but not huge
           'font-semibold',
           'text-[rgb(var(--xpot-gold-2))]',
-          'tracking-[-0.006em]',
-          // Slightly calmer glow = more premium, less "neon"
-          'drop-shadow-[0_0_10px_rgba(250,204,21,0.10)]',
+          // slight text polish
+          'drop-shadow-[0_1px_0_rgba(0,0,0,0.55)]',
         ].join(' ')}
       >
         {a.highlight}
       </strong>
 
-      {a.after ? (
-        <>
-          {needSpaceBeforeAfter ? ' ' : null}
-          <span className="truncate">{a.after}</span>
-        </>
-      ) : null}
+      {/* ✅ After is rendered exactly as written (punctuation + spaces included) */}
+      {a.after && <span>{a.after}</span>}
     </span>
   );
 }
