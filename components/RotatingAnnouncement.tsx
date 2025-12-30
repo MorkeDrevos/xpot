@@ -1,8 +1,8 @@
-// components/RotatingAnnouncement.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { Crown, ExternalLink } from 'lucide-react';
+import Xpot1918Badge from '@/components/Xpot1918Badge';
 
 type Announcement = {
   kind: 'badge' | 'text';
@@ -21,55 +21,24 @@ function firstNonSpaceChar(s: string) {
   return '';
 }
 
+/**
+ * Decide whether we should inject a space BEFORE the "after" chunk.
+ * Key rule for your UI: if after starts with "-" or "·", we WANT a space before it.
+ */
 function shouldInsertSpace(beforeChunk?: string) {
   if (!beforeChunk) return false;
   const c = firstNonSpaceChar(beforeChunk);
   if (!c) return false;
 
-  // no leading space before punctuation/closing chars
+  // No leading space before classic punctuation/closing chars
   if ('.!,?:;)]}'.includes(c)) return false;
   if (c === '"' || c === "'" || c === '’' || c === '”') return false;
-  // no space before dash starters (we keep your hyphen style)
-  if (c === '-' || c === '–' || c === '—') return false;
+
+  // ✅ For dash/bullet starters, we DO want a space before them:
+  // "game - one day..." / "YEARS · 1,000,000/day..."
+  if (c === '-' || c === '–' || c === '—' || c === '·') return true;
 
   return true;
-}
-
-/* 19.18 micro-badge (reusable) */
-export function Xpot1918Badge({
-  label = '19.18 YEARS',
-  className = '',
-}: {
-  label?: string;
-  className?: string;
-}) {
-  return (
-    <span
-      className={[
-        'relative inline-flex items-center',
-        'rounded-full',
-        'border border-emerald-400/18',
-        'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.18),rgba(0,0,0,0.30)_55%,rgba(0,0,0,0.22)_100%)]',
-        'px-3 py-1',
-        'shadow-[0_18px_55px_rgba(16,185,129,0.10)]',
-        'ring-1 ring-black/35',
-        className,
-      ].join(' ')}
-    >
-      <strong
-        className={[
-          'relative z-10',
-          'font-semibold',
-          'text-[rgb(var(--xpot-gold-2))]',
-          'tracking-[0.12em]',
-          'uppercase',
-          'whitespace-nowrap',
-        ].join(' ')}
-      >
-        {label}
-      </strong>
-    </span>
-  );
 }
 
 function StatusPill({ label = 'STATUS' }: { label?: string }) {
@@ -87,9 +56,7 @@ function StatusPill({ label = 'STATUS' }: { label?: string }) {
         <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
       </span>
 
-      <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-white/90">
-        {label}
-      </span>
+      <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-white/90">{label}</span>
     </span>
   );
 }
@@ -122,7 +89,10 @@ function RotatingLine({ a }: { a: Announcement }) {
   const showBefore = !!a.before;
   const showAfter = !!a.after;
 
-  const insertBeforeSpace = showBefore; // always separate before -> highlight
+  // Always separate before -> highlight
+  const insertBeforeSpace = showBefore;
+
+  // Decide whether to inject a space BEFORE the after chunk
   const insertAfterSpace = showAfter ? shouldInsertSpace(a.after) : false;
 
   return (
@@ -134,6 +104,8 @@ function RotatingLine({ a }: { a: Announcement }) {
         'font-medium',
         'tracking-[-0.01em]',
         'text-white/80',
+        // subtle premium smoothing
+        '[text-rendering:geometricPrecision]',
       ].join(' ')}
     >
       {showBefore && (
@@ -146,9 +118,7 @@ function RotatingLine({ a }: { a: Announcement }) {
       {a.kind === 'badge' ? (
         <Xpot1918Badge label={a.highlight} />
       ) : (
-        <strong className="font-semibold text-[rgb(var(--xpot-gold-2))] whitespace-pre-wrap">
-          {a.highlight}
-        </strong>
+        <strong className="font-semibold text-[rgb(var(--xpot-gold-2))] whitespace-pre-wrap">{a.highlight}</strong>
       )}
 
       {showAfter && (
@@ -174,13 +144,15 @@ export default function RotatingAnnouncement({
         kind: 'badge',
         before: 'Reserve Coverage:',
         highlight: '19.18 YEARS',
-        after: ' - 1,000,000/day locked for 7,000 days.',
+        // ✅ bullet separator + guaranteed space injection
+        after: '· 1,000,000/day locked for 7,000 days.',
       },
       {
         kind: 'text',
         before: "We're building toward becoming the",
         highlight: "world's biggest game",
-        after: ' - one day at a time.',
+        // ✅ your hyphen style, now with correct spacing
+        after: '- one day at a time.',
       },
     ],
     [],
