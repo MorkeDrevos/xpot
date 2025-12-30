@@ -1268,8 +1268,8 @@ function TokenomicsPageInner() {
               {runwayFixedYears.toFixed(2)} <span className="text-base font-semibold text-slate-500">years</span>
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {fmtInt(DISTRIBUTION_DAILY_XPOT)} / day - {runwayFixedDays.toLocaleString('en-US')} days coverage
-            </p>
+  {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT / day – {runwayFixedDays.toLocaleString('en-US')} days coverage
+</p>
           </div>
           <Pill tone="emerald">
             <Sparkles className="h-3.5 w-3.5" />
@@ -1293,9 +1293,6 @@ function TokenomicsPageInner() {
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
             <p className="mt-2 text-sm font-semibold text-slate-100">Authorities revoked</p>
-            <p className="mt-1 text-xs text-slate-500">
-              Revoke signatures are linked when available. Otherwise the Solscan metadata view shows the authority as <span className="font-semibold text-slate-300">NULL</span>.
-            </p>
           </div>
           <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
             Locked
@@ -1303,50 +1300,32 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 grid gap-2">
-          {[
-            {
-              k: 'Mint authority',
-              tx: MINT_AUTHORITY_REVOKE_TX,
-              note: 'Mint authority set to NULL on the mint account.',
-            },
-            {
-              k: 'Freeze authority',
-              tx: FREEZE_AUTHORITY_REVOKE_TX,
-              note: 'Freeze authority set to NULL on the mint account.',
-            },
-            {
-              k: 'Update authority',
-              tx: UPDATE_AUTHORITY_REVOKE_TX,
-              note: 'Metadata update authority is revoked / locked (authority is NULL).',
-            },
-          ].map(row => {
-            const hasTx = typeof row.tx === 'string' && row.tx.trim().length > 0;
-
-            return (
-              <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
-                    <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
-                  </div>
-
-                  {hasTx ? (
-                    <ProofLinkPill href={solscanTxUrl(row.tx!)} label="Solscan tx" tone="emerald" />
-                  ) : (
-                    <ProofLinkPill href={SOLSCAN_TOKEN_METADATA_URL} label="Solscan metadata" tone="emerald" />
-                  )}
-                </div>
-                <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
-              </div>
-            );
-          })}
-
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
-            <ProofLinkPill href={SOLSCAN_TOKEN_METADATA_URL} label="Metadata view" tone="slate" />
-            <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
-          </div>
+  {[
+    {
+      k: 'Mint authority',
+      note: 'Mint authority is NULL. Token supply is fixed.',
+    },
+    {
+      k: 'Freeze authority',
+      note: 'Freeze authority is NULL. No accounts can be frozen.',
+    },
+    {
+      k: 'Update authority',
+      note: 'Update authority is NULL. Metadata is locked.',
+    },
+  ].map(row => (
+    <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
         </div>
+      </div>
+
+      <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
+    </div>
+  ))}
+</div>
       </div>
 
       <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
@@ -1428,9 +1407,14 @@ function TokenomicsPageInner() {
                     Enter today&apos;s XPOT
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
-                  <Link href={ROUTE_TERMS} className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                    Terms
-                  </Link>
+                  <Link
+  href={ROUTE_TERMS}
+  target="_blank"
+  rel="noopener noreferrer"
+  className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}
+>
+  Terms
+</Link>
                   <button
                     type="button"
                     onClick={openDistribution}
