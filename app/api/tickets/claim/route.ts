@@ -92,9 +92,14 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   });
 
   const startUtcMs = endUtcMs - 24 * 60 * 60_000;
+
   return { start: new Date(startUtcMs), end: new Date(endUtcMs) };
 }
 
+/**
+ * Deterministic draw bucket:
+ * Use the Madrid calendar date "of the current window" and store drawDate as 00:00:00Z for that date.
+ */
 function getDrawBucketUtc(now = new Date()) {
   const { end } = getMadridCutoffWindowUtc(now);
   const insideWindow = new Date(end.getTime() - 1);
@@ -103,7 +108,7 @@ function getDrawBucketUtc(now = new Date()) {
 }
 
 // ─────────────────────────────────────────────
-// Helpers
+// Helpers – code + XPOT balance check
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -115,11 +120,14 @@ function makeCode() {
   return `XPOT-${chunk()}-${chunk()}`;
 }
 
+/**
+ * Use the SAME balance endpoint as the dashboard UI uses.
+ * (and forward cookies for Vercel-protected DEV)
+ */
 async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string): Promise<number | null> {
   try {
     const origin = req.nextUrl.origin;
     const url = `${origin}/api/xpot-balance?address=${encodeURIComponent(address)}`;
-
     const cookie = req.headers.get('cookie') ?? '';
 
     const r = await fetch(url, {
@@ -146,10 +154,8 @@ async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string)
 
 export async function POST(req: NextRequest) {
   try {
-    // ✅ require signed-in user for "account-level" linking
-    const session = await auth();
-    const clerkId = session?.userId ?? null;
-
+    // ✅ account-level identity (Clerk)
+    const { userId: clerkId } = auth();
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
@@ -161,7 +167,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // 1) XPOT minimum check
+    // 1) XPOT minimum check (server-side)
     const xpotBalance = await getXpotBalanceFromSameEndpoint(req, walletAddress);
 
     if (xpotBalance === null) {
@@ -212,23 +218,12 @@ export async function POST(req: NextRequest) {
       return existing;
     });
 
-    // 3) Ensure app User row exists (by clerkId)
+    // 3) Ensure XPOT User exists, link wallet to this user
     const appUser = await prisma.user.upsert({
       where: { clerkId },
       update: {},
       create: { clerkId },
-      select: { id: true },
     });
-
-    // 4) Ensure wallet row exists AND link to this user (account-level)
-    const existingWallet = await prisma.wallet.findUnique({
-      where: { address: walletAddress },
-      select: { id: true, userId: true },
-    });
-
-    if (existingWallet?.userId && existingWallet.userId !== appUser.id) {
-      return NextResponse.json({ ok: false, error: 'WALLET_LINKED_TO_OTHER_ACCOUNT' }, { status: 409 });
-    }
 
     const wallet = await prisma.wallet.upsert({
       where: { address: walletAddress },
@@ -236,7 +231,7 @@ export async function POST(req: NextRequest) {
       create: { address: walletAddress, userId: appUser.id },
     });
 
-    // 5) One ticket per wallet per draw
+    // 4) One ticket per wallet per draw
     let ticket = await prisma.ticket.findFirst({
       where: { drawId: draw.id, walletAddress, status: 'IN_DRAW' },
       include: { wallet: true },
@@ -271,7 +266,6 @@ export async function POST(req: NextRequest) {
             address: ticket.wallet?.address ?? walletAddress,
           },
         },
-        // keep compatible payload
         tickets: [
           {
             id: ticket.id,
