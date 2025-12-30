@@ -1320,44 +1320,46 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 grid gap-2">
-          {[
-            {
-              k: 'Mint authority',
-              v: 'Revoked',
-              tx: MINT_AUTHORITY_REVOKE_TX,
-              note: 'Proof target: set mintTokens authority to NULL on the mint account.',
-            },
-            {
-              k: 'Freeze authority',
-              v: 'Revoked',
-              tx: FREEZE_AUTHORITY_REVOKE_TX,
-              note: 'Proof target: set freeze authority to NULL on the mint account.',
-            },
-            {
-              k: 'Update authority',
-              v: 'Revoked',
-              tx: UPDATE_AUTHORITY_REVOKE_TX,
-              note: 'Proof target: metadata update authority removed or locked (verifiable by tx).',
-            },
-          ].map(row => (
-            <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
-                  <p className="mt-1 text-sm font-semibold text-emerald-200">{row.v}</p>
-                </div>
+        {[
+  {
+    k: 'Mint authority',
+    tx: MINT_AUTHORITY_REVOKE_TX,
+    note: 'Proof target: set mintTokens authority to NULL on the mint account.',
+  },
+  {
+    k: 'Freeze authority',
+    tx: FREEZE_AUTHORITY_REVOKE_TX,
+    note: 'Proof target: set freeze authority to NULL on the mint account.',
+  },
+  {
+    k: 'Update authority',
+    tx: UPDATE_AUTHORITY_REVOKE_TX,
+    note: 'Proof target: metadata update authority removed or locked (verifiable by tx).',
+  },
+].map(row => {
+  const isRevoked = !!row.tx;
+  return (
+    <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
+          <p className={`mt-1 text-sm font-semibold ${isRevoked ? 'text-emerald-200' : 'text-slate-200'}`}>
+            {isRevoked ? 'Revoked' : 'Not proven'}
+          </p>
+        </div>
 
-                {row.tx ? (
-                  <ProofLinkPill href={solscanTxUrl(row.tx)} label="Solscan tx" tone="emerald" />
-                ) : (
-                  <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
-                    Paste tx
-                  </span>
-                )}
-              </div>
-              <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
-            </div>
-          ))}
+        {row.tx ? (
+          <ProofLinkPill href={solscanTxUrl(row.tx)} label="Solscan tx" tone="emerald" />
+        ) : (
+          <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
+            Paste tx
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
+    </div>
+  );
+})}  
 
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
