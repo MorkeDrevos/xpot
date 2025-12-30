@@ -92,20 +92,18 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   });
 
   const startUtcMs = endUtcMs - 24 * 60 * 60_000;
-
   return { start: new Date(startUtcMs), end: new Date(endUtcMs) };
 }
 
 function getDrawBucketUtc(now = new Date()) {
   const { end } = getMadridCutoffWindowUtc(now);
   const insideWindow = new Date(end.getTime() - 1);
-
   const p = getTzParts(insideWindow, MADRID_TZ);
   return new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
 }
 
 // ─────────────────────────────────────────────
-// Helpers – code + XPOT balance check
+// Helpers
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -142,10 +140,15 @@ async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string)
   }
 }
 
+// ─────────────────────────────────────────────
+// POST
+// ─────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
   try {
-    const a = await auth();
-    const clerkId = a.userId;
+    // ✅ require signed-in user for "account-level" linking
+    const session = await auth();
+    const clerkId = session?.userId ?? null;
 
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
@@ -158,14 +161,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // Ensure User row exists for this Clerk identity
-    const user = await prisma.user.upsert({
-      where: { clerkId },
-      update: {},
-      create: { clerkId },
-    });
-
-    // 1) XPOT minimum check (server-side)
+    // 1) XPOT minimum check
     const xpotBalance = await getXpotBalanceFromSameEndpoint(req, walletAddress);
 
     if (xpotBalance === null) {
@@ -216,14 +212,31 @@ export async function POST(req: NextRequest) {
       return existing;
     });
 
-    // 3) Ensure wallet row exists and is linked to the signed-in user
-    const wallet = await prisma.wallet.upsert({
-      where: { address: walletAddress },
-      update: { userId: user.id },
-      create: { address: walletAddress, userId: user.id },
+    // 3) Ensure app User row exists (by clerkId)
+    const appUser = await prisma.user.upsert({
+      where: { clerkId },
+      update: {},
+      create: { clerkId },
+      select: { id: true },
     });
 
-    // 4) One ticket per wallet per draw
+    // 4) Ensure wallet row exists AND link to this user (account-level)
+    const existingWallet = await prisma.wallet.findUnique({
+      where: { address: walletAddress },
+      select: { id: true, userId: true },
+    });
+
+    if (existingWallet?.userId && existingWallet.userId !== appUser.id) {
+      return NextResponse.json({ ok: false, error: 'WALLET_LINKED_TO_OTHER_ACCOUNT' }, { status: 409 });
+    }
+
+    const wallet = await prisma.wallet.upsert({
+      where: { address: walletAddress },
+      update: { userId: appUser.id },
+      create: { address: walletAddress, userId: appUser.id },
+    });
+
+    // 5) One ticket per wallet per draw
     let ticket = await prisma.ticket.findFirst({
       where: { drawId: draw.id, walletAddress, status: 'IN_DRAW' },
       include: { wallet: true },
