@@ -62,12 +62,13 @@ const DAYS_PER_YEAR = 365;
 // ✅ Solscan proof targets for token controls
 // Fill these once, then the UI stays clean and verifiable.
 // ─────────────────────────────────────────────
-const XPOT_MINT_ACCOUNT = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoSUkUtHcJR1Ejko1';
+const XPOT_MINT_ACCOUNT = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
-// ✅ You already revoked mint + freeze via terminal. Paste the signatures here.
+// ✅ You revoked mint + freeze in the same action (not separate).
+// Use the same signature for both proof rows so the page matches reality.
 const MINT_AUTHORITY_REVOKE_TX =
   '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtstnikBXTtTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwy8bpwNrRfuLvM';
-const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
+const FREEZE_AUTHORITY_REVOKE_TX: string | null = MINT_AUTHORITY_REVOKE_TX;
 
 // ✅ Add metadata/update authority revoke tx here (once you paste it from Solscan/terminal)
 const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
@@ -1311,11 +1312,11 @@ function TokenomicsPageInner() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
-            <p className="mt-2 text-sm font-semibold text-slate-100">Authorities revoked</p>
-            <p className="mt-1 text-xs text-slate-500">Every revoke should link to a public proof tx.</p>
+            <p className="mt-2 text-sm font-semibold text-slate-100">Authorities status</p>
+            <p className="mt-1 text-xs text-slate-500">This card is proof-driven. If tx is missing, it will not claim “revoked”.</p>
           </div>
-          <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
-            Locked
+          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+            Proof
           </span>
         </div>
 
@@ -1323,41 +1324,57 @@ function TokenomicsPageInner() {
           {[
             {
               k: 'Mint authority',
-              v: 'Revoked',
+              okText: 'Revoked',
+              badText: 'Unknown',
               tx: MINT_AUTHORITY_REVOKE_TX,
-              note: 'Proof target: set mintTokens authority to NULL on the mint account.',
+              note: 'Proof target: mintTokens authority = NULL on the mint account.',
             },
             {
               k: 'Freeze authority',
-              v: 'Revoked',
+              okText: 'Revoked',
+              badText: 'Unknown',
               tx: FREEZE_AUTHORITY_REVOKE_TX,
-              note: 'Proof target: set freeze authority to NULL on the mint account.',
+              note: 'Proof target: freeze authority = NULL on the mint account.',
             },
             {
               k: 'Update authority',
-              v: 'Revoked',
+              okText: 'Revoked',
+              badText: 'Still set',
               tx: UPDATE_AUTHORITY_REVOKE_TX,
-              note: 'Proof target: metadata update authority removed or locked (verifiable by tx).',
+              note: 'If this is still set to a wallet, paste the revoke/lock tx here once you do it.',
             },
-          ].map(row => (
-            <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
-                  <p className="mt-1 text-sm font-semibold text-emerald-200">{row.v}</p>
+          ].map(row => {
+            const hasTx = !!row.tx;
+            const label = hasTx ? row.okText : row.badText;
+
+            return (
+              <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
+
+                    {hasTx ? (
+                      <p className="mt-1 text-sm font-semibold text-emerald-200">{label}</p>
+                    ) : row.k === 'Update authority' ? (
+                      <p className="mt-1 text-sm font-semibold text-[rgb(var(--xpot-gold-2))]">{label}</p>
+                    ) : (
+                      <p className="mt-1 text-sm font-semibold text-slate-300">{label}</p>
+                    )}
+                  </div>
+
+                  {hasTx ? (
+                    <ProofLinkPill href={solscanTxUrl(row.tx!)} label="Solscan tx" tone="emerald" />
+                  ) : (
+                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
+                      Paste tx
+                    </span>
+                  )}
                 </div>
 
-                {row.tx ? (
-                  <ProofLinkPill href={solscanTxUrl(row.tx)} label="Solscan tx" tone="emerald" />
-                ) : (
-                  <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
-                    Paste tx
-                  </span>
-                )}
+                <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
               </div>
-              <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
@@ -1625,7 +1642,7 @@ function TokenomicsPageInner() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v27</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v28</span>
         </div>
       </footer>
     </XpotPageShell>
