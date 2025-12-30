@@ -1,4 +1,3 @@
-// components/RotatingAnnouncement.tsx
 'use client';
 
 import { useMemo } from 'react';
@@ -28,7 +27,6 @@ export default function RotatingAnnouncement({
 }: {
   reservesHref?: string;
 }) {
-  // ✅ LOCKED: announcement bar is dedicated to 19.18 only
   const a = useMemo<Announcement>(
     () => ({
       before: 'Reserve Coverage:',
@@ -38,40 +36,39 @@ export default function RotatingAnnouncement({
     [],
   );
 
-  const showBefore = !!a.before;
-  const showAfter = !!a.after;
   const afterNeedsSpace = needsSpaceBetween(a.after);
 
-  // ✅ Smaller, subtler button (matches LEFT style, not the big filled one)
-  const BTN_SOFT_SM =
-    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] ' +
-    'px-4 py-2 text-[11px] font-semibold tracking-[0.16em] uppercase text-slate-200 ' +
-    'hover:bg-white/[0.06] transition';
+  /**
+   * Shared pill base
+   * → ensures STATUS and VIEW RESERVES are identical in size & weight
+   */
+  const PILL_BASE =
+    'inline-flex items-center gap-2 rounded-full border ' +
+    'px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]';
 
-  // ✅ Status pill: calmer / less loud (logo already there)
   const STATUS_PILL =
-    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] ' +
-    'px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-slate-300';
+    `${PILL_BASE} ` +
+    'border-white/10 bg-white/[0.02] text-slate-300';
+
+  const RESERVES_PILL =
+    `${PILL_BASE} ` +
+    'border-white/10 bg-white/[0.03] text-slate-200 ' +
+    'hover:bg-white/[0.06] transition';
 
   return (
     <div
       className={[
-        // Mobile: centered, stacked
-        'flex flex-col items-center justify-center gap-2 text-center',
-        // Desktop: single row, spaced
-        'sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:text-left',
+        // Mobile: stacked + centered
+        'flex flex-col items-center gap-2 text-center',
+        // Desktop: inline row
+        'sm:flex-row sm:justify-between sm:gap-3 sm:text-left',
       ].join(' ')}
     >
-      {/* LEFT: Status pill (subtle) */}
-      <span className={STATUS_PILL}>
-        <Crown className="h-3.5 w-3.5 text-slate-300/80" />
-        Status
-      </span>
+      {/* LEFT: STATUS (quiet) */}
 
       {/* CENTER: announcement */}
       <span
         className={[
-          'min-w-0',
           'inline-flex flex-wrap items-center justify-center gap-2',
           'text-[12px] sm:text-[13px]',
           'leading-[1.25] font-medium tracking-[-0.01em]',
@@ -80,58 +77,49 @@ export default function RotatingAnnouncement({
         ].join(' ')}
         aria-live="polite"
       >
-        {showBefore && <span className="whitespace-pre-wrap text-white/70">{a.before} </span>}
+        <span className="text-white/70">{a.before} </span>
 
-        {/* 19.18 micro-badge */}
+        {/* 19.18 badge */}
         <span
           className={[
-            'relative inline-flex items-center',
-            'rounded-full',
+            'relative inline-flex items-center rounded-full',
             'border border-emerald-400/18',
             'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.18),rgba(0,0,0,0.28)_55%,rgba(0,0,0,0.18)_100%)]',
             'px-3 py-1',
             'shadow-[0_14px_44px_rgba(16,185,129,0.08)]',
-            'shrink-0',
           ].join(' ')}
         >
-          <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
+          <span className="absolute inset-0 rounded-full ring-1 ring-black/40" />
           <strong
             className={[
               'relative z-10',
-              'font-semibold',
               'text-[rgb(var(--xpot-gold-2))]',
-              'tracking-[0.10em]',
-              'uppercase',
-              'whitespace-pre-wrap',
+              'font-semibold uppercase tracking-[0.10em]',
             ].join(' ')}
           >
             {a.highlight}
           </strong>
         </span>
 
-        {showAfter && (
-          <span className="whitespace-pre-wrap text-white/70">
-            {afterNeedsSpace ? ' ' : ''}
-            {a.after}
-          </span>
-        )}
+        <span className="text-white/70">
+          {afterNeedsSpace ? ' ' : ''}
+          {a.after}
+        </span>
       </span>
 
-      {/* RIGHT: only reserves button (no explorer) */}
-      <div className="flex items-center justify-center">
-        {reservesHref ? (
-          <a
-            href={reservesHref}
-            target="_blank"
-            rel="noreferrer"
-            className={BTN_SOFT_SM}
-            title="Open reserves"
-          >
-            View reserves
-            <ExternalLink className="h-4 w-4 opacity-80" />
-          </a>
-        ) : null}
-      </div>
+      {/* RIGHT: VIEW RESERVES (same size as STATUS) */}
+      {reservesHref ? (
+        <a
+          href={reservesHref}
+          target="_blank"
+          rel="noreferrer"
+          className={RESERVES_PILL}
+          title="Open reserves"
+        >
+          View reserves
+          <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+        </a>
+      ) : null}
     </div>
   );
 }
