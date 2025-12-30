@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
 type Announcement = {
-  before?: string;
-  highlight: string;
-  after?: string;
+  before?: string;   // store WITHOUT trailing space
+  highlight: string; // store WITHOUT leading/trailing space
+  after?: string;    // store WITHOUT leading space
 };
 
 export default function RotatingAnnouncement({
@@ -16,19 +16,19 @@ export default function RotatingAnnouncement({
   const announcements = useMemo<Announcement[]>(
     () => [
       {
-        before: "We're aiming to become the ",
+        before: "We're aiming to become the",
         highlight: 'biggest game on the planet',
-        after: ". You're early. This is where it starts.",
+        after: "You're early. This is where it starts.",
       },
       {
         before: "We're building toward becoming the",
         highlight: "world's biggest game",
-        after: ' - one day at a time.',
+        after: 'one day at a time.',
       },
       {
         before: 'Daily draws are the heartbeat. Final Draw is the ending -',
         highlight: 'Tuesday, 28/02/2045 22:00',
-        after: ' (Madrid).',
+        after: '(Madrid).',
       },
     ],
     [],
@@ -42,7 +42,7 @@ export default function RotatingAnnouncement({
 
     const fadeOut = window.setTimeout(() => {
       setVisible(false);
-    }, intervalMs - FADE_MS);
+    }, Math.max(0, intervalMs - FADE_MS));
 
     const swap = window.setTimeout(() => {
       setIdx((i) => (i + 1) % announcements.length);
@@ -60,9 +60,10 @@ export default function RotatingAnnouncement({
   return (
     <span
       className={[
-        'inline-flex items-center',
-        'text-[12px] sm:text-[13px]', // smaller
-        'leading-[1.2]',
+        // IMPORTANT: not flex, so spacing behaves like normal text
+        'inline-block',
+        // smaller + cleaner
+        'text-[12px] sm:text-[13px]',
         'font-medium',
         'tracking-[-0.01em]',
         'text-white/80',
@@ -71,14 +72,17 @@ export default function RotatingAnnouncement({
       ].join(' ')}
       aria-live="polite"
     >
-      {a.before && <span>{a.before}</span>}
+      {a.before ? <span>{a.before}</span> : null}
 
-      {/* ✅ force the missing space BEFORE the highlight */}
-      {a.before && <span aria-hidden>{' '}</span>}
+      {/* explicit spacing so we never get "thebiggest" */}
+      {a.before ? ' ' : null}
 
       <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">{a.highlight}</strong>
 
-      {a.after && <span>{a.after}</span>}
+      {/* spacing before after-text (so we get "... planet. You're ..." etc) */}
+      {a.after ? ' ' : null}
+
+      {a.after ? <span>{a.after}</span> : null}
     </span>
   );
 }
