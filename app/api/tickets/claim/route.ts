@@ -92,12 +92,14 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   });
 
   const startUtcMs = endUtcMs - 24 * 60 * 60_000;
+
   return { start: new Date(startUtcMs), end: new Date(endUtcMs) };
 }
 
 function getDrawBucketUtc(now = new Date()) {
   const { end } = getMadridCutoffWindowUtc(now);
   const insideWindow = new Date(end.getTime() - 1);
+
   const p = getTzParts(insideWindow, MADRID_TZ);
   return new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
 }
@@ -115,14 +117,11 @@ function makeCode() {
   return `XPOT-${chunk()}-${chunk()}`;
 }
 
-/**
- * Use the SAME balance endpoint as the dashboard UI uses.
- * (and forward cookies for Vercel-protected DEV)
- */
 async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string): Promise<number | null> {
   try {
     const origin = req.nextUrl.origin;
     const url = `${origin}/api/xpot-balance?address=${encodeURIComponent(address)}`;
+
     const cookie = req.headers.get('cookie') ?? '';
 
     const r = await fetch(url, {
@@ -145,8 +144,9 @@ async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string)
 
 export async function POST(req: NextRequest) {
   try {
-    // ✅ enforce “account-level” claim (ties wallets to the signed-in user)
-    const { userId: clerkId } = auth();
+    const a = await auth();
+    const clerkId = a.userId;
+
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
@@ -157,6 +157,13 @@ export async function POST(req: NextRequest) {
     if (!walletAddress || typeof walletAddress !== 'string') {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
+
+    // Ensure User row exists for this Clerk identity
+    const user = await prisma.user.upsert({
+      where: { clerkId },
+      update: {},
+      create: { clerkId },
+    });
 
     // 1) XPOT minimum check (server-side)
     const xpotBalance = await getXpotBalanceFromSameEndpoint(req, walletAddress);
@@ -209,25 +216,16 @@ export async function POST(req: NextRequest) {
       return existing;
     });
 
-    // 3) Ensure app User exists for this Clerk user
-    const appUser = await prisma.user.upsert({
-      where: { clerkId },
-      update: {},
-      create: { clerkId },
-      select: { id: true },
-    });
-
-    // 4) Ensure wallet row exists AND is linked to this user
+    // 3) Ensure wallet row exists and is linked to the signed-in user
     const wallet = await prisma.wallet.upsert({
       where: { address: walletAddress },
-      update: { userId: appUser.id },
-      create: { address: walletAddress, userId: appUser.id },
-      select: { id: true, address: true, userId: true },
+      update: { userId: user.id },
+      create: { address: walletAddress, userId: user.id },
     });
 
-    // 5) One ticket per wallet per draw (unique: [walletId, drawId])
+    // 4) One ticket per wallet per draw
     let ticket = await prisma.ticket.findFirst({
-      where: { drawId: draw.id, walletId: wallet.id, status: 'IN_DRAW' },
+      where: { drawId: draw.id, walletAddress, status: 'IN_DRAW' },
       include: { wallet: true },
     });
 
@@ -236,28 +234,12 @@ export async function POST(req: NextRequest) {
         data: {
           code: makeCode(),
           walletId: wallet.id,
-          walletAddress: walletAddress,
+          walletAddress,
           drawId: draw.id,
         },
         include: { wallet: true },
       });
     }
-
-    // ✅ Return ALL tickets for this user for today’s draw (for multi-wallet UI)
-    const allTickets = await prisma.ticket.findMany({
-      where: {
-        drawId: draw.id,
-        wallet: { userId: appUser.id },
-      },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        code: true,
-        status: true,
-        walletAddress: true,
-        createdAt: true,
-      },
-    });
 
     return NextResponse.json(
       {
@@ -272,11 +254,20 @@ export async function POST(req: NextRequest) {
           walletAddress: ticket.walletAddress,
           createdAt: ticket.createdAt,
           wallet: {
-            id: ticket.wallet?.id ?? wallet.id,
+            id: ticket.wallet?.id ?? null,
             address: ticket.wallet?.address ?? walletAddress,
           },
         },
-        tickets: allTickets,
+        // keep compatible payload
+        tickets: [
+          {
+            id: ticket.id,
+            code: ticket.code,
+            status: ticket.status,
+            walletAddress: ticket.walletAddress,
+            createdAt: ticket.createdAt,
+          },
+        ],
       },
       { status: 200 },
     );
