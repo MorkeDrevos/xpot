@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import Xpot1918Badge from '@/components/Xpot1918Badge';
 
@@ -10,24 +11,14 @@ type Announcement = {
   after?: string;
 };
 
-// If the "after" starts with punctuation, don't inject a space.
-function afterNeedsSpace(after?: string) {
-  if (!after) return false;
-  const a = after.trimStart();
-  if (!a) return false;
-
-  const first = a[0];
-  if ('.!,?:;)]]}'.includes(first)) return false;
-  if (first === '"' || first === "'" || first === '’' || first === '”') return false;
-  if (a.startsWith('-') || a.startsWith('–')) return false;
-
-  return true;
-}
-
 export default function RotatingAnnouncement({
   intervalMs = 16000,
+  actionHref = '/tokenomics#reserve',
+  actionLabel = 'Reserve →',
 }: {
   intervalMs?: number;
+  actionHref?: string;
+  actionLabel?: string;
 }) {
   const announcements = useMemo<Announcement[]>(
     () => [
@@ -63,34 +54,57 @@ export default function RotatingAnnouncement({
       window.clearTimeout(fadeOut);
       window.clearTimeout(swap);
     };
-  }, [idx, intervalMs, announcements.length]);
+  }, [intervalMs, announcements.length]);
 
   const a = announcements[idx];
-  const needs = afterNeedsSpace(a.after);
 
   return (
-    <span
-      className={[
-        'inline-flex items-center',
-        'text-[12px] sm:text-[13px]',
-        'leading-[1.25]',
-        'font-medium',
-        'tracking-[-0.01em]',
-        'text-white/80',
-        'transition-all duration-700 ease-out',
-        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[2px]',
-      ].join(' ')}
-      aria-live="polite"
-    >
-      {a.before && <span className="text-white/70">{a.before} </span>}
+    <div className="flex w-full items-center justify-between gap-3">
+      {/* LEFT: Rotating message */}
+      <span
+        className={[
+          'min-w-0',
+          'inline-flex items-center flex-wrap',
+          'text-[11px] sm:text-[12px] md:text-[13px]',
+          'leading-[1.2]',
+          'font-medium',
+          'tracking-[-0.01em]',
+          'text-white/80',
+          'transition-all duration-700 ease-out',
+          visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[2px]',
+        ].join(' ')}
+        aria-live="polite"
+      >
+        {a.before ? <span className="text-white/70">{a.before}&nbsp;</span> : null}
 
-      {a.kind === 'badge' ? (
-        <Xpot1918Badge label={a.highlight} />
-      ) : (
-        <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">{a.highlight}</strong>
-      )}
+        {a.kind === 'badge' ? (
+          <Xpot1918Badge className="shrink-0" label={a.highlight} />
+        ) : (
+          <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">{a.highlight}</strong>
+        )}
 
-      {a.after && <span className="text-white/70">{needs ? ' ' : ''}{a.after}</span>}
-    </span>
+        {a.after ? <span className="text-white/70">&nbsp;{a.after}</span> : null}
+      </span>
+
+      {/* RIGHT: replaces dismiss button */}
+      <Link
+        href={actionHref}
+        target="_blank"
+        rel="noreferrer"
+        className={[
+          'shrink-0',
+          'inline-flex items-center justify-center',
+          'rounded-full',
+          'border border-white/10 bg-white/[0.04]',
+          'px-3 py-1.5',
+          'text-[11px] font-semibold tracking-[0.14em] uppercase',
+          'text-slate-100 hover:bg-white/[0.07]',
+          'shadow-[0_12px_40px_rgba(0,0,0,0.35)]',
+          'transition',
+        ].join(' ')}
+      >
+        {actionLabel}
+      </Link>
+    </div>
   );
 }
