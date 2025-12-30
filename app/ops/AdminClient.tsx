@@ -396,6 +396,7 @@ export default function AdminPage() {
   // IMPORTANT:
   // - authedFetch THROWS on failures so UI doesn't silently show "no draw"
   // - if the ops routes are missing (404), mark opsApiAvailable=false and stop repeated calls
+  // - do NOT mark opsApiAvailable=false for non-ops endpoints (eg /api/admin/*)
   async function authedFetch(input: string, init?: RequestInit) {
     if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
@@ -413,7 +414,8 @@ export default function AdminPage() {
     }
 
     if (!res.ok) {
-      if (res.status === 404) {
+      const isOpsRoute = input.startsWith(OPS_API);
+      if (res.status === 404 && isOpsRoute) {
         setOpsApiAvailable(false);
         setOpsApiBanner(
           'Ops API routes not found in this deployment (404). UI will run in read-only fallback mode until /api/ops/* is deployed.',
@@ -424,8 +426,10 @@ export default function AdminPage() {
     }
 
     // If we get here, ops API exists (at least for this route)
-    setOpsApiAvailable(true);
-    setOpsApiBanner(null);
+    if (input.startsWith(OPS_API)) {
+      setOpsApiAvailable(true);
+      setOpsApiBanner(null);
+    }
 
     return data;
   }
@@ -620,6 +624,7 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
+      // NOTE: This is NOT an ops endpoint, so 404 must NOT flip opsApiAvailable=false
       const data = await authedFetch(ADMIN_PICK_WINNER_API, { method: 'POST' });
 
       const raw = (data as any).winner;
@@ -1004,8 +1009,12 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [upcomingDrops, serverSkewMs]);
 
+  // ✅ keep visible count sane (and don't force 7 when list is empty)
   useEffect(() => {
-    setVisibleTicketCount(prev => Math.min(prev, tickets.length || MAX_TODAY_TICKETS));
+    setVisibleTicketCount(prev => {
+      if (tickets.length === 0) return 0;
+      return Math.min(prev || MAX_TODAY_TICKETS, tickets.length);
+    });
   }, [tickets.length]);
 
   function handleLoadMoreTickets() {
@@ -1054,7 +1063,7 @@ export default function AdminPage() {
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
-  const isAutoActive = false;
+  const isAutoActive = effectiveOpsMode === 'AUTO' && envAutoAllowed;
 
   const DAY_MS = 24 * 60 * 60 * 1000;
   const closesAtDate = todayDraw?.closesAt ? new Date(todayDraw.closesAt) : null;
@@ -1156,7 +1165,10 @@ export default function AdminPage() {
               </span>
             </div>
 
-            <form onSubmit={handleUnlock} className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row">
+            <form
+              onSubmit={handleUnlock}
+              className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row"
+            >
               <input
                 type="password"
                 className="xpot-input flex-1 text-sm"
@@ -1218,7 +1230,9 @@ export default function AdminPage() {
 
                 <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Round status</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Round status
+                    </p>
                     <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
                       {todayLoading && <span>Loading...</span>}
                       {todayDraw && (
@@ -1241,21 +1255,27 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Entries in pool</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Entries in pool
+                    </p>
                     <p className="mt-1 font-mono text-slate-100">
                       {todayLoading ? '–' : todayDraw?.ticketsCount ?? 0}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Rollover amount</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Rollover amount
+                    </p>
                     <div className="mt-1">
                       <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today's XPOT (live)</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Today's XPOT (live)
+                    </p>
                     <div className="mt-1">
                       <UsdPill amount={liveJackpotUsd} size="sm" />
                     </div>
@@ -1269,7 +1289,9 @@ export default function AdminPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm sm:text-base">
-                          <span className="text-xs uppercase tracking-wide text-slate-500">Closes in</span>
+                          <span className="text-xs uppercase tracking-wide text-slate-500">
+                            Closes in
+                          </span>
                           <span
                             className={`
                               ml-2 mt-2 font-mono text-2xl font-semibold transition-all
@@ -1362,7 +1384,8 @@ export default function AdminPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-100">Schedule bonus XPOT</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Line up hype bonuses from today's ticket pool. At the scheduled time, one extra winner will be picked.
+                  Line up hype bonuses from today's ticket pool. At the scheduled time, one extra
+                  winner will be picked.
                 </p>
 
                 <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-slate-500">
@@ -1387,7 +1410,9 @@ export default function AdminPage() {
                   </div>
 
                   <div className="mt-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Quick presets</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Quick presets
+                    </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {[100000, 250000, 500000, 1000000].map(v => {
                         const active = Number(bonusAmount) === v;
@@ -1478,7 +1503,9 @@ export default function AdminPage() {
                   </div>
 
                   {bonusPickError && <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>}
-                  {bonusPickSuccess && <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>}
+                  {bonusPickSuccess && (
+                    <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>
+                  )}
 
                   {(bonusError || bonusSuccess) && (
                     <div className="mt-3 text-xs">
@@ -1494,7 +1521,9 @@ export default function AdminPage() {
             <div className="mt-5 xpot-card px-4 py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Upcoming bonus drops</p>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                    Upcoming bonus drops
+                  </p>
 
                   {nextBonusDrop && nextBonusCountdown && (
                     <div className="flex items-center gap-3">
@@ -1550,7 +1579,15 @@ export default function AdminPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Badge tone={d.status === 'SCHEDULED' ? 'sky' : d.status === 'FIRED' ? 'emerald' : 'red'}>
+                        <Badge
+                          tone={
+                            d.status === 'SCHEDULED'
+                              ? 'sky'
+                              : d.status === 'FIRED'
+                              ? 'emerald'
+                              : 'red'
+                          }
+                        >
                           {d.status}
                         </Badge>
 
@@ -1559,7 +1596,11 @@ export default function AdminPage() {
                             type="button"
                             className={`${BTN_DANGER} h-9 px-4 text-xs`}
                             onClick={() => handleCancelBonusDrop(d.id)}
-                            disabled={cancelingDropId === d.id || !tokenAccepted || opsApiAvailable === false}
+                            disabled={
+                              cancelingDropId === d.id ||
+                              !tokenAccepted ||
+                              opsApiAvailable === false
+                            }
                           >
                             {cancelingDropId === d.id ? 'Canceling...' : 'Cancel'}
                           </button>
@@ -1626,7 +1667,9 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      <p className="mt-2 text-xs text-slate-500">Issued {formatDateTime(t.createdAt)}</p>
+                      <p className="mt-2 text-xs text-slate-500">
+                        Issued {formatDateTime(t.createdAt)}
+                      </p>
                     </div>
                   ))}
 
@@ -1667,7 +1710,8 @@ export default function AdminPage() {
                 <p className="text-xs text-amber-300">{winnersError}</p>
               ) : winners.length === 0 ? (
                 <div className="xpot-card px-4 py-3 text-xs text-slate-500">
-                  No completed draws yet. Once you pick winners and mark XPOT as paid, they'll appear here.
+                  No completed draws yet. Once you pick winners and mark XPOT as paid, they'll appear
+                  here.
                 </div>
               ) : (
                 <>
@@ -1770,7 +1814,8 @@ export default function AdminPage() {
               </li>
               <li className="flex gap-2">
                 <CalendarClock className="h-4 w-4 text-slate-500" />
-                Countdown is based on <span className="font-semibold text-slate-200">closesAt</span> from today's draw and synced to server time.
+                Countdown is based on <span className="font-semibold text-slate-200">closesAt</span>{' '}
+                from today's draw and synced to server time.
               </li>
               <li className="flex gap-2">
                 <Crown className="h-4 w-4 text-slate-500" />
@@ -1805,8 +1850,8 @@ export default function AdminPage() {
 
             {!envAutoAllowed && modePending === 'AUTO' && (
               <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
-                AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won't take
-                effect until allowed.
+                AUTO is locked in this environment (or disabled by env). You can still save AUTO in
+                DB, but it won't take effect until allowed.
               </div>
             )}
 
@@ -1875,16 +1920,21 @@ export default function AdminPage() {
 
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-semibold text-slate-50">Unlock XPOT operations center</p>
+                <p className="text-sm font-semibold text-slate-50">
+                  Unlock XPOT operations center
+                </p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Step inside the live XPOT control deck. Monitor today's round, entries, wallets and reward execution -
-                  secured behind your private <span className="font-semibold text-slate-200">admin key</span>.
+                  Step inside the live XPOT control deck. Monitor today's round, entries, wallets
+                  and reward execution - secured behind your private{' '}
+                  <span className="font-semibold text-slate-200">admin key</span>.
                 </p>
               </div>
 
               <form onSubmit={handleUnlock} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Admin key</label>
+                  <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                    Admin key
+                  </label>
                   <div className="relative">
                     <input
                       type="password"
@@ -1899,10 +1949,12 @@ export default function AdminPage() {
                     </span>
                   </div>
 
-                  <p className="text-[10px] text-slate-500">Your key is stored locally in this browser only.</p>
                   <p className="text-[10px] text-slate-500">
-                    <span className="font-semibold text-slate-300">Never share your admin key</span> - it unlocks full
-                    XPOT operations.
+                    Your key is stored locally in this browser only.
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    <span className="font-semibold text-slate-300">Never share your admin key</span>{' '}
+                    - it unlocks full XPOT operations.
                   </p>
                 </div>
 
