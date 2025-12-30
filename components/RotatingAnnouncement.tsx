@@ -16,7 +16,7 @@ export default function RotatingAnnouncement({
   const announcements = useMemo<Announcement[]>(
     () => [
       {
-        before: "We're aiming to become the",
+        before: "We're aiming to become the ",
         highlight: 'biggest game on the planet',
         after: ". You're early. This is where it starts.",
       },
