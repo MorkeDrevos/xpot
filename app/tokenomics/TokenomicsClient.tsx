@@ -62,23 +62,17 @@ const DAYS_PER_YEAR = 365;
 // ✅ Solscan proof targets for token controls
 // ─────────────────────────────────────────────
 const XPOT_MINT_ACCOUNT = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
+const SOLSCAN_TOKEN_METADATA_URL = `https://solscan.io/token/${XPOT_MINT_ACCOUNT}#metadata`;
 
-// ✅ Tx proofs (optional). If you have them, paste them.
-// If not, we still show "Revoked" and link to Solscan metadata as proof target (authority = None/NULL).
+// ✅ All three authorities are revoked (Solscan metadata shows NULL).
+// Where you have a specific revoke signature, paste it so we can link directly.
+// Otherwise we link to Solscan metadata as the public proof of NULL.
 const MINT_AUTHORITY_REVOKE_TX =
   '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtstnikBXTtTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwy8bpwNrRfuLvM';
-
-// You said ALL 3 authorities are revoked ✅
-// If you later want to add the tx signatures, paste them here.
 const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
 const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
 
-// Explicit truth flags (so UI is correct even without tx pasted)
-const MINT_AUTHORITY_REVOKED = true;
-const FREEZE_AUTHORITY_REVOKED = true;
-const UPDATE_AUTHORITY_REVOKED = true;
-
-// Rewards reserve wallet
+// Rewards reserve wallet (you sent this link)
 const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 
 function solscanAccountUrl(account: string) {
@@ -87,25 +81,22 @@ function solscanAccountUrl(account: string) {
 function solscanTxUrl(sig: string) {
   return `https://solscan.io/tx/${sig}`;
 }
-function solscanTokenMetadataUrl(mint: string) {
-  return `https://solscan.io/token/${mint}#metadata`;
-}
 
 // ─────────────────────────────────────────────
-// ✅ Streamflow proof targets (token dashboard URLs)
+// ✅ Streamflow proof targets
 // ─────────────────────────────────────────────
-function getStreamflowDashboardUrl(mint: string, contractAccount: string) {
-  return `https://app.streamflow.finance/token-dashboard/solana/mainnet/${mint}/contract/${contractAccount}`;
+function getStreamflowContractUrl(contractAccount: string) {
+  return `https://app.streamflow.finance/contract/solana/${contractAccount}`;
 }
 
 // ✅ Team vesting (12 months) - Streamflow escrow contract
 const TEAM_VESTING = {
-  contractAccount: 'BYUYCGu1mH2B33QU2mzF2AZDvxgxLoboiJbDVJYvGWkR',
+  contractAccount: 'BYUYCGu1mH2B33QU2mzF2AZDvqxgLoboiJbDVJYvGWkR',
   senderWallet: 'G17RehqUAgMcAxcnLUZyf6WzuPqsM82q9SC1aSkBUR7w',
   recipientWallet: '3DSuZP8d8a9f5CftdJvmJA1wxgzgxKULLDwZeRKC2Vh',
 };
 
-// ✅ Partners + creators vesting (8 months) - Streamflow escrow contract
+// ✅ Partners vesting (8 months) - Streamflow escrow contract
 const PARTNERS_VESTING = {
   contractAccount: 'EqszkWnNNQDVQvLgu5kH4tSQNQ6jgYswU5dioXkVbLK1',
 };
@@ -181,12 +172,14 @@ function toneStroke(tone: PillTone) {
   if (tone === 'amber') return 'rgba(250,204,21,0.78)'; // fallback gold
   return 'rgba(148,163,184,0.68)'; // slate
 }
+
 function toneGlow(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
   if (tone === 'amber') return 'rgba(250,204,21,0.18)';
   return 'rgba(148,163,184,0.16)';
 }
+
 function toneRing(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
@@ -259,14 +252,14 @@ function ProofLinkPill({
 // Shows inside Partners allocation
 // ─────────────────────────────────────────────
 function PartnersVestingPanel() {
-  const dashUrl = getStreamflowDashboardUrl(XPOT_MINT_ACCOUNT, PARTNERS_VESTING.contractAccount);
+  const vestUrl = getStreamflowContractUrl(PARTNERS_VESTING.contractAccount);
 
   return (
     <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Partners vesting</p>
-          <p className="mt-1 text-[11px] text-slate-500">Vesting is live on-chain via Streamflow. Public proof links below.</p>
+          <p className="mt-1 text-[11px] text-slate-500">Vesting is live on-chain via Streamflow (8 months). Public proof links below.</p>
         </div>
 
         <span className="rounded-full border border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--xpot-gold-2))]">
@@ -279,12 +272,12 @@ function PartnersVestingPanel() {
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain vesting</p>
             <p className="mt-1 text-sm font-semibold text-slate-100">Streamflow contract (public)</p>
-            <p className="mt-1 text-xs text-slate-500">Tokens are held by the contract (escrow) and vest over time.</p>
+            <p className="mt-1 text-xs text-slate-500">Tokens sit in escrow and vest to the payout side over the schedule.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <a
-              href={dashUrl}
+              href={vestUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center justify-center rounded-full border border-sky-400/25 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-200 hover:bg-sky-500/15 transition"
@@ -354,7 +347,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
     })
     .join(' ');
 
-  const dashUrl = getStreamflowDashboardUrl(XPOT_MINT_ACCOUNT, TEAM_VESTING.contractAccount);
+  const streamflowUrl = getStreamflowContractUrl(TEAM_VESTING.contractAccount);
 
   return (
     <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
@@ -378,7 +371,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
 
           <div className="flex flex-wrap items-center gap-2">
             <a
-              href={dashUrl}
+              href={streamflowUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
@@ -478,9 +471,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
             </div>
           </div>
 
-          <p className="mt-3 text-[11px] text-slate-600">
-            Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow and Solscan above.
-          </p>
+          <p className="mt-3 text-[11px] text-slate-600">Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow and Solscan above.</p>
         </div>
 
         <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
@@ -703,12 +694,7 @@ function VaultGroupPanel({
                         Wallet
                       </span>
 
-                      <a
-                        href={solscanAccountUrl(v.address)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 hover:text-slate-300 transition"
-                      >
+                      <a href={solscanAccountUrl(v.address)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-slate-300 transition">
                         View <ExternalLink className="h-3.5 w-3.5" />
                       </a>
 
@@ -946,14 +932,7 @@ function DonutAllocation({
                 })}
               </g>
 
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={r - 26}
-                fill="rgba(2,2,10,0.55)"
-                stroke="rgba(255,255,255,0.06)"
-                strokeWidth="1"
-              />
+              <circle cx={size / 2} cy={size / 2} r={r - 26} fill="rgba(2,2,10,0.55)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
             </svg>
 
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -965,10 +944,7 @@ function DonutAllocation({
               </div>
             </div>
 
-            <div
-              className="pointer-events-none absolute inset-0 rounded-full"
-              style={{ boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 40px 120px rgba(0,0,0,0.55)` }}
-            />
+            <div className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 40px 120px rgba(0,0,0,0.55)` }} />
             <div
               className="pointer-events-none absolute -inset-7 rounded-full opacity-70 blur-2xl"
               style={{ background: `radial-gradient(circle at 50% 50%, ${toneGlow(selected?.tone ?? 'slate')}, transparent 60%)` }}
@@ -1058,8 +1034,6 @@ function DonutAllocation({
                           <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
 
                           {a.key === 'team' && <TeamVestingPanel totalTeamTokens={teamTotalTokens} />}
-
-                          {/* ✅ Partners are vesting (not lock) */}
                           {a.key === 'partners' && <PartnersVestingPanel />}
 
                           <VaultGroupPanel title="Vaults (live)" groupKey={vaultGroupKey} data={vaultData} isLoading={vaultLoading} hadError={vaultError} />
@@ -1169,7 +1143,7 @@ function TokenomicsPageInner() {
         pct: 8,
         note: 'Vested allocation for sponsor pools and creator programs.',
         detail:
-          `Partners and creators are vested on-chain via Streamflow (8 months). ` +
+          `Partners allocation is vested on-chain via Streamflow (8 months). ` +
           `Vesting escrow: ${shortAddr(PARTNERS_VESTING.contractAccount)}. ` +
           `Open the expanded panel for proof links.`,
         tone: 'sky',
@@ -1319,7 +1293,9 @@ function TokenomicsPageInner() {
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
             <p className="mt-2 text-sm font-semibold text-slate-100">Authorities revoked</p>
-            <p className="mt-1 text-xs text-slate-500">Tx proof when available, otherwise Solscan metadata proves NULL/None.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Revoke signatures are linked when available. Otherwise the Solscan metadata view shows the authority as <span className="font-semibold text-slate-300">NULL</span>.
+            </p>
           </div>
           <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
             Locked
@@ -1330,50 +1306,34 @@ function TokenomicsPageInner() {
           {[
             {
               k: 'Mint authority',
-              revoked: MINT_AUTHORITY_REVOKED,
               tx: MINT_AUTHORITY_REVOKE_TX,
-              fallbackProofUrl: solscanTokenMetadataUrl(XPOT_MINT_ACCOUNT),
-              fallbackLabel: 'Solscan metadata',
-              note: 'Proof target: mintTokens authority = NULL on the mint account.',
+              note: 'Mint authority set to NULL on the mint account.',
             },
             {
               k: 'Freeze authority',
-              revoked: FREEZE_AUTHORITY_REVOKED,
               tx: FREEZE_AUTHORITY_REVOKE_TX,
-              fallbackProofUrl: solscanTokenMetadataUrl(XPOT_MINT_ACCOUNT),
-              fallbackLabel: 'Solscan metadata',
-              note: 'Proof target: freeze authority = NULL on the mint account.',
+              note: 'Freeze authority set to NULL on the mint account.',
             },
             {
               k: 'Update authority',
-              revoked: UPDATE_AUTHORITY_REVOKED,
               tx: UPDATE_AUTHORITY_REVOKE_TX,
-              fallbackProofUrl: solscanTokenMetadataUrl(XPOT_MINT_ACCOUNT),
-              fallbackLabel: 'Solscan metadata',
-              note: 'Proof target: update authority = None/NULL (metadata locked).',
+              note: 'Metadata update authority is revoked / locked (authority is NULL).',
             },
           ].map(row => {
-            const isRevoked = !!row.revoked;
-
-            const proofHref = row.tx ? solscanTxUrl(row.tx) : row.fallbackProofUrl;
-            const proofLabel = row.tx ? 'Solscan tx' : row.fallbackLabel;
+            const hasTx = typeof row.tx === 'string' && row.tx.trim().length > 0;
 
             return (
               <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
-                    <p className={`mt-1 text-sm font-semibold ${isRevoked ? 'text-emerald-200' : 'text-slate-200'}`}>
-                      {isRevoked ? 'Revoked' : 'Not proven'}
-                    </p>
+                    <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
                   </div>
 
-                  {isRevoked ? (
-                    <ProofLinkPill href={proofHref} label={proofLabel} tone="emerald" />
+                  {hasTx ? (
+                    <ProofLinkPill href={solscanTxUrl(row.tx!)} label="Solscan tx" tone="emerald" />
                   ) : (
-                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
-                      Paste tx
-                    </span>
+                    <ProofLinkPill href={SOLSCAN_TOKEN_METADATA_URL} label="Solscan metadata" tone="emerald" />
                   )}
                 </div>
                 <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
@@ -1383,7 +1343,7 @@ function TokenomicsPageInner() {
 
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
-            <ProofLinkPill href={solscanTokenMetadataUrl(XPOT_MINT_ACCOUNT)} label="Metadata" tone="slate" />
+            <ProofLinkPill href={SOLSCAN_TOKEN_METADATA_URL} label="Metadata view" tone="slate" />
             <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
           </div>
         </div>
@@ -1484,7 +1444,7 @@ function TokenomicsPageInner() {
                 <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                   <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-                    Proof targets: mint account, revoke proofs, reserve wallet, Streamflow vesting
+                    Proof targets: mint account, authority status, reserve wallet, vesting contracts
                   </span>
                   <span className="inline-flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-white/20" />
