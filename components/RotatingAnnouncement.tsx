@@ -8,6 +8,12 @@ type Announcement = {
   after?: string;
 };
 
+function needsSpaceBeforeAfter(after: string) {
+  // No space before these (punctuation that should attach to the previous word)
+  // NOTE: "(" should KEEP a space before it, so it's intentionally NOT in this list.
+  return !/^[\.,!?:;)]/.test(after);
+}
+
 export default function RotatingAnnouncement({
   intervalMs = 14000, // slower, premium
 }: {
@@ -16,19 +22,19 @@ export default function RotatingAnnouncement({
   const announcements = useMemo<Announcement[]>(
     () => [
       {
-        before: "We're aiming to become the ",
+        before: "We're aiming to become the",
         highlight: 'biggest game on the planet',
         after: ". You're early. This is where it starts.",
       },
       {
-        before: "We're building toward becoming the ",
+        before: "We're building toward becoming the",
         highlight: "world's biggest game",
-        after: ' - one day at a time.',
+        after: '- one day at a time.',
       },
       {
-        before: 'Daily draws are the heartbeat. Final Draw is the ending - ',
+        before: 'Daily draws are the heartbeat. Final Draw is the ending -',
         highlight: 'Tuesday, 28/02/2045 22:00',
-        after: ' (Madrid).',
+        after: '(Madrid).',
       },
     ],
     [],
@@ -57,6 +63,9 @@ export default function RotatingAnnouncement({
 
   const a = announcements[idx];
 
+  const before = (a.before ?? '').trimEnd();
+  const after = (a.after ?? '').trimStart();
+
   return (
     <span
       className={[
@@ -70,13 +79,22 @@ export default function RotatingAnnouncement({
       ].join(' ')}
       aria-live="polite"
     >
-      {a.before && <span>{a.before}</span>}
+      {before ? (
+        <>
+          <span>{before}</span>
+          {/* explicit space so we never get "thebiggest" / "theworld's" */}
+          <span aria-hidden>{' '}</span>
+        </>
+      ) : null}
 
-      <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">
-        {a.highlight}
-      </strong>
+      <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">{a.highlight}</strong>
 
-      {a.after && <span>{a.after}</span>}
+      {after ? (
+        <>
+          {needsSpaceBeforeAfter(after) ? <span aria-hidden>{' '}</span> : null}
+          <span>{after}</span>
+        </>
+      ) : null}
     </span>
   );
 }
