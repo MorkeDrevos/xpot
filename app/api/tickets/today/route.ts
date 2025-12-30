@@ -23,8 +23,10 @@ function toUiStatus(raw: any): UiStatus {
 }
 
 // ─────────────────────────────────────────────
-// Madrid cutoff logic (MUST match /tickets/claim)
+// Madrid cutoff logic (22:00 Europe/Madrid)
+// Must match /api/tickets/claim
 // ─────────────────────────────────────────────
+
 const MADRID_TZ = 'Europe/Madrid';
 const MADRID_CUTOFF_HH = 22;
 const MADRID_CUTOFF_MM = 0;
@@ -74,8 +76,10 @@ function wallClockToUtcMs({
 
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
+
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
     const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
+
     const diffMin = gotTotal - wantTotal;
     if (diffMin === 0) break;
     t -= diffMin * 60_000;
@@ -113,55 +117,73 @@ function getDrawBucketUtc(now = new Date()) {
   return new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
 }
 
+// ─────────────────────────────────────────────
+// GET (account-level)
+// ─────────────────────────────────────────────
+
 export async function GET() {
   try {
-    const a = await auth();
-    const clerkId = a.userId;
+    const session = await auth();
+    const clerkId = session?.userId ?? null;
 
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    // Find wallets linked to this Clerk user
-    const user = await prisma.user.findUnique({
+    // Resolve app User (by clerkId) + walletIds
+    const appUser = await prisma.user.findUnique({
       where: { clerkId },
-      include: { wallets: true },
+      select: { id: true },
     });
 
-    const walletAddrs = (user?.wallets ?? [])
-      .map(w => String(w.address ?? '').trim())
-      .filter(Boolean);
-
-    // If you have no linked wallets yet, show empty instead of everyone’s tickets
-    if (walletAddrs.length === 0) {
+    if (!appUser?.id) {
       return NextResponse.json({ ok: true, draw: null, tickets: [] });
     }
 
-    // MUST match claim's draw bucket
+    const wallets = await prisma.wallet.findMany({
+      where: { userId: appUser.id },
+      select: { id: true, address: true },
+    });
+
+    if (!wallets.length) {
+      return NextResponse.json({ ok: true, draw: null, tickets: [] });
+    }
+
     const drawDate = getDrawBucketUtc(new Date());
 
-    const drawRecord = await prisma.draw.findUnique({
+    const draw = await prisma.draw.findUnique({
       where: { drawDate },
-      include: {
-        tickets: {
-          where: {
-            walletAddress: { in: walletAddrs },
-          },
-          orderBy: { createdAt: 'desc' },
-        },
+      select: { id: true, drawDate: true, status: true, jackpotUsd: true, rolloverUsd: true },
+    });
+
+    if (!draw) {
+      return NextResponse.json({ ok: true, draw: null, tickets: [] });
+    }
+
+    const walletIds = wallets.map(w => w.id);
+
+    const ticketsDb = await prisma.ticket.findMany({
+      where: {
+        drawId: draw.id,
+        walletId: { in: walletIds },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        label: true,
+        createdAt: true,
+        walletAddress: true,
       },
     });
 
-    if (!drawRecord) {
-      return NextResponse.json({ ok: true, draw: null, tickets: [] });
-    }
-
-    const tickets = (drawRecord.tickets ?? []).map((t: any) => ({
+    const tickets = ticketsDb.map(t => ({
       id: t.id,
       code: t.code,
       status: toUiStatus(t.status),
       label: t.label ?? 'Ticket for today’s draw',
-      jackpotUsd: drawRecord.jackpotUsd ?? 10_000,
+      jackpotUsd: draw.jackpotUsd ?? 10_000,
       createdAt: t.createdAt,
       walletAddress: String(t.walletAddress ?? ''),
     }));
@@ -169,12 +191,11 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       draw: {
-        id: drawRecord.id,
-        drawDate: drawRecord.drawDate,
-        status: String(drawRecord.status ?? 'open'),
-        jackpotUsd: drawRecord.jackpotUsd ?? 10_000,
-        rolloverUsd: drawRecord.rolloverUsd ?? 0,
-        closesAt: drawRecord.closesAt ?? null,
+        id: draw.id,
+        drawDate: draw.drawDate,
+        status: String(draw.status ?? 'open'),
+        jackpotUsd: draw.jackpotUsd ?? 10_000,
+        rolloverUsd: draw.rolloverUsd ?? 0,
       },
       tickets,
     });
