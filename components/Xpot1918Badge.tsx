@@ -1,14 +1,12 @@
 'use client';
 
-type Xpot1918BadgeProps = {
-  label?: string;
-  className?: string;
-};
-
 export default function Xpot1918Badge({
-  label = '19.18 YEARS',
   className = '',
-}: Xpot1918BadgeProps) {
+  label = '19.18 YEARS',
+}: {
+  className?: string;
+  label?: string;
+}) {
   return (
     <span
       className={[
@@ -19,10 +17,8 @@ export default function Xpot1918Badge({
         'px-3 py-1',
         'shadow-[0_18px_55px_rgba(16,185,129,0.10)]',
         'ring-1 ring-black/35',
-        'select-none',
         className,
       ].join(' ')}
-      aria-label="XPOT reserve coverage"
     >
       <strong
         className={[
