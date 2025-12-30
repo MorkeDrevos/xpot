@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Xpot1918Badge from '@/components/Xpot1918Badge';
 
 type Announcement = {
   kind: 'badge' | 'text';
@@ -9,32 +10,18 @@ type Announcement = {
   after?: string;
 };
 
-/* 19.18 micro-badge (locked) */
-function Xpot1918Badge({ label }: { label: string }) {
-  return (
-    <span
-      className="
-        relative inline-flex items-center
-        rounded-full
-        border border-emerald-400/20
-        bg-emerald-400/10
-        px-3 py-1
-        shadow-[0_14px_40px_rgba(16,185,129,0.10)]
-      "
-    >
-      <strong
-        className="
-          font-semibold
-          text-[rgb(var(--xpot-gold-2))]
-          tracking-[0.12em]
-          uppercase
-          whitespace-nowrap
-        "
-      >
-        {label}
-      </strong>
-    </span>
-  );
+// If the "after" starts with punctuation, don't inject a space.
+function afterNeedsSpace(after?: string) {
+  if (!after) return false;
+  const a = after.trimStart();
+  if (!a) return false;
+
+  const first = a[0];
+  if ('.!,?:;)]]}'.includes(first)) return false;
+  if (first === '"' || first === "'" || first === '’' || first === '”') return false;
+  if (a.startsWith('-') || a.startsWith('–')) return false;
+
+  return true;
 }
 
 export default function RotatingAnnouncement({
@@ -45,18 +32,16 @@ export default function RotatingAnnouncement({
   const announcements = useMemo<Announcement[]>(
     () => [
       {
-        // ✅ PRIMARY — structural truth
         kind: 'badge',
         before: 'Reserve Coverage:',
         highlight: '19.18 YEARS',
         after: '· 1,000,000/day locked for 7,000 days.',
       },
       {
-        // ✅ SECONDARY — narrative vision
         kind: 'text',
         before: "We're building toward becoming the",
         highlight: "world's biggest game",
-        after: '— one day at a time.',
+        after: '- one day at a time.',
       },
     ],
     [],
@@ -68,19 +53,20 @@ export default function RotatingAnnouncement({
   useEffect(() => {
     const FADE_MS = 700;
 
-    const fadeOut = setTimeout(() => setVisible(false), intervalMs - FADE_MS);
-    const swap = setTimeout(() => {
+    const fadeOut = window.setTimeout(() => setVisible(false), Math.max(0, intervalMs - FADE_MS));
+    const swap = window.setTimeout(() => {
       setIdx((i) => (i + 1) % announcements.length);
       setVisible(true);
     }, intervalMs);
 
     return () => {
-      clearTimeout(fadeOut);
-      clearTimeout(swap);
+      window.clearTimeout(fadeOut);
+      window.clearTimeout(swap);
     };
-  }, [intervalMs, announcements.length]);
+  }, [idx, intervalMs, announcements.length]);
 
   const a = announcements[idx];
+  const needs = afterNeedsSpace(a.after);
 
   return (
     <span
@@ -96,17 +82,15 @@ export default function RotatingAnnouncement({
       ].join(' ')}
       aria-live="polite"
     >
-      {a.before && <span className="text-white/70">{a.before}{' '}</span>}
+      {a.before && <span className="text-white/70">{a.before} </span>}
 
       {a.kind === 'badge' ? (
         <Xpot1918Badge label={a.highlight} />
       ) : (
-        <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">
-          {a.highlight}
-        </strong>
+        <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">{a.highlight}</strong>
       )}
 
-      {a.after && <span className="text-white/70">{' '}{a.after}</span>}
+      {a.after && <span className="text-white/70">{needs ? ' ' : ''}{a.after}</span>}
     </span>
   );
 }
