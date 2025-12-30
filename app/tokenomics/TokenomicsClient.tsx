@@ -21,7 +21,6 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Users,
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
@@ -68,7 +67,7 @@ const SOLSCAN_TOKEN_METADATA_URL = `https://solscan.io/token/${XPOT_MINT_ACCOUNT
 // Where you have a specific revoke signature, paste it so we can link directly.
 // Otherwise we link to Solscan metadata as the public proof of NULL.
 const MINT_AUTHORITY_REVOKE_TX =
-  '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtstnikBXTtTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwy8bpwNrRfuLvM';
+  '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtsntikBXTrTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwY8bpwNrRfuLvM';
 const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
 const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
 
@@ -83,15 +82,16 @@ function solscanTxUrl(sig: string) {
 }
 
 // ─────────────────────────────────────────────
-// ✅ Streamflow proof targets
+// ✅ Streamflow proof targets (FIXED URLS)
+// You want the token-dashboard form, not /contract/solana/...
 // ─────────────────────────────────────────────
 function getStreamflowContractUrl(contractAccount: string) {
-  return `https://app.streamflow.finance/contract/solana/${contractAccount}`;
+  return `https://app.streamflow.finance/token-dashboard/solana/mainnet/${XPOT_MINT_ACCOUNT}/contract/${contractAccount}`;
 }
 
 // ✅ Team vesting (12 months) - Streamflow escrow contract
 const TEAM_VESTING = {
-  contractAccount: 'BYUYCGu1mH2B33QU2mzF2AZDvqxgLoboiJbDVJYvGWkR',
+  contractAccount: 'BYUYCGu1mH2B33QU2mzF2AZDvxgxLoboiJbDVJYvGWkR',
   senderWallet: 'G17RehqUAgMcAxcnLUZyf6WzuPqsM82q9SC1aSkBUR7w',
   recipientWallet: '3DSuZP8d8a9f5CftdJvmJA1wxgzgxKULLDwZeRKC2Vh',
 };
@@ -249,7 +249,7 @@ function ProofLinkPill({
 
 // ─────────────────────────────────────────────
 // ✅ Partners vesting panel (8 months) - Streamflow proof
-// Shows inside Partners allocation
+// (Removed Solscan contract button - you said it's basically 404/wrong)
 // ─────────────────────────────────────────────
 function PartnersVestingPanel() {
   const vestUrl = getStreamflowContractUrl(PARTNERS_VESTING.contractAccount);
@@ -259,7 +259,7 @@ function PartnersVestingPanel() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Partners vesting</p>
-          <p className="mt-1 text-[11px] text-slate-500">Vesting is live on-chain via Streamflow (8 months). Public proof links below.</p>
+          <p className="mt-1 text-[11px] text-slate-500">Vesting is live on-chain via Streamflow (8 months). Public proof link below.</p>
         </div>
 
         <span className="rounded-full border border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[rgb(var(--xpot-gold-2))]">
@@ -284,15 +284,6 @@ function PartnersVestingPanel() {
             >
               View on Streamflow <ExternalLink className="ml-2 h-4 w-4" />
             </a>
-
-            <a
-              href={solscanAccountUrl(PARTNERS_VESTING.contractAccount)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-            >
-              Contract on Solscan <ExternalLink className="ml-2 h-4 w-4 text-slate-400" />
-            </a>
           </div>
         </div>
 
@@ -313,6 +304,7 @@ function PartnersVestingPanel() {
 // ─────────────────────────────────────────────
 // Team vesting (12 months, monthly equal amounts)
 // + ✅ on-chain Streamflow proof panel
+// (Removed Solscan contract button - you said it's basically 404/wrong)
 // ─────────────────────────────────────────────
 function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
   const months = 12;
@@ -377,15 +369,6 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
               className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
             >
               View on Streamflow <ExternalLink className="ml-2 h-4 w-4" />
-            </a>
-
-            <a
-              href={solscanAccountUrl(TEAM_VESTING.contractAccount)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-            >
-              Contract on Solscan <ExternalLink className="ml-2 h-4 w-4 text-slate-400" />
             </a>
           </div>
         </div>
@@ -471,7 +454,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
             </div>
           </div>
 
-          <p className="mt-3 text-[11px] text-slate-600">Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow and Solscan above.</p>
+          <p className="mt-3 text-[11px] text-slate-600">Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow above.</p>
         </div>
 
         <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
@@ -694,7 +677,12 @@ function VaultGroupPanel({
                         Wallet
                       </span>
 
-                      <a href={solscanAccountUrl(v.address)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-slate-300 transition">
+                      <a
+                        href={solscanAccountUrl(v.address)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 hover:text-slate-300 transition"
+                      >
                         View <ExternalLink className="h-3.5 w-3.5" />
                       </a>
 
@@ -924,7 +912,7 @@ function DonutAllocation({
                       strokeDashoffset={seg.dashoffset}
                       style={{ cursor: 'pointer', filter: isActive ? 'url(#xpotGlow)' : undefined }}
                       initial={false}
-                      animate={reduceMotion ? {} : { opacity: isActive ? 1 : 0.7 }}
+                      animate={useReducedMotion() ? {} : { opacity: isActive ? 1 : 0.7 }}
                       onClick={() => onSelect(seg.key)}
                       onMouseEnter={() => onSelect(seg.key)}
                     />
@@ -1134,7 +1122,7 @@ function TokenomicsPageInner() {
         detail:
           `Vesting is live on-chain via Streamflow: 12 months, monthly equal unlocks. ` +
           `Vesting escrow: ${shortAddr(TEAM_VESTING.contractAccount)}. ` +
-          `Open the expanded panel for proof links.`,
+          `Open the expanded panel for proof link.`,
         tone: 'amber',
       },
       {
@@ -1145,7 +1133,7 @@ function TokenomicsPageInner() {
         detail:
           `Partners allocation is vested on-chain via Streamflow (8 months). ` +
           `Vesting escrow: ${shortAddr(PARTNERS_VESTING.contractAccount)}. ` +
-          `Open the expanded panel for proof links.`,
+          `Open the expanded panel for proof link.`,
         tone: 'sky',
       },
       {
@@ -1267,9 +1255,11 @@ function TokenomicsPageInner() {
             <p className="mt-2 font-mono text-3xl font-semibold text-emerald-200">
               {runwayFixedYears.toFixed(2)} <span className="text-base font-semibold text-slate-500">years</span>
             </p>
+
+            {/* ✅ Add XPOT after 1,000,000 */}
             <p className="mt-1 text-xs text-slate-500">
-  {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT / day – {runwayFixedDays.toLocaleString('en-US')} days coverage
-</p>
+              {fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT / day - {runwayFixedDays.toLocaleString('en-US')} days coverage
+            </p>
           </div>
           <Pill tone="emerald">
             <Sparkles className="h-3.5 w-3.5" />
@@ -1299,33 +1289,55 @@ function TokenomicsPageInner() {
           </span>
         </div>
 
-        <div className="mt-4 grid gap-2">
-  {[
-    {
-      k: 'Mint authority',
-      note: 'Mint authority is NULL. Token supply is fixed.',
-    },
-    {
-      k: 'Freeze authority',
-      note: 'Freeze authority is NULL. No accounts can be frozen.',
-    },
-    {
-      k: 'Update authority',
-      note: 'Update authority is NULL. Metadata is locked.',
-    },
-  ].map(row => (
-    <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
-        </div>
-      </div>
+        {/* ✅ Removed the ugly "Revoke signatures are linked..." paragraph */}
+        {/* ✅ Removed the 3 links (Solscan tx / Solscan metadata / Solscan metadata) */}
 
-      <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
-    </div>
-  ))}
-</div>
+        <div className="mt-4 grid gap-2">
+          {[
+            {
+              k: 'Mint authority',
+              note: 'Mint authority is NULL. Token supply is fixed.',
+              href: MINT_AUTHORITY_REVOKE_TX ? solscanTxUrl(MINT_AUTHORITY_REVOKE_TX) : SOLSCAN_TOKEN_METADATA_URL,
+              linkLabel: 'Proof (Solscan)',
+            },
+            {
+              k: 'Freeze authority',
+              note: 'Freeze authority is NULL. No accounts can be frozen.',
+              href: FREEZE_AUTHORITY_REVOKE_TX ? solscanTxUrl(FREEZE_AUTHORITY_REVOKE_TX) : SOLSCAN_TOKEN_METADATA_URL,
+              linkLabel: 'Proof (Solscan)',
+            },
+            {
+              k: 'Update authority',
+              note: 'Update authority is NULL. Metadata is locked.',
+              href: UPDATE_AUTHORITY_REVOKE_TX ? solscanTxUrl(UPDATE_AUTHORITY_REVOKE_TX) : SOLSCAN_TOKEN_METADATA_URL,
+              linkLabel: 'Proof (Solscan)',
+            },
+          ].map(row => (
+            <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
+                  <p className="mt-1 text-sm font-semibold text-emerald-200">Revoked</p>
+                </div>
+
+                {/* ✅ Keep it clean: single subtle proof link, not 3 different buttons */}
+                <a
+                  href={row.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+                >
+                  {row.linkLabel}
+                  <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                </a>
+              </div>
+
+              <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ✅ No bottom "Mint account / Metadata view / Copy" row here anymore */}
       </div>
 
       <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
@@ -1341,6 +1353,7 @@ function TokenomicsPageInner() {
           </Pill>
         </div>
 
+        {/* ✅ Keep mint account link ONLY here (no duplication in Token controls) */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
           <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
@@ -1407,14 +1420,12 @@ function TokenomicsPageInner() {
                     Enter today&apos;s XPOT
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
-                  <Link
-  href={ROUTE_TERMS}
-  target="_blank"
-  rel="noopener noreferrer"
-  className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}
->
-  Terms
-</Link>
+
+                  {/* ✅ Terms opens in new tab */}
+                  <Link href={ROUTE_TERMS} target="_blank" rel="noopener noreferrer" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                    Terms
+                  </Link>
+
                   <button
                     type="button"
                     onClick={openDistribution}
@@ -1592,7 +1603,7 @@ function TokenomicsPageInner() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v28</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v29</span>
         </div>
       </footer>
     </XpotPageShell>
