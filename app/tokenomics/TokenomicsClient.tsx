@@ -62,16 +62,24 @@ const DAYS_PER_YEAR = 365;
 // ✅ Solscan proof targets for token controls
 // Fill these once, then the UI stays clean and verifiable.
 // ─────────────────────────────────────────────
+
+// ✅ FIXED: this is the mint you confirmed
 const XPOT_MINT_ACCOUNT = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
-// ✅ You revoked mint + freeze in the same action (not separate).
-// Use the same signature for both proof rows so the page matches reality.
+// ✅ Proof: mint authority revoke tx (you provided + screenshot shows set mintTokens authority to NULL)
 const MINT_AUTHORITY_REVOKE_TX =
   '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtstnikBXTtTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwy8bpwNrRfuLvM';
-const FREEZE_AUTHORITY_REVOKE_TX: string | null = MINT_AUTHORITY_REVOKE_TX;
 
-// ✅ Add metadata/update authority revoke tx here (once you paste it from Solscan/terminal)
+// ⚠️ Freeze authority revoke proof tx: NOT PROVIDED YET.
+// If it truly happened in the same tx, paste that proof tx here once you confirm it.
+const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
+
+// ⚠️ Update authority revoke tx: NOT DONE (your screenshot shows it still set).
 const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
+
+// ✅ Current update authority (from your screenshot)
+// If you later revoke it, this becomes irrelevant, but for now we show truth.
+const CURRENT_UPDATE_AUTHORITY = 'D2N1rt…tkHcJR';
 
 // Rewards reserve wallet (you sent this link)
 const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
@@ -97,7 +105,7 @@ const TEAM_VESTING = {
   recipientWallet: '3DSuZP8d8a9f5CftdJvmJA1wxgzgxKULLDwZeRKC2Vh',
 };
 
-// ✅ Partners lock (8 months) - THIS is the “first lock” you said belongs to Partners (img 2)
+// ✅ Partners lock (8 months)
 const PARTNERS_LOCK = {
   contractAccount: 'EqszkWnNNQDVQvLgu5kH4tSQNQ6jgYswU5dioXkVbLK1',
 };
@@ -250,7 +258,6 @@ function ProofLinkPill({
 
 // ─────────────────────────────────────────────
 // ✅ Partners lock panel (8 months) - Streamflow proof
-// Shows inside Partners allocation (img 2)
 // ─────────────────────────────────────────────
 function PartnersLockPanel() {
   const lockUrl = getStreamflowContractUrl(PARTNERS_LOCK.contractAccount);
@@ -312,8 +319,7 @@ function PartnersLockPanel() {
 }
 
 // ─────────────────────────────────────────────
-// Team vesting (12 months, monthly equal amounts)
-// + ✅ on-chain Streamflow proof panel
+// Team vesting panel
 // ─────────────────────────────────────────────
 function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
   const months = 12;
@@ -1053,7 +1059,6 @@ function DonutAllocation({
 
                           {a.key === 'team' && <TeamVestingPanel totalTeamTokens={teamTotalTokens} />}
 
-                          {/* ✅ Partners lock belongs here (img 2) */}
                           {a.key === 'partners' && <PartnersLockPanel />}
 
                           <VaultGroupPanel title="Vaults (live)" groupKey={vaultGroupKey} data={vaultData} isLoading={vaultLoading} hadError={vaultError} />
@@ -1097,7 +1102,6 @@ function TokenomicsPageInner() {
     [DISTRIBUTION_RESERVE],
   );
 
-  // ✅ focus number: 19.18 years (7B / 1M / 365)
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
   const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
 
@@ -1183,7 +1187,7 @@ function TokenomicsPageInner() {
   const sortedAllocation = useMemo(() => {
     const order = ['distribution', 'treasury', 'liquidity', 'strategic', 'team', 'partners', 'community'];
     const idx = new Map(order.map((k, i) => [k, i]));
-    return [...allocation].sort((a, b) => (idx.get(a.key) ?? 999) - (idx.get(b.key) ?? 999));
+    return [...allocation].sort((a, b) => (idx.get(a.key) ?? 999) - (idx.get(a.key) ?? 999));
   }, [allocation]);
 
   const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
@@ -1312,11 +1316,11 @@ function TokenomicsPageInner() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
-            <p className="mt-2 text-sm font-semibold text-slate-100">Authorities status</p>
-            <p className="mt-1 text-xs text-slate-500">This card is proof-driven. If tx is missing, it will not claim “revoked”.</p>
+            <p className="mt-2 text-sm font-semibold text-slate-100">Authority truth</p>
+            <p className="mt-1 text-xs text-slate-500">This card shows truth. Green only when proof tx exists.</p>
           </div>
           <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-            Proof
+            Proof-based
           </span>
         </div>
 
@@ -1324,57 +1328,50 @@ function TokenomicsPageInner() {
           {[
             {
               k: 'Mint authority',
-              okText: 'Revoked',
-              badText: 'Unknown',
+              status: 'Revoked',
+              ok: true,
               tx: MINT_AUTHORITY_REVOKE_TX,
-              note: 'Proof target: mintTokens authority = NULL on the mint account.',
+              note: 'Proof target: set mintTokens authority to NULL on the mint account.',
             },
             {
               k: 'Freeze authority',
-              okText: 'Revoked',
-              badText: 'Unknown',
+              status: FREEZE_AUTHORITY_REVOKE_TX ? 'Revoked' : 'Unverified',
+              ok: Boolean(FREEZE_AUTHORITY_REVOKE_TX),
               tx: FREEZE_AUTHORITY_REVOKE_TX,
-              note: 'Proof target: freeze authority = NULL on the mint account.',
+              note: FREEZE_AUTHORITY_REVOKE_TX
+                ? 'Proof target: set freeze authority to NULL on the mint account.'
+                : 'Paste the freeze revoke tx once confirmed. Until then we do NOT claim it is revoked.',
             },
             {
               k: 'Update authority',
-              okText: 'Revoked',
-              badText: 'Still set',
+              status: UPDATE_AUTHORITY_REVOKE_TX ? 'Revoked' : `Still set (${CURRENT_UPDATE_AUTHORITY})`,
+              ok: Boolean(UPDATE_AUTHORITY_REVOKE_TX),
               tx: UPDATE_AUTHORITY_REVOKE_TX,
-              note: 'If this is still set to a wallet, paste the revoke/lock tx here once you do it.',
+              note: UPDATE_AUTHORITY_REVOKE_TX
+                ? 'Proof target: metadata update authority removed/locked (verifiable by tx).'
+                : 'Currently still set to a wallet (per Solscan). Revoke/lock it, then paste proof tx here.',
             },
-          ].map(row => {
-            const hasTx = !!row.tx;
-            const label = hasTx ? row.okText : row.badText;
-
-            return (
-              <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
-
-                    {hasTx ? (
-                      <p className="mt-1 text-sm font-semibold text-emerald-200">{label}</p>
-                    ) : row.k === 'Update authority' ? (
-                      <p className="mt-1 text-sm font-semibold text-[rgb(var(--xpot-gold-2))]">{label}</p>
-                    ) : (
-                      <p className="mt-1 text-sm font-semibold text-slate-300">{label}</p>
-                    )}
-                  </div>
-
-                  {hasTx ? (
-                    <ProofLinkPill href={solscanTxUrl(row.tx!)} label="Solscan tx" tone="emerald" />
-                  ) : (
-                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
-                      Paste tx
-                    </span>
-                  )}
+          ].map(row => (
+            <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
+                  <p className={`mt-1 text-sm font-semibold ${row.ok ? 'text-emerald-200' : 'text-[rgb(var(--xpot-gold-2))]'}`}>
+                    {row.status}
+                  </p>
                 </div>
 
-                <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
+                {row.tx ? (
+                  <ProofLinkPill href={solscanTxUrl(row.tx)} label="Solscan tx" tone={row.ok ? 'emerald' : 'gold'} />
+                ) : (
+                  <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-300">
+                    Paste tx
+                  </span>
+                )}
               </div>
-            );
-          })}
+              <p className="mt-2 text-[11px] text-slate-600">{row.note}</p>
+            </div>
+          ))}
 
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
