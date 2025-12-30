@@ -116,21 +116,32 @@ function makeCode() {
  * Use the SAME balance endpoint as the dashboard UI uses.
  * That removes mint mismatch bugs (env XPOT_MINT vs TOKEN_MINT vs old config).
  */
-async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string): Promise<number | null> {
+async function getXpotBalanceFromSameEndpoint(
+  req: NextRequest,
+  address: string,
+): Promise<number | null> {
   try {
     const origin = req.nextUrl.origin;
     const url = `${origin}/api/xpot-balance?address=${encodeURIComponent(address)}`;
 
+    // ✅ THIS LINE FIXES VERCEL AUTH
+    const cookie = req.headers.get('cookie') ?? '';
+
     const r = await fetch(url, {
       method: 'GET',
       cache: 'no-store',
-      // make sure this is always dynamic in Vercel
-      headers: { 'cache-control': 'no-store' },
+      headers: {
+        'cache-control': 'no-store',
+        cookie, // <-- REQUIRED
+      },
     });
 
     if (!r.ok) return null;
+
     const j = (await r.json().catch(() => null)) as any;
-    return j && typeof j.balance === 'number' && Number.isFinite(j.balance) ? j.balance : null;
+    return j && typeof j.balance === 'number' && Number.isFinite(j.balance)
+      ? j.balance
+      : null;
   } catch {
     return null;
   }
