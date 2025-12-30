@@ -1,17 +1,28 @@
+// components/RotatingAnnouncement.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 
 type Announcement = {
-  before?: string; // plain text BEFORE highlight (no trailing space needed)
-  highlight: string; // highlighted phrase
-  after?: string; // plain text AFTER highlight (can start with punctuation)
+  before?: string;
+  highlight: string;
+  after?: string;
 };
 
-function needsSpaceBetween(before?: string) {
-  if (!before) return false;
-  // If before already ends with whitespace, we don't add an extra space
-  return !/\s$/.test(before);
+function needsSpaceBetween(left?: string, right?: string) {
+  if (!left || !right) return false;
+
+  // If either side already includes spacing at the boundary, don't add.
+  if (/\s$/.test(left)) return false;
+  if (/^\s/.test(right)) return false;
+
+  // If the right side starts with punctuation, don't add a space.
+  if (/^[\.\,\!\?\:\;\)\]]/.test(right)) return false;
+
+  // If the left side ends with an opening bracket, don't add.
+  if (/[\(\[\{]$/.test(left)) return false;
+
+  return true;
 }
 
 export default function RotatingAnnouncement({
@@ -19,23 +30,24 @@ export default function RotatingAnnouncement({
 }: {
   intervalMs?: number;
 }) {
+  // IMPORTANT: keep strings TRIMMED (no leading/trailing spaces).
+  // Spacing is handled in render so it can’t break again.
   const announcements = useMemo<Announcement[]>(
     () => [
       {
-        before: "We're aiming to build the world's biggest game",
-        highlight: 'one day at a time',
-        after: '. You are early - this is where it starts.',
+        before: "We're aiming to become the",
+        highlight: 'biggest game on the planet',
+        after: "You're early. This is where it starts.",
       },
       {
-        before: 'XPOT is live',
-        highlight: 'contract deployed, trading active',
-        after: '. The protocol is being built in public.',
+        before: "We're building toward becoming the",
+        highlight: "world's biggest game",
+        after: 'One day at a time.',
       },
       {
-        // ✅ 3rd announcement: start promoting 19.18 (as requested)
-        before: 'Next milestone',
-        highlight: '19.18',
-        after: ' - we push volume and momentum until we hit it.',
+        before: 'Bonus window',
+        highlight: '19:18 (Madrid)',
+        after: 'Be connected and ready.',
       },
     ],
     [],
@@ -45,7 +57,7 @@ export default function RotatingAnnouncement({
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const FADE_MS = 800;
+    const FADE_MS = 700;
 
     const fadeOut = window.setTimeout(() => {
       setVisible(false);
@@ -64,42 +76,50 @@ export default function RotatingAnnouncement({
 
   const a = announcements[idx];
 
+  const b = a.before ?? '';
+  const h = a.highlight ?? '';
+  const af = a.after ?? '';
+
+  const spaceBH = needsSpaceBetween(b, h);
+  const spaceHA = needsSpaceBetween(h, af);
+
   return (
     <span
       className={[
+        'min-w-0',
         'inline-flex items-center',
-        // ✅ smaller + cleaner
-        'text-[12.5px] sm:text-[13px]',
+        'text-[12.5px] sm:text-[13px]', // smaller + cleaner
         'leading-[1.35]',
         'font-medium',
-        'tracking-[-0.005em]',
+        'tracking-[-0.008em]',
         'text-white/80',
-        'transition-all duration-800 ease-out',
+        'transition-all duration-700 ease-out',
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[2px]',
-        // ✅ make spacing more consistent
-        'whitespace-nowrap',
       ].join(' ')}
       aria-live="polite"
     >
-      {a.before && <span>{a.before}</span>}
+      {b ? <span className="text-white/78">{b}</span> : null}
 
-      {/* ✅ Force exactly one space between before and highlight */}
-      {a.before && needsSpaceBetween(a.before) && <span aria-hidden>{' '}</span>}
+      {spaceBH ? <span>{' '}</span> : null}
 
       <strong
         className={[
-          // ✅ keep highlight premium but not huge
+          'relative',
           'font-semibold',
           'text-[rgb(var(--xpot-gold-2))]',
-          // slight text polish
-          'drop-shadow-[0_1px_0_rgba(0,0,0,0.55)]',
+          // tiny premium glow without changing your palette system
+          'drop-shadow-[0_0_10px_rgba(var(--xpot-gold-2),0.12)]',
         ].join(' ')}
       >
-        {a.highlight}
+        {h}
       </strong>
 
-      {/* ✅ After is rendered exactly as written (punctuation + spaces included) */}
-      {a.after && <span>{a.after}</span>}
+      {af ? (
+        <>
+          {spaceHA ? <span>{' '}</span> : null}
+          <span className="text-white/78">{af}</span>
+        </>
+      ) : null}
     </span>
   );
 }
