@@ -8,14 +8,13 @@ type Announcement = {
   after?: string;
 };
 
-function needsSpaceBeforeAfter(after: string) {
-  // No space before these (punctuation that should attach to the previous word)
-  // NOTE: "(" should KEEP a space before it, so it's intentionally NOT in this list.
-  return !/^[\.,!?:;)]/.test(after);
+function needsLeadingSpace(s: string) {
+  // No space before punctuation that should hug the previous word
+  return !/^[\.,!\?:;]/.test(s);
 }
 
 export default function RotatingAnnouncement({
-  intervalMs = 14000, // slower, premium
+  intervalMs = 14000,
 }: {
   intervalMs?: number;
 }) {
@@ -63,36 +62,33 @@ export default function RotatingAnnouncement({
 
   const a = announcements[idx];
 
-  const before = (a.before ?? '').trimEnd();
-  const after = (a.after ?? '').trimStart();
-
   return (
     <span
       className={[
         'inline-flex items-center',
-        'text-[14px]',
-        'font-medium',
-        'tracking-[-0.01em]',
-        'text-white/80',
+        'text-[12.5px] md:text-[13px]',
+        'font-normal',
+        'tracking-[0.01em]',
+        'text-white/75',
         'transition-all duration-800 ease-out',
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[2px]',
       ].join(' ')}
       aria-live="polite"
     >
-      {before ? (
+      {a.before ? (
         <>
-          <span>{before}</span>
-          {/* explicit space so we never get "thebiggest" / "theworld's" */}
-          <span aria-hidden>{' '}</span>
+          <span>{a.before}</span>{' '}
         </>
       ) : null}
 
-      <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">{a.highlight}</strong>
+      <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">
+        {a.highlight}
+      </strong>
 
-      {after ? (
+      {a.after ? (
         <>
-          {needsSpaceBeforeAfter(after) ? <span aria-hidden>{' '}</span> : null}
-          <span>{after}</span>
+          {needsLeadingSpace(a.after) ? ' ' : ''}
+          <span>{a.after}</span>
         </>
       ) : null}
     </span>
