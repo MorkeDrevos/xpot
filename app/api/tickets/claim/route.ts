@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { REQUIRED_XPOT } from '@/lib/xpot';
+import { auth } from '@clerk/nextjs/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,11 +59,9 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
-  // Iterate to handle DST offsets.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
 
-    // crude but stable compare (minute precision)
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
     const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
 
@@ -79,7 +78,6 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   const nowMin = madridNow.hh * 60 + madridNow.mm;
   const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
 
-  // If before today's cutoff -> next cutoff is today 22:00; else tomorrow 22:00.
   const baseForNext = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
   const nextDayParts = getTzParts(baseForNext, MADRID_TZ);
 
@@ -94,23 +92,12 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   });
 
   const startUtcMs = endUtcMs - 24 * 60 * 60_000;
-
   return { start: new Date(startUtcMs), end: new Date(endUtcMs) };
 }
 
-/**
- * Deterministic draw bucket:
- * Use the Madrid calendar date "of the current window" and store drawDate as 00:00:00Z for that date.
- *
- * This matches your existing Draw rows in Studio (drawDate at midnight Z),
- * and avoids fragile range queries.
- */
 function getDrawBucketUtc(now = new Date()) {
-  // We want the Madrid "day label" for the current window.
-  // Take (end - 1ms) to represent "inside" the window, then read its Madrid date.
   const { end } = getMadridCutoffWindowUtc(now);
   const insideWindow = new Date(end.getTime() - 1);
-
   const p = getTzParts(insideWindow, MADRID_TZ);
   return new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
 }
@@ -136,7 +123,6 @@ async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string)
   try {
     const origin = req.nextUrl.origin;
     const url = `${origin}/api/xpot-balance?address=${encodeURIComponent(address)}`;
-
     const cookie = req.headers.get('cookie') ?? '';
 
     const r = await fetch(url, {
@@ -144,7 +130,7 @@ async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string)
       cache: 'no-store',
       headers: {
         'cache-control': 'no-store',
-        cookie, // ✅ required if DEV is behind Vercel auth
+        cookie,
       },
     });
 
@@ -157,12 +143,14 @@ async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string)
   }
 }
 
-// ─────────────────────────────────────────────
-// POST
-// ─────────────────────────────────────────────
-
 export async function POST(req: NextRequest) {
   try {
+    // ✅ enforce “account-level” claim (ties wallets to the signed-in user)
+    const { userId: clerkId } = auth();
+    if (!clerkId) {
+      return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
+    }
+
     const body = await req.json().catch(() => ({} as any));
     const walletAddress: string | undefined = body.walletAddress || body.wallet || body.address;
 
@@ -184,7 +172,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2) Guarantee current draw exists + is open (this fixes NO_OPEN_DRAW forever)
+    // 2) Guarantee current draw exists + is open
     const now = new Date();
     const { end } = getMadridCutoffWindowUtc(now);
     const drawDate = getDrawBucketUtc(now);
@@ -192,7 +180,6 @@ export async function POST(req: NextRequest) {
     const draw = await prisma.$transaction(async tx => {
       const existing = await tx.draw.findUnique({ where: { drawDate } });
 
-      // Create if missing
       if (!existing) {
         return tx.draw.create({
           data: {
@@ -203,8 +190,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // If we are still inside the window, draw MUST be open.
-      // If it was mistakenly completed/cancelled, reopen it.
       const stillBeforeCutoff = now.getTime() < end.getTime();
 
       if (stillBeforeCutoff && existing.status !== 'open') {
@@ -214,7 +199,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Keep closesAt synced (harmless, avoids drift)
       if (!existing.closesAt || existing.closesAt.getTime() !== end.getTime()) {
         return tx.draw.update({
           where: { id: existing.id },
@@ -225,16 +209,25 @@ export async function POST(req: NextRequest) {
       return existing;
     });
 
-    // 3) Ensure wallet row exists
-    const wallet = await prisma.wallet.upsert({
-      where: { address: walletAddress },
+    // 3) Ensure app User exists for this Clerk user
+    const appUser = await prisma.user.upsert({
+      where: { clerkId },
       update: {},
-      create: { address: walletAddress },
+      create: { clerkId },
+      select: { id: true },
     });
 
-    // 4) One ticket per wallet per draw (you also have @@unique([walletId, drawId]))
+    // 4) Ensure wallet row exists AND is linked to this user
+    const wallet = await prisma.wallet.upsert({
+      where: { address: walletAddress },
+      update: { userId: appUser.id },
+      create: { address: walletAddress, userId: appUser.id },
+      select: { id: true, address: true, userId: true },
+    });
+
+    // 5) One ticket per wallet per draw (unique: [walletId, drawId])
     let ticket = await prisma.ticket.findFirst({
-      where: { drawId: draw.id, walletAddress, status: 'IN_DRAW' },
+      where: { drawId: draw.id, walletId: wallet.id, status: 'IN_DRAW' },
       include: { wallet: true },
     });
 
@@ -243,12 +236,28 @@ export async function POST(req: NextRequest) {
         data: {
           code: makeCode(),
           walletId: wallet.id,
-          walletAddress,
+          walletAddress: walletAddress,
           drawId: draw.id,
         },
         include: { wallet: true },
       });
     }
+
+    // ✅ Return ALL tickets for this user for today’s draw (for multi-wallet UI)
+    const allTickets = await prisma.ticket.findMany({
+      where: {
+        drawId: draw.id,
+        wallet: { userId: appUser.id },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        walletAddress: true,
+        createdAt: true,
+      },
+    });
 
     return NextResponse.json(
       {
@@ -263,19 +272,11 @@ export async function POST(req: NextRequest) {
           walletAddress: ticket.walletAddress,
           createdAt: ticket.createdAt,
           wallet: {
-            id: ticket.wallet?.id ?? null,
+            id: ticket.wallet?.id ?? wallet.id,
             address: ticket.wallet?.address ?? walletAddress,
           },
         },
-        tickets: [
-          {
-            id: ticket.id,
-            code: ticket.code,
-            status: ticket.status,
-            walletAddress: ticket.walletAddress,
-            createdAt: ticket.createdAt,
-          },
-        ],
+        tickets: allTickets,
       },
       { status: 200 },
     );
