@@ -25,3 +25,5 @@ Thumbs.db
 
 # Prisma – keep schema, ignore generated client
 prisma/client/
+.vercel
+.env*.local
