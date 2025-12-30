@@ -98,8 +98,25 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   return { start: new Date(startUtcMs), end: new Date(endUtcMs) };
 }
 
+/**
+ * Deterministic draw bucket:
+ * Use the Madrid calendar date "of the current window" and store drawDate as 00:00:00Z for that date.
+ *
+ * This matches your existing Draw rows in Studio (drawDate at midnight Z),
+ * and avoids fragile range queries.
+ */
+function getDrawBucketUtc(now = new Date()) {
+  // We want the Madrid "day label" for the current window.
+  // Take (end - 1ms) to represent "inside" the window, then read its Madrid date.
+  const { end } = getMadridCutoffWindowUtc(now);
+  const insideWindow = new Date(end.getTime() - 1);
+
+  const p = getTzParts(insideWindow, MADRID_TZ);
+  return new Date(Date.UTC(p.y, p.m - 1, p.d, 0, 0, 0));
+}
+
 // ─────────────────────────────────────────────
-// Helpers – code + XPOT balance check (single source of truth)
+// Helpers – code + XPOT balance check
 // ─────────────────────────────────────────────
 
 function makeCode() {
@@ -112,19 +129,14 @@ function makeCode() {
 }
 
 /**
- * IMPORTANT FIX:
  * Use the SAME balance endpoint as the dashboard UI uses.
- * That removes mint mismatch bugs (env XPOT_MINT vs TOKEN_MINT vs old config).
+ * (and forward cookies for Vercel-protected DEV)
  */
-async function getXpotBalanceFromSameEndpoint(
-  req: NextRequest,
-  address: string,
-): Promise<number | null> {
+async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string): Promise<number | null> {
   try {
     const origin = req.nextUrl.origin;
     const url = `${origin}/api/xpot-balance?address=${encodeURIComponent(address)}`;
 
-    // ✅ THIS LINE FIXES VERCEL AUTH
     const cookie = req.headers.get('cookie') ?? '';
 
     const r = await fetch(url, {
@@ -132,16 +144,14 @@ async function getXpotBalanceFromSameEndpoint(
       cache: 'no-store',
       headers: {
         'cache-control': 'no-store',
-        cookie, // <-- REQUIRED
+        cookie, // ✅ required if DEV is behind Vercel auth
       },
     });
 
     if (!r.ok) return null;
 
     const j = (await r.json().catch(() => null)) as any;
-    return j && typeof j.balance === 'number' && Number.isFinite(j.balance)
-      ? j.balance
-      : null;
+    return j && typeof j.balance === 'number' && Number.isFinite(j.balance) ? j.balance : null;
   } catch {
     return null;
   }
@@ -160,39 +170,60 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'MISSING_WALLET' }, { status: 400 });
     }
 
-    // 1) XPOT minimum check (server-side) - XPOT ONLY, no SOL gating
+    // 1) XPOT minimum check (server-side)
     const xpotBalance = await getXpotBalanceFromSameEndpoint(req, walletAddress);
 
     if (xpotBalance === null) {
-      // This means the same endpoint your UI uses could not verify the balance.
       return NextResponse.json({ ok: false, error: 'XPOT_CHECK_FAILED' }, { status: 400 });
     }
 
     if (xpotBalance < REQUIRED_XPOT) {
       return NextResponse.json(
-        {
-          ok: false,
-          error: 'NOT_ENOUGH_XPOT',
-          required: REQUIRED_XPOT,
-          balance: xpotBalance,
-        },
+        { ok: false, error: 'NOT_ENOUGH_XPOT', required: REQUIRED_XPOT, balance: xpotBalance },
         { status: 400 },
       );
     }
 
-    // 2) Find the open draw for the CURRENT MADRID CUTOFF WINDOW
-    const { start, end } = getMadridCutoffWindowUtc(new Date());
+    // 2) Guarantee current draw exists + is open (this fixes NO_OPEN_DRAW forever)
+    const now = new Date();
+    const { end } = getMadridCutoffWindowUtc(now);
+    const drawDate = getDrawBucketUtc(now);
 
-    const draw = await prisma.draw.findFirst({
-      where: {
-        drawDate: { gte: start, lt: end },
-        status: 'open',
-      },
+    const draw = await prisma.$transaction(async tx => {
+      const existing = await tx.draw.findUnique({ where: { drawDate } });
+
+      // Create if missing
+      if (!existing) {
+        return tx.draw.create({
+          data: {
+            drawDate,
+            closesAt: end,
+            status: 'open',
+          },
+        });
+      }
+
+      // If we are still inside the window, draw MUST be open.
+      // If it was mistakenly completed/cancelled, reopen it.
+      const stillBeforeCutoff = now.getTime() < end.getTime();
+
+      if (stillBeforeCutoff && existing.status !== 'open') {
+        return tx.draw.update({
+          where: { id: existing.id },
+          data: { status: 'open', closesAt: end },
+        });
+      }
+
+      // Keep closesAt synced (harmless, avoids drift)
+      if (!existing.closesAt || existing.closesAt.getTime() !== end.getTime()) {
+        return tx.draw.update({
+          where: { id: existing.id },
+          data: { closesAt: end },
+        });
+      }
+
+      return existing;
     });
-
-    if (!draw) {
-      return NextResponse.json({ ok: false, error: 'NO_OPEN_DRAW' }, { status: 400 });
-    }
 
     // 3) Ensure wallet row exists
     const wallet = await prisma.wallet.upsert({
@@ -201,17 +232,12 @@ export async function POST(req: NextRequest) {
       create: { address: walletAddress },
     });
 
-    // 4) Check if this wallet already has an IN_DRAW ticket for this draw
+    // 4) One ticket per wallet per draw (you also have @@unique([walletId, drawId]))
     let ticket = await prisma.ticket.findFirst({
-      where: {
-        drawId: draw.id,
-        walletAddress,
-        status: 'IN_DRAW',
-      },
+      where: { drawId: draw.id, walletAddress, status: 'IN_DRAW' },
       include: { wallet: true },
     });
 
-    // 5) If none yet, create one
     if (!ticket) {
       ticket = await prisma.ticket.create({
         data: {
@@ -224,11 +250,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 6) Return the ticket
     return NextResponse.json(
       {
         ok: true,
         drawId: draw.id,
+        drawDate: draw.drawDate,
+        closesAt: draw.closesAt,
         ticket: {
           id: ticket.id,
           code: ticket.code,
