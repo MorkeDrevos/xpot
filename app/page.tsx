@@ -1325,60 +1325,13 @@ function ParallaxConsoleCard({
 }
 
 function MissionBanner() {
-  const STORAGE_KEY = 'xpot_mission_hidden_day';
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
-  const [hidden, setHidden] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    try {
-      const storedDay = localStorage.getItem(STORAGE_KEY);
-      setHidden(storedDay === today);
-    } catch {
-      setHidden(false);
-    }
-  }, []);
-
-  if (hidden === null || hidden) return null;
-
-  function dismiss() {
-    try {
-      localStorage.setItem(STORAGE_KEY, today);
-    } catch {}
-    setHidden(true);
-  }
-
   return (
     <div className="relative border-y border-slate-900/60 bg-slate-950/55 backdrop-blur">
       <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),radial-gradient(circle_at_82%_0%,rgba(56,189,248,0.16),transparent_62%)]" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`}
-            >
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Mission
-            </span>
-
-            <p className="text-sm text-slate-300">
-  <RotatingAnnouncement />
-</p>
-          </div>
-
-          <a
-  href="https://dev.xpot.bet/tokenomics?tab=rewards&focus=reserve"
-  target="_blank"
-  rel="noreferrer"
-  className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-300/10 px-5 py-2.5 text-[12px] font-semibold tracking-[0.18em] uppercase text-emerald-50 shadow-[0_18px_60px_rgba(16,185,129,0.12)] hover:bg-emerald-300/14 hover:brightness-[1.03] transition"
-  title="Open reserves"
->
-  View reserves
-  {/* if you already import ExternalLink */}
-  <ExternalLink className="h-4 w-4 opacity-85" />
-</a>
-        </div>
+        {/* RotatingAnnouncement now owns: Status pill + message + View Reserves button(s) */}
+        <RotatingAnnouncement />
       </div>
     </div>
   );
