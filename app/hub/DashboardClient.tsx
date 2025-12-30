@@ -208,25 +208,25 @@ function StatusPill({
           'before:bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.16),transparent_58%)]',
         ].join(' ')
       : tone === 'amber'
-  ? [
-      'border-amber-200/80',
+      ? [
+          'border-amber-200/80',
 
-      // TEXT MUST BE WHITE
-      'text-white',
-      '[&_svg]:text-white',
-      '[text-shadow:0_1px_0_rgba(0,0,0,0.75)]',
+          // TEXT MUST BE WHITE
+          'text-white',
+          '[&_svg]:text-white',
+          '[text-shadow:0_1px_0_rgba(0,0,0,0.75)]',
 
-      // gold shell only
-      'bg-[linear-gradient(180deg,rgba(255,214,102,0.72),rgba(251,191,36,0.42),rgba(245,158,11,0.22),rgba(2,6,23,0.70))]',
-      'shadow-[0_0_0_1px_rgba(251,191,36,0.38),0_26px_140px_rgba(251,191,36,0.20)]',
-      'ring-1 ring-amber-300/18',
+          // gold shell only
+          'bg-[linear-gradient(180deg,rgba(255,214,102,0.72),rgba(251,191,36,0.42),rgba(245,158,11,0.22),rgba(2,6,23,0.70))]',
+          'shadow-[0_0_0_1px_rgba(251,191,36,0.38),0_26px_140px_rgba(251,191,36,0.20)]',
+          'ring-1 ring-amber-300/18',
 
-      // highlight + sheen
-      'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-95',
-      'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.26),transparent_56%)]',
-      'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-60',
-      'after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.16),transparent)]',
-    ].join(' ')
+          // highlight + sheen
+          'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-95',
+          'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.26),transparent_56%)]',
+          'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-60',
+          'after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.16),transparent)]',
+        ].join(' ')
       : tone === 'sky'
       ? [
           'border-sky-200/34',
@@ -508,11 +508,17 @@ function EntryCeremony({
   code,
   onClose,
   soundEnabled,
+  countdown,
+  cutoffLabel,
+  sharePath = '/hub',
 }: {
   open: boolean;
   code: string;
   onClose: () => void;
   soundEnabled: boolean;
+  countdown: string;
+  cutoffLabel: string;
+  sharePath?: string;
 }) {
   const reduced = useReducedMotionPref();
 
@@ -1480,11 +1486,14 @@ function DashboardInner() {
       `}</style>
 
       <EntryCeremony
-        open={showCeremony}
-        code={ceremonyCode}
-        soundEnabled={soundEnabled}
-        onClose={() => setShowCeremony(false)}
-      />
+  open={showCeremony}
+  code={ceremonyCode}
+  soundEnabled={soundEnabled}
+  onClose={() => setShowCeremony(false)}
+  countdown={countdown}
+  cutoffLabel="22:00 Madrid cutoff"
+  sharePath="/hub"
+/>
 
       <HubLockOverlay
         open={showLock}
@@ -1562,12 +1571,12 @@ function DashboardInner() {
             >
               <div className="xpot-hero-sweep absolute inset-0" />
               <div
-  className="pointer-events-none absolute -inset-28 blur-3xl opacity-95
+                className="pointer-events-none absolute -inset-28 blur-3xl opacity-95
   bg-[radial-gradient(circle_at_12%_18%,rgba(56,189,248,0.18),transparent_60%),
       radial-gradient(circle_at_62%_22%,rgba(99,102,241,0.20),transparent_62%),
       radial-gradient(circle_at_40%_105%,rgba(236,72,153,0.12),transparent_70%),
       radial-gradient(circle_at_92%_80%,rgba(251,191,36,0.10),transparent_72%)]"
-/>
+              />
               <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(rgba(255,255,255,0.50)_1px,transparent_1px)] [background-size:22px_22px]" />
               <div className="pointer-events-none absolute inset-0 xpot-luxe-border" />
 
@@ -1802,15 +1811,8 @@ function DashboardInner() {
 
                   {walletConnected && !ticketClaimed && (
                     <>
-                      <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
-                          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Requirement</p>
-                          <p className="mt-1 text-sm font-semibold text-slate-100">
-                            <GoldAmount value={REQUIRED_XPOT.toLocaleString()} suffix="XPOT" size="sm" />
-                          </p>
-                          <p className="mt-1 text-xs text-slate-200/65">Held in the wallet you connect.</p>
-                        </div>
-
+                      {/* ✅ Removed duplicate "Requirement" tile here (minimum already shown in HERO) */}
+                      <div className="mt-4">
                         <div className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
                           <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Your status</p>
                           <div className="mt-2">
@@ -1909,13 +1911,12 @@ function DashboardInner() {
                 </LuxeCard>
               </div>
 
+              {/* ... everything else unchanged ... */}
+
               <div ref={entriesSectionRef as any}>
                 <LuxeCard
                   accent="sky"
-                  className={[
-                    // Pulse only when triggered (keyed by entriesHighlightPulse)
-                    entriesHighlightPulse ? 'xpot-entries-pulse' : '',
-                  ].join(' ')}
+                  className={[entriesHighlightPulse ? 'xpot-entries-pulse' : ''].join(' ')}
                   key={`entries-card-${entriesHighlightPulse}`}
                 >
                   <LuxeTitle
@@ -2039,6 +2040,7 @@ function DashboardInner() {
 
             {/* RIGHT */}
             <div className="space-y-6">
+              {/* (right side unchanged) */}
               <LuxeCard accent="violet">
                 <LuxeTitle
                   title="Today’s mission"
@@ -2297,14 +2299,13 @@ function DashboardInner() {
             </div>
           </footer>
 
-          {/* RIGHT-SIDE STICKY ENTRIES MONITOR (closed by default, now premium and visible) */}
+          {/* RIGHT-SIDE STICKY ENTRIES MONITOR (unchanged) */}
           <div className="fixed bottom-5 left-4 right-4 z-[60] sm:left-auto sm:right-6 sm:w-[380px]">
             <div className="xpot-monitor-shell xpot-monitor-beacon relative overflow-hidden rounded-[22px]">
               <div className="pointer-events-none absolute -inset-20 opacity-75 blur-3xl bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.16),transparent_58%),radial-gradient(circle_at_62%_20%,rgba(99,102,241,0.18),transparent_58%),radial-gradient(circle_at_85%_40%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_60%_110%,rgba(236,72,153,0.10),transparent_68%)]" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px]" />
 
               <div className="relative p-4">
-                {/* Visible "handle" row */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
