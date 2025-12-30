@@ -1,158 +1,91 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Crown, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import Xpot1918Badge from '@/components/Xpot1918Badge';
 
-type Announcement = {
-  kind: 'badge' | 'text';
-  before?: string;
-  highlight: string;
-  after?: string;
-};
+type Announcement =
+  | {
+      kind: 'reserve';
+      prefix: string;
+      badge: string;
+      suffix: string;
+    }
+  | {
+      kind: 'text';
+      textBefore: string;
+      highlight: string;
+      textAfter: string;
+    };
 
 const RESERVES_URL = 'https://dev.xpot.bet/tokenomics?tab=rewards&focus=reserve';
 
-function firstNonSpaceChar(s: string) {
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i];
-    if (c !== ' ' && c !== '\n' && c !== '\t') return c;
-  }
-  return '';
-}
-
-/**
- * Decide whether we should inject a space BEFORE the "after" chunk.
- * Key rule for your UI: if after starts with "-" or "·", we WANT a space before it.
- */
-function shouldInsertSpace(beforeChunk?: string) {
-  if (!beforeChunk) return false;
-  const c = firstNonSpaceChar(beforeChunk);
-  if (!c) return false;
-
-  // No leading space before classic punctuation/closing chars
-  if ('.!,?:;)]}'.includes(c)) return false;
-  if (c === '"' || c === "'" || c === '’' || c === '”') return false;
-
-  // ✅ For dash/bullet starters, we DO want a space before them:
-  // "game - one day..." / "YEARS · 1,000,000/day..."
-  if (c === '-' || c === '–' || c === '—' || c === '·') return true;
-
-  return true;
-}
-
-function StatusPill({ label = 'STATUS' }: { label?: string }) {
-  return (
-    <span
-      className={[
-        'inline-flex items-center gap-2 rounded-full',
-        'border border-white/14 bg-white/[0.03]',
-        'px-4 py-2',
-        'shadow-[0_16px_60px_rgba(0,0,0,0.45)]',
-        'ring-1 ring-black/35',
-      ].join(' ')}
-    >
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-black/25">
-        <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-      </span>
-
-      <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-white/90">{label}</span>
-    </span>
-  );
-}
-
-function ViewReservesButton() {
+function ViewReservesLink() {
   return (
     <a
       href={RESERVES_URL}
       target="_blank"
       rel="noreferrer"
       className={[
+        // subtle, not a CTA pill
         'inline-flex items-center gap-2 rounded-full',
-        'border border-emerald-400/18 bg-emerald-300/10',
-        'px-5 py-2.5',
-        'text-[12px] font-semibold tracking-[0.18em] uppercase',
-        'text-emerald-50',
-        'shadow-[0_18px_60px_rgba(16,185,129,0.12)]',
-        'hover:bg-emerald-300/14 hover:brightness-[1.03]',
+        'border border-white/10 bg-white/[0.02]',
+        'px-3 py-1.5',
+        'text-[11px] font-semibold tracking-[0.14em] uppercase',
+        'text-white/70 hover:text-white/85',
+        'hover:bg-white/[0.04]',
         'transition',
       ].join(' ')}
       title="Open reserves"
     >
       View reserves
-      <ExternalLink className="h-4 w-4 opacity-85" />
+      <ExternalLink className="h-4 w-4 opacity-70" />
     </a>
   );
 }
 
 function RotatingLine({ a }: { a: Announcement }) {
-  const showBefore = !!a.before;
-  const showAfter = !!a.after;
+  if (a.kind === 'reserve') {
+    return (
+      <span className="inline-flex items-center gap-2 min-w-0">
+        <span className="text-white/60">{a.prefix}</span>
 
-  // Always separate before -> highlight
-  const insertBeforeSpace = showBefore;
+        {/* micro-badge + guaranteed spacing via gap */}
+        <Xpot1918Badge label={a.badge} subdued />
 
-  // Decide whether to inject a space BEFORE the after chunk
-  const insertAfterSpace = showAfter ? shouldInsertSpace(a.after) : false;
+        <span className="text-white/60 truncate">{a.suffix}</span>
+      </span>
+    );
+  }
 
   return (
-    <span
-      className={[
-        'inline-flex items-center',
-        'text-[12px] sm:text-[13px]',
-        'leading-[1.25]',
-        'font-medium',
-        'tracking-[-0.01em]',
-        'text-white/80',
-        // subtle premium smoothing
-        '[text-rendering:geometricPrecision]',
-      ].join(' ')}
-    >
-      {showBefore && (
-        <span className="text-white/70 whitespace-pre-wrap">
-          {a.before}
-          {insertBeforeSpace ? ' ' : ''}
-        </span>
-      )}
-
-      {a.kind === 'badge' ? (
-        <Xpot1918Badge label={a.highlight} />
-      ) : (
-        <strong className="font-semibold text-[rgb(var(--xpot-gold-2))] whitespace-pre-wrap">{a.highlight}</strong>
-      )}
-
-      {showAfter && (
-        <span className="text-white/70 whitespace-pre-wrap">
-          {insertAfterSpace ? ' ' : ''}
-          {a.after}
-        </span>
-      )}
+    <span className="inline-flex items-center gap-1.5 min-w-0">
+      <span className="text-white/60">{a.textBefore}</span>
+      <strong className="font-semibold text-[rgb(var(--xpot-gold-2))]">{a.highlight}</strong>
+      <span className="text-white/60">{a.textAfter}</span>
     </span>
   );
 }
 
 export default function RotatingAnnouncement({
   intervalMs = 16000,
-  labelLeft = 'STATUS',
 }: {
   intervalMs?: number;
-  labelLeft?: string;
 }) {
+  // ✅ calm order: vision first, reserves second
   const announcements = useMemo<Announcement[]>(
     () => [
       {
-        kind: 'badge',
-        before: 'Reserve Coverage:',
-        highlight: '19.18 YEARS',
-        // ✅ bullet separator + guaranteed space injection
-        after: '· 1,000,000/day locked for 7,000 days.',
+        kind: 'text',
+        textBefore: "We're building toward becoming the",
+        highlight: "world's biggest game",
+        textAfter: '- one day at a time.',
       },
       {
-        kind: 'text',
-        before: "We're building toward becoming the",
-        highlight: "world's biggest game",
-        // ✅ your hyphen style, now with correct spacing
-        after: '- one day at a time.',
+        kind: 'reserve',
+        prefix: 'Reserve Coverage:',
+        badge: '19.18 YEARS',
+        suffix: '1,000,000/day locked for 7,000 days.',
       },
     ],
     [],
@@ -162,7 +95,7 @@ export default function RotatingAnnouncement({
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const FADE_MS = 700;
+    const FADE_MS = 650;
 
     const fadeOut = window.setTimeout(() => setVisible(false), Math.max(0, intervalMs - FADE_MS));
     const swap = window.setTimeout(() => {
@@ -179,28 +112,27 @@ export default function RotatingAnnouncement({
   const a = announcements[idx];
 
   return (
-    <div className="flex w-full items-center gap-5">
-      {/* LEFT */}
-      <div className="shrink-0">
-        <StatusPill label={labelLeft} />
+    <div className="flex w-full items-center justify-between gap-4">
+      {/* LEFT/CENTER: calm line (no extra pills here) */}
+      <div
+        className={[
+          'min-w-0 flex-1',
+          'text-[12px] sm:text-[13px]',
+          'leading-[1.25]',
+          'font-medium',
+          'tracking-[-0.01em]',
+          'text-white/75',
+          'transition-all duration-700 ease-out',
+          visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[2px]',
+        ].join(' ')}
+        aria-live="polite"
+      >
+        <RotatingLine a={a} />
       </div>
 
-      {/* CENTER */}
-      <div className="min-w-0 flex-1">
-        <div
-          className={[
-            'transition-all duration-700 ease-out',
-            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[2px]',
-          ].join(' ')}
-          aria-live="polite"
-        >
-          <RotatingLine a={a} />
-        </div>
-      </div>
-
-      {/* RIGHT (replaces Dismiss) */}
+      {/* RIGHT: replaces dismiss placement */}
       <div className="shrink-0">
-        <ViewReservesButton />
+        <ViewReservesLink />
       </div>
     </div>
   );
