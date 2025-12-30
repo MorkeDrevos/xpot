@@ -642,7 +642,9 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
 
       {/* ✅ Final Draw (ONLY ONCE) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <Hourglass className="h-[15px] w-[15px] text-amber-200" />
+        <Hourglass
+  className="h-4 w-4 stroke-white text-white"
+/>
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
