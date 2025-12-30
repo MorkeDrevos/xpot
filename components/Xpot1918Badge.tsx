@@ -10,16 +10,30 @@ export default function Xpot1918Badge({
   return (
     <span
       className={[
-        'inline-flex items-center gap-2 rounded-full',
-        'border border-emerald-400/15 bg-emerald-300/10',
+        'relative inline-flex items-center',
+        'rounded-full',
+        'border border-emerald-400/20',
+        'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.22),rgba(0,0,0,0.30)_60%,rgba(0,0,0,0.22)_100%)]',
         'px-3 py-1',
-        'text-[11px] font-semibold tracking-[0.18em]',
-        'text-[rgb(var(--xpot-gold-2))]',
-        'shadow-[0_12px_40px_rgba(0,0,0,0.35)]',
+        'shadow-[0_14px_40px_rgba(16,185,129,0.10)]',
         className,
       ].join(' ')}
+      aria-label={label}
     >
-      {label}
+      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
+      <strong
+        className={[
+          'relative z-10',
+          'font-semibold',
+          'text-[rgb(var(--xpot-gold-2))]',
+          'tracking-[0.12em]',
+          'uppercase',
+          'whitespace-nowrap',
+          'text-[11px] sm:text-[12px]',
+        ].join(' ')}
+      >
+        {label}
+      </strong>
     </span>
   );
 }
