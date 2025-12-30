@@ -1367,12 +1367,17 @@ function MissionBanner() {
 </p>
           </div>
 
-          <button
-            onClick={dismiss}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-          >
-            Dismiss
-          </button>
+          <a
+  href="https://dev.xpot.bet/tokenomics?tab=rewards&focus=reserve"
+  target="_blank"
+  rel="noreferrer"
+  className="inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-300/10 px-5 py-2.5 text-[12px] font-semibold tracking-[0.18em] uppercase text-emerald-50 shadow-[0_18px_60px_rgba(16,185,129,0.12)] hover:bg-emerald-300/14 hover:brightness-[1.03] transition"
+  title="Open reserves"
+>
+  View reserves
+  {/* if you already import ExternalLink */}
+  <ExternalLink className="h-4 w-4 opacity-85" />
+</a>
         </div>
       </div>
     </div>
