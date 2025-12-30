@@ -1,3 +1,4 @@
+// components/RotatingAnnouncement.tsx
 'use client';
 
 import { useMemo } from 'react';
@@ -27,7 +28,7 @@ export default function RotatingAnnouncement({
 }: {
   reservesHref?: string;
 }) {
-  // ✅ LOCKED: announcement bar is now dedicated to 19.18 only
+  // ✅ LOCKED: announcement bar is dedicated to 19.18 only
   const a = useMemo<Announcement>(
     () => ({
       before: 'Reserve Coverage:',
@@ -41,31 +42,29 @@ export default function RotatingAnnouncement({
   const showAfter = !!a.after;
   const afterNeedsSpace = needsSpaceBetween(a.after);
 
-  // ✅ Smaller + subtle (matches the LEFT style, not the big filled one)
+  // ✅ Smaller, subtler button (matches LEFT style, not the big filled one)
   const BTN_SOFT_SM =
     'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] ' +
-    'px-4 py-2 text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-200 ' +
+    'px-4 py-2 text-[11px] font-semibold tracking-[0.16em] uppercase text-slate-200 ' +
     'hover:bg-white/[0.06] transition';
+
+  // ✅ Status pill: calmer / less loud (logo already there)
+  const STATUS_PILL =
+    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] ' +
+    'px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] text-slate-300';
 
   return (
     <div
       className={[
-        // Mobile: stack + centered
-        'flex flex-col items-center gap-2 text-center',
-        // Desktop: row layout
-        'sm:flex-row sm:justify-between sm:text-left sm:gap-3',
+        // Mobile: centered, stacked
+        'flex flex-col items-center justify-center gap-2 text-center',
+        // Desktop: single row, spaced
+        'sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:text-left',
       ].join(' ')}
     >
-      {/* LEFT: Status pill */}
-      <span
-        className={[
-          'inline-flex items-center gap-2 rounded-full border px-3 py-1',
-          'text-[10px] font-semibold uppercase tracking-[0.22em]',
-          'border-[rgba(var(--xpot-gold),0.25)] bg-[rgba(var(--xpot-gold),0.06)]',
-          'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]',
-        ].join(' ')}
-      >
-        <Crown className="h-3.5 w-3.5 text-[rgb(var(--xpot-gold-2))]" />
+      {/* LEFT: Status pill (subtle) */}
+      <span className={STATUS_PILL}>
+        <Crown className="h-3.5 w-3.5 text-slate-300/80" />
         Status
       </span>
 
@@ -74,12 +73,10 @@ export default function RotatingAnnouncement({
         className={[
           'min-w-0',
           'inline-flex flex-wrap items-center justify-center gap-2',
-          'sm:flex-1 sm:justify-center',
           'text-[12px] sm:text-[13px]',
-          'leading-[1.25]',
-          'font-medium',
-          'tracking-[-0.01em]',
+          'leading-[1.25] font-medium tracking-[-0.01em]',
           'text-white/80',
+          'sm:justify-start',
         ].join(' ')}
         aria-live="polite"
       >
@@ -90,10 +87,10 @@ export default function RotatingAnnouncement({
           className={[
             'relative inline-flex items-center',
             'rounded-full',
-            'border border-emerald-400/20',
-            'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.22),rgba(0,0,0,0.28)_55%,rgba(0,0,0,0.20)_100%)]',
+            'border border-emerald-400/18',
+            'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.18),rgba(0,0,0,0.28)_55%,rgba(0,0,0,0.18)_100%)]',
             'px-3 py-1',
-            'shadow-[0_18px_55px_rgba(16,185,129,0.10)]',
+            'shadow-[0_14px_44px_rgba(16,185,129,0.08)]',
             'shrink-0',
           ].join(' ')}
         >
@@ -120,7 +117,7 @@ export default function RotatingAnnouncement({
         )}
       </span>
 
-      {/* RIGHT: only View reserves (NO Explorer) */}
+      {/* RIGHT: only reserves button (no explorer) */}
       <div className="flex items-center justify-center">
         {reservesHref ? (
           <a
