@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 type UiStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 
@@ -24,7 +25,7 @@ function toUiStatus(raw: any): UiStatus {
 
 // ─────────────────────────────────────────────
 // Madrid cutoff logic (22:00 Europe/Madrid)
-// SAME BUCKET as /api/tickets/claim
+// SAME bucket logic as claim route
 // ─────────────────────────────────────────────
 
 const MADRID_TZ = 'Europe/Madrid';
@@ -119,57 +120,67 @@ function getDrawBucketUtc(now = new Date()) {
 
 export async function GET() {
   try {
-    // Must be signed in (account-level)
+    // ✅ account-level identity (Clerk)
     const { userId: clerkId } = auth();
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    // Resolve your internal User row (by clerkId)
+    // Find app user + wallets
     const appUser = await prisma.user.findUnique({
       where: { clerkId },
       select: { id: true },
     });
 
     if (!appUser?.id) {
-      // No linked wallets yet, so no account tickets
-      return NextResponse.json({ ok: true, draw: null, tickets: [] }, { status: 200 });
+      return NextResponse.json({ ok: true, draw: null, tickets: [] });
     }
 
-    // Wallets linked to this account
     const wallets = await prisma.wallet.findMany({
       where: { userId: appUser.id },
-      select: { id: true },
+      select: { id: true, address: true },
     });
 
     if (!wallets.length) {
-      return NextResponse.json({ ok: true, draw: null, tickets: [] }, { status: 200 });
+      return NextResponse.json({ ok: true, draw: null, tickets: [] });
     }
 
-    const walletIds = wallets.map(w => w.id);
-
-    // Draw bucket (Madrid cutoff logic)
+    // Today by Madrid cutoff window bucket
     const drawDate = getDrawBucketUtc(new Date());
 
     const draw = await prisma.draw.findUnique({
       where: { drawDate },
-      include: {
+      select: {
+        id: true,
+        drawDate: true,
+        status: true,
+        closesAt: true,
         tickets: {
-          where: { walletId: { in: walletIds } },
+          where: {
+            walletId: { in: wallets.map(w => w.id) },
+          },
           orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            code: true,
+            status: true,
+            label: true,
+            createdAt: true,
+            walletAddress: true,
+          },
         },
       },
     });
 
     if (!draw) {
-      return NextResponse.json({ ok: true, draw: null, tickets: [] }, { status: 200 });
+      return NextResponse.json({ ok: true, draw: null, tickets: [] });
     }
 
     const tickets = (draw.tickets ?? []).map(t => ({
       id: t.id,
       code: t.code,
       status: toUiStatus(t.status),
-      label: 'Ticket for today’s draw',
+      label: t.label ?? 'Ticket for today’s draw',
       createdAt: t.createdAt,
       walletAddress: String(t.walletAddress ?? ''),
     }));
