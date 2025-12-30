@@ -97,6 +97,10 @@ model Draw {
   closesAt DateTime?
   status   String   @default("open")
 
+  // ✅ used by your API/UI
+  jackpotUsd  Float @default(0)
+  rolloverUsd Float @default(0)
+
   tickets    Ticket[]
   winners    Winner[]
   bonusDrops BonusDrop[]
@@ -206,16 +210,9 @@ model DrawEntry {
   // One entry per user per draw
   @@unique([drawId, clerkId])
 
-  // Optional: uncomment if you want "1 handle = 1 entry" per draw
-  // @@unique([drawId, xHandle])
-
   @@index([drawId, createdAt])
   @@index([xHandle])
 }
-
-// ─────────────────────────────────────────────
-// ✅ Missing models (fixes prisma.hubStreak + prisma.userPreference)
-// ─────────────────────────────────────────────
 
 // Hub streak tracking (used by /api/hub/streak)
 model HubStreak {
@@ -247,27 +244,4 @@ model UserPreference {
   soundEnabled Boolean @default(true)
 
   @@index([clerkId])
-}
-
-model Draw {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  /// Calendar date of the draw (UTC day bucket)
-  drawDate DateTime @unique
-
-  /// When the main XPOT closes for entries
-  closesAt DateTime?
-  status   String   @default("open")
-
-  // ✅ add these (your API and UI already use them)
-  jackpotUsd   Float @default(0)
-  rolloverUsd  Float @default(0)
-
-  tickets    Ticket[]
-  winners    Winner[]
-  bonusDrops BonusDrop[]
-
-  // Public lobby entrants for this draw (X handles)
-  entries DrawEntry[]
 }
