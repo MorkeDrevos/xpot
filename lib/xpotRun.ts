@@ -3,8 +3,8 @@
 export const RUN_DAYS = 7000;
 
 // Madrid wall-clock cutoffs (day flips at 22:00 Europe/Madrid)
-// ✅ Fresh run start: 2025-12-28 22:00 Madrid
-export const RUN_START = { y: 2025, m: 12, d: 28, hh: 22, mm: 0 } as const;
+// ✅ Fresh run start: 2025-12-31 22:00 Madrid
+export const RUN_START = { y: 2025, m: 12, d: 31, hh: 22, mm: 0 } as const;
 
 type RunDt = { y: number; m: number; d: number; hh: number; mm: number };
 
@@ -27,10 +27,8 @@ function addDaysToYmd(ymd: { y: number; m: number; d: number }, days: number) {
  *
  * IMPORTANT:
  * If "Day 1 starts at RUN_START (22:00 Madrid)",
- * then the Final Draw happens after 7000 full days have elapsed:
+ * then the Final Draw happens after RUN_DAYS full days have elapsed:
  * RUN_END = RUN_START date + RUN_DAYS days (same 22:00 cutoff time).
- *
- * This makes the final draw date: 26/02/2045 (not 25/02/2045) for this run start.
  */
 export const RUN_END: RunDt = (() => {
   const endYmd = addDaysToYmd({ y: RUN_START.y, m: RUN_START.m, d: RUN_START.d }, RUN_DAYS);
