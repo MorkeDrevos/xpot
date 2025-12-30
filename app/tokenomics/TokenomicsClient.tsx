@@ -62,7 +62,7 @@ const DAYS_PER_YEAR = 365;
 // ✅ Solscan proof targets for token controls
 // Fill these once, then the UI stays clean and verifiable.
 // ─────────────────────────────────────────────
-const XPOT_MINT_ACCOUNT = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoSUkUtHcJR1Ejko1';
+const XPOT_MINT_ACCOUNT = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
 // ✅ You already revoked mint + freeze via terminal. Paste the signatures here.
 const MINT_AUTHORITY_REVOKE_TX =
