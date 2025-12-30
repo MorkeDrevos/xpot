@@ -13,12 +13,11 @@ export default function Xpot1918Badge({
         'relative inline-flex items-center',
         'rounded-full',
         'border border-emerald-400/20',
-        'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.22),rgba(0,0,0,0.30)_60%,rgba(0,0,0,0.22)_100%)]',
+        'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.22),rgba(0,0,0,0.28)_55%,rgba(0,0,0,0.20)_100%)]',
         'px-3 py-1',
         'shadow-[0_14px_40px_rgba(16,185,129,0.10)]',
         className,
       ].join(' ')}
-      aria-label={label}
     >
       <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40" />
       <strong
