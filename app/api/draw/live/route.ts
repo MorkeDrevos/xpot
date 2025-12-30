@@ -5,9 +5,6 @@ import { ensureActiveDraw } from '@/lib/ensureActiveDraw';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-// ─────────────────────────────────────────────
-// Canonical server truths
-// ─────────────────────────────────────────────
 const DAILY_XPOT = 1_000_000;
 const DAY_TOTAL = 7000;
 
@@ -15,9 +12,6 @@ const DAY_TOTAL = 7000;
 const GENESIS_UTC_DAY_1 = new Date(Date.UTC(2025, 11, 25, 0, 0, 0, 0));
 const DAY_MS = 86_400_000;
 
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
 function utcDayStart(d: Date) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
 }
@@ -39,13 +33,9 @@ function normalizeStatus(status: string | null | undefined) {
   return 'LOCKED';
 }
 
-// ─────────────────────────────────────────────
-// GET
-// ─────────────────────────────────────────────
 export async function GET() {
   try {
     const draw = await ensureActiveDraw(new Date());
-
     if (!draw.closesAt) throw new Error('Invariant violation: draw.closesAt is null');
 
     const dayNumber = dayNumberFromDrawDate(draw.drawDate);
