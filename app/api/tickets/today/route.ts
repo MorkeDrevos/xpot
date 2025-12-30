@@ -10,14 +10,9 @@ type UiStatus = 'in-draw' | 'expired' | 'not-picked' | 'won' | 'claimed';
 function toUiStatus(raw: any): UiStatus {
   const s = String(raw ?? '').trim();
 
-  // already UI format
-  if (s === 'in-draw' || s === 'expired' || s === 'not-picked' || s === 'won' || s === 'claimed') {
-    return s;
-  }
+  if (s === 'in-draw' || s === 'expired' || s === 'not-picked' || s === 'won' || s === 'claimed') return s;
 
-  // common DB enum formats
   const up = s.toUpperCase();
-
   if (up === 'IN_DRAW' || up === 'IN-DRAW') return 'in-draw';
   if (up === 'NOT_PICKED' || up === 'NOT-PICKED') return 'not-picked';
   if (up === 'WON') return 'won';
@@ -28,9 +23,8 @@ function toUiStatus(raw: any): UiStatus {
 }
 
 // ─────────────────────────────────────────────
-// Madrid cutoff logic (same as claim route)
+// Madrid cutoff logic (MUST match /tickets/claim)
 // ─────────────────────────────────────────────
-
 const MADRID_TZ = 'Europe/Madrid';
 const MADRID_CUTOFF_HH = 22;
 const MADRID_CUTOFF_MM = 0;
@@ -80,10 +74,8 @@ function wallClockToUtcMs({
 
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
-
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
     const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
-
     const diffMin = gotTotal - wantTotal;
     if (diffMin === 0) break;
     t -= diffMin * 60_000;
@@ -123,35 +115,40 @@ function getDrawBucketUtc(now = new Date()) {
 
 export async function GET() {
   try {
-    // ✅ must be signed in (dashboard is “account-level”)
-    const { userId: clerkId } = auth();
+    const a = await auth();
+    const clerkId = a.userId;
+
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    // Find the app User row for this Clerk user
-    const appUser = await prisma.user.findUnique({
+    // Find wallets linked to this Clerk user
+    const user = await prisma.user.findUnique({
       where: { clerkId },
-      select: { id: true },
+      include: { wallets: true },
     });
 
-    // If user row doesn’t exist yet, treat as no tickets (sync-x should create it)
-    if (!appUser?.id) {
+    const walletAddrs = (user?.wallets ?? [])
+      .map(w => String(w.address ?? '').trim())
+      .filter(Boolean);
+
+    // If you have no linked wallets yet, show empty instead of everyone’s tickets
+    if (walletAddrs.length === 0) {
       return NextResponse.json({ ok: true, draw: null, tickets: [] });
     }
 
-    // ✅ Use the SAME draw bucket as claim route (Madrid cutoff logic)
-    const now = new Date();
-    const drawDate = getDrawBucketUtc(now);
+    // MUST match claim's draw bucket
+    const drawDate = getDrawBucketUtc(new Date());
 
     const drawRecord = await prisma.draw.findUnique({
       where: { drawDate },
-      select: {
-        id: true,
-        drawDate: true,
-        status: true,
-        jackpotUsd: true,
-        rolloverUsd: true,
+      include: {
+        tickets: {
+          where: {
+            walletAddress: { in: walletAddrs },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -159,26 +156,7 @@ export async function GET() {
       return NextResponse.json({ ok: true, draw: null, tickets: [] });
     }
 
-    // ✅ Only tickets from wallets linked to THIS user
-    const ticketsDb = await prisma.ticket.findMany({
-      where: {
-        drawId: drawRecord.id,
-        wallet: {
-          userId: appUser.id,
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        code: true,
-        status: true,
-        label: true,
-        createdAt: true,
-        walletAddress: true,
-      },
-    });
-
-    const tickets = ticketsDb.map(t => ({
+    const tickets = (drawRecord.tickets ?? []).map((t: any) => ({
       id: t.id,
       code: t.code,
       status: toUiStatus(t.status),
@@ -196,6 +174,7 @@ export async function GET() {
         status: String(drawRecord.status ?? 'open'),
         jackpotUsd: drawRecord.jackpotUsd ?? 10_000,
         rolloverUsd: drawRecord.rolloverUsd ?? 0,
+        closesAt: drawRecord.closesAt ?? null,
       },
       tickets,
     });
