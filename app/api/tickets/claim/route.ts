@@ -59,9 +59,11 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
+  // Iterate to handle DST offsets.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
 
+    // crude but stable compare (minute precision)
     const wantTotal = (((y * 12 + m) * 31 + d) * 24 + hh) * 60 + mm;
     const gotTotal = (((got.y * 12 + got.m) * 31 + got.d) * 24 + got.hh) * 60 + got.mm;
 
@@ -78,6 +80,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
   const nowMin = madridNow.hh * 60 + madridNow.mm;
   const cutoffMin = MADRID_CUTOFF_HH * 60 + MADRID_CUTOFF_MM;
 
+  // If before today's cutoff -> next cutoff is today 22:00; else tomorrow 22:00.
   const baseForNext = nowMin < cutoffMin ? now : new Date(now.getTime() + 24 * 60 * 60_000);
   const nextDayParts = getTzParts(baseForNext, MADRID_TZ);
 
@@ -101,6 +104,7 @@ function getMadridCutoffWindowUtc(now = new Date()) {
  * Use the Madrid calendar date "of the current window" and store drawDate as 00:00:00Z for that date.
  */
 function getDrawBucketUtc(now = new Date()) {
+  // Take (end - 1ms) to represent "inside" the window, then read its Madrid date.
   const { end } = getMadridCutoffWindowUtc(now);
   const insideWindow = new Date(end.getTime() - 1);
   const p = getTzParts(insideWindow, MADRID_TZ);
@@ -124,10 +128,14 @@ function makeCode() {
  * Use the SAME balance endpoint as the dashboard UI uses.
  * (and forward cookies for Vercel-protected DEV)
  */
-async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string): Promise<number | null> {
+async function getXpotBalanceFromSameEndpoint(
+  req: NextRequest,
+  address: string,
+): Promise<number | null> {
   try {
     const origin = req.nextUrl.origin;
     const url = `${origin}/api/xpot-balance?address=${encodeURIComponent(address)}`;
+
     const cookie = req.headers.get('cookie') ?? '';
 
     const r = await fetch(url, {
@@ -154,8 +162,8 @@ async function getXpotBalanceFromSameEndpoint(req: NextRequest, address: string)
 
 export async function POST(req: NextRequest) {
   try {
-    // ✅ account-level identity (Clerk)
-    const { userId: clerkId } = auth();
+    // ✅ account-level identity (Clerk) - IMPORTANT: auth() is async in App Router
+    const { userId: clerkId } = await auth();
     if (!clerkId) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
@@ -189,6 +197,7 @@ export async function POST(req: NextRequest) {
     const draw = await prisma.$transaction(async tx => {
       const existing = await tx.draw.findUnique({ where: { drawDate } });
 
+      // Create if missing
       if (!existing) {
         return tx.draw.create({
           data: {
@@ -199,6 +208,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // If we are still inside the window, draw MUST be open.
       const stillBeforeCutoff = now.getTime() < end.getTime();
 
       if (stillBeforeCutoff && existing.status !== 'open') {
@@ -208,6 +218,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // Keep closesAt synced (harmless, avoids drift)
       if (!existing.closesAt || existing.closesAt.getTime() !== end.getTime()) {
         return tx.draw.update({
           where: { id: existing.id },
