@@ -45,7 +45,6 @@ enum OpsMode {
 
 // Single-row config table (stores ops mode etc)
 model OpsConfig {
-  // enforce exactly one row via stable primary key
   singleton String @id @default("singleton")
 
   createdAt DateTime @default(now())
@@ -112,11 +111,9 @@ model Ticket {
 
   code String @unique
 
-  // Ticket must always have an owning wallet
   walletId String
   wallet   Wallet @relation(fields: [walletId], references: [id])
 
-  // Snapshot of wallet address at creation time
   walletAddress String
   status        TicketStatus @default(IN_DRAW)
 
@@ -130,7 +127,6 @@ model Ticket {
   @@index([status])
   @@index([walletAddress])
 
-  // Prevent duplicate tickets per wallet per draw
   @@unique([walletId, drawId])
 }
 
@@ -145,10 +141,8 @@ model Winner {
   ticketId String
   ticket   Ticket @relation(fields: [ticketId], references: [id])
 
-  // Optional extra timestamp (you already have createdAt)
   date DateTime @default(now())
 
-  // Snapshots (keep them - makes rendering fast and stable)
   ticketCode    String
   walletAddress String
 
@@ -193,29 +187,19 @@ model DrawEntry {
   drawId String
   draw   Draw @relation(fields: [drawId], references: [id])
 
-  // Clerk user id (string) - keeps this reliable even if User row doesn't exist yet
   clerkId String
 
-  // Public identity (by handle)
   xHandle    String
   xName      String?
   xAvatarUrl String?
   followers  Int?
   verified   Boolean?
 
-  // One entry per user per draw
   @@unique([drawId, clerkId])
-
-  // Optional: uncomment if you want "1 handle = 1 entry" per draw
-  // @@unique([drawId, xHandle])
 
   @@index([drawId, createdAt])
   @@index([xHandle])
 }
-
-// ─────────────────────────────────────────────
-// ✅ Missing models (fixes prisma.hubStreak + prisma.userPreference)
-// ─────────────────────────────────────────────
 
 // Hub streak tracking (used by /api/hub/streak)
 model HubStreak {
@@ -223,13 +207,9 @@ model HubStreak {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Clerk user id (used by upsert where: { clerkId })
   clerkId String @unique
 
-  // Consecutive days
   days Int @default(0)
-
-  // The last UTC day the streak was recorded for (store as DateTime bucket)
   lastDoneDay DateTime?
 
   @@index([clerkId])
@@ -241,7 +221,6 @@ model UserPreference {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Clerk user id (used by upsert where: { clerkId })
   clerkId String @unique
 
   soundEnabled Boolean @default(true)

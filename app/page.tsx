@@ -1325,55 +1325,12 @@ function ParallaxConsoleCard({
 }
 
 function MissionBanner() {
-  const STORAGE_KEY = 'xpot_mission_hidden_day';
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
-  const [hidden, setHidden] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    try {
-      const storedDay = localStorage.getItem(STORAGE_KEY);
-      setHidden(storedDay === today);
-    } catch {
-      setHidden(false);
-    }
-  }, []);
-
-  if (hidden === null || hidden) return null;
-
-  function dismiss() {
-    try {
-      localStorage.setItem(STORAGE_KEY, today);
-    } catch {}
-    setHidden(true);
-  }
-
   return (
     <div className="relative border-y border-slate-900/60 bg-slate-950/55 backdrop-blur">
       <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),radial-gradient(circle_at_82%_0%,rgba(56,189,248,0.16),transparent_62%)]" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH} ${GOLD_RING_SHADOW}`}
-            >
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Mission
-            </span>
-
-            <p className="text-sm text-slate-300">
-  <RotatingAnnouncement />
-</p>
-          </div>
-
-          <button
-            onClick={dismiss}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-          >
-            Dismiss
-          </button>
-        </div>
+        <RotatingAnnouncement reservesHref={ROUTE_TOKENOMICS_RESERVE} />
       </div>
     </div>
   );
