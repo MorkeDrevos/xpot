@@ -1,4 +1,4 @@
-// app/api/public/winner/latest/route.ts
+// app/api/public/winners/latest/route.ts
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -10,70 +10,64 @@ function pickFirst<T>(...vals: Array<T | null | undefined>): T | null {
   return null;
 }
 
+function toIsoSafe(v: any): string | null {
+  try {
+    if (!v) return null;
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   try {
-    // Try to find the most recent draw that has a winner recorded
-    // Adjust field names once you confirm schema (winnerWallet, winnerHandle etc.)
-    const d: any = await prisma.draw.findFirst({
-      orderBy: [{ drawDate: 'desc' }, { createdAt: 'desc' }].filter(Boolean) as any,
+    // We try "draw has winner fields" first.
+    // If your schema differs, tell me the exact model fields and I’ll lock it perfectly.
+    const draws: any[] = await (prisma as any).draw.findMany({
+      take: 2,
+      orderBy: [{ drawDate: 'desc' }, { createdAt: 'desc' }].filter(Boolean),
       where: {
         OR: [
-          { winnerWallet: { not: null } } as any,
-          { winnerAddress: { not: null } } as any,
-          { winnerHandle: { not: null } } as any,
-          { winnerX: { not: null } } as any,
+          { winnerHandle: { not: null } },
+          { winnerX: { not: null } },
+          { winnerUsername: { not: null } },
+          { winnerWallet: { not: null } },
+          { winnerAddress: { not: null } },
+          { winnerPublicKey: { not: null } },
         ],
-      } as any,
-      // If you store a winning ticket relation, add it here once confirmed:
-      // include: { winningTicket: true },
+      },
     });
 
-    if (!d) {
-      return NextResponse.json({ winner: null }, { status: 200 });
-    }
+    const winners = (draws || []).map(d => {
+      const handle = pickFirst<string>(d.winnerHandle, d.winnerX, d.winnerUsername, d.winner, null);
+      const wallet = pickFirst<string>(d.winnerWallet, d.winnerAddress, d.winnerPublicKey, null);
+      const amount = pickFirst<number>(d.payoutAmount, d.amount, d.rewardAmount, 1_000_000);
+      const drawDate = pickFirst<string>(toIsoSafe(d.drawDate), toIsoSafe(d.closedAt), toIsoSafe(d.createdAt));
+      const tx = pickFirst<string>(d.payoutTxSig, d.txSig, d.winnerTx, null);
 
-    const winnerHandle = pickFirst<string>(
-      d.winnerHandle,
-      d.winnerX,
-      d.winnerUsername,
-      d.winner,
-      null,
-    );
-
-    const winnerWallet = pickFirst<string>(
-      d.winnerWallet,
-      d.winnerAddress,
-      d.winnerPublicKey,
-      null,
-    );
-
-    const drawDate = pickFirst<string>(
-      d.drawDate ? new Date(d.drawDate).toISOString() : null,
-      d.closedAt ? new Date(d.closedAt).toISOString() : null,
-      null,
-    );
-
-    const amount = pickFirst<number>(d.payoutAmount, d.amount, d.rewardAmount, 1_000_000);
+      return { handle, wallet, amount, drawDate, tx };
+    });
 
     return NextResponse.json(
-      {
-        winner: {
-          handle: winnerHandle,
-          wallet: winnerWallet,
-          amount,
-          drawDate,
-          // tx: d.payoutTxSig ?? null,
-        },
-      },
+      { winners },
       {
         status: 200,
         headers: {
-          // ensure freshness everywhere
           'Cache-Control': 'no-store, max-age=0',
         },
       },
     );
-  } catch (e) {
-    return NextResponse.json({ winner: null }, { status: 200 });
+  } catch {
+    return NextResponse.json(
+      { winners: [] },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      },
+    );
   }
 }
