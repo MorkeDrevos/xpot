@@ -17,9 +17,21 @@ function needsSpaceBetween(after?: string) {
   const first = a[0];
   if ('.!,?:;)]]}'.includes(first)) return false;
   if (first === '"' || first === "'" || first === '’' || first === '”') return false;
-  if (a.startsWith('-') || a.startsWith('–') || a.startsWith('—')) return false;
+  // Damian preference: normal hyphen only
+  if (a.startsWith('-')) return false;
 
   return true;
+}
+
+function getMadridWeekday() {
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      weekday: 'long',
+      timeZone: 'Europe/Madrid',
+    }).format(new Date());
+  } catch {
+    return '';
+  }
 }
 
 export default function RotatingAnnouncement({
@@ -27,18 +39,20 @@ export default function RotatingAnnouncement({
 }: {
   reservesHref?: string;
 }) {
+  const weekday = getMadridWeekday();
+
   const a = useMemo<Announcement>(
     () => ({
       before: 'Reserve Coverage:',
       highlight: '19.18 YEARS',
-      after: '1,000,000 XPOT/day reserved for 7,000 days.',
+      after: `1,000,000 XPOT/day reserved for 7,000 days${weekday ? ` (${weekday})` : ''}.`,
     }),
-    [],
+    [weekday],
   );
 
   const afterNeedsSpace = needsSpaceBetween(a.after);
 
-  // Subtle pill size — matches height of badge
+  // Subtle pill size - matches height of badge
   const BTN_SOFT_SM =
     'inline-flex items-center gap-2 rounded-full ' +
     'border border-emerald-400/20 bg-emerald-400/[0.06] ' +
@@ -65,7 +79,7 @@ export default function RotatingAnnouncement({
           </span>
         )}
 
-        {/* ✅ 19.18 badge — restored GREEN */}
+        {/* 19.18 badge */}
         <span
           className={[
             'relative inline-flex items-center',
@@ -97,7 +111,15 @@ export default function RotatingAnnouncement({
         {a.after && (
           <span className="whitespace-pre-wrap text-white/70">
             {afterNeedsSpace ? ' ' : ''}
-            {a.after}
+            {/* Make 7,000 days bolder */}
+            {a.after.split('7,000').map((part, i, arr) => (
+              <span key={i}>
+                {part}
+                {i < arr.length - 1 && (
+                  <strong className="text-white/85 font-semibold">7,000</strong>
+                )}
+              </span>
+            ))}
           </span>
         )}
       </span>
