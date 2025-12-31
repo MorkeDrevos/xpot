@@ -31,13 +31,13 @@ type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 const ROUTE_HUB = '/hub';
 const ROUTE_TERMS = '/terms';
 
-// ✅ Gold helpers (same pattern as home page)
+// Gold helpers
 const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
 const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
 const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
 
-// ✅ Buttons (updated)
+// Buttons
 const BTN_PRIMARY =
   'inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition ' +
   'border border-[rgba(var(--xpot-gold),0.35)] bg-[linear-gradient(180deg,rgba(var(--xpot-gold),0.18),rgba(var(--xpot-gold),0.08))] ' +
@@ -58,14 +58,10 @@ const VAULT_POLL_MS = 20_000;
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
 
-// ─────────────────────────────────────────────
-// ✅ Solscan proof targets for token controls
-// ─────────────────────────────────────────────
+// Solscan proof targets for token controls
 const SOLSCAN_TOKEN_METADATA_URL = `https://solscan.io/token/${XPOT_MINT_ACCOUNT}#metadata`;
 
-// ✅ All three authorities are revoked (Solscan metadata shows NULL).
-// Where you have a specific revoke signature, paste it so we can link directly.
-// Otherwise we link to Solscan metadata as the public proof of NULL.
+// All three authorities are revoked (Solscan metadata shows NULL).
 const MINT_AUTHORITY_REVOKE_TX =
   '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtsntikBXTrTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwY8bpwNrRfuLvM';
 const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
@@ -74,9 +70,7 @@ const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
 // Rewards reserve wallet
 const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 
-// ✅ Streamflow reserve proof
-// If you have the specific Streamflow contract for the reserve release, paste it here.
-// If null, we link to the Mint token-dashboard (still correct proof page).
+// Streamflow reserve proof
 const RESERVE_STREAMFLOW_CONTRACT: string | null = null;
 
 function solscanAccountUrl(account: string) {
@@ -86,14 +80,14 @@ function solscanTxUrl(sig: string) {
   return `https://solscan.io/tx/${sig}`;
 }
 
-// ✅ Team vesting (12 months) - Streamflow escrow contract
+// Team vesting (12 months) - Streamflow escrow contract
 const TEAM_VESTING = {
   contractAccount: 'BYUYCGu1mH2B33QU2mzF2AZDvxgxLoboiJbDVJYvGWkR',
   senderWallet: 'G17RehqUAgMcAxcnLUZyf6WzuPqsM82q9SC1aSkBUR7w',
   recipientWallet: '3DSuZP8d8a9f5CftdJvmJA1wxgzgxKULLDwZeRKC2Vh',
 };
 
-// ✅ Partners vesting (8 months) - Streamflow escrow contract
+// Partners vesting (8 months) - Streamflow escrow contract
 const PARTNERS_VESTING = {
   contractAccount: 'EqszkWnNNQDVQvLgu5kH4tSQNQ6jgYswU5dioXkVbLK1',
 };
@@ -184,9 +178,7 @@ function toneRing(tone: PillTone) {
   return 'rgba(148,163,184,0.18)';
 }
 
-// ─────────────────────────────────────────────
-// ✅ Silent copy (no UI feedback)
-// ─────────────────────────────────────────────
+// Silent copy (no UI feedback)
 function SilentCopyButton({ text, className, title }: { text: string; className?: string; title?: string }) {
   async function copyNow() {
     try {
@@ -244,9 +236,7 @@ function ProofLinkPill({
   );
 }
 
-// ─────────────────────────────────────────────
-// ✅ Smaller, aligned gold amount line
-// ─────────────────────────────────────────────
+// Smaller, aligned gold amount line
 function GoldAmountLine({
   amount,
   suffix = 'XPOT',
@@ -287,9 +277,7 @@ function buildLinearRows(totalTokens: number, months: number) {
   return { perMonth, rows: out };
 }
 
-// ─────────────────────────────────────────────
-// ✅ Shared vesting chart + schedule (Team + Partners)
-// ─────────────────────────────────────────────
+// Shared vesting chart + schedule (Team + Partners)
 function LinearVestingChartAndSchedule({
   months,
   totalTokens,
@@ -371,16 +359,7 @@ function LinearVestingChartAndSchedule({
                 const y = h - pad - barH;
                 const bw = Math.max(6, barW - 10);
                 return (
-                  <rect
-                    key={r.m}
-                    x={x}
-                    y={y}
-                    width={bw}
-                    height={barH}
-                    rx="8"
-                    fill={`url(#${barGradientId})`}
-                    opacity="0.9"
-                  />
+                  <rect key={r.m} x={x} y={y} width={bw} height={barH} rx="8" fill={`url(#${barGradientId})`} opacity="0.9" />
                 );
               })}
 
@@ -423,9 +402,7 @@ function LinearVestingChartAndSchedule({
   );
 }
 
-// ─────────────────────────────────────────────
-// ✅ Reserve Streamflow proof (missing in Distribution section)
-// ─────────────────────────────────────────────
+// Reserve Streamflow proof panel
 function ReserveStreamflowPanel() {
   const dashboard = streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
   const contractUrl = RESERVE_STREAMFLOW_CONTRACT ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT) : dashboard;
@@ -477,9 +454,7 @@ function ReserveStreamflowPanel() {
   );
 }
 
-// ─────────────────────────────────────────────
-// ✅ Partners vesting panel (8 months) - Streamflow proof
-// ─────────────────────────────────────────────
+// Partners vesting panel (8 months)
 function PartnersVestingPanel({ totalPartnersTokens }: { totalPartnersTokens: number }) {
   const vestUrl = streamflowContractUrl(PARTNERS_VESTING.contractAccount);
 
@@ -530,9 +505,7 @@ function PartnersVestingPanel({ totalPartnersTokens }: { totalPartnersTokens: nu
   );
 }
 
-// ─────────────────────────────────────────────
 // Team vesting (12 months)
-// ─────────────────────────────────────────────
 function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
   const streamflowUrl = streamflowContractUrl(TEAM_VESTING.contractAccount);
 
@@ -1151,9 +1124,7 @@ function DonutAllocation({
                           <p className="text-sm text-slate-200">{a.note}</p>
                           <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
 
-                          {/* ✅ FIX: Distribution now has Streamflow proof like Team/Partners */}
                           {a.key === 'distribution' && <ReserveStreamflowPanel />}
-
                           {a.key === 'team' && <TeamVestingPanel totalTeamTokens={teamTotalTokens} />}
                           {a.key === 'partners' && <PartnersVestingPanel totalPartnersTokens={partnersTotalTokens} />}
 
@@ -1183,7 +1154,7 @@ function DonutAllocation({
 }
 
 /**
- * ✅ Next.js requirement:
+ * Next.js requirement:
  * `useSearchParams()` must be wrapped in a Suspense boundary.
  */
 function TokenomicsPageInner() {
@@ -1207,7 +1178,6 @@ function TokenomicsPageInner() {
     [DISTRIBUTION_RESERVE],
   );
 
-  // ✅ focus number: 19.18 years (7B / 1M / 365)
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
   const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
 
@@ -1373,7 +1343,7 @@ function TokenomicsPageInner() {
     });
   }, []);
 
-  // ✅ Deep-link support from home page: /tokenomics?tab=rewards&focus=reserve
+  // Deep-link support from home page: /tokenomics?tab=rewards&focus=reserve
   const didAutoFocusRef = useRef(false);
   useEffect(() => {
     if (didAutoFocusRef.current) return;
@@ -1388,7 +1358,7 @@ function TokenomicsPageInner() {
     }
   }, [searchParams, openDistribution]);
 
-  // ✅ Reserve pill must link to Streamflow (canonical proof)
+  // Reserve pill must link to Streamflow (canonical proof)
   const reserveProofHref = RESERVE_STREAMFLOW_CONTRACT
     ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT)
     : streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
@@ -1414,9 +1384,7 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {/* ✅ FIX: "Reserve wallet" now opens Streamflow proof page */}
           <ProofLinkPill href={reserveProofHref} label="Reserve wallet" tone="emerald" />
-          {/* Optional: still keep the pure wallet view */}
           <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Wallet (Solscan)" tone="slate" />
           <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
         </div>
@@ -1518,18 +1486,6 @@ function TokenomicsPageInner() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      {/* ...rest of file unchanged from your version... */}
-      {/* IMPORTANT: keep everything below as-is in your repo, this snippet already includes the fixes you asked for */}
-      {/* If you want, paste your remaining tail and I will re-output the entire file end-to-end with no truncation. */}
-      {/*
-        NOTE:
-        Your original file continues below. I didn't change anything else besides:
-        - adding Streamflow helpers import
-        - reserve proof pill href
-        - adding <ReserveStreamflowPanel /> in distribution expanded content
-      */}
-
-      {/* START: your original remainder */}
       <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
         <div className="relative overflow-hidden border-b border-white/5 bg-[linear-gradient(180deg,rgba(10,7,4,0.96),rgba(0,0,0,0.94))]">
           <div
@@ -1651,15 +1607,18 @@ function TokenomicsPageInner() {
         </div>
       </section>
 
-      {/* The rest of your file (utility map + footer) stays exactly the same */}
-      {/* END: your original remainder */}
+      {/* keep your utility map + footer below exactly as in your repo */}
     </XpotPageShell>
   );
 }
 
 function TokenomicsFallback() {
   return (
-    <XpotPageShell title="Tokenomics" subtitle="Loading tokenomics..." topBarProps={{ pillText: 'TOKENOMICS', sloganRight: 'Protocol-grade distribution' }}>
+    <XpotPageShell
+      title="Tokenomics"
+      subtitle="Loading tokenomics..."
+      topBarProps={{ pillText: 'TOKENOMICS', sloganRight: 'Protocol-grade distribution' }}
+    >
       <div className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
         <p className="text-xs text-slate-400">Loading...</p>
       </div>
