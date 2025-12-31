@@ -31,7 +31,7 @@ export default function RotatingAnnouncement({
     () => ({
       before: 'Reserve Coverage:',
       highlight: '19.18 YEARS',
-      after: '1,000,000 XPOT/day locked for 7,000 days.',
+      after: '1,000,000 XPOT/day reserved for 7,000 days.',
     }),
     [],
   );
