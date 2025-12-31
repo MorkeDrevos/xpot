@@ -57,6 +57,8 @@ const VAULT_POLL_MS = 20_000;
 // Protocol rule (fixed)
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
+const RESERVE_DAYS = 7_000;
+const RESERVE_YEARS = RESERVE_DAYS / DAYS_PER_YEAR; // 19.18...
 
 // Solscan proof targets for token controls
 const SOLSCAN_TOKEN_METADATA_URL = `https://solscan.io/token/${XPOT_MINT_ACCOUNT}#metadata`;
@@ -412,7 +414,10 @@ function ReserveStreamflowPanel() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Reserve lock proof</p>
-          <p className="mt-1 text-[11px] text-slate-500">Streamflow is the canonical proof page for the reserve schedule.</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Canonical proof for the reserve schedule. The design target is {RESERVE_DAYS.toLocaleString('en-US')} days (
+            {RESERVE_YEARS.toFixed(2)} years) of coverage.
+          </p>
         </div>
 
         <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
@@ -630,6 +635,44 @@ function formatVaultBalance(b: ApiVaultEntry['balance']) {
   }
 
   return null;
+}
+
+// Best-effort parse to a JS number (safe here because supply is 50B)
+function balanceToNumber(b: ApiVaultEntry['balance']) {
+  if (!b) return null;
+
+  if (typeof b.uiAmount === 'number' && Number.isFinite(b.uiAmount)) return b.uiAmount;
+
+  if (typeof b.uiAmountString === 'string' && b.uiAmountString.trim().length) {
+    const n = Number(b.uiAmountString);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  if (typeof b.amount === 'string' && typeof b.decimals === 'number') {
+    const s = formatRawAmount(b.amount, b.decimals);
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  return null;
+}
+
+function sumGroup(data: ApiVaultResponse | null, key: string) {
+  const entries = data?.groups?.[key];
+  if (!Array.isArray(entries) || !entries.length) return null;
+  let sum = 0;
+  let sawAny = false;
+
+  for (const v of entries) {
+    const n = balanceToNumber(v.balance);
+    if (typeof n === 'number' && Number.isFinite(n)) {
+      sum += n;
+      sawAny = true;
+    }
+  }
+
+  return sawAny ? sum : null;
 }
 
 function useVaultGroups() {
@@ -1278,6 +1321,22 @@ function TokenomicsPageInner() {
     strategic: 'strategic',
   };
 
+  // Live circulating estimate (from tracked vault groups)
+  // Definition here: circulating = total supply - (sum of tracked non-circulating vault balances).
+  // Non-circulating excludes liquidityOps by default (LP is part of market float).
+  const liveSupply = useMemo(() => {
+    const nonCircKeys = ['rewards', 'treasury', 'team', 'partners', 'community', 'strategic'] as const;
+    const parts = nonCircKeys
+      .map(k => sumGroup(vaultData, k))
+      .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+
+    if (!parts.length) return { nonCirculating: null as number | null, circulating: null as number | null };
+
+    const nonCirculating = parts.reduce((a, b) => a + b, 0);
+    const circulating = Math.max(0, supply - nonCirculating);
+    return { nonCirculating, circulating };
+  }, [vaultData, supply]);
+
   const [openKey, setOpenKeyRaw] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(sortedAllocation[0]?.key ?? null);
   const [pendingScrollKey, setPendingScrollKey] = useState<string | null>(null);
@@ -1384,14 +1443,20 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <ProofLinkPill href={reserveProofHref} label="Reserve wallet" tone="emerald" />
-          <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Wallet (Solscan)" tone="slate" />
+          <ProofLinkPill
+            href={reserveProofHref}
+            label={`Reserve lock proof (${RESERVE_YEARS.toFixed(2)} years)`}
+            tone="emerald"
+          />
+          <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Reserve wallet (Solscan)" tone="slate" />
           <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
         </div>
 
         <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Protocol rule</p>
-          <p className="mt-1 text-xs text-slate-300">Daily distribution is fixed. Reserve stays public and verifiable.</p>
+          <p className="mt-1 text-xs text-slate-300">
+            Daily distribution is fixed. Reserve schedule is provable and designed to cover {RESERVE_DAYS.toLocaleString('en-US')} days.
+          </p>
         </div>
       </div>
 
@@ -1453,7 +1518,7 @@ function TokenomicsPageInner() {
 
       <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
             <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
             <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
@@ -1462,6 +1527,21 @@ function TokenomicsPageInner() {
             <ShieldCheck className="h-3.5 w-3.5" />
             Fixed
           </Pill>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Circulating (live)</p>
+          <p className="mt-2 font-mono text-lg font-semibold text-slate-100">
+            {typeof liveSupply.circulating === 'number' ? liveSupply.circulating.toLocaleString('en-US') : '—'}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-600">
+            {typeof liveSupply.nonCirculating === 'number'
+              ? `Non-circulating tracked: ${liveSupply.nonCirculating.toLocaleString('en-US')} XPOT`
+              : 'Live circulating appears once tracked vault balances are available.'}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-600">
+            {vaultData?.fetchedAt ? `Updated: ${timeAgo(vaultData.fetchedAt)}` : null}
+          </p>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -1713,7 +1793,7 @@ function TokenomicsPageInner() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v30</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v31</span>
         </div>
       </footer>
     </XpotPageShell>
