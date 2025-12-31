@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { ExternalLink } from 'lucide-react';
 
 type Announcement = {
-  before?: string;
+  eyebrow?: string;
   highlight: string;
   after?: string;
 };
@@ -17,21 +17,9 @@ function needsSpaceBetween(after?: string) {
   const first = a[0];
   if ('.!,?:;)]]}'.includes(first)) return false;
   if (first === '"' || first === "'" || first === '’' || first === '”') return false;
-  // Damian preference: normal hyphen only
-  if (a.startsWith('-')) return false;
+  if (a.startsWith('-') || a.startsWith('–') || a.startsWith('—')) return false;
 
   return true;
-}
-
-function getMadridWeekday() {
-  try {
-    return new Intl.DateTimeFormat('en-GB', {
-      weekday: 'long',
-      timeZone: 'Europe/Madrid',
-    }).format(new Date());
-  } catch {
-    return '';
-  }
 }
 
 export default function RotatingAnnouncement({
@@ -39,25 +27,22 @@ export default function RotatingAnnouncement({
 }: {
   reservesHref?: string;
 }) {
-  const weekday = getMadridWeekday();
-
   const a = useMemo<Announcement>(
     () => ({
-      before: 'Reserve Coverage:',
-      highlight: '19.18 YEARS',
-      after: `1,000,000 XPOT/day reserved for 7,000 days${weekday ? ` (${weekday})` : ''}.`,
+      eyebrow: 'Reserve Coverage',
+      highlight: '19.18 YEARS LOCKED',
+      after: '1,000,000 XPOT/day locked for 7,000 days.',
     }),
-    [weekday],
+    [],
   );
 
   const afterNeedsSpace = needsSpaceBetween(a.after);
 
-  // Subtle pill size - matches height of badge
   const BTN_SOFT_SM =
     'inline-flex items-center gap-2 rounded-full ' +
-    'border border-emerald-400/20 bg-emerald-400/[0.06] ' +
+    'border border-emerald-400/25 bg-emerald-400/[0.07] ' +
     'px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ' +
-    'text-emerald-100 hover:bg-emerald-400/[0.10] transition';
+    'text-emerald-100 hover:bg-emerald-400/[0.11] transition';
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -67,41 +52,51 @@ export default function RotatingAnnouncement({
           'flex flex-wrap items-center justify-center gap-2 sm:justify-start',
           'text-[12px] sm:text-[13px]',
           'leading-[1.25]',
-          'font-medium',
           'tracking-[-0.01em]',
-          'text-white/80',
+          'text-white/85',
         ].join(' ')}
         aria-live="polite"
       >
-        {a.before && (
-          <span className="whitespace-pre-wrap text-white/70">
-            {a.before}{' '}
+        {/* Eyebrow: make it feel like a headline */}
+        {a.eyebrow && (
+          <span
+            className={[
+              'whitespace-nowrap',
+              'text-white/75',
+              'font-semibold',
+              'uppercase',
+              'tracking-[0.14em]',
+              'text-[10px] sm:text-[11px]',
+            ].join(' ')}
+          >
+            {a.eyebrow}:
           </span>
         )}
 
-        {/* 19.18 badge */}
+        {/* Big badge */}
         <span
           className={[
             'relative inline-flex items-center',
             'rounded-full',
-            'border border-emerald-400/30',
-            'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.30),rgba(0,0,0,0.35)_55%,rgba(0,0,0,0.25)_100%)]',
-            'px-3 py-1',
-            'shadow-[0_14px_40px_rgba(16,185,129,0.25)]',
+            'border border-emerald-400/35',
+            'bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.34),rgba(0,0,0,0.38)_55%,rgba(0,0,0,0.28)_100%)]',
+            'px-3.5 py-1.5',
+            'shadow-[0_16px_50px_rgba(16,185,129,0.28)]',
           ].join(' ')}
         >
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/40"
+            className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/45"
           />
           <strong
             className={[
               'relative z-10',
-              'font-semibold',
+              'font-extrabold',
               'text-emerald-200',
-              'tracking-[0.12em]',
+              'tracking-[0.16em]',
               'uppercase',
               'whitespace-nowrap',
+              'text-[11px] sm:text-[12px]',
             ].join(' ')}
           >
             {a.highlight}
@@ -109,17 +104,12 @@ export default function RotatingAnnouncement({
         </span>
 
         {a.after && (
-          <span className="whitespace-pre-wrap text-white/70">
+          <span className="whitespace-pre-wrap text-white/75 font-medium">
             {afterNeedsSpace ? ' ' : ''}
-            {/* Make 7,000 days bolder */}
-            {a.after.split('7,000').map((part, i, arr) => (
-              <span key={i}>
-                {part}
-                {i < arr.length - 1 && (
-                  <strong className="text-white/85 font-semibold">7,000</strong>
-                )}
-              </span>
-            ))}
+            {/* make 7,000 days feel important */}
+            {a.after.split('7,000 days')[0]}
+            <span className="text-white/90 font-semibold">7,000 days</span>
+            {a.after.split('7,000 days')[1] ?? ''}
           </span>
         )}
       </span>
