@@ -24,11 +24,11 @@ import {
 const MAX_TODAY_TICKETS = 7;
 const MAX_RECENT_WINNERS = 10;
 
-// ✅ Admin API base (THIS is the folder from your img2: app/api/admin/*)
-const ADMIN_API = '/api/admin';
-const admin = (p: string) => `${ADMIN_API}${p.startsWith('/') ? '' : '/'}${p}`;
+// We will auto-detect which backend exists on THIS deployment.
+// Preference order: /api/admin (your legacy stable routes) -> /api/ops (newer experimental routes)
+const API_BASE_CANDIDATES = ['/api/admin', '/api/ops'] as const;
 
-// ✅ Endpoint you already have
+// ✅ admin endpoint that actually exists (manual trigger you showed)
 const ADMIN_PICK_WINNER_API = '/api/admin/draw/pick-winner';
 
 type DrawStatus = 'open' | 'closed' | 'completed';
@@ -40,7 +40,7 @@ type TodayDraw = {
   ticketsCount: number;
   closesAt?: string | null;
 
-  // optional if your API returns them - we tolerate both
+  // keep optional so UI never breaks if backend returns them
   jackpotUsd?: number;
   rolloverUsd?: number;
 };
@@ -65,12 +65,14 @@ type AdminWinner = {
   date: string;
   ticketCode: string;
   walletAddress: string;
-  jackpotUsd: number;
   payoutUsd: number; // used as XPOT amount in UI
   isPaidOut: boolean;
   txUrl?: string | null;
   kind?: AdminWinnerKind;
   label?: string | null;
+
+  // optional legacy fields
+  jackpotUsd?: number;
 };
 
 type BonusDropStatus = 'SCHEDULED' | 'FIRED' | 'CANCELLED';
@@ -83,7 +85,7 @@ type AdminBonusDrop = {
   status: BonusDropStatus;
 };
 
-// Public live draw payload (fallback when admin today returns null)
+// Public live draw payload (fallback when ops/admin today returns null)
 type LiveDrawPayload = {
   draw: {
     dailyXpot: number;
@@ -273,6 +275,8 @@ function toTodayDrawFromLive(live: LiveDrawPayload['draw']): TodayDraw | null {
     status: mapLiveStatus(live.status),
     ticketsCount: 0,
     closesAt: live.closesAt,
+    jackpotUsd: 0,
+    rolloverUsd: 0,
   };
 }
 
@@ -365,7 +369,11 @@ export default function AdminPage() {
   const [cancelingDropId, setCancelingDropId] = useState<string | null>(null);
   const [cancelDropError, setCancelDropError] = useState<string | null>(null);
 
-  // Server clock skew (ms). Used to sync countdown with server time.
+  // Selected API base for this deployment (auto-detected)
+  const [apiBase, setApiBase] = useState<string | null>(null);
+  const [apiBanner, setApiBanner] = useState<string | null>(null);
+
+  // Server clock skew (ms)
   const [serverSkewMs, setServerSkewMs] = useState(0);
 
   useEffect(() => {
@@ -383,6 +391,54 @@ export default function AdminPage() {
     }
   }, []);
 
+  function api(path: string) {
+    const base = apiBase ?? '/api/admin';
+    return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+  }
+
+  async function probeApiBase(): Promise<string | null> {
+    // Try /health on each candidate, no auth required (your routes typically exist + return ok)
+    for (const base of API_BASE_CANDIDATES) {
+      try {
+        const res = await fetch(`${base}/health`, { cache: 'no-store' });
+        if (res.ok) return base;
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  }
+
+  // Detect API base once we have a token (so we can load ops-mode etc right away)
+  useEffect(() => {
+    if (!adminToken) return;
+
+    let cancelled = false;
+
+    (async () => {
+      const detected = await probeApiBase();
+      if (cancelled) return;
+
+      if (!detected) {
+        setApiBase('/api/admin'); // default
+        setApiBanner(
+          'No Ops/Admin API detected on this deployment (missing /api/admin/* and /api/ops/*). Deploy backend routes to use Operations Center.',
+        );
+        return;
+      }
+
+      setApiBase(detected);
+      setApiBanner(null);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adminToken]);
+
+  // IMPORTANT:
+  // - authedFetch THROWS on failures so UI doesn't silently show "no draw"
+  // - never flips state into infinite loops on 404; we use apiBase detection instead
   async function authedFetch(input: string, init?: RequestInit) {
     if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
@@ -408,7 +464,8 @@ export default function AdminPage() {
   }
 
   async function loadOpsMode() {
-    const data = await authedFetch(admin('/ops-mode'));
+    const data = await authedFetch(api('/ops-mode'));
+
     const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
     const eff = ((data as any).effectiveMode ?? m) as OpsMode;
     const allowed = !!(data as any).envAutoAllowed;
@@ -419,7 +476,7 @@ export default function AdminPage() {
   }
 
   async function saveOpsMode(next: OpsMode) {
-    const data = await authedFetch(admin('/ops-mode'), {
+    const data = await authedFetch(api('/ops-mode'), {
       method: 'POST',
       body: JSON.stringify({ mode: next }),
     });
@@ -436,8 +493,9 @@ export default function AdminPage() {
   async function refreshUpcomingDrops() {
     setUpcomingLoading(true);
     setUpcomingError(null);
+
     try {
-      const data = await authedFetch(admin('/bonus-upcoming'));
+      const data = await authedFetch(api('/bonus-upcoming'));
       setUpcomingDrops((data as any).upcoming ?? []);
     } catch (err: any) {
       console.error('[ADMIN] refresh upcoming error', err);
@@ -447,6 +505,7 @@ export default function AdminPage() {
     }
   }
 
+  // ── Manually create today’s draw (dev) ──────
   async function handleCreateTodayDraw() {
     setTodayDrawError(null);
 
@@ -457,18 +516,19 @@ export default function AdminPage() {
 
     setCreatingDraw(true);
     try {
-      const data = await authedFetch(admin('/create-today-draw'), { method: 'POST' });
+      const data = await authedFetch(api('/create-today-draw'), { method: 'POST' });
       if (!data || (data as any).ok === false)
-        throw new Error((data as any)?.error || 'Failed to create today draw');
+        throw new Error((data as any)?.error || 'Failed to create today’s draw');
       window.location.reload();
     } catch (err: any) {
       console.error('[XPOT] create today draw error:', err);
-      alert(err.message || 'Unexpected error creating today draw');
+      alert(err.message || 'Unexpected error creating today’s round');
     } finally {
       setCreatingDraw(false);
     }
   }
 
+  // ── Schedule bonus XPOT ─────────────────────
   async function handleScheduleBonus(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBonusError(null);
@@ -480,12 +540,12 @@ export default function AdminPage() {
     }
 
     if (!todayDraw) {
-      setBonusError('No draw detected for today yet. Create today draw first or wait for auto-create.');
+      setBonusError('No draw detected for today yet. Create today’s draw first or wait for auto-create.');
       return;
     }
 
     if (todayDraw.status !== 'open') {
-      setBonusError('Today draw is not open. Bonus drops can only be scheduled for an open draw.');
+      setBonusError('Today’s draw is not open. Bonus drops can only be scheduled for an open draw.');
       return;
     }
 
@@ -503,7 +563,7 @@ export default function AdminPage() {
 
     setBonusSubmitting(true);
     try {
-      const data = (await authedFetch(admin('/bonus-schedule'), {
+      const data = (await authedFetch(api('/bonus-schedule'), {
         method: 'POST',
         body: JSON.stringify({
           amountXpot: amountNumber,
@@ -514,7 +574,9 @@ export default function AdminPage() {
 
       const drop = data?.drop;
       setBonusSuccess(
-        drop ? `Scheduled ${drop.label} - ${drop.amountXpot.toLocaleString()} XPOT.` : 'Scheduled bonus XPOT.',
+        drop
+          ? `Scheduled ${drop.label} - ${drop.amountXpot.toLocaleString()} XPOT.`
+          : 'Scheduled bonus XPOT.',
       );
       await refreshUpcomingDrops();
     } catch (err: any) {
@@ -525,6 +587,7 @@ export default function AdminPage() {
     }
   }
 
+  // ── Cancel scheduled bonus drop ─────────────
   async function handleCancelBonusDrop(dropId: string) {
     setCancelDropError(null);
 
@@ -535,7 +598,8 @@ export default function AdminPage() {
 
     setCancelingDropId(dropId);
     try {
-      const data = await authedFetch(`${admin('/bonus')}/cancel?id=${encodeURIComponent(dropId)}`, {
+      // Most of your implementations use /bonus with ?id=...
+      const data = await authedFetch(`${api('/bonus')}?id=${encodeURIComponent(dropId)}`, {
         method: 'POST',
       });
 
@@ -551,6 +615,7 @@ export default function AdminPage() {
     }
   }
 
+  // ── Pick main winner (manual override) ───────
   async function handlePickMainWinner() {
     setPickError(null);
     setPickSuccess(null);
@@ -562,6 +627,7 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
+      // Explicitly call your known endpoint
       const data = await authedFetch(ADMIN_PICK_WINNER_API, { method: 'POST' });
 
       const raw = (data as any).winner;
@@ -573,7 +639,6 @@ export default function AdminPage() {
         date: new Date().toISOString(),
         ticketCode: String(raw.code ?? raw.ticketCode ?? ''),
         walletAddress: String(raw.wallet ?? raw.walletAddress ?? ''),
-        jackpotUsd: Number(raw.jackpotUsd ?? 0),
         payoutUsd: Number(raw.payoutUsd ?? raw.payoutXpot ?? raw.amountXpot ?? 0),
         isPaidOut: !!raw.isPaidOut,
         kind: 'main',
@@ -584,8 +649,9 @@ export default function AdminPage() {
       const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
       setPickSuccess(`Main XPOT winner: ${normalized.ticketCode || '(no ticket)'} (${shortAddr})`);
 
+      // Refresh winners list from the detected API
       try {
-        const winnersData = await authedFetch(admin('/winners'));
+        const winnersData = await authedFetch(api('/winners'));
         setWinners((winnersData as any).winners ?? []);
       } catch (err) {
         console.error('[ADMIN] refresh winners after pick error', err);
@@ -621,7 +687,7 @@ export default function AdminPage() {
 
     setIsPickingBonusWinner(true);
     try {
-      const data = await authedFetch(admin('/pick-bonus-winner'), {
+      const data = await authedFetch(api('/pick-bonus-winner'), {
         method: 'POST',
         body: JSON.stringify({
           drawId: todayDraw.id,
@@ -637,7 +703,7 @@ export default function AdminPage() {
 
       const winner: AdminWinner = {
         ...raw,
-        payoutUsd: raw.payoutUsd ?? raw.payoutXpot ?? raw.amountUsd ?? raw.amountXpot ?? 0,
+        payoutUsd: Number(raw.payoutUsd ?? raw.payoutXpot ?? raw.amountUsd ?? raw.amountXpot ?? 0),
       };
 
       setBonusPickSuccess(`Bonus winner: ${winner.ticketCode || '(no ticket)'}`);
@@ -649,6 +715,7 @@ export default function AdminPage() {
     }
   }
 
+  // ── Panic reopen draw ───────────────────────
   async function handleReopenDraw() {
     setTodayDrawError(null);
 
@@ -659,7 +726,7 @@ export default function AdminPage() {
 
     setIsReopeningDraw(true);
     try {
-      const data = await authedFetch(admin('/reopen-draw'), { method: 'POST' });
+      const data = await authedFetch(api('/reopen-draw'), { method: 'POST' });
       if (!data || (data as any).ok === false)
         throw new Error((data as any)?.error || 'Failed to reopen draw');
       setTodayDraw(prev => (prev ? { ...prev, status: 'open' } : prev));
@@ -671,6 +738,7 @@ export default function AdminPage() {
     }
   }
 
+  // ── Mark winner as paid ─────────────────────
   async function handleMarkAsPaid(winnerId: string) {
     setMarkPaidError(null);
 
@@ -687,7 +755,7 @@ export default function AdminPage() {
 
     setSavingPaidId(winnerId);
     try {
-      const data = await authedFetch(admin('/mark-paid'), {
+      const data = await authedFetch(api('/mark-paid'), {
         method: 'POST',
         body: JSON.stringify({ winnerId, txUrl }),
       });
@@ -703,6 +771,9 @@ export default function AdminPage() {
     }
   }
 
+  // Always fetch live draw too, to:
+  // - provide fallback
+  // - compute server clock skew
   async function fetchLiveDrawWithSkew(): Promise<LiveDrawPayload['draw']> {
     const res = await fetch('/api/draw/live', { cache: 'no-store' });
     try {
@@ -721,11 +792,11 @@ export default function AdminPage() {
 
   async function loadTodayWithFallback() {
     try {
-      const data = await authedFetch(admin('/today'));
+      const data = await authedFetch(api('/today'));
       const t = (data as any).today ?? null;
       if (t) return t as TodayDraw;
     } catch {
-      // fall back
+      // fall back below
     }
 
     const live = await fetchLiveDrawWithSkew();
@@ -735,8 +806,10 @@ export default function AdminPage() {
     return null;
   }
 
+  // ── Load Today, tickets, winners, upcoming ──
   useEffect(() => {
     if (!adminToken) return;
+    if (!apiBase) return; // wait until detected
 
     let cancelled = false;
 
@@ -765,7 +838,7 @@ export default function AdminPage() {
       setTicketsLoading(true);
       setTicketsError(null);
       try {
-        const data = await authedFetch(admin('/tickets'));
+        const data = await authedFetch(api('/tickets'));
         if (!cancelled) setTickets((data as any).tickets ?? []);
       } catch (err: any) {
         if (!cancelled) setTicketsError(err?.message || 'Failed to load tickets');
@@ -777,7 +850,7 @@ export default function AdminPage() {
       setWinnersLoading(true);
       setWinnersError(null);
       try {
-        const data = await authedFetch(admin('/winners'));
+        const data = await authedFetch(api('/winners'));
         if (!cancelled) setWinners((data as any).winners ?? []);
       } catch (err: any) {
         if (!cancelled) setWinnersError(err?.message || 'Failed to load winners');
@@ -789,7 +862,7 @@ export default function AdminPage() {
       setUpcomingLoading(true);
       setUpcomingError(null);
       try {
-        const data = await authedFetch(admin('/bonus-upcoming'));
+        const data = await authedFetch(api('/bonus-upcoming'));
         if (!cancelled) setUpcomingDrops((data as any).upcoming ?? []);
       } catch (err: any) {
         if (!cancelled) setUpcomingError(err?.message || 'Failed to load upcoming drops');
@@ -804,9 +877,9 @@ export default function AdminPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken]);
+  }, [adminToken, apiBase]);
 
-  // Countdown
+  // ── Countdown (today draw closesAt) ─────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -843,7 +916,7 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, serverSkewMs]);
 
-  // Next bonus countdown
+  // ── Next bonus countdown ────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -894,6 +967,7 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [upcomingDrops, serverSkewMs]);
 
+  // ✅ keep visible count sane
   useEffect(() => {
     setVisibleTicketCount(prev => {
       if (tickets.length === 0) return 0;
@@ -918,6 +992,7 @@ export default function AdminPage() {
     setVisibleWinnerCount(prev => Math.min(prev + MAX_RECENT_WINNERS, winners.length));
   }
 
+  // ── Admin token handling ────────────────────
   async function handleUnlock(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!tokenInput.trim()) return;
@@ -927,6 +1002,8 @@ export default function AdminPage() {
       if (typeof window !== 'undefined') window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
       setAdminToken(tokenInput.trim());
       setTokenAccepted(true);
+      setApiBase(null); // re-detect after unlock
+      setApiBanner(null);
     } finally {
       setIsSavingToken(false);
     }
@@ -937,6 +1014,8 @@ export default function AdminPage() {
     setAdminToken(null);
     setTokenAccepted(false);
     setTokenInput('');
+    setApiBase(null);
+    setApiBanner(null);
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
@@ -957,9 +1036,15 @@ export default function AdminPage() {
   return (
     <XpotPageShell
       title="Operations Center"
-      subtitle="Control room for todays XPOT"
+      subtitle="Control room for today&apos;s XPOT"
       rightSlot={<OperationsCenterBadge live={true} autoDraw={isAutoActive} />}
     >
+      {apiBanner && (
+        <div className="mt-4 xpot-panel px-5 py-3 text-xs text-amber-200 border border-amber-400/20 bg-amber-500/[0.06]">
+          {apiBanner}
+        </div>
+      )}
+
       {/* ✅ FULL-WIDTH HERO */}
       <section className="relative mt-4">
         <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
@@ -987,11 +1072,7 @@ export default function AdminPage() {
                 />
                 <div className="relative rounded-[32px] border border-slate-800/70 bg-slate-950/35 shadow-[0_30px_90px_rgba(0,0,0,0.60)]">
                   <div className="p-4 sm:p-6">
-                    <JackpotPanel
-                      isLocked={isDrawLocked}
-                      onJackpotUsdChange={setLiveJackpotUsd}
-                      variant="embedded"
-                    />
+                    <JackpotPanel isLocked={isDrawLocked} onJackpotUsdChange={setLiveJackpotUsd} variant="embedded" />
                   </div>
                 </div>
               </div>
@@ -1009,7 +1090,9 @@ export default function AdminPage() {
           <div className="relative z-10 flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center gap-2 rounded-full bg-slate-950/70 px-3 py-1">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Admin key</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  Admin key
+                </span>
                 <StatusDot on={tokenAccepted} />
               </span>
 
@@ -1056,15 +1139,16 @@ export default function AdminPage() {
       <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         {/* LEFT */}
         <div className="space-y-4">
+          {/* XPOT CARD */}
           <section className="relative xpot-card-primary" data-glow="purple">
             <div className="xpot-nebula-halo" />
             <div className="relative z-10 space-y-5 px-5 py-5 sm:px-6 sm:py-6">
               <div className="pt-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">Todays round</p>
+                    <p className="text-sm font-semibold text-slate-100">Today&apos;s round</p>
                     <p className="mt-1 text-xs text-slate-400">
-                      Live overview of todays XPOT draw, entries, rollovers and prize pool.
+                      Live overview of today&apos;s XPOT draw, entries, rollovers and prize pool.
                     </p>
                   </div>
 
@@ -1084,9 +1168,7 @@ export default function AdminPage() {
                       {todayDraw && (
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                            todayDraw.status === 'open'
-                              ? 'bg-emerald-500/10 text-emerald-300'
-                              : 'bg-slate-800 text-slate-300'
+                            todayDraw.status === 'open' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-800 text-slate-300'
                           }`}
                         >
                           {todayDraw.status.toUpperCase()}
@@ -1111,7 +1193,7 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Todays XPOT (live)</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today&apos;s XPOT (live)</p>
                     <div className="mt-1">
                       <UsdPill amount={liveJackpotUsd} size="sm" />
                     </div>
@@ -1147,20 +1229,14 @@ export default function AdminPage() {
                         {!isAutoActive && (
                           <button
                             type="button"
-                            disabled={
-                              isPickingWinner ||
-                              !adminToken ||
-                              todayLoading ||
-                              !todayDraw ||
-                              todayDraw.status !== 'open'
-                            }
+                            disabled={isPickingWinner || !adminToken || todayLoading || !todayDraw || todayDraw.status !== 'open'}
                             onClick={handlePickMainWinner}
                             className={`
                               ${BTN_CROWN} px-7 py-3 text-sm transition-all ease-out duration-300
                               ${isWarningCritical ? 'ring-2 ring-[rgba(var(--xpot-gold),0.32)] shadow-lg scale-[1.02]' : ''}
                             `}
                           >
-                            {isPickingWinner ? 'Picking winner...' : 'Crown todays XPOT winner'}
+                            {isPickingWinner ? 'Picking winner...' : 'Crown today&apos;s XPOT winner'}
                           </button>
                         )}
 
@@ -1189,7 +1265,7 @@ export default function AdminPage() {
                           disabled={creatingDraw || !adminToken}
                           className={`${BTN_VAULT} px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-50`}
                         >
-                          {creatingDraw ? 'Creating todays draw...' : 'Create todays draw (dev)'}
+                          {creatingDraw ? 'Creating today&apos;s draw...' : 'Create today&apos;s draw (dev)'}
                         </button>
                       )}
                     </div>
@@ -1212,21 +1288,450 @@ export default function AdminPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-100">Schedule bonus XPOT</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Line up hype bonuses from todays ticket pool. At the scheduled time, one extra winner will be picked.
+                  Line up hype bonuses from today&apos;s ticket pool. At the scheduled time, one extra winner will be picked.
                 </p>
 
                 <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-slate-500">Manual schedule - off-chain</p>
               </div>
             </div>
 
-            {/* ...rest of your JSX stays the same as your current file ... */}
-            {/* If you want, paste the remainder of the file and I will re-drop it fully in one go */}
+            <form onSubmit={handleScheduleBonus} className="mt-4 grid gap-4 lg:grid-cols-2">
+              {/* LEFT */}
+              <div className="space-y-3">
+                <div className="xpot-card px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Amount</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      className="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400/70"
+                      value={bonusAmount}
+                      onChange={e => setBonusAmount(e.target.value)}
+                      inputMode="numeric"
+                    />
+                    <span className="text-xs text-slate-400">XPOT</span>
+                  </div>
+
+                  <div className="mt-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Quick presets</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[100000, 250000, 500000, 1000000].map(v => {
+                        const active = Number(bonusAmount) === v;
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setBonusAmount(String(v))}
+                            className={`rounded-full border px-4 py-2 text-xs transition ${
+                              active
+                                ? 'xpot-pill-gold border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
+                                : 'border-slate-800/80 bg-slate-950/60 text-slate-300 hover:bg-slate-900/50'
+                            }`}
+                          >
+                            {v.toLocaleString()} XPOT
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT */}
+              <div className="space-y-3">
+                <div className="xpot-card px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Label</p>
+                  <input
+                    className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400/70"
+                    value={bonusLabel}
+                    onChange={e => setBonusLabel(e.target.value)}
+                    placeholder="Bonus XPOT"
+                  />
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    Shown in the winners log so you can tell hype bonuses apart from the main XPOT.
+                  </p>
+
+                  <div className="mt-4">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Timer</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[5, 15, 30, 60].map(m => {
+                        const active = bonusDelayMinutes === m;
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setBonusDelayMinutes(m)}
+                            className={`rounded-full border px-4 py-2 text-xs transition ${
+                              active
+                                ? 'border-sky-400/50 bg-sky-500/10 text-sky-100'
+                                : 'border-slate-800/80 bg-slate-950/60 text-slate-300 hover:bg-slate-900/50'
+                            }`}
+                          >
+                            {m === 60 ? '1 h' : `${m} min`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <button type="submit" disabled={bonusSubmitting || !adminToken} className={`${BTN_VAULT} h-10 text-[13px]`}>
+                      {bonusSubmitting ? 'Scheduling...' : 'Schedule bonus'}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isPickingBonusWinner || !adminToken || !todayDraw || todayDraw.status !== 'open'}
+                      onClick={handlePickBonusWinnerNow}
+                      className={`${BTN_CROWN} h-10 text-[13px] disabled:opacity-40 disabled:cursor-not-allowed`}
+                    >
+                      {todayDraw?.status !== 'open' ? 'Bonus locked' : isPickingBonusWinner ? 'Picking...' : 'Pick winner'}
+                    </button>
+                  </div>
+
+                  {bonusPickError && <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>}
+                  {bonusPickSuccess && <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>}
+
+                  {(bonusError || bonusSuccess) && (
+                    <div className="mt-3 text-xs">
+                      {bonusError && <p className="text-amber-300">{bonusError}</p>}
+                      {bonusSuccess && <p className="text-emerald-300">{bonusSuccess}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </form>
+
+            {/* UPCOMING */}
+            <div className="mt-5 xpot-card px-4 py-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Upcoming bonus drops</p>
+
+                  {nextBonusDrop && nextBonusCountdown && (
+                    <div className="flex items-center gap-3">
+                      <Badge tone="sky">
+                        <Timer className="h-3.5 w-3.5" />
+                        Next bonus in {nextBonusCountdown}
+                      </Badge>
+
+                      <span className="text-[11px] text-slate-400">
+                        {nextBonusDrop.label} -{' '}
+                        <span className="font-semibold text-slate-200">
+                          {nextBonusDrop.amountXpot.toLocaleString()} XPOT
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+                  onClick={refreshUpcomingDrops}
+                  disabled={!tokenAccepted || upcomingLoading}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {upcomingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                    Refresh
+                  </span>
+                </button>
+              </div>
+
+              {upcomingError && <p className="mt-2 text-xs text-amber-300">{upcomingError}</p>}
+              {cancelDropError && <p className="mt-2 text-xs text-amber-300">{cancelDropError}</p>}
+
+              <div className="mt-3 space-y-2">
+                {upcomingDrops.length === 0 ? (
+                  <p className="text-xs text-slate-500">No bonus drops scheduled yet.</p>
+                ) : (
+                  upcomingDrops.map(d => (
+                    <div
+                      key={d.id}
+                      className="flex flex-col gap-2 rounded-2xl border border-slate-800/70 bg-slate-950/55 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-100">{d.label}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {formatDateTime(d.scheduledAt)} - {d.amountXpot.toLocaleString()} XPOT
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge tone={d.status === 'SCHEDULED' ? 'sky' : d.status === 'FIRED' ? 'emerald' : 'red'}>
+                          {d.status}
+                        </Badge>
+
+                        {d.status === 'SCHEDULED' && (
+                          <button
+                            type="button"
+                            className={`${BTN_DANGER} h-9 px-4 text-xs`}
+                            onClick={() => handleCancelBonusDrop(d.id)}
+                            disabled={cancelingDropId === d.id || !tokenAccepted}
+                          >
+                            {cancelingDropId === d.id ? 'Canceling...' : 'Cancel'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Today’s entries */}
+          <section className="xpot-panel px-5 py-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Today&apos;s XPOT entries</p>
+                <p className="mt-1 text-xs text-slate-400">Every entry that has been issued for the current XPOT round.</p>
+              </div>
+
+              <Badge tone="slate">
+                <Ticket className="h-3.5 w-3.5" />
+                {tickets.length}
+              </Badge>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {ticketsLoading ? (
+                <p className="text-xs text-slate-500">Loading...</p>
+              ) : ticketsError ? (
+                <p className="text-xs text-amber-300">{ticketsError}</p>
+              ) : tickets.length === 0 ? (
+                <p className="text-xs text-slate-500">No entries yet for today&apos;s XPOT.</p>
+              ) : (
+                <>
+                  {visibleTickets.map(t => (
+                    <div key={t.id} className="xpot-card px-4 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-mono text-sm text-slate-100">{t.code}</p>
+                          <div className="mt-1">
+                            <CopyableWallet address={t.walletAddress} />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            tone={
+                              t.status === 'won'
+                                ? 'sky'
+                                : t.status === 'in-draw'
+                                ? 'emerald'
+                                : t.status === 'claimed'
+                                ? 'emerald'
+                                : t.status === 'expired'
+                                ? 'red'
+                                : 'slate'
+                            }
+                          >
+                            {t.status.replace('-', ' ')}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <p className="mt-2 text-xs text-slate-500">Issued {formatDateTime(t.createdAt)}</p>
+                    </div>
+                  ))}
+
+                  {visibleTicketCount < tickets.length && (
+                    <div className="pt-2">
+                      <button type="button" onClick={handleLoadMoreTickets} className={`${BTN_UTILITY} h-10 w-full text-sm`}>
+                        Load more entries
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </section>
         </div>
 
-        {/* RIGHT column also stays the same */}
-        <div className="space-y-4">{/* unchanged */}</div>
+        {/* RIGHT */}
+        <div className="space-y-4">
+          {/* Winners */}
+          <section className="xpot-panel px-5 py-5">
+            <div>
+              <p className="text-sm font-semibold text-slate-100">Recent XPOT winners</p>
+              <p className="mt-1 text-xs text-slate-400">Internal log of executed rewards, payouts and winner tickets.</p>
+            </div>
+
+            {markPaidError && <p className="mt-3 text-xs text-amber-300">{markPaidError}</p>}
+
+            <div className="mt-4 space-y-2">
+              {winnersLoading ? (
+                <p className="text-xs text-slate-500">Loading...</p>
+              ) : winnersError ? (
+                <p className="text-xs text-amber-300">{winnersError}</p>
+              ) : winners.length === 0 ? (
+                <div className="xpot-card px-4 py-3 text-xs text-slate-500">
+                  No completed draws yet. Once you pick winners and mark XPOT as paid, they&apos;ll appear here.
+                </div>
+              ) : (
+                <>
+                  {visibleWinners.map(w => {
+                    const label = formatWinnerLabel(w);
+                    const isPaid = !!w.isPaidOut;
+
+                    return (
+                      <div key={w.id} className="xpot-card px-4 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs text-slate-400">
+                              {formatDate(w.date)}
+                              {label ? ` - ${label}` : ''}
+                            </p>
+                            <p className="mt-1 font-mono text-sm text-slate-100">{w.ticketCode}</p>
+                            <div className="mt-1">
+                              <CopyableWallet address={w.walletAddress} />
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-2">
+                            <XpotPill amount={w.payoutUsd ?? 0} size="sm" />
+                            <Badge tone={isPaid ? 'emerald' : 'gold'}>
+                              {isPaid ? (
+                                <>
+                                  <BadgeCheck className="h-3.5 w-3.5" />
+                                  Paid
+                                </>
+                              ) : (
+                                <>
+                                  <Info className="h-3.5 w-3.5" />
+                                  Unpaid
+                                </>
+                              )}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+                          <input
+                            className="w-full rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-400/70"
+                            placeholder="Paste TX link (Solscan) ..."
+                            value={txInputs[w.id] ?? (w.txUrl ?? '')}
+                            onChange={e =>
+                              setTxInputs(prev => ({
+                                ...prev,
+                                [w.id]: e.target.value,
+                              }))
+                            }
+                            disabled={isPaid}
+                          />
+                          <button
+                            type="button"
+                            className={`${BTN_UTILITY} h-10 px-4 text-xs`}
+                            onClick={() => handleMarkAsPaid(w.id)}
+                            disabled={isPaid || savingPaidId === w.id}
+                          >
+                            {savingPaidId === w.id ? 'Saving...' : 'Mark paid'}
+                          </button>
+                        </div>
+
+                        {w.txUrl && (
+                          <a href={w.txUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-[11px] text-emerald-300 hover:text-emerald-200">
+                            View TX
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {visibleWinnerCount < winners.length && (
+                    <div className="pt-2">
+                      <button type="button" onClick={handleLoadMoreWinners} className={`${BTN_UTILITY} h-10 w-full text-sm`}>
+                        Load more winners
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* Quick hints */}
+          <section className="xpot-panel px-5 py-5 text-xs text-slate-400">
+            <p className="font-semibold text-slate-200">Ops notes</p>
+            <ul className="mt-2 space-y-2">
+              <li className="flex gap-2">
+                <KeyRound className="h-4 w-4 text-slate-500" />
+                Admin key is stored locally in your browser only.
+              </li>
+              <li className="flex gap-2">
+                <CalendarClock className="h-4 w-4 text-slate-500" />
+                Countdown is based on <span className="font-semibold text-slate-200">closesAt</span> from today&apos;s draw and synced to server time.
+              </li>
+              <li className="flex gap-2">
+                <Crown className="h-4 w-4 text-slate-500" />
+                Manual crown button is disabled when auto-draw is enabled.
+              </li>
+            </ul>
+          </section>
+        </div>
       </section>
+
+      {modeModalOpen && (
+        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
+          <div className="w-full max-w-md xpot-panel px-6 py-6">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-50">Switch ops mode</p>
+              <button type="button" className={`${BTN_UTILITY} h-8 px-3 text-[11px]`} onClick={() => setModeModalOpen(false)}>
+                Close
+              </button>
+            </div>
+
+            <p className="mt-2 text-xs text-slate-400">
+              Confirm your admin key to switch to{' '}
+              <span className="font-semibold text-slate-200">{modePending === 'AUTO' ? 'AUTO' : 'MANUAL'}</span>.
+            </p>
+
+            {!envAutoAllowed && modePending === 'AUTO' && (
+              <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
+                AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won&apos;t take effect until allowed.
+              </div>
+            )}
+
+            <div className="mt-4 space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Admin key (re-enter)</label>
+              <input
+                type="password"
+                className="xpot-input rounded-2xl"
+                value={modeTokenInput}
+                onChange={e => setModeTokenInput(e.target.value)}
+                placeholder="Paste admin token..."
+              />
+              {modeError && <p className="text-xs text-amber-300">{modeError}</p>}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button type="button" className={`${BTN_UTILITY} flex-1 h-11 text-sm`} onClick={() => setModeModalOpen(false)} disabled={modeSaving}>
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className={`${BTN_VAULT} flex-1 h-11 text-sm`}
+                disabled={modeSaving || !modeTokenInput.trim()}
+                onClick={async () => {
+                  setModeError(null);
+                  setModeSaving(true);
+                  try {
+                    if (!adminToken || modeTokenInput.trim() !== adminToken.trim()) throw new Error('Admin key mismatch.');
+                    await saveOpsMode(modePending);
+                    setModeModalOpen(false);
+                  } catch (err: any) {
+                    setModeError(err?.message || 'Failed to switch mode');
+                  } finally {
+                    setModeSaving(false);
+                  }
+                }}
+              >
+                {modeSaving ? 'Saving...' : 'Confirm switch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ULTRA PREMIUM LOCK MODAL */}
       {!tokenAccepted && (
@@ -1245,8 +1750,8 @@ export default function AdminPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-50">Unlock XPOT operations center</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Step inside the live XPOT control deck. Monitor todays round, entries, wallets and reward execution
-                  - secured behind your private <span className="font-semibold text-slate-200">admin key</span>.
+                  Step inside the live XPOT control deck. Monitor today&apos;s round, entries, wallets and reward execution - secured behind your private{' '}
+                  <span className="font-semibold text-slate-200">admin key</span>.
                 </p>
               </div>
 
@@ -1285,7 +1790,7 @@ export default function AdminPage() {
               <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3 text-[11px] text-slate-400">
                 <div className="flex items-start gap-2">
                   <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-300" />
-                  <p>If your token is wrong youll just see request failures - nothing breaks.</p>
+                  <p>If your token is wrong you&apos;ll just see request failures - nothing breaks.</p>
                 </div>
               </div>
             </div>
