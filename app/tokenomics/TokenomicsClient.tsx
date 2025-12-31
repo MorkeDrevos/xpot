@@ -887,6 +887,7 @@ function DonutAllocation({
   onSelect: (key: string) => void;
 
   openKey: string | null;
+  // ✅ FIX: this must be void-returning (was incorrectly typed)
   setOpenKey: (fn: (k: string | null) => string | null) => void;
   setPendingScrollKey: (key: string | null) => void;
 
@@ -984,7 +985,8 @@ function DonutAllocation({
                       strokeDashoffset={seg.dashoffset}
                       style={{ cursor: 'pointer', filter: isActive ? 'url(#xpotGlow)' : undefined }}
                       initial={false}
-                      animate={useReducedMotion() ? {} : { opacity: isActive ? 1 : 0.7 }}
+                      // ✅ FIX: do NOT call hooks inside map. Use reduceMotion variable.
+                      animate={reduceMotion ? {} : { opacity: isActive ? 1 : 0.7 }}
                       onClick={() => onSelect(seg.key)}
                       onMouseEnter={() => onSelect(seg.key)}
                     />
@@ -992,7 +994,14 @@ function DonutAllocation({
                 })}
               </g>
 
-              <circle cx={size / 2} cy={size / 2} r={r - 26} fill="rgba(2,2,10,0.55)" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={r - 26}
+                fill="rgba(2,2,10,0.55)"
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="1"
+              />
             </svg>
 
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -1004,7 +1013,10 @@ function DonutAllocation({
               </div>
             </div>
 
-            <div className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 40px 120px rgba(0,0,0,0.55)` }} />
+            <div
+              className="pointer-events-none absolute inset-0 rounded-full"
+              style={{ boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 40px 120px rgba(0,0,0,0.55)` }}
+            />
             <div
               className="pointer-events-none absolute -inset-7 rounded-full opacity-70 blur-2xl"
               style={{ background: `radial-gradient(circle at 50% 50%, ${toneGlow(selected?.tone ?? 'slate')}, transparent 60%)` }}
@@ -1032,7 +1044,9 @@ function DonutAllocation({
                 style={
                   isSelected
                     ? {
-                        boxShadow: `0 0 0 1px rgba(255,255,255,0.10), 0 18px 70px rgba(0,0,0,0.35), 0 0 36px ${toneRing(a.tone)}`,
+                        boxShadow: `0 0 0 1px rgba(255,255,255,0.10), 0 18px 70px rgba(0,0,0,0.35), 0 0 36px ${toneRing(
+                          a.tone,
+                        )}`,
                       }
                     : undefined
                 }
@@ -1049,7 +1063,10 @@ function DonutAllocation({
                   className="group w-full rounded-2xl px-4 py-3 text-left hover:bg-slate-950/65 transition outline-none"
                 >
                   <div className="flex items-start gap-3">
-                    <span className="mt-[6px] h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: stroke, boxShadow: `0 0 14px ${glow}` }} />
+                    <span
+                      className="mt-[6px] h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: stroke, boxShadow: `0 0 14px ${glow}` }}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
                         <p className="truncate text-sm font-semibold text-slate-100">{a.label}</p>
@@ -1096,7 +1113,13 @@ function DonutAllocation({
                           {a.key === 'team' && <TeamVestingPanel totalTeamTokens={teamTotalTokens} />}
                           {a.key === 'partners' && <PartnersVestingPanel totalPartnersTokens={partnersTotalTokens} />}
 
-                          <VaultGroupPanel title="Vaults (live)" groupKey={vaultGroupKey} data={vaultData} isLoading={vaultLoading} hadError={vaultError} />
+                          <VaultGroupPanel
+                            title="Vaults (live)"
+                            groupKey={vaultGroupKey}
+                            data={vaultData}
+                            isLoading={vaultLoading}
+                            hadError={vaultError}
+                          />
 
                           <p className="mt-3 text-[11px] text-slate-600">
                             Design intent: dedicated vaults, timelocks and public wallets so this stays verifiable over time.
