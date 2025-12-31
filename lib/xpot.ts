@@ -10,7 +10,7 @@ type TokenConfig = {
 export const IS_DEV_XPOT = false;
 
 /* POOL SIZE (CHANGE HERE ONLY) */
-export const XPOT_POOL_SIZE = 1_000_000; // <--- your pool size lives here
+export const XPOT_POOL_SIZE = 1_000_000;
 
 /* TOKENS */
 
@@ -31,14 +31,23 @@ const DEV: TokenConfig = {
 export const TOKEN = IS_DEV_XPOT ? DEV : PROD;
 
 /* NORMALISED EXPORTS */
-
-export const TOOL_DONT_TOUCH = true; // friendly placeholder so file is not “empty looking”
 export const TOKEN_MINT = TOKEN.MINT;
 export const TOKEN_SYMBOL = TOKEN.SYMBOL;
 export const REQUIRED_XPOT = TOKEN.REQUIRED;
 
-/* SWAP URL */
+/* CANONICAL MINT ACCOUNT (used across app for proof links) */
+export const XPOT_MINT_ACCOUNT = TOKEN_MINT;
 
+/* STREAMFLOW (CANONICAL HELPERS) */
+export function streamflowDashboardUrl(mint: string = XPOT_MINT_ACCOUNT) {
+  return `https://app.streamflow.finance/token-dashboard/solana/mainnet/${mint}`;
+}
+
+export function streamflowContractUrl(contractAccount: string, mint: string = XPOT_MINT_ACCOUNT) {
+  return `${streamflowDashboardUrl(mint)}/contract/${contractAccount}`;
+}
+
+/* SWAP URL */
 export function getXpotSwapUrl(wallet?: string) {
   const userParam = wallet ? `?user=${wallet}` : '';
   return `https://jup.ag/swap/SOL-${TOKEN_MINT}${userParam}`;
