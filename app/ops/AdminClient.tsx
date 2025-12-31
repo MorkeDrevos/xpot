@@ -1,7 +1,7 @@
 // app/ops/AdminClient.tsx
 'use client';
 
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import XpotLogoLottie from '@/components/XpotLogoLottie';
 import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
@@ -24,9 +24,10 @@ import {
 const MAX_TODAY_TICKETS = 7;
 const MAX_RECENT_WINNERS = 10;
 
-// ✅ keep API as-is (do NOT change)
-const OPS_API = '/api/ops';
-const ops = (p: string) => `${OPS_API}${p.startsWith('/') ? '' : '/'}${p}`;
+// ✅ IMPORTANT: Ops UI uses /api/admin/* in your repo (your screenshot #2)
+// Using /api/ops/* caused 404 spam + flicker.
+const ADMIN_API = '/api/admin';
+const api = (p: string) => `${ADMIN_API}${p.startsWith('/') ? '' : '/'}${p}`;
 
 // ✅ admin endpoint that actually exists (manual trigger you showed)
 const ADMIN_PICK_WINNER_API = '/api/admin/draw/pick-winner';
@@ -37,8 +38,6 @@ type TodayDraw = {
   id: string;
   date: string;
   status: DrawStatus;
-  jackpotUsd: number;
-  rolloverUsd: number;
   ticketsCount: number;
   closesAt?: string | null;
 };
@@ -53,7 +52,6 @@ type AdminTicket = {
   walletAddress: string;
   status: TicketStatus;
   createdAt: string;
-  jackpotUsd?: number;
 };
 
 type AdminWinnerKind = 'main' | 'bonus';
@@ -82,7 +80,7 @@ type AdminBonusDrop = {
   status: BonusDropStatus;
 };
 
-// Public live draw payload (fallback when ops today returns null)
+// Public live draw payload (fallback when admin today returns null)
 type LiveDrawPayload = {
   draw: {
     dailyXpot: number;
@@ -148,7 +146,9 @@ function UsdPill({
   return (
     <span className={cls}>
       <span className="font-mono text-[0.92em]">{value}</span>
-      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">USD</span>
+      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">
+        USD
+      </span>
     </span>
   );
 }
@@ -273,8 +273,6 @@ function toTodayDrawFromLive(live: LiveDrawPayload['draw']): TodayDraw | null {
     id: `live:${live.drawDate}`,
     date: live.drawDate,
     status: mapLiveStatus(live.status),
-    jackpotUsd: 0,
-    rolloverUsd: 0,
     ticketsCount: 0,
     closesAt: live.closesAt,
   };
@@ -333,30 +331,7 @@ export default function AdminPage() {
     [winners, visibleWinnerCount],
   );
 
-  // Live jackpot updates can cause heavy rerenders if they fire too frequently.
   const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
-  const lastJackpotRef = useRef<number | null>(null);
-  const lastJackpotSetAtRef = useRef<number>(0);
-
-  const handleJackpotUsdChange = useCallback((v: number | null) => {
-    if (v == null || !Number.isFinite(v)) return;
-
-    const now = Date.now();
-    const prev = lastJackpotRef.current;
-
-    // Only update if:
-    // - first value, OR
-    // - changed meaningfully (>= 0.01), OR
-    // - enough time passed (>= 1500ms)
-    const changedMeaningfully = prev == null ? true : Math.abs(v - prev) >= 0.01;
-    const timeOk = now - lastJackpotSetAtRef.current >= 1500;
-
-    if (!changedMeaningfully && !timeOk) return;
-
-    lastJackpotRef.current = v;
-    lastJackpotSetAtRef.current = now;
-    setLiveJackpotUsd(v);
-  }, []);
 
   const [countdownText, setCountdownText] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
@@ -392,9 +367,9 @@ export default function AdminPage() {
   const [cancelingDropId, setCancelingDropId] = useState<string | null>(null);
   const [cancelDropError, setCancelDropError] = useState<string | null>(null);
 
-  // If /api/ops/* routes are missing in this deployment, stop spamming 404s.
-  const [opsApiAvailable, setOpsApiAvailable] = useState<boolean | null>(null);
-  const [opsApiBanner, setOpsApiBanner] = useState<string | null>(null);
+  // If /api/admin/* routes are missing in this deployment, stop spamming 404s.
+  const [adminApiAvailable, setAdminApiAvailable] = useState<boolean | null>(null);
+  const [adminApiBanner, setAdminApiBanner] = useState<string | null>(null);
 
   // Server clock skew (ms). Used to sync countdown with server time (matches home page feel).
   const [serverSkewMs, setServerSkewMs] = useState(0);
@@ -414,54 +389,46 @@ export default function AdminPage() {
     }
   }, []);
 
-  // IMPORTANT:
-  // - authedFetch THROWS on failures so UI doesn't silently show "no draw"
-  // - if the ops routes are missing (404), mark opsApiAvailable=false and stop repeated calls
-  // - do NOT mark opsApiAvailable=false for non-ops endpoints (eg /api/admin/*)
-  const authedFetch = useCallback(
-    async (input: string, init?: RequestInit) => {
-      if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
+  async function authedFetch(input: string, init?: RequestInit) {
+    if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
-      const headers = new Headers(init?.headers || {});
-      headers.set('Content-Type', 'application/json');
-      headers.set('x-xpot-admin-key', adminToken.trim());
+    const headers = new Headers(init?.headers || {});
+    headers.set('Content-Type', 'application/json');
+    headers.set('x-xpot-admin-key', adminToken.trim());
 
-      const res = await fetch(input, { ...init, headers, cache: 'no-store' });
+    const res = await fetch(input, { ...init, headers, cache: 'no-store' });
 
-      let data: any = null;
-      try {
-        data = await res.json();
-      } catch {
-        data = null;
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      const isAdminRoute = input.startsWith(ADMIN_API);
+      if (res.status === 404 && isAdminRoute) {
+        setAdminApiAvailable(false);
+        setAdminApiBanner(
+          'Admin API routes not found in this deployment (404). Ops UI will run in read-only fallback mode until /api/admin/* is deployed.',
+        );
       }
+      const msg = data?.error || `Request failed (${res.status})`;
+      throw new Error(msg);
+    }
 
-      if (!res.ok) {
-        const isOpsRoute = input.startsWith(OPS_API);
-        if (res.status === 404 && isOpsRoute) {
-          setOpsApiAvailable(false);
-          setOpsApiBanner(
-            'Ops API routes not found in this deployment (404). UI will run in read-only fallback mode until /api/ops/* is deployed.',
-          );
-        }
-        const msg = data?.error || `Request failed (${res.status})`;
-        throw new Error(msg);
-      }
+    if (input.startsWith(ADMIN_API)) {
+      setAdminApiAvailable(true);
+      setAdminApiBanner(null);
+    }
 
-      // If we get here, ops API exists (at least for this route)
-      if (input.startsWith(OPS_API)) {
-        setOpsApiAvailable(true);
-        setOpsApiBanner(null);
-      }
-
-      return data;
-    },
-    [adminToken],
-  );
+    return data;
+  }
 
   async function loadOpsMode() {
-    if (opsApiAvailable === false) return;
+    if (adminApiAvailable === false) return;
 
-    const data = await authedFetch(ops('/ops-mode'));
+    const data = await authedFetch(api('/ops-mode'));
 
     const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
     const eff = ((data as any).effectiveMode ?? m) as OpsMode;
@@ -473,7 +440,7 @@ export default function AdminPage() {
   }
 
   async function saveOpsMode(next: OpsMode) {
-    const data = await authedFetch(ops('/ops-mode'), {
+    const data = await authedFetch(api('/ops-mode'), {
       method: 'POST',
       body: JSON.stringify({ mode: next }),
     });
@@ -491,14 +458,14 @@ export default function AdminPage() {
     setUpcomingLoading(true);
     setUpcomingError(null);
 
-    if (opsApiAvailable === false) {
-      setUpcomingError('Ops API is not available in this deployment.');
+    if (adminApiAvailable === false) {
+      setUpcomingError('Admin API is not available in this deployment.');
       setUpcomingLoading(false);
       return;
     }
 
     try {
-      const data = await authedFetch(ops('/bonus-upcoming'));
+      const data = await authedFetch(api('/bonus-upcoming'));
       setUpcomingDrops((data as any).upcoming ?? []);
     } catch (err: any) {
       console.error('[ADMIN] refresh upcoming error', err);
@@ -517,20 +484,20 @@ export default function AdminPage() {
       return;
     }
 
-    if (opsApiAvailable === false) {
-      alert('Ops API is not available in this deployment.');
+    if (adminApiAvailable === false) {
+      alert('Admin API is not available in this deployment.');
       return;
     }
 
     setCreatingDraw(true);
     try {
-      const data = await authedFetch(ops('/create-today-draw'), { method: 'POST' });
+      const data = await authedFetch(api('/create-today-draw'), { method: 'POST' });
       if (!data || (data as any).ok === false)
-        throw new Error((data as any)?.error || 'Failed to create today&apos;s draw');
+        throw new Error((data as any)?.error || 'Failed to create today\'s draw');
       window.location.reload();
     } catch (err: any) {
       console.error('[XPOT] create today draw error:', err);
-      alert(err.message || 'Unexpected error creating today&apos;s round');
+      alert(err.message || 'Unexpected error creating today\'s round');
     } finally {
       setCreatingDraw(false);
     }
@@ -547,20 +514,20 @@ export default function AdminPage() {
       return;
     }
 
-    if (opsApiAvailable === false) {
-      setBonusError('Ops API is not available in this deployment.');
+    if (adminApiAvailable === false) {
+      setBonusError('Admin API is not available in this deployment.');
       return;
     }
 
     if (!todayDraw) {
       setBonusError(
-        'No draw detected for today yet. Create today&apos;s draw first or wait for auto-create.',
+        'No draw detected for today yet. Create today\'s draw first or wait for auto-create.',
       );
       return;
     }
 
     if (todayDraw.status !== 'open') {
-      setBonusError('Today&apos;s draw is not open. Bonus drops can only be scheduled for an open draw.');
+      setBonusError('Today\'s draw is not open. Bonus drops can only be scheduled for an open draw.');
       return;
     }
 
@@ -578,7 +545,7 @@ export default function AdminPage() {
 
     setBonusSubmitting(true);
     try {
-      const data = (await authedFetch(ops('/bonus-schedule'), {
+      const data = (await authedFetch(api('/bonus-schedule'), {
         method: 'POST',
         body: JSON.stringify({
           amountXpot: amountNumber,
@@ -591,7 +558,7 @@ export default function AdminPage() {
       setBonusSuccess(
         drop
           ? `Scheduled ${drop.label} - ${drop.amountXpot.toLocaleString()} XPOT.`
-          : `Scheduled bonus XPOT.`,
+          : 'Scheduled bonus XPOT.',
       );
       await refreshUpcomingDrops();
     } catch (err: any) {
@@ -611,14 +578,14 @@ export default function AdminPage() {
       return;
     }
 
-    if (opsApiAvailable === false) {
-      setCancelDropError('Ops API is not available in this deployment.');
+    if (adminApiAvailable === false) {
+      setCancelDropError('Admin API is not available in this deployment.');
       return;
     }
 
     setCancelingDropId(dropId);
     try {
-      const data = await authedFetch(`${ops('/bonus-cancel')}?id=${encodeURIComponent(dropId)}`, {
+      const data = await authedFetch(`${api('/bonus')}?action=cancel&id=${encodeURIComponent(dropId)}`, {
         method: 'POST',
       });
       if (data && (data as any).ok === false)
@@ -647,7 +614,6 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
-      // NOTE: This is NOT an ops endpoint, so 404 must NOT flip opsApiAvailable=false
       const data = await authedFetch(ADMIN_PICK_WINNER_API, { method: 'POST' });
 
       const raw = (data as any).winner;
@@ -670,9 +636,9 @@ export default function AdminPage() {
       const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
       setPickSuccess(`Main XPOT winner: ${normalized.ticketCode || '(no ticket)'} (${shortAddr})`);
 
-      if (opsApiAvailable !== false) {
+      if (adminApiAvailable !== false) {
         try {
-          const winnersData = await authedFetch(ops('/winners'));
+          const winnersData = await authedFetch(api('/winners'));
           setWinners((winnersData as any).winners ?? []);
         } catch (err) {
           console.error('[ADMIN] refresh winners after pick error', err);
@@ -699,8 +665,8 @@ export default function AdminPage() {
       return;
     }
 
-    if (opsApiAvailable === false) {
-      setBonusPickError('Ops API is not available in this deployment.');
+    if (adminApiAvailable === false) {
+      setBonusPickError('Admin API is not available in this deployment.');
       return;
     }
 
@@ -716,7 +682,7 @@ export default function AdminPage() {
 
     setIsPickingBonusWinner(true);
     try {
-      const data = await authedFetch(ops('/pick-bonus-winner'), {
+      const data = await authedFetch(api('/pick-bonus-winner'), {
         method: 'POST',
         body: JSON.stringify({
           drawId: todayDraw.id,
@@ -753,14 +719,14 @@ export default function AdminPage() {
       return;
     }
 
-    if (opsApiAvailable === false) {
-      alert('Ops API is not available in this deployment.');
+    if (adminApiAvailable === false) {
+      alert('Admin API is not available in this deployment.');
       return;
     }
 
     setIsReopeningDraw(true);
     try {
-      const data = await authedFetch(ops('/reopen-draw'), { method: 'POST' });
+      const data = await authedFetch(api('/reopen-draw'), { method: 'POST' });
       if (!data || (data as any).ok === false)
         throw new Error((data as any)?.error || 'Failed to reopen draw');
       setTodayDraw(prev => (prev ? { ...prev, status: 'open' } : prev));
@@ -781,8 +747,8 @@ export default function AdminPage() {
       return;
     }
 
-    if (opsApiAvailable === false) {
-      setMarkPaidError('Ops API is not available in this deployment.');
+    if (adminApiAvailable === false) {
+      setMarkPaidError('Admin API is not available in this deployment.');
       return;
     }
 
@@ -794,7 +760,7 @@ export default function AdminPage() {
 
     setSavingPaidId(winnerId);
     try {
-      const data = await authedFetch(ops('/mark-paid'), {
+      const data = await authedFetch(api('/mark-paid'), {
         method: 'POST',
         body: JSON.stringify({ winnerId, txUrl }),
       });
@@ -810,9 +776,7 @@ export default function AdminPage() {
     }
   }
 
-  // Always fetch live draw too, to:
-  // - provide fallback if ops routes are missing
-  // - compute server clock skew (countdown sync)
+  // Always fetch live draw too, to provide fallback + compute skew
   async function fetchLiveDrawWithSkew(): Promise<LiveDrawPayload['draw']> {
     const res = await fetch('/api/draw/live', { cache: 'no-store' });
     try {
@@ -830,13 +794,13 @@ export default function AdminPage() {
   }
 
   async function loadTodayWithFallback() {
-    if (opsApiAvailable !== false) {
+    if (adminApiAvailable !== false) {
       try {
-        const data = await authedFetch(ops('/today'));
+        const data = await authedFetch(api('/today'));
         const t = (data as any).today ?? null;
         if (t) return t as TodayDraw;
       } catch {
-        // ignore and fall back
+        // ignore and fall back below
       }
     }
 
@@ -872,27 +836,28 @@ export default function AdminPage() {
         if (!cancelled) setTodayLoading(false);
       }
 
-      if (opsApiAvailable === false) {
+      if (adminApiAvailable === false) {
         if (!cancelled) {
           setTickets([]);
           setTicketsLoading(false);
-          setTicketsError('Ops API is not available in this deployment.');
+          setTicketsError('Admin API is not available in this deployment.');
 
           setWinners([]);
           setWinnersLoading(false);
-          setWinnersError('Ops API is not available in this deployment.');
+          setWinnersError('Admin API is not available in this deployment.');
 
           setUpcomingDrops([]);
           setUpcomingLoading(false);
-          setUpcomingError('Ops API is not available in this deployment.');
+          setUpcomingError('Admin API is not available in this deployment.');
         }
         return;
       }
 
+      // Tickets
       setTicketsLoading(true);
       setTicketsError(null);
       try {
-        const data = await authedFetch(ops('/tickets'));
+        const data = await authedFetch(api('/tickets'));
         if (!cancelled) setTickets((data as any).tickets ?? []);
       } catch (err: any) {
         if (!cancelled) setTicketsError(err?.message || 'Failed to load tickets');
@@ -900,10 +865,11 @@ export default function AdminPage() {
         if (!cancelled) setTicketsLoading(false);
       }
 
+      // Winners
       setWinnersLoading(true);
       setWinnersError(null);
       try {
-        const data = await authedFetch(ops('/winners'));
+        const data = await authedFetch(api('/winners'));
         if (!cancelled) setWinners((data as any).winners ?? []);
       } catch (err: any) {
         if (!cancelled) setWinnersError(err?.message || 'Failed to load winners');
@@ -911,10 +877,11 @@ export default function AdminPage() {
         if (!cancelled) setWinnersLoading(false);
       }
 
+      // Upcoming
       setUpcomingLoading(true);
       setUpcomingError(null);
       try {
-        const data = await authedFetch(ops('/bonus-upcoming'));
+        const data = await authedFetch(api('/bonus-upcoming'));
         if (!cancelled) setUpcomingDrops((data as any).upcoming ?? []);
       } catch (err: any) {
         if (!cancelled) setUpcomingError(err?.message || 'Failed to load upcoming drops');
@@ -929,7 +896,7 @@ export default function AdminPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken, opsApiAvailable, authedFetch]);
+  }, [adminToken, adminApiAvailable]);
 
   // ── Countdown (today draw closesAt) ─────────
   useEffect(() => {
@@ -1054,8 +1021,8 @@ export default function AdminPage() {
         window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
       setAdminToken(tokenInput.trim());
       setTokenAccepted(true);
-      setOpsApiAvailable(null);
-      setOpsApiBanner(null);
+      setAdminApiAvailable(null);
+      setAdminApiBanner(null);
     } finally {
       setIsSavingToken(false);
     }
@@ -1066,8 +1033,8 @@ export default function AdminPage() {
     setAdminToken(null);
     setTokenAccepted(false);
     setTokenInput('');
-    setOpsApiAvailable(null);
-    setOpsApiBanner(null);
+    setAdminApiAvailable(null);
+    setAdminApiBanner(null);
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
@@ -1091,9 +1058,9 @@ export default function AdminPage() {
       subtitle="Control room for today&apos;s XPOT"
       rightSlot={<OperationsCenterBadge live={true} autoDraw={isAutoActive} />}
     >
-      {opsApiBanner && (
+      {adminApiBanner && (
         <div className="mt-4 xpot-panel px-5 py-3 text-xs text-amber-200 border border-amber-400/20 bg-amber-500/[0.06]">
-          {opsApiBanner}
+          {adminApiBanner}
         </div>
       )}
 
@@ -1126,7 +1093,7 @@ export default function AdminPage() {
                   <div className="p-4 sm:p-6">
                     <JackpotPanel
                       isLocked={isDrawLocked}
-                      onJackpotUsdChange={handleJackpotUsdChange}
+                      onJackpotUsdChange={setLiveJackpotUsd}
                       variant="embedded"
                     />
                   </div>
@@ -1168,7 +1135,10 @@ export default function AdminPage() {
               </span>
             </div>
 
-            <form onSubmit={handleUnlock} className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row">
+            <form
+              onSubmit={handleUnlock}
+              className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row"
+            >
               <input
                 type="password"
                 className="xpot-input flex-1 text-sm"
@@ -1187,7 +1157,11 @@ export default function AdminPage() {
                 </button>
 
                 {tokenAccepted && (
-                  <button type="button" onClick={handleClearToken} className={`${BTN} px-4 py-2 text-xs`}>
+                  <button
+                    type="button"
+                    onClick={handleClearToken}
+                    className={`${BTN} px-4 py-2 text-xs`}
+                  >
                     Clear
                   </button>
                 )}
@@ -1201,6 +1175,7 @@ export default function AdminPage() {
       <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         {/* LEFT */}
         <div className="space-y-4">
+          {/* Today card */}
           <section className="relative xpot-card-primary" data-glow="purple">
             <div className="xpot-nebula-halo" />
             <div className="relative z-10 space-y-5 px-5 py-5 sm:px-6 sm:py-6">
@@ -1209,7 +1184,7 @@ export default function AdminPage() {
                   <div>
                     <p className="text-sm font-semibold text-slate-100">Today&apos;s round</p>
                     <p className="mt-1 text-xs text-slate-400">
-                      Live overview of today&apos;s XPOT draw, entries, rollovers and prize pool.
+                      Live overview of today&apos;s XPOT draw and entries.
                     </p>
                   </div>
 
@@ -1223,9 +1198,11 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                <div className="mt-4 grid gap-4 text-sm sm:grid-cols-4">
+                <div className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Round status</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Round status
+                    </p>
                     <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-100">
                       {todayLoading && <span>Loading...</span>}
                       {todayDraw && (
@@ -1248,19 +1225,18 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Entries in pool</p>
-                    <p className="mt-1 font-mono text-slate-100">{todayLoading ? '–' : todayDraw?.ticketsCount ?? 0}</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Entries in pool
+                    </p>
+                    <p className="mt-1 font-mono text-slate-100">
+                      {todayLoading ? '–' : todayDraw?.ticketsCount ?? 0}
+                    </p>
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Rollover amount</p>
-                    <div className="mt-1">
-                      <UsdPill amount={todayDraw?.rolloverUsd ?? 0} size="sm" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today&apos;s XPOT (live)</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Today&apos;s XPOT (live)
+                    </p>
                     <div className="mt-1">
                       <UsdPill amount={liveJackpotUsd} size="sm" />
                     </div>
@@ -1274,7 +1250,9 @@ export default function AdminPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm sm:text-base">
-                          <span className="text-xs uppercase tracking-wide text-slate-500">Closes in</span>
+                          <span className="text-xs uppercase tracking-wide text-slate-500">
+                            Closes in
+                          </span>
                           <span
                             className={`
                               ml-2 mt-2 font-mono text-2xl font-semibold transition-all
@@ -1306,7 +1284,11 @@ export default function AdminPage() {
                             onClick={handlePickMainWinner}
                             className={`
                               ${BTN_CROWN} px-7 py-3 text-sm transition-all ease-out duration-300
-                              ${isWarningCritical ? 'ring-2 ring-[rgba(var(--xpot-gold),0.32)] shadow-lg scale-[1.02]' : ''}
+                              ${
+                                isWarningCritical
+                                  ? 'ring-2 ring-[rgba(var(--xpot-gold),0.32)] shadow-lg scale-[1.02]'
+                                  : ''
+                              }
                             `}
                           >
                             {isPickingWinner ? 'Picking winner...' : 'Crown today&apos;s XPOT winner'}
@@ -1363,7 +1345,8 @@ export default function AdminPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-100">Schedule bonus XPOT</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Line up hype bonuses from today&apos;s ticket pool. At the scheduled time, one extra winner will be picked.
+                  Line up hype bonuses from today&apos;s ticket pool. At the scheduled time, one extra
+                  winner will be picked.
                 </p>
 
                 <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-slate-500">
@@ -1373,7 +1356,6 @@ export default function AdminPage() {
             </div>
 
             <form onSubmit={handleScheduleBonus} className="mt-4 grid gap-4 lg:grid-cols-2">
-              {/* LEFT */}
               <div className="space-y-3">
                 <div className="xpot-card px-4 py-3">
                   <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Amount</p>
@@ -1388,7 +1370,9 @@ export default function AdminPage() {
                   </div>
 
                   <div className="mt-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Quick presets</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                      Quick presets
+                    </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {[100000, 250000, 500000, 1000000].map(v => {
                         const active = Number(bonusAmount) === v;
@@ -1412,7 +1396,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* RIGHT */}
               <div className="space-y-3">
                 <div className="xpot-card px-4 py-3">
                   <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Label</p>
@@ -1452,7 +1435,7 @@ export default function AdminPage() {
                   <div className="mt-5 grid grid-cols-2 gap-3">
                     <button
                       type="submit"
-                      disabled={bonusSubmitting || !adminToken || opsApiAvailable === false}
+                      disabled={bonusSubmitting || !adminToken || adminApiAvailable === false}
                       className={`${BTN_VAULT} h-10 text-[13px]`}
                     >
                       {bonusSubmitting ? 'Scheduling...' : 'Schedule bonus'}
@@ -1465,7 +1448,7 @@ export default function AdminPage() {
                         !adminToken ||
                         !todayDraw ||
                         todayDraw.status !== 'open' ||
-                        opsApiAvailable === false
+                        adminApiAvailable === false
                       }
                       onClick={handlePickBonusWinnerNow}
                       className={`${BTN_CROWN} h-10 text-[13px] disabled:opacity-40 disabled:cursor-not-allowed`}
@@ -1479,7 +1462,9 @@ export default function AdminPage() {
                   </div>
 
                   {bonusPickError && <p className="mt-2 text-xs text-amber-300">{bonusPickError}</p>}
-                  {bonusPickSuccess && <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>}
+                  {bonusPickSuccess && (
+                    <p className="mt-2 text-xs text-emerald-300">{bonusPickSuccess}</p>
+                  )}
 
                   {(bonusError || bonusSuccess) && (
                     <div className="mt-3 text-xs">
@@ -1491,11 +1476,13 @@ export default function AdminPage() {
               </div>
             </form>
 
-            {/* UPCOMING */}
+            {/* Upcoming */}
             <div className="mt-5 xpot-card px-4 py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Upcoming bonus drops</p>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                    Upcoming bonus drops
+                  </p>
 
                   {nextBonusDrop && nextBonusCountdown && (
                     <div className="flex items-center gap-3">
@@ -1518,10 +1505,14 @@ export default function AdminPage() {
                   type="button"
                   className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
                   onClick={refreshUpcomingDrops}
-                  disabled={!tokenAccepted || upcomingLoading || opsApiAvailable === false}
+                  disabled={!tokenAccepted || upcomingLoading || adminApiAvailable === false}
                 >
                   <span className="inline-flex items-center gap-2">
-                    {upcomingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                    {upcomingLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCcw className="h-4 w-4" />
+                    )}
                     Refresh
                   </span>
                 </button>
@@ -1547,7 +1538,15 @@ export default function AdminPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Badge tone={d.status === 'SCHEDULED' ? 'sky' : d.status === 'FIRED' ? 'emerald' : 'red'}>
+                        <Badge
+                          tone={
+                            d.status === 'SCHEDULED'
+                              ? 'sky'
+                              : d.status === 'FIRED'
+                              ? 'emerald'
+                              : 'red'
+                          }
+                        >
                           {d.status}
                         </Badge>
 
@@ -1556,7 +1555,7 @@ export default function AdminPage() {
                             type="button"
                             className={`${BTN_DANGER} h-9 px-4 text-xs`}
                             onClick={() => handleCancelBonusDrop(d.id)}
-                            disabled={cancelingDropId === d.id || !tokenAccepted || opsApiAvailable === false}
+                            disabled={cancelingDropId === d.id || !tokenAccepted || adminApiAvailable === false}
                           >
                             {cancelingDropId === d.id ? 'Canceling...' : 'Cancel'}
                           </button>
@@ -1623,13 +1622,19 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      <p className="mt-2 text-xs text-slate-500">Issued {formatDateTime(t.createdAt)}</p>
+                      <p className="mt-2 text-xs text-slate-500">
+                        Issued {formatDateTime(t.createdAt)}
+                      </p>
                     </div>
                   ))}
 
                   {visibleTicketCount < tickets.length && (
                     <div className="pt-2">
-                      <button type="button" onClick={handleLoadMoreTickets} className={`${BTN_UTILITY} h-10 w-full text-sm`}>
+                      <button
+                        type="button"
+                        onClick={handleLoadMoreTickets}
+                        className={`${BTN_UTILITY} h-10 w-full text-sm`}
+                      >
                         Load more entries
                       </button>
                     </div>
@@ -1642,6 +1647,7 @@ export default function AdminPage() {
 
         {/* RIGHT */}
         <div className="space-y-4">
+          {/* Winners */}
           <section className="xpot-panel px-5 py-5">
             <div>
               <p className="text-sm font-semibold text-slate-100">Recent XPOT winners</p>
@@ -1659,7 +1665,8 @@ export default function AdminPage() {
                 <p className="text-xs text-amber-300">{winnersError}</p>
               ) : winners.length === 0 ? (
                 <div className="xpot-card px-4 py-3 text-xs text-slate-500">
-                  No completed draws yet. Once you pick winners and mark XPOT as paid, they&apos;ll appear here.
+                  No completed draws yet. Once you pick winners and mark XPOT as paid, they&apos;ll appear
+                  here.
                 </div>
               ) : (
                 <>
@@ -1716,7 +1723,7 @@ export default function AdminPage() {
                             type="button"
                             className={`${BTN_UTILITY} h-10 px-4 text-xs`}
                             onClick={() => handleMarkAsPaid(w.id)}
-                            disabled={isPaid || savingPaidId === w.id || opsApiAvailable === false}
+                            disabled={isPaid || savingPaidId === w.id || adminApiAvailable === false}
                           >
                             {savingPaidId === w.id ? 'Saving...' : 'Mark paid'}
                           </button>
@@ -1738,7 +1745,11 @@ export default function AdminPage() {
 
                   {visibleWinnerCount < winners.length && (
                     <div className="pt-2">
-                      <button type="button" onClick={handleLoadMoreWinners} className={`${BTN_UTILITY} h-10 w-full text-sm`}>
+                      <button
+                        type="button"
+                        onClick={handleLoadMoreWinners}
+                        className={`${BTN_UTILITY} h-10 w-full text-sm`}
+                      >
                         Load more winners
                       </button>
                     </div>
@@ -1748,6 +1759,7 @@ export default function AdminPage() {
             </div>
           </section>
 
+          {/* Quick hints */}
           <section className="xpot-panel px-5 py-5 text-xs text-slate-400">
             <p className="font-semibold text-slate-200">Ops notes</p>
             <ul className="mt-2 space-y-2">
@@ -1757,7 +1769,8 @@ export default function AdminPage() {
               </li>
               <li className="flex gap-2">
                 <CalendarClock className="h-4 w-4 text-slate-500" />
-                Countdown is based on <span className="font-semibold text-slate-200">closesAt</span> from today&apos;s draw and synced to server time.
+                Countdown is based on <span className="font-semibold text-slate-200">closesAt</span>{' '}
+                from today&apos;s draw and synced to server time.
               </li>
               <li className="flex gap-2">
                 <Crown className="h-4 w-4 text-slate-500" />
@@ -1767,74 +1780,6 @@ export default function AdminPage() {
           </section>
         </div>
       </section>
-
-      {modeModalOpen && (
-        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
-          <div className="w-full max-w-md xpot-panel px-6 py-6">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-50">Switch ops mode</p>
-              <button type="button" className={`${BTN_UTILITY} h-8 px-3 text-[11px]`} onClick={() => setModeModalOpen(false)}>
-                Close
-              </button>
-            </div>
-
-            <p className="mt-2 text-xs text-slate-400">
-              Confirm your admin key to switch to{' '}
-              <span className="font-semibold text-slate-200">{modePending === 'AUTO' ? 'AUTO' : 'MANUAL'}</span>.
-            </p>
-
-            {!envAutoAllowed && modePending === 'AUTO' && (
-              <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
-                AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won&apos;t take effect until allowed.
-              </div>
-            )}
-
-            <div className="mt-4 space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Admin key (re-enter)</label>
-              <input
-                type="password"
-                className="xpot-input rounded-2xl"
-                value={modeTokenInput}
-                onChange={e => setModeTokenInput(e.target.value)}
-                placeholder="Paste admin token..."
-              />
-              {modeError && <p className="text-xs text-amber-300">{modeError}</p>}
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                className={`${BTN_UTILITY} flex-1 h-11 text-sm`}
-                onClick={() => setModeModalOpen(false)}
-                disabled={modeSaving}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className={`${BTN_VAULT} flex-1 h-11 text-sm`}
-                disabled={modeSaving || !modeTokenInput.trim()}
-                onClick={async () => {
-                  setModeError(null);
-                  setModeSaving(true);
-                  try {
-                    if (!adminToken || modeTokenInput.trim() !== adminToken.trim()) throw new Error('Admin key mismatch.');
-                    await saveOpsMode(modePending);
-                    setModeModalOpen(false);
-                  } catch (err: any) {
-                    setModeError(err?.message || 'Failed to switch mode');
-                  } finally {
-                    setModeSaving(false);
-                  }
-                }}
-              >
-                {modeSaving ? 'Saving...' : 'Confirm switch'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ULTRA PREMIUM LOCK MODAL */}
       {!tokenAccepted && (
@@ -1853,14 +1798,17 @@ export default function AdminPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-50">Unlock XPOT operations center</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Step inside the live XPOT control deck. Monitor today&apos;s round, entries, wallets and reward execution - secured behind your private{' '}
+                  Step inside the live XPOT control deck. Monitor today&apos;s round, entries and reward
+                  execution - secured behind your private{' '}
                   <span className="font-semibold text-slate-200">admin key</span>.
                 </p>
               </div>
 
               <form onSubmit={handleUnlock} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Admin key</label>
+                  <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                    Admin key
+                  </label>
                   <div className="relative">
                     <input
                       type="password"
