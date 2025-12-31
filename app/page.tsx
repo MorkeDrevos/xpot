@@ -953,6 +953,72 @@ function useLocalReducedMotion() {
 }
 
 /* ─────────────────────────────────────────────
+   Real winners telemetry (for LAST_WINNERS console)
+───────────────────────────────────────────── */
+
+type WinnerRow = {
+  handle: string | null;
+  wallet: string | null;
+  amount: number | null;
+  drawDate: string | null; // ISO
+  tx?: string | null;
+};
+
+function formatIsoToMadridYmd(iso: string) {
+  const d = new Date(iso);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function formatXpotAmount(amount: number | null | undefined) {
+  const n = typeof amount === 'number' && Number.isFinite(amount) ? amount : 1_000_000;
+  return `${XPOT_SIGN}${n.toLocaleString()}`;
+}
+
+function formatWinnerLabel(w: WinnerRow) {
+  if (w.handle) return w.handle;
+  if (w.wallet) return shortenAddress(w.wallet, 6, 6);
+  return 'winner';
+}
+
+function useLatestWinnersTelemetry() {
+  const [winners, setWinners] = useState<WinnerRow[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      try {
+        const r = await fetch('/api/public/winners/latest', { cache: 'no-store' });
+        const data = (await r.json().catch(() => null)) as any;
+        if (!alive) return;
+        const arr = Array.isArray(data?.winners) ? (data.winners as WinnerRow[]) : [];
+        setWinners(arr.slice(0, 2));
+      } catch {
+        if (!alive) return;
+        setWinners([]);
+      }
+    }
+
+    load();
+    const t = window.setInterval(load, 15_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  return winners;
+}
+
+/* ─────────────────────────────────────────────
    Control room (read-only live view)
 ───────────────────────────────────────────── */
 
@@ -960,14 +1026,19 @@ function LiveControlRoom({
   countdown,
   cutoffLabel,
   runLine,
+  winners,
 }: {
   countdown: string;
   cutoffLabel: string;
   runLine: string;
+  winners: WinnerRow[];
 }) {
   const reduced = useLocalReducedMotion();
   const [tick, setTick] = useState(0);
-  const [lines, setLines] = useState<string[]>(() => buildInitialLines(countdown, cutoffLabel, runLine));
+
+  const [lines, setLines] = useState<string[]>(() =>
+    buildInitialLines(countdown, cutoffLabel, runLine, winners),
+  );
 
   useEffect(() => {
     const t = window.setInterval(() => setTick(v => v + 1), 1000);
@@ -975,8 +1046,8 @@ function LiveControlRoom({
   }, []);
 
   useEffect(() => {
-    setLines(prev => updateLines(prev, tick, countdown, cutoffLabel, runLine));
-  }, [tick, countdown, cutoffLabel, runLine]);
+    setLines(prev => updateLines(prev, tick, countdown, cutoffLabel, runLine, winners));
+  }, [tick, countdown, cutoffLabel, runLine, winners]);
 
   const live = true;
   const pulseCls = reduced ? '' : 'animate-[xpotPulse_2.6s_ease-in-out_infinite]';
@@ -1114,22 +1185,33 @@ function LiveControlRoom({
   );
 }
 
-function buildInitialLines(countdown: string, cutoffLabel: string, runLine: string) {
-  // LAST_WINNERS should always look "current" (relative to Madrid cutoff)
-  const now = new Date();
-  const p = getMadridParts(now);
+function buildLastWinnersLines(winners: WinnerRow[]) {
+  const fallback = [
+    `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`,
+    `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`,
+  ];
 
-  // If we're before today's 22:00 Madrid cutoff, the latest completed draw is "yesterday" (Madrid).
-  const todayCutoffUtc = getMadridUtcMsFromWallClock(p.y, p.m, p.d, 22, 0, 0, now);
-  const lastDrawYmd = now.getTime() >= todayCutoffUtc ? { y: p.y, m: p.m, d: p.d } : addYmdDays(p.y, p.m, p.d, -1);
-  const prevDrawYmd = addYmdDays(lastDrawYmd.y, lastDrawYmd.m, lastDrawYmd.d, -1);
+  if (!winners || winners.length === 0) return fallback;
 
-  const pad2 = (n: number) => String(n).padStart(2, '0');
-  const fmt = (d: { y: number; m: number; d: number }) => `${d.y}-${pad2(d.m)}-${pad2(d.d)}`;
+  const rows = winners.slice(0, 2);
+  const out: string[] = [];
 
-  const d1 = fmt(lastDrawYmd);
-  const d2 = fmt(prevDrawYmd);
+  for (let i = 0; i < 2; i++) {
+    const w = rows[i];
+    if (!w) {
+      out.push(fallback[i]);
+      continue;
+    }
+    const ymd = w.drawDate ? formatIsoToMadridYmd(w.drawDate) : '---- -- --';
+    const label = formatWinnerLabel(w);
+    const amt = formatXpotAmount(w.amount);
+    out.push(`  #${ymd}  ${label.padEnd(8, ' ')} ${amt}`);
+  }
 
+  return out;
+}
+
+function buildInitialLines(countdown: string, cutoffLabel: string, runLine: string, winners: WinnerRow[]) {
   return [
     `> XPOT_PROTOCOL`,
     `  run:            ${runLine}`,
@@ -1146,12 +1228,18 @@ function buildInitialLines(countdown: string, cutoffLabel: string, runLine: stri
     `  status:         run telemetry`,
     ``,
     `> LAST_WINNERS`,
-`  #${d1}  winner   ${XPOT_SIGN}1,000,000`,
-`  #${d2}  winner   ${XPOT_SIGN}1,000,000`,
+    ...buildLastWinnersLines(winners),
   ];
 }
 
-function updateLines(prev: string[], tick: number, countdown: string, cutoffLabel: string, runLine: string) {
+function updateLines(
+  prev: string[],
+  tick: number,
+  countdown: string,
+  cutoffLabel: string,
+  runLine: string,
+  winners: WinnerRow[],
+) {
   const next = [...prev];
 
   const runIdx = next.findIndex(l => l.trim().startsWith('run:'));
@@ -1167,6 +1255,16 @@ function updateLines(prev: string[], tick: number, countdown: string, cutoffLabe
   if (stIdx !== -1) {
     const modes = ['run telemetry', 'proof verify', 'pool telemetry', 'entry window open'];
     next[stIdx] = `  status:         ${modes[tick % modes.length]}`;
+  }
+
+  // Keep LAST_WINNERS real: rewrite the two lines under the header.
+  const lwIdx = next.findIndex(l => l.trim().startsWith('> LAST_WINNERS'));
+  if (lwIdx !== -1) {
+    const lwLines = buildLastWinnersLines(winners);
+    if (next[lwIdx + 1] !== undefined) next[lwIdx + 1] = lwLines[0];
+    if (next[lwIdx + 2] !== undefined) next[lwIdx + 2] = lwLines[1];
+    if (next[lwIdx + 1] === undefined) next.splice(lwIdx + 1, 0, lwLines[0]);
+    if (next[lwIdx + 2] === undefined) next.splice(lwIdx + 2, 0, lwLines[1]);
   }
 
   if (tick > 0 && tick % 7 === 0) {
@@ -1338,6 +1436,7 @@ function MissionBanner() {
 
 function HomePageInner() {
   const bonusActive = useBonusActive();
+  const winners = useLatestWinnersTelemetry();
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
@@ -1649,7 +1748,12 @@ function HomePageInner() {
                   </ParallaxConsoleCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
+                    <LiveControlRoom
+                      countdown={countdown}
+                      cutoffLabel={cutoffLabel}
+                      runLine={runLine}
+                      winners={winners}
+                    />
                   </PremiumCard>
                 </motion.div>
               </div>
