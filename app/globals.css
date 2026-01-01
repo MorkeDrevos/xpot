@@ -265,6 +265,27 @@ select {
 }
 
 /* =============================================================
+   MOBILE RULE: HIDE TOP BANNER STRIP + REMOVE RESERVED HEIGHT
+   (supports multiple selector styles to match your banner)
+============================================================= */
+
+@media (max-width: 640px) {
+  :root {
+    --xpot-banner-h: 0px !important;
+  }
+
+  /* If your PreLaunchBanner root uses a class */
+  .xpot-prelaunch-banner,
+  .xpot-top-strip,
+  /* If it uses an id */
+  #xpot-prelaunch-banner,
+  /* If you ever add a data marker */
+  [data-xpot-banner="top"] {
+    display: none !important;
+  }
+}
+
+/* =============================================================
    XPOT UTILS (kept - used across your UI)
 ============================================================= */
 
@@ -452,7 +473,7 @@ select {
 
 /* Gold outline pill sitting on dark glass */
 .xpot-pill-gold {
-  color: rgb(var(--xpot-gold-2)); /* ✅ highlight gold for text */
+  color: rgb(var(--xpot-gold-2));
   border-color: rgba(var(--xpot-gold), 0.35);
 }
 
@@ -467,7 +488,6 @@ select {
    XPOT CONTROLS (buttons, inputs, halos)
 ============================================================= */
 
-/* Base button */
 .xpot-btn {
   display: inline-flex;
   align-items: center;
@@ -506,13 +526,11 @@ select {
   transform: none;
 }
 
-/* Utility variant (kept compatible with your BTN_UTILITY usage) */
 .xpot-btn-utility {
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(148, 163, 184, 0.20);
 }
 
-/* Danger button */
 .xpot-btn-danger {
   background: rgba(244, 63, 94, 0.08);
   border: 1px solid rgba(244, 63, 94, 0.32);
@@ -527,7 +545,6 @@ select {
   border-color: rgba(244, 63, 94, 0.42);
 }
 
-/* Input */
 .xpot-input {
   width: 100%;
   border-radius: 18px;
@@ -555,7 +572,6 @@ select {
   background: rgba(2, 6, 23, 0.72);
 }
 
-/* Nebula halo overlay used in ops cards */
 .xpot-nebula-halo {
   position: absolute;
   inset: -1px;
@@ -568,6 +584,11 @@ select {
     radial-gradient(820px 260px at 52% 0%, rgba(var(--xpot-accent-secondary), 0.10), transparent 62%);
   filter: blur(0px);
 }
+
+/* =============================================================
+   XPOT GRADIENT TEXT HELPERS (single source of truth)
+============================================================= */
+
 .xpot-gradient-text {
   background: linear-gradient(
     135deg,
@@ -578,23 +599,9 @@ select {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  text-shadow: 0 0 12px rgba(110, 231, 249, 0.08);
 }
-.xpot-gradient-text {
-  text-shadow: 0 0 12px rgba(110,231,249,0.08);
-}
-.xpot-xpotword {
-  background: linear-gradient(
-    135deg,
-    rgba(226, 232, 240, 0.92) 0%,
-    rgba(110, 231, 249, 0.82) 38%,
-    rgba(74, 222, 128, 0.82) 72%,
-    rgba(226, 232, 240, 0.92) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 10px 26px rgba(56, 189, 248, 0.08);
-}
+
 /* Subtle system-gradient just for the word XPOT */
 .xpot-xpotword {
   background: linear-gradient(
@@ -608,7 +615,6 @@ select {
   background-clip: text;
   color: transparent;
 
-  /* very soft lift, keeps it “in-system” */
   text-shadow:
     0 0 18px rgba(110, 231, 249, 0.10),
     0 10px 26px rgba(0, 0, 0, 0.35);
