@@ -633,3 +633,12 @@ select {
     padding-top: env(safe-area-inset-top);
   }
 }
+/* Mobile-only: flatten glass cards for app-like feel */
+@media (max-width: 640px) {
+  .mobile-flat {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+}
