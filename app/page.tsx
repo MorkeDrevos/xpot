@@ -608,17 +608,6 @@ function CosmicHeroBackdrop() {
             opacity: 0;
           }
         }
-        @keyframes xpotLivePulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.25);
-          }
-          70% {
-            box-shadow: 0 0 0 10px rgba(52, 211, 153, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
-          }
-        }
         @keyframes xpotConsoleSweep {
           0% {
             transform: translateX(-55%) skewX(-12deg);
@@ -707,9 +696,6 @@ function CosmicHeroBackdrop() {
           animation: xpotHeroSheen 9.8s ease-in-out infinite;
           mix-blend-mode: screen;
           opacity: 0;
-        }
-        .xpot-live-ring {
-          animation: xpotLivePulse 2.2s ease-in-out infinite;
         }
       `}</style>
 
@@ -965,47 +951,6 @@ function formatXpotAmount(amount: number | null | undefined) {
   return `${XPOT_SIGN}${n.toLocaleString()}`;
 }
 
-function formatWinnerLabel(w: WinnerRow) {
-  if (w.handle) return w.handle;
-  if (w.wallet) return shortenAddress(w.wallet, 6, 6);
-  return 'winner';
-}
-
-function useLatestWinnersTelemetry() {
-  const [winners, setWinners] = useState<WinnerRow[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-
-    async function load() {
-      const data = await fetchFirstOk<any>([
-        '/api/public/winners/latest',
-        '/api/public/winners?latest=1',
-        '/api/public/winners?limit=2',
-        '/api/public/winners',
-      ]);
-
-      if (!alive) return;
-
-      const arr = Array.isArray(data?.winners)
-        ? (data.winners as WinnerRow[])
-        : Array.isArray(data)
-        ? (data as WinnerRow[])
-        : [];
-      setWinners(arr.slice(0, 2));
-    }
-
-    load();
-    const t = window.setInterval(load, 12_000);
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
-  }, []);
-
-  return winners;
-}
-
 function useLatestWinnerCard() {
   const [winner, setWinner] = useState<WinnerRow | null>(null);
 
@@ -1149,16 +1094,23 @@ function EnteringTheStage({ entries }: { entries: EntryRow[] }) {
   );
 }
 
-function WinnerSpotlight({ winner }: { winner: WinnerRow | null }) {
-  const label = winner ? winner.handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : 'winner') : 'winner';
+function WinnerSpotlight({ winner, compact = false }: { winner: WinnerRow | null; compact?: boolean }) {
+  const label = winner
+    ? winner.handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : 'winner')
+    : 'winner';
   const ymd = winner?.drawDate ? formatIsoToMadridYmd(winner.drawDate) : null;
   const paid = Boolean(winner?.isPaidOut);
   const amt = formatXpotAmount(winner?.amount ?? 1_000_000);
 
+  const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
+  const avatarSize = compact ? 34 : 44;
+  const titleSize = compact ? 'text-[13px]' : 'text-[14px]';
+  const payoutSize = compact ? 'text-[16px]' : 'text-[18px]';
+
   return (
-    <div className="relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/30 ring-1 ring-white/[0.05]">
+    <div className={`relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/30 ring-1 ring-white/[0.05]`}>
       <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
-      <div className="relative px-5 py-4">
+      <div className={`relative ${pad}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Pill tone="amber">
             <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
@@ -1178,11 +1130,13 @@ function WinnerSpotlight({ winner }: { winner: WinnerRow | null }) {
           </span>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Avatar src={winner?.avatarUrl} label={winner?.handle ?? label} size={44} />
+            <Avatar src={winner?.avatarUrl} label={winner?.handle ?? label} size={avatarSize} />
             <div className="leading-tight">
-              <div className="text-[14px] font-semibold text-slate-50">{winner ? label : 'Waiting for winner sync'}</div>
+              <div className={`${titleSize} font-semibold text-slate-50`}>
+                {winner ? label : 'Waiting for winner sync'}
+              </div>
               <div className="mt-1 text-[12px] text-slate-400">
                 {winner ? (
                   <>
@@ -1203,7 +1157,7 @@ function WinnerSpotlight({ winner }: { winner: WinnerRow | null }) {
 
           <div className="text-right">
             <div className={`text-[10px] uppercase tracking-[0.18em] ${GOLD_TEXT_DIM}`}>Payout</div>
-            <div className={`mt-1 font-mono text-[18px] ${GOLD_TEXT}`}>{amt}</div>
+            <div className={`mt-1 font-mono ${payoutSize} ${GOLD_TEXT}`}>{amt}</div>
 
             <div className="mt-2 flex flex-wrap justify-end gap-2">
               {winner?.txUrl ? (
@@ -1223,7 +1177,7 @@ function WinnerSpotlight({ winner }: { winner: WinnerRow | null }) {
           </div>
         </div>
 
-        {!paid ? (
+        {!paid && !compact ? (
           <p className="mt-3 text-[12px] text-slate-400">
             Payout is performed by ops and then the on-chain transaction is published here.
           </p>
@@ -1241,19 +1195,15 @@ function LiveControlRoom({
   countdown,
   cutoffLabel,
   runLine,
-  winners,
 }: {
   countdown: string;
   cutoffLabel: string;
   runLine: string;
-  winners: WinnerRow[];
 }) {
   const reduced = useLocalReducedMotion();
   const [tick, setTick] = useState(0);
 
-  const [lines, setLines] = useState<string[]>(() =>
-    buildInitialLines(countdown, cutoffLabel, runLine, winners),
-  );
+  const [lines, setLines] = useState<string[]>(() => buildInitialLines(countdown, cutoffLabel, runLine));
 
   useEffect(() => {
     const t = window.setInterval(() => setTick(v => v + 1), 1000);
@@ -1261,30 +1211,14 @@ function LiveControlRoom({
   }, []);
 
   useEffect(() => {
-    setLines(prev => updateLines(prev, tick, countdown, cutoffLabel, runLine, winners));
-  }, [tick, countdown, cutoffLabel, runLine, winners]);
+    setLines(prev => updateLines(prev, tick, countdown, cutoffLabel, runLine));
+  }, [tick, countdown, cutoffLabel, runLine]);
 
-  const live = true;
-  const pulseCls = reduced ? '' : 'animate-[xpotPulse_2.6s_ease-in-out_infinite]';
   const scanCls = reduced ? '' : 'xpot-cr-scan';
 
   return (
     <div className="relative">
       <style jsx global>{`
-        @keyframes xpotPulse {
-          0% {
-            transform: translateZ(0) scale(1);
-            opacity: 0.85;
-          }
-          50% {
-            transform: translateZ(0) scale(1.02);
-            opacity: 1;
-          }
-          100% {
-            transform: translateZ(0) scale(1);
-            opacity: 0.85;
-          }
-        }
         @keyframes xpotScan {
           0% {
             transform: translateY(-18%);
@@ -1360,16 +1294,6 @@ function LiveControlRoom({
 
         <span className="inline-flex items-center gap-2">
           <span className="font-mono text-emerald-200/70">read-only</span>
-          <span
-            className={[
-              'inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1',
-              'text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200',
-              live ? 'shadow-[0_0_0_1px_rgba(16,185,129,0.18)]' : '',
-            ].join(' ')}
-          >
-            <Radio className={`h-3.5 w-3.5 ${pulseCls}`} />
-            LIVE
-          </span>
         </span>
       </div>
 
@@ -1399,30 +1323,7 @@ function LiveControlRoom({
   );
 }
 
-function buildLastWinnersLines(winners: WinnerRow[]) {
-  const fallback = [`  #---- -- --  winner   ${XPOT_SIGN}1,000,000`, `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`];
-
-  if (!winners || winners.length === 0) return fallback;
-
-  const rows = winners.slice(0, 2);
-  const out: string[] = [];
-
-  for (let i = 0; i < 2; i++) {
-    const w = rows[i];
-    if (!w) {
-      out.push(fallback[i]);
-      continue;
-    }
-    const ymd = w.drawDate ? formatIsoToMadridYmd(w.drawDate) : '---- -- --';
-    const label = formatWinnerLabel(w);
-    const amt = formatXpotAmount(w.amount);
-    out.push(`  #${ymd}  ${label.padEnd(8, ' ')} ${amt}`);
-  }
-
-  return out;
-}
-
-function buildInitialLines(countdown: string, cutoffLabel: string, runLine: string, winners: WinnerRow[]) {
+function buildInitialLines(countdown: string, cutoffLabel: string, runLine: string) {
   return [
     `> XPOT_PROTOCOL`,
     `  run:            ${runLine}`,
@@ -1437,20 +1338,10 @@ function buildInitialLines(countdown: string, cutoffLabel: string, runLine: stri
     `> SESSION`,
     `  heartbeat:      ok`,
     `  status:         run telemetry`,
-    ``,
-    `> LAST_WINNERS`,
-    ...buildLastWinnersLines(winners),
   ];
 }
 
-function updateLines(
-  prev: string[],
-  tick: number,
-  countdown: string,
-  cutoffLabel: string,
-  runLine: string,
-  winners: WinnerRow[],
-) {
+function updateLines(prev: string[], tick: number, countdown: string, cutoffLabel: string, runLine: string) {
   const next = [...prev];
 
   const runIdx = next.findIndex(l => l.trim().startsWith('run:'));
@@ -1468,15 +1359,6 @@ function updateLines(
     next[stIdx] = `  status:         ${modes[tick % modes.length]}`;
   }
 
-  const lwIdx = next.findIndex(l => l.trim().startsWith('> LAST_WINNERS'));
-  if (lwIdx !== -1) {
-    const lwLines = buildLastWinnersLines(winners);
-    if (next[lwIdx + 1] !== undefined) next[lwIdx + 1] = lwLines[0];
-    if (next[lwIdx + 2] !== undefined) next[lwIdx + 2] = lwLines[1];
-    if (next[lwIdx + 1] === undefined) next.splice(lwIdx + 1, 0, lwLines[0]);
-    if (next[lwIdx + 2] === undefined) next.splice(lwIdx + 2, 0, lwLines[1]);
-  }
-
   if (tick > 0 && tick % 7 === 0) {
     const stamp = String(tick).padStart(4, '0');
     const events = [
@@ -1487,7 +1369,7 @@ function updateLines(
       `tick ${stamp}: liquidity signal stable`,
     ];
     const line = `  log:            ${events[tick % events.length]}`;
-    const sessBlockEnd = next.findIndex(l => l.trim().startsWith('> LAST_WINNERS'));
+    const sessBlockEnd = next.length;
     const insertAt = Math.max(0, sessBlockEnd - 1);
     next.splice(insertAt, 0, line);
 
@@ -1646,7 +1528,6 @@ function MissionBanner() {
 
 function HomePageInner() {
   const bonusActive = useBonusActive();
-  const winners = useLatestWinnersTelemetry();
   const winnerSpotlight = useLatestWinnerCard();
   const entries = useLatestEntriesTelemetry();
 
@@ -1763,8 +1644,22 @@ function HomePageInner() {
                         </p>
                       </div>
 
-                      {/* ✅ Premium winner spotlight + latest entries strip */}
-                      <WinnerSpotlight winner={winnerSpotlight} />
+                      {/* MOBILE: compact winner + jackpot immediately after H1 */}
+                      <div className="mt-4 grid gap-4 lg:hidden">
+                        <WinnerSpotlight winner={winnerSpotlight} compact />
+                        <PremiumCard className="p-4" halo sheen>
+                          <div className="xpot-console-sweep" aria-hidden />
+                          <div className="relative z-10">
+                            <JackpotPanel variant="standalone" layout="wide" />
+                          </div>
+                        </PremiumCard>
+                      </div>
+
+                      {/* Desktop hero flow (kept) */}
+                      <div className="hidden lg:block">
+                        <WinnerSpotlight winner={winnerSpotlight} />
+                      </div>
+
                       <EnteringTheStage entries={entries} />
 
                       <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
@@ -1788,11 +1683,6 @@ function HomePageInner() {
                               <span className="text-[11px] text-slate-500">Madrid 22:00</span>
                             </p>
                           </div>
-
-                          <span className="xpot-live-ring inline-flex items-center gap-2 rounded-full border border-emerald-400/18 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
-                            <Radio className="h-3.5 w-3.5 text-emerald-300/90" />
-                            Live
-                          </span>
                         </div>
                       </div>
 
@@ -1930,9 +1820,9 @@ function HomePageInner() {
                   </div>
                 </div>
 
-                {/* RIGHT */}
+                {/* RIGHT (desktop only, mobile jackpot moved under H1) */}
                 <motion.div
-                  className="grid gap-4"
+                  className="hidden gap-4 lg:grid"
                   style={
                     reduceMotion
                       ? undefined
@@ -1955,7 +1845,7 @@ function HomePageInner() {
                   </ParallaxConsoleCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} winners={winners} />
+                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
                   </PremiumCard>
                 </motion.div>
               </div>
@@ -2035,7 +1925,9 @@ function HomePageInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public arc and provable outcomes.
+              </p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -2092,7 +1984,8 @@ function HomePageInner() {
                 A daily engine with an ending, not a one-off giveaway.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and sponsor pools while keeping the same primitive and the same proof.
+                XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and
+                sponsor pools while keeping the same primitive and the same proof.
               </p>
             </div>
 
@@ -2150,7 +2043,9 @@ function HomePageInner() {
 
             <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="flex items-center gap-3">
-                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
+                <span
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}
+                >
                   <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
                 </span>
                 <div>
@@ -2200,7 +2095,9 @@ function HomePageInner() {
               Sponsors
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
+            <p className="mt-2 text-sm text-slate-300">
+              Sponsor pools and bonuses with visibility and provable distribution on-chain.
+            </p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -2224,7 +2121,9 @@ function HomePageInner() {
                 Clarity
               </Pill>
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">Homepage is the story. Hub is the action. The Final Draw is the destination.</p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                Homepage is the story. Hub is the action. The Final Draw is the destination.
+              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
