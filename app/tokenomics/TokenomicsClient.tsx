@@ -53,7 +53,6 @@ const CARD =
   'relative overflow-hidden rounded-[30px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.55)] backdrop-blur-xl';
 
 const VAULT_POLL_MS = 20_000;
-const SUPPLY_POLL_MS = 30_000;
 
 // Protocol rule (fixed)
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
@@ -688,25 +687,6 @@ function useVaultGroups() {
   return { data, isLoading, hadError };
 }
 
-/**
- * LIVE supply from Solana RPC (matches Solscan "Current Supply")
- * We do this client-side with a public RPC (CORS friendly) and a safe fallback.
- */
-type LiveSupply = {
-  uiAmount: number | null;
-  decimals: number;
-  fetchedAt: number;
-  source: 'solana-rpc';
-};
-
-async function rpcGetTokenSupply(mint: string, rpcUrl: string) {
-  const body = {
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'getTokenSupply',
-    params: [mint],
-  };
-
   const res = await fetch(rpcUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -727,60 +707,6 @@ async function rpcGetTokenSupply(mint: string, rpcUrl: string) {
         : null;
 
   return { uiAmount, decimals };
-}
-
-function useLiveTokenSupply(mint: string) {
-  const [data, setData] = useState<LiveSupply | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hadError, setHadError] = useState(false);
-
-  useEffect(() => {
-    let timer: number | null = null;
-    let aborted = false;
-
-    const rpcUrl =
-      (typeof window !== 'undefined' && (window as any)?.__XPOT_RPC_URL__) ||
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-      'https://api.mainnet-beta.solana.com';
-
-    async function fetchSupply() {
-      try {
-        setHadError(false);
-        const { uiAmount, decimals } = await rpcGetTokenSupply(mint, rpcUrl);
-        if (aborted) return;
-
-        setData({
-          uiAmount: uiAmount ?? null,
-          decimals,
-          fetchedAt: Date.now(),
-          source: 'solana-rpc',
-        });
-      } catch {
-        if (aborted) return;
-        setHadError(true);
-      } finally {
-        if (!aborted) setIsLoading(false);
-      }
-    }
-
-    function onVis() {
-      if (typeof document === 'undefined') return;
-      if (document.visibilityState === 'visible') fetchSupply();
-    }
-
-    fetchSupply();
-    timer = window.setInterval(fetchSupply, SUPPLY_POLL_MS);
-
-    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
-
-    return () => {
-      aborted = true;
-      if (timer !== null) window.clearInterval(timer);
-      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
-    };
-  }, [mint]);
-
-  return { data, isLoading, hadError };
 }
 
 function sumGroupUiAmounts(groups: ApiVaultResponse['groups'] | undefined, keys: string[]) {
@@ -1461,23 +1387,6 @@ function TokenomicsPageInner() {
     ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT)
     : streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
 
-  // LIVE current supply (Solana RPC, matches Solscan)
-  const { data: liveSupply, isLoading: supplyLoading, hadError: supplyError } = useLiveTokenSupply(XPOT_MINT_ACCOUNT);
-
-  const currentSupplyUi = liveSupply?.uiAmount ?? null;
-  const currentSupplyText = currentSupplyUi != null ? fmtInt(currentSupplyUi) : null;
-
-  // Circulating estimate: currentSupply - tracked non-circ vault groups (exclude liquidityOps)
-  const NON_CIRC_GROUPS = useMemo(() => ['rewards', 'treasury', 'team', 'partners', 'strategic', 'community'], []);
-  const nonCircTracked = useMemo(() => sumGroupUiAmounts(vaultData?.groups, NON_CIRC_GROUPS), [vaultData, NON_CIRC_GROUPS]);
-
-  const circulatingEst = useMemo(() => {
-    if (currentSupplyUi == null) return null;
-    if (nonCircTracked == null) return null;
-    const v = currentSupplyUi - nonCircTracked;
-    return Number.isFinite(v) ? Math.max(0, v) : null;
-  }, [currentSupplyUi, nonCircTracked]);
-
   const proofCards = (
     <div className="mt-7 grid gap-3 lg:grid-cols-3">
       <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
@@ -1580,43 +1489,37 @@ function TokenomicsPageInner() {
           </Pill>
         </div>
 
-        {/* LIVE Supply panel (no fake numbers) */}
-        <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Current supply (live)</p>
-              <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
-                {currentSupplyText ?? '—'}
-              </p>
-              <p className="mt-2 text-xs text-slate-500">
-                {supplyError ? 'RPC issue - refresh' : 'Source: Solana RPC (matches Solscan Current Supply).'}
-              </p>
+<div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+  <div className="flex items-start justify-between gap-3">
+    <div>
+      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
+      <p className="mt-2 font-mono text-xl font-semibold text-slate-100">
+        50,000,000,000
+      </p>
+      <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
+    </div>
+    <Pill tone="sky">
+      <ShieldCheck className="h-3.5 w-3.5" />
+      Fixed
+    </Pill>
+  </div>
 
-              <div className="mt-3">
-                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Circulating (estimated, live)</p>
-                <p className="mt-2 font-mono text-lg font-semibold text-slate-100">
-                  {circulatingEst != null ? fmtInt(circulatingEst) : '—'}
-                </p>
-                <p className="mt-2 text-xs text-slate-500">
-                  {circulatingEst == null
-                    ? 'Tracking unavailable (vault groups + RPC required).'
-                    : `Non-circulating tracked: ${nonCircTracked != null ? fmtInt(nonCircTracked) : '—'} XPOT`}
-                </p>
-                <p className="mt-1 text-[11px] text-slate-600">
-                  Tracked vault groups: rewards, treasury, team, partners, strategic, community. Liquidity is excluded.
-                </p>
-              </div>
+  <div className="mt-4 flex flex-wrap items-center gap-2">
+    <ProofLinkPill
+      href={solscanAccountUrl(XPOT_MINT_ACCOUNT)}
+      label="Mint account (Solscan)"
+      tone="slate"
+    />
+    <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
+  </div>
 
-              <p className="mt-3 text-[11px] text-slate-600">
-                Updated: {liveSupply?.fetchedAt ? timeAgo(liveSupply.fetchedAt) : supplyLoading ? '…' : '—'}
-              </p>
-            </div>
-
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-              {supplyLoading ? 'Loading' : supplyError ? 'Issue' : 'Live'}
-            </span>
-          </div>
-        </div>
+  <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Design</p>
+    <p className="mt-1 text-xs text-slate-300">
+      If it cannot be proven on-chain, it should not exist.
+    </p>
+  </div>
+</div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
