@@ -5,44 +5,49 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-const DEFAULT_XPOT_AMOUNT = 1_000_000;
+function withAt(handle?: string | null) {
+  if (!handle) return null;
+  const h = handle.trim();
+  if (!h) return null;
+  return h.startsWith('@') ? h : `@${h}`;
+}
 
 export async function GET() {
   try {
     const winners = await prisma.winner.findMany({
       where: { kind: 'MAIN' },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
+      orderBy: [{ createdAt: 'desc' }],
+      take: 6,
       include: {
         draw: true,
         ticket: {
           include: {
             wallet: {
-              include: { user: true },
+              include: {
+                user: true,
+              },
             },
           },
         },
       },
     });
 
-    const payload = winners.map(w => {
-      const u = w.ticket?.wallet?.user;
+    const out = winners.map(w => ({
+      id: w.id,
+      drawDate: w.draw?.drawDate?.toISOString?.() ?? w.date.toISOString(),
+      display:
+        withAt(w.ticket?.wallet?.user?.xHandle) ??
+        (w.walletAddress ? w.walletAddress : 'winner'),
+      txUrl: w.txUrl ?? null,
+      isPaidOut: Boolean(w.isPaidOut),
+      // If you don’t store XPOT amount per winner yet, keep it deterministic:
+      amountXpot: 1_000_000,
+      walletAddress: w.walletAddress ?? null,
+      ticketCode: w.ticketCode ?? null,
+    }));
 
-      return {
-        id: w.id,
-        drawDate: (w.draw?.drawDate ?? w.date ?? w.createdAt).toISOString(),
-        handle: u?.xHandle ?? null,
-        name: u?.xName ?? null,
-        avatarUrl: u?.xAvatarUrl ?? null,
-        wallet: w.walletAddress ?? w.ticket?.walletAddress ?? null,
-        amount: DEFAULT_XPOT_AMOUNT,
-        txUrl: w.txUrl ?? null,
-        isPaidOut: Boolean(w.isPaidOut),
-      };
-    });
-
-    return NextResponse.json({ ok: true, winners: payload }, { status: 200 });
+    return NextResponse.json({ ok: true, winners: out }, { status: 200 });
   } catch (e) {
-    return NextResponse.json({ ok: false, winners: [] }, { status: 200 });
+    return NextResponse.json({ ok: false }, { status: 200 });
   }
 }
