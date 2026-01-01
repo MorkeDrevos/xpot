@@ -687,50 +687,6 @@ function useVaultGroups() {
   return { data, isLoading, hadError };
 }
 
-  const res = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  });
-
-  if (!res.ok) throw new Error(`rpc http ${res.status}`);
-  const json = await res.json();
-
-  const v = json?.result?.value;
-  const decimals = Number(v?.decimals ?? 0);
-  const uiAmount =
-    typeof v?.uiAmount === 'number' && Number.isFinite(v.uiAmount)
-      ? v.uiAmount
-      : typeof v?.uiAmountString === 'string'
-        ? Number(v.uiAmountString)
-        : null;
-
-  return { uiAmount, decimals };
-}
-
-function sumGroupUiAmounts(groups: ApiVaultResponse['groups'] | undefined, keys: string[]) {
-  if (!groups) return null;
-  let sum = 0;
-  let foundAny = false;
-
-  for (const k of keys) {
-    const arr = groups[k];
-    if (!Array.isArray(arr)) continue;
-    for (const v of arr) {
-      const b = v?.balance;
-      const s = formatVaultBalance(b);
-      const n = s != null ? Number(s) : NaN;
-      if (Number.isFinite(n)) {
-        sum += n;
-        foundAny = true;
-      }
-    }
-  }
-
-  return foundAny ? sum : null;
-}
-
 function VaultGroupPanel({
   title,
   groupKey,
@@ -1214,7 +1170,10 @@ function TokenomicsPageInner() {
   );
 
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
-  const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
+  const runwayFixedDays = useMemo(
+    () => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT),
+    [DISTRIBUTION_RESERVE],
+  );
 
   const allocation = useMemo<Allocation[]>(
     () => [
@@ -1489,40 +1448,8 @@ function TokenomicsPageInner() {
           </Pill>
         </div>
 
-<div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
-  <div className="flex items-start justify-between gap-3">
-    <div>
-      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
-      <p className="mt-2 font-mono text-xl font-semibold text-slate-100">
-        50,000,000,000
-      </p>
-      <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
-    </div>
-    <Pill tone="sky">
-      <ShieldCheck className="h-3.5 w-3.5" />
-      Fixed
-    </Pill>
-  </div>
-
-  <div className="mt-4 flex flex-wrap items-center gap-2">
-    <ProofLinkPill
-      href={solscanAccountUrl(XPOT_MINT_ACCOUNT)}
-      label="Mint account (Solscan)"
-      tone="slate"
-    />
-    <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
-  </div>
-
-  <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
-    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Design</p>
-    <p className="mt-1 text-xs text-slate-300">
-      If it cannot be proven on-chain, it should not exist.
-    </p>
-  </div>
-</div>
-
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
+          <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account (Solscan)" tone="slate" />
           <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
         </div>
 
@@ -1551,7 +1478,7 @@ function TokenomicsPageInner() {
               bg-[radial-gradient(circle_at_18%_22%,rgba(var(--xpot-gold),0.18),transparent_62%),
                   radial-gradient(circle_at_78%_34%,rgba(56,189,248,0.10),transparent_66%),
                   radial-gradient(circle_at_20%_85%,rgba(16,185,129,0.10),transparent_60%),
-                  linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.78)}
+                  linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.78))]
             "
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
@@ -1609,7 +1536,8 @@ function TokenomicsPageInner() {
                   </span>
                   <span className="inline-flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-white/20" />
-                    Coverage focus: <span className="font-mono text-emerald-200">{Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'} years</span>
+                    Coverage focus:{' '}
+                    <span className="font-mono text-emerald-200">{Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'} years</span>
                   </span>
                 </div>
               </div>
