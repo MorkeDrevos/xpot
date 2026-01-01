@@ -7,6 +7,8 @@ type PreLaunchBannerProps = {
   hidden?: boolean;
 };
 
+const MOBILE_MAX = 639; // Tailwind sm breakpoint is 640px
+
 export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps) {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -15,12 +17,21 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
 
     const root = document.documentElement;
 
-    if (hidden) {
+    const isMobileNow = () => window.innerWidth <= MOBILE_MAX;
+
+    // Always keep layout var clean on mobile
+    if (hidden || isMobileNow()) {
       root.style.setProperty('--xpot-banner-h', '0px');
       return;
     }
 
     const setVar = () => {
+      // If user resized into mobile, force it off
+      if (isMobileNow()) {
+        root.style.setProperty('--xpot-banner-h', '0px');
+        return;
+      }
+
       const el = ref.current;
       if (!el) return;
       const h = el.offsetHeight || 0;
@@ -48,14 +59,17 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
     };
   }, [hidden]);
 
+  // Hard stop render on mobile (prevents any accidental display)
   if (hidden) return null;
+  if (typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX) return null;
 
   return (
     <div
       ref={ref}
       className="
+        xpot-prelaunch-banner
         fixed inset-x-0 top-0 z-[60]
-        block
+        hidden sm:block
       "
       aria-label="XPOT pre-launch banner"
     >
@@ -83,25 +97,14 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
         </div>
 
         <div className="mx-auto max-w-[1440px] px-4">
-          {/* On mobile we allow wrap, so height must be flexible */}
-          <div className="flex min-h-12 items-center justify-center py-2 sm:h-12 sm:py-0">
-            <div className="relative flex w-full items-center justify-center gap-3">
+          <div className="flex h-12 items-center justify-center">
+            <div className="relative flex items-center justify-center gap-3">
               <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold tracking-[0.22em] text-white/80">
                 <span className="xpot-banner-dot" />
                 STATUS
               </span>
 
-              <p
-                className="
-                  flex flex-wrap items-center justify-center
-                  gap-x-3 gap-y-1
-                  text-center
-                  text-[10px] sm:text-[12px]
-                  font-semibold uppercase
-                  tracking-[0.22em] sm:tracking-[0.32em]
-                  text-white/85
-                "
-              >
+              <p className="flex items-center justify-center gap-3 text-center text-[12px] font-semibold uppercase tracking-[0.32em] text-white/85">
                 {/* LIVE pulse */}
                 <span className="relative flex items-center gap-2">
                   <span className="relative flex h-2.5 w-2.5">
@@ -122,6 +125,13 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
       </div>
 
       <style jsx global>{`
+        /* ====== ABSOLUTE MOBILE BLOCK (even if Tailwind/caching glitches) ====== */
+        @media (max-width: 639px) {
+          .xpot-prelaunch-banner {
+            display: none !important;
+          }
+        }
+
         /* ====== Motion safety ====== */
         @media (prefers-reduced-motion: reduce) {
           .xpot-banner-bed,
