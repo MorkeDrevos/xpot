@@ -3,7 +3,16 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useId,
+  type ReactNode,
+} from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
@@ -49,8 +58,9 @@ const BTN_PRIMARY =
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition';
 
+// ✅ Add `mobile-flat` to all primary glass cards (the class itself lives in globals.css)
 const CARD =
-  'relative overflow-hidden rounded-[30px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.55)] backdrop-blur-xl';
+  'mobile-flat relative overflow-hidden rounded-[30px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.55)] backdrop-blur-xl';
 
 const VAULT_POLL_MS = 20_000;
 
@@ -301,11 +311,13 @@ function LinearVestingChartAndSchedule({
     })
     .join(' ');
 
-  const barGradientId = tone === 'sky' ? 'vestBarsSky' : 'vestBarsGold';
+  // ✅ Unique gradient ids (prevents collisions if multiple charts are open)
+  const uid = useId();
+  const barGradientId = `${uid}-${tone === 'sky' ? 'vestBarsSky' : 'vestBarsGold'}`;
 
   return (
     <div className="mt-3 grid gap-3 lg:grid-cols-2">
-      <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+      <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Monthly unlock</p>
@@ -376,7 +388,7 @@ function LinearVestingChartAndSchedule({
         <p className="mt-3 text-[11px] text-slate-600">Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow above.</p>
       </div>
 
-      <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+      <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
         <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Schedule</p>
 
         <div className="mt-3 grid gap-2">
@@ -391,9 +403,7 @@ function LinearVestingChartAndSchedule({
 
         <div className="mt-3 rounded-2xl border border-slate-800/70 bg-black/25 p-3">
           <p className="text-xs text-slate-300">Simple rule: no cliffs, no tricks.</p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            1/{Math.max(1, Math.floor(months))} unlocks monthly, equal amounts.
-          </p>
+          <p className="mt-1 text-[11px] text-slate-500">1/{Math.max(1, Math.floor(months))} unlocks monthly, equal amounts.</p>
         </div>
       </div>
     </div>
@@ -406,7 +416,7 @@ function ReserveStreamflowPanel() {
   const contractUrl = RESERVE_STREAMFLOW_CONTRACT ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT) : dashboard;
 
   return (
-    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
+    <div className="mobile-flat mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Reserve lock proof</p>
@@ -418,7 +428,7 @@ function ReserveStreamflowPanel() {
         </span>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+      <div className="mobile-flat mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain schedule</p>
@@ -457,7 +467,7 @@ function PartnersVestingPanel({ totalPartnersTokens }: { totalPartnersTokens: nu
   const vestUrl = streamflowContractUrl(PARTNERS_VESTING.contractAccount);
 
   return (
-    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
+    <div className="mobile-flat mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Partners vesting</p>
@@ -469,7 +479,7 @@ function PartnersVestingPanel({ totalPartnersTokens }: { totalPartnersTokens: nu
         </span>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+      <div className="mobile-flat mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain vesting</p>
@@ -508,7 +518,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
   const streamflowUrl = streamflowContractUrl(TEAM_VESTING.contractAccount);
 
   return (
-    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
+    <div className="mobile-flat mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Team vesting schedule</p>
@@ -519,7 +529,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
         </span>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+      <div className="mobile-flat mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain vesting</p>
@@ -706,7 +716,7 @@ function VaultGroupPanel({
   }, [data, groupKey]);
 
   return (
-    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
+    <div className="mobile-flat mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
@@ -747,7 +757,7 @@ function VaultGroupPanel({
             const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
-              <div key={`${groupKey}:${v.address}`} className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+              <div key={`${groupKey}:${v.address}`} className="mobile-flat rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-100">
@@ -940,7 +950,7 @@ function DonutAllocation({
   const selected = useMemo(() => items.find(i => i.key === selectedKey) ?? items[0] ?? null, [items, selectedKey]);
 
   return (
-    <div className="relative rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-4 sm:p-5 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur">
+    <div className="mobile-flat relative rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-4 sm:p-5 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur">
       {/* Mobile: remove decorative glow backgrounds */}
       <div
         className="
@@ -1086,7 +1096,7 @@ function DonutAllocation({
                 key={a.key}
                 ref={getCardRef(a.key)}
                 className={[
-                  'scroll-mt-[200px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
+                  'mobile-flat scroll-mt-[200px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
                   isSelected ? 'border-white/20 ring-1 ring-white/10' : 'border-slate-900/70',
                 ].join(' ')}
                 style={
@@ -1154,7 +1164,7 @@ function DonutAllocation({
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4">
-                        <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                        <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                           <p className="text-sm text-slate-200">{a.note}</p>
                           <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
 
@@ -1213,7 +1223,10 @@ function TokenomicsPageInner() {
   );
 
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
-  const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
+  const runwayFixedDays = useMemo(
+    () => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT),
+    [DISTRIBUTION_RESERVE],
+  );
 
   const allocation = useMemo<Allocation[]>(
     () => [
@@ -1388,7 +1401,7 @@ function TokenomicsPageInner() {
 
   const proofCards = (
     <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+      <div className="mobile-flat rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reserve coverage</p>
@@ -1419,7 +1432,7 @@ function TokenomicsPageInner() {
         </div>
       </div>
 
-      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+      <div className="mobile-flat rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
@@ -1475,7 +1488,7 @@ function TokenomicsPageInner() {
         </div>
       </div>
 
-      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+      <div className="mobile-flat rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
@@ -1654,7 +1667,7 @@ function TokenomicsPageInner() {
             </div>
 
             <div className="mt-5 grid gap-3">
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
                   <Gift className="h-4 w-4 text-emerald-300" />
                   Eligibility
@@ -1664,7 +1677,7 @@ function TokenomicsPageInner() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
                   <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
                   Status and reputation
@@ -1674,7 +1687,7 @@ function TokenomicsPageInner() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
                   <Flame className="h-4 w-4 text-sky-300" />
                   Sponsor-funded rewards
@@ -1684,7 +1697,7 @@ function TokenomicsPageInner() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
                   <ShieldCheck className="h-4 w-4 text-emerald-300" />
                   Verifiability edge
@@ -1721,7 +1734,7 @@ function TokenomicsPageInner() {
               </a>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+            <div className="mobile-flat mt-6 rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
               <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
               <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
               <p className="mt-2 text-xs leading-relaxed text-slate-500">
@@ -1752,7 +1765,7 @@ function TokenomicsFallback() {
       subtitle="Loading tokenomics..."
       topBarProps={{ pillText: 'TOKENOMICS', sloganRight: 'Protocol-grade distribution' }}
     >
-      <div className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+      <div className="mobile-flat mt-6 rounded-[26px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
         <p className="text-xs text-slate-400">Loading...</p>
       </div>
     </XpotPageShell>
