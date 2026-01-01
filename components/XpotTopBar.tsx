@@ -108,6 +108,9 @@ export default function XpotTopBar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [learnOpen, setLearnOpen] = useState(false);
 
+  // ✅ treat mobile as "app mode"
+  const [isMobile, setIsMobile] = useState(false);
+
   // ✅ Internal light wallet popup (only used if onOpenWalletModal not provided)
   const [lightWalletOpen, setLightWalletOpen] = useState(false);
   const openWallet = useMemo(() => {
@@ -115,9 +118,32 @@ export default function XpotTopBar({
   }, [onOpenWalletModal]);
 
   const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
+
+  // ✅ we do NOT offset for top banner on mobile (and you can hide banner itself in its component)
+  const effectiveHasBanner = hasBanner && !isMobile;
+  const top = effectiveHasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   const headerRef = useRef<HTMLElement | null>(null);
+
+  // detect mobile
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mq = window.matchMedia('(max-width: 639px)');
+    const apply = () => setIsMobile(!!mq.matches);
+
+    apply();
+
+    // Safari fallback
+    const handler = () => apply();
+    if ('addEventListener' in mq) mq.addEventListener('change', handler);
+    else mq.addListener(handler);
+
+    return () => {
+      if ('removeEventListener' in mq) mq.removeEventListener('change', handler);
+      else mq.removeListener(handler);
+    };
+  }, []);
 
   // Close menus on route change
   useEffect(() => {
@@ -165,80 +191,126 @@ export default function XpotTopBar({
       window.removeEventListener('resize', measure);
       if (ro) ro.disconnect();
     };
-  }, [pathname, hasBanner]);
+  }, [pathname, effectiveHasBanner]);
 
   return (
     <>
-      <header ref={headerRef} className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
+      <header
+        ref={headerRef}
+        className="fixed inset-x-0 z-[60] w-full"
+        style={{ top }}
+      >
         {/* Topbar block ABOVE the divider so dropdown always wins stacking */}
         <div className="relative z-[80] border-b border-white/5 bg-black/70 backdrop-blur-md">
-          <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
-            <div className="flex min-h-[104px] items-center gap-4">
-              {/* LEFT: Logo + optional pill */}
-              <div className="flex min-w-0 items-center gap-4">
-                <Link href={logoHref} className="flex shrink-0 items-center gap-3">
-                  <XpotLogo
-                    variant="light"
-                    width={460}
-                    height={120}
-                    priority
-                    className="h-[92px] max-h-[92px] w-auto object-contain animate-[xpotStarFlash_20s_ease-in-out_infinite]"
-                  />
-                </Link>
+          {/* iOS safe area */}
+          <div className="pt-[env(safe-area-inset-top)]">
+            <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
+              <div className="flex min-h-[72px] items-center gap-3 sm:min-h-[104px]">
+                {/* LEFT: Logo + optional pill */}
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                  <Link href={logoHref} className="flex shrink-0 items-center gap-3">
+                    <XpotLogo
+                      variant="light"
+                      width={460}
+                      height={120}
+                      priority
+                      className="h-[44px] w-auto object-contain sm:h-[92px] sm:max-h-[92px] animate-[xpotStarFlash_20s_ease-in-out_infinite]"
+                    />
+                  </Link>
 
-                {/* Optional pill/slogan (public only) */}
-                {!isHub && (
-                  <div className="hidden min-w-0 items-center gap-3 lg:flex">
-                    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
-                      <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
-                      <span className="truncate opacity-85">{pillText}</span>
-                    </span>
-
-                    {sloganRight && (
-                      <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 2xl:inline-flex">
-                        {sloganRight}
+                  {/* Optional pill/slogan (public only) */}
+                  {!isHub && (
+                    <div className="hidden min-w-0 items-center gap-3 lg:flex">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
+                        <span className="h-2 w-2 rounded-full bg-slate-300/70 shadow-[0_0_10px_rgba(148,163,184,0.35)]" />
+                        <span className="truncate opacity-85">{pillText}</span>
                       </span>
-                    )}
-                  </div>
-                )}
+
+                      {sloganRight && (
+                        <span className="hidden items-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-200 2xl:inline-flex">
+                          {sloganRight}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* CENTER: Nav (desktop) */}
+                <div className="hidden flex-1 items-center justify-center gap-8 xl:flex">
+                  {isHub ? (
+                    <HubNavCenter liveIsOpen={liveIsOpen} />
+                  ) : (
+                    <PublicNavCenter
+                      liveIsOpen={liveIsOpen}
+                      learnOpen={learnOpen}
+                      setLearnOpen={setLearnOpen}
+                    />
+                  )}
+                </div>
+
+                {/* RIGHT: Actions */}
+                <div className="ml-auto flex items-center gap-2 sm:gap-3">
+                  {!isHub && (
+                    <div className="hidden xl:flex">
+                      <OfficialCAChip />
+                    </div>
+                  )}
+
+                  {isHub ? (
+                    <HubRight
+                      clerkEnabled={clerkEnabled}
+                      hubWalletStatus={hubWalletStatus}
+                      onOpenWalletModal={openWallet}
+                    />
+                  ) : (
+                    <>{rightSlot ? rightSlot : <PublicRight />}</>
+                  )}
+
+                  {/* Mobile menu button (app-like) */}
+                  <button
+                    type="button"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.07] xl:hidden"
+                    onClick={() => setMobileOpen(true)}
+                    aria-label="Open menu"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
-              {/* CENTER: Nav (desktop) */}
-              <div className="hidden flex-1 items-center justify-center gap-8 xl:flex">
+              {/* Mobile quick row (app feel): tiny "chip bar" */}
+              <div className="mb-3 flex items-center justify-between gap-2 sm:hidden">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-200/90">
+                    <span className="h-2 w-2 rounded-full bg-emerald-300/80 shadow-[0_0_12px_rgba(16,185,129,0.35)]" />
+                    LIVE
+                  </span>
+                  <Link
+                    href={FINAL_DAY_HREF}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-200/90"
+                  >
+                    <Hourglass className="h-3.5 w-3.5 text-amber-200" />
+                    {FINAL_DAY_LABEL}
+                  </Link>
+                </div>
+
                 {isHub ? (
-                  <HubNavCenter liveIsOpen={liveIsOpen} />
+                  <button
+                    type="button"
+                    onClick={() => openWallet?.()}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-200/90"
+                  >
+                    <Wallet className="h-3.5 w-3.5 text-slate-200" />
+                    Wallet
+                  </button>
                 ) : (
-                  <PublicNavCenter liveIsOpen={liveIsOpen} learnOpen={learnOpen} setLearnOpen={setLearnOpen} />
+                  <Link
+                    href="/hub"
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-black"
+                  >
+                    Enter →
+                  </Link>
                 )}
-              </div>
-
-              {/* RIGHT: Actions */}
-              <div className="ml-auto flex items-center gap-3">
-                {!isHub && (
-                  <div className="hidden xl:flex">
-                    <OfficialCAChip />
-                  </div>
-                )}
-
-                {isHub ? (
-                  <HubRight
-                    clerkEnabled={clerkEnabled}
-                    hubWalletStatus={hubWalletStatus}
-                    onOpenWalletModal={openWallet}
-                  />
-                ) : (
-                  <>{rightSlot ? rightSlot : <PublicRight />}</>
-                )}
-
-                {/* Mobile menu button */}
-                <button
-                  type="button"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] xl:hidden"
-                  onClick={() => setMobileOpen(true)}
-                  aria-label="Open menu"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
               </div>
             </div>
           </div>
@@ -249,7 +321,7 @@ export default function XpotTopBar({
           <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.10),rgba(56,189,248,0.55),rgba(56,189,248,0.10))]" />
         </div>
 
-        {/* Mobile drawer */}
+        {/* Mobile sheet menu */}
         <MobileMenu
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
@@ -512,9 +584,7 @@ function PublicNavCenter({
 
       {/* Final Draw (primary) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <Hourglass
-  className="h-4 w-4 !text-white !stroke-white"
-/>
+        <Hourglass className="h-4 w-4 text-white" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
@@ -644,9 +714,7 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
 
       {/* ✅ Final Draw (ONLY ONCE) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <Hourglass
-  className="h-4 w-4 stroke-white text-white"
-/>
+        <Hourglass className="h-4 w-4 text-white" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
@@ -1066,7 +1134,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
   );
 }
 
-/* ---------------- Mobile menu ---------------- */
+/* ---------------- Mobile menu (app-like bottom sheet) ---------------- */
 
 function MobileMenu({
   open,
@@ -1099,6 +1167,25 @@ function MobileMenu({
   const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
   const initial = (displayHandle || 'X')[1] || 'X';
 
+  useEffect(() => {
+    if (!open) return;
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -1109,127 +1196,114 @@ function MobileMenu({
         onClick={onClose}
         aria-label="Close menu"
       />
-      <div className="fixed right-0 top-0 z-[81] h-full w-[92%] max-w-sm border-l border-white/10 bg-black/85 backdrop-blur-xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-          <div className="flex items-center gap-3">
-            {isLoaded && avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="X avatar" className="h-9 w-9 rounded-full border border-white/10" />
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-slate-200">
-                {initial}
+
+      <div className="fixed inset-x-0 bottom-0 z-[81] max-h-[86vh] overflow-hidden rounded-t-3xl border-t border-white/10 bg-black/85 backdrop-blur-xl shadow-[0_-30px_120px_rgba(0,0,0,0.75)]">
+        <div className="mx-auto w-full max-w-lg px-5 pb-[calc(env(safe-area-inset-bottom)+18px)] pt-4">
+          {/* handle */}
+          <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-white/10" />
+
+          <div className="flex items-center justify-between gap-3 pb-4">
+            <div className="flex items-center gap-3">
+              {isLoaded && avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar} alt="X avatar" className="h-10 w-10 rounded-full border border-white/10" />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-slate-200">
+                  {initial}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-100">XPOT</p>
+                <p className="truncate text-xs text-slate-400">{displayHandle ?? 'Guest'}</p>
               </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-100">Menu</p>
-              <p className="truncate text-xs text-slate-400">{displayHandle ?? 'Guest'}</p>
             </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06]"
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06]"
-            aria-label="Close menu"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+          {/* quick actions */}
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+              href="/hub"
+              onClick={onClose}
+            >
+              Hub
+            </Link>
 
-        <div className="space-y-2 px-5 py-5">
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href="/hub"
-          >
-            Hub
-          </Link>
+            <Link
+              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+              href={FINAL_DAY_HREF}
+              onClick={onClose}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Hourglass className="h-4 w-4 text-amber-200" />
+                {FINAL_DAY_LABEL}
+              </span>
+            </Link>
+          </div>
 
-          {/* Live -> Protocol (disabled until page ready) */}
-          {/*
-          <Link
-            className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={PROTOCOL_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <LiveDot isOpen={liveIsOpen} />
-              Live
-            </span>
-            <Radio className="h-4 w-4 text-emerald-300" />
-          </Link>
-          */}
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Link
+              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+              href={TOKENOMICS_HREF}
+              onClick={onClose}
+            >
+              <span className="inline-flex items-center gap-2">
+                <PieChart className="h-4 w-4 text-emerald-300" />
+                Tokenomics
+              </span>
+            </Link>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={FINAL_DAY_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Hourglass className="h-4 w-4 text-amber-200" />
-              {FINAL_DAY_LABEL}
-            </span>
-          </Link>
+            <Link
+              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+              href={ROADMAP_HREF}
+              onClick={onClose}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Map className="h-4 w-4 text-sky-300" />
+                Roadmap
+              </span>
+            </Link>
 
-          {/* Mechanism (disabled until page ready) */}
-          {/*
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={MECHANISM_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Info className="h-4 w-4 text-slate-200" />
-              Mechanism
-            </span>
-          </Link>
-          */}
+            <Link
+              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+              href={WINNERS_HREF}
+              onClick={onClose}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-amber-300" />
+                Winners
+              </span>
+            </Link>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={TOKENOMICS_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <PieChart className="h-4 w-4 text-emerald-300" />
-              Tokenomics
-            </span>
-          </Link>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={ROADMAP_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Map className="h-4 w-4 text-sky-300" />
-              Roadmap
-            </span>
-          </Link>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={WINNERS_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-300" />
-              Winners
-            </span>
-          </Link>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={XPOT_X_POST}
-            target="_blank"
-          >
-            <span className="inline-flex items-center gap-2">
-              <ExternalLink className="h-4 w-4" />
-              Official X
-            </span>
-          </Link>
+            <Link
+              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+              href={XPOT_X_POST}
+              target="_blank"
+            >
+              <span className="inline-flex items-center gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Official X
+              </span>
+            </Link>
+          </div>
 
           {isHub && (
-            <div className="pt-2">
+            <div className="mt-4">
               <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
             </div>
           )}
 
           {isHub && clerkEnabled && (
-            <div className="pt-2">
+            <div className="mt-3">
               <SignOutButton redirectUrl="/">
                 <button className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]">
                   <span className="inline-flex items-center gap-2">
@@ -1241,13 +1315,18 @@ function MobileMenu({
             </div>
           )}
 
-          <div className="pt-3">
+          <div className="mt-4">
             <Link
               href="/hub"
+              onClick={onClose}
               className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
             >
               Enter today&apos;s XPOT →
             </Link>
+
+            <p className="mt-3 text-center text-xs text-slate-400/80">
+              {liveIsOpen ? 'Protocol live.' : 'Trading active.'}
+            </p>
           </div>
         </div>
       </div>
