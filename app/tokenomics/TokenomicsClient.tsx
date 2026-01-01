@@ -74,9 +74,6 @@ const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 // Streamflow reserve proof
 const RESERVE_STREAMFLOW_CONTRACT: string | null = null;
 
-// Coverage label used in UI (matches your 7,000-day messaging)
-const RESERVE_COVERAGE_YEARS_LABEL = '19.18y';
-
 function solscanAccountUrl(account: string) {
   return `https://solscan.io/account/${account}`;
 }
@@ -167,14 +164,12 @@ function toneStroke(tone: PillTone) {
   if (tone === 'amber') return 'rgba(250,204,21,0.78)';
   return 'rgba(148,163,184,0.68)';
 }
-
 function toneGlow(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
   if (tone === 'amber') return 'rgba(250,204,21,0.18)';
   return 'rgba(148,163,184,0.16)';
 }
-
 function toneRing(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
@@ -625,8 +620,8 @@ function formatVaultBalance(b: ApiVaultEntry['balance']) {
     return formatMaybeNumber(b.uiAmount) ?? null;
   }
 
-  if (typeof (b as any).uiAmountString === 'string' && (b as any).uiAmountString.trim().length) {
-    return (b as any).uiAmountString;
+  if (typeof b.uiAmountString === 'string' && b.uiAmountString.trim().length) {
+    return b.uiAmountString;
   }
 
   if (typeof b.amount === 'string' && typeof b.decimals === 'number') {
@@ -693,39 +688,74 @@ function useVaultGroups() {
   return { data, isLoading, hadError };
 }
 
-type TokenSupplyResponse =
-  | {
-      ok: true;
-      mint: string;
-      fetchedAt: number;
-      source: 'solscan' | 'rpc';
-      decimals: number;
-      supplyRaw: string;
-      uiAmountString: string | null;
-    }
-  | { ok: false; mint: string; fetchedAt: number; error: string };
+/**
+ * LIVE supply from Solana RPC (matches Solscan "Current Supply")
+ * We do this client-side with a public RPC (CORS friendly) and a safe fallback.
+ */
+type LiveSupply = {
+  uiAmount: number | null;
+  decimals: number;
+  fetchedAt: number;
+  source: 'solana-rpc';
+};
+
+async function rpcGetTokenSupply(mint: string, rpcUrl: string) {
+  const body = {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'getTokenSupply',
+    params: [mint],
+  };
+
+  const res = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  });
+
+  if (!res.ok) throw new Error(`rpc http ${res.status}`);
+  const json = await res.json();
+
+  const v = json?.result?.value;
+  const decimals = Number(v?.decimals ?? 0);
+  const uiAmount =
+    typeof v?.uiAmount === 'number' && Number.isFinite(v.uiAmount)
+      ? v.uiAmount
+      : typeof v?.uiAmountString === 'string'
+        ? Number(v.uiAmountString)
+        : null;
+
+  return { uiAmount, decimals };
+}
 
 function useLiveTokenSupply(mint: string) {
-  const [data, setData] = useState<TokenSupplyResponse | null>(null);
+  const [data, setData] = useState<LiveSupply | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hadError, setHadError] = useState(false);
 
   useEffect(() => {
     let timer: number | null = null;
     let aborted = false;
-    const ctrl = new AbortController();
+
+    const rpcUrl =
+      (typeof window !== 'undefined' && (window as any)?.__XPOT_RPC_URL__) ||
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
+      'https://api.mainnet-beta.solana.com';
 
     async function fetchSupply() {
       try {
         setHadError(false);
-        const res = await fetch(`/api/token/supply?mint=${encodeURIComponent(mint)}`, { signal: ctrl.signal, cache: 'no-store' });
-        const json = (await res.json()) as TokenSupplyResponse;
+        const { uiAmount, decimals } = await rpcGetTokenSupply(mint, rpcUrl);
         if (aborted) return;
 
-        setData(json);
-        setHadError(!json || (json as any).ok === false);
-      } catch (e) {
-        if ((e as any)?.name === 'AbortError') return;
+        setData({
+          uiAmount: uiAmount ?? null,
+          decimals,
+          fetchedAt: Date.now(),
+          source: 'solana-rpc',
+        });
+      } catch {
         if (aborted) return;
         setHadError(true);
       } finally {
@@ -745,7 +775,6 @@ function useLiveTokenSupply(mint: string) {
 
     return () => {
       aborted = true;
-      ctrl.abort();
       if (timer !== null) window.clearInterval(timer);
       if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
     };
@@ -754,31 +783,26 @@ function useLiveTokenSupply(mint: string) {
   return { data, isLoading, hadError };
 }
 
-function sumGroupsUiAmount(data: ApiVaultResponse | null, groupKeys: string[]) {
-  if (!data?.groups) return null;
+function sumGroupUiAmounts(groups: ApiVaultResponse['groups'] | undefined, keys: string[]) {
+  if (!groups) return null;
+  let sum = 0;
+  let foundAny = false;
 
-  let total = 0;
-  let ok = false;
-
-  for (const g of groupKeys) {
-    const entries = data.groups[g];
-    if (!Array.isArray(entries)) continue;
-
-    for (const v of entries) {
-      const t = formatVaultBalance(v.balance);
-      if (!t) continue;
-      const n = Number(String(t).replace(/,/g, ''));
-      if (!Number.isFinite(n)) continue;
-      total += n;
-      ok = true;
+  for (const k of keys) {
+    const arr = groups[k];
+    if (!Array.isArray(arr)) continue;
+    for (const v of arr) {
+      const b = v?.balance;
+      const s = formatVaultBalance(b);
+      const n = s != null ? Number(s) : NaN;
+      if (Number.isFinite(n)) {
+        sum += n;
+        foundAny = true;
+      }
     }
   }
 
-  return ok ? total : null;
-}
-
-function formatBigUi(n: number) {
-  return Math.round(n).toLocaleString('en-US');
+  return foundAny ? sum : null;
 }
 
 function VaultGroupPanel({
@@ -983,9 +1007,6 @@ function DonutAllocation({
   vaultLoading,
   vaultError,
   vaultGroupByAllocKey,
-  runwayTable,
-  yearsOfRunway,
-  distributionReserve,
   getCardRef,
   teamTotalTokens,
   partnersTotalTokens,
@@ -1002,10 +1023,6 @@ function DonutAllocation({
   vaultLoading: boolean;
   vaultError: boolean;
   vaultGroupByAllocKey: Record<string, string>;
-
-  runwayTable: { label: string; daily: number; highlight?: true }[];
-  yearsOfRunway: (daily: number) => number;
-  distributionReserve: number;
 
   getCardRef: (key: string) => (el: HTMLDivElement | null) => void;
 
@@ -1251,16 +1268,16 @@ function DonutAllocation({
  */
 function TokenomicsPageInner() {
   const searchParams = useSearchParams();
-  const supplyFixed = 50_000_000_000;
+  const supply = 50_000_000_000;
 
   const DISTRIBUTION_RESERVE_PCT = 14;
-  const DISTRIBUTION_RESERVE = supplyFixed * (DISTRIBUTION_RESERVE_PCT / 100);
+  const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100);
 
   const TEAM_PCT = 9;
-  const TEAM_TOTAL_TOKENS = supplyFixed * (TEAM_PCT / 100);
+  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100);
 
   const PARTNERS_PCT = 8;
-  const PARTNERS_TOTAL_TOKENS = supplyFixed * (PARTNERS_PCT / 100);
+  const PARTNERS_TOTAL_TOKENS = supply * (PARTNERS_PCT / 100);
 
   const yearsOfRunway = useCallback(
     (daily: number) => {
@@ -1272,17 +1289,6 @@ function TokenomicsPageInner() {
 
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
   const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
-
-  const runwayTable = useMemo(
-    () => [
-      { label: '500,000 XPOT / day', daily: 500_000 },
-      { label: '750,000 XPOT / day', daily: 750_000 },
-      { label: '1,000,000 XPOT / day (fixed)', daily: 1_000_000, highlight: true as const },
-      { label: '1,250,000 XPOT / day', daily: 1_250_000 },
-      { label: '1,500,000 XPOT / day', daily: 1_500_000 },
-    ],
-    [],
-  );
 
   const allocation = useMemo<Allocation[]>(
     () => [
@@ -1359,7 +1365,6 @@ function TokenomicsPageInner() {
   }, [allocation]);
 
   const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
-  const { data: supplyData, hadError: supplyError } = useLiveTokenSupply(XPOT_MINT_ACCOUNT);
 
   const VAULT_GROUP_BY_ALLOC_KEY: Record<string, string> = {
     distribution: 'rewards',
@@ -1370,30 +1375,6 @@ function TokenomicsPageInner() {
     community: 'community',
     strategic: 'strategic',
   };
-
-  // Non-circulating tracked buckets (what we subtract to compute "circulating")
-  const TRACKED_NON_CIRC_GROUPS = ['rewards', 'treasury', 'team', 'partners', 'strategic', 'community'];
-
-  const trackedNonCirc = useMemo(() => sumGroupsUiAmount(vaultData, TRACKED_NON_CIRC_GROUPS), [vaultData]);
-  const currentSupplyUi = useMemo(() => {
-    if (!supplyData || (supplyData as any).ok === false) return null;
-    const s = supplyData as Extract<TokenSupplyResponse, { ok: true }>;
-    const n = s.uiAmountString ? Number(String(s.uiAmountString).replace(/,/g, '')) : null;
-    return Number.isFinite(n as any) ? (n as number) : null;
-  }, [supplyData]);
-
-  const circulatingUi = useMemo(() => {
-    if (currentSupplyUi == null) return null;
-    if (trackedNonCirc == null) return null;
-    const v = currentSupplyUi - trackedNonCirc;
-    return Number.isFinite(v) ? Math.max(0, v) : null;
-  }, [currentSupplyUi, trackedNonCirc]);
-
-  const supplyUpdatedAgo = useMemo(() => {
-    if (!supplyData || (supplyData as any).ok === false) return null;
-    const s = supplyData as Extract<TokenSupplyResponse, { ok: true }>;
-    return timeAgo(s.fetchedAt);
-  }, [supplyData]);
 
   const [openKey, setOpenKeyRaw] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(sortedAllocation[0]?.key ?? null);
@@ -1480,6 +1461,23 @@ function TokenomicsPageInner() {
     ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT)
     : streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
 
+  // LIVE current supply (Solana RPC, matches Solscan)
+  const { data: liveSupply, isLoading: supplyLoading, hadError: supplyError } = useLiveTokenSupply(XPOT_MINT_ACCOUNT);
+
+  const currentSupplyUi = liveSupply?.uiAmount ?? null;
+  const currentSupplyText = currentSupplyUi != null ? fmtInt(currentSupplyUi) : null;
+
+  // Circulating estimate: currentSupply - tracked non-circ vault groups (exclude liquidityOps)
+  const NON_CIRC_GROUPS = useMemo(() => ['rewards', 'treasury', 'team', 'partners', 'strategic', 'community'], []);
+  const nonCircTracked = useMemo(() => sumGroupUiAmounts(vaultData?.groups, NON_CIRC_GROUPS), [vaultData, NON_CIRC_GROUPS]);
+
+  const circulatingEst = useMemo(() => {
+    if (currentSupplyUi == null) return null;
+    if (nonCircTracked == null) return null;
+    const v = currentSupplyUi - nonCircTracked;
+    return Number.isFinite(v) ? Math.max(0, v) : null;
+  }, [currentSupplyUi, nonCircTracked]);
+
   const proofCards = (
     <div className="mt-7 grid gap-3 lg:grid-cols-3">
       <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
@@ -1487,7 +1485,8 @@ function TokenomicsPageInner() {
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reserve coverage</p>
             <p className="mt-2 font-mono text-3xl font-semibold text-emerald-200">
-              {runwayFixedYears.toFixed(2)} <span className="text-base font-semibold text-slate-500">years</span>
+              {Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'}{' '}
+              <span className="text-base font-semibold text-slate-500">years</span>
             </p>
 
             <p className="mt-1 text-xs text-slate-500">
@@ -1501,7 +1500,7 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <ProofLinkPill href={reserveProofHref} label={`Locked reserve (${RESERVE_COVERAGE_YEARS_LABEL})`} tone="emerald" />
+          <ProofLinkPill href={reserveProofHref} label="Locked reserve (19.18y)" tone="emerald" />
           <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Wallet (Solscan)" tone="slate" />
           <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
         </div>
@@ -1572,7 +1571,7 @@ function TokenomicsPageInner() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
-            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{supplyFixed.toLocaleString('en-US')}</p>
+            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
             <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
           </div>
           <Pill tone="sky">
@@ -1581,47 +1580,41 @@ function TokenomicsPageInner() {
           </Pill>
         </div>
 
+        {/* LIVE Supply panel (no fake numbers) */}
         <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Current supply (LIVE)</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Current supply (live)</p>
+              <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
+                {currentSupplyText ?? '—'}
+              </p>
+              <p className="mt-2 text-xs text-slate-500">
+                {supplyError ? 'RPC issue - refresh' : 'Source: Solana RPC (matches Solscan Current Supply).'}
+              </p>
+
+              <div className="mt-3">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Circulating (estimated, live)</p>
+                <p className="mt-2 font-mono text-lg font-semibold text-slate-100">
+                  {circulatingEst != null ? fmtInt(circulatingEst) : '—'}
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  {circulatingEst == null
+                    ? 'Tracking unavailable (vault groups + RPC required).'
+                    : `Non-circulating tracked: ${nonCircTracked != null ? fmtInt(nonCircTracked) : '—'} XPOT`}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-600">
+                  Tracked vault groups: rewards, treasury, team, partners, strategic, community. Liquidity is excluded.
+                </p>
+              </div>
+
+              <p className="mt-3 text-[11px] text-slate-600">
+                Updated: {liveSupply?.fetchedAt ? timeAgo(liveSupply.fetchedAt) : supplyLoading ? '…' : '—'}
+              </p>
+            </div>
+
             <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-              {supplyError ? 'ISSUE' : 'LIVE'}
+              {supplyLoading ? 'Loading' : supplyError ? 'Issue' : 'Live'}
             </span>
-          </div>
-
-          <div className="mt-3">
-            {currentSupplyUi == null ? (
-              <>
-                <p className="font-mono text-3xl font-semibold text-slate-100">—</p>
-                <p className="mt-2 text-xs text-slate-500">RPC/Solscan issue - refresh</p>
-              </>
-            ) : (
-              <>
-                <p className="font-mono text-3xl font-semibold text-slate-100">{formatBigUi(currentSupplyUi)}</p>
-
-                {circulatingUi != null && trackedNonCirc != null ? (
-                  <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Circulating (LIVE)</p>
-                      <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
-                        Live
-                      </span>
-                    </div>
-                    <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">{formatBigUi(circulatingUi)}</p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      Non-circulating tracked: {formatBigUi(trackedNonCirc)} XPOT
-                    </p>
-                    <p className="mt-1 text-[11px] text-slate-600">
-                      Updated: {supplyUpdatedAgo ?? '—'} · Tracked groups: rewards, treasury, team, partners, strategic, community
-                    </p>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Updated: {supplyUpdatedAgo ?? '—'} · Source: {(supplyData as any)?.ok ? (supplyData as any).source : '—'}
-                  </p>
-                )}
-              </>
-            )}
           </div>
         </div>
 
@@ -1655,7 +1648,7 @@ function TokenomicsPageInner() {
               bg-[radial-gradient(circle_at_18%_22%,rgba(var(--xpot-gold),0.18),transparent_62%),
                   radial-gradient(circle_at_78%_34%,rgba(56,189,248,0.10),transparent_66%),
                   radial-gradient(circle_at_20%_85%,rgba(16,185,129,0.10),transparent_60%),
-                  linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.78))]
+                  linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.78)}
             "
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
@@ -1713,7 +1706,7 @@ function TokenomicsPageInner() {
                   </span>
                   <span className="inline-flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-white/20" />
-                    Coverage focus: <span className="font-mono text-emerald-200">{runwayFixedYears.toFixed(2)} years</span>
+                    Coverage focus: <span className="font-mono text-emerald-200">{Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'} years</span>
                   </span>
                 </div>
               </div>
@@ -1756,9 +1749,6 @@ function TokenomicsPageInner() {
                 vaultLoading={vaultLoading}
                 vaultError={vaultError}
                 vaultGroupByAllocKey={VAULT_GROUP_BY_ALLOC_KEY}
-                runwayTable={runwayTable}
-                yearsOfRunway={yearsOfRunway}
-                distributionReserve={DISTRIBUTION_RESERVE}
                 getCardRef={getCardRef}
                 teamTotalTokens={TEAM_TOTAL_TOKENS}
                 partnersTotalTokens={PARTNERS_TOTAL_TOKENS}
