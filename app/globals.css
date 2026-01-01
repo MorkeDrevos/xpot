@@ -642,3 +642,21 @@ select {
     backdrop-filter: none !important;
   }
 }
+
+/* Fix mirrored "NOW" / "2045" faces */
+.xpot-face-wrap {
+  transform-style: preserve-3d;
+}
+
+.xpot-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.xpot-face-now {
+  transform: rotateY(0deg);
+}
+
+.xpot-face-2045 {
+  transform: rotateY(180deg);
+}
