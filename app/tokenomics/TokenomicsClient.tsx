@@ -687,28 +687,6 @@ function useVaultGroups() {
   return { data, isLoading, hadError };
 }
 
-function sumGroupUiAmounts(groups: ApiVaultResponse['groups'] | undefined, keys: string[]) {
-  if (!groups) return null;
-  let sum = 0;
-  let foundAny = false;
-
-  for (const k of keys) {
-    const arr = groups[k];
-    if (!Array.isArray(arr)) continue;
-    for (const v of arr) {
-      const b = v?.balance;
-      const s = formatVaultBalance(b);
-      const n = s != null ? Number(s) : NaN;
-      if (Number.isFinite(n)) {
-        sum += n;
-        foundAny = true;
-      }
-    }
-  }
-
-  return foundAny ? sum : null;
-}
-
 function VaultGroupPanel({
   title,
   groupKey,
@@ -935,6 +913,7 @@ function DonutAllocation({
 }) {
   const reduceMotion = useReducedMotion();
 
+  // Donut math is based on a fixed viewBox, but we render it responsively via CSS sizing.
   const size = 380;
   const r = 148;
   const c = 2 * Math.PI * r;
@@ -961,7 +940,7 @@ function DonutAllocation({
   const selected = useMemo(() => items.find(i => i.key === selectedKey) ?? items[0] ?? null, [items, selectedKey]);
 
   return (
-    <div className="relative rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur">
+    <div className="relative rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-4 sm:p-5 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur">
       <div
         className="
           pointer-events-none absolute -inset-24 opacity-80 blur-3xl
@@ -974,14 +953,54 @@ function DonutAllocation({
       <div className="relative z-10 flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Allocation overview</p>
-          <p className="mt-1 text-xs text-slate-500">Select a slice, then expand the matching card for details and vaults.</p>
+          <p className="mt-1 text-xs text-slate-500">Tap a bucket, then expand its card for proof and live vaults.</p>
+        </div>
+      </div>
+
+      {/* Mobile selector chips (premium and fast) */}
+      <div className="relative z-10 mt-4 sm:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {items.map(it => {
+            const active = it.key === (selected?.key ?? null);
+            const stroke = toneStroke(it.tone);
+            return (
+              <button
+                key={it.key}
+                type="button"
+                onClick={() => onSelect(it.key)}
+                className={[
+                  'shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition',
+                  active ? 'border-white/20 bg-white/[0.06] text-white' : 'border-white/10 bg-white/[0.03] text-slate-200',
+                ].join(' ')}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full" style={{ background: stroke, boxShadow: `0 0 10px ${toneGlow(it.tone)}` }} />
+                  {it.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Selected</p>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-100">{selected?.label ?? '—'}</p>
+            <p className="font-mono text-2xl font-semibold text-slate-100">{selected ? `${selected.pct}%` : '—'}</p>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500">{selected?.note ?? ''}</p>
         </div>
       </div>
 
       <div className="relative z-10 mt-5 grid gap-5 lg:grid-cols-[420px_minmax(0,1fr)] lg:items-start">
-        <div className="flex items-center justify-center">
+        {/* Donut: hidden on the smallest screens, shown from sm+ */}
+        <div className="hidden sm:flex items-center justify-center">
           <div className="relative">
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
+            <svg
+              viewBox={`0 0 ${size} ${size}`}
+              className="block h-auto w-[280px] sm:w-[340px] md:w-[380px]"
+              aria-label="Allocation donut chart"
+            >
               <defs>
                 <filter id="xpotGlow" x="-50%" y="-50%" width="200%" height="200%">
                   <feGaussianBlur stdDeviation="3.5" result="blur" />
@@ -1051,6 +1070,7 @@ function DonutAllocation({
           </div>
         </div>
 
+        {/* Cards list */}
         <div className="grid gap-3">
           {items.map(a => {
             const active = openKey === a.key;
@@ -1366,7 +1386,7 @@ function TokenomicsPageInner() {
     : streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
 
   const proofCards = (
-    <div className="mt-7 grid gap-3 lg:grid-cols-3">
+    <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -1579,15 +1599,15 @@ function TokenomicsPageInner() {
                   radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
             "
           />
-          <div className="relative z-10 p-6 lg:p-8">
+          <div className="relative z-10 p-5 sm:p-6 lg:p-8">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-100">Distribution map</p>
-                <p className="mt-1 text-xs text-slate-400">Select a slice, then expand the matching card for the full breakdown and live vaults.</p>
+                <p className="mt-1 text-xs text-slate-400">Select a bucket, then expand the matching card for the full breakdown and live vaults.</p>
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-5 sm:mt-6">
               <DonutAllocation
                 items={sortedAllocation}
                 selectedKey={selectedKey}
