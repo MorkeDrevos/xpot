@@ -1529,9 +1529,12 @@ function MissionBanner() {
 function HomePageInner() {
   const bonusActive = useBonusActive();
 
-  // TEMP OFF: winner + entries sections
-  // const winnerSpotlight = useLatestWinnerCard();
-  // const entries = useLatestEntriesTelemetry();
+  // TEMP OFF: winner + entries sections (safe stubs so JSX compiles)
+  const winnerSpotlight: WinnerRow | null = null;
+  const entries: EntryRow[] = [];
+
+  // Toggle if/when public endpoints are live
+  const SHOW_LIVE_FEED = false;
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
@@ -1647,22 +1650,27 @@ function HomePageInner() {
                       </div>
 
                       {/* MOBILE: compact winner + jackpot immediately after H1 */}
-                      <div className="mt-4 grid gap-4 lg:hidden">
-                        <WinnerSpotlight winner={winnerSpotlight} compact />
-                        <PremiumCard className="p-4" halo sheen>
-                          <div className="xpot-console-sweep" aria-hidden />
-                          <div className="relative z-10">
-                            <JackpotPanel variant="standalone" layout="wide" />
-                          </div>
-                        </PremiumCard>
-                      </div>
+<div className="mt-4 grid gap-4 lg:hidden">
+  {SHOW_LIVE_FEED && winnerSpotlight ? (
+    <WinnerSpotlight winner={winnerSpotlight} compact />
+  ) : null}
+
+  <PremiumCard className="p-4" halo sheen>
+    <div className="xpot-console-sweep" aria-hidden />
+    <div className="relative z-10">
+      <JackpotPanel variant="standalone" layout="wide" />
+    </div>
+  </PremiumCard>
+</div>
 
                       {/* Desktop hero flow (kept) */}
-                      <div className="hidden lg:block">
-                        <WinnerSpotlight winner={winnerSpotlight} />
-                      </div>
+{SHOW_LIVE_FEED && winnerSpotlight ? (
+  <div className="hidden lg:block">
+    <WinnerSpotlight winner={winnerSpotlight} />
+  </div>
+) : null}
 
-                      <EnteringTheStage entries={entries} />
+                      {SHOW_LIVE_FEED ? <EnteringTheStage entries={entries} /> : null}
 
                       <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
                         <div
