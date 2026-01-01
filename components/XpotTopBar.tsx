@@ -32,7 +32,7 @@ import {
   ChevronRight,
   Hourglass,
   Home,
-  User,
+  BadgeCheck,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -80,7 +80,6 @@ const FINAL_DAY_LABEL = 'Final Draw';
 const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
-const MECHANISM_HREF = '/mechanism';
 const PROTOCOL_HREF = '/hub/protocol';
 
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
@@ -125,6 +124,7 @@ export default function XpotTopBar({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setLearnOpen(false);
+      if (e.key === 'Escape') setMobileOpen(false);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -169,7 +169,7 @@ export default function XpotTopBar({
         {/* Topbar block */}
         <div className="relative z-[80] border-b border-white/5 bg-black/70 backdrop-blur-md">
           <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
-            {/* Desktop layout (unchanged) */}
+            {/* Desktop layout */}
             <div className="hidden min-h-[104px] items-center gap-4 xl:flex">
               <div className="flex min-w-0 items-center gap-4">
                 <Link href={logoHref} className="flex shrink-0 items-center gap-3">
@@ -221,11 +221,12 @@ export default function XpotTopBar({
               </div>
             </div>
 
-            {/* ✅ Mobile layout (APP-LIKE) */}
+            {/* ✅ Mobile layout (MORE iPhone-native) */}
             <div className="xl:hidden">
-              <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3">
-                {/* ✅ Bigger logo on mobile */}
+              {/* Row 1: logo + CA + primary + menu */}
+              <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3">
                 <Link href={logoHref} className="flex min-w-0 items-center gap-3">
+                  {/* ✅ Bigger logo on mobile */}
                   <XpotLogo
                     variant="light"
                     width={420}
@@ -236,8 +237,8 @@ export default function XpotTopBar({
                 </Link>
 
                 <div className="flex items-center gap-2">
-                  {/* ✅ Mobile CA pill (tap-to-copy) */}
-                  {!isHub && <MobileCAChip />}
+                  {/* ✅ CA chip always accessible on mobile (copy) */}
+                  <OfficialCAChipMobile />
 
                   {isHub ? (
                     <button
@@ -270,7 +271,7 @@ export default function XpotTopBar({
                 </div>
               </div>
 
-              {/* ✅ Mobile “quick actions” row (makes it feel like an app) */}
+              {/* ✅ Mobile “quick actions” row */}
               <div className="pb-3">
                 <div className="flex items-center gap-2 overflow-x-auto [-webkit-overflow-scrolling:touch]">
                   <QuickAction href="/hub" icon={<Home className="h-4 w-4 text-slate-200" />} label="Hub" />
@@ -339,7 +340,7 @@ function QuickAction({ href, icon, label }: { href: string; icon: ReactNode; lab
   );
 }
 
-/* ---------------- Mobile: CA Chip (tap to copy) ---------------- */
+/* ---------------- OFFICIAL CA CHIP ---------------- */
 
 function shortenAddress(addr: string, left = 6, right = 6) {
   if (!addr) return '';
@@ -347,7 +348,7 @@ function shortenAddress(addr: string, left = 6, right = 6) {
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
 
-function MobileCAChip() {
+function OfficialCAChipMobile() {
   const [copied, setCopied] = useState(false);
   const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 3, 4), []);
 
@@ -355,7 +356,7 @@ function MobileCAChip() {
     try {
       await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 1100);
+      window.setTimeout(() => setCopied(false), 1000);
     } catch {}
   }
 
@@ -364,21 +365,19 @@ function MobileCAChip() {
       type="button"
       onClick={onCopy}
       className="
-        inline-flex h-10 items-center gap-2 rounded-full
-        border border-white/10 bg-white/[0.04]
-        px-4 text-[13px] font-semibold text-slate-100
+        inline-flex h-10 items-center gap-2
+        rounded-full border border-white/10 bg-white/[0.04]
+        px-3 text-[13px] font-semibold text-slate-100
         hover:bg-white/[0.07]
       "
       aria-label="Copy official contract address"
-      title={XPOT_OFFICIAL_CA}
+      title="Tap to copy official CA"
     >
       {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4 text-slate-200" />}
-      <span className="font-mono">{addrShort}</span>
+      <span className="font-mono text-[12px]">{addrShort}</span>
     </button>
   );
 }
-
-/* ---------------- OFFICIAL CA CHIP (Desktop) ---------------- */
 
 function OfficialCAChip() {
   const [open, setOpen] = useState(false);
@@ -589,13 +588,11 @@ function PublicNavCenter({
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      {/* Final Draw (primary) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
         <Hourglass className="h-4 w-4 !text-white !stroke-white" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
-      {/* Learn dropdown (hover + click) */}
       <div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
         <button
           type="button"
@@ -666,6 +663,9 @@ function PublicNavCenter({
           </>
         )}
       </div>
+
+      {/* liveIsOpen kept for compatibility */}
+      <span className="sr-only">{String(liveIsOpen)}</span>
     </nav>
   );
 }
@@ -721,6 +721,8 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         <ExternalLink className="h-4 w-4" />
         X
       </NavLink>
+
+      <span className="sr-only">{String(liveIsOpen)}</span>
     </nav>
   );
 }
@@ -1130,8 +1132,8 @@ function MobileMenu({
   onOpenWalletModal?: () => void;
 }) {
   const { user, isLoaded } = useUser();
-  const externalAccounts = (user?.externalAccounts || []) as any[];
 
+  const externalAccounts = (user?.externalAccounts || []) as any[];
   const xAccount = externalAccounts.find(
     (acc) =>
       String(acc.provider || '').toLowerCase().includes('twitter') ||
@@ -1163,26 +1165,29 @@ function MobileMenu({
         aria-label="Close menu"
       />
 
-      {/* ✅ app-like sheet */}
+      {/* ✅ iPhone-like sheet */}
       <div className="fixed right-0 top-0 z-[81] h-full w-[92%] max-w-sm border-l border-white/10 bg-black/85 backdrop-blur-xl">
+        {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          {/* ✅ FIX: Left identity badge no longer looks like a close button */}
           <div className="flex items-center gap-3">
-            {/* ✅ No confusing “X” badge - looks like profile */}
-            {isLoaded && avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="X avatar" className="h-9 w-9 rounded-full border border-white/10" />
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200">
-                <User className="h-4 w-4" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/35">
+                {isLoaded && avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatar} alt="X avatar" className="h-7 w-7 rounded-full" />
+                ) : (
+                  <BadgeCheck className="h-4 w-4 text-slate-200" />
+                )}
+              </span>
+              <div className="leading-none">
+                <p className="text-[12px] font-semibold text-slate-100">XPOT</p>
+                <p className="text-[11px] text-slate-400">{displayHandle ?? 'Guest'}</p>
               </div>
-            )}
-
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-100">XPOT</p>
-              <p className="truncate text-xs text-slate-400">{displayHandle ?? 'Guest'}</p>
             </div>
           </div>
 
+          {/* Close stays clearly on the right */}
           <button
             type="button"
             onClick={onClose}
@@ -1193,97 +1198,94 @@ function MobileMenu({
           </button>
         </div>
 
-        <div className="space-y-3 px-5 py-5">
-          <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">VERIFY</p>
+        <div className="space-y-4 px-5 py-5">
+          {/* Verify / CA */}
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">VERIFY</p>
 
-          {/* ✅ Official contract block in the menu (copy friendly) */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">OFFICIAL CONTRACT</p>
-            <p className="mt-2 font-mono text-xs text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={copyCA}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
-              >
-                {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4" />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">OFFICIAL CONTRACT</p>
+              <p className="mt-2 font-mono text-[13px] text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
 
-              <Link
-                href={PROTOCOL_HREF}
-                className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
-              >
-                <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                Health
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={copyCA}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 text-emerald-200" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </button>
+
+                <Link
+                  href={PROTOCOL_HREF}
+                  className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+                >
+                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                  Health
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">NAVIGATION</p>
+
+            <div className="mt-3 space-y-2">
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
+                Hub
+              </Link>
+
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={FINAL_DAY_HREF}>
+                <span className="inline-flex items-center gap-2">
+                  <Hourglass className="h-4 w-4 text-amber-200" />
+                  {FINAL_DAY_LABEL}
+                </span>
+              </Link>
+
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
+                <span className="inline-flex items-center gap-2">
+                  <PieChart className="h-4 w-4 text-emerald-300" />
+                  Tokenomics
+                </span>
+              </Link>
+
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
+                <span className="inline-flex items-center gap-2">
+                  <Map className="h-4 w-4 text-sky-300" />
+                  Roadmap
+                </span>
+              </Link>
+
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
+                <span className="inline-flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-amber-300" />
+                  Winners
+                </span>
+              </Link>
+
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={XPOT_X_POST} target="_blank">
+                <span className="inline-flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  Official X
+                </span>
               </Link>
             </div>
           </div>
 
-          <div className="pt-2">
-            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">NAVIGATION</p>
-          </div>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href="/hub"
-          >
-            Hub
-          </Link>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={FINAL_DAY_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Hourglass className="h-4 w-4 text-amber-200" />
-              {FINAL_DAY_LABEL}
-            </span>
-          </Link>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={TOKENOMICS_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <PieChart className="h-4 w-4 text-emerald-300" />
-              Tokenomics
-            </span>
-          </Link>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={ROADMAP_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Map className="h-4 w-4 text-sky-300" />
-              Roadmap
-            </span>
-          </Link>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={WINNERS_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-300" />
-              Winners
-            </span>
-          </Link>
-
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={XPOT_X_POST}
-            target="_blank"
-          >
-            <span className="inline-flex items-center gap-2">
-              <ExternalLink className="h-4 w-4" />
-              Official X
-            </span>
-          </Link>
-
+          {/* Hub wallet */}
           {isHub && (
-            <div className="pt-2">
+            <div className="pt-1">
               <p className="mb-2 text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">WALLET</p>
               <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
             </div>
@@ -1302,14 +1304,17 @@ function MobileMenu({
             </div>
           )}
 
-          {/* Bottom CTA (app-like) */}
-          <div className="pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+10px)]">
+          {/* Bottom CTA */}
+          <div className="pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
             <Link
               href="/hub"
               className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
             >
               Enter today&apos;s XPOT →
             </Link>
+            <p className="mt-2 text-center text-[11px] text-slate-400/80">
+              {String(liveIsOpen).length ? '' : '' /* keep prop used */}
+            </p>
           </div>
         </div>
       </div>
