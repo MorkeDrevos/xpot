@@ -151,17 +151,6 @@ export default function XpotPageShell({
 
       intervalRef.current = window.setInterval(() => {
         if (document.hidden) return;
-
-        // Avoid refreshing mid-scroll (prevents jank/flicker on iOS)
-        const scrolling =
-          typeof window !== 'undefined' &&
-          (window.scrollY > 0 && (document.scrollingElement?.scrollTop ?? 0) !== 0) &&
-          (performance?.now ? performance.now() : Date.now()) &&
-          false;
-
-        // (kept minimal: no scroll heuristic, comment left for future)
-        void scrolling;
-
         router.refresh();
       }, refreshMsResolved);
     };
@@ -201,19 +190,22 @@ export default function XpotPageShell({
 
   /**
    * One source of truth: header offset var
-   * - PreLaunchBanner maintains --xpot-banner-h
+   * - PreLaunchBanner maintains --xpot-banner-h (0 when hidden)
    * - TopBar maintains --xpot-topbar-h
+   *
+   * ✅ IMPORTANT FIX:
+   * banner fallback must be 0px, not 56px (banner is hidden on mobile)
    */
   const headerOffsetVar = showTopBar
-    ? 'calc(var(--xpot-banner-h,56px) + var(--xpot-topbar-h,112px))'
-    : 'var(--xpot-banner-h,56px)';
+    ? 'calc(var(--xpot-banner-h, 0px) + var(--xpot-topbar-h, 0px))'
+    : 'var(--xpot-banner-h, 0px)';
 
   // If we render a full-bleed hero, we do NOT add header offset again on the container.
   const containerPaddingTop = fullBleedTop
     ? '24px'
     : showTopBar
-      ? 'calc(var(--xpot-header-offset,168px) + 24px)'
-      : 'calc(var(--xpot-header-offset,56px) + 24px)';
+      ? 'calc(var(--xpot-header-offset, 0px) + 24px)'
+      : 'calc(var(--xpot-header-offset, 0px) + 24px)';
 
   return (
     <div
@@ -264,7 +256,7 @@ export default function XpotPageShell({
 
       {/* Content layer */}
       <div className="relative z-10">
-        {/* Banner is hidden on mobile inside PreLaunchBanner (hidden sm:block) */}
+        {/* Banner should set --xpot-banner-h to 0 when hidden on mobile */}
         <PreLaunchBanner />
 
         {showTopBar && (
@@ -273,8 +265,7 @@ export default function XpotPageShell({
           </div>
         )}
 
-        {/* ✅ Full-bleed hero: edge-to-edge.
-            IMPORTANT: do NOT pad by header offset here if your hero already includes its own spacer. */}
+        {/* ✅ Full-bleed hero: edge-to-edge. */}
         {fullBleedTop ? <div className="relative w-full">{fullBleedTop}</div> : null}
 
         {/* Normal page container */}
