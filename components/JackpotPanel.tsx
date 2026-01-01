@@ -953,8 +953,9 @@ export default function JackpotPanel({
   const edgeOnMobile = variant !== 'embedded';
 
   const panelChrome =
-    variant === 'embedded'
-      ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
+  variant === 'embedded'
+    ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
+    : 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-5 sm:px-6 sm:py-6';
       : [
           edgeOnMobile
             ? 'relative left-1/2 right-1/2 w-screen -ml-[50vw] -mr-[50vw] max-w-none sm:static sm:w-full sm:ml-0 sm:mr-0'
