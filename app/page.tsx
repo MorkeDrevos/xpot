@@ -1617,7 +1617,7 @@ function HomePageInner() {
               <div
                 className="
                   relative z-10
-                  grid gap-6 p-6
+                  grid gap-6 p-4 sm:p-6 lg:p-8
                   lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
                   lg:p-8
                 "
