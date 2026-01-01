@@ -55,7 +55,7 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
       ref={ref}
       className="
         fixed inset-x-0 top-0 z-[60]
-        hidden sm:block
+        block
       "
       aria-label="XPOT pre-launch banner"
     >
@@ -83,28 +83,39 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
         </div>
 
         <div className="mx-auto max-w-[1440px] px-4">
-          <div className="flex h-12 items-center justify-center">
-            <div className="relative flex items-center justify-center gap-3">
+          {/* On mobile we allow wrap, so height must be flexible */}
+          <div className="flex min-h-12 items-center justify-center py-2 sm:h-12 sm:py-0">
+            <div className="relative flex w-full items-center justify-center gap-3">
               <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold tracking-[0.22em] text-white/80">
                 <span className="xpot-banner-dot" />
                 STATUS
               </span>
 
-              <p className="flex items-center justify-center gap-3 text-center text-[12px] font-semibold uppercase tracking-[0.32em] text-white/85">
-  {/* LIVE pulse */}
-  <span className="relative flex items-center gap-2">
-    <span className="relative flex h-2.5 w-2.5">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/40" />
-      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
-    </span>
-    <span className="text-white">LIVE</span>
-  </span>
+              <p
+                className="
+                  flex flex-wrap items-center justify-center
+                  gap-x-3 gap-y-1
+                  text-center
+                  text-[10px] sm:text-[12px]
+                  font-semibold uppercase
+                  tracking-[0.22em] sm:tracking-[0.32em]
+                  text-white/85
+                "
+              >
+                {/* LIVE pulse */}
+                <span className="relative flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/40" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
+                  </span>
+                  <span className="text-white">LIVE</span>
+                </span>
 
-  <span className="text-white/35">•</span>
-  <span>CONTRACT DEPLOYED</span>
-  <span className="text-white/35">•</span>
-  <span>TRADING ACTIVE</span>
-</p>
+                <span className="text-white/35">•</span>
+                <span>CONTRACT DEPLOYED</span>
+                <span className="text-white/35">•</span>
+                <span>TRADING ACTIVE</span>
+              </p>
             </div>
           </div>
         </div>
