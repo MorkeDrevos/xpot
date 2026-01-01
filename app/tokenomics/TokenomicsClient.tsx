@@ -1,4 +1,3 @@
-
 // app/tokenomics/TokenomicsClient.tsx
 'use client';
 
