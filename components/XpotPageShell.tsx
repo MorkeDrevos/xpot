@@ -123,49 +123,74 @@ export default function XpotPageShell({
     return 15000; // general
   }, [autoRefreshMs, resolvedPageTag]);
 
-  const refreshTimerRef = useRef<number | null>(null);
-  const initialTimerRef = useRef<number | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const startTimeoutRef = useRef<number | null>(null);
+  const resumeTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!autoRefresh) return;
     if (typeof window === 'undefined') return;
 
     const clearAll = () => {
-      if (initialTimerRef.current) {
-        window.clearTimeout(initialTimerRef.current);
-        initialTimerRef.current = null;
+      if (startTimeoutRef.current !== null) {
+        window.clearTimeout(startTimeoutRef.current);
+        startTimeoutRef.current = null;
       }
-      if (refreshTimerRef.current) {
-        window.clearInterval(refreshTimerRef.current);
-        refreshTimerRef.current = null;
+      if (resumeTimeoutRef.current !== null) {
+        window.clearTimeout(resumeTimeoutRef.current);
+        resumeTimeoutRef.current = null;
+      }
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
 
-    const start = () => {
+    const startInterval = () => {
+      if (intervalRef.current !== null) return;
+
+      intervalRef.current = window.setInterval(() => {
+        if (document.hidden) return;
+
+        // Avoid refreshing mid-scroll (prevents jank/flicker on iOS)
+        const scrolling =
+          typeof window !== 'undefined' &&
+          (window.scrollY > 0 && (document.scrollingElement?.scrollTop ?? 0) !== 0) &&
+          (performance?.now ? performance.now() : Date.now()) &&
+          false;
+
+        // (kept minimal: no scroll heuristic, comment left for future)
+        void scrolling;
+
+        router.refresh();
+      }, refreshMsResolved);
+    };
+
+    const scheduleStart = () => {
       clearAll();
 
       // stagger start so it feels organic
       const jitter = Math.max(0, autoRefreshJitterMs || 0);
       const startDelay = jitter ? Math.floor(Math.random() * jitter) : 0;
 
-      initialTimerRef.current = window.setTimeout(() => {
+      startTimeoutRef.current = window.setTimeout(() => {
         // first refresh should not be instant - wait full interval
-        refreshTimerRef.current = window.setInterval(() => {
-          // don’t refresh when hidden
-          if (document.hidden) return;
-          router.refresh();
-        }, refreshMsResolved);
+        startInterval();
       }, startDelay);
     };
 
     const onVis = () => {
       if (document.hidden) return;
-      // when returning to tab, do a gentle refresh once (then continue)
+
+      // Resume cleanly: one gentle refresh, then restart interval after a tiny delay
+      clearAll();
       router.refresh();
-      start();
+      resumeTimeoutRef.current = window.setTimeout(() => {
+        scheduleStart();
+      }, 250);
     };
 
-    start();
+    scheduleStart();
     document.addEventListener('visibilitychange', onVis);
 
     return () => {
