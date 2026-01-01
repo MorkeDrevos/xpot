@@ -941,9 +941,10 @@ function DonutAllocation({
 
   return (
     <div className="relative rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-4 sm:p-5 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur">
+      {/* Mobile: remove decorative glow backgrounds */}
       <div
         className="
-          pointer-events-none absolute -inset-24 opacity-80 blur-3xl
+          pointer-events-none absolute -inset-24 opacity-80 blur-3xl hidden sm:block
           bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.16),transparent_60%),
               radial-gradient(circle_at_82%_78%,rgba(16,185,129,0.16),transparent_60%),
               radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
@@ -1511,9 +1512,10 @@ function TokenomicsPageInner() {
     >
       <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
         <div className="relative overflow-hidden border-b border-white/5 bg-[linear-gradient(180deg,rgba(10,7,4,0.96),rgba(0,0,0,0.94))]">
+          {/* Mobile: remove decorative glow backgrounds */}
           <div
             className="
-              pointer-events-none absolute inset-0
+              pointer-events-none absolute inset-0 hidden sm:block
               bg-[radial-gradient(circle_at_18%_22%,rgba(var(--xpot-gold),0.18),transparent_62%),
                   radial-gradient(circle_at_78%_34%,rgba(56,189,248,0.10),transparent_66%),
                   radial-gradient(circle_at_20%_85%,rgba(16,185,129,0.10),transparent_60%),
@@ -1591,9 +1593,10 @@ function TokenomicsPageInner() {
 
       <section className="mt-8" ref={allocationRef}>
         <div className={CARD}>
+          {/* Mobile: remove decorative glow backgrounds */}
           <div
             className="
-              pointer-events-none absolute -inset-44 opacity-75 blur-3xl
+              pointer-events-none absolute -inset-44 opacity-75 blur-3xl hidden sm:block
               bg-[radial-gradient(circle_at_10%_30%,rgba(56,189,248,0.16),transparent_60%),
                   radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%),
                   radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
@@ -1630,9 +1633,10 @@ function TokenomicsPageInner() {
 
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className={CARD}>
+          {/* Mobile: remove decorative glow backgrounds */}
           <div
             className="
-              pointer-events-none absolute -inset-44 opacity-75 blur-3xl
+              pointer-events-none absolute -inset-44 opacity-75 blur-3xl hidden sm:block
               bg-[radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),
                   radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%)]
             "
