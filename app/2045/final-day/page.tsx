@@ -187,9 +187,10 @@ function nextCutoffUtcMs(nowMs: number) {
 }
 
 export default function FinalDayPage() {
-  // ✅ Read era on first render (prevents iOS/Safari "flash" + wrong-side render)
+  // ✅ Read era on first render (prevents iOS/Safari "flash" + mirrored mid-flip)
   const [era, setEra] = useState<Era>(() => {
     try {
+      if (typeof window === 'undefined') return '2045';
       const v = window.localStorage.getItem(STORAGE_KEY);
       return v === 'now' || v === '2045' ? (v as Era) : '2045';
     } catch {
@@ -201,10 +202,51 @@ export default function FinalDayPage() {
   const [live, setLive] = useState<LiveDraw | null>(null);
   const [liveErr, setLiveErr] = useState<string | null>(null);
 
-  // ✅ Start at "now" (also reduces layout jump on first paint)
+  // ✅ Keep local ticking stable
   const [nowTs, setNowTs] = useState<number>(() => Date.now());
 
   const abortRef = useRef<AbortController | null>(null);
+
+  // ✅ Enable 3D flip only on desktop-ish screens (fixes mirrored NOW on mobile)
+  const [use3DFlip, setUse3DFlip] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mqDesktop = window.matchMedia('(min-width: 860px)');
+    const mqCoarse = window.matchMedia('(pointer: coarse)');
+
+    const compute = () => {
+      // Disable 3D if touch/coarse pointer even if wide (iPad Safari can still glitch)
+      const ok = mqDesktop.matches && !mqCoarse.matches;
+      setUse3DFlip(ok);
+    };
+
+    compute();
+
+    const onChange = () => compute();
+
+    // Safari-compatible listeners
+    if ('addEventListener' in mqDesktop) {
+      mqDesktop.addEventListener('change', onChange);
+      mqCoarse.addEventListener('change', onChange);
+      return () => {
+        mqDesktop.removeEventListener('change', onChange);
+        mqCoarse.removeEventListener('change', onChange);
+      };
+    }
+
+    // @ts-ignore - older Safari
+    mqDesktop.addListener(onChange);
+    // @ts-ignore - older Safari
+    mqCoarse.addListener(onChange);
+    return () => {
+      // @ts-ignore - older Safari
+      mqDesktop.removeListener(onChange);
+      // @ts-ignore - older Safari
+      mqCoarse.removeListener(onChange);
+    };
+  }, []);
 
   // ✅ Persist era
   useEffect(() => {
