@@ -1,3 +1,4 @@
+
 // components/JackpotPanel.tsx
 'use client';
 
@@ -956,14 +957,13 @@ const edgeOnMobile = variant !== 'embedded';
 
 const panelChrome =
   variant === 'embedded'
-    ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
+    ? 'w-full rounded-2xl border border-slate-800/70 bg-black/30 px-5 py-5 shadow-sm'
     : [
-        // ✅ TRUE edge-to-edge on mobile (breaks out of any parent padding safely)
-        edgeOnMobile
-          ? 'relative left-1/2 right-1/2 w-screen -ml-[50vw] -mr-[50vw] max-w-none sm:static sm:w-full sm:ml-0 sm:mr-0'
-          : '',
-        // iOS-native chrome (less fake card air)
-        'w-full border border-white/10 bg-black/35',
+        // break out of parent padding on mobile
+        edgeOnMobile ? '-mx-4 sm:mx-0' : '',
+        // iOS-native sheet look
+        'w-full border border-slate-800/60 bg-black/30 shadow-sm',
+        // edge-to-edge on mobile, premium card on sm+
         'rounded-none sm:rounded-2xl',
         // no outer padding on mobile (we add it back inside)
         'px-0 py-0 sm:px-6 sm:py-6',
@@ -974,7 +974,7 @@ const panelChrome =
 return (
   <section className={`relative transition-colors duration-300 ${panelChrome}`}>
     {/* ✅ keep content padded on mobile even when edge-to-edge */}
-    <div className={variant === 'embedded' ? '' : 'px-3 py-4 sm:px-0 sm:py-0'}>
+    <div className={variant === 'embedded' ? '' : 'px-4 py-5 sm:px-0 sm:py-0'}>
       {!!badgeLabel && (
         <div
           className={[
