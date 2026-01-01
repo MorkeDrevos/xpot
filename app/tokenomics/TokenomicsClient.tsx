@@ -58,6 +58,10 @@ const VAULT_POLL_MS = 20_000;
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
 
+// RPC (Solscan reads chain data too, so this matches what you see there)
+const SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
+const SUPPLY_POLL_MS = 20_000;
+
 // Solscan proof targets for token controls
 const SOLSCAN_TOKEN_METADATA_URL = `https://solscan.io/token/${XPOT_MINT_ACCOUNT}#metadata`;
 
@@ -70,7 +74,7 @@ const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
 // Rewards reserve wallet
 const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 
-// Streamflow reserve proof (optional direct contract)
+// Streamflow reserve proof
 const RESERVE_STREAMFLOW_CONTRACT: string | null = null;
 
 function solscanAccountUrl(account: string) {
@@ -316,7 +320,9 @@ function LinearVestingChartAndSchedule({
 
           <div className="text-right">
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total vested</p>
-            <p className="mt-1 font-mono text-[12px] font-semibold text-slate-100 leading-none">{fmtInt(totalTokens)} XPOT</p>
+            <p className="mt-1 font-mono text-[12px] font-semibold text-slate-100 leading-none">
+              {fmtInt(totalTokens)} XPOT
+            </p>
           </div>
         </div>
 
@@ -359,7 +365,16 @@ function LinearVestingChartAndSchedule({
                 const y = h - pad - barH;
                 const bw = Math.max(6, barW - 10);
                 return (
-                  <rect key={r.m} x={x} y={y} width={bw} height={barH} rx="8" fill={`url(#${barGradientId})`} opacity="0.9" />
+                  <rect
+                    key={r.m}
+                    x={x}
+                    y={y}
+                    width={bw}
+                    height={barH}
+                    rx="8"
+                    fill={`url(#${barGradientId})`}
+                    opacity="0.9"
+                  />
                 );
               })}
 
@@ -383,7 +398,10 @@ function LinearVestingChartAndSchedule({
 
         <div className="mt-3 grid gap-2">
           {rows.map(r => (
-            <div key={r.m} className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2 text-xs">
+            <div
+              key={r.m}
+              className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2 text-xs"
+            >
               <span className="font-mono text-slate-300">Month {r.m}</span>
               <span className="font-mono text-slate-200">{fmtInt(r.monthly)} XPOT</span>
               <span className="text-slate-500">{r.pct.toFixed(0)}%</span>
@@ -526,7 +544,9 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain vesting</p>
             <p className="mt-1 text-sm font-semibold text-slate-100">Streamflow contract (public)</p>
-            <p className="mt-1 text-xs text-slate-500">Tokens are held by the vesting contract (escrow) and unlock monthly to the payout wallet.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Tokens are held by the vesting contract (escrow) and unlock monthly to the payout wallet.
+            </p>
           </div>
 
           <a
@@ -545,7 +565,10 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
             { k: 'Recipient (payout wallet)', v: TEAM_VESTING.recipientWallet },
             { k: 'Contract (escrow)', v: TEAM_VESTING.contractAccount },
           ].map(row => (
-            <div key={row.k} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+            <div
+              key={row.k}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2"
+            >
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
                 <p className="mt-1 font-mono text-xs text-slate-200">{row.v}</p>
@@ -632,35 +655,6 @@ function formatVaultBalance(b: ApiVaultEntry['balance']) {
   return null;
 }
 
-function sumGroupUiAmount(data: ApiVaultResponse | null, groupKey: string): number {
-  const arr = data?.groups?.[groupKey];
-  if (!Array.isArray(arr) || !arr.length) return 0;
-
-  let sum = 0;
-  for (const v of arr) {
-    const b = v.balance;
-    if (!b) continue;
-
-    if (typeof b.uiAmount === 'number' && Number.isFinite(b.uiAmount)) {
-      sum += b.uiAmount;
-      continue;
-    }
-    if (typeof b.uiAmountString === 'string' && b.uiAmountString.trim()) {
-      const n = Number(b.uiAmountString);
-      if (Number.isFinite(n)) sum += n;
-      continue;
-    }
-    if (typeof b.amount === 'string' && typeof b.decimals === 'number') {
-      const raw = Number(b.amount);
-      if (Number.isFinite(raw) && Number.isFinite(b.decimals)) {
-        sum += raw / Math.pow(10, b.decimals);
-      }
-    }
-  }
-
-  return sum;
-}
-
 function useVaultGroups() {
   const [data, setData] = useState<ApiVaultResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -718,68 +712,11 @@ function useVaultGroups() {
   return { data, isLoading, hadError };
 }
 
-/**
- * Solscan supply (real)
- * We use Solscan as the source of truth for "current supply" so the number matches what users see.
- */
-type SolscanSupplyState = {
-  uiSupply: number | null;
-  fetchedAt: number | null;
-  isLoading: boolean;
-  hadError: boolean;
-};
-
-function parseSolscanSupply(json: any): number | null {
-  // Try a few shapes - Solscan changes these sometimes.
-  // Goal: produce *UI supply* (already decimals applied).
-  const candidates: Array<{ supply: any; decimals: any }> = [];
-
-  // common public-api shape: { supply: "49999999744298207", decimals: 6 } (raw)
-  candidates.push({ supply: json?.supply, decimals: json?.decimals });
-
-  // sometimes: { data: { supply, decimals } }
-  candidates.push({ supply: json?.data?.supply, decimals: json?.data?.decimals });
-
-  // sometimes they return uiSupply directly (rare)
-  candidates.push({ supply: json?.uiSupply, decimals: 0 });
-  candidates.push({ supply: json?.data?.uiSupply, decimals: 0 });
-
-  for (const c of candidates) {
-    const dec = Number(c.decimals ?? 0);
-    const hasDec = Number.isFinite(dec) && dec >= 0 && dec <= 18;
-
-    if (typeof c.supply === 'number' && Number.isFinite(c.supply)) {
-      // If it's huge and decimals exist, treat as raw.
-      if (hasDec && c.supply > 1e12 && dec > 0) return c.supply / Math.pow(10, dec);
-      return c.supply;
-    }
-
-    if (typeof c.supply === 'string' && c.supply.trim()) {
-      // supply can be a raw integer string
-      const s = c.supply.trim();
-      // if it includes '.', assume already UI
-      if (s.includes('.')) {
-        const n = Number(s);
-        if (Number.isFinite(n)) return n;
-        continue;
-      }
-      const raw = Number(s);
-      if (!Number.isFinite(raw)) continue;
-      if (hasDec && dec > 0) return raw / Math.pow(10, dec);
-      return raw;
-    }
-  }
-
-  return null;
-}
-
-function useSolscanSupply(mint: string) {
-  const [st, setSt] = useState<SolscanSupplyState>({
-    uiSupply: null,
-    fetchedAt: null,
-    isLoading: true,
-    hadError: false,
-  });
+// Live supply (matches what Solscan shows: current supply in UI units)
+function useLiveTokenSupplyUi(mint: string) {
+  const [uiSupply, setUiSupply] = useState<number | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+  const [hadError, setHadError] = useState(false);
 
   useEffect(() => {
     let timer: number | null = null;
@@ -788,35 +725,38 @@ function useSolscanSupply(mint: string) {
 
     async function fetchSupply() {
       try {
-        setSt(s => ({ ...s, hadError: false }));
+        setHadError(false);
 
-        // Solscan public API (no key)
-        const res = await fetch(`https://public-api.solscan.io/token/meta?tokenAddress=${mint}`, {
+        const body = {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getTokenSupply',
+          params: [mint],
+        };
+
+        const res = await fetch(SOLANA_RPC_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
           signal: ctrl.signal,
           cache: 'no-store',
-          headers: { accept: 'application/json' },
         });
 
-        if (!res.ok) throw new Error(`solscan http ${res.status}`);
+        if (!res.ok) throw new Error(`rpc http ${res.status}`);
         const json = await res.json();
 
-        if (aborted) return;
+        const uiAmountString = json?.result?.value?.uiAmountString;
+        const n = typeof uiAmountString === 'string' ? Number(uiAmountString) : Number(json?.result?.value?.uiAmount);
 
-        const uiSupply = parseSolscanSupply(json);
-        setSt({
-          uiSupply: uiSupply != null && Number.isFinite(uiSupply) ? uiSupply : null,
-          fetchedAt: Date.now(),
-          isLoading: false,
-          hadError: uiSupply == null,
-        });
+        if (!Number.isFinite(n)) throw new Error('rpc invalid supply');
+
+        if (aborted) return;
+        setUiSupply(n);
+        setFetchedAt(Date.now());
       } catch (e) {
         if ((e as any)?.name === 'AbortError') return;
         if (aborted) return;
-        setSt(s => ({
-          ...s,
-          isLoading: false,
-          hadError: true,
-        }));
+        setHadError(true);
       }
     }
 
@@ -826,9 +766,11 @@ function useSolscanSupply(mint: string) {
     }
 
     fetchSupply();
-    timer = window.setInterval(fetchSupply, VAULT_POLL_MS);
+    timer = window.setInterval(fetchSupply, SUPPLY_POLL_MS);
 
-    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVis);
+    }
 
     return () => {
       aborted = true;
@@ -838,7 +780,7 @@ function useSolscanSupply(mint: string) {
     };
   }, [mint]);
 
-  return st;
+  return { uiSupply, fetchedAt, hadError };
 }
 
 function VaultGroupPanel({
@@ -956,7 +898,7 @@ function VaultGroupPanel({
                     </span>
                   </div>
 
-                  {v.recentTx?.length ? (
+                  {Array.isArray(v.recentTx) && v.recentTx.length ? (
                     <div className="mt-3 grid gap-2">
                       {v.recentTx.slice(0, 3).map(tx => {
                         const tsMs = typeof tx.blockTime === 'number' ? tx.blockTime * 1000 : null;
@@ -1043,9 +985,6 @@ function DonutAllocation({
   vaultLoading,
   vaultError,
   vaultGroupByAllocKey,
-  runwayTable,
-  yearsOfRunway,
-  distributionReserve,
   getCardRef,
   teamTotalTokens,
   partnersTotalTokens,
@@ -1062,10 +1001,6 @@ function DonutAllocation({
   vaultLoading: boolean;
   vaultError: boolean;
   vaultGroupByAllocKey: Record<string, string>;
-
-  runwayTable: { label: string; daily: number; highlight?: true }[];
-  yearsOfRunway: (daily: number) => number;
-  distributionReserve: number;
 
   getCardRef: (key: string) => (el: HTMLDivElement | null) => void;
 
@@ -1248,7 +1183,7 @@ function DonutAllocation({
                           className="h-2 rounded-full"
                           initial={false}
                           animate={{ width: pctToBar(a.pct) }}
-                          transition={useReducedMotion() ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
+                          transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
                           style={{
                             background: `linear-gradient(90deg, ${stroke}, rgba(255,255,255,0.08))`,
                             boxShadow: active ? `0 0 16px ${glow}` : undefined,
@@ -1265,10 +1200,10 @@ function DonutAllocation({
                   {active && (
                     <motion.div
                       key="content"
-                      initial={useReducedMotion() ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                      animate={useReducedMotion() ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                      exit={useReducedMotion() ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                      transition={useReducedMotion() ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }}
+                      initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
+                      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                      exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
+                      transition={reduceMotion ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }}
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4">
@@ -1312,39 +1247,28 @@ function DonutAllocation({
 function TokenomicsPageInner() {
   const searchParams = useSearchParams();
 
-  // We still keep this as "design supply", but display real Solscan supply in the card.
-  const DESIGN_SUPPLY = 50_000_000_000;
+  // Fixed minted supply (display)
+  const mintedSupply = 50_000_000_000;
+
+  // Live chain supply (what Solscan shows as "Current Supply")
+  const { uiSupply, fetchedAt: supplyFetchedAt, hadError: supplyError } = useLiveTokenSupplyUi(XPOT_MINT_ACCOUNT);
 
   const DISTRIBUTION_RESERVE_PCT = 14;
-  const DISTRIBUTION_RESERVE = DESIGN_SUPPLY * (DISTRIBUTION_RESERVE_PCT / 100);
+  const DISTRIBUTION_RESERVE = mintedSupply * (DISTRIBUTION_RESERVE_PCT / 100);
 
   const TEAM_PCT = 9;
-  const TEAM_TOTAL_TOKENS = DESIGN_SUPPLY * (TEAM_PCT / 100);
+  const TEAM_TOTAL_TOKENS = mintedSupply * (TEAM_PCT / 100);
 
   const PARTNERS_PCT = 8;
-  const PARTNERS_TOTAL_TOKENS = DESIGN_SUPPLY * (PARTNERS_PCT / 100);
+  const PARTNERS_TOTAL_TOKENS = mintedSupply * (PARTNERS_PCT / 100);
 
-  const yearsOfRunway = useCallback(
-    (daily: number) => {
-      if (!Number.isFinite(daily) || daily <= 0) return Infinity;
-      return DISTRIBUTION_RESERVE / (daily * DAYS_PER_YEAR);
-    },
-    [DISTRIBUTION_RESERVE],
-  );
+  const yearsOfRunway = useCallback((daily: number) => {
+    if (!Number.isFinite(daily) || daily <= 0) return 0;
+    return DISTRIBUTION_RESERVE / (daily * DAYS_PER_YEAR);
+  }, [DISTRIBUTION_RESERVE]);
 
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
   const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
-
-  const runwayTable = useMemo(
-    () => [
-      { label: '500,000 XPOT / day', daily: 500_000 },
-      { label: '750,000 XPOT / day', daily: 750_000 },
-      { label: '1,000,000 XPOT / day (fixed)', daily: 1_000_000, highlight: true as const },
-      { label: '1,250,000 XPOT / day', daily: 1_250_000 },
-      { label: '1,500,000 XPOT / day', daily: 1_500_000 },
-    ],
-    [],
-  );
 
   const allocation = useMemo<Allocation[]>(
     () => [
@@ -1421,24 +1345,6 @@ function TokenomicsPageInner() {
   }, [allocation]);
 
   const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
-
-  // Real supply from Solscan (matches what users see)
-  const solscanSupply = useSolscanSupply(XPOT_MINT_ACCOUNT);
-
-  // Non-circulating tracked (exclude liquidity)
-  const trackedNonCirc = useMemo(() => {
-    // Track vault groups you want counted as non-circulating
-    // (matches your screenshot list: rewards, treasury, team, partners, strategic, community)
-    const keys = ['rewards', 'treasury', 'team', 'partners', 'strategic', 'community'];
-    return keys.reduce((sum, k) => sum + sumGroupUiAmount(vaultData, k), 0);
-  }, [vaultData]);
-
-  const circulatingLive = useMemo(() => {
-    if (solscanSupply.uiSupply == null || !Number.isFinite(solscanSupply.uiSupply)) return null;
-    const circ = solscanSupply.uiSupply - trackedNonCirc;
-    if (!Number.isFinite(circ)) return null;
-    return Math.max(0, circ);
-  }, [solscanSupply.uiSupply, trackedNonCirc]);
 
   const VAULT_GROUP_BY_ALLOC_KEY: Record<string, string> = {
     distribution: 'rewards',
@@ -1535,7 +1441,11 @@ function TokenomicsPageInner() {
     ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT)
     : streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
 
-  const circulatingUpdatedAgo = solscanSupply.fetchedAt ? timeAgo(solscanSupply.fetchedAt) : null;
+  const supplyLiveText =
+    uiSupply == null ? '—' : uiSupply.toLocaleString('en-US', { maximumFractionDigits: 6 });
+
+  const supplyUpdatedText =
+    supplyFetchedAt == null ? '—' : timeAgo(supplyFetchedAt);
 
   const proofCards = (
     <div className="mt-7 grid gap-3 lg:grid-cols-3">
@@ -1544,7 +1454,8 @@ function TokenomicsPageInner() {
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reserve coverage</p>
             <p className="mt-2 font-mono text-3xl font-semibold text-emerald-200">
-              {runwayFixedYears.toFixed(2)} <span className="text-base font-semibold text-slate-500">years</span>
+              {Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'}{' '}
+              <span className="text-base font-semibold text-slate-500">years</span>
             </p>
 
             <p className="mt-1 text-xs text-slate-500">
@@ -1629,9 +1540,7 @@ function TokenomicsPageInner() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
-            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">
-              {solscanSupply.uiSupply != null ? solscanSupply.uiSupply.toLocaleString('en-US', { maximumFractionDigits: 6 }) : DESIGN_SUPPLY.toLocaleString('en-US')}
-            </p>
+            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{mintedSupply.toLocaleString('en-US')}</p>
             <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
           </div>
           <Pill tone="sky">
@@ -1641,27 +1550,21 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Circulating (live)</p>
-            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
-              {solscanSupply.isLoading ? 'Loading' : solscanSupply.hadError ? 'API' : 'Live'}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Current supply (live)</p>
+              <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">{supplyLiveText}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {supplyError ? 'RPC issue - refresh' : `Updated: ${supplyUpdatedText}`}
+              </p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-200">
+              Live
             </span>
           </div>
 
-          <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
-            {circulatingLive != null ? circulatingLive.toLocaleString('en-US', { maximumFractionDigits: 6 }) : '—'}
-          </p>
-
-          <p className="mt-2 text-xs text-slate-500">
-            Non-circulating tracked: {trackedNonCirc.toLocaleString('en-US', { maximumFractionDigits: 6 })} XPOT
-          </p>
-
-          <p className="mt-1 text-xs text-slate-600">
-            Updated: {circulatingUpdatedAgo ?? '—'}
-          </p>
-
           <p className="mt-2 text-[11px] text-slate-600">
-            Tracked vault groups: rewards, treasury, team, partners, strategic, community.
+            Source: Solana chain supply (matches Solscan "Current Supply").
           </p>
         </div>
 
@@ -1780,7 +1683,9 @@ function TokenomicsPageInner() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-100">Distribution map</p>
-                <p className="mt-1 text-xs text-slate-400">Select a slice, then expand the matching card for the full breakdown and live vaults.</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Select a slice, then expand the matching card for the full breakdown and live vaults.
+                </p>
               </div>
             </div>
 
@@ -1796,9 +1701,6 @@ function TokenomicsPageInner() {
                 vaultLoading={vaultLoading}
                 vaultError={vaultError}
                 vaultGroupByAllocKey={VAULT_GROUP_BY_ALLOC_KEY}
-                runwayTable={runwayTable}
-                yearsOfRunway={yearsOfRunway}
-                distributionReserve={DISTRIBUTION_RESERVE}
                 getCardRef={getCardRef}
                 teamTotalTokens={TEAM_TOTAL_TOKENS}
                 partnersTotalTokens={PARTNERS_TOTAL_TOKENS}
@@ -1914,7 +1816,7 @@ function TokenomicsPageInner() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v31-solscan-circ</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v31</span>
         </div>
       </footer>
     </XpotPageShell>
