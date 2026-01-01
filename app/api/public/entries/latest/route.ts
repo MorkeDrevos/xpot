@@ -5,40 +5,45 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+function withAt(handle?: string | null) {
+  if (!handle) return null;
+  const h = handle.trim();
+  if (!h) return null;
+  return h.startsWith('@') ? h : `@${h}`;
+}
+
 export async function GET() {
   try {
-    // Most recent draw (works even if you don’t want to “ensure today” here)
-    const draw = await prisma.draw.findFirst({
-      orderBy: [{ drawDate: 'desc' }],
-      select: { id: true, drawDate: true },
-    });
-
-    if (!draw) {
-      return NextResponse.json({ ok: true, entries: [] }, { status: 200 });
-    }
-
-    const entries = await prisma.drawEntry.findMany({
-      where: { drawId: draw.id },
+    // Adjust model name if yours is Entry/Ticket/etc.
+    // This assumes “Ticket claimed/created” is the entry event.
+    const rows = await prisma.ticket.findMany({
       orderBy: [{ createdAt: 'desc' }],
-      take: 14,
-      select: {
-        id: true,
-        createdAt: true,
-        xHandle: true,
-        xName: true,
-        xAvatarUrl: true,
-        verified: true,
+      take: 18,
+      include: {
+        wallet: {
+          include: { user: true },
+        },
       },
     });
 
-    return NextResponse.json(
-      {
-        ok: true,
-        drawDate: draw.drawDate.toISOString(),
-        entries,
-      },
-      { status: 200 },
-    );
+    const entries = rows
+      .map(t => {
+        const user = t.wallet?.user ?? null;
+        const handle = withAt((user as any)?.xHandle ?? null);
+        if (!handle) return null;
+
+        return {
+          id: t.id,
+          createdAt: t.createdAt.toISOString(),
+          handle,
+          name: (user as any)?.xName ?? null,
+          avatarUrl: (user as any)?.xAvatarUrl ?? null,
+          verified: Boolean((user as any)?.xVerified ?? false),
+        };
+      })
+      .filter(Boolean);
+
+    return NextResponse.json({ ok: true, entries }, { status: 200 });
   } catch {
     return NextResponse.json({ ok: false, entries: [] }, { status: 200 });
   }
