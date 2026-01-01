@@ -3,7 +3,16 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useId,
+  type ReactNode,
+} from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
@@ -31,13 +40,13 @@ type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 const ROUTE_HUB = '/hub';
 const ROUTE_TERMS = '/terms';
 
-// ✅ Gold helpers (same pattern as home page)
+// Gold helpers
 const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
 const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
 const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
 
-// ✅ Buttons (updated)
+// Buttons
 const BTN_PRIMARY =
   'inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition ' +
   'border border-[rgba(var(--xpot-gold),0.35)] bg-[linear-gradient(180deg,rgba(var(--xpot-gold),0.18),rgba(var(--xpot-gold),0.08))] ' +
@@ -49,8 +58,9 @@ const BTN_PRIMARY =
 const BTN_UTILITY =
   'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition';
 
+// ✅ Add `mobile-flat` to all primary glass cards (the class itself lives in globals.css)
 const CARD =
-  'relative overflow-hidden rounded-[30px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.55)] backdrop-blur-xl';
+  'mobile-flat relative overflow-hidden rounded-[30px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.55)] backdrop-blur-xl';
 
 const VAULT_POLL_MS = 20_000;
 
@@ -58,14 +68,10 @@ const VAULT_POLL_MS = 20_000;
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
 
-// ─────────────────────────────────────────────
-// ✅ Solscan proof targets for token controls
-// ─────────────────────────────────────────────
+// Solscan proof targets for token controls
 const SOLSCAN_TOKEN_METADATA_URL = `https://solscan.io/token/${XPOT_MINT_ACCOUNT}#metadata`;
 
-// ✅ All three authorities are revoked (Solscan metadata shows NULL).
-// Where you have a specific revoke signature, paste it so we can link directly.
-// Otherwise we link to Solscan metadata as the public proof of NULL.
+// All three authorities are revoked (Solscan metadata shows NULL).
 const MINT_AUTHORITY_REVOKE_TX =
   '2Hx9hmGcMJuXo9PPuUpMLf5JCXFHjp4TvtsntikBXTrTg4P6gQtzHbhRGid8YSSYLSGq8Vk5mbwY8bpwNrRfuLvM';
 const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
@@ -74,9 +80,7 @@ const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
 // Rewards reserve wallet
 const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 
-// ✅ Streamflow reserve proof
-// If you have the specific Streamflow contract for the reserve release, paste it here.
-// If null, we link to the Mint token-dashboard (still correct proof page).
+// Streamflow reserve proof
 const RESERVE_STREAMFLOW_CONTRACT: string | null = null;
 
 function solscanAccountUrl(account: string) {
@@ -86,14 +90,14 @@ function solscanTxUrl(sig: string) {
   return `https://solscan.io/tx/${sig}`;
 }
 
-// ✅ Team vesting (12 months) - Streamflow escrow contract
+// Team vesting (12 months) - Streamflow escrow contract
 const TEAM_VESTING = {
   contractAccount: 'BYUYCGu1mH2B33QU2mzF2AZDvxgxLoboiJbDVJYvGWkR',
   senderWallet: 'G17RehqUAgMcAxcnLUZyf6WzuPqsM82q9SC1aSkBUR7w',
   recipientWallet: '3DSuZP8d8a9f5CftdJvmJA1wxgzgxKULLDwZeRKC2Vh',
 };
 
-// ✅ Partners vesting (8 months) - Streamflow escrow contract
+// Partners vesting (8 months) - Streamflow escrow contract
 const PARTNERS_VESTING = {
   contractAccount: 'EqszkWnNNQDVQvLgu5kH4tSQNQ6jgYswU5dioXkVbLK1',
 };
@@ -169,14 +173,12 @@ function toneStroke(tone: PillTone) {
   if (tone === 'amber') return 'rgba(250,204,21,0.78)';
   return 'rgba(148,163,184,0.68)';
 }
-
 function toneGlow(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
   if (tone === 'amber') return 'rgba(250,204,21,0.18)';
   return 'rgba(148,163,184,0.16)';
 }
-
 function toneRing(tone: PillTone) {
   if (tone === 'emerald') return 'rgba(16,185,129,0.22)';
   if (tone === 'sky') return 'rgba(56,189,248,0.20)';
@@ -184,9 +186,7 @@ function toneRing(tone: PillTone) {
   return 'rgba(148,163,184,0.18)';
 }
 
-// ─────────────────────────────────────────────
-// ✅ Silent copy (no UI feedback)
-// ─────────────────────────────────────────────
+// Silent copy (no UI feedback)
 function SilentCopyButton({ text, className, title }: { text: string; className?: string; title?: string }) {
   async function copyNow() {
     try {
@@ -244,9 +244,7 @@ function ProofLinkPill({
   );
 }
 
-// ─────────────────────────────────────────────
-// ✅ Smaller, aligned gold amount line
-// ─────────────────────────────────────────────
+// Smaller, aligned gold amount line
 function GoldAmountLine({
   amount,
   suffix = 'XPOT',
@@ -287,9 +285,7 @@ function buildLinearRows(totalTokens: number, months: number) {
   return { perMonth, rows: out };
 }
 
-// ─────────────────────────────────────────────
-// ✅ Shared vesting chart + schedule (Team + Partners)
-// ─────────────────────────────────────────────
+// Shared vesting chart + schedule (Team + Partners)
 function LinearVestingChartAndSchedule({
   months,
   totalTokens,
@@ -315,11 +311,13 @@ function LinearVestingChartAndSchedule({
     })
     .join(' ');
 
-  const barGradientId = tone === 'sky' ? 'vestBarsSky' : 'vestBarsGold';
+  // ✅ Unique gradient ids (prevents collisions if multiple charts are open)
+  const uid = useId();
+  const barGradientId = `${uid}-${tone === 'sky' ? 'vestBarsSky' : 'vestBarsGold'}`;
 
   return (
     <div className="mt-3 grid gap-3 lg:grid-cols-2">
-      <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+      <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Monthly unlock</p>
@@ -371,16 +369,7 @@ function LinearVestingChartAndSchedule({
                 const y = h - pad - barH;
                 const bw = Math.max(6, barW - 10);
                 return (
-                  <rect
-                    key={r.m}
-                    x={x}
-                    y={y}
-                    width={bw}
-                    height={barH}
-                    rx="8"
-                    fill={`url(#${barGradientId})`}
-                    opacity="0.9"
-                  />
+                  <rect key={r.m} x={x} y={y} width={bw} height={barH} rx="8" fill={`url(#${barGradientId})`} opacity="0.9" />
                 );
               })}
 
@@ -399,7 +388,7 @@ function LinearVestingChartAndSchedule({
         <p className="mt-3 text-[11px] text-slate-600">Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow above.</p>
       </div>
 
-      <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+      <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
         <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Schedule</p>
 
         <div className="mt-3 grid gap-2">
@@ -414,24 +403,20 @@ function LinearVestingChartAndSchedule({
 
         <div className="mt-3 rounded-2xl border border-slate-800/70 bg-black/25 p-3">
           <p className="text-xs text-slate-300">Simple rule: no cliffs, no tricks.</p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            1/{Math.max(1, Math.floor(months))} unlocks monthly, equal amounts.
-          </p>
+          <p className="mt-1 text-[11px] text-slate-500">1/{Math.max(1, Math.floor(months))} unlocks monthly, equal amounts.</p>
         </div>
       </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────
-// ✅ Reserve Streamflow proof (missing in Distribution section)
-// ─────────────────────────────────────────────
+// Reserve Streamflow proof panel
 function ReserveStreamflowPanel() {
   const dashboard = streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
   const contractUrl = RESERVE_STREAMFLOW_CONTRACT ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT) : dashboard;
 
   return (
-    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
+    <div className="mobile-flat mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Reserve lock proof</p>
@@ -443,7 +428,7 @@ function ReserveStreamflowPanel() {
         </span>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+      <div className="mobile-flat mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain schedule</p>
@@ -477,14 +462,12 @@ function ReserveStreamflowPanel() {
   );
 }
 
-// ─────────────────────────────────────────────
-// ✅ Partners vesting panel (8 months) - Streamflow proof
-// ─────────────────────────────────────────────
+// Partners vesting panel (8 months)
 function PartnersVestingPanel({ totalPartnersTokens }: { totalPartnersTokens: number }) {
   const vestUrl = streamflowContractUrl(PARTNERS_VESTING.contractAccount);
 
   return (
-    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
+    <div className="mobile-flat mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Partners vesting</p>
@@ -496,7 +479,7 @@ function PartnersVestingPanel({ totalPartnersTokens }: { totalPartnersTokens: nu
         </span>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+      <div className="mobile-flat mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain vesting</p>
@@ -530,14 +513,12 @@ function PartnersVestingPanel({ totalPartnersTokens }: { totalPartnersTokens: nu
   );
 }
 
-// ─────────────────────────────────────────────
 // Team vesting (12 months)
-// ─────────────────────────────────────────────
 function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
   const streamflowUrl = streamflowContractUrl(TEAM_VESTING.contractAccount);
 
   return (
-    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
+    <div className="mobile-flat mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Team vesting schedule</p>
@@ -548,7 +529,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
         </span>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+      <div className="mobile-flat mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">On-chain vesting</p>
@@ -735,7 +716,7 @@ function VaultGroupPanel({
   }, [data, groupKey]);
 
   return (
-    <div className="mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
+    <div className="mobile-flat mt-4 rounded-2xl border border-slate-800/70 bg-black/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{title}</p>
@@ -776,7 +757,7 @@ function VaultGroupPanel({
             const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
-              <div key={`${groupKey}:${v.address}`} className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+              <div key={`${groupKey}:${v.address}`} className="mobile-flat rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-100">
@@ -918,9 +899,6 @@ function DonutAllocation({
   vaultLoading,
   vaultError,
   vaultGroupByAllocKey,
-  runwayTable,
-  yearsOfRunway,
-  distributionReserve,
   getCardRef,
   teamTotalTokens,
   partnersTotalTokens,
@@ -938,10 +916,6 @@ function DonutAllocation({
   vaultError: boolean;
   vaultGroupByAllocKey: Record<string, string>;
 
-  runwayTable: { label: string; daily: number; highlight?: true }[];
-  yearsOfRunway: (daily: number) => number;
-  distributionReserve: number;
-
   getCardRef: (key: string) => (el: HTMLDivElement | null) => void;
 
   teamTotalTokens: number;
@@ -949,6 +923,7 @@ function DonutAllocation({
 }) {
   const reduceMotion = useReducedMotion();
 
+  // Donut math is based on a fixed viewBox, but we render it responsively via CSS sizing.
   const size = 380;
   const r = 148;
   const c = 2 * Math.PI * r;
@@ -975,10 +950,11 @@ function DonutAllocation({
   const selected = useMemo(() => items.find(i => i.key === selectedKey) ?? items[0] ?? null, [items, selectedKey]);
 
   return (
-    <div className="relative rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur">
+    <div className="mobile-flat relative rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-4 sm:p-5 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur">
+      {/* Mobile: remove decorative glow backgrounds */}
       <div
         className="
-          pointer-events-none absolute -inset-24 opacity-80 blur-3xl
+          pointer-events-none absolute -inset-24 opacity-80 blur-3xl hidden sm:block
           bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.16),transparent_60%),
               radial-gradient(circle_at_82%_78%,rgba(16,185,129,0.16),transparent_60%),
               radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
@@ -988,14 +964,54 @@ function DonutAllocation({
       <div className="relative z-10 flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Allocation overview</p>
-          <p className="mt-1 text-xs text-slate-500">Select a slice, then expand the matching card for details and vaults.</p>
+          <p className="mt-1 text-xs text-slate-500">Tap a bucket, then expand its card for proof and live vaults.</p>
+        </div>
+      </div>
+
+      {/* Mobile selector chips (premium and fast) */}
+      <div className="relative z-10 mt-4 sm:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {items.map(it => {
+            const active = it.key === (selected?.key ?? null);
+            const stroke = toneStroke(it.tone);
+            return (
+              <button
+                key={it.key}
+                type="button"
+                onClick={() => onSelect(it.key)}
+                className={[
+                  'shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition',
+                  active ? 'border-white/20 bg-white/[0.06] text-white' : 'border-white/10 bg-white/[0.03] text-slate-200',
+                ].join(' ')}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full" style={{ background: stroke, boxShadow: `0 0 10px ${toneGlow(it.tone)}` }} />
+                  {it.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Selected</p>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-100">{selected?.label ?? '—'}</p>
+            <p className="font-mono text-2xl font-semibold text-slate-100">{selected ? `${selected.pct}%` : '—'}</p>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500">{selected?.note ?? ''}</p>
         </div>
       </div>
 
       <div className="relative z-10 mt-5 grid gap-5 lg:grid-cols-[420px_minmax(0,1fr)] lg:items-start">
-        <div className="flex items-center justify-center">
+        {/* Donut: hidden on the smallest screens, shown from sm+ */}
+        <div className="hidden sm:flex items-center justify-center">
           <div className="relative">
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
+            <svg
+              viewBox={`0 0 ${size} ${size}`}
+              className="block h-auto w-[280px] sm:w-[340px] md:w-[380px]"
+              aria-label="Allocation donut chart"
+            >
               <defs>
                 <filter id="xpotGlow" x="-50%" y="-50%" width="200%" height="200%">
                   <feGaussianBlur stdDeviation="3.5" result="blur" />
@@ -1065,6 +1081,7 @@ function DonutAllocation({
           </div>
         </div>
 
+        {/* Cards list */}
         <div className="grid gap-3">
           {items.map(a => {
             const active = openKey === a.key;
@@ -1079,7 +1096,7 @@ function DonutAllocation({
                 key={a.key}
                 ref={getCardRef(a.key)}
                 className={[
-                  'scroll-mt-[200px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
+                  'mobile-flat scroll-mt-[200px] rounded-2xl border bg-slate-950/45 shadow-[0_18px_70px_rgba(0,0,0,0.35)] transition',
                   isSelected ? 'border-white/20 ring-1 ring-white/10' : 'border-slate-900/70',
                 ].join(' ')}
                 style={
@@ -1147,13 +1164,11 @@ function DonutAllocation({
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4">
-                        <div className="rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                        <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
                           <p className="text-sm text-slate-200">{a.note}</p>
                           <p className="mt-2 text-xs text-slate-500">{a.detail}</p>
 
-                          {/* ✅ FIX: Distribution now has Streamflow proof like Team/Partners */}
                           {a.key === 'distribution' && <ReserveStreamflowPanel />}
-
                           {a.key === 'team' && <TeamVestingPanel totalTeamTokens={teamTotalTokens} />}
                           {a.key === 'partners' && <PartnersVestingPanel totalPartnersTokens={partnersTotalTokens} />}
 
@@ -1183,7 +1198,7 @@ function DonutAllocation({
 }
 
 /**
- * ✅ Next.js requirement:
+ * Next.js requirement:
  * `useSearchParams()` must be wrapped in a Suspense boundary.
  */
 function TokenomicsPageInner() {
@@ -1207,19 +1222,10 @@ function TokenomicsPageInner() {
     [DISTRIBUTION_RESERVE],
   );
 
-  // ✅ focus number: 19.18 years (7B / 1M / 365)
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
-  const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
-
-  const runwayTable = useMemo(
-    () => [
-      { label: '500,000 XPOT / day', daily: 500_000 },
-      { label: '750,000 XPOT / day', daily: 750_000 },
-      { label: '1,000,000 XPOT / day (fixed)', daily: 1_000_000, highlight: true as const },
-      { label: '1,250,000 XPOT / day', daily: 1_250_000 },
-      { label: '1,500,000 XPOT / day', daily: 1_500_000 },
-    ],
-    [],
+  const runwayFixedDays = useMemo(
+    () => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT),
+    [DISTRIBUTION_RESERVE],
   );
 
   const allocation = useMemo<Allocation[]>(
@@ -1373,7 +1379,7 @@ function TokenomicsPageInner() {
     });
   }, []);
 
-  // ✅ Deep-link support from home page: /tokenomics?tab=rewards&focus=reserve
+  // Deep-link support from home page: /tokenomics?tab=rewards&focus=reserve
   const didAutoFocusRef = useRef(false);
   useEffect(() => {
     if (didAutoFocusRef.current) return;
@@ -1388,19 +1394,20 @@ function TokenomicsPageInner() {
     }
   }, [searchParams, openDistribution]);
 
-  // ✅ Reserve pill must link to Streamflow (canonical proof)
+  // Reserve pill must link to Streamflow (canonical proof)
   const reserveProofHref = RESERVE_STREAMFLOW_CONTRACT
     ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT)
     : streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
 
   const proofCards = (
-    <div className="mt-7 grid gap-3 lg:grid-cols-3">
-      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+    <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mobile-flat rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reserve coverage</p>
             <p className="mt-2 font-mono text-3xl font-semibold text-emerald-200">
-              {runwayFixedYears.toFixed(2)} <span className="text-base font-semibold text-slate-500">years</span>
+              {Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'}{' '}
+              <span className="text-base font-semibold text-slate-500">years</span>
             </p>
 
             <p className="mt-1 text-xs text-slate-500">
@@ -1414,20 +1421,18 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {/* ✅ FIX: "Reserve wallet" now opens Streamflow proof page */}
-          <ProofLinkPill href={reserveProofHref} label="Reserve wallet" tone="emerald" />
-          {/* Optional: still keep the pure wallet view */}
+          <ProofLinkPill href={reserveProofHref} label="Locked reserve (19.18y)" tone="emerald" />
           <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Wallet (Solscan)" tone="slate" />
           <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
         </div>
 
         <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Protocol rule</p>
-          <p className="mt-1 text-xs text-slate-300">Daily distribution is fixed. Reserve stays public and verifiable.</p>
+          <p className="mt-1 text-xs text-slate-300">Daily distribution is fixed. Reserve is time-locked and verifiable on Streamflow.</p>
         </div>
       </div>
 
-      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+      <div className="mobile-flat rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Token controls</p>
@@ -1483,7 +1488,7 @@ function TokenomicsPageInner() {
         </div>
       </div>
 
-      <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+      <div className="mobile-flat rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
@@ -1497,7 +1502,7 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account" tone="slate" />
+          <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint account (Solscan)" tone="slate" />
           <SilentCopyButton text={XPOT_MINT_ACCOUNT} title="Copy mint account" />
         </div>
 
@@ -1518,23 +1523,12 @@ function TokenomicsPageInner() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      {/* ...rest of file unchanged from your version... */}
-      {/* IMPORTANT: keep everything below as-is in your repo, this snippet already includes the fixes you asked for */}
-      {/* If you want, paste your remaining tail and I will re-output the entire file end-to-end with no truncation. */}
-      {/*
-        NOTE:
-        Your original file continues below. I didn't change anything else besides:
-        - adding Streamflow helpers import
-        - reserve proof pill href
-        - adding <ReserveStreamflowPanel /> in distribution expanded content
-      */}
-
-      {/* START: your original remainder */}
       <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
         <div className="relative overflow-hidden border-b border-white/5 bg-[linear-gradient(180deg,rgba(10,7,4,0.96),rgba(0,0,0,0.94))]">
+          {/* Mobile: remove decorative glow backgrounds */}
           <div
             className="
-              pointer-events-none absolute inset-0
+              pointer-events-none absolute inset-0 hidden sm:block
               bg-[radial-gradient(circle_at_18%_22%,rgba(var(--xpot-gold),0.18),transparent_62%),
                   radial-gradient(circle_at_78%_34%,rgba(56,189,248,0.10),transparent_66%),
                   radial-gradient(circle_at_20%_85%,rgba(16,185,129,0.10),transparent_60%),
@@ -1592,11 +1586,12 @@ function TokenomicsPageInner() {
                 <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                   <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-                    Proof targets: mint account, authority status, reserve wallet, vesting contracts
+                    Proof targets: mint account, authority status, reserve lock, vesting contracts
                   </span>
                   <span className="inline-flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-white/20" />
-                    Coverage focus: <span className="font-mono text-emerald-200">{runwayFixedYears.toFixed(2)} years</span>
+                    Coverage focus:{' '}
+                    <span className="font-mono text-emerald-200">{Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'} years</span>
                   </span>
                 </div>
               </div>
@@ -1611,23 +1606,24 @@ function TokenomicsPageInner() {
 
       <section className="mt-8" ref={allocationRef}>
         <div className={CARD}>
+          {/* Mobile: remove decorative glow backgrounds */}
           <div
             className="
-              pointer-events-none absolute -inset-44 opacity-75 blur-3xl
+              pointer-events-none absolute -inset-44 opacity-75 blur-3xl hidden sm:block
               bg-[radial-gradient(circle_at_10%_30%,rgba(56,189,248,0.16),transparent_60%),
                   radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%),
                   radial-gradient(circle_at_60%_0%,rgba(var(--xpot-gold),0.12),transparent_55%)]
             "
           />
-          <div className="relative z-10 p-6 lg:p-8">
+          <div className="relative z-10 p-5 sm:p-6 lg:p-8">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-100">Distribution map</p>
-                <p className="mt-1 text-xs text-slate-400">Select a slice, then expand the matching card for the full breakdown and live vaults.</p>
+                <p className="mt-1 text-xs text-slate-400">Select a bucket, then expand the matching card for the full breakdown and live vaults.</p>
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-5 sm:mt-6">
               <DonutAllocation
                 items={sortedAllocation}
                 selectedKey={selectedKey}
@@ -1639,9 +1635,6 @@ function TokenomicsPageInner() {
                 vaultLoading={vaultLoading}
                 vaultError={vaultError}
                 vaultGroupByAllocKey={VAULT_GROUP_BY_ALLOC_KEY}
-                runwayTable={runwayTable}
-                yearsOfRunway={yearsOfRunway}
-                distributionReserve={DISTRIBUTION_RESERVE}
                 getCardRef={getCardRef}
                 teamTotalTokens={TEAM_TOTAL_TOKENS}
                 partnersTotalTokens={PARTNERS_TOTAL_TOKENS}
@@ -1651,16 +1644,128 @@ function TokenomicsPageInner() {
         </div>
       </section>
 
-      {/* The rest of your file (utility map + footer) stays exactly the same */}
-      {/* END: your original remainder */}
+      <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className={CARD}>
+          {/* Mobile: remove decorative glow backgrounds */}
+          <div
+            className="
+              pointer-events-none absolute -inset-44 opacity-75 blur-3xl hidden sm:block
+              bg-[radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),
+                  radial-gradient(circle_at_90%_70%,rgba(16,185,129,0.16),transparent_60%)]
+            "
+          />
+          <div className="relative z-10 p-6 lg:p-8">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Utility map</p>
+                <p className="mt-1 text-xs text-slate-400">Why hold XPOT, not just observe?</p>
+              </div>
+              <Pill tone="emerald">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Flywheel
+              </Pill>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Gift className="h-4 w-4 text-emerald-300" />
+                  Eligibility
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Holding XPOT is the eligibility requirement to enter. The protocol is designed to feel calm and transparent with clear rules and verifiable outcomes.
+                </p>
+              </div>
+
+              <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
+                  Status and reputation
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Your handle becomes a public identity. Participation history and recognisable moments can build a profile that unlocks future perks and sponsor drops.
+                </p>
+              </div>
+
+              <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <Flame className="h-4 w-4 text-sky-300" />
+                  Sponsor-funded rewards
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Brands can acquire XPOT to fund bonus distributions. Holders receive value, sponsors get measurable attention and the system scales without pay-to-enter mechanics.
+                </p>
+              </div>
+
+              <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                  Verifiability edge
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Opaque systems rely on trust you cannot verify. XPOT is built around verification - on-chain history, public wallets and simple rules you can check.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={CARD}>
+          <div className="relative z-10 p-6 lg:p-8">
+            <p className="text-sm font-semibold text-slate-100">Long-term: why this can matter</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">
+              The endgame is a protocol that communities and brands can plug into for daily distributions with identity and verification built in from day one.
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Link href="/roadmap" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                View roadmap
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+
+              <a
+                href="https://solscan.io"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/70 px-5 py-2.5 text-sm text-slate-200 hover:bg-slate-900 transition"
+              >
+                Token explorer
+                <ExternalLink className="h-4 w-4 text-slate-500" />
+              </a>
+            </div>
+
+            <div className="mobile-flat mt-6 rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
+              <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Every distribution bucket can be mapped to wallets and on-chain history. If it cannot be verified, it should not exist.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="mt-10 pb-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
+          <span className="inline-flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+            Tokenomics is built to be clear, verifiable and sponsor-friendly.
+          </span>
+          <span className="font-mono text-slate-600">build: tokenomics-v31</span>
+        </div>
+      </footer>
     </XpotPageShell>
   );
 }
 
 function TokenomicsFallback() {
   return (
-    <XpotPageShell title="Tokenomics" subtitle="Loading tokenomics..." topBarProps={{ pillText: 'TOKENOMICS', sloganRight: 'Protocol-grade distribution' }}>
-      <div className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+    <XpotPageShell
+      title="Tokenomics"
+      subtitle="Loading tokenomics..."
+      topBarProps={{ pillText: 'TOKENOMICS', sloganRight: 'Protocol-grade distribution' }}
+    >
+      <div className="mobile-flat mt-6 rounded-[26px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
         <p className="text-xs text-slate-400">Loading...</p>
       </div>
     </XpotPageShell>

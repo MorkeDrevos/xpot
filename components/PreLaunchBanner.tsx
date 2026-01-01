@@ -7,6 +7,8 @@ type PreLaunchBannerProps = {
   hidden?: boolean;
 };
 
+const MOBILE_MAX = 639; // Tailwind sm breakpoint is 640px
+
 export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps) {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -15,12 +17,21 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
 
     const root = document.documentElement;
 
-    if (hidden) {
+    const isMobileNow = () => window.innerWidth <= MOBILE_MAX;
+
+    // Always keep layout var clean on mobile
+    if (hidden || isMobileNow()) {
       root.style.setProperty('--xpot-banner-h', '0px');
       return;
     }
 
     const setVar = () => {
+      // If user resized into mobile, force it off
+      if (isMobileNow()) {
+        root.style.setProperty('--xpot-banner-h', '0px');
+        return;
+      }
+
       const el = ref.current;
       if (!el) return;
       const h = el.offsetHeight || 0;
@@ -48,12 +59,15 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
     };
   }, [hidden]);
 
+  // Hard stop render on mobile (prevents any accidental display)
   if (hidden) return null;
+  if (typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX) return null;
 
   return (
     <div
       ref={ref}
       className="
+        xpot-prelaunch-banner
         fixed inset-x-0 top-0 z-[60]
         hidden sm:block
       "
@@ -91,26 +105,33 @@ export default function PreLaunchBanner({ hidden = false }: PreLaunchBannerProps
               </span>
 
               <p className="flex items-center justify-center gap-3 text-center text-[12px] font-semibold uppercase tracking-[0.32em] text-white/85">
-  {/* LIVE pulse */}
-  <span className="relative flex items-center gap-2">
-    <span className="relative flex h-2.5 w-2.5">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/40" />
-      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
-    </span>
-    <span className="text-white">LIVE</span>
-  </span>
+                {/* LIVE pulse */}
+                <span className="relative flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/40" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
+                  </span>
+                  <span className="text-white">LIVE</span>
+                </span>
 
-  <span className="text-white/35">•</span>
-  <span>CONTRACT DEPLOYED</span>
-  <span className="text-white/35">•</span>
-  <span>TRADING ACTIVE</span>
-</p>
+                <span className="text-white/35">•</span>
+                <span>CONTRACT DEPLOYED</span>
+                <span className="text-white/35">•</span>
+                <span>TRADING ACTIVE</span>
+              </p>
             </div>
           </div>
         </div>
       </div>
 
       <style jsx global>{`
+        /* ====== ABSOLUTE MOBILE BLOCK (even if Tailwind/caching glitches) ====== */
+        @media (max-width: 639px) {
+          .xpot-prelaunch-banner {
+            display: none !important;
+          }
+        }
+
         /* ====== Motion safety ====== */
         @media (prefers-reduced-motion: reduce) {
           .xpot-banner-bed,

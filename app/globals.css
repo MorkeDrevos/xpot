@@ -209,12 +209,25 @@ body {
   height: 100%;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--xpot-bg-page);
   color: var(--xpot-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
+
+  /* Mobile "app feel" */
+  overscroll-behavior-y: none;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Reduce iOS tap highlight for app-feel */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {
@@ -423,7 +436,7 @@ select {
 ============================================================= */
 
 .xpot-gold-text { color: rgb(var(--xpot-gold)); }
-.xpot-gold-text-hi { color: rgb(var(--xpot-gold-2)); } /* ✅ readable on dark */
+.xpot-gold-text-hi { color: rgb(var(--xpot-gold-2)); } /* readable on dark */
 .xpot-gold-border { border-color: rgba(var(--xpot-gold), 0.28); }
 .xpot-gold-bg { background: rgba(var(--xpot-gold), 0.10); }
 .xpot-gold-glow { box-shadow: var(--xpot-glow-gold); }
@@ -450,13 +463,11 @@ select {
    GOLD PILLS / BADGES (READABLE ON DARK UI)
 ============================================================= */
 
-/* Gold outline pill sitting on dark glass */
 .xpot-pill-gold {
-  color: rgb(var(--xpot-gold-2)); /* ✅ highlight gold for text */
+  color: rgb(var(--xpot-gold-2));
   border-color: rgba(var(--xpot-gold), 0.35);
 }
 
-/* When the pill itself is gold */
 .xpot-pill-gold-solid {
   background: var(--xpot-gold-grad);
   color: rgb(var(--xpot-gold-ink));
@@ -467,7 +478,6 @@ select {
    XPOT CONTROLS (buttons, inputs, halos)
 ============================================================= */
 
-/* Base button */
 .xpot-btn {
   display: inline-flex;
   align-items: center;
@@ -506,13 +516,11 @@ select {
   transform: none;
 }
 
-/* Utility variant (kept compatible with your BTN_UTILITY usage) */
 .xpot-btn-utility {
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(148, 163, 184, 0.20);
 }
 
-/* Danger button */
 .xpot-btn-danger {
   background: rgba(244, 63, 94, 0.08);
   border: 1px solid rgba(244, 63, 94, 0.32);
@@ -527,7 +535,6 @@ select {
   border-color: rgba(244, 63, 94, 0.42);
 }
 
-/* Input */
 .xpot-input {
   width: 100%;
   border-radius: 18px;
@@ -555,7 +562,6 @@ select {
   background: rgba(2, 6, 23, 0.72);
 }
 
-/* Nebula halo overlay used in ops cards */
 .xpot-nebula-halo {
   position: absolute;
   inset: -1px;
@@ -568,6 +574,11 @@ select {
     radial-gradient(820px 260px at 52% 0%, rgba(var(--xpot-accent-secondary), 0.10), transparent 62%);
   filter: blur(0px);
 }
+
+/* =============================================================
+   XPOT GRADIENT TEXT HELPERS (single source of truth)
+============================================================= */
+
 .xpot-gradient-text {
   background: linear-gradient(
     135deg,
@@ -578,23 +589,9 @@ select {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  text-shadow: 0 0 12px rgba(110, 231, 249, 0.08);
 }
-.xpot-gradient-text {
-  text-shadow: 0 0 12px rgba(110,231,249,0.08);
-}
-.xpot-xpotword {
-  background: linear-gradient(
-    135deg,
-    rgba(226, 232, 240, 0.92) 0%,
-    rgba(110, 231, 249, 0.82) 38%,
-    rgba(74, 222, 128, 0.82) 72%,
-    rgba(226, 232, 240, 0.92) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 10px 26px rgba(56, 189, 248, 0.08);
-}
+
 /* Subtle system-gradient just for the word XPOT */
 .xpot-xpotword {
   background: linear-gradient(
@@ -608,8 +605,58 @@ select {
   background-clip: text;
   color: transparent;
 
-  /* very soft lift, keeps it “in-system” */
   text-shadow:
     0 0 18px rgba(110, 231, 249, 0.10),
     0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
+/* =============================================================
+   MOBILE RULES
+   - Hide top strip/banner on mobile (as agreed)
+   - Keep layout snug + app-like
+============================================================= */
+
+@media (max-width: 640px) {
+  /* Hide the top strip on mobile */
+  .xpot-top-strip {
+    display: none !important;
+  }
+
+  /* If anything relies on banner height vars, force them to 0 on mobile */
+  :root {
+    --xpot-banner-h: 0px;
+  }
+
+  /* iOS app-feel scrolling */
+  body {
+    overscroll-behavior-y: none;
+    padding-top: env(safe-area-inset-top);
+  }
+}
+/* Mobile-only: flatten glass cards for app-like feel */
+@media (max-width: 640px) {
+  .mobile-flat {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* Fix mirrored "NOW" / "2045" faces */
+.xpot-face-wrap {
+  transform-style: preserve-3d;
+}
+
+.xpot-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.xpot-face-now {
+  transform: rotateY(0deg);
+}
+
+.xpot-face-2045 {
+  transform: rotateY(180deg);
 }

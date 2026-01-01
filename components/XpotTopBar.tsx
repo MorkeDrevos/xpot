@@ -18,7 +18,6 @@ import {
   LogOut,
   Menu,
   PieChart,
-  Radio,
   Trophy,
   Wallet,
   Map,
@@ -31,8 +30,9 @@ import {
   XCircle,
   Loader2,
   ChevronRight,
-  Info,
   Hourglass,
+  Home,
+  BadgeCheck,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -74,21 +74,14 @@ export type XpotTopBarProps = {
 };
 
 const XPOT_X_POST = 'https://x.com/xpotbet';
-
-// ✅ Correct route (your file is app/2045/final-day/page.tsx)
 const FINAL_DAY_HREF = '/2045/final-day';
+const FINAL_DAY_LABEL = 'Final Draw';
 
-// ✅ Naming (pick one and keep it consistent everywhere)
-const FINAL_DAY_LABEL = 'Final Draw'; // alternatives: 'Finale' | 'Legacy' | 'Archive'
-
-// Shared routes
 const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
-const MECHANISM_HREF = '/mechanism';
 const PROTOCOL_HREF = '/hub/protocol';
 
-// ✅ Your real deployed CA
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
 export default function XpotTopBar({
@@ -115,9 +108,34 @@ export default function XpotTopBar({
   }, [onOpenWalletModal]);
 
   const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  // Banner offset
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   const headerRef = useRef<HTMLElement | null>(null);
+
+  // ✅ IMPORTANT: Banner is hidden on mobile, so force --xpot-banner-h to 0 under xl
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+
+    const mq = window.matchMedia('(min-width: 1280px)'); // xl breakpoint
+    const apply = () => {
+      if (!hasBanner) {
+        root.style.setProperty('--xpot-banner-h', '0px');
+        return;
+      }
+      if (!mq.matches) {
+        // banner is visually hidden on mobile - prevent top offset gaps
+        root.style.setProperty('--xpot-banner-h', '0px');
+      }
+      // if mq.matches, banner component is responsible for setting --xpot-banner-h correctly
+    };
+
+    apply();
+    mq.addEventListener?.('change', apply);
+    return () => mq.removeEventListener?.('change', apply);
+  }, [hasBanner, pathname]);
 
   // Close menus on route change
   useEffect(() => {
@@ -129,6 +147,7 @@ export default function XpotTopBar({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setLearnOpen(false);
+      if (e.key === 'Escape') setMobileOpen(false);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -170,11 +189,11 @@ export default function XpotTopBar({
   return (
     <>
       <header ref={headerRef} className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
-        {/* Topbar block ABOVE the divider so dropdown always wins stacking */}
+        {/* Topbar block */}
         <div className="relative z-[80] border-b border-white/5 bg-black/70 backdrop-blur-md">
-          <div className={`mx-auto w-full ${maxWidthClassName} px-4 sm:px-6`}>
-            <div className="flex min-h-[104px] items-center gap-4">
-              {/* LEFT: Logo + optional pill */}
+          <div className={`mx-auto w-full ${maxWidthClassName} px-1 sm:px-6`}>
+            {/* Desktop layout */}
+            <div className="hidden min-h-[104px] items-center gap-4 xl:flex">
               <div className="flex min-w-0 items-center gap-4">
                 <Link href={logoHref} className="flex shrink-0 items-center gap-3">
                   <XpotLogo
@@ -186,7 +205,6 @@ export default function XpotTopBar({
                   />
                 </Link>
 
-                {/* Optional pill/slogan (public only) */}
                 {!isHub && (
                   <div className="hidden min-w-0 items-center gap-3 lg:flex">
                     <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold tracking-wide text-slate-300">
@@ -203,8 +221,7 @@ export default function XpotTopBar({
                 )}
               </div>
 
-              {/* CENTER: Nav (desktop) */}
-              <div className="hidden flex-1 items-center justify-center gap-8 xl:flex">
+              <div className="flex-1 items-center justify-center gap-8 xl:flex">
                 {isHub ? (
                   <HubNavCenter liveIsOpen={liveIsOpen} />
                 ) : (
@@ -212,7 +229,6 @@ export default function XpotTopBar({
                 )}
               </div>
 
-              {/* RIGHT: Actions */}
               <div className="ml-auto flex items-center gap-3">
                 {!isHub && (
                   <div className="hidden xl:flex">
@@ -221,30 +237,58 @@ export default function XpotTopBar({
                 )}
 
                 {isHub ? (
-                  <HubRight
-                    clerkEnabled={clerkEnabled}
-                    hubWalletStatus={hubWalletStatus}
-                    onOpenWalletModal={openWallet}
-                  />
+                  <HubRight clerkEnabled={clerkEnabled} hubWalletStatus={hubWalletStatus} onOpenWalletModal={openWallet} />
                 ) : (
                   <>{rightSlot ? rightSlot : <PublicRight />}</>
                 )}
+              </div>
+            </div>
 
-                {/* Mobile menu button */}
-                <button
-                  type="button"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] xl:hidden"
-                  onClick={() => setMobileOpen(true)}
-                  aria-label="Open menu"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
+            {/* ✅ Mobile layout (MORE iPhone-native) */}
+            <div className="xl:hidden">
+              {/* Row 1: logo + CA + primary + menu */}
+              <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3">
+                <Link href={logoHref} className="flex min-w-0 items-center gap-3">
+                  <XpotLogo variant="light" width={420} height={120} priority className="h-[64px] w-auto object-contain" />
+                </Link>
+
+                <div className="flex items-center gap-2">
+                  <OfficialCAChipMobile />
+
+                  {isHub ? (
+  <button
+    type="button"
+    onClick={() => openWallet?.()}
+    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-100"
+    aria-label="Wallet"
+  >
+    <Wallet className="h-5 w-5 text-slate-200" />
+  </button>
+) : (
+  <Link
+    href={FINAL_DAY_HREF}
+    className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[13px] font-semibold text-slate-100"
+  >
+    <Hourglass className="h-4 w-4 text-amber-200" />
+    {FINAL_DAY_LABEL}
+  </Link>
+)}
+
+                  <button
+                    type="button"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200"
+                    onClick={() => setMobileOpen(true)}
+                    aria-label="Open menu"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Premium divider - LOWER z so it never draws above dropdown */}
+        {/* Premium divider */}
         <div className="relative z-[10] h-[1px] w-full overflow-hidden">
           <div className="absolute left-1/2 top-0 h-full w-[72%] -translate-x-1/2 bg-[linear-gradient(90deg,rgba(56,189,248,0.10),rgba(56,189,248,0.55),rgba(56,189,248,0.10))]" />
         </div>
@@ -261,11 +305,30 @@ export default function XpotTopBar({
         />
       </header>
 
-      {/* ✅ Light wallet popup (only used when parent does not supply onOpenWalletModal) */}
-      {!onOpenWalletModal && (
-        <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
-      )}
+      {/* ✅ Light wallet popup */}
+      {!onOpenWalletModal && <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />}
     </>
+  );
+}
+
+/* ---------------- Small Mobile Quick Action ---------------- */
+
+function QuickAction({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="
+        shrink-0 inline-flex items-center gap-2
+        rounded-full border border-white/10 bg-white/[0.04]
+        px-4 py-2 text-[12px] font-semibold text-slate-100
+        hover:bg-white/[0.07]
+      "
+    >
+      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/25">
+        {icon}
+      </span>
+      <span className="whitespace-nowrap">{label}</span>
+    </Link>
   );
 }
 
@@ -275,6 +338,37 @@ function shortenAddress(addr: string, left = 6, right = 6) {
   if (!addr) return '';
   if (addr.length <= left + right + 3) return addr;
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
+}
+
+function OfficialCAChipMobile() {
+  const [copied, setCopied] = useState(false);
+  const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 3, 4), []);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1000);
+    } catch {}
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      className="
+        inline-flex h-10 items-center gap-2
+        rounded-full border border-white/10 bg-white/[0.04]
+        px-3 text-[13px] font-semibold text-slate-100
+        hover:bg-white/[0.07]
+      "
+      aria-label="Copy official contract address"
+      title="Tap to copy official CA"
+    >
+      {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4 text-slate-200" />}
+      <span className="font-mono text-[12px]">{addrShort}</span>
+    </button>
+  );
 }
 
 function OfficialCAChip() {
@@ -294,7 +388,7 @@ function OfficialCAChip() {
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         className="
           group relative inline-flex items-center gap-3
           rounded-full px-4 py-2
@@ -404,21 +498,6 @@ function OfficialCAChip() {
 
 /* ---------------- Shared ---------------- */
 
-function LiveDot({ isOpen }: { isOpen: boolean }) {
-  return (
-    <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
-      {isOpen ? (
-        <>
-          <span className="absolute inline-flex h-3 w-3 animate-ping rounded-full bg-emerald-400/60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
-        </>
-      ) : (
-        <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
-      )}
-    </span>
-  );
-}
-
 function NavLink({
   href,
   children,
@@ -501,24 +580,11 @@ function PublicNavCenter({
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      {/* Live (disabled until page ready) */}
-      {/*
-      <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
-        <LiveDot isOpen={liveIsOpen} />
-        <Radio className="h-[15px] w-[15px] text-emerald-300" />
-        Live
-      </NavLink>
-      */}
-
-      {/* Final Draw (primary) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <Hourglass
-  className="h-4 w-4 !text-white !stroke-white"
-/>
+        <Hourglass className="h-4 w-4 !text-white !stroke-white" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
-      {/* Learn dropdown (hover + click) */}
       <div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
         <button
           type="button"
@@ -572,19 +638,6 @@ function PublicNavCenter({
                   Winners
                 </Link>
 
-                {/* Mechanism (disabled until page ready) */}
-                {/*
-                <Link
-                  href={MECHANISM_HREF}
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Info className="h-4 w-4 text-slate-200" />
-                  </span>
-                  Mechanism
-                </Link>
-                */}
-
                 <div className="my-2 h-px bg-white/10" />
 
                 <Link
@@ -602,6 +655,8 @@ function PublicNavCenter({
           </>
         )}
       </div>
+
+      <span className="sr-only">{String(liveIsOpen)}</span>
     </nav>
   );
 }
@@ -633,30 +688,10 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
-      {/* Live (disabled until page ready) */}
-      {/*
-      <NavLink href={PROTOCOL_HREF} title="Protocol state" className="gap-2">
-        <LiveDot isOpen={liveIsOpen} />
-        <Radio className="h-[15px] w-[15px] text-emerald-300" />
-        Live
-      </NavLink>
-      */}
-
-      {/* ✅ Final Draw (ONLY ONCE) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
-        <Hourglass
-  className="h-4 w-4 stroke-white text-white"
-/>
+        <Hourglass className="h-4 w-4 stroke-white text-white" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
-
-      {/* Mechanism (disabled until page ready) */}
-      {/*
-      <NavLink href={MECHANISM_HREF} title="How winners are picked">
-        <Info className="h-4 w-4 text-slate-200" />
-        Mechanism
-      </NavLink>
-      */}
 
       <NavLink href={TOKENOMICS_HREF}>
         <PieChart className="h-4 w-4 text-emerald-300" />
@@ -677,6 +712,8 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         <ExternalLink className="h-4 w-4" />
         X
       </NavLink>
+
+      <span className="sr-only">{String(liveIsOpen)}</span>
     </nav>
   );
 }
@@ -708,7 +745,7 @@ function HubRight({
   );
 }
 
-/* ---------------- Wallet button (premium + royal) ---------------- */
+/* ---------------- Wallet button ---------------- */
 
 function toneRing(tone: HubWalletTone) {
   if (tone === 'emerald') return 'ring-emerald-400/20';
@@ -865,7 +902,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
   const addr = connected && publicKey ? shortWallet(publicKey.toBase58()) : null;
 
   const usableWallets = useMemo(() => {
-    return (wallets || []).filter((w) => w.readyState !== WalletReadyState.Unsupported);
+    return (wallets || []).filter(w => w.readyState !== WalletReadyState.Unsupported);
   }, [wallets]);
 
   async function handlePick(name: WalletName) {
@@ -880,7 +917,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
       setBusyName(String(name));
 
       select(name);
-      await new Promise((r) => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 50));
       await connect();
 
       setBusyName(null);
@@ -974,7 +1011,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
             )}
 
             <div className="mt-4 space-y-2">
-              {usableWallets.map((w) => {
+              {usableWallets.map(w => {
                 const name = w.adapter.name as WalletName;
                 const ready = w.readyState;
                 const isInstalled = ready === WalletReadyState.Installed || ready === WalletReadyState.Loadable;
@@ -1086,18 +1123,27 @@ function MobileMenu({
   onOpenWalletModal?: () => void;
 }) {
   const { user, isLoaded } = useUser();
-  const externalAccounts = (user?.externalAccounts || []) as any[];
 
+  const externalAccounts = (user?.externalAccounts || []) as any[];
   const xAccount = externalAccounts.find(
-    (acc) =>
+    acc =>
       String(acc.provider || '').toLowerCase().includes('twitter') ||
       String(acc.provider || '').toLowerCase().includes('x'),
   );
 
   const handle = xAccount?.username || xAccount?.screenName || null;
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
-  const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
-  const initial = (displayHandle || 'X')[1] || 'X';
+  const displayHandle = handle ? `@${String(handle).replace(/^@/, '')}` : null;
+
+  const [copied, setCopied] = useState(false);
+
+  async function copyCA() {
+    try {
+      await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1100);
+    } catch {}
+  }
 
   if (!open) return null;
 
@@ -1109,20 +1155,23 @@ function MobileMenu({
         onClick={onClose}
         aria-label="Close menu"
       />
+
       <div className="fixed right-0 top-0 z-[81] h-full w-[92%] max-w-sm border-l border-white/10 bg-black/85 backdrop-blur-xl">
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <div className="flex items-center gap-3">
-            {isLoaded && avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="X avatar" className="h-9 w-9 rounded-full border border-white/10" />
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-slate-200">
-                {initial}
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/35">
+                {isLoaded && avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatar} alt="X avatar" className="h-7 w-7 rounded-full" />
+                ) : (
+                  <BadgeCheck className="h-4 w-4 text-slate-200" />
+                )}
+              </span>
+              <div className="leading-none">
+                <p className="text-[12px] font-semibold text-slate-100">XPOT</p>
+                <p className="text-[11px] text-slate-400">{displayHandle ?? 'Guest'}</p>
               </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-100">Menu</p>
-              <p className="truncate text-xs text-slate-400">{displayHandle ?? 'Guest'}</p>
             </div>
           </div>
 
@@ -1136,94 +1185,92 @@ function MobileMenu({
           </button>
         </div>
 
-        <div className="space-y-2 px-5 py-5">
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href="/hub"
-          >
-            Hub
-          </Link>
+        <div className="space-y-4 px-5 py-5">
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">VERIFY</p>
 
-          {/* Live -> Protocol (disabled until page ready) */}
-          {/*
-          <Link
-            className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={PROTOCOL_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <LiveDot isOpen={liveIsOpen} />
-              Live
-            </span>
-            <Radio className="h-4 w-4 text-emerald-300" />
-          </Link>
-          */}
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">OFFICIAL CONTRACT</p>
+              <p className="mt-2 font-mono text-[13px] text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={FINAL_DAY_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Hourglass className="h-4 w-4 text-amber-200" />
-              {FINAL_DAY_LABEL}
-            </span>
-          </Link>
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={copyCA}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 text-emerald-200" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </button>
 
-          {/* Mechanism (disabled until page ready) */}
-          {/*
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={MECHANISM_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Info className="h-4 w-4 text-slate-200" />
-              Mechanism
-            </span>
-          </Link>
-          */}
+                <Link
+                  href={PROTOCOL_HREF}
+                  className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+                >
+                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                  Health
+                </Link>
+              </div>
+            </div>
+          </div>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={TOKENOMICS_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <PieChart className="h-4 w-4 text-emerald-300" />
-              Tokenomics
-            </span>
-          </Link>
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">NAVIGATION</p>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={ROADMAP_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Map className="h-4 w-4 text-sky-300" />
-              Roadmap
-            </span>
-          </Link>
+            <div className="mt-3 space-y-2">
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
+                Hub
+              </Link>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={WINNERS_HREF}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-300" />
-              Winners
-            </span>
-          </Link>
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={FINAL_DAY_HREF}>
+                <span className="inline-flex items-center gap-2">
+                  <Hourglass className="h-4 w-4 text-amber-200" />
+                  {FINAL_DAY_LABEL}
+                </span>
+              </Link>
 
-          <Link
-            className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-            href={XPOT_X_POST}
-            target="_blank"
-          >
-            <span className="inline-flex items-center gap-2">
-              <ExternalLink className="h-4 w-4" />
-              Official X
-            </span>
-          </Link>
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
+                <span className="inline-flex items-center gap-2">
+                  <PieChart className="h-4 w-4 text-emerald-300" />
+                  Tokenomics
+                </span>
+              </Link>
+
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
+                <span className="inline-flex items-center gap-2">
+                  <Map className="h-4 w-4 text-sky-300" />
+                  Roadmap
+                </span>
+              </Link>
+
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
+                <span className="inline-flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-amber-300" />
+                  Winners
+                </span>
+              </Link>
+
+              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={XPOT_X_POST} target="_blank">
+                <span className="inline-flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  Official X
+                </span>
+              </Link>
+            </div>
+          </div>
 
           {isHub && (
-            <div className="pt-2">
+            <div className="pt-1">
+              <p className="mb-2 text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">WALLET</p>
               <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
             </div>
           )}
@@ -1241,13 +1288,14 @@ function MobileMenu({
             </div>
           )}
 
-          <div className="pt-3">
+          <div className="pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
             <Link
               href="/hub"
               className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
             >
               Enter today&apos;s XPOT →
             </Link>
+            <p className="mt-2 text-center text-[11px] text-slate-400/80">{String(liveIsOpen).length ? '' : ''}</p>
           </div>
         </div>
       </div>
