@@ -60,7 +60,8 @@ const XPOT_CA =
 
 // Optional overrides (recommended once you know the exact pair/chart links)
 const XPOT_JUP_SWAP_URL =
-  process.env.NEXT_PUBLIC_XPOT_JUP_SWAP_URL || `https://jup.ag/?sell=So11111111111111111111111111111111111111112&buy=${XPOT_CA}`;
+  process.env.NEXT_PUBLIC_XPOT_JUP_SWAP_URL ||
+  `https://jup.ag/?sell=So11111111111111111111111111111111111111112&buy=${XPOT_CA}`;
 
 const XPOT_DEXSCREENER_URL =
   process.env.NEXT_PUBLIC_XPOT_DEXSCREENER_URL || `https://dexscreener.com/solana/${XPOT_CA}`;
@@ -362,9 +363,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
               Official contract
             </span>
 
-            <span className="font-mono text-[12px] text-slate-100/90">
-              {shortenAddress(mint, 6, 6)}
-            </span>
+            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 6, 6)}</span>
           </span>
         </span>
 
@@ -451,9 +450,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             </a>
           </div>
 
-          <p className="mt-3 font-mono text-[11px] text-slate-500">
-            mint: {shortenAddress(mint, 8, 8)}
-          </p>
+          <p className="mt-3 font-mono text-[11px] text-slate-500">mint: {shortenAddress(mint, 8, 8)}</p>
         </div>
       </div>
     </div>
@@ -953,6 +950,26 @@ function useLocalReducedMotion() {
 }
 
 /* ─────────────────────────────────────────────
+   Public winners (table) - matches your screenshot snippets
+───────────────────────────────────────────── */
+
+type LastWinnerRow = {
+  id: string;
+  drawDate: string; // ISO
+  display: string; // "@handle" or shortened wallet
+  txUrl?: string | null;
+  isPaidOut?: boolean;
+};
+
+function ymdFromIso(iso: string) {
+  try {
+    return new Date(iso).toISOString().slice(0, 10);
+  } catch {
+    return '';
+  }
+}
+
+/* ─────────────────────────────────────────────
    Real winners telemetry (for LAST_WINNERS console)
 ───────────────────────────────────────────── */
 
@@ -1019,6 +1036,159 @@ function useLatestWinnersTelemetry() {
 }
 
 /* ─────────────────────────────────────────────
+   New: Latest entries (X avatars) - "Entering the stage"
+   - this is resilient: if endpoint missing/404, it just hides.
+───────────────────────────────────────────── */
+
+type StageEntry = {
+  id?: string;
+  clerkId?: string;
+  xHandle: string;
+  xName?: string | null;
+  xAvatarUrl?: string | null;
+  createdAt?: string | null; // ISO
+};
+
+function normalizeHandle(h: string) {
+  const s = String(h || '').trim();
+  if (!s) return '';
+  return s.startsWith('@') ? s : `@${s}`;
+}
+
+function useStageEntries() {
+  const [entries, setEntries] = useState<StageEntry[] | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      try {
+        // Preferred endpoint name (add server later if needed)
+        const r = await fetch('/api/public/entries/latest', { cache: 'no-store' });
+
+        // If route doesn't exist, keep feature hidden (null)
+        if (!r.ok) {
+          if (!alive) return;
+          setEntries(null);
+          return;
+        }
+
+        const data = (await r.json().catch(() => null)) as any;
+        if (!alive) return;
+
+        const arr = Array.isArray(data?.entries) ? (data.entries as StageEntry[]) : [];
+        const cleaned = arr
+          .map(e => ({
+            ...e,
+            xHandle: normalizeHandle(e?.xHandle),
+          }))
+          .filter(e => Boolean(e.xHandle))
+          .slice(0, 14);
+
+        setEntries(cleaned);
+      } catch {
+        if (!alive) return;
+        setEntries(null);
+      }
+    }
+
+    load();
+    const t = window.setInterval(load, 7_500);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  return entries;
+}
+
+function AvatarChip({ e }: { e: StageEntry }) {
+  const handle = e.xHandle || '@user';
+  const letter = handle.replace('@', '').slice(0, 1).toUpperCase();
+
+  return (
+    <TinyTooltip
+      label={[
+        e.xName ? `${e.xName} (${handle})` : handle,
+        e.createdAt ? `Entered: ${ymdFromIso(e.createdAt)}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n')}
+    >
+      <span className="relative inline-flex h-9 w-9 items-center justify-center">
+        <span className="pointer-events-none absolute -inset-2 rounded-full opacity-60 blur-xl bg-[radial-gradient(circle_at_30%_30%,rgba(56,189,248,0.20),transparent_60%),radial-gradient(circle_at_70%_70%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.16),transparent_70%)]" />
+        <span className="relative inline-flex h-9 w-9 overflow-hidden rounded-full border border-white/10 bg-white/[0.04] ring-1 ring-white/[0.05]">
+          {e.xAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={e.xAvatarUrl}
+              alt={handle}
+              className="h-full w-full object-cover"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(ev) => {
+                // hide broken imgs (keeps fallback letter visible via data attr swap)
+                const img = ev.currentTarget;
+                img.style.display = 'none';
+              }}
+            />
+          ) : null}
+
+          <span className="absolute inset-0 grid place-items-center text-[11px] font-semibold text-slate-200">
+            {letter}
+          </span>
+        </span>
+      </span>
+    </TinyTooltip>
+  );
+}
+
+function EnteringTheStage({ entries }: { entries: StageEntry[] }) {
+  const reduce = useReducedMotion();
+
+  return (
+    <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+      <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_22]%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_82%_28%,rgba(16,185,129,0.10),transparent_64%),radial-gradient(circle_at_55%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+
+      <div className="relative flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Entering the stage</p>
+          <p className="mt-1 text-[12px] text-slate-400">
+            Latest verified entries (handle-first). Updates live.
+          </p>
+        </div>
+
+        <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.14)]">
+          <Users className="h-3.5 w-3.5" />
+          Live
+        </span>
+      </div>
+
+      <div className="relative mt-4 flex flex-wrap items-center gap-2">
+        <AnimatePresence initial={false}>
+          {entries.map(e => (
+            <motion.div
+              key={e.id || e.clerkId || e.xHandle}
+              initial={reduce ? { opacity: 1 } : { opacity: 0, y: 10, scale: 0.98 }}
+              animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+            >
+              <AvatarChip e={e} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      <div className="relative mt-3 text-[11px] text-slate-500">
+        Tip: hover a face for details
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Control room (read-only live view)
 ───────────────────────────────────────────── */
 
@@ -1036,9 +1206,7 @@ function LiveControlRoom({
   const reduced = useLocalReducedMotion();
   const [tick, setTick] = useState(0);
 
-  const [lines, setLines] = useState<string[]>(() =>
-    buildInitialLines(countdown, cutoffLabel, runLine, winners),
-  );
+  const [lines, setLines] = useState<string[]>(() => buildInitialLines(countdown, cutoffLabel, runLine, winners));
 
   useEffect(() => {
     const t = window.setInterval(() => setTick(v => v + 1), 1000);
@@ -1167,7 +1335,7 @@ function LiveControlRoom({
       >
         <div className="pointer-events-none absolute -inset-20 opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_88%_30%,rgba(56,189,248,0.12),transparent_65%)]" />
 
-        {/* FIX: was overflow-hidden causing half-clipped last line. Now scrollable + tiny padding to prevent crop */}
+        {/* scrollable + tiny padding to prevent crop */}
         <pre className="relative z-10 max-h-60 overflow-auto whitespace-pre pr-2 pb-1 font-mono text-[11px] leading-relaxed text-emerald-100/90">
           {lines.join('\n')}
         </pre>
@@ -1186,10 +1354,7 @@ function LiveControlRoom({
 }
 
 function buildLastWinnersLines(winners: WinnerRow[]) {
-  const fallback = [
-    `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`,
-    `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`,
-  ];
+  const fallback = [`  #---- -- --  winner   ${XPOT_SIGN}1,000,000`, `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`];
 
   if (!winners || winners.length === 0) return fallback;
 
@@ -1288,13 +1453,7 @@ function updateLines(
 }
 
 // BonusVault (unchanged)...
-function BonusVault({
-  children,
-  spotlight = true,
-}: {
-  children: ReactNode;
-  spotlight?: boolean;
-}) {
+function BonusVault({ children, spotlight = true }: { children: ReactNode; spotlight?: boolean }) {
   const halo = spotlight ? 'opacity-95 blur-2xl' : 'opacity-75 blur-2xl';
 
   return (
@@ -1426,7 +1585,6 @@ function MissionBanner() {
   return (
     <div className="relative border-y border-slate-900/60 bg-slate-950/55 backdrop-blur">
       <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),radial-gradient(circle_at_82%_0%,rgba(56,189,248,0.16),transparent_62%)]" />
-
       <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
         <RotatingAnnouncement reservesHref={ROUTE_TOKENOMICS_RESERVE} />
       </div>
@@ -1437,6 +1595,7 @@ function MissionBanner() {
 function HomePageInner() {
   const bonusActive = useBonusActive();
   const winners = useLatestWinnersTelemetry();
+  const stageEntries = useStageEntries();
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
@@ -1449,6 +1608,54 @@ function HomePageInner() {
   const runEndDateOnly = useMemo(() => {
     // RUN_END_EU example: "22/02/2045 22:00 (Madrid)"
     return String(RUN_END_EU).replace(/\s\d{2}:\d{2}\s*\(Madrid\)\s*$/, '');
+  }, []);
+
+  // ✅ Screenshot snippet: LAST_WINNERS state + fetch (added)
+  const [lastWinners, setLastWinners] = useState<LastWinnerRow[] | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      try {
+        // Prefer your existing public endpoint if it already returns a "winners" array
+        const r = await fetch('/api/public/winners/latest', { cache: 'no-store' });
+        const data = (await r.json().catch(() => null)) as any;
+
+        if (!alive) return;
+
+        // Accept either { winners: [...] } OR { ok: true, winners: [...] }
+        if (Array.isArray(data?.winners)) {
+          const rows = (data.winners as any[]).slice(0, 6).map((w, i) => {
+            const drawDate = String(w?.drawDate || w?.date || w?.createdAt || '');
+            const handle = w?.handle ? String(w.handle) : '';
+            const wallet = w?.wallet ? String(w.wallet) : '';
+            const display = handle ? normalizeHandle(handle) : wallet ? shortenAddress(wallet, 6, 6) : 'winner';
+            return {
+              id: String(w?.id || `${display}-${drawDate}-${i}`),
+              drawDate,
+              display,
+              txUrl: w?.txUrl ?? w?.tx ?? null,
+              isPaidOut: Boolean(w?.isPaidOut),
+            } as LastWinnerRow;
+          });
+
+          setLastWinners(rows);
+        } else {
+          setLastWinners(null);
+        }
+      } catch {
+        if (!alive) return;
+        setLastWinners(null);
+      }
+    }
+
+    load();
+    const t = window.setInterval(load, 15_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
   }, []);
 
   const reduceMotion = useReducedMotion();
@@ -1651,6 +1858,14 @@ function HomePageInner() {
                           Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
+
+                        <Link
+                          href={ROUTE_TERMS}
+                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-[13px] font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+                        >
+                          Terms
+                          <ArrowRight className="h-4 w-4 text-slate-400" />
+                        </Link>
                       </div>
                     </div>
 
@@ -1703,7 +1918,12 @@ function HomePageInner() {
                     <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
                   </div>
 
-                  {/* ✅ MOVED LEFT: Contract + Trade cards (now sit under the left-side stats, like your screenshot vibe) */}
+                  {/* ✅ NEW: Entering the stage (avatars) */}
+                  {Array.isArray(stageEntries) && stageEntries.length > 0 ? (
+                    <EnteringTheStage entries={stageEntries} />
+                  ) : null}
+
+                  {/* ✅ MOVED LEFT: Contract + Trade cards */}
                   <div className="grid gap-4">
                     <PremiumCard className="p-5 sm:p-6" halo={false}>
                       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1720,6 +1940,48 @@ function HomePageInner() {
                     <PremiumCard className="p-5 sm:p-6" halo={false}>
                       <TradeOnJupiterCard mint={mint} />
                     </PremiumCard>
+
+                    {/* Optional: quick small winners strip (uses lastWinners state) */}
+                    {Array.isArray(lastWinners) && lastWinners.length > 0 ? (
+                      <PremiumCard className="p-5 sm:p-6" halo={false}>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                            Latest winners
+                          </p>
+                          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">public</span>
+                        </div>
+
+                        <div className="mt-3 grid gap-2">
+                          {lastWinners.slice(0, 3).map(w => (
+                            <div
+                              key={w.id}
+                              className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3"
+                            >
+                              <div className="min-w-0">
+                                <div className="text-[12px] font-semibold text-slate-100">{w.display}</div>
+                                <div className="mt-0.5 text-[11px] text-slate-500">
+                                  {w.drawDate ? ymdFromIso(w.drawDate) : ''}
+                                </div>
+                              </div>
+
+                              {w.txUrl ? (
+                                <a
+                                  href={w.txUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                                >
+                                  Proof
+                                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                                </a>
+                              ) : (
+                                <span className="text-[11px] text-slate-500">{w.isPaidOut ? 'paid' : 'pending'}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </PremiumCard>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1748,12 +2010,7 @@ function HomePageInner() {
                   </ParallaxConsoleCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <LiveControlRoom
-                      countdown={countdown}
-                      cutoffLabel={cutoffLabel}
-                      runLine={runLine}
-                      winners={winners}
-                    />
+                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} winners={winners} />
                   </PremiumCard>
                 </motion.div>
               </div>
