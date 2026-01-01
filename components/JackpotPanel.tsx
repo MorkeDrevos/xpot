@@ -935,11 +935,6 @@ export default function JackpotPanel({
   const displayUsdText =
     displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd) ? '-' : formatUsd(displayJackpotUsd);
 
-  const panelChrome =
-    variant === 'embedded'
-      ? 'rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
-      : 'rounded-2xl border border-slate-800 bg-slate-950/70 px-6 py-6 shadow-sm';
-
   const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
   const localSparkLabel =
     sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
@@ -956,837 +951,868 @@ export default function JackpotPanel({
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
+  // ✅ EDGE-TO-EDGE on mobile for standalone panels (break out of page padding)
+  const edgeOnMobile = variant === 'standalone';
+
+  const panelChrome =
+    variant === 'embedded'
+      ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
+      : [
+          // break out of any page padding on mobile
+          edgeOnMobile ? '-mx-4 sm:mx-0' : '',
+          // edge-to-edge look on mobile, premium card on sm+
+          'w-full border border-slate-800 bg-slate-950/70 shadow-sm',
+          'rounded-none sm:rounded-2xl',
+          // no outer padding on mobile, keep premium spacing on sm+
+          'px-0 py-0 sm:px-6 sm:py-6',
+        ].join(' ');
+
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
-      {!!badgeLabel && (
-        <div
-          className={[
-            'relative z-10 mb-4 flex justify-center transition-all duration-[900ms] ease-out',
-            showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
-          ].join(' ')}
-        >
-          <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
-        </div>
-      )}
+      {/* ✅ keep content padded on mobile even when edge-to-edge */}
+      <div className={variant === 'embedded' ? '' : 'px-4 py-5 sm:px-0 sm:py-0'}>
+        {!!badgeLabel && (
+          <div
+            className={[
+              'relative z-10 mb-4 flex justify-center transition-all duration-[900ms] ease-out',
+              showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
+            ].join(' ')}
+          >
+            <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
+          </div>
+        )}
 
-      {/* HEADER */}
-      <div className="relative z-10 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
-          <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
-            <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
-            Live
-          </span>
-        </div>
-      </div>
-
-      {/* MAIN SLAB */}
-      <div
-        ref={slabRef}
-        className="relative z-10 mt-5 overflow-hidden rounded-2xl border border-slate-800/80 bg-black/25 p-5"
-      >
-        {/* Visible engine + alive background */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="xpot-engine absolute inset-0" />
-          <div className="xpot-aurora absolute inset-0 opacity-90" />
-          <div className="xpot-grid absolute inset-0 opacity-45" />
-          <div className="xpot-noise absolute inset-0 opacity-[0.14]" />
-          <div className="xpot-scan absolute inset-0 opacity-[0.18]" />
-          <div className="xpot-shimmer absolute inset-0 opacity-[0.55]" />
-        </div>
-
-        {/* Marketing row */}
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Pool capsule (premium centered readout) */}
-            <div className="group relative inline-flex max-w-full items-center">
-              <div className="relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-black/55 px-4 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl">
-                <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
-                <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
-                <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
-                <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
-
-                {/* Left tag */}
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-                  Today&apos;s XPOT
-                </span>
-
-                {/* Center hero amount */}
-                <div className="min-w-0 px-1 text-center">
-                  <span
-                    className="xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white"
-                    style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
-                  >
-                    <span className="xpot-pool-num">{JACKPOT_XPOT.toLocaleString()}</span>
-                    <span className="xpot-pool-unit">XPOT</span>
-                  </span>
-                </div>
-
-                {/* Right tag */}
-                <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                  Daily
-                </span>
-              </div>
-            </div>
+        {/* HEADER */}
+        <div className="relative z-10 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
+            <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
           </div>
 
           <div className="flex items-center gap-2">
-            {isLocked && (
-              <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
-                Draw locked
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Value row (XPOT token box removed to give this full width) */}
-        <div className="relative mt-5 grid gap-4">
-          {/* Big USD */}
-          <div
-            className={[
-              'relative overflow-visible rounded-2xl border bg-black/30 px-5 py-4',
-              justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
-              justPumped ? 'shadow-[0_0_34px_rgba(56,189,248,0.16)]' : 'shadow-none',
-            ].join(' ')}
-            style={{
-              background:
-                'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.08), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
-            }}
-          >
-            {/* Alive halo on updates */}
-            <div
-              className={[
-                'pointer-events-none absolute -inset-6 opacity-0 transition-opacity duration-300',
-                justUpdated ? 'opacity-100' : '',
-              ].join(' ')}
-            >
-              <div className="xpot-pulse-halo absolute inset-0" />
-            </div>
-
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              {/* USD value + INFO */}
-              <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
-                <div
-                  className={[
-                    'xpot-usd-live text-5xl sm:text-[4.25rem] font-semibold tabular-nums transition-transform transition-colors duration-200',
-                    justUpdated ? 'scale-[1.01]' : '',
-                    justPumped ? 'text-[#7CC8FF]' : 'text-white',
-                  ].join(' ')}
-                  style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
-                >
-                  {displayUsdText}
-                </div>
-
-                <div className="flex items-center gap-2 sm:mb-2">
-                  <UsdEstimateBadge compact />
-                  <span className="hidden sm:inline text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                    USD estimate
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 sm:mb-2 sm:justify-end">
-                <span
-                  className={[
-                    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
-                    justUpdated ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]' : '',
-                  ].join(' ')}
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-                  Live tick
-                </span>
-              </div>
-            </div>
-
-            {/* countdown */}
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-              <span
-                className={[
-                  'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
-                  countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]' : '',
-                ].join(' ')}
-              >
-                Next draw in
-              </span>
-
-              <span
-                className={[
-                  'font-mono text-sm tracking-[0.26em] transition-colors',
-                  countPulse ? 'text-white' : 'text-slate-100',
-                ].join(' ')}
-                style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
-              >
-                {mounted ? formatCountdown(countdownMs) : '00:00:00'}
-              </span>
-
-              <span className="text-[11px] text-slate-600">22:00 Madrid</span>
-            </div>
-
-            {showUnavailable ? (
-              <div className="mt-3">
-                <PriceUnavailableNote />
-              </div>
-            ) : (
-              <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">
-                Auto-updates from DexScreener ticks
-              </p>
-            )}
-
-            {/* Token info (moved from the right box) */}
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {/* Token identity */}
-              <div
-                className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3"
-                style={{
-                  background:
-                    'radial-gradient(circle_at_18%_18%, rgba(124,200,255,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30 border border-slate-700/60 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
-                      <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
-                    </span>
-
-                    <div className="leading-tight">
-                      <p className="text-[10px] uppercase tracking-[0.24em] text-slate-200">XPOT token</p>
-                      <p className="text-xs text-slate-300">Winners paid in XPOT</p>
-                    </div>
-                  </div>
-
-                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                    <Sparkles className="h-3.5 w-3.5 opacity-90" />
-                    Verified
-                  </span>
-                </div>
-
-                <p className="mt-3 text-[11px] text-slate-500">
-                  Paid in XPOT. USD is an estimate only.
-                </p>
-              </div>
-
-              {/* Price meta */}
-              <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
-
-                <p className="mt-1 text-sm text-slate-300">
-                  1 XPOT ≈{' '}
-                  <span className="font-mono text-slate-100">
-                    {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
-                  </span>
-                </p>
-
-                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
-                  <span>{observedLabel}</span>
-                  <span className="text-slate-700">•</span>
-                  <span>
-                    Source <span className="font-mono text-slate-200">{priceSource}</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Compact premium telemetry strip */}
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
-          {/* Pulse */}
-          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Pulse (global 1h)</p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-sm font-semibold text-slate-100">{globalMomentumText}</span>
-                  <span className="text-[11px] text-slate-500">DexScreener</span>
-                </div>
-              </div>
-              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
-                <TrendingUp className="h-4 w-4 text-slate-200/80" />
-              </span>
-            </div>
-
-            {spark ? (
-              <div className="mt-2">
-                <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70">
-                  <polyline
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.0"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    points={spark.points}
-                    opacity="0.85"
-                  />
-                </svg>
-                <p className="mt-1 text-[11px] text-slate-600">{localSparkLabel}</p>
-              </div>
-            ) : (
-              <p className="mt-2 text-[11px] text-slate-600">Collecting ticks…</p>
-            )}
-          </div>
-
-          {/* 24h range */}
-          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
-                {range24h ? (
-                  <p className="mt-1 text-sm text-slate-100">
-                    <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
-                    <span className="text-slate-600">-</span>{' '}
-                    <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
-                  </p>
-                ) : (
-                  <p className="mt-1 text-sm text-slate-100">-</p>
-                )}
-                <p className="mt-2 text-[11px] text-slate-600">{observedLabel}</p>
-              </div>
-
-              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
-                <Info className="h-4 w-4 text-slate-200/70" />
-              </span>
-            </div>
-
-            {maxJackpotToday != null ? (
-              <p className="mt-2 text-[11px] text-slate-600">
-                Session peak <span className="font-mono text-slate-200">{formatUsd(maxJackpotToday)}</span>
-              </p>
-            ) : null}
-          </div>
-
-          {/* Next milestone */}
-          <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
-                <p className="mt-1 text-sm text-slate-100">
-                  {nextMilestone ? (
-                    <>
-                      <span className="font-mono">{rightMilestoneLabel}</span>{' '}
-                      <span className="text-[11px] text-slate-500">
-                        ({jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '-'})
-                      </span>
-                    </>
-                  ) : (
-                    '-'
-                  )}
-                </p>
-              </div>
-
-              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/60 bg-black/25">
-                <Crown className="h-4 w-4 opacity-90 text-slate-200/80" />
-              </span>
-            </div>
-
-            <div className="mt-3">
-              <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
-                <div
-                  className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.12)]"
-                  style={{
-                    width: `${Math.round((progressToNext ?? 0) * 100)}%`,
-                    background: 'linear-gradient(90deg, rgba(236,72,153,0.28), rgba(124,200,255,0.60))',
-                  }}
-                />
-              </div>
-
-              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-                <span className="font-semibold text-slate-200">{leftMilestoneLabel}</span>
-                <span className="font-mono text-slate-200">{rightMilestoneLabel}</span>
-              </div>
-
-              <p className="mt-2 text-[11px] text-slate-600">
-                Today&apos;s pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <style jsx>{`
-          /* Pool capsule typography - premium gold treatment */
-          .xpot-pool-hero {
-            letter-spacing: 0.02em;
-          }
-
-          .xpot-pool-num {
-            font-size: 22px;
-            line-height: 1;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            font-variant-numeric: tabular-nums;
-
-            color: rgba(255, 255, 255, 0.97);
-            text-shadow: 0 0 14px rgba(255, 255, 255, 0.06), 0 0 26px rgba(var(--xpot-gold), 0.08);
-          }
-
-          .xpot-pool-unit {
-            font-size: 12px;
-            line-height: 1;
-            font-weight: 800;
-            letter-spacing: 0.22em;
-            text-transform: uppercase;
-
-            color: #f5c77a;
-            text-shadow: 0 0 14px rgba(245, 199, 122, 0.45), 0 0 32px rgba(245, 199, 122, 0.25);
-          }
-
-          @media (min-width: 640px) {
-            .xpot-pool-num {
-              font-size: 30px;
-              letter-spacing: -0.015em;
-            }
-          }
-
-          /* Visible cosmic engine layer (core + orbit ring + soft bloom) */
-          .xpot-engine {
-            opacity: 1;
-          }
-          .xpot-engine::before {
-            content: '';
-            position: absolute;
-            inset: -32%;
-            background: conic-gradient(
-              from 90deg,
-              rgba(124, 200, 255, 0.0),
-              rgba(124, 200, 255, 0.22),
-              rgba(236, 72, 153, 0.16),
-              rgba(99, 102, 241, 0.14),
-              rgba(124, 200, 255, 0.22),
-              rgba(124, 200, 255, 0.0)
-            );
-            filter: blur(22px);
-            transform: translate3d(0, 0, 0);
-            animation: xpotEngineSpin 10.5s linear infinite;
-            mix-blend-mode: screen;
-            opacity: 0.85;
-          }
-          .xpot-engine::after {
-            content: '';
-            position: absolute;
-            inset: -12%;
-            background: radial-gradient(circle_at_50%_50%, rgba(124, 200, 255, 0.14), transparent 55%),
-              radial-gradient(circle_at_60%_45%, rgba(236, 72, 153, 0.10), transparent 58%),
-              radial-gradient(circle_at_45%_60%, rgba(99, 102, 241, 0.08), transparent 62%);
-            filter: blur(10px);
-            animation: xpotEngineBreathe 5.8s ease-in-out infinite;
-            opacity: 0.95;
-          }
-          @keyframes xpotEngineSpin {
-            0% {
-              transform: rotate(0deg) scale(1);
-            }
-            100% {
-              transform: rotate(360deg) scale(1);
-            }
-          }
-          @keyframes xpotEngineBreathe {
-            0% {
-              transform: scale(0.985);
-              opacity: 0.72;
-            }
-            50% {
-              transform: scale(1.02);
-              opacity: 1;
-            }
-            100% {
-              transform: scale(0.985);
-              opacity: 0.72;
-            }
-          }
-
-          /* Slab aurora (richer + more visible) */
-          .xpot-aurora {
-            background: radial-gradient(circle_at_18%_22%, rgba(124, 200, 255, 0.20), transparent 55%),
-              radial-gradient(circle_at_82%_18%, rgba(236, 72, 153, 0.14), transparent 58%),
-              radial-gradient(circle_at_55%_85%, rgba(99, 102, 241, 0.12), transparent 60%);
-            filter: blur(10px);
-            transform: translate3d(0, 0, 0);
-            animation: xpotAurora 10.5s ease-in-out infinite;
-          }
-          @keyframes xpotAurora {
-            0% {
-              transform: translate3d(-1.5%, -1%, 0) scale(1);
-              opacity: 0.72;
-            }
-            50% {
-              transform: translate3d(2%, 1.2%, 0) scale(1.03);
-              opacity: 0.98;
-            }
-            100% {
-              transform: translate3d(-1.5%, -1%, 0) scale(1);
-              opacity: 0.72;
-            }
-          }
-
-          /* Animated grid parallax (instrument panel feel) */
-          .xpot-grid {
-            background-image: linear-gradient(rgba(148, 163, 184, 0.065) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(148, 163, 184, 0.065) 1px, transparent 1px);
-            background-size: 44px 44px;
-            mask-image: radial-gradient(circle_at_45%_20%, black 0%, transparent 70%);
-            animation: xpotGridDrift 12s ease-in-out infinite;
-            transform: translate3d(0, 0, 0);
-          }
-          @keyframes xpotGridDrift {
-            0% {
-              background-position: 0px 0px;
-              opacity: 0.42;
-            }
-            50% {
-              background-position: 22px 14px;
-              opacity: 0.55;
-            }
-            100% {
-              background-position: 0px 0px;
-              opacity: 0.42;
-            }
-          }
-
-          .xpot-noise {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
-            background-size: 180px 180px;
-            mix-blend-mode: overlay;
-          }
-
-          .xpot-scan {
-            background: linear-gradient(
-              180deg,
-              transparent 0%,
-              rgba(255, 255, 255, 0.045) 42%,
-              transparent 78%
-            );
-            transform: translateY(-30%);
-            animation: xpotScan 6.2s linear infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotScan {
-            0% {
-              transform: translateY(-40%);
-              opacity: 0.08;
-            }
-            30% {
-              opacity: 0.28;
-            }
-            100% {
-              transform: translateY(60%);
-              opacity: 0.10;
-            }
-          }
-
-          /* Global shimmer pass */
-          .xpot-shimmer {
-            background: linear-gradient(
-              115deg,
-              transparent 0%,
-              rgba(255, 255, 255, 0.035) 18%,
-              rgba(255, 255, 255, 0.07) 28%,
-              rgba(255, 255, 255, 0.02) 38%,
-              transparent 52%
-            );
-            transform: translateX(-45%);
-            animation: xpotShimmer 7.4s ease-in-out infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotShimmer {
-            0% {
-              transform: translateX(-55%);
-              opacity: 0.14;
-            }
-            45% {
-              transform: translateX(22%);
-              opacity: 0.62;
-            }
-            100% {
-              transform: translateX(55%);
-              opacity: 0.18;
-            }
-          }
-
-          /* Capsule border that feels alive */
-          .xpot-capsule-border {
-            padding: 1px;
-            background: linear-gradient(
-              120deg,
-              rgba(124, 200, 255, 0.35),
-              rgba(236, 72, 153, 0.22),
-              rgba(99, 102, 241, 0.22),
-              rgba(124, 200, 255, 0.35)
-            );
-            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            border-radius: 1rem;
-            animation: xpotBorderDrift 6.8s ease-in-out infinite;
-            opacity: 0.85;
-          }
-          @keyframes xpotBorderDrift {
-            0% {
-              filter: saturate(1.05) brightness(1);
-              transform: translateY(0);
-            }
-            50% {
-              filter: saturate(1.25) brightness(1.08);
-              transform: translateY(-0.5px);
-            }
-            100% {
-              filter: saturate(1.05) brightness(1);
-              transform: translateY(0);
-            }
-          }
-
-          .xpot-capsule-glow {
-            background: radial-gradient(circle_at_20%_30%, rgba(124, 200, 255, 0.14), transparent 60%),
-              radial-gradient(circle_at_85%_25%, rgba(236, 72, 153, 0.10), transparent 62%),
-              linear-gradient(180deg, rgba(2, 6, 23, 0.35), rgba(0, 0, 0, 0.1));
-            animation: xpotGlowDrift 9.2s ease-in-out infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotGlowDrift {
-            0% {
-              transform: translateX(-1%);
-              opacity: 0.62;
-            }
-            50% {
-              transform: translateX(1.5%);
-              opacity: 0.95;
-            }
-            100% {
-              transform: translateX(-1%);
-              opacity: 0.62;
-            }
-          }
-
-          .xpot-sheen {
-            background: linear-gradient(
-              115deg,
-              transparent 0%,
-              rgba(255, 255, 255, 0.10) 18%,
-              rgba(255, 255, 255, 0.035) 28%,
-              transparent 44%
-            );
-            transform: translateX(-30%);
-            animation: xpotSheen 7.6s ease-in-out infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotSheen {
-            0% {
-              transform: translateX(-35%);
-              opacity: 0.22;
-            }
-            45% {
-              transform: translateX(24%);
-              opacity: 0.70;
-            }
-            100% {
-              transform: translateX(55%);
-              opacity: 0.18;
-            }
-          }
-
-          .xpot-capsule-shimmer {
-            background: radial-gradient(circle_at_20%_40%, rgba(124, 200, 255, 0.10), transparent 55%),
-              linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 35%, transparent 70%);
-            transform: translateX(-40%);
-            animation: xpotCapsuleShimmer 6.6s ease-in-out infinite;
-            mix-blend-mode: screen;
-          }
-          @keyframes xpotCapsuleShimmer {
-            0% {
-              transform: translateX(-55%);
-              opacity: 0.18;
-            }
-            50% {
-              transform: translateX(18%);
-              opacity: 0.60;
-            }
-            100% {
-              transform: translateX(55%);
-              opacity: 0.18;
-            }
-          }
-
-          .xpot-dot {
-            animation: xpotDotPulse 3.1s ease-in-out infinite;
-            box-shadow: 0 0 14px rgba(56, 189, 248, 0.30);
-          }
-          @keyframes xpotDotPulse {
-            0% {
-              transform: scale(1);
-              opacity: 0.7;
-            }
-            50% {
-              transform: scale(1.24);
-              opacity: 1;
-            }
-            100% {
-              transform: scale(1);
-              opacity: 0.7;
-            }
-          }
-
-          /* USD number: alive */
-          .xpot-usd-live {
-            position: relative;
-            display: inline-block;
-            transform-origin: 45% 70%;
-            animation: xpotUsdBreathe 4.8s ease-in-out infinite;
-          }
-          .xpot-usd-live::after {
-            content: '';
-            position: absolute;
-            inset: -10px -18px;
-            background: linear-gradient(
-              100deg,
-              transparent 0%,
-              rgba(255, 255, 255, 0.00) 30%,
-              rgba(255, 255, 255, 0.18) 42%,
-              rgba(124, 200, 255, 0.20) 48%,
-              rgba(255, 255, 255, 0.06) 54%,
-              transparent 70%
-            );
-            filter: blur(6px);
-            transform: translateX(-55%);
-            animation: xpotUsdSheen 5.6s ease-in-out infinite;
-            mix-blend-mode: screen;
-            pointer-events: none;
-            opacity: 0.70;
-          }
-          .xpot-usd-live::before {
-            content: '';
-            position: absolute;
-            inset: -12px -22px;
-            background: radial-gradient(circle_at_40%_45%, rgba(124, 200, 255, 0.14), transparent 60%),
-              radial-gradient(circle_at_70%_35%, rgba(236, 72, 153, 0.10), transparent 64%);
-            filter: blur(14px);
-            opacity: 0.55;
-            animation: xpotUsdGlow 3.9s ease-in-out infinite;
-            pointer-events: none;
-          }
-          @keyframes xpotUsdBreathe {
-            0% {
-              transform: translateY(0px) scale(1);
-              filter: saturate(1.02);
-            }
-            50% {
-              transform: translateY(-1px) scale(1.01);
-              filter: saturate(1.12);
-            }
-            100% {
-              transform: translateY(0px) scale(1);
-              filter: saturate(1.02);
-            }
-          }
-          @keyframes xpotUsdSheen {
-            0% {
-              transform: translateX(-65%);
-              opacity: 0.05;
-            }
-            35% {
-              opacity: 0.55;
-            }
-            60% {
-              opacity: 0.70;
-            }
-            100% {
-              transform: translateX(65%);
-              opacity: 0.10;
-            }
-          }
-          @keyframes xpotUsdGlow {
-            0% {
-              opacity: 0.30;
-              transform: scale(0.98);
-            }
-            50% {
-              opacity: 0.62;
-              transform: scale(1.02);
-            }
-            100% {
-              opacity: 0.30;
-              transform: scale(0.98);
-            }
-          }
-
-          .xpot-pulse-halo {
-            background: radial-gradient(circle_at_40%_35%, rgba(124, 200, 255, 0.14), transparent 55%),
-              radial-gradient(circle_at_70%_45%, rgba(236, 72, 153, 0.10), transparent 60%);
-            filter: blur(14px);
-            animation: xpotHalo 0.55s ease-out 1;
-          }
-          @keyframes xpotHalo {
-            0% {
-              transform: scale(0.98);
-              opacity: 0;
-            }
-            40% {
-              opacity: 1;
-            }
-            100% {
-              transform: scale(1.02);
-              opacity: 0;
-            }
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            .xpot-aurora,
-            .xpot-scan,
-            .xpot-sheen,
-            .xpot-dot,
-            .xpot-capsule-border,
-            .xpot-capsule-glow,
-            .xpot-shimmer,
-            .xpot-grid,
-            .xpot-engine::before,
-            .xpot-engine::after,
-            .xpot-usd-live,
-            .xpot-usd-live::after,
-            .xpot-usd-live::before,
-            .xpot-capsule-shimmer {
-              animation: none !important;
-            }
-          }
-        `}</style>
-      </div>
-
-      {/* CONTEXT STRIP */}
-      <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/15 px-5 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
-            <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
-
-            {maxJackpotToday != null && (
-              <span>
-                Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
-              </span>
-            )}
-
-            {range24h && (
-              <span>
-                24h <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span> -{' '}
-                <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
-              </span>
-            )}
-
-            <span className="text-slate-500">{observedLabel}</span>
-
-            <span className="text-slate-500">
-              Source <span className="font-mono text-slate-200">DexScreener</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
+              Live
             </span>
           </div>
-
-          <Link
-            href="/hub"
-            className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition"
-          >
-            Enter today&apos;s XPOT →
-          </Link>
         </div>
 
-        <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
+        {/* MAIN SLAB */}
+        <div
+          ref={slabRef}
+          className={[
+            'relative z-10 mt-5 overflow-hidden border border-slate-800/80 bg-black/25',
+            // ✅ edge-to-edge slab on mobile, rounded card on sm+
+            edgeOnMobile ? 'rounded-none sm:rounded-2xl' : 'rounded-2xl',
+            // ✅ a touch tighter on mobile
+            'p-4 sm:p-5',
+          ].join(' ')}
+        >
+          {/* Visible engine + alive background */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="xpot-engine absolute inset-0" />
+            <div className="xpot-aurora absolute inset-0 opacity-90" />
+            <div className="xpot-grid absolute inset-0 opacity-45" />
+            <div className="xpot-noise absolute inset-0 opacity-[0.14]" />
+            <div className="xpot-scan absolute inset-0 opacity-[0.18]" />
+            <div className="xpot-shimmer absolute inset-0 opacity-[0.55]" />
+          </div>
+
+          {/* Marketing row */}
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Pool capsule (premium centered readout) */}
+              <div className="group relative inline-flex max-w-full items-center">
+                <div className="relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-black/55 px-4 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl">
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
+
+                  {/* Left tag */}
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+                    Today&apos;s XPOT
+                  </span>
+
+                  {/* Center hero amount */}
+                  <div className="min-w-0 px-1 text-center">
+                    <span
+                      className="xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white"
+                      style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
+                    >
+                      <span className="xpot-pool-num">{JACKPOT_XPOT.toLocaleString()}</span>
+                      <span className="xpot-pool-unit">XPOT</span>
+                    </span>
+                  </div>
+
+                  {/* Right tag */}
+                  <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                    Daily
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isLocked && (
+                <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+                  Draw locked
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Value row (XPOT token box removed to give this full width) */}
+          <div className="relative mt-5 grid gap-4">
+            {/* Big USD */}
+            <div
+              className={[
+                'relative overflow-visible rounded-2xl border bg-black/30 px-4 sm:px-5 py-4',
+                justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
+                justPumped ? 'shadow-[0_0_34px_rgba(56,189,248,0.16)]' : 'shadow-none',
+              ].join(' ')}
+              style={{
+                background:
+                  'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.08), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
+              }}
+            >
+              {/* Alive halo on updates */}
+              <div
+                className={[
+                  'pointer-events-none absolute -inset-6 opacity-0 transition-opacity duration-300',
+                  justUpdated ? 'opacity-100' : '',
+                ].join(' ')}
+              >
+                <div className="xpot-pulse-halo absolute inset-0" />
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                {/* USD value + INFO */}
+                <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
+                  <div
+                    className={[
+                      // ✅ smaller on mobile, still massive on sm+
+                      'xpot-usd-live text-4xl sm:text-[4.25rem] font-semibold tabular-nums transition-transform transition-colors duration-200',
+                      justUpdated ? 'scale-[1.01]' : '',
+                      justPumped ? 'text-[#7CC8FF]' : 'text-white',
+                    ].join(' ')}
+                    style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
+                  >
+                    {displayUsdText}
+                  </div>
+
+                  <div className="flex items-center gap-2 sm:mb-2">
+                    <UsdEstimateBadge compact />
+                    <span className="hidden sm:inline text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                      USD estimate
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 sm:mb-2 sm:justify-end">
+                  <span
+                    className={[
+                      'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
+                      justUpdated ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]' : '',
+                    ].join(' ')}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+                    Live tick
+                  </span>
+                </div>
+              </div>
+
+              {/* countdown */}
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+                <span
+                  className={[
+                    'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
+                    countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]' : '',
+                  ].join(' ')}
+                >
+                  Next draw in
+                </span>
+
+                <span
+                  className={[
+                    'font-mono text-sm tracking-[0.26em] transition-colors',
+                    countPulse ? 'text-white' : 'text-slate-100',
+                  ].join(' ')}
+                  style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
+                >
+                  {mounted ? formatCountdown(countdownMs) : '00:00:00'}
+                </span>
+
+                <span className="text-[11px] text-slate-600">22:00 Madrid</span>
+              </div>
+
+              {showUnavailable ? (
+                <div className="mt-3">
+                  <PriceUnavailableNote />
+                </div>
+              ) : (
+                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">
+                  Auto-updates from DexScreener ticks
+                </p>
+              )}
+
+              {/* Token info (moved from the right box) */}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {/* Token identity */}
+                <div
+                  className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3"
+                  style={{
+                    background:
+                      'radial-gradient(circle_at_18%_18%, rgba(124,200,255,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30 border border-slate-700/60 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
+                        <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
+                      </span>
+
+                      <div className="leading-tight">
+                        <p className="text-[10px] uppercase tracking-[0.24em] text-slate-200">XPOT token</p>
+                        <p className="text-xs text-slate-300">Winners paid in XPOT</p>
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                      <Sparkles className="h-3.5 w-3.5 opacity-90" />
+                      Verified
+                    </span>
+                  </div>
+
+                  <p className="mt-3 text-[11px] text-slate-500">Paid in XPOT. USD is an estimate only.</p>
+                </div>
+
+                {/* Price meta */}
+                <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
+
+                  <p className="mt-1 text-sm text-slate-300">
+                    1 XPOT ≈{' '}
+                    <span className="font-mono text-slate-100">
+                      {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+                    </span>
+                  </p>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+                    <span>{observedLabel}</span>
+                    <span className="text-slate-700">•</span>
+                    <span>
+                      Source <span className="font-mono text-slate-200">{priceSource}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Compact premium telemetry strip */}
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {/* Pulse */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Pulse (global 1h)</p>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-sm font-semibold text-slate-100">{globalMomentumText}</span>
+                    <span className="text-[11px] text-slate-500">DexScreener</span>
+                  </div>
+                </div>
+                <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+                  <TrendingUp className="h-4 w-4 text-slate-200/80" />
+                </span>
+              </div>
+
+              {spark ? (
+                <div className="mt-2">
+                  <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70">
+                    <polyline
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.0"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      points={spark.points}
+                      opacity="0.85"
+                    />
+                  </svg>
+                  <p className="mt-1 text-[11px] text-slate-600">{localSparkLabel}</p>
+                </div>
+              ) : (
+                <p className="mt-2 text-[11px] text-slate-600">Collecting ticks…</p>
+              )}
+            </div>
+
+            {/* 24h range */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
+                  {range24h ? (
+                    <p className="mt-1 text-sm text-slate-100">
+                      <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
+                      <span className="text-slate-600">-</span>{' '}
+                      <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-100">-</p>
+                  )}
+                  <p className="mt-2 text-[11px] text-slate-600">{observedLabel}</p>
+                </div>
+
+                <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+                  <Info className="h-4 w-4 text-slate-200/70" />
+                </span>
+              </div>
+
+              {maxJackpotToday != null ? (
+                <p className="mt-2 text-[11px] text-slate-600">
+                  Session peak <span className="font-mono text-slate-200">{formatUsd(maxJackpotToday)}</span>
+                </p>
+              ) : null}
+            </div>
+
+            {/* Next milestone */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
+                  <p className="mt-1 text-sm text-slate-100">
+                    {nextMilestone ? (
+                      <>
+                        <span className="font-mono">{rightMilestoneLabel}</span>{' '}
+                        <span className="text-[11px] text-slate-500">
+                          ({jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '-'})
+                        </span>
+                      </>
+                    ) : (
+                      '-'
+                    )}
+                  </p>
+                </div>
+
+                <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/60 bg-black/25">
+                  <Crown className="h-4 w-4 opacity-90 text-slate-200/80" />
+                </span>
+              </div>
+
+              <div className="mt-3">
+                <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.12)]"
+                    style={{
+                      width: `${Math.round((progressToNext ?? 0) * 100)}%`,
+                      background: 'linear-gradient(90deg, rgba(236,72,153,0.28), rgba(124,200,255,0.60))',
+                    }}
+                  />
+                </div>
+
+                <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span className="font-semibold text-slate-200">{leftMilestoneLabel}</span>
+                  <span className="font-mono text-slate-200">{rightMilestoneLabel}</span>
+                </div>
+
+                <p className="mt-2 text-[11px] text-slate-600">
+                  Today&apos;s pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <style jsx>{`
+            /* Pool capsule typography - premium gold treatment */
+            .xpot-pool-hero {
+              letter-spacing: 0.02em;
+            }
+
+            .xpot-pool-num {
+              font-size: 22px;
+              line-height: 1;
+              font-weight: 800;
+              letter-spacing: -0.02em;
+              font-variant-numeric: tabular-nums;
+
+              color: rgba(255, 255, 255, 0.97);
+              text-shadow: 0 0 14px rgba(255, 255, 255, 0.06), 0 0 26px rgba(var(--xpot-gold), 0.08);
+            }
+
+            .xpot-pool-unit {
+              font-size: 12px;
+              line-height: 1;
+              font-weight: 800;
+              letter-spacing: 0.22em;
+              text-transform: uppercase;
+
+              color: #f5c77a;
+              text-shadow: 0 0 14px rgba(245, 199, 122, 0.45), 0 0 32px rgba(245, 199, 122, 0.25);
+            }
+
+            @media (min-width: 640px) {
+              .xpot-pool-num {
+                font-size: 30px;
+                letter-spacing: -0.015em;
+              }
+            }
+
+            /* Visible cosmic engine layer (core + orbit ring + soft bloom) */
+            .xpot-engine {
+              opacity: 1;
+            }
+            .xpot-engine::before {
+              content: '';
+              position: absolute;
+              inset: -32%;
+              background: conic-gradient(
+                from 90deg,
+                rgba(124, 200, 255, 0.0),
+                rgba(124, 200, 255, 0.22),
+                rgba(236, 72, 153, 0.16),
+                rgba(99, 102, 241, 0.14),
+                rgba(124, 200, 255, 0.22),
+                rgba(124, 200, 255, 0.0)
+              );
+              filter: blur(22px);
+              transform: translate3d(0, 0, 0);
+              animation: xpotEngineSpin 10.5s linear infinite;
+              mix-blend-mode: screen;
+              opacity: 0.85;
+            }
+            .xpot-engine::after {
+              content: '';
+              position: absolute;
+              inset: -12%;
+              background: radial-gradient(circle_at_50%_50%, rgba(124, 200, 255, 0.14), transparent 55%),
+                radial-gradient(circle_at_60%_45%, rgba(236, 72, 153, 0.10), transparent 58%),
+                radial-gradient(circle_at_45%_60%, rgba(99, 102, 241, 0.08), transparent 62%);
+              filter: blur(10px);
+              animation: xpotEngineBreathe 5.8s ease-in-out infinite;
+              opacity: 0.95;
+            }
+            @keyframes xpotEngineSpin {
+              0% {
+                transform: rotate(0deg) scale(1);
+              }
+              100% {
+                transform: rotate(360deg) scale(1);
+              }
+            }
+            @keyframes xpotEngineBreathe {
+              0% {
+                transform: scale(0.985);
+                opacity: 0.72;
+              }
+              50% {
+                transform: scale(1.02);
+                opacity: 1;
+              }
+              100% {
+                transform: scale(0.985);
+                opacity: 0.72;
+              }
+            }
+
+            /* Slab aurora (richer + more visible) */
+            .xpot-aurora {
+              background: radial-gradient(circle_at_18%_22%, rgba(124, 200, 255, 0.20), transparent 55%),
+                radial-gradient(circle_at_82%_18%, rgba(236, 72, 153, 0.14), transparent 58%),
+                radial-gradient(circle_at_55%_85%, rgba(99, 102, 241, 0.12), transparent 60%);
+              filter: blur(10px);
+              transform: translate3d(0, 0, 0);
+              animation: xpotAurora 10.5s ease-in-out infinite;
+            }
+            @keyframes xpotAurora {
+              0% {
+                transform: translate3d(-1.5%, -1%, 0) scale(1);
+                opacity: 0.72;
+              }
+              50% {
+                transform: translate3d(2%, 1.2%, 0) scale(1.03);
+                opacity: 0.98;
+              }
+              100% {
+                transform: translate3d(-1.5%, -1%, 0) scale(1);
+                opacity: 0.72;
+              }
+            }
+
+            /* Animated grid parallax (instrument panel feel) */
+            .xpot-grid {
+              background-image: linear-gradient(rgba(148, 163, 184, 0.065) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.065) 1px, transparent 1px);
+              background-size: 44px 44px;
+              mask-image: radial-gradient(circle_at_45%_20%, black 0%, transparent 70%);
+              animation: xpotGridDrift 12s ease-in-out infinite;
+              transform: translate3d(0, 0, 0);
+            }
+            @keyframes xpotGridDrift {
+              0% {
+                background-position: 0px 0px;
+                opacity: 0.42;
+              }
+              50% {
+                background-position: 22px 14px;
+                opacity: 0.55;
+              }
+              100% {
+                background-position: 0px 0px;
+                opacity: 0.42;
+              }
+            }
+
+            .xpot-noise {
+              background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+              background-size: 180px 180px;
+              mix-blend-mode: overlay;
+            }
+
+            .xpot-scan {
+              background: linear-gradient(
+                180deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.045) 42%,
+                transparent 78%
+              );
+              transform: translateY(-30%);
+              animation: xpotScan 6.2s linear infinite;
+              mix-blend-mode: screen;
+            }
+            @keyframes xpotScan {
+              0% {
+                transform: translateY(-40%);
+                opacity: 0.08;
+              }
+              30% {
+                opacity: 0.28;
+              }
+              100% {
+                transform: translateY(60%);
+                opacity: 0.10;
+              }
+            }
+
+            /* Global shimmer pass */
+            .xpot-shimmer {
+              background: linear-gradient(
+                115deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.035) 18%,
+                rgba(255, 255, 255, 0.07) 28%,
+                rgba(255, 255, 255, 0.02) 38%,
+                transparent 52%
+              );
+              transform: translateX(-45%);
+              animation: xpotShimmer 7.4s ease-in-out infinite;
+              mix-blend-mode: screen;
+            }
+            @keyframes xpotShimmer {
+              0% {
+                transform: translateX(-55%);
+                opacity: 0.14;
+              }
+              45% {
+                transform: translateX(22%);
+                opacity: 0.62;
+              }
+              100% {
+                transform: translateX(55%);
+                opacity: 0.18;
+              }
+            }
+
+            /* Capsule border that feels alive */
+            .xpot-capsule-border {
+              padding: 1px;
+              background: linear-gradient(
+                120deg,
+                rgba(124, 200, 255, 0.35),
+                rgba(236, 72, 153, 0.22),
+                rgba(99, 102, 241, 0.22),
+                rgba(124, 200, 255, 0.35)
+              );
+              -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+              -webkit-mask-composite: xor;
+              mask-composite: exclude;
+              border-radius: 1rem;
+              animation: xpotBorderDrift 6.8s ease-in-out infinite;
+              opacity: 0.85;
+            }
+            @keyframes xpotBorderDrift {
+              0% {
+                filter: saturate(1.05) brightness(1);
+                transform: translateY(0);
+              }
+              50% {
+                filter: saturate(1.25) brightness(1.08);
+                transform: translateY(-0.5px);
+              }
+              100% {
+                filter: saturate(1.05) brightness(1);
+                transform: translateY(0);
+              }
+            }
+
+            .xpot-capsule-glow {
+              background: radial-gradient(circle_at_20%_30%, rgba(124, 200, 255, 0.14), transparent 60%),
+                radial-gradient(circle_at_85%_25%, rgba(236, 72, 153, 0.10), transparent 62%),
+                linear-gradient(180deg, rgba(2, 6, 23, 0.35), rgba(0, 0, 0, 0.1));
+              animation: xpotGlowDrift 9.2s ease-in-out infinite;
+              mix-blend-mode: screen;
+            }
+            @keyframes xpotGlowDrift {
+              0% {
+                transform: translateX(-1%);
+                opacity: 0.62;
+              }
+              50% {
+                transform: translateX(1.5%);
+                opacity: 0.95;
+              }
+              100% {
+                transform: translateX(-1%);
+                opacity: 0.62;
+              }
+            }
+
+            .xpot-sheen {
+              background: linear-gradient(
+                115deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.10) 18%,
+                rgba(255, 255, 255, 0.035) 28%,
+                transparent 44%
+              );
+              transform: translateX(-30%);
+              animation: xpotSheen 7.6s ease-in-out infinite;
+              mix-blend-mode: screen;
+            }
+            @keyframes xpotSheen {
+              0% {
+                transform: translateX(-35%);
+                opacity: 0.22;
+              }
+              45% {
+                transform: translateX(24%);
+                opacity: 0.70;
+              }
+              100% {
+                transform: translateX(55%);
+                opacity: 0.18;
+              }
+            }
+
+            .xpot-capsule-shimmer {
+              background: radial-gradient(circle_at_20%_40%, rgba(124, 200, 255, 0.10), transparent 55%),
+                linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 35%, transparent 70%);
+              transform: translateX(-40%);
+              animation: xpotCapsuleShimmer 6.6s ease-in-out infinite;
+              mix-blend-mode: screen;
+            }
+            @keyframes xpotCapsuleShimmer {
+              0% {
+                transform: translateX(-55%);
+                opacity: 0.18;
+              }
+              50% {
+                transform: translateX(18%);
+                opacity: 0.60;
+              }
+              100% {
+                transform: translateX(55%);
+                opacity: 0.18;
+              }
+            }
+
+            .xpot-dot {
+              animation: xpotDotPulse 3.1s ease-in-out infinite;
+              box-shadow: 0 0 14px rgba(56, 189, 248, 0.30);
+            }
+            @keyframes xpotDotPulse {
+              0% {
+                transform: scale(1);
+                opacity: 0.7;
+              }
+              50% {
+                transform: scale(1.24);
+                opacity: 1;
+              }
+              100% {
+                transform: scale(1);
+                opacity: 0.7;
+              }
+            }
+
+            /* USD number: alive */
+            .xpot-usd-live {
+              position: relative;
+              display: inline-block;
+              transform-origin: 45% 70%;
+              animation: xpotUsdBreathe 4.8s ease-in-out infinite;
+            }
+            .xpot-usd-live::after {
+              content: '';
+              position: absolute;
+              inset: -10px -18px;
+              background: linear-gradient(
+                100deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.00) 30%,
+                rgba(255, 255, 255, 0.18) 42%,
+                rgba(124, 200, 255, 0.20) 48%,
+                rgba(255, 255, 255, 0.06) 54%,
+                transparent 70%
+              );
+              filter: blur(6px);
+              transform: translateX(-55%);
+              animation: xpotUsdSheen 5.6s ease-in-out infinite;
+              mix-blend-mode: screen;
+              pointer-events: none;
+              opacity: 0.70;
+            }
+            .xpot-usd-live::before {
+              content: '';
+              position: absolute;
+              inset: -12px -22px;
+              background: radial-gradient(circle_at_40%_45%, rgba(124, 200, 255, 0.14), transparent 60%),
+                radial-gradient(circle_at_70%_35%, rgba(236, 72, 153, 0.10), transparent 64%);
+              filter: blur(14px);
+              opacity: 0.55;
+              animation: xpotUsdGlow 3.9s ease-in-out infinite;
+              pointer-events: none;
+            }
+            @keyframes xpotUsdBreathe {
+              0% {
+                transform: translateY(0px) scale(1);
+                filter: saturate(1.02);
+              }
+              50% {
+                transform: translateY(-1px) scale(1.01);
+                filter: saturate(1.12);
+              }
+              100% {
+                transform: translateY(0px) scale(1);
+                filter: saturate(1.02);
+              }
+            }
+            @keyframes xpotUsdSheen {
+              0% {
+                transform: translateX(-65%);
+                opacity: 0.05;
+              }
+              35% {
+                opacity: 0.55;
+              }
+              60% {
+                opacity: 0.70;
+              }
+              100% {
+                transform: translateX(65%);
+                opacity: 0.10;
+              }
+            }
+            @keyframes xpotUsdGlow {
+              0% {
+                opacity: 0.30;
+                transform: scale(0.98);
+              }
+              50% {
+                opacity: 0.62;
+                transform: scale(1.02);
+              }
+              100% {
+                opacity: 0.30;
+                transform: scale(0.98);
+              }
+            }
+
+            .xpot-pulse-halo {
+              background: radial-gradient(circle_at_40%_35%, rgba(124, 200, 255, 0.14), transparent 55%),
+                radial-gradient(circle_at_70%_45%, rgba(236, 72, 153, 0.10), transparent 60%);
+              filter: blur(14px);
+              animation: xpotHalo 0.55s ease-out 1;
+            }
+            @keyframes xpotHalo {
+              0% {
+                transform: scale(0.98);
+                opacity: 0;
+              }
+              40% {
+                opacity: 1;
+              }
+              100% {
+                transform: scale(1.02);
+                opacity: 0;
+              }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+              .xpot-aurora,
+              .xpot-scan,
+              .xpot-sheen,
+              .xpot-dot,
+              .xpot-capsule-border,
+              .xpot-capsule-glow,
+              .xpot-shimmer,
+              .xpot-grid,
+              .xpot-engine::before,
+              .xpot-engine::after,
+              .xpot-usd-live,
+              .xpot-usd-live::after,
+              .xpot-usd-live::before,
+              .xpot-capsule-shimmer {
+                animation: none !important;
+              }
+            }
+          `}</style>
+        </div>
+
+        {/* CONTEXT STRIP */}
+        <div
+          className={[
+            'relative z-10 mt-4 overflow-hidden border border-slate-800/70 bg-black/15',
+            // ✅ edge strip on mobile
+            edgeOnMobile ? 'rounded-none sm:rounded-2xl' : 'rounded-2xl',
+            'px-4 sm:px-5 py-4',
+          ].join(' ')}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
+              <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
+
+              {maxJackpotToday != null && (
+                <span>
+                  Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+                </span>
+              )}
+
+              {range24h && (
+                <span>
+                  24h <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span> -{' '}
+                  <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
+                </span>
+              )}
+
+              <span className="text-slate-500">{observedLabel}</span>
+
+              <span className="text-slate-500">
+                Source <span className="font-mono text-slate-200">DexScreener</span>
+              </span>
+            </div>
+
+            <Link
+              href="/hub"
+              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition"
+            >
+              Enter today&apos;s XPOT →
+            </Link>
+          </div>
+
+          <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
+        </div>
       </div>
     </section>
   );
