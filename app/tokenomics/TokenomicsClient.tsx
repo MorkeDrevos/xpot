@@ -58,9 +58,6 @@ const VAULT_POLL_MS = 20_000;
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
 const DAYS_PER_YEAR = 365;
 
-// Supply
-const TOTAL_SUPPLY = 50_000_000_000;
-
 // Solscan proof targets for token controls
 const SOLSCAN_TOKEN_METADATA_URL = `https://solscan.io/token/${XPOT_MINT_ACCOUNT}#metadata`;
 
@@ -73,11 +70,8 @@ const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
 // Rewards reserve wallet
 const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 
-// Streamflow reserve proof
+// Streamflow reserve proof (optional direct contract)
 const RESERVE_STREAMFLOW_CONTRACT: string | null = null;
-
-// Reserve lock duration
-const RESERVE_LOCK_YEARS = 19.18;
 
 function solscanAccountUrl(account: string) {
   return `https://solscan.io/account/${account}`;
@@ -215,12 +209,10 @@ function ProofLinkPill({
   href,
   label,
   tone = 'slate',
-  icon,
 }: {
   href: string;
   label: string;
   tone?: 'slate' | 'emerald' | 'sky' | 'gold';
-  icon?: ReactNode;
 }) {
   const cls =
     tone === 'emerald'
@@ -238,7 +230,6 @@ function ProofLinkPill({
       rel="noreferrer"
       className={`inline-flex items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${cls}`}
     >
-      {icon ? <span className="opacity-80">{icon}</span> : null}
       {label}
       <ExternalLink className="h-3.5 w-3.5 opacity-70" />
     </a>
@@ -421,9 +412,7 @@ function ReserveStreamflowPanel() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Reserve lock proof</p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Streamflow is the canonical proof page for the reserve schedule and lock timeline ({RESERVE_LOCK_YEARS.toFixed(2)} years).
-          </p>
+          <p className="mt-1 text-[11px] text-slate-500">Streamflow is the canonical proof page for the reserve schedule.</p>
         </div>
 
         <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
@@ -643,24 +632,33 @@ function formatVaultBalance(b: ApiVaultEntry['balance']) {
   return null;
 }
 
-function balanceRaw(b: ApiVaultEntry['balance']): { raw: bigint; decimals: number } | null {
-  try {
-    if (!b) return null;
-    if (typeof b.amount !== 'string') return null;
-    const decimals = typeof b.decimals === 'number' && Number.isFinite(b.decimals) ? b.decimals : 0;
-    return { raw: BigInt(b.amount || '0'), decimals: Math.max(0, Math.min(18, decimals)) };
-  } catch {
-    return null;
-  }
-}
+function sumGroupUiAmount(data: ApiVaultResponse | null, groupKey: string): number {
+  const arr = data?.groups?.[groupKey];
+  if (!Array.isArray(arr) || !arr.length) return 0;
 
-function formatBigIntToken(raw: bigint, decimals: number) {
-  const s = formatRawAmount(raw.toString(), decimals);
-  if (!s) return '0';
-  // add grouping for whole part only (keeps decimals readable)
-  const [whole, frac] = s.split('.');
-  const grouped = Number.isFinite(Number(whole)) ? Number(whole).toLocaleString('en-US') : whole;
-  return frac ? `${grouped}.${frac}` : grouped;
+  let sum = 0;
+  for (const v of arr) {
+    const b = v.balance;
+    if (!b) continue;
+
+    if (typeof b.uiAmount === 'number' && Number.isFinite(b.uiAmount)) {
+      sum += b.uiAmount;
+      continue;
+    }
+    if (typeof b.uiAmountString === 'string' && b.uiAmountString.trim()) {
+      const n = Number(b.uiAmountString);
+      if (Number.isFinite(n)) sum += n;
+      continue;
+    }
+    if (typeof b.amount === 'string' && typeof b.decimals === 'number') {
+      const raw = Number(b.amount);
+      if (Number.isFinite(raw) && Number.isFinite(b.decimals)) {
+        sum += raw / Math.pow(10, b.decimals);
+      }
+    }
+  }
+
+  return sum;
 }
 
 function useVaultGroups() {
@@ -718,6 +716,129 @@ function useVaultGroups() {
   }, []);
 
   return { data, isLoading, hadError };
+}
+
+/**
+ * Solscan supply (real)
+ * We use Solscan as the source of truth for "current supply" so the number matches what users see.
+ */
+type SolscanSupplyState = {
+  uiSupply: number | null;
+  fetchedAt: number | null;
+  isLoading: boolean;
+  hadError: boolean;
+};
+
+function parseSolscanSupply(json: any): number | null {
+  // Try a few shapes - Solscan changes these sometimes.
+  // Goal: produce *UI supply* (already decimals applied).
+  const candidates: Array<{ supply: any; decimals: any }> = [];
+
+  // common public-api shape: { supply: "49999999744298207", decimals: 6 } (raw)
+  candidates.push({ supply: json?.supply, decimals: json?.decimals });
+
+  // sometimes: { data: { supply, decimals } }
+  candidates.push({ supply: json?.data?.supply, decimals: json?.data?.decimals });
+
+  // sometimes they return uiSupply directly (rare)
+  candidates.push({ supply: json?.uiSupply, decimals: 0 });
+  candidates.push({ supply: json?.data?.uiSupply, decimals: 0 });
+
+  for (const c of candidates) {
+    const dec = Number(c.decimals ?? 0);
+    const hasDec = Number.isFinite(dec) && dec >= 0 && dec <= 18;
+
+    if (typeof c.supply === 'number' && Number.isFinite(c.supply)) {
+      // If it's huge and decimals exist, treat as raw.
+      if (hasDec && c.supply > 1e12 && dec > 0) return c.supply / Math.pow(10, dec);
+      return c.supply;
+    }
+
+    if (typeof c.supply === 'string' && c.supply.trim()) {
+      // supply can be a raw integer string
+      const s = c.supply.trim();
+      // if it includes '.', assume already UI
+      if (s.includes('.')) {
+        const n = Number(s);
+        if (Number.isFinite(n)) return n;
+        continue;
+      }
+      const raw = Number(s);
+      if (!Number.isFinite(raw)) continue;
+      if (hasDec && dec > 0) return raw / Math.pow(10, dec);
+      return raw;
+    }
+  }
+
+  return null;
+}
+
+function useSolscanSupply(mint: string) {
+  const [st, setSt] = useState<SolscanSupplyState>({
+    uiSupply: null,
+    fetchedAt: null,
+    isLoading: true,
+    hadError: false,
+  });
+
+  useEffect(() => {
+    let timer: number | null = null;
+    let aborted = false;
+    const ctrl = new AbortController();
+
+    async function fetchSupply() {
+      try {
+        setSt(s => ({ ...s, hadError: false }));
+
+        // Solscan public API (no key)
+        const res = await fetch(`https://public-api.solscan.io/token/meta?tokenAddress=${mint}`, {
+          signal: ctrl.signal,
+          cache: 'no-store',
+          headers: { accept: 'application/json' },
+        });
+
+        if (!res.ok) throw new Error(`solscan http ${res.status}`);
+        const json = await res.json();
+
+        if (aborted) return;
+
+        const uiSupply = parseSolscanSupply(json);
+        setSt({
+          uiSupply: uiSupply != null && Number.isFinite(uiSupply) ? uiSupply : null,
+          fetchedAt: Date.now(),
+          isLoading: false,
+          hadError: uiSupply == null,
+        });
+      } catch (e) {
+        if ((e as any)?.name === 'AbortError') return;
+        if (aborted) return;
+        setSt(s => ({
+          ...s,
+          isLoading: false,
+          hadError: true,
+        }));
+      }
+    }
+
+    function onVis() {
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState === 'visible') fetchSupply();
+    }
+
+    fetchSupply();
+    timer = window.setInterval(fetchSupply, VAULT_POLL_MS);
+
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      aborted = true;
+      ctrl.abort();
+      if (timer !== null) window.clearInterval(timer);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [mint]);
+
+  return st;
 }
 
 function VaultGroupPanel({
@@ -922,6 +1043,9 @@ function DonutAllocation({
   vaultLoading,
   vaultError,
   vaultGroupByAllocKey,
+  runwayTable,
+  yearsOfRunway,
+  distributionReserve,
   getCardRef,
   teamTotalTokens,
   partnersTotalTokens,
@@ -938,6 +1062,10 @@ function DonutAllocation({
   vaultLoading: boolean;
   vaultError: boolean;
   vaultGroupByAllocKey: Record<string, string>;
+
+  runwayTable: { label: string; daily: number; highlight?: true }[];
+  yearsOfRunway: (daily: number) => number;
+  distributionReserve: number;
 
   getCardRef: (key: string) => (el: HTMLDivElement | null) => void;
 
@@ -1120,7 +1248,7 @@ function DonutAllocation({
                           className="h-2 rounded-full"
                           initial={false}
                           animate={{ width: pctToBar(a.pct) }}
-                          transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
+                          transition={useReducedMotion() ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
                           style={{
                             background: `linear-gradient(90deg, ${stroke}, rgba(255,255,255,0.08))`,
                             boxShadow: active ? `0 0 16px ${glow}` : undefined,
@@ -1137,10 +1265,10 @@ function DonutAllocation({
                   {active && (
                     <motion.div
                       key="content"
-                      initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                      exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                      transition={reduceMotion ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }}
+                      initial={useReducedMotion() ? { opacity: 1 } : { opacity: 0, y: -6 }}
+                      animate={useReducedMotion() ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                      exit={useReducedMotion() ? { opacity: 1 } : { opacity: 0, y: -6 }}
+                      transition={useReducedMotion() ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }}
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4">
@@ -1183,16 +1311,18 @@ function DonutAllocation({
  */
 function TokenomicsPageInner() {
   const searchParams = useSearchParams();
-  const supply = TOTAL_SUPPLY;
+
+  // We still keep this as "design supply", but display real Solscan supply in the card.
+  const DESIGN_SUPPLY = 50_000_000_000;
 
   const DISTRIBUTION_RESERVE_PCT = 14;
-  const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100);
+  const DISTRIBUTION_RESERVE = DESIGN_SUPPLY * (DISTRIBUTION_RESERVE_PCT / 100);
 
   const TEAM_PCT = 9;
-  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100);
+  const TEAM_TOTAL_TOKENS = DESIGN_SUPPLY * (TEAM_PCT / 100);
 
   const PARTNERS_PCT = 8;
-  const PARTNERS_TOTAL_TOKENS = supply * (PARTNERS_PCT / 100);
+  const PARTNERS_TOTAL_TOKENS = DESIGN_SUPPLY * (PARTNERS_PCT / 100);
 
   const yearsOfRunway = useCallback(
     (daily: number) => {
@@ -1204,70 +1334,6 @@ function TokenomicsPageInner() {
 
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
   const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
-
-  const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
-
-  // Circulating (live) logic:
-  // We compute non-circulating by summing balances from known protocol-controlled vault groups returned by /api/vaults.
-  // Circulating = totalSupply - trackedNonCirculating.
-  //
-  // IMPORTANT: this only becomes real once lib/xpotVaults.ts has the correct wallets and /api/vaults returns accurate balances.
-  const NON_CIRC_GROUPS = useMemo(
-    () => new Set<string>(['rewards', 'treasury', 'team', 'partners', 'strategic', 'community']),
-    [],
-  );
-
-  const circulating = useMemo(() => {
-    const fetchedAt = vaultData?.fetchedAt ?? null;
-
-    // infer decimals from first available entry balance
-    let decimalsGuess = 6;
-    if (vaultData?.groups) {
-      outer: for (const k of Object.keys(vaultData.groups)) {
-        const arr = vaultData.groups[k];
-        if (!Array.isArray(arr)) continue;
-        for (const v of arr) {
-          const br = balanceRaw(v.balance);
-          if (br) {
-            decimalsGuess = br.decimals;
-            break outer;
-          }
-        }
-      }
-    }
-
-    const totalRaw = BigInt(TOTAL_SUPPLY) * (BigInt(10) ** BigInt(decimalsGuess));
-
-    let trackedRaw = BigInt(0);
-    let trackedWallets = 0;
-
-    if (vaultData?.groups) {
-      for (const [groupKey, entries] of Object.entries(vaultData.groups)) {
-        if (!NON_CIRC_GROUPS.has(groupKey)) continue;
-        if (!Array.isArray(entries)) continue;
-
-        for (const e of entries) {
-          const br = balanceRaw(e.balance);
-          if (!br) continue;
-          trackedWallets += 1;
-          trackedRaw += br.raw;
-        }
-      }
-    }
-
-    const circulatingRaw = totalRaw - trackedRaw;
-    const safeCirculatingRaw = circulatingRaw < BigInt(0) ? BigInt(0) : circulatingRaw;
-
-    return {
-      decimals: decimalsGuess,
-      totalRaw,
-      trackedRaw,
-      circulatingRaw: safeCirculatingRaw,
-      fetchedAt,
-      trackedWallets,
-      hasData: !!vaultData && !vaultLoading && !vaultError,
-    };
-  }, [vaultData, vaultLoading, vaultError, NON_CIRC_GROUPS]);
 
   const runwayTable = useMemo(
     () => [
@@ -1353,6 +1419,26 @@ function TokenomicsPageInner() {
     const idx = new Map(order.map((k, i) => [k, i]));
     return [...allocation].sort((a, b) => (idx.get(a.key) ?? 999) - (idx.get(b.key) ?? 999));
   }, [allocation]);
+
+  const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
+
+  // Real supply from Solscan (matches what users see)
+  const solscanSupply = useSolscanSupply(XPOT_MINT_ACCOUNT);
+
+  // Non-circulating tracked (exclude liquidity)
+  const trackedNonCirc = useMemo(() => {
+    // Track vault groups you want counted as non-circulating
+    // (matches your screenshot list: rewards, treasury, team, partners, strategic, community)
+    const keys = ['rewards', 'treasury', 'team', 'partners', 'strategic', 'community'];
+    return keys.reduce((sum, k) => sum + sumGroupUiAmount(vaultData, k), 0);
+  }, [vaultData]);
+
+  const circulatingLive = useMemo(() => {
+    if (solscanSupply.uiSupply == null || !Number.isFinite(solscanSupply.uiSupply)) return null;
+    const circ = solscanSupply.uiSupply - trackedNonCirc;
+    if (!Number.isFinite(circ)) return null;
+    return Math.max(0, circ);
+  }, [solscanSupply.uiSupply, trackedNonCirc]);
 
   const VAULT_GROUP_BY_ALLOC_KEY: Record<string, string> = {
     distribution: 'rewards',
@@ -1449,6 +1535,8 @@ function TokenomicsPageInner() {
     ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT)
     : streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
 
+  const circulatingUpdatedAgo = solscanSupply.fetchedAt ? timeAgo(solscanSupply.fetchedAt) : null;
+
   const proofCards = (
     <div className="mt-7 grid gap-3 lg:grid-cols-3">
       <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
@@ -1470,21 +1558,14 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <ProofLinkPill
-            href={reserveProofHref}
-            label={`Locked reserve (${RESERVE_LOCK_YEARS.toFixed(2)}y)`}
-            tone="emerald"
-            icon={<Lock className="h-3.5 w-3.5" />}
-          />
+          <ProofLinkPill href={reserveProofHref} label="Locked reserve (19.18y)" tone="emerald" />
           <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Wallet (Solscan)" tone="slate" />
           <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
         </div>
 
         <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Protocol rule</p>
-          <p className="mt-1 text-xs text-slate-300">
-            Daily distribution is fixed. Reserve is time-locked and verifiable on Streamflow.
-          </p>
+          <p className="mt-1 text-xs text-slate-300">Daily distribution is fixed. Reserve is time-locked and verifiable on Streamflow.</p>
         </div>
       </div>
 
@@ -1548,7 +1629,9 @@ function TokenomicsPageInner() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
-            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
+            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">
+              {solscanSupply.uiSupply != null ? solscanSupply.uiSupply.toLocaleString('en-US', { maximumFractionDigits: 6 }) : DESIGN_SUPPLY.toLocaleString('en-US')}
+            </p>
             <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
           </div>
           <Pill tone="sky">
@@ -1557,38 +1640,29 @@ function TokenomicsPageInner() {
           </Pill>
         </div>
 
-        {/* Circulating (live) - real when /api/vaults is real */}
         <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Circulating (live)</p>
-              <p className="mt-2 font-mono text-2xl font-semibold text-slate-100 min-h-[32px]">
-                {circulating.hasData ? formatBigIntToken(circulating.circulatingRaw, circulating.decimals) : '—'}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                {circulating.hasData
-                  ? `Non-circulating tracked: ${formatBigIntToken(circulating.trackedRaw, circulating.decimals)} XPOT`
-                  : 'Waiting for /api/vaults balances...'}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-600">
-                {circulating.fetchedAt ? `Updated: ${timeAgo(circulating.fetchedAt)}` : null}
-              </p>
-            </div>
-
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-              Live
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Circulating (live)</p>
+            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+              {solscanSupply.isLoading ? 'Loading' : solscanSupply.hadError ? 'API' : 'Live'}
             </span>
           </div>
 
-          {!circulating.hasData ? (
-            <p className="mt-3 text-[11px] text-slate-600">
-              This becomes real once the non-circulating vault groups are correctly configured in <span className="font-mono">lib/xpotVaults.ts</span>.
-            </p>
-          ) : (
-            <p className="mt-3 text-[11px] text-slate-600">
-              Tracked vault groups: rewards, treasury, team, partners, strategic, community.
-            </p>
-          )}
+          <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">
+            {circulatingLive != null ? circulatingLive.toLocaleString('en-US', { maximumFractionDigits: 6 }) : '—'}
+          </p>
+
+          <p className="mt-2 text-xs text-slate-500">
+            Non-circulating tracked: {trackedNonCirc.toLocaleString('en-US', { maximumFractionDigits: 6 })} XPOT
+          </p>
+
+          <p className="mt-1 text-xs text-slate-600">
+            Updated: {circulatingUpdatedAgo ?? '—'}
+          </p>
+
+          <p className="mt-2 text-[11px] text-slate-600">
+            Tracked vault groups: rewards, treasury, team, partners, strategic, community.
+          </p>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -1667,7 +1741,7 @@ function TokenomicsPageInner() {
                     onClick={openDistribution}
                     className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
                   >
-                    View reserve lock ({RESERVE_LOCK_YEARS.toFixed(2)}y)
+                    View reserve
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </button>
                 </div>
@@ -1722,6 +1796,9 @@ function TokenomicsPageInner() {
                 vaultLoading={vaultLoading}
                 vaultError={vaultError}
                 vaultGroupByAllocKey={VAULT_GROUP_BY_ALLOC_KEY}
+                runwayTable={runwayTable}
+                yearsOfRunway={yearsOfRunway}
+                distributionReserve={DISTRIBUTION_RESERVE}
                 getCardRef={getCardRef}
                 teamTotalTokens={TEAM_TOTAL_TOKENS}
                 partnersTotalTokens={PARTNERS_TOTAL_TOKENS}
@@ -1837,7 +1914,7 @@ function TokenomicsPageInner() {
             <Sparkles className="h-3.5 w-3.5 text-slate-400" />
             Tokenomics is built to be clear, verifiable and sponsor-friendly.
           </span>
-          <span className="font-mono text-slate-600">build: tokenomics-v31</span>
+          <span className="font-mono text-slate-600">build: tokenomics-v31-solscan-circ</span>
         </div>
       </footer>
     </XpotPageShell>
