@@ -32,22 +32,30 @@ export async function GET() {
       },
     });
 
-    const out = winners.map(w => ({
-      id: w.id,
-      drawDate: w.draw?.drawDate?.toISOString?.() ?? w.date.toISOString(),
-      display:
-        withAt(w.ticket?.wallet?.user?.xHandle) ??
-        (w.walletAddress ? w.walletAddress : 'winner'),
-      txUrl: w.txUrl ?? null,
-      isPaidOut: Boolean(w.isPaidOut),
-      // If you don’t store XPOT amount per winner yet, keep it deterministic:
-      amountXpot: 1_000_000,
-      walletAddress: w.walletAddress ?? null,
-      ticketCode: w.ticketCode ?? null,
-    }));
+    const out = winners.map(w => {
+      const user = w.ticket?.wallet?.user ?? null;
+      const handle = withAt((user as any)?.xHandle ?? null);
+
+      return {
+        id: w.id,
+        handle,
+        name: (user as any)?.xName ?? null,
+        avatarUrl: (user as any)?.xAvatarUrl ?? null,
+
+        wallet: w.walletAddress ?? w.ticket?.wallet?.address ?? null,
+
+        // homepage expects "amount" (number). keep deterministic if you don’t store it yet
+        amount: 1_000_000,
+
+        drawDate: (w.draw?.drawDate ?? (w as any).date)?.toISOString?.() ?? null,
+
+        txUrl: w.txUrl ?? null,
+        isPaidOut: Boolean(w.isPaidOut),
+      };
+    });
 
     return NextResponse.json({ ok: true, winners: out }, { status: 200 });
-  } catch (e) {
-    return NextResponse.json({ ok: false }, { status: 200 });
+  } catch {
+    return NextResponse.json({ ok: false, winners: [] }, { status: 200 });
   }
 }
