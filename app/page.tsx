@@ -1748,11 +1748,6 @@ function HomePageInner() {
                         <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
                           NO TICKETS · JUST XPOT HOLDINGS
                         </p>
-
-                        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.14)]">
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                          Holdings-based
-                        </span>
                       </div>
 
                       <div className="relative mt-4">
