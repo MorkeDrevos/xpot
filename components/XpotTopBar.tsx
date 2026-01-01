@@ -191,7 +191,7 @@ export default function XpotTopBar({
       <header ref={headerRef} className="fixed inset-x-0 z-[60] w-full" style={{ top }}>
         {/* Topbar block */}
         <div className="relative z-[80] border-b border-white/5 bg-black/70 backdrop-blur-md">
-          <div className={`mx-auto w-full ${maxWidthClassName} px-3 sm:px-6`}>
+          <div className={`mx-auto w-full ${maxWidthClassName} px-1 sm:px-6`}>
             {/* Desktop layout */}
             <div className="hidden min-h-[104px] items-center gap-4 xl:flex">
               <div className="flex min-w-0 items-center gap-4">
@@ -256,24 +256,23 @@ export default function XpotTopBar({
                   <OfficialCAChipMobile />
 
                   {isHub ? (
-                    <button
-                      type="button"
-                      onClick={() => openWallet?.()}
-                      className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[13px] font-semibold text-slate-100"
-                      aria-label="Wallet"
-                    >
-                      <Wallet className="h-4 w-4 text-slate-200" />
-                      Wallet
-                    </button>
-                  ) : (
-                    <Link
-                      href={FINAL_DAY_HREF}
-                      className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[13px] font-semibold text-slate-100"
-                    >
-                      <Hourglass className="h-4 w-4 text-amber-200" />
-                      {FINAL_DAY_LABEL}
-                    </Link>
-                  )}
+  <button
+    type="button"
+    onClick={() => openWallet?.()}
+    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-100"
+    aria-label="Wallet"
+  >
+    <Wallet className="h-5 w-5 text-slate-200" />
+  </button>
+) : (
+  <Link
+    href={FINAL_DAY_HREF}
+    className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[13px] font-semibold text-slate-100"
+  >
+    <Hourglass className="h-4 w-4 text-amber-200" />
+    {FINAL_DAY_LABEL}
+  </Link>
+)}
 
                   <button
                     type="button"
@@ -283,16 +282,6 @@ export default function XpotTopBar({
                   >
                     <Menu className="h-5 w-5" />
                   </button>
-                </div>
-              </div>
-
-              {/* ✅ Mobile “quick actions” row */}
-<div className="pb-3">
-  <div className="flex items-center gap-2 overflow-x-auto [-webkit-overflow-scrolling:touch]">
-    <QuickAction href="/hub" icon={<Home className="h-4 w-4 text-slate-200" />} label="Hub" />
-                  <QuickAction href={FINAL_DAY_HREF} icon={<Hourglass className="h-4 w-4 text-amber-200" />} label={FINAL_DAY_LABEL} />
-                  <QuickAction href={WINNERS_HREF} icon={<Trophy className="h-4 w-4 text-amber-300" />} label="Winners" />
-                  <QuickAction href={TOKENOMICS_HREF} icon={<PieChart className="h-4 w-4 text-emerald-300" />} label="Tokenomics" />
                 </div>
               </div>
             </div>
