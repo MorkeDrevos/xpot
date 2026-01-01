@@ -951,36 +951,38 @@ export default function JackpotPanel({
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
-  // ✅ EDGE-TO-EDGE on mobile for standalone panels (break out of page padding)
-  const edgeOnMobile = variant === 'standalone';
+  // ✅ Mobile edge-to-edge (standalone only) + keep inner padding via wrapper below
+const edgeOnMobile = variant !== 'embedded';
 
-  const panelChrome =
-    variant === 'embedded'
-      ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
-      : [
-          // break out of any page padding on mobile
-          edgeOnMobile ? '-mx-4 sm:mx-0' : '',
-          // edge-to-edge look on mobile, premium card on sm+
-          'w-full border border-slate-800 bg-slate-950/70 shadow-sm',
-          'rounded-none sm:rounded-2xl',
-          // no outer padding on mobile, keep premium spacing on sm+
-          'px-0 py-0 sm:px-6 sm:py-6',
-        ].join(' ');
+const panelChrome =
+  variant === 'embedded'
+    ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
+    : [
+        // break out of page padding on mobile
+        edgeOnMobile ? '-mx-4 sm:mx-0' : '',
+        // edge-to-edge on mobile, premium card on sm+
+        'w-full border border-slate-800 bg-slate-950/70 shadow-sm',
+        'rounded-none sm:rounded-2xl',
+        // remove outer padding on mobile (we add it back via inner wrapper)
+        'px-0 py-0 sm:px-6 sm:py-6',
+      ]
+        .filter(Boolean)
+        .join(' ');
 
-  return (
-    <section className={`relative transition-colors duration-300 ${panelChrome}`}>
-      {/* ✅ keep content padded on mobile even when edge-to-edge */}
-      <div className={variant === 'embedded' ? '' : 'px-4 py-5 sm:px-0 sm:py-0'}>
-        {!!badgeLabel && (
-          <div
-            className={[
-              'relative z-10 mb-4 flex justify-center transition-all duration-[900ms] ease-out',
-              showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
-            ].join(' ')}
-          >
-            <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
-          </div>
-        )}
+return (
+  <section className={`relative transition-colors duration-300 ${panelChrome} sm:shadow-sm`}>
+    {/* ✅ keep content padded on mobile even when edge-to-edge */}
+    <div className={variant === 'embedded' ? '' : 'px-4 py-5 sm:px-0 sm:py-0'}>
+      {!!badgeLabel && (
+        <div
+          className={[
+            'relative z-10 mb-4 flex justify-center transition-all duration-[900ms] ease-out',
+            showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
+          ].join(' ')}
+        >
+          <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
+        </div>
+      )}
 
         {/* HEADER */}
         <div className="relative z-10 flex items-start justify-between gap-4">
@@ -999,24 +1001,16 @@ export default function JackpotPanel({
 
         {/* MAIN SLAB */}
         <div
-          ref={slabRef}
-          className={[
-            'relative z-10 mt-5 overflow-hidden border border-slate-800/80 bg-black/25',
-            // ✅ edge-to-edge slab on mobile, rounded card on sm+
-            edgeOnMobile ? 'rounded-none sm:rounded-2xl' : 'rounded-2xl',
-            // ✅ a touch tighter on mobile
-            'p-4 sm:p-5',
-          ].join(' ')}
-        >
+  ref={slabRef}
+  className="relative z-10 mt-5 overflow-hidden border-y border-slate-800/80 bg-black/25 px-4 py-4 sm:rounded-2xl sm:border sm:p-5"
+>
           {/* Visible engine + alive background */}
           <div className="pointer-events-none absolute inset-0">
-            <div className="xpot-engine absolute inset-0" />
-            <div className="xpot-aurora absolute inset-0 opacity-90" />
-            <div className="xpot-grid absolute inset-0 opacity-45" />
-            <div className="xpot-noise absolute inset-0 opacity-[0.14]" />
-            <div className="xpot-scan absolute inset-0 opacity-[0.18]" />
-            <div className="xpot-shimmer absolute inset-0 opacity-[0.55]" />
-          </div>
+  <div className="xpot-engine absolute inset-0" />
+  <div className="xpot-aurora absolute inset-0 opacity-70" />
+  <div className="xpot-noise absolute inset-0 opacity-[0.10]" />
+  <div className="xpot-scan absolute inset-0 opacity-[0.12]" />
+</div>
 
           {/* Marketing row */}
           <div className="relative flex flex-wrap items-center justify-between gap-4">
