@@ -26,9 +26,6 @@ import {
 import XpotPageShell from '@/components/XpotPageShell';
 import { XPOT_MINT_ACCOUNT, streamflowDashboardUrl, streamflowContractUrl } from '@/lib/xpot';
 
-// ✅ Browser-safe Solana supply fetch (matches Solscan "Current Supply")
-import { Connection, PublicKey } from '@solana/web3.js';
-
 type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
 const ROUTE_HUB = '/hub';
@@ -56,6 +53,7 @@ const CARD =
   'relative overflow-hidden rounded-[30px] border border-slate-900/70 bg-slate-950/45 shadow-[0_40px_140px_rgba(0,0,0,0.55)] backdrop-blur-xl';
 
 const VAULT_POLL_MS = 20_000;
+const SUPPLY_POLL_MS = 30_000;
 
 // Protocol rule (fixed)
 const DISTRIBUTION_DAILY_XPOT = 1_000_000;
@@ -75,6 +73,9 @@ const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 
 // Streamflow reserve proof
 const RESERVE_STREAMFLOW_CONTRACT: string | null = null;
+
+// Coverage label used in UI (matches your 7,000-day messaging)
+const RESERVE_COVERAGE_YEARS_LABEL = '19.18y';
 
 function solscanAccountUrl(account: string) {
   return `https://solscan.io/account/${account}`;
@@ -212,12 +213,10 @@ function ProofLinkPill({
   href,
   label,
   tone = 'slate',
-  icon,
 }: {
   href: string;
   label: string;
   tone?: 'slate' | 'emerald' | 'sky' | 'gold';
-  icon?: ReactNode;
 }) {
   const cls =
     tone === 'emerald'
@@ -235,7 +234,6 @@ function ProofLinkPill({
       rel="noreferrer"
       className={`inline-flex items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${cls}`}
     >
-      {icon ? <span className="opacity-80">{icon}</span> : null}
       {label}
       <ExternalLink className="h-3.5 w-3.5 opacity-70" />
     </a>
@@ -627,8 +625,8 @@ function formatVaultBalance(b: ApiVaultEntry['balance']) {
     return formatMaybeNumber(b.uiAmount) ?? null;
   }
 
-  if (typeof b.uiAmountString === 'string' && b.uiAmountString.trim().length) {
-    return b.uiAmountString;
+  if (typeof (b as any).uiAmountString === 'string' && (b as any).uiAmountString.trim().length) {
+    return (b as any).uiAmountString;
   }
 
   if (typeof b.amount === 'string' && typeof b.decimals === 'number') {
@@ -695,109 +693,92 @@ function useVaultGroups() {
   return { data, isLoading, hadError };
 }
 
-// ✅ NEW: Current supply (LIVE) via RPC, with fallback endpoints.
-// This is the same value Solscan labels "Current Supply".
+type TokenSupplyResponse =
+  | {
+      ok: true;
+      mint: string;
+      fetchedAt: number;
+      source: 'solscan' | 'rpc';
+      decimals: number;
+      supplyRaw: string;
+      uiAmountString: string | null;
+    }
+  | { ok: false; mint: string; fetchedAt: number; error: string };
+
 function useLiveTokenSupply(mint: string) {
-  const [supplyUi, setSupplyUi] = useState<string | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
-  const [rpcIssue, setRpcIssue] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<TokenSupplyResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hadError, setHadError] = useState(false);
 
-  const mintKey = useMemo(() => {
-    try {
-      return new PublicKey(mint);
-    } catch {
-      return null;
-    }
-  }, [mint]);
+  useEffect(() => {
+    let timer: number | null = null;
+    let aborted = false;
+    const ctrl = new AbortController();
 
-  const fetchNow = useCallback(async () => {
-    if (!mintKey) {
-      setSupplyUi(null);
-      setUpdatedAt(Date.now());
-      setRpcIssue(true);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setRpcIssue(false);
-
-    // Add/remove endpoints anytime. Keep a few to survive flakey RPC.
-    const endpoints = [
-      'https://api.mainnet-beta.solana.com',
-      'https://solana-api.projectserum.com',
-      'https://rpc.ankr.com/solana',
-    ];
-
-    let lastErr: unknown = null;
-
-    for (const url of endpoints) {
+    async function fetchSupply() {
       try {
-        const conn = new Connection(url, { commitment: 'confirmed' });
-        const res = await conn.getTokenSupply(mintKey);
-        const ui = res?.value?.uiAmountString ?? null;
+        setHadError(false);
+        const res = await fetch(`/api/token/supply?mint=${encodeURIComponent(mint)}`, { signal: ctrl.signal, cache: 'no-store' });
+        const json = (await res.json()) as TokenSupplyResponse;
+        if (aborted) return;
 
-        if (ui && ui.trim().length) {
-          // uiAmountString already includes decimals formatting.
-          // We want an integer-ish display in UI, so strip trailing decimals if any.
-          const normalized = ui.includes('.') ? ui.split('.')[0] : ui;
-          setSupplyUi(Number.isFinite(Number(normalized)) ? Number(normalized).toLocaleString('en-US') : normalized);
-          setUpdatedAt(Date.now());
-          setRpcIssue(false);
-          setLoading(false);
-          return;
-        }
-
-        // If uiAmountString missing, fallback to raw amount + decimals
-        const amount = res?.value?.amount ?? null;
-        const decimals = res?.value?.decimals ?? 0;
-        if (amount) {
-          const asStr = formatRawAmount(amount, decimals);
-          const normalized = asStr && asStr.includes('.') ? asStr.split('.')[0] : asStr;
-          setSupplyUi(normalized ? Number(normalized).toLocaleString('en-US') : null);
-          setUpdatedAt(Date.now());
-          setRpcIssue(false);
-          setLoading(false);
-          return;
-        }
-
-        throw new Error('empty supply');
+        setData(json);
+        setHadError(!json || (json as any).ok === false);
       } catch (e) {
-        lastErr = e;
-        continue;
+        if ((e as any)?.name === 'AbortError') return;
+        if (aborted) return;
+        setHadError(true);
+      } finally {
+        if (!aborted) setIsLoading(false);
       }
     }
 
-    // All endpoints failed
-    setSupplyUi(null);
-    setUpdatedAt(Date.now());
-    setRpcIssue(true);
-    setLoading(false);
+    function onVis() {
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState === 'visible') fetchSupply();
+    }
 
-    // eslint-disable-next-line no-console
-    console.debug('[tokenomics] live supply fetch failed', lastErr);
-  }, [mintKey]);
+    fetchSupply();
+    timer = window.setInterval(fetchSupply, SUPPLY_POLL_MS);
 
-  useEffect(() => {
-    let t: number | null = null;
-    let stopped = false;
-
-    const run = async () => {
-      if (stopped) return;
-      await fetchNow();
-    };
-
-    run();
-    t = window.setInterval(run, 45_000);
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
 
     return () => {
-      stopped = true;
-      if (t) window.clearInterval(t);
+      aborted = true;
+      ctrl.abort();
+      if (timer !== null) window.clearInterval(timer);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
     };
-  }, [fetchNow]);
+  }, [mint]);
 
-  return { supplyUi, updatedAt, rpcIssue, loading, refetch: fetchNow };
+  return { data, isLoading, hadError };
+}
+
+function sumGroupsUiAmount(data: ApiVaultResponse | null, groupKeys: string[]) {
+  if (!data?.groups) return null;
+
+  let total = 0;
+  let ok = false;
+
+  for (const g of groupKeys) {
+    const entries = data.groups[g];
+    if (!Array.isArray(entries)) continue;
+
+    for (const v of entries) {
+      const t = formatVaultBalance(v.balance);
+      if (!t) continue;
+      const n = Number(String(t).replace(/,/g, ''));
+      if (!Number.isFinite(n)) continue;
+      total += n;
+      ok = true;
+    }
+  }
+
+  return ok ? total : null;
+}
+
+function formatBigUi(n: number) {
+  return Math.round(n).toLocaleString('en-US');
 }
 
 function VaultGroupPanel({
@@ -1270,16 +1251,16 @@ function DonutAllocation({
  */
 function TokenomicsPageInner() {
   const searchParams = useSearchParams();
-  const supply = 50_000_000_000;
+  const supplyFixed = 50_000_000_000;
 
   const DISTRIBUTION_RESERVE_PCT = 14;
-  const DISTRIBUTION_RESERVE = supply * (DISTRIBUTION_RESERVE_PCT / 100);
+  const DISTRIBUTION_RESERVE = supplyFixed * (DISTRIBUTION_RESERVE_PCT / 100);
 
   const TEAM_PCT = 9;
-  const TEAM_TOTAL_TOKENS = supply * (TEAM_PCT / 100);
+  const TEAM_TOTAL_TOKENS = supplyFixed * (TEAM_PCT / 100);
 
   const PARTNERS_PCT = 8;
-  const PARTNERS_TOTAL_TOKENS = supply * (PARTNERS_PCT / 100);
+  const PARTNERS_TOTAL_TOKENS = supplyFixed * (PARTNERS_PCT / 100);
 
   const yearsOfRunway = useCallback(
     (daily: number) => {
@@ -1378,6 +1359,7 @@ function TokenomicsPageInner() {
   }, [allocation]);
 
   const { data: vaultData, isLoading: vaultLoading, hadError: vaultError } = useVaultGroups();
+  const { data: supplyData, hadError: supplyError } = useLiveTokenSupply(XPOT_MINT_ACCOUNT);
 
   const VAULT_GROUP_BY_ALLOC_KEY: Record<string, string> = {
     distribution: 'rewards',
@@ -1388,6 +1370,30 @@ function TokenomicsPageInner() {
     community: 'community',
     strategic: 'strategic',
   };
+
+  // Non-circulating tracked buckets (what we subtract to compute "circulating")
+  const TRACKED_NON_CIRC_GROUPS = ['rewards', 'treasury', 'team', 'partners', 'strategic', 'community'];
+
+  const trackedNonCirc = useMemo(() => sumGroupsUiAmount(vaultData, TRACKED_NON_CIRC_GROUPS), [vaultData]);
+  const currentSupplyUi = useMemo(() => {
+    if (!supplyData || (supplyData as any).ok === false) return null;
+    const s = supplyData as Extract<TokenSupplyResponse, { ok: true }>;
+    const n = s.uiAmountString ? Number(String(s.uiAmountString).replace(/,/g, '')) : null;
+    return Number.isFinite(n as any) ? (n as number) : null;
+  }, [supplyData]);
+
+  const circulatingUi = useMemo(() => {
+    if (currentSupplyUi == null) return null;
+    if (trackedNonCirc == null) return null;
+    const v = currentSupplyUi - trackedNonCirc;
+    return Number.isFinite(v) ? Math.max(0, v) : null;
+  }, [currentSupplyUi, trackedNonCirc]);
+
+  const supplyUpdatedAgo = useMemo(() => {
+    if (!supplyData || (supplyData as any).ok === false) return null;
+    const s = supplyData as Extract<TokenSupplyResponse, { ok: true }>;
+    return timeAgo(s.fetchedAt);
+  }, [supplyData]);
 
   const [openKey, setOpenKeyRaw] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(sortedAllocation[0]?.key ?? null);
@@ -1474,10 +1480,6 @@ function TokenomicsPageInner() {
     ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT)
     : streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
 
-  // ✅ Current supply (live) - Solscan "Current Supply"
-  const live = useLiveTokenSupply(XPOT_MINT_ACCOUNT);
-  const updatedLabel = live.updatedAt ? timeAgo(live.updatedAt) : '—';
-
   const proofCards = (
     <div className="mt-7 grid gap-3 lg:grid-cols-3">
       <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
@@ -1499,8 +1501,7 @@ function TokenomicsPageInner() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {/* ✅ make it obvious this is time-locked */}
-          <ProofLinkPill href={reserveProofHref} label="Locked reserve (19.18y)" tone="emerald" icon={<Lock className="h-3.5 w-3.5" />} />
+          <ProofLinkPill href={reserveProofHref} label={`Locked reserve (${RESERVE_COVERAGE_YEARS_LABEL})`} tone="emerald" />
           <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Wallet (Solscan)" tone="slate" />
           <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
         </div>
@@ -1571,7 +1572,7 @@ function TokenomicsPageInner() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total supply</p>
-            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{supply.toLocaleString('en-US')}</p>
+            <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{supplyFixed.toLocaleString('en-US')}</p>
             <p className="mt-1 text-xs text-slate-500">Fixed supply, minted once</p>
           </div>
           <Pill tone="sky">
@@ -1580,50 +1581,47 @@ function TokenomicsPageInner() {
           </Pill>
         </div>
 
-        {/* ✅ Replace misleading "circulating" with Solscan-matching "current supply" */}
         <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Current supply (live)</p>
-              <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">{live.supplyUi ?? '—'}</p>
-              <p className="mt-1 text-xs text-slate-500">Source: Solana RPC token supply (matches Solscan “Current Supply”).</p>
-              <p className="mt-1 text-xs text-slate-600">Updated: {updatedLabel}</p>
-
-              {live.rpcIssue ? (
-                <p className="mt-2 text-xs text-slate-500">RPC issue - refresh or retry.</p>
-              ) : null}
-            </div>
-
-            <span
-              className={[
-                'rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]',
-                live.rpcIssue
-                  ? 'border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] text-[rgb(var(--xpot-gold-2))]'
-                  : 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200',
-              ].join(' ')}
-            >
-              {live.rpcIssue ? 'Issue' : 'Live'}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Current supply (LIVE)</p>
+            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+              {supplyError ? 'ISSUE' : 'LIVE'}
             </span>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={live.refetch}
-              className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-              disabled={live.loading}
-            >
-              Retry
-            </button>
+          <div className="mt-3">
+            {currentSupplyUi == null ? (
+              <>
+                <p className="font-mono text-3xl font-semibold text-slate-100">—</p>
+                <p className="mt-2 text-xs text-slate-500">RPC/Solscan issue - refresh</p>
+              </>
+            ) : (
+              <>
+                <p className="font-mono text-3xl font-semibold text-slate-100">{formatBigUi(currentSupplyUi)}</p>
 
-            <a
-              href={`https://solscan.io/token/${XPOT_MINT_ACCOUNT}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-            >
-              Solscan <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-            </a>
+                {circulatingUi != null && trackedNonCirc != null ? (
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Circulating (LIVE)</p>
+                      <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+                        Live
+                      </span>
+                    </div>
+                    <p className="mt-2 font-mono text-2xl font-semibold text-slate-100">{formatBigUi(circulatingUi)}</p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      Non-circulating tracked: {formatBigUi(trackedNonCirc)} XPOT
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-600">
+                      Updated: {supplyUpdatedAgo ?? '—'} · Tracked groups: rewards, treasury, team, partners, strategic, community
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-slate-500">
+                    Updated: {supplyUpdatedAgo ?? '—'} · Source: {(supplyData as any)?.ok ? (supplyData as any).source : '—'}
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -1711,7 +1709,7 @@ function TokenomicsPageInner() {
                 <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                   <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-                    Proof targets: mint account, authority status, reserve wallet, vesting contracts
+                    Proof targets: mint account, authority status, reserve lock, vesting contracts
                   </span>
                   <span className="inline-flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-white/20" />
