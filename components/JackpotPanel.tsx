@@ -949,27 +949,14 @@ export default function JackpotPanel({
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
-  // ✅ Mobile edge-to-edge (standalone only)
-  const edgeOnMobile = variant !== 'embedded';
-
   const panelChrome =
   variant === 'embedded'
     ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
     : 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-5 sm:px-6 sm:py-6';
-      : [
-          edgeOnMobile
-            ? 'relative left-1/2 right-1/2 w-screen -ml-[50vw] -mr-[50vw] max-w-none sm:static sm:w-full sm:ml-0 sm:mr-0'
-            : '',
-          'w-full border border-white/10 bg-black/35',
-          'rounded-none sm:rounded-2xl',
-          'px-0 py-0 sm:px-6 sm:py-6',
-        ]
-          .filter(Boolean)
-          .join(' ');
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
-      <div className={variant === 'embedded' ? '' : 'px-3 py-4 sm:px-0 sm:py-0'}>
+  <div>
         {!!badgeLabel && (
           <div
             className={[
@@ -1321,13 +1308,7 @@ export default function JackpotPanel({
         </div>
 
         {/* CONTEXT STRIP */}
-        <div
-          className={[
-            'relative z-10 mt-4 overflow-hidden border border-slate-800/70 bg-black/15',
-            edgeOnMobile ? 'rounded-none sm:rounded-2xl' : 'rounded-2xl',
-            'px-4 sm:px-5 py-4',
-          ].join(' ')}
-        >
+        <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-4 sm:px-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
               <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
