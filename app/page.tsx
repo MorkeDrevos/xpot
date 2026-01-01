@@ -37,6 +37,7 @@ import {
   Radio,
   ExternalLink,
   TrendingUp,
+  BadgeCheck,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -58,7 +59,6 @@ const XPOT_CA =
   process.env.NEXT_PUBLIC_XPOT_CA ||
   'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
-// Optional overrides (recommended once you know the exact pair/chart links)
 const XPOT_JUP_SWAP_URL =
   process.env.NEXT_PUBLIC_XPOT_JUP_SWAP_URL ||
   `https://jup.ag/?sell=So11111111111111111111111111111111111111112&buy=${XPOT_CA}`;
@@ -69,7 +69,6 @@ const XPOT_DEXSCREENER_URL =
 const XPOT_SOLSCAN_URL =
   process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
-// XPOT denomination glyph (use for token-native amounts, keep $ only for USD)
 const XPOT_SIGN = '✕';
 
 const BTN_PRIMARY =
@@ -78,7 +77,6 @@ const BTN_PRIMARY =
 const BTN_GREEN =
   'inline-flex items-center justify-center rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition';
 
-// Vault-gold helpers (avoid tailwind amber mapping issues)
 const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
 const GOLD_TEXT_DIM = 'text-[rgba(var(--xpot-gold-2),0.85)]';
 const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
@@ -88,18 +86,17 @@ const GOLD_BG_WASH_2 = 'bg-[rgba(var(--xpot-gold),0.08)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
 const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
 
-// Eligibility threshold (token-native)
 const MIN_ELIGIBLE_XPOT = 100_000;
 
-// ─────────────────────────────────────────────
-// Shared countdown context (single source of truth)
-// ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   Shared countdown context (single source of truth)
+───────────────────────────────────────────── */
 
 type NextDrawState = {
   nowMs: number;
   nextDrawUtcMs: number;
   countdown: string;
-  cutoffLabel: string; // "Madrid 22:00"
+  cutoffLabel: string;
 };
 
 const NextDrawContext = createContext<NextDrawState | null>(null);
@@ -113,7 +110,6 @@ function useNextDraw() {
 function NextDrawProvider({ children }: { children: ReactNode }) {
   const [nowMs, setNowMs] = useState(() => Date.now());
 
-  // Tick on the exact second boundary (prevents drift / jitter)
   useEffect(() => {
     let interval: number | null = null;
 
@@ -322,9 +318,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
       await navigator.clipboard.writeText(mint);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1200);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   return (
@@ -583,7 +577,7 @@ function Accordion({ items }: { items: { q: string; a: string }[] }) {
 }
 
 /* ─────────────────────────────────────────────
-   Premium cosmic backdrop (hero engine + sweep)
+   Premium cosmic backdrop
 ───────────────────────────────────────────── */
 
 function CosmicHeroBackdrop() {
@@ -625,7 +619,6 @@ function CosmicHeroBackdrop() {
             box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
           }
         }
-
         @keyframes xpotConsoleSweep {
           0% {
             transform: translateX(-55%) skewX(-12deg);
@@ -660,7 +653,6 @@ function CosmicHeroBackdrop() {
           animation: xpotConsoleSweep 12s ease-in-out infinite;
           z-index: 2;
         }
-
         .xpot-hero-engine {
           position: absolute;
           inset: -180px;
@@ -718,39 +710,6 @@ function CosmicHeroBackdrop() {
         }
         .xpot-live-ring {
           animation: xpotLivePulse 2.2s ease-in-out infinite;
-        }
-
-        @keyframes xpotRoyalSheen {
-          0% {
-            transform: translateX(-55%) skewX(-12deg);
-            opacity: 0;
-          }
-          18% {
-            opacity: 0.22;
-          }
-          60% {
-            opacity: 0.12;
-          }
-          100% {
-            transform: translateX(55%) skewX(-12deg);
-            opacity: 0;
-          }
-        }
-        .xpot-royal-sheen {
-          position: absolute;
-          inset: -40px;
-          pointer-events: none;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.05) 30%,
-            rgba(var(--xpot-gold), 0.10) 50%,
-            rgba(56, 189, 248, 0.05) 70%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          animation: xpotRoyalSheen 14s ease-in-out infinite;
-          opacity: 0;
         }
       `}</style>
 
@@ -950,35 +909,28 @@ function useLocalReducedMotion() {
 }
 
 /* ─────────────────────────────────────────────
-   Public winners (table) - matches your screenshot snippets
+   Winners + entries telemetry (public)
 ───────────────────────────────────────────── */
 
-type LastWinnerRow = {
+type WinnerRow = {
   id: string;
-  drawDate: string; // ISO
-  display: string; // "@handle" or shortened wallet
+  handle: string | null;
+  name?: string | null;
+  avatarUrl?: string | null;
+  wallet: string | null;
+  amount: number | null;
+  drawDate: string | null; // ISO
   txUrl?: string | null;
   isPaidOut?: boolean;
 };
 
-function ymdFromIso(iso: string) {
-  try {
-    return new Date(iso).toISOString().slice(0, 10);
-  } catch {
-    return '';
-  }
-}
-
-/* ─────────────────────────────────────────────
-   Real winners telemetry (for LAST_WINNERS console)
-───────────────────────────────────────────── */
-
-type WinnerRow = {
-  handle: string | null;
-  wallet: string | null;
-  amount: number | null;
-  drawDate: string | null; // ISO
-  tx?: string | null;
+type EntryRow = {
+  id: string;
+  createdAt: string; // ISO
+  handle: string;
+  name?: string | null;
+  avatarUrl?: string | null;
+  verified?: boolean;
 };
 
 function formatIsoToMadridYmd(iso: string) {
@@ -1025,7 +977,7 @@ function useLatestWinnersTelemetry() {
     }
 
     load();
-    const t = window.setInterval(load, 15_000);
+    const t = window.setInterval(load, 12_000);
     return () => {
       alive = false;
       window.clearInterval(t);
@@ -1035,65 +987,57 @@ function useLatestWinnersTelemetry() {
   return winners;
 }
 
-/* ─────────────────────────────────────────────
-   New: Latest entries (X avatars) - "Entering the stage"
-   - this is resilient: if endpoint missing/404, it just hides.
-───────────────────────────────────────────── */
-
-type StageEntry = {
-  id?: string;
-  clerkId?: string;
-  xHandle: string;
-  xName?: string | null;
-  xAvatarUrl?: string | null;
-  createdAt?: string | null; // ISO
-};
-
-function normalizeHandle(h: string) {
-  const s = String(h || '').trim();
-  if (!s) return '';
-  return s.startsWith('@') ? s : `@${s}`;
-}
-
-function useStageEntries() {
-  const [entries, setEntries] = useState<StageEntry[] | null>(null);
+function useLatestWinnerCard() {
+  const [winner, setWinner] = useState<WinnerRow | null>(null);
 
   useEffect(() => {
     let alive = true;
 
     async function load() {
       try {
-        // Preferred endpoint name (add server later if needed)
-        const r = await fetch('/api/public/entries/latest', { cache: 'no-store' });
-
-        // If route doesn't exist, keep feature hidden (null)
-        if (!r.ok) {
-          if (!alive) return;
-          setEntries(null);
-          return;
-        }
-
+        const r = await fetch('/api/public/winners/latest', { cache: 'no-store' });
         const data = (await r.json().catch(() => null)) as any;
         if (!alive) return;
-
-        const arr = Array.isArray(data?.entries) ? (data.entries as StageEntry[]) : [];
-        const cleaned = arr
-          .map(e => ({
-            ...e,
-            xHandle: normalizeHandle(e?.xHandle),
-          }))
-          .filter(e => Boolean(e.xHandle))
-          .slice(0, 14);
-
-        setEntries(cleaned);
+        const w = Array.isArray(data?.winners) ? (data.winners[0] as WinnerRow | undefined) : undefined;
+        setWinner(w ?? null);
       } catch {
         if (!alive) return;
-        setEntries(null);
+        setWinner(null);
       }
     }
 
     load();
-    const t = window.setInterval(load, 7_500);
+    const t = window.setInterval(load, 12_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  return winner;
+}
+
+function useLatestEntriesTelemetry() {
+  const [entries, setEntries] = useState<EntryRow[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      try {
+        const r = await fetch('/api/public/entries/latest', { cache: 'no-store' });
+        const data = (await r.json().catch(() => null)) as any;
+        if (!alive) return;
+        const arr = Array.isArray(data?.entries) ? (data.entries as EntryRow[]) : [];
+        setEntries(arr);
+      } catch {
+        if (!alive) return;
+        setEntries([]);
+      }
+    }
+
+    load();
+    const t = window.setInterval(load, 10_000);
     return () => {
       alive = false;
       window.clearInterval(t);
@@ -1103,86 +1047,149 @@ function useStageEntries() {
   return entries;
 }
 
-function AvatarChip({ e }: { e: StageEntry }) {
-  const handle = e.xHandle || '@user';
-  const letter = handle.replace('@', '').slice(0, 1).toUpperCase();
+function Avatar({
+  src,
+  label,
+  size = 34,
+}: {
+  src?: string | null;
+  label: string;
+  size?: number;
+}) {
+  const initials = useMemo(() => {
+    const s = (label || '').replace(/^@/, '').trim();
+    if (!s) return 'X';
+    return s.slice(0, 2).toUpperCase();
+  }, [label]);
 
   return (
-    <TinyTooltip
-      label={[
-        e.xName ? `${e.xName} (${handle})` : handle,
-        e.createdAt ? `Entered: ${ymdFromIso(e.createdAt)}` : '',
-      ]
-        .filter(Boolean)
-        .join('\n')}
+    <div
+      className="relative shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]"
+      style={{ width: size, height: size }}
+      title={label}
     >
-      <span className="relative inline-flex h-9 w-9 items-center justify-center">
-        <span className="pointer-events-none absolute -inset-2 rounded-full opacity-60 blur-xl bg-[radial-gradient(circle_at_30%_30%,rgba(56,189,248,0.20),transparent_60%),radial-gradient(circle_at_70%_70%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.16),transparent_70%)]" />
-        <span className="relative inline-flex h-9 w-9 overflow-hidden rounded-full border border-white/10 bg-white/[0.04] ring-1 ring-white/[0.05]">
-          {e.xAvatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={e.xAvatarUrl}
-              alt={handle}
-              className="h-full w-full object-cover"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              onError={(ev) => {
-                // hide broken imgs (keeps fallback letter visible via data attr swap)
-                const img = ev.currentTarget;
-                img.style.display = 'none';
-              }}
-            />
-          ) : null}
-
-          <span className="absolute inset-0 grid place-items-center text-[11px] font-semibold text-slate-200">
-            {letter}
-          </span>
-        </span>
-      </span>
-    </TinyTooltip>
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={label} className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center font-mono text-[12px] text-slate-200">
+          {initials}
+        </div>
+      )}
+      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
+    </div>
   );
 }
 
-function EnteringTheStage({ entries }: { entries: StageEntry[] }) {
-  const reduce = useReducedMotion();
+function EnteringTheStage({ entries }: { entries: EntryRow[] }) {
+  if (!entries || entries.length === 0) return null;
 
   return (
-    <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
-      <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_22]%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_82%_28%,rgba(16,185,129,0.10),transparent_64%),radial-gradient(circle_at_55%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
-
-      <div className="relative flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Entering the stage</p>
-          <p className="mt-1 text-[12px] text-slate-400">
-            Latest verified entries (handle-first). Updates live.
-          </p>
+    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Pill tone="sky">
+            <Users className="h-3.5 w-3.5" />
+            Entering the stage
+          </Pill>
+          <span className="text-[11px] text-slate-400">Latest entries</span>
         </div>
 
-        <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.14)]">
-          <Users className="h-3.5 w-3.5" />
-          Live
+        <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+          live feed
         </span>
       </div>
 
-      <div className="relative mt-4 flex flex-wrap items-center gap-2">
-        <AnimatePresence initial={false}>
-          {entries.map(e => (
-            <motion.div
-              key={e.id || e.clerkId || e.xHandle}
-              initial={reduce ? { opacity: 1 } : { opacity: 0, y: 10, scale: 0.98 }}
-              animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
-              transition={{ duration: 0.18 }}
-            >
-              <AvatarChip e={e} />
-            </motion.div>
+      <div className="px-4 pb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {entries.slice(0, 18).map(e => (
+            <div key={e.id} className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-1">
+              <Avatar src={e.avatarUrl} label={e.handle} size={28} />
+              <span className="max-w-[120px] truncate text-[12px] text-slate-200">{e.handle}</span>
+              {e.verified ? <BadgeCheck className="h-4 w-4 text-sky-300/90" /> : null}
+            </div>
           ))}
-        </AnimatePresence>
+        </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="relative mt-3 text-[11px] text-slate-500">
-        Tip: hover a face for details
+function WinnerSpotlight({ winner }: { winner: WinnerRow | null }) {
+  if (!winner) return null;
+
+  const label = winner.handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : 'winner');
+  const ymd = winner.drawDate ? formatIsoToMadridYmd(winner.drawDate) : null;
+  const paid = Boolean(winner.isPaidOut);
+  const amt = formatXpotAmount(winner.amount);
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/30 ring-1 ring-white/[0.05]">
+      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+      <div className="relative px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Pill tone="amber">
+            <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+            Latest winner
+          </Pill>
+
+          <span
+            className={[
+              'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+              paid
+                ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
+                : 'border-amber-400/20 bg-amber-500/10 text-amber-200',
+            ].join(' ')}
+          >
+            <span className={`h-2 w-2 rounded-full ${paid ? 'bg-emerald-400' : 'bg-amber-300'}`} />
+            {paid ? 'Paid' : 'Awaiting payout'}
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Avatar src={winner.avatarUrl} label={winner.handle ?? label} size={44} />
+            <div className="leading-tight">
+              <div className="text-[14px] font-semibold text-slate-50">{label}</div>
+              <div className="mt-1 text-[12px] text-slate-400">
+                {ymd ? <span className="font-mono">{ymd}</span> : null}
+                {winner.wallet ? (
+                  <>
+                    <span className="text-slate-700"> • </span>
+                    <span className="font-mono">{shortenAddress(winner.wallet, 7, 7)}</span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <div className={`text-[10px] uppercase tracking-[0.18em] ${GOLD_TEXT_DIM}`}>Payout</div>
+            <div className={`mt-1 font-mono text-[18px] ${GOLD_TEXT}`}>{amt}</div>
+
+            <div className="mt-2 flex flex-wrap justify-end gap-2">
+              {winner.txUrl ? (
+                <a
+                  href={winner.txUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                >
+                  View payout tx
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                </a>
+              ) : (
+                <span className="text-[11px] text-slate-500">tx link will appear after payout</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {!paid ? (
+          <p className="mt-3 text-[12px] text-slate-400">
+            Payout is performed by ops and then the on-chain transaction is published here.
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -1206,7 +1213,9 @@ function LiveControlRoom({
   const reduced = useLocalReducedMotion();
   const [tick, setTick] = useState(0);
 
-  const [lines, setLines] = useState<string[]>(() => buildInitialLines(countdown, cutoffLabel, runLine, winners));
+  const [lines, setLines] = useState<string[]>(() =>
+    buildInitialLines(countdown, cutoffLabel, runLine, winners),
+  );
 
   useEffect(() => {
     const t = window.setInterval(() => setTick(v => v + 1), 1000);
@@ -1225,73 +1234,36 @@ function LiveControlRoom({
     <div className="relative">
       <style jsx global>{`
         @keyframes xpotPulse {
-          0% {
-            transform: translateZ(0) scale(1);
-            opacity: 0.85;
-          }
-          50% {
-            transform: translateZ(0) scale(1.02);
-            opacity: 1;
-          }
-          100% {
-            transform: translateZ(0) scale(1);
-            opacity: 0.85;
-          }
+          0% { transform: translateZ(0) scale(1); opacity: 0.85; }
+          50% { transform: translateZ(0) scale(1.02); opacity: 1; }
+          100% { transform: translateZ(0) scale(1); opacity: 0.85; }
         }
         @keyframes xpotScan {
-          0% {
-            transform: translateY(-18%);
-            opacity: 0;
-          }
-          18% {
-            opacity: 0.22;
-          }
-          55% {
-            opacity: 0.1;
-          }
-          100% {
-            transform: translateY(118%);
-            opacity: 0;
-          }
+          0% { transform: translateY(-18%); opacity: 0; }
+          18% { opacity: 0.22; }
+          55% { opacity: 0.1; }
+          100% { transform: translateY(118%); opacity: 0; }
         }
         @keyframes xpotFlicker {
-          0% {
-            opacity: 0.35;
-          }
-          50% {
-            opacity: 0.75;
-          }
-          100% {
-            opacity: 0.35;
-          }
+          0% { opacity: 0.35; }
+          50% { opacity: 0.75; }
+          100% { opacity: 0.35; }
         }
-        .xpot-cr-scan {
-          position: relative;
-          isolation: isolate;
-        }
+        .xpot-cr-scan { position: relative; isolation: isolate; }
         .xpot-cr-scan::before {
           content: '';
           pointer-events: none;
           position: absolute;
           inset: 0;
           border-radius: 18px;
-          background: linear-gradient(
-            to bottom,
-            transparent,
-            rgba(16, 185, 129, 0.1),
-            rgba(56, 189, 248, 0.07),
-            transparent
-          );
+          background: linear-gradient(to bottom, transparent, rgba(16, 185, 129, 0.1), rgba(56, 189, 248, 0.07), transparent);
           opacity: 0;
           transform: translateY(-20%);
           animation: xpotScan 5.6s ease-in-out infinite;
           mix-blend-mode: screen;
           z-index: 0;
         }
-        .xpot-cr-scan > * {
-          position: relative;
-          z-index: 1;
-        }
+        .xpot-cr-scan > * { position: relative; z-index: 1; }
         .xpot-cr-cursor {
           display: inline-block;
           width: 8px;
@@ -1335,7 +1307,6 @@ function LiveControlRoom({
       >
         <div className="pointer-events-none absolute -inset-20 opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_88%_30%,rgba(56,189,248,0.12),transparent_65%)]" />
 
-        {/* scrollable + tiny padding to prevent crop */}
         <pre className="relative z-10 max-h-60 overflow-auto whitespace-pre pr-2 pb-1 font-mono text-[11px] leading-relaxed text-emerald-100/90">
           {lines.join('\n')}
         </pre>
@@ -1354,7 +1325,10 @@ function LiveControlRoom({
 }
 
 function buildLastWinnersLines(winners: WinnerRow[]) {
-  const fallback = [`  #---- -- --  winner   ${XPOT_SIGN}1,000,000`, `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`];
+  const fallback = [
+    `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`,
+    `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`,
+  ];
 
   if (!winners || winners.length === 0) return fallback;
 
@@ -1422,7 +1396,6 @@ function updateLines(
     next[stIdx] = `  status:         ${modes[tick % modes.length]}`;
   }
 
-  // Keep LAST_WINNERS real: rewrite the two lines under the header.
   const lwIdx = next.findIndex(l => l.trim().startsWith('> LAST_WINNERS'));
   if (lwIdx !== -1) {
     const lwLines = buildLastWinnersLines(winners);
@@ -1452,28 +1425,24 @@ function updateLines(
   return next;
 }
 
-// BonusVault (unchanged)...
-function BonusVault({ children, spotlight = true }: { children: ReactNode; spotlight?: boolean }) {
+// BonusVault unchanged...
+function BonusVault({
+  children,
+  spotlight = true,
+}: {
+  children: ReactNode;
+  spotlight?: boolean;
+}) {
   const halo = spotlight ? 'opacity-95 blur-2xl' : 'opacity-75 blur-2xl';
 
   return (
     <div className="relative">
       <style jsx global>{`
         @keyframes xpotBonusSheen {
-          0% {
-            transform: translateX(-55%) skewX(-12deg);
-            opacity: 0;
-          }
-          18% {
-            opacity: 0.24;
-          }
-          60% {
-            opacity: 0.12;
-          }
-          100% {
-            transform: translateX(55%) skewX(-12deg);
-            opacity: 0;
-          }
+          0% { transform: translateX(-55%) skewX(-12deg); opacity: 0; }
+          18% { opacity: 0.24; }
+          60% { opacity: 0.12; }
+          100% { transform: translateX(55%) skewX(-12deg); opacity: 0; }
         }
         .xpot-bonus-sheen {
           position: absolute;
@@ -1585,6 +1554,7 @@ function MissionBanner() {
   return (
     <div className="relative border-y border-slate-900/60 bg-slate-950/55 backdrop-blur">
       <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),radial-gradient(circle_at_82%_0%,rgba(56,189,248,0.16),transparent_62%)]" />
+
       <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
         <RotatingAnnouncement reservesHref={ROUTE_TOKENOMICS_RESERVE} />
       </div>
@@ -1595,7 +1565,8 @@ function MissionBanner() {
 function HomePageInner() {
   const bonusActive = useBonusActive();
   const winners = useLatestWinnersTelemetry();
-  const stageEntries = useStageEntries();
+  const winnerSpotlight = useLatestWinnerCard();
+  const entries = useLatestEntriesTelemetry();
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
@@ -1606,56 +1577,7 @@ function HomePageInner() {
   const runLine = useMemo(() => `DAY ${run.day}/${RUN_DAYS}`, [run.day]);
 
   const runEndDateOnly = useMemo(() => {
-    // RUN_END_EU example: "22/02/2045 22:00 (Madrid)"
     return String(RUN_END_EU).replace(/\s\d{2}:\d{2}\s*\(Madrid\)\s*$/, '');
-  }, []);
-
-  // ✅ Screenshot snippet: LAST_WINNERS state + fetch (added)
-  const [lastWinners, setLastWinners] = useState<LastWinnerRow[] | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-
-    async function load() {
-      try {
-        // Prefer your existing public endpoint if it already returns a "winners" array
-        const r = await fetch('/api/public/winners/latest', { cache: 'no-store' });
-        const data = (await r.json().catch(() => null)) as any;
-
-        if (!alive) return;
-
-        // Accept either { winners: [...] } OR { ok: true, winners: [...] }
-        if (Array.isArray(data?.winners)) {
-          const rows = (data.winners as any[]).slice(0, 6).map((w, i) => {
-            const drawDate = String(w?.drawDate || w?.date || w?.createdAt || '');
-            const handle = w?.handle ? String(w.handle) : '';
-            const wallet = w?.wallet ? String(w.wallet) : '';
-            const display = handle ? normalizeHandle(handle) : wallet ? shortenAddress(wallet, 6, 6) : 'winner';
-            return {
-              id: String(w?.id || `${display}-${drawDate}-${i}`),
-              drawDate,
-              display,
-              txUrl: w?.txUrl ?? w?.tx ?? null,
-              isPaidOut: Boolean(w?.isPaidOut),
-            } as LastWinnerRow;
-          });
-
-          setLastWinners(rows);
-        } else {
-          setLastWinners(null);
-        }
-      } catch {
-        if (!alive) return;
-        setLastWinners(null);
-      }
-    }
-
-    load();
-    const t = window.setInterval(load, 15_000);
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
   }, []);
 
   const reduceMotion = useReducedMotion();
@@ -1674,7 +1596,6 @@ function HomePageInner() {
     return `0 40px 140px rgba(0,0,0,${a}), 0 14px 60px rgba(0,0,0,${b})`;
   });
 
-  // single meta effect (removed duplicate)
   useEffect(() => {
     const t = run.ended
       ? `XPOT - Final Draw live (${RUN_END_EU})`
@@ -1736,7 +1657,6 @@ function HomePageInner() {
                 {/* LEFT */}
                 <div className="flex flex-col justify-between gap-6 lg:pt-8">
                   <div className="space-y-6">
-                    {/* HERO */}
                     <div className="relative p-2 sm:p-3">
                       <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.14),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(16,185,129,0.26),transparent)]" />
@@ -1765,6 +1685,10 @@ function HomePageInner() {
                           - <FinalDrawDate className="text-slate-200" />.
                         </p>
                       </div>
+
+                      {/* ✅ NEW: premium winner spotlight + latest entries strip */}
+                      <WinnerSpotlight winner={winnerSpotlight} />
+                      <EnteringTheStage entries={entries} />
 
                       <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
                         <div
@@ -1858,14 +1782,6 @@ function HomePageInner() {
                           Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
-
-                        <Link
-                          href={ROUTE_TERMS}
-                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-[13px] font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-                        >
-                          Terms
-                          <ArrowRight className="h-4 w-4 text-slate-400" />
-                        </Link>
                       </div>
                     </div>
 
@@ -1918,12 +1834,6 @@ function HomePageInner() {
                     <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
                   </div>
 
-                  {/* ✅ NEW: Entering the stage (avatars) */}
-                  {Array.isArray(stageEntries) && stageEntries.length > 0 ? (
-                    <EnteringTheStage entries={stageEntries} />
-                  ) : null}
-
-                  {/* ✅ MOVED LEFT: Contract + Trade cards */}
                   <div className="grid gap-4">
                     <PremiumCard className="p-5 sm:p-6" halo={false}>
                       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1940,48 +1850,6 @@ function HomePageInner() {
                     <PremiumCard className="p-5 sm:p-6" halo={false}>
                       <TradeOnJupiterCard mint={mint} />
                     </PremiumCard>
-
-                    {/* Optional: quick small winners strip (uses lastWinners state) */}
-                    {Array.isArray(lastWinners) && lastWinners.length > 0 ? (
-                      <PremiumCard className="p-5 sm:p-6" halo={false}>
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                            Latest winners
-                          </p>
-                          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">public</span>
-                        </div>
-
-                        <div className="mt-3 grid gap-2">
-                          {lastWinners.slice(0, 3).map(w => (
-                            <div
-                              key={w.id}
-                              className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3"
-                            >
-                              <div className="min-w-0">
-                                <div className="text-[12px] font-semibold text-slate-100">{w.display}</div>
-                                <div className="mt-0.5 text-[11px] text-slate-500">
-                                  {w.drawDate ? ymdFromIso(w.drawDate) : ''}
-                                </div>
-                              </div>
-
-                              {w.txUrl ? (
-                                <a
-                                  href={w.txUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-                                >
-                                  Proof
-                                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                                </a>
-                              ) : (
-                                <span className="text-[11px] text-slate-500">{w.isPaidOut ? 'paid' : 'pending'}</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </PremiumCard>
-                    ) : null}
                   </div>
                 </div>
 
@@ -2010,7 +1878,12 @@ function HomePageInner() {
                   </ParallaxConsoleCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} winners={winners} />
+                    <LiveControlRoom
+                      countdown={countdown}
+                      cutoffLabel={cutoffLabel}
+                      runLine={runLine}
+                      winners={winners}
+                    />
                   </PremiumCard>
                 </motion.div>
               </div>
@@ -2208,9 +2081,7 @@ function HomePageInner() {
 
             <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}
-                >
+                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
                   <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
                 </span>
                 <div>
