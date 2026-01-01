@@ -18,7 +18,6 @@ import {
   LogOut,
   Menu,
   PieChart,
-  Radio,
   Trophy,
   Wallet,
   Map,
@@ -31,9 +30,9 @@ import {
   XCircle,
   Loader2,
   ChevronRight,
-  Info,
   Hourglass,
   Home,
+  User,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -224,7 +223,8 @@ export default function XpotTopBar({
 
             {/* ✅ Mobile layout (APP-LIKE) */}
             <div className="xl:hidden">
-              <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3">
+              <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-3">
+                {/* ✅ Bigger logo on mobile */}
                 <Link href={logoHref} className="flex min-w-0 items-center gap-3">
                   <XpotLogo
                     variant="light"
@@ -236,8 +236,8 @@ export default function XpotTopBar({
                 </Link>
 
                 <div className="flex items-center gap-2">
-                  {/* ✅ CA chip on mobile (copy on tap) */}
-                  <MobileCAChip />
+                  {/* ✅ Mobile CA pill (tap-to-copy) */}
+                  {!isHub && <MobileCAChip />}
 
                   {isHub ? (
                     <button
@@ -270,22 +270,25 @@ export default function XpotTopBar({
                 </div>
               </div>
 
-              {/* ✅ Mobile “quick actions” row */}
+              {/* ✅ Mobile “quick actions” row (makes it feel like an app) */}
               <div className="pb-3">
-                <div className="flex items-center gap-2 overflow-x-auto pr-2 [-webkit-overflow-scrolling:touch]">
+                <div className="flex items-center gap-2 overflow-x-auto [-webkit-overflow-scrolling:touch]">
                   <QuickAction href="/hub" icon={<Home className="h-4 w-4 text-slate-200" />} label="Hub" />
                   <QuickAction
                     href={FINAL_DAY_HREF}
                     icon={<Hourglass className="h-4 w-4 text-amber-200" />}
                     label={FINAL_DAY_LABEL}
                   />
-                  <QuickAction href={WINNERS_HREF} icon={<Trophy className="h-4 w-4 text-amber-300" />} label="Winners" />
+                  <QuickAction
+                    href={WINNERS_HREF}
+                    icon={<Trophy className="h-4 w-4 text-amber-300" />}
+                    label="Winners"
+                  />
                   <QuickAction
                     href={TOKENOMICS_HREF}
                     icon={<PieChart className="h-4 w-4 text-emerald-300" />}
                     label="Tokenomics"
                   />
-                  <QuickAction href={ROADMAP_HREF} icon={<Map className="h-4 w-4 text-sky-300" />} label="Roadmap" />
                 </div>
               </div>
             </div>
@@ -310,9 +313,7 @@ export default function XpotTopBar({
       </header>
 
       {/* ✅ Light wallet popup */}
-      {!onOpenWalletModal && (
-        <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />
-      )}
+      {!onOpenWalletModal && <LightConnectWalletModal open={lightWalletOpen} onClose={() => setLightWalletOpen(false)} />}
     </>
   );
 }
@@ -338,7 +339,7 @@ function QuickAction({ href, icon, label }: { href: string; icon: ReactNode; lab
   );
 }
 
-/* ---------------- Mobile CA Chip (copy) ---------------- */
+/* ---------------- Mobile: CA Chip (tap to copy) ---------------- */
 
 function shortenAddress(addr: string, left = 6, right = 6) {
   if (!addr) return '';
@@ -348,16 +349,14 @@ function shortenAddress(addr: string, left = 6, right = 6) {
 
 function MobileCAChip() {
   const [copied, setCopied] = useState(false);
-  const short = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 4, 4), []);
+  const addrShort = useMemo(() => shortenAddress(XPOT_OFFICIAL_CA, 3, 4), []);
 
   async function onCopy() {
     try {
       await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1100);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   return (
@@ -365,21 +364,21 @@ function MobileCAChip() {
       type="button"
       onClick={onCopy}
       className="
-        inline-flex h-10 items-center gap-2
-        rounded-full border border-white/10 bg-white/[0.04]
-        px-3 text-[12px] font-semibold text-slate-100
+        inline-flex h-10 items-center gap-2 rounded-full
+        border border-white/10 bg-white/[0.04]
+        px-4 text-[13px] font-semibold text-slate-100
         hover:bg-white/[0.07]
       "
-      aria-label="Copy contract address"
-      title="Tap to copy contract address"
+      aria-label="Copy official contract address"
+      title={XPOT_OFFICIAL_CA}
     >
       {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4 text-slate-200" />}
-      <span className="font-mono tracking-tight">{short}</span>
+      <span className="font-mono">{addrShort}</span>
     </button>
   );
 }
 
-/* ---------------- OFFICIAL CA CHIP (desktop) ---------------- */
+/* ---------------- OFFICIAL CA CHIP (Desktop) ---------------- */
 
 function OfficialCAChip() {
   const [open, setOpen] = useState(false);
@@ -508,21 +507,6 @@ function OfficialCAChip() {
 
 /* ---------------- Shared ---------------- */
 
-function LiveDot({ isOpen }: { isOpen: boolean }) {
-  return (
-    <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
-      {isOpen ? (
-        <>
-          <span className="absolute inline-flex h-3 w-3 animate-ping rounded-full bg-emerald-400/60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
-        </>
-      ) : (
-        <span className="inline-flex h-2 w-2 rounded-full bg-slate-500" />
-      )}
-    </span>
-  );
-}
-
 function NavLink({
   href,
   children,
@@ -605,11 +589,13 @@ function PublicNavCenter({
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">Hub</NavLink>
 
+      {/* Final Draw (primary) */}
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
         <Hourglass className="h-4 w-4 !text-white !stroke-white" />
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
+      {/* Learn dropdown (hover + click) */}
       <div className="relative" onMouseEnter={openSoon} onMouseLeave={closeSoon}>
         <button
           type="button"
@@ -1154,10 +1140,10 @@ function MobileMenu({
 
   const handle = xAccount?.username || xAccount?.screenName || null;
   const avatar = xAccount?.imageUrl || user?.imageUrl || null;
-  const displayHandle = handle ? `@${handle.replace(/^@/, '')}` : null;
-  const initial = (displayHandle || 'X')[1] || 'X';
+  const displayHandle = handle ? `@${String(handle).replace(/^@/, '')}` : null;
 
   const [copied, setCopied] = useState(false);
+
   async function copyCA() {
     try {
       await navigator.clipboard.writeText(XPOT_OFFICIAL_CA);
@@ -1177,17 +1163,20 @@ function MobileMenu({
         aria-label="Close menu"
       />
 
+      {/* ✅ app-like sheet */}
       <div className="fixed right-0 top-0 z-[81] h-full w-[92%] max-w-sm border-l border-white/10 bg-black/85 backdrop-blur-xl">
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <div className="flex items-center gap-3">
+            {/* ✅ No confusing “X” badge - looks like profile */}
             {isLoaded && avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatar} alt="X avatar" className="h-9 w-9 rounded-full border border-white/10" />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-slate-200">
-                {initial}
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200">
+                <User className="h-4 w-4" />
               </div>
             )}
+
             <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-100">XPOT</p>
               <p className="truncate text-xs text-slate-400">{displayHandle ?? 'Guest'}</p>
@@ -1207,24 +1196,33 @@ function MobileMenu({
         <div className="space-y-3 px-5 py-5">
           <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">VERIFY</p>
 
-          <button
-            type="button"
-            onClick={copyCA}
-            className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-200/80">OFFICIAL CONTRACT</p>
-                <p className="mt-1 font-mono text-sm text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs font-semibold text-slate-100">
+          {/* ✅ Official contract block in the menu (copy friendly) */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">OFFICIAL CONTRACT</p>
+            <p className="mt-2 font-mono text-xs text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={copyCA}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+              >
                 {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4" />}
                 {copied ? 'Copied' : 'Copy'}
-              </span>
-            </div>
-          </button>
+              </button>
 
-          <p className="pt-2 text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">NAVIGATION</p>
+              <Link
+                href={PROTOCOL_HREF}
+                className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+              >
+                <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                Health
+              </Link>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">NAVIGATION</p>
+          </div>
 
           <Link
             className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
@@ -1304,6 +1302,7 @@ function MobileMenu({
             </div>
           )}
 
+          {/* Bottom CTA (app-like) */}
           <div className="pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+10px)]">
             <Link
               href="/hub"
