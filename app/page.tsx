@@ -933,6 +933,20 @@ type EntryRow = {
   verified?: boolean;
 };
 
+async function fetchFirstOk<T = any>(urls: string[]): Promise<T | null> {
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const data = (await r.json().catch(() => null)) as T | null;
+      if (data) return data;
+    } catch {
+      // keep trying fallbacks
+    }
+  }
+  return null;
+}
+
 function formatIsoToMadridYmd(iso: string) {
   const d = new Date(iso);
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -964,16 +978,21 @@ function useLatestWinnersTelemetry() {
     let alive = true;
 
     async function load() {
-      try {
-        const r = await fetch('/api/public/winners/latest', { cache: 'no-store' });
-        const data = (await r.json().catch(() => null)) as any;
-        if (!alive) return;
-        const arr = Array.isArray(data?.winners) ? (data.winners as WinnerRow[]) : [];
-        setWinners(arr.slice(0, 2));
-      } catch {
-        if (!alive) return;
-        setWinners([]);
-      }
+      const data = await fetchFirstOk<any>([
+        '/api/public/winners/latest',
+        '/api/public/winners?latest=1',
+        '/api/public/winners?limit=2',
+        '/api/public/winners',
+      ]);
+
+      if (!alive) return;
+
+      const arr = Array.isArray(data?.winners)
+        ? (data.winners as WinnerRow[])
+        : Array.isArray(data)
+        ? (data as WinnerRow[])
+        : [];
+      setWinners(arr.slice(0, 2));
     }
 
     load();
@@ -994,16 +1013,21 @@ function useLatestWinnerCard() {
     let alive = true;
 
     async function load() {
-      try {
-        const r = await fetch('/api/public/winners/latest', { cache: 'no-store' });
-        const data = (await r.json().catch(() => null)) as any;
-        if (!alive) return;
-        const w = Array.isArray(data?.winners) ? (data.winners[0] as WinnerRow | undefined) : undefined;
-        setWinner(w ?? null);
-      } catch {
-        if (!alive) return;
-        setWinner(null);
-      }
+      const data = await fetchFirstOk<any>([
+        '/api/public/winners/latest',
+        '/api/public/winners?latest=1',
+        '/api/public/winners?limit=1',
+        '/api/public/winners',
+      ]);
+
+      if (!alive) return;
+
+      let w: WinnerRow | null = null;
+
+      if (Array.isArray(data?.winners) && data.winners[0]) w = data.winners[0] as WinnerRow;
+      else if (Array.isArray(data) && data[0]) w = data[0] as WinnerRow;
+
+      setWinner(w ?? null);
     }
 
     load();
@@ -1024,16 +1048,21 @@ function useLatestEntriesTelemetry() {
     let alive = true;
 
     async function load() {
-      try {
-        const r = await fetch('/api/public/entries/latest', { cache: 'no-store' });
-        const data = (await r.json().catch(() => null)) as any;
-        if (!alive) return;
-        const arr = Array.isArray(data?.entries) ? (data.entries as EntryRow[]) : [];
-        setEntries(arr);
-      } catch {
-        if (!alive) return;
-        setEntries([]);
-      }
+      const data = await fetchFirstOk<any>([
+        '/api/public/entries/latest',
+        '/api/public/entries?latest=1',
+        '/api/public/entries?limit=24',
+        '/api/public/entries',
+      ]);
+
+      if (!alive) return;
+
+      const arr = Array.isArray(data?.entries)
+        ? (data.entries as EntryRow[])
+        : Array.isArray(data)
+        ? (data as EntryRow[])
+        : [];
+      setEntries(arr);
     }
 
     load();
@@ -1082,8 +1111,6 @@ function Avatar({
 }
 
 function EnteringTheStage({ entries }: { entries: EntryRow[] }) {
-  if (!entries || entries.length === 0) return null;
-
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
       <div className="flex items-center justify-between gap-3 px-4 py-3">
@@ -1095,36 +1122,41 @@ function EnteringTheStage({ entries }: { entries: EntryRow[] }) {
           <span className="text-[11px] text-slate-400">Latest entries</span>
         </div>
 
-        <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-          live feed
-        </span>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">live feed</span>
       </div>
 
       <div className="px-4 pb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {entries.slice(0, 18).map(e => (
-            <div key={e.id} className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-1">
-              <Avatar src={e.avatarUrl} label={e.handle} size={28} />
-              <span className="max-w-[120px] truncate text-[12px] text-slate-200">{e.handle}</span>
-              {e.verified ? <BadgeCheck className="h-4 w-4 text-sky-300/90" /> : null}
-            </div>
-          ))}
-        </div>
+        {entries && entries.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {entries.slice(0, 18).map(e => (
+              <div
+                key={e.id}
+                className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-1"
+              >
+                <Avatar src={e.avatarUrl} label={e.handle} size={28} />
+                <span className="max-w-[120px] truncate text-[12px] text-slate-200">{e.handle}</span>
+                {e.verified ? <BadgeCheck className="h-4 w-4 text-sky-300/90" /> : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-400">
+            No entries in the live feed yet.
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 function WinnerSpotlight({ winner }: { winner: WinnerRow | null }) {
-  if (!winner) return null;
-
-  const label = winner.handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : 'winner');
-  const ymd = winner.drawDate ? formatIsoToMadridYmd(winner.drawDate) : null;
-  const paid = Boolean(winner.isPaidOut);
-  const amt = formatXpotAmount(winner.amount);
+  const label = winner ? winner.handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : 'winner') : 'winner';
+  const ymd = winner?.drawDate ? formatIsoToMadridYmd(winner.drawDate) : null;
+  const paid = Boolean(winner?.isPaidOut);
+  const amt = formatXpotAmount(winner?.amount ?? 1_000_000);
 
   return (
-    <div className="mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/30 ring-1 ring-white/[0.05]">
+    <div className="relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/30 ring-1 ring-white/[0.05]">
       <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
       <div className="relative px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1148,17 +1180,23 @@ function WinnerSpotlight({ winner }: { winner: WinnerRow | null }) {
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Avatar src={winner.avatarUrl} label={winner.handle ?? label} size={44} />
+            <Avatar src={winner?.avatarUrl} label={winner?.handle ?? label} size={44} />
             <div className="leading-tight">
-              <div className="text-[14px] font-semibold text-slate-50">{label}</div>
+              <div className="text-[14px] font-semibold text-slate-50">{winner ? label : 'Waiting for winner sync'}</div>
               <div className="mt-1 text-[12px] text-slate-400">
-                {ymd ? <span className="font-mono">{ymd}</span> : null}
-                {winner.wallet ? (
+                {winner ? (
                   <>
-                    <span className="text-slate-700"> • </span>
-                    <span className="font-mono">{shortenAddress(winner.wallet, 7, 7)}</span>
+                    {ymd ? <span className="font-mono">{ymd}</span> : null}
+                    {winner.wallet ? (
+                      <>
+                        <span className="text-slate-700"> • </span>
+                        <span className="font-mono">{shortenAddress(winner.wallet, 7, 7)}</span>
+                      </>
+                    ) : null}
                   </>
-                ) : null}
+                ) : (
+                  <span>Winner will appear as soon as the public endpoint is live.</span>
+                )}
               </div>
             </div>
           </div>
@@ -1168,7 +1206,7 @@ function WinnerSpotlight({ winner }: { winner: WinnerRow | null }) {
             <div className={`mt-1 font-mono text-[18px] ${GOLD_TEXT}`}>{amt}</div>
 
             <div className="mt-2 flex flex-wrap justify-end gap-2">
-              {winner.txUrl ? (
+              {winner?.txUrl ? (
                 <a
                   href={winner.txUrl}
                   target="_blank"
@@ -1234,36 +1272,73 @@ function LiveControlRoom({
     <div className="relative">
       <style jsx global>{`
         @keyframes xpotPulse {
-          0% { transform: translateZ(0) scale(1); opacity: 0.85; }
-          50% { transform: translateZ(0) scale(1.02); opacity: 1; }
-          100% { transform: translateZ(0) scale(1); opacity: 0.85; }
+          0% {
+            transform: translateZ(0) scale(1);
+            opacity: 0.85;
+          }
+          50% {
+            transform: translateZ(0) scale(1.02);
+            opacity: 1;
+          }
+          100% {
+            transform: translateZ(0) scale(1);
+            opacity: 0.85;
+          }
         }
         @keyframes xpotScan {
-          0% { transform: translateY(-18%); opacity: 0; }
-          18% { opacity: 0.22; }
-          55% { opacity: 0.1; }
-          100% { transform: translateY(118%); opacity: 0; }
+          0% {
+            transform: translateY(-18%);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.22;
+          }
+          55% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateY(118%);
+            opacity: 0;
+          }
         }
         @keyframes xpotFlicker {
-          0% { opacity: 0.35; }
-          50% { opacity: 0.75; }
-          100% { opacity: 0.35; }
+          0% {
+            opacity: 0.35;
+          }
+          50% {
+            opacity: 0.75;
+          }
+          100% {
+            opacity: 0.35;
+          }
         }
-        .xpot-cr-scan { position: relative; isolation: isolate; }
+        .xpot-cr-scan {
+          position: relative;
+          isolation: isolate;
+        }
         .xpot-cr-scan::before {
           content: '';
           pointer-events: none;
           position: absolute;
           inset: 0;
           border-radius: 18px;
-          background: linear-gradient(to bottom, transparent, rgba(16, 185, 129, 0.1), rgba(56, 189, 248, 0.07), transparent);
+          background: linear-gradient(
+            to bottom,
+            transparent,
+            rgba(16, 185, 129, 0.1),
+            rgba(56, 189, 248, 0.07),
+            transparent
+          );
           opacity: 0;
           transform: translateY(-20%);
           animation: xpotScan 5.6s ease-in-out infinite;
           mix-blend-mode: screen;
           z-index: 0;
         }
-        .xpot-cr-scan > * { position: relative; z-index: 1; }
+        .xpot-cr-scan > * {
+          position: relative;
+          z-index: 1;
+        }
         .xpot-cr-cursor {
           display: inline-block;
           width: 8px;
@@ -1325,10 +1400,7 @@ function LiveControlRoom({
 }
 
 function buildLastWinnersLines(winners: WinnerRow[]) {
-  const fallback = [
-    `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`,
-    `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`,
-  ];
+  const fallback = [`  #---- -- --  winner   ${XPOT_SIGN}1,000,000`, `  #---- -- --  winner   ${XPOT_SIGN}1,000,000`];
 
   if (!winners || winners.length === 0) return fallback;
 
@@ -1439,10 +1511,20 @@ function BonusVault({
     <div className="relative">
       <style jsx global>{`
         @keyframes xpotBonusSheen {
-          0% { transform: translateX(-55%) skewX(-12deg); opacity: 0; }
-          18% { opacity: 0.24; }
-          60% { opacity: 0.12; }
-          100% { transform: translateX(55%) skewX(-12deg); opacity: 0; }
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.24;
+          }
+          60% {
+            opacity: 0.12;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
         }
         .xpot-bonus-sheen {
           position: absolute;
@@ -1686,7 +1768,7 @@ function HomePageInner() {
                         </p>
                       </div>
 
-                      {/* ✅ NEW: premium winner spotlight + latest entries strip */}
+                      {/* ✅ Premium winner spotlight + latest entries strip */}
                       <WinnerSpotlight winner={winnerSpotlight} />
                       <EnteringTheStage entries={entries} />
 
@@ -1878,12 +1960,7 @@ function HomePageInner() {
                   </ParallaxConsoleCard>
 
                   <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <LiveControlRoom
-                      countdown={countdown}
-                      cutoffLabel={cutoffLabel}
-                      runLine={runLine}
-                      winners={winners}
-                    />
+                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} winners={winners} />
                   </PremiumCard>
                 </motion.div>
               </div>
@@ -1963,9 +2040,7 @@ function HomePageInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
+              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
@@ -2022,8 +2097,7 @@ function HomePageInner() {
                 A daily engine with an ending, not a one-off giveaway.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and
-                sponsor pools while keeping the same primitive and the same proof.
+                XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and sponsor pools while keeping the same primitive and the same proof.
               </p>
             </div>
 
@@ -2131,9 +2205,7 @@ function HomePageInner() {
               Sponsors
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Sponsor pools and bonuses with visibility and provable distribution on-chain.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Sponsor pools and bonuses with visibility and provable distribution on-chain.</p>
           </PremiumCard>
 
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -2157,9 +2229,7 @@ function HomePageInner() {
                 Clarity
               </Pill>
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                Homepage is the story. Hub is the action. The Final Draw is the destination.
-              </p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">Homepage is the story. Hub is the action. The Final Draw is the destination.</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
