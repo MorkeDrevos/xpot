@@ -209,12 +209,25 @@ body {
   height: 100%;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--xpot-bg-page);
   color: var(--xpot-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
+
+  /* Mobile "app feel" */
+  overscroll-behavior-y: none;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Reduce iOS tap highlight for app-feel */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {
@@ -262,27 +275,6 @@ select {
 
 *::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.26);
-}
-
-/* =============================================================
-   MOBILE RULE: HIDE TOP BANNER STRIP + REMOVE RESERVED HEIGHT
-   (supports multiple selector styles to match your banner)
-============================================================= */
-
-@media (max-width: 640px) {
-  :root {
-    --xpot-banner-h: 0px !important;
-  }
-
-  /* If your PreLaunchBanner root uses a class */
-  .xpot-prelaunch-banner,
-  .xpot-top-strip,
-  /* If it uses an id */
-  #xpot-prelaunch-banner,
-  /* If you ever add a data marker */
-  [data-xpot-banner="top"] {
-    display: none !important;
-  }
 }
 
 /* =============================================================
@@ -444,7 +436,7 @@ select {
 ============================================================= */
 
 .xpot-gold-text { color: rgb(var(--xpot-gold)); }
-.xpot-gold-text-hi { color: rgb(var(--xpot-gold-2)); } /* ✅ readable on dark */
+.xpot-gold-text-hi { color: rgb(var(--xpot-gold-2)); } /* readable on dark */
 .xpot-gold-border { border-color: rgba(var(--xpot-gold), 0.28); }
 .xpot-gold-bg { background: rgba(var(--xpot-gold), 0.10); }
 .xpot-gold-glow { box-shadow: var(--xpot-glow-gold); }
@@ -471,13 +463,11 @@ select {
    GOLD PILLS / BADGES (READABLE ON DARK UI)
 ============================================================= */
 
-/* Gold outline pill sitting on dark glass */
 .xpot-pill-gold {
   color: rgb(var(--xpot-gold-2));
   border-color: rgba(var(--xpot-gold), 0.35);
 }
 
-/* When the pill itself is gold */
 .xpot-pill-gold-solid {
   background: var(--xpot-gold-grad);
   color: rgb(var(--xpot-gold-ink));
@@ -618,4 +608,28 @@ select {
   text-shadow:
     0 0 18px rgba(110, 231, 249, 0.10),
     0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
+/* =============================================================
+   MOBILE RULES
+   - Hide top strip/banner on mobile (as agreed)
+   - Keep layout snug + app-like
+============================================================= */
+
+@media (max-width: 640px) {
+  /* Hide the top strip on mobile */
+  .xpot-top-strip {
+    display: none !important;
+  }
+
+  /* If anything relies on banner height vars, force them to 0 on mobile */
+  :root {
+    --xpot-banner-h: 0px;
+  }
+
+  /* iOS app-feel scrolling */
+  body {
+    overscroll-behavior-y: none;
+    padding-top: env(safe-area-inset-top);
+  }
 }
