@@ -1,57 +1,48 @@
-// app/api/public/last-winners/route.ts
+// app/api/public/winners/latest/route.ts
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-function shorten(addr: string, left = 6, right = 6) {
-  if (!addr) return '';
-  if (addr.length <= left + right + 3) return addr;
-  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
-}
+const DEFAULT_XPOT_AMOUNT = 1_000_000;
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const url = new URL(req.url);
-    const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || '2'), 1), 10);
-
     const winners = await prisma.winner.findMany({
       where: { kind: 'MAIN' },
-      orderBy: [{ date: 'desc' }],
-      take: limit,
+      orderBy: { createdAt: 'desc' },
+      take: 5,
       include: {
         draw: true,
         ticket: {
           include: {
             wallet: {
-              include: {
-                user: true,
-              },
+              include: { user: true },
             },
           },
         },
       },
     });
 
-    const rows = winners.map(w => {
-      const xHandle = w.ticket?.wallet?.user?.xHandle || null;
-      const walletAddress = w.walletAddress || w.ticket?.walletAddress || '';
+    const payload = winners.map(w => {
+      const u = w.ticket?.wallet?.user;
 
       return {
         id: w.id,
-        // prefer draw bucket date if present, else winner timestamp
-        drawDate: w.draw?.drawDate ? w.draw.drawDate.toISOString() : w.date.toISOString(),
-        xHandle,
-        walletAddress,
-        display: xHandle ? `@${xHandle.replace(/^@/, '')}` : shorten(walletAddress, 6, 6),
-        txUrl: w.txUrl || null,
+        drawDate: (w.draw?.drawDate ?? w.date ?? w.createdAt).toISOString(),
+        handle: u?.xHandle ?? null,
+        name: u?.xName ?? null,
+        avatarUrl: u?.xAvatarUrl ?? null,
+        wallet: w.walletAddress ?? w.ticket?.walletAddress ?? null,
+        amount: DEFAULT_XPOT_AMOUNT,
+        txUrl: w.txUrl ?? null,
         isPaidOut: Boolean(w.isPaidOut),
       };
     });
 
-    return NextResponse.json({ ok: true, winners: rows }, { status: 200 });
+    return NextResponse.json({ ok: true, winners: payload }, { status: 200 });
   } catch (e) {
-    return NextResponse.json({ ok: false }, { status: 200 });
+    return NextResponse.json({ ok: false, winners: [] }, { status: 200 });
   }
 }
