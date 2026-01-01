@@ -1528,8 +1528,10 @@ function MissionBanner() {
 
 function HomePageInner() {
   const bonusActive = useBonusActive();
-  const winnerSpotlight = useLatestWinnerCard();
-  const entries = useLatestEntriesTelemetry();
+
+  // TEMP OFF: winner + entries sections
+  // const winnerSpotlight = useLatestWinnerCard();
+  // const entries = useLatestEntriesTelemetry();
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
