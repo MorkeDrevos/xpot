@@ -5,21 +5,22 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-const TAKE = 18;
-
 export async function GET() {
   try {
+    // Most recent draw (works even if you don’t want to “ensure today” here)
     const draw = await prisma.draw.findFirst({
-      orderBy: { drawDate: 'desc' },
+      orderBy: [{ drawDate: 'desc' }],
       select: { id: true, drawDate: true },
     });
 
-    if (!draw) return NextResponse.json({ ok: true, entries: [] }, { status: 200 });
+    if (!draw) {
+      return NextResponse.json({ ok: true, entries: [] }, { status: 200 });
+    }
 
     const entries = await prisma.drawEntry.findMany({
       where: { drawId: draw.id },
-      orderBy: { createdAt: 'desc' },
-      take: TAKE,
+      orderBy: [{ createdAt: 'desc' }],
+      take: 14,
       select: {
         id: true,
         createdAt: true,
@@ -33,16 +34,8 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: true,
-        drawId: draw.id,
         drawDate: draw.drawDate.toISOString(),
-        entries: entries.map(e => ({
-          id: e.id,
-          createdAt: e.createdAt.toISOString(),
-          handle: e.xHandle,
-          name: e.xName ?? null,
-          avatarUrl: e.xAvatarUrl ?? null,
-          verified: Boolean(e.verified),
-        })),
+        entries,
       },
       { status: 200 },
     );
