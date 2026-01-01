@@ -109,10 +109,33 @@ export default function XpotTopBar({
 
   const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
-  // Banner offset - banner should be hidden on mobile AND set --xpot-banner-h to 0
+  // Banner offset
   const top = hasBanner ? 'calc(var(--xpot-banner-h, 0px) - 1px)' : '0px';
 
   const headerRef = useRef<HTMLElement | null>(null);
+
+  // ✅ IMPORTANT: Banner is hidden on mobile, so force --xpot-banner-h to 0 under xl
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+
+    const mq = window.matchMedia('(min-width: 1280px)'); // xl breakpoint
+    const apply = () => {
+      if (!hasBanner) {
+        root.style.setProperty('--xpot-banner-h', '0px');
+        return;
+      }
+      if (!mq.matches) {
+        // banner is visually hidden on mobile - prevent top offset gaps
+        root.style.setProperty('--xpot-banner-h', '0px');
+      }
+      // if mq.matches, banner component is responsible for setting --xpot-banner-h correctly
+    };
+
+    apply();
+    mq.addEventListener?.('change', apply);
+    return () => mq.removeEventListener?.('change', apply);
+  }, [hasBanner, pathname]);
 
   // Close menus on route change
   useEffect(() => {
@@ -226,18 +249,10 @@ export default function XpotTopBar({
               {/* Row 1: logo + CA + primary + menu */}
               <div className="flex items-center justify-between gap-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3">
                 <Link href={logoHref} className="flex min-w-0 items-center gap-3">
-                  {/* ✅ Bigger logo on mobile */}
-                  <XpotLogo
-                    variant="light"
-                    width={420}
-                    height={120}
-                    priority
-                    className="h-[64px] w-auto object-contain"
-                  />
+                  <XpotLogo variant="light" width={420} height={120} priority className="h-[64px] w-auto object-contain" />
                 </Link>
 
                 <div className="flex items-center gap-2">
-                  {/* ✅ CA chip always accessible on mobile (copy) */}
                   <OfficialCAChipMobile />
 
                   {isHub ? (
@@ -275,21 +290,9 @@ export default function XpotTopBar({
               <div className="pb-3">
                 <div className="flex items-center gap-2 overflow-x-auto [-webkit-overflow-scrolling:touch]">
                   <QuickAction href="/hub" icon={<Home className="h-4 w-4 text-slate-200" />} label="Hub" />
-                  <QuickAction
-                    href={FINAL_DAY_HREF}
-                    icon={<Hourglass className="h-4 w-4 text-amber-200" />}
-                    label={FINAL_DAY_LABEL}
-                  />
-                  <QuickAction
-                    href={WINNERS_HREF}
-                    icon={<Trophy className="h-4 w-4 text-amber-300" />}
-                    label="Winners"
-                  />
-                  <QuickAction
-                    href={TOKENOMICS_HREF}
-                    icon={<PieChart className="h-4 w-4 text-emerald-300" />}
-                    label="Tokenomics"
-                  />
+                  <QuickAction href={FINAL_DAY_HREF} icon={<Hourglass className="h-4 w-4 text-amber-200" />} label={FINAL_DAY_LABEL} />
+                  <QuickAction href={WINNERS_HREF} icon={<Trophy className="h-4 w-4 text-amber-300" />} label="Winners" />
+                  <QuickAction href={TOKENOMICS_HREF} icon={<PieChart className="h-4 w-4 text-emerald-300" />} label="Tokenomics" />
                 </div>
               </div>
             </div>
@@ -396,7 +399,7 @@ function OfficialCAChip() {
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         className="
           group relative inline-flex items-center gap-3
           rounded-full px-4 py-2
@@ -664,7 +667,6 @@ function PublicNavCenter({
         )}
       </div>
 
-      {/* liveIsOpen kept for compatibility */}
       <span className="sr-only">{String(liveIsOpen)}</span>
     </nav>
   );
@@ -911,7 +913,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
   const addr = connected && publicKey ? shortWallet(publicKey.toBase58()) : null;
 
   const usableWallets = useMemo(() => {
-    return (wallets || []).filter((w) => w.readyState !== WalletReadyState.Unsupported);
+    return (wallets || []).filter(w => w.readyState !== WalletReadyState.Unsupported);
   }, [wallets]);
 
   async function handlePick(name: WalletName) {
@@ -926,7 +928,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
       setBusyName(String(name));
 
       select(name);
-      await new Promise((r) => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 50));
       await connect();
 
       setBusyName(null);
@@ -1020,7 +1022,7 @@ function LightConnectWalletModal({ open, onClose }: { open: boolean; onClose: ()
             )}
 
             <div className="mt-4 space-y-2">
-              {usableWallets.map((w) => {
+              {usableWallets.map(w => {
                 const name = w.adapter.name as WalletName;
                 const ready = w.readyState;
                 const isInstalled = ready === WalletReadyState.Installed || ready === WalletReadyState.Loadable;
@@ -1135,7 +1137,7 @@ function MobileMenu({
 
   const externalAccounts = (user?.externalAccounts || []) as any[];
   const xAccount = externalAccounts.find(
-    (acc) =>
+    acc =>
       String(acc.provider || '').toLowerCase().includes('twitter') ||
       String(acc.provider || '').toLowerCase().includes('x'),
   );
@@ -1165,11 +1167,8 @@ function MobileMenu({
         aria-label="Close menu"
       />
 
-      {/* ✅ iPhone-like sheet */}
       <div className="fixed right-0 top-0 z-[81] h-full w-[92%] max-w-sm border-l border-white/10 bg-black/85 backdrop-blur-xl">
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-          {/* ✅ FIX: Left identity badge no longer looks like a close button */}
           <div className="flex items-center gap-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/35">
@@ -1187,7 +1186,6 @@ function MobileMenu({
             </div>
           </div>
 
-          {/* Close stays clearly on the right */}
           <button
             type="button"
             onClick={onClose}
@@ -1199,7 +1197,6 @@ function MobileMenu({
         </div>
 
         <div className="space-y-4 px-5 py-5">
-          {/* Verify / CA */}
           <div>
             <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">VERIFY</p>
 
@@ -1237,7 +1234,6 @@ function MobileMenu({
             </div>
           </div>
 
-          {/* Navigation */}
           <div>
             <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">NAVIGATION</p>
 
@@ -1283,7 +1279,6 @@ function MobileMenu({
             </div>
           </div>
 
-          {/* Hub wallet */}
           {isHub && (
             <div className="pt-1">
               <p className="mb-2 text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">WALLET</p>
@@ -1304,7 +1299,6 @@ function MobileMenu({
             </div>
           )}
 
-          {/* Bottom CTA */}
           <div className="pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
             <Link
               href="/hub"
@@ -1312,9 +1306,7 @@ function MobileMenu({
             >
               Enter today&apos;s XPOT →
             </Link>
-            <p className="mt-2 text-center text-[11px] text-slate-400/80">
-              {String(liveIsOpen).length ? '' : '' /* keep prop used */}
-            </p>
+            <p className="mt-2 text-center text-[11px] text-slate-400/80">{String(liveIsOpen).length ? '' : ''}</p>
           </div>
         </div>
       </div>
