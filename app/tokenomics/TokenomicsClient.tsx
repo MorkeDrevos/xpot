@@ -687,6 +687,28 @@ function useVaultGroups() {
   return { data, isLoading, hadError };
 }
 
+function sumGroupUiAmounts(groups: ApiVaultResponse['groups'] | undefined, keys: string[]) {
+  if (!groups) return null;
+  let sum = 0;
+  let foundAny = false;
+
+  for (const k of keys) {
+    const arr = groups[k];
+    if (!Array.isArray(arr)) continue;
+    for (const v of arr) {
+      const b = v?.balance;
+      const s = formatVaultBalance(b);
+      const n = s != null ? Number(s) : NaN;
+      if (Number.isFinite(n)) {
+        sum += n;
+        foundAny = true;
+      }
+    }
+  }
+
+  return foundAny ? sum : null;
+}
+
 function VaultGroupPanel({
   title,
   groupKey,
@@ -1170,10 +1192,7 @@ function TokenomicsPageInner() {
   );
 
   const runwayFixedYears = useMemo(() => yearsOfRunway(DISTRIBUTION_DAILY_XPOT), [yearsOfRunway]);
-  const runwayFixedDays = useMemo(
-    () => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT),
-    [DISTRIBUTION_RESERVE],
-  );
+  const runwayFixedDays = useMemo(() => Math.floor(DISTRIBUTION_RESERVE / DISTRIBUTION_DAILY_XPOT), [DISTRIBUTION_RESERVE]);
 
   const allocation = useMemo<Allocation[]>(
     () => [
