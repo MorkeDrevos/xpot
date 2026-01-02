@@ -1,4 +1,4 @@
-// components/JackpotPanel.tsx
+// components/JackpotPanel/index.tsx
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
