@@ -2160,7 +2160,7 @@ function HomePageInner() {
   );
 }
 
-export default function HomePage() {
+export default function HomePageClient() {
   return (
     <NextDrawProvider>
       <HomePageInner />
