@@ -1,2 +1,2 @@
 // components/JackpotPanel.tsx
-export { default } from './JackpotPanel';
+export { default } from './JackpotPanel/index';
