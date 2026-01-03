@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
+import XpotFooter from '@/components/XpotFooter';
 import { TOKEN_MINT } from '@/lib/xpot';
 
 type LiveDraw = {
@@ -262,14 +263,7 @@ function getMadridYMD(d: Date): { y: number; m: number; day: number } {
   return { y, m, day };
 }
 
-function madridLocalToUtcDate(
-  y: number,
-  m: number,
-  day: number,
-  hh: number,
-  mm: number,
-  ss: number,
-) {
+function madridLocalToUtcDate(y: number, m: number, day: number, hh: number, mm: number, ss: number) {
   const fmt = new Intl.DateTimeFormat('en-GB', {
     timeZone: MADRID_TZ,
     year: 'numeric',
@@ -398,14 +392,24 @@ function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: numbe
   );
 }
 
+// Brighter "homepage-grade" gold: gradient text + gentle glow.
+// This avoids the muddy amber look on dark glass panels.
 function XpotAmount({ amount }: { amount: number }) {
   const n = Number(amount);
   const text = Number.isFinite(n) ? n.toLocaleString() : '—';
+
   return (
     <span className="inline-flex items-baseline gap-3">
-      <span className="font-mono text-amber-300 tracking-[0.18em] text-lg sm:text-xl drop-shadow-[0_0_12px_rgba(251,191,36,0.20)]">
-  {text}
-</span>
+      <span
+        className="
+          font-mono tracking-[0.18em] text-lg sm:text-xl
+          bg-gradient-to-r from-amber-200 via-amber-100 to-amber-300
+          bg-clip-text text-transparent
+          drop-shadow-[0_0_16px_rgba(251,191,36,0.28)]
+        "
+      >
+        {text}
+      </span>
       <span className="text-slate-300/80 font-semibold tracking-[0.14em]">XPOT</span>
     </span>
   );
@@ -434,7 +438,6 @@ function SkeletonLine({ w = 'w-24' }: { w?: string }) {
  */
 function normalizeLiveDraw(payload: any): LiveDraw | null {
   const root = payload?.draw ?? payload?.live ?? payload?.data ?? payload;
-
   if (!root || typeof root !== 'object') return null;
 
   const closesAtRaw =
@@ -501,6 +504,28 @@ function normalizeBonus(payload: any): BonusXPOT[] {
     .filter(Boolean) as BonusXPOT[];
 }
 
+function setMetaTag(name: string, content: string) {
+  if (!content) return;
+  let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute('name', name);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
+function setOgTag(property: string, content: string) {
+  if (!content) return;
+  let el = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute('property', property);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
 export default function HubProtocolPage() {
   const reduceMotion = useReducedMotion();
 
@@ -526,7 +551,7 @@ export default function HubProtocolPage() {
   const [liveLatencyMs, setLiveLatencyMs] = useState<number | null>(null);
   const [protoLatencyMs, setProtoLatencyMs] = useState<number | null>(null);
 
-  // Avoid state updates after unmount and avoid out-of-order responses
+  // Avoid out-of-order responses
   const liveReqId = useRef(0);
   const protoReqId = useRef(0);
 
@@ -573,7 +598,6 @@ export default function HubProtocolPage() {
       const t1 = performance.now();
 
       if (req !== liveReqId.current) return;
-
       setLiveLatencyMs(Math.round(t1 - t0));
 
       const dJson = await dRes.json().catch(() => ({}));
@@ -607,14 +631,12 @@ export default function HubProtocolPage() {
       const t = window.setTimeout(() => ac.abort(), 5500);
 
       const t0 = performance.now();
-      const res = await fetch('/api/protocol/state', {
-        cache: 'no-store',
-        signal: ac.signal,
-      }).finally(() => window.clearTimeout(t));
+      const res = await fetch('/api/protocol/state', { cache: 'no-store', signal: ac.signal }).finally(() =>
+        window.clearTimeout(t),
+      );
       const t1 = performance.now();
 
       if (req !== protoReqId.current) return;
-
       setProtoLatencyMs(Math.round(t1 - t0));
 
       if (!res.ok) {
@@ -711,6 +733,7 @@ export default function HubProtocolPage() {
     return st;
   }, [draw, closesInMs]);
 
+  // Marketing consistency: protocol mirrors homepage
   const liveIsOpen = effectiveStatus === 'OPEN';
   const isRefreshing = liveFetching || protoFetching;
 
@@ -718,8 +741,6 @@ export default function HubProtocolPage() {
   const mainClosesAtIso = useMemo(() => {
     if (!draw?.closesAt) return '';
     if (effectiveStatus === 'OPEN') return draw.closesAt;
-
-    // If locked/drawing/completed, switch to next draw close for marketing consistency
     return computeNextCloseIsoFromClosesAt(draw.closesAt);
   }, [draw?.closesAt, effectiveStatus]);
 
@@ -781,6 +802,23 @@ export default function HubProtocolPage() {
   // Marketing-consistent status label for Main XPOT card
   const mainStatusLabel = liveIsOpen ? 'OPEN' : 'STANDBY';
   const mainStatusHint = liveIsOpen ? 'Entries are active' : 'Awaiting next draw';
+
+  // Smart title + meta (client-safe, no rule changes)
+  useEffect(() => {
+    const statusWord = liveIsOpen ? 'Live' : 'Standby';
+    const nextTime = mainClosesAtIso ? formatMadridTime(mainClosesAtIso) : '—';
+    const title = `XPOT Protocol State - ${statusWord} - Next cycle ${nextTime} Madrid`;
+    document.title = title;
+
+    const desc =
+      'XPOT Protocol State. Live integrity overview, liquidity conditions and market telemetry. Marketing-consistent draw cycle countdown.';
+    setMetaTag('description', desc);
+    setMetaTag('robots', 'index,follow');
+    setOgTag('og:title', title);
+    setOgTag('og:description', desc);
+    setOgTag('og:type', 'website');
+    // Keep og:url unset unless you want hardcoded domain here
+  }, [liveIsOpen, mainClosesAtIso]);
 
   return (
     <XpotPageShell
@@ -1052,9 +1090,7 @@ export default function HubProtocolPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-100">Main XPOT</p>
-                <p className="mt-1 text-xs text-slate-400">
-  {liveIsOpen ? "Today’s primary draw" : 'Next draw cycle'}
-</p>
+                <p className="mt-1 text-xs text-slate-400">{liveIsOpen ? "Today’s primary draw" : 'Next draw cycle'}</p>
               </div>
 
               <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'} className={liveIsOpen ? 'xpot-live-pulse' : ''}>
@@ -1082,8 +1118,7 @@ export default function HubProtocolPage() {
                       <span className="text-slate-400 font-semibold">—</span>
                     )
                   }
-                  // ✅ USD estimate removed completely (per request)
-                  hint=""
+                  hint="" // USD removed completely
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
@@ -1094,7 +1129,6 @@ export default function HubProtocolPage() {
                 />
                 <MetricCard
                   label="Status"
-                  // ✅ Marketing-consistent label (mirrors homepage)
                   value={mainStatusLabel}
                   hint={mainStatusHint}
                   icon={<Sparkles className="h-4 w-4 text-emerald-300" />}
@@ -1144,9 +1178,7 @@ export default function HubProtocolPage() {
                     </p>
                   </div>
 
-                  <StatusPill
-                    tone={b.status === 'CLAIMED' ? 'emerald' : b.status === 'CANCELLED' ? 'slate' : 'amber'}
-                  >
+                  <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : b.status === 'CANCELLED' ? 'slate' : 'amber'}>
                     {b.status === 'CLAIMED' ? (
                       <>
                         <Crown className="h-3.5 w-3.5" />
@@ -1172,11 +1204,7 @@ export default function HubProtocolPage() {
 
         {/* LIVE MARKET PANELS */}
         <section className="grid gap-6 lg:grid-cols-2">
-          <PremiumPanel
-            title="Liquidity"
-            subtitle="LP integrity and stability signals."
-            icon={<Waves className="h-5 w-5 text-sky-300" />}
-          >
+          <PremiumPanel title="Liquidity" subtitle="LP integrity and stability signals." icon={<Waves className="h-5 w-5 text-sky-300" />}>
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)} />
               <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
@@ -1187,11 +1215,7 @@ export default function HubProtocolPage() {
             </div>
           </PremiumPanel>
 
-          <PremiumPanel
-            title="Market"
-            subtitle="Reference price and volume behaviour."
-            icon={<Activity className="h-5 w-5 text-emerald-300" />}
-          >
+          <PremiumPanel title="Market" subtitle="Reference price and volume behaviour." icon={<Activity className="h-5 w-5 text-emerald-300" />}>
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi label="Price" value={protoLoading ? 'Loading…' : fmtUsd(proto?.priceUsd, 6)} />
               <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)} />
@@ -1203,6 +1227,11 @@ export default function HubProtocolPage() {
             </div>
           </PremiumPanel>
         </section>
+
+        {/* FOOTER */}
+        <div className="pt-2">
+          <XpotFooter />
+        </div>
       </section>
     </XpotPageShell>
   );
