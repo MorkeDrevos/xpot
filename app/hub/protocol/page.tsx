@@ -30,7 +30,7 @@ import { TOKEN_MINT } from '@/lib/xpot';
 type LiveDraw = {
   jackpotXpot: number; // API field name (keep), UI avoids "jackpot"
   jackpotUsd?: number; // legacy/stub only - UI should not rely on it
-  closesAt: string; // ISO
+  closesAt: string; // ISO (normalized to real ISO with timezone/Z when possible)
   status: 'OPEN' | 'LOCKED' | 'DRAWING' | 'COMPLETED';
 };
 
@@ -49,7 +49,7 @@ type ProtocolState = {
   priceUsd?: number;
   volume24hUsd?: number;
   updatedAt?: string; // ISO
-  source?: 'DexScreener';
+  source?: 'dexscreener';
   pairUrl?: string;
   pairAddress?: string;
   chainId?: string;
@@ -162,7 +162,7 @@ function formatMadridTime(iso?: string) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Madrid',
     hour: '2-digit',
     minute: '2-digit',
@@ -290,8 +290,6 @@ function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: numbe
           opacity={points ? 0.08 : 0}
         />
       </svg>
-
-      {/* Removed all placeholder text (per request) */}
     </div>
   );
 }
@@ -325,12 +323,87 @@ function SkeletonLine({ w = 'w-24' }: { w?: string }) {
 }
 
 /**
+ * Robust time parsing for closesAt.
+ * If API gives a proper ISO with timezone (Z or ±hh:mm) -> normal Date.parse works.
+ * If API gives a timezone-less ISO (YYYY-MM-DDTHH:mm:ss) -> treat it as Europe/Madrid local time.
+ */
+function parseIsoAssumingMadrid(iso: string): number | null {
+  if (!iso || typeof iso !== 'string') return null;
+  const s = iso.trim();
+  if (!s) return null;
+
+  // If it already has timezone info, trust native parse.
+  const hasTz = /([zZ]|[+\-]\d{2}:\d{2})$/.test(s);
+  if (hasTz) {
+    const ms = Date.parse(s);
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  // Expect: YYYY-MM-DDTHH:mm(:ss)?
+  const m = s.match(
+    /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/
+  );
+  if (!m) {
+    const ms = Date.parse(s);
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const hh = Number(m[4]);
+  const mm = Number(m[5]);
+  const ss = Number(m[6] ?? '0');
+
+  if (![y, mo, d, hh, mm, ss].every((n) => Number.isFinite(n))) return null;
+
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+
+  function partsToUtcMs(date: Date) {
+    const parts = fmt.formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+    const yy = Number(get('year'));
+    const m2 = Number(get('month'));
+    const dd = Number(get('day'));
+    const h2 = Number(get('hour'));
+    const mi2 = Number(get('minute'));
+    const s2 = Number(get('second'));
+    return Date.UTC(yy, m2 - 1, dd, h2, mi2, s2);
+  }
+
+  // Start with naive UTC guess of the Madrid local components.
+  let guessUtc = Date.UTC(y, mo - 1, d, hh, mm, ss);
+
+  // Iterate a couple times to converge offset/DST.
+  for (let i = 0; i < 3; i++) {
+    const shownAsMadridUtc = partsToUtcMs(new Date(guessUtc));
+    const offsetMs = shownAsMadridUtc - guessUtc;
+    const targetUtc = Date.UTC(y, mo - 1, d, hh, mm, ss) - offsetMs;
+    if (Math.abs(targetUtc - guessUtc) < 500) {
+      guessUtc = targetUtc;
+      break;
+    }
+    guessUtc = targetUtc;
+  }
+
+  return Number.isFinite(guessUtc) ? guessUtc : null;
+}
+
+/**
  * Normalize live draw payloads so Main XPOT matches the rest of the site even if
  * /api/draw/live returns slightly different shapes across deployments.
  */
 function normalizeLiveDraw(payload: any): LiveDraw | null {
   const root = payload?.draw ?? payload?.live ?? payload?.data ?? payload;
-
   if (!root || typeof root !== 'object') return null;
 
   const closesAtRaw =
@@ -341,11 +414,7 @@ function normalizeLiveDraw(payload: any): LiveDraw | null {
     root.entryClosesAt ??
     null;
 
-  const statusRaw =
-    root.status ??
-    root.state ??
-    root.drawStatus ??
-    null;
+  const statusRaw = root.status ?? root.state ?? root.drawStatus ?? null;
 
   const jackpotRaw =
     root.jackpotXpot ??
@@ -356,28 +425,34 @@ function normalizeLiveDraw(payload: any): LiveDraw | null {
     root.rewardXpot ??
     null;
 
-  const closesAt = typeof closesAtRaw === 'string' ? closesAtRaw : '';
-  const closesAtMs = closesAt ? new Date(closesAt).getTime() : NaN;
+  const closesAtStr = typeof closesAtRaw === 'string' ? closesAtRaw : '';
+  const closesAtMs = closesAtStr ? parseIsoAssumingMadrid(closesAtStr) : null;
 
   const jackpotXpot = Number(jackpotRaw);
   const jackpotUsd = Number(root.jackpotUsd);
 
-  // If API doesn't provide status, derive it from closesAt (same philosophy as homepage).
-  let status: LiveDraw['status'] = 'LOCKED';
+  // Only trust API for DRAWING/COMPLETED. OPEN/LOCKED is derived from closesAt.
+  let apiStatus: LiveDraw['status'] | null = null;
   if (typeof statusRaw === 'string') {
     const s = statusRaw.toUpperCase();
-    if (s === 'OPEN' || s === 'LOCKED' || s === 'DRAWING' || s === 'COMPLETED') status = s;
-  } else if (Number.isFinite(closesAtMs)) {
-    status = Date.now() < closesAtMs ? 'OPEN' : 'LOCKED';
+    if (s === 'DRAWING' || s === 'COMPLETED') apiStatus = s;
+    if (s === 'OPEN' || s === 'LOCKED') apiStatus = s; // keep for fallback if closesAt missing
   }
 
-  // If closesAt is invalid, we still return a draw if jackpot is valid - but countdown will show —
-  const safeClosesAt = Number.isFinite(closesAtMs) ? new Date(closesAtMs).toISOString() : '';
+  let status: LiveDraw['status'] = 'LOCKED';
+  if (apiStatus === 'DRAWING' || apiStatus === 'COMPLETED') {
+    status = apiStatus;
+  } else if (typeof closesAtMs === 'number') {
+    status = Date.now() < closesAtMs ? 'OPEN' : 'LOCKED';
+  } else if (apiStatus === 'OPEN' || apiStatus === 'LOCKED') {
+    status = apiStatus;
+  }
+
+  const safeClosesAt =
+    typeof closesAtMs === 'number' ? new Date(closesAtMs).toISOString() : '';
 
   const hasMeaningful =
-    Number.isFinite(jackpotXpot) ||
-    Boolean(safeClosesAt) ||
-    Boolean(status);
+    Number.isFinite(jackpotXpot) || Boolean(safeClosesAt) || Boolean(status);
 
   if (!hasMeaningful) return null;
 
@@ -542,9 +617,12 @@ export default function HubProtocolPage() {
         const nextPx = Number(next?.priceUsd);
         const nextVol = Number(next?.volume24hUsd);
 
-        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp) setLpKey((k) => k + 1);
-        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx) setPxKey((k) => k + 1);
-        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol) setVolKey((k) => k + 1);
+        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp)
+          setLpKey((k) => k + 1);
+        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx)
+          setPxKey((k) => k + 1);
+        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol)
+          setVolKey((k) => k + 1);
 
         return next;
       });
@@ -596,30 +674,30 @@ export default function HubProtocolPage() {
   const closesAtMs = useMemo(() => {
     const iso = draw?.closesAt;
     if (!iso) return null;
-    const ms = new Date(iso).getTime();
+    const ms = Date.parse(iso);
     return Number.isFinite(ms) ? ms : null;
   }, [draw?.closesAt]);
 
   const closesInMs = useMemo(() => {
-    if (!closesAtMs) return null;
+    if (typeof closesAtMs !== 'number') return null;
     return closesAtMs - now;
   }, [closesAtMs, now]);
 
-  // Homepage-style safety: if API says OPEN but close time has passed, treat as locked UI-side
+  // Authority rule:
+  // - If API says DRAWING/COMPLETED, show it.
+  // - Otherwise OPEN/LOCKED is derived from closesAt (same logic as the rest of the site).
   const effectiveStatus = useMemo<LiveDraw['status'] | null>(() => {
     if (!draw) return null;
 
-    const st = draw.status;
-    if (st === 'OPEN' && typeof closesInMs === 'number' && closesInMs <= 0) return 'LOCKED';
+    if (draw.status === 'DRAWING' || draw.status === 'COMPLETED') return draw.status;
 
-    // If status is missing/weird, derive from time (same philosophy as rest of site)
-    if (st !== 'OPEN' && st !== 'LOCKED' && st !== 'DRAWING' && st !== 'COMPLETED') {
-      if (typeof closesInMs === 'number') return closesInMs > 0 ? 'OPEN' : 'LOCKED';
-      return 'LOCKED';
-    }
+    if (typeof closesAtMs === 'number') return now < closesAtMs ? 'OPEN' : 'LOCKED';
 
-    return st;
-  }, [draw, closesInMs]);
+    // No closesAt - fallback to API OPEN/LOCKED if it exists, else locked.
+    if (draw.status === 'OPEN' || draw.status === 'LOCKED') return draw.status;
+
+    return 'LOCKED';
+  }, [draw, closesAtMs, now]);
 
   const liveIsOpen = effectiveStatus === 'OPEN';
   const isRefreshing = liveFetching || protoFetching;
@@ -853,7 +931,10 @@ export default function HubProtocolPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'} className={liveIsOpen ? 'xpot-live-pulse' : ''}>
+              <StatusPill
+                tone={liveIsOpen ? 'emerald' : 'slate'}
+                className={liveIsOpen ? 'xpot-live-pulse' : ''}
+              >
                 <Sparkles className="h-3.5 w-3.5" />
                 {liveIsOpen ? 'Live entries' : 'Standby'}
               </StatusPill>
@@ -949,7 +1030,10 @@ export default function HubProtocolPage() {
                 <p className="mt-1 text-xs text-slate-400">Today’s primary draw</p>
               </div>
 
-              <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'} className={liveIsOpen ? 'xpot-live-pulse' : ''}>
+              <StatusPill
+                tone={liveIsOpen ? 'emerald' : 'slate'}
+                className={liveIsOpen ? 'xpot-live-pulse' : ''}
+              >
                 <Sparkles className="h-3.5 w-3.5" />
                 {liveIsOpen ? 'LIVE' : 'STANDBY'}
               </StatusPill>
@@ -1240,8 +1324,6 @@ function GraphBlock({
       </div>
 
       <div className="mt-3">{spark}</div>
-
-      {/* Removed the descriptive note text (per request) */}
     </div>
   );
 }
