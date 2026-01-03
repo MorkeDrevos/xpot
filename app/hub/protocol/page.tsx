@@ -60,8 +60,9 @@ type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
 const LIVE_REFRESH_MS = 15_000;
 const PROTO_REFRESH_MS = 20_000;
-const SHOW_LIQUIDITY_STATUS =
-  process.env.NODE_ENV !== 'production';
+
+// Hide Liquidity: Critical in production for now
+const SHOW_LIQUIDITY_STATUS = process.env.NODE_ENV !== 'production';
 
 // Client-side sampling (no backend changes)
 type Sample = { t: number; v: number };
@@ -202,29 +203,31 @@ function saveSamples(key: string, arr: Sample[]) {
   }
 }
 
-function pushSampleIntoState({
+// Production-grade sampling: functional setState (no stale closure)
+function pushSample({
   key,
   v,
-  current,
   setCurrent,
 }: {
   key: string;
   v?: number;
-  current: Sample[];
-  setCurrent: (next: Sample[]) => void;
+  setCurrent: React.Dispatch<React.SetStateAction<Sample[]>>;
 }) {
   const num = Number(v);
   if (!Number.isFinite(num)) return;
 
   const now = Date.now();
-  const last = current[current.length - 1];
 
-  // avoid noisy duplicates
-  if (last && now - last.t < 6000 && Math.abs(last.v - num) < 1e-12) return;
+  setCurrent((prev) => {
+    const last = prev[prev.length - 1];
 
-  const next = [...current, { t: now, v: num }].slice(-SAMPLE_MAX);
-  setCurrent(next);
-  saveSamples(key, next);
+    // avoid noisy duplicates
+    if (last && now - last.t < 6000 && Math.abs(last.v - num) < 1e-12) return prev;
+
+    const next = [...prev, { t: now, v: num }].slice(-SAMPLE_MAX);
+    saveSamples(key, next);
+    return next;
+  });
 }
 
 function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: number }) {
@@ -238,7 +241,6 @@ function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: numbe
     const vs = samples.map((s) => s.v);
     const min = Math.min(...vs);
     const max = Math.max(...vs);
-
     const span = max - min || 1;
 
     const xs = samples.map((_, i) => (i / (samples.length - 1)) * (width - 8) + 4);
@@ -279,19 +281,17 @@ function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: numbe
         />
 
         <path
-          d={points ? `M ${points.replaceAll(' ', ' L ')} L ${width - 4},${height - 5} L 4,${height - 5} Z` : ''}
+          d={
+            points
+              ? `M ${points.replaceAll(' ', ' L ')} L ${width - 4},${height - 5} L 4,${height - 5} Z`
+              : ''
+          }
           fill={`url(#${gradId})`}
           opacity={points ? 0.08 : 0}
         />
       </svg>
 
-      {!points ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Awaiting samples
-          </span>
-        </div>
-      ) : null}
+      {/* Removed all placeholder text (per request) */}
     </div>
   );
 }
@@ -462,26 +462,11 @@ export default function HubProtocolPage() {
         return next;
       });
 
-      // Samples: update in-memory + persist (no re-parsing storage each refresh)
+      // Samples: update using functional setState (no stale closure)
       if (next) {
-        pushSampleIntoState({
-          key: KEY_PRICE,
-          v: next.priceUsd,
-          current: priceSamples,
-          setCurrent: setPriceSamples,
-        });
-        pushSampleIntoState({
-          key: KEY_LP,
-          v: next.lpUsd,
-          current: lpSamples,
-          setCurrent: setLpSamples,
-        });
-        pushSampleIntoState({
-          key: KEY_VOL,
-          v: next.volume24hUsd,
-          current: volSamples,
-          setCurrent: setVolSamples,
-        });
+        pushSample({ key: KEY_PRICE, v: next.priceUsd, setCurrent: setPriceSamples });
+        pushSample({ key: KEY_LP, v: next.lpUsd, setCurrent: setLpSamples });
+        pushSample({ key: KEY_VOL, v: next.volume24hUsd, setCurrent: setVolSamples });
       }
     } catch {
       if (req !== protoReqId.current) return;
@@ -524,12 +509,30 @@ export default function HubProtocolPage() {
   const liveIsOpen = draw?.status === 'OPEN';
   const isRefreshing = liveFetching || protoFetching;
 
-  // Single source of truth: draw.closesAt from DB-backed /api/draw/live
+  const closesAtMs = useMemo(() => {
+    const iso = draw?.closesAt;
+    if (!iso) return null;
+    const ms = new Date(iso).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }, [draw?.closesAt]);
+
+  const closesInMs = useMemo(() => {
+    if (!closesAtMs) return null;
+    return closesAtMs - now;
+  }, [closesAtMs, now]);
+
+  // Production-grade: if API says OPEN but close time has passed, treat as locked UI-side
+  const effectiveStatus = useMemo<LiveDraw['status'] | null>(() => {
+    if (!draw) return null;
+    if (draw.status === 'OPEN' && typeof closesInMs === 'number' && closesInMs <= 0) return 'LOCKED';
+    return draw.status;
+  }, [draw, closesInMs]);
+
   const closesIn = useMemo(() => {
-    if (!draw?.closesAt) return '00:00:00';
-    const target = new Date(draw.closesAt).getTime();
-    return formatCountdown(target - now);
-  }, [draw?.closesAt, now]);
+    if (typeof closesInMs !== 'number') return '—';
+    if (closesInMs <= 0) return '00:00:00';
+    return formatCountdown(closesInMs);
+  }, [closesInMs]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
 
@@ -537,7 +540,7 @@ export default function HubProtocolPage() {
   const dailyUsdEstimate = useMemo(() => {
     const amt = Number(draw?.jackpotXpot);
     const px = Number(proto?.priceUsd);
-    if (Number.isFinite(amt) && Number.isFinite(px)) return amt * px;
+    if (Number.isFinite(amt) && Number.isFinite(px) && amt > 0 && px > 0) return amt * px;
     return undefined;
   }, [draw?.jackpotXpot, proto?.priceUsd]);
 
@@ -760,11 +763,11 @@ export default function HubProtocolPage() {
               </StatusPill>
 
               {SHOW_LIQUIDITY_STATUS && (
-  <StatusPill tone={toneFromSignal(proto?.liquiditySignal)}>
-    <ShieldCheck className="h-3.5 w-3.5" />
-    Liquidity: {labelFromSignal(proto?.liquiditySignal)}
-  </StatusPill>
-)}
+                <StatusPill tone={toneFromSignal(proto?.liquiditySignal)}>
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Liquidity: {labelFromSignal(proto?.liquiditySignal)}
+                </StatusPill>
+              )}
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
@@ -792,7 +795,7 @@ export default function HubProtocolPage() {
               label="LP change (24h)"
               loading={protoLoading}
               value={fmtPct(proto?.lpChange24hPct)}
-              hint={protoLoading ? '' : 'Stability band next'}
+              hint={protoLoading ? '' : ''}
               icon={<ChartNoAxesCombined className="h-4 w-4 text-fuchsia-300" />}
             />
             <MetricCard
@@ -829,7 +832,6 @@ export default function HubProtocolPage() {
                     XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will
                     auto-populate once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">Nothing to do here - it goes live automatically.</p>
                 </div>
               </div>
             </div>
@@ -869,8 +871,14 @@ export default function HubProtocolPage() {
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
                   label="Daily reward"
-                  valueNode={<XpotAmount amount={Number(draw.jackpotXpot ?? 0)} />}
-                  hint={Number.isFinite(Number(dailyUsdEstimate)) ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}` : '—'}
+                  valueNode={
+                    Number.isFinite(Number(draw.jackpotXpot)) && Number(draw.jackpotXpot) > 0 ? (
+                      <XpotAmount amount={Number(draw.jackpotXpot)} />
+                    ) : (
+                      <span className="text-slate-400 font-semibold">—</span>
+                    )
+                  }
+                  hint={Number.isFinite(Number(dailyUsdEstimate)) ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}` : ''}
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
@@ -881,13 +889,13 @@ export default function HubProtocolPage() {
                 />
                 <MetricCard
                   label="Status"
-                  value={draw.status}
+                  value={effectiveStatus ?? draw.status}
                   hint={
-                    draw.status === 'OPEN'
+                    (effectiveStatus ?? draw.status) === 'OPEN'
                       ? 'Entries are active'
-                      : draw.status === 'LOCKED'
+                      : (effectiveStatus ?? draw.status) === 'LOCKED'
                       ? 'Entry window closed'
-                      : draw.status === 'DRAWING'
+                      : (effectiveStatus ?? draw.status) === 'DRAWING'
                       ? 'Picking winner'
                       : 'Completed'
                   }
@@ -966,23 +974,26 @@ export default function HubProtocolPage() {
 
         {/* LIVE MARKET PANELS */}
         <section className="grid gap-6 lg:grid-cols-2">
-          <PremiumPanel title="Liquidity" subtitle="LP integrity and stability signals." icon={<Waves className="h-5 w-5 text-sky-300" />}>
+          <PremiumPanel
+            title="Liquidity"
+            subtitle="LP integrity and stability signals."
+            icon={<Waves className="h-5 w-5 text-sky-300" />}
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)} />
               <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
             </div>
 
             <div className="mt-5">
-              <GraphBlock
-                title="LP micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={lpSamples} height={44} />}
-                note="Client-side sampled. Server-side 24h history can land next for a true banded stability chart."
-              />
+              <GraphBlock title="LP micro-trend" badge="Live" spark={<Sparkline samples={lpSamples} height={44} />} />
             </div>
           </PremiumPanel>
 
-          <PremiumPanel title="Market" subtitle="Reference price and volume behaviour." icon={<Activity className="h-5 w-5 text-emerald-300" />}>
+          <PremiumPanel
+            title="Market"
+            subtitle="Reference price and volume behaviour."
+            icon={<Activity className="h-5 w-5 text-emerald-300" />}
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               <SoftKpi label="Price" value={protoLoading ? 'Loading…' : fmtUsd(proto?.priceUsd, 6)} />
               <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)} />
@@ -993,13 +1004,11 @@ export default function HubProtocolPage() {
                 title="Price micro-trend"
                 badge="Live"
                 spark={<Sparkline samples={priceSamples} height={44} />}
-                note="Client-side sampled. Shows movement once trading starts."
               />
               <GraphBlock
                 title="Volume micro-trend"
                 badge="Live"
                 spark={<Sparkline samples={volSamples} height={44} />}
-                note="Client-side sampled. Useful for spotting early liquidity and first bursts."
               />
             </div>
           </PremiumPanel>
@@ -1119,12 +1128,10 @@ function GraphBlock({
   title,
   badge,
   spark,
-  note,
 }: {
   title: string;
   badge: string;
   spark: React.ReactNode;
-  note: string;
 }) {
   return (
     <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
@@ -1138,7 +1145,7 @@ function GraphBlock({
 
       <div className="mt-3">{spark}</div>
 
-      <p className="mt-3 text-xs text-slate-400">{note}</p>
+      {/* Removed the descriptive note text (per request) */}
     </div>
   );
 }
