@@ -18,23 +18,53 @@ function n(v: unknown): number | undefined {
   return Number.isFinite(num) ? num : undefined;
 }
 
+function normChainId(v?: string) {
+  return (v || '').toLowerCase().trim();
+}
+
 function pickBestPair(pairs: DexPair[]): DexPair | null {
   if (!Array.isArray(pairs) || pairs.length === 0) return null;
 
   // Prefer Solana, then highest liquidity USD
-  const sol = pairs.filter(p => (p.chainId || '').toLowerCase() === 'solana');
+  const sol = pairs.filter((p) => normChainId(p.chainId) === 'solana');
   const list = sol.length ? sol : pairs;
 
-  list.sort((a, b) => (n(b.liquidity?.usd) ?? 0) - (n(a.liquidity?.usd) ?? 0));
-  return list[0] ?? null;
+  const sorted = [...list].sort((a, b) => (n(b.liquidity?.usd) ?? 0) - (n(a.liquidity?.usd) ?? 0));
+  return sorted[0] ?? null;
 }
 
 function liquiditySignal(lpUsd?: number) {
-  // Tune these thresholds whenever you want
   if (!Number.isFinite(Number(lpUsd))) return undefined;
   if ((lpUsd ?? 0) >= 100_000) return 'HEALTHY' as const;
   if ((lpUsd ?? 0) >= 20_000) return 'WATCH' as const;
   return 'CRITICAL' as const;
+}
+
+function filterRelevantPairs(pairs: DexPair[], scope: 'solana' | 'all') {
+  const base = Array.isArray(pairs) ? pairs : [];
+
+  const scoped =
+    scope === 'solana'
+      ? base.filter((p) => normChainId(p.chainId) === 'solana')
+      : base;
+
+  // Keep only pairs with valid positive liquidity
+  return scoped.filter((p) => {
+    const lp = n(p.liquidity?.usd);
+    return typeof lp === 'number' && lp > 0;
+  });
+}
+
+function sumLpUsd(pairs: DexPair[]) {
+  let total = 0;
+  for (const p of pairs) total += n(p.liquidity?.usd) ?? 0;
+  return total > 0 ? total : undefined;
+}
+
+function sumVol24hUsd(pairs: DexPair[]) {
+  let total = 0;
+  for (const p of pairs) total += n(p.volume?.h24) ?? 0;
+  return total > 0 ? total : undefined;
 }
 
 export async function GET(req: Request) {
@@ -47,6 +77,12 @@ export async function GET(req: Request) {
     process.env.XPOT_MINT ||
     '';
 
+  // Birdeye-like ALL PAIRS:
+  // - default scope is Solana (this matches how you likely want XPOT)
+  // - allow ?scope=all to aggregate across all chains DexScreener returns
+  const scopeParam = (searchParams.get('scope') || '').toLowerCase().trim();
+  const scope: 'solana' | 'all' = scopeParam === 'all' ? 'all' : 'solana';
+
   if (!mint) {
     return NextResponse.json(
       { error: 'Missing mint. Provide ?mint=... or set NEXT_PUBLIC_XPOT_MINT.' },
@@ -55,17 +91,14 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Dexscreener token endpoint (works well for quick live testing)
     const url = `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(mint)}`;
 
     const r = await fetch(url, {
       cache: 'no-store',
-      // Avoid Next caching surprises
-      headers: { 'accept': 'application/json' },
+      headers: { accept: 'application/json' },
     });
 
     if (!r.ok) {
-      // Non-fatal: treat as "no public pair yet"
       return NextResponse.json({
         state: {
           updatedAt: new Date().toISOString(),
@@ -75,33 +108,45 @@ export async function GET(req: Request) {
     }
 
     const j = (await r.json().catch(() => ({}))) as { pairs?: DexPair[] };
-    const best = pickBestPair(Array.isArray(j?.pairs) ? j.pairs : []);
+    const allPairs = Array.isArray(j?.pairs) ? j.pairs : [];
 
-    const lpUsd = n(best?.liquidity?.usd);
-    const priceUsd = n(best?.priceUsd);
-    const volume24hUsd = n(best?.volume?.h24);
+    // 1) Filter to relevant pairs (Solana by default) and only pairs with positive LP
+    const relevantPairs = filterRelevantPairs(allPairs, scope);
+
+    // 2) Aggregate LP + volume across all relevant pairs (Birdeye "ALL PAIRS" style)
+    const lpUsd = sumLpUsd(relevantPairs);
+    const volume24hUsd = sumVol24hUsd(relevantPairs);
+
+    // 3) Choose a single "reference pair" for price + link display
+    //    Use the best among relevant pairs; fallback to best among all pairs.
+    const ref = pickBestPair(relevantPairs.length ? relevantPairs : allPairs);
+
+    const priceUsd = n(ref?.priceUsd);
 
     return NextResponse.json({
       state: {
+        // Aggregated (ALL PAIRS style)
         lpUsd,
-        // Optional until you implement sampling/history
+        volume24hUsd,
+
+        // Still optional until you implement real 24h change
         lpChange24hPct: undefined,
+
         liquiditySignal: liquiditySignal(lpUsd),
 
+        // Reference values from the best pair
         priceUsd,
-        volume24hUsd,
 
         updatedAt: new Date().toISOString(),
         source: 'dexscreener',
 
-        pairUrl: best?.url,
-        pairAddress: best?.pairAddress,
-        chainId: best?.chainId,
-        dexId: best?.dexId,
+        pairUrl: ref?.url,
+        pairAddress: ref?.pairAddress,
+        chainId: ref?.chainId,
+        dexId: ref?.dexId,
       },
     });
   } catch {
-    // Non-fatal: page already handles protoError gracefully
     return NextResponse.json({
       state: {
         updatedAt: new Date().toISOString(),
