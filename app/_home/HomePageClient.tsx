@@ -13,6 +13,7 @@ import {
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import {
+  AnimatePresence,
   motion,
   useReducedMotion,
   useScroll,
@@ -145,6 +146,10 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
 
   return <NextDrawContext.Provider value={value}>{children}</NextDrawContext.Provider>;
 }
+
+/* ─────────────────────────────────────────────
+   Small UI helpers
+───────────────────────────────────────────── */
 
 function Pill({
   children,
@@ -541,6 +546,22 @@ function CosmicHeroBackdrop() {
           mix-blend-mode: screen;
           opacity: 0;
         }
+
+        @keyframes xpotPulseGold {
+          0% {
+            box-shadow: 0 0 0 0 rgba(var(--xpot-gold), 0.0);
+          }
+          50% {
+            box-shadow: 0 0 0 1px rgba(var(--xpot-gold), 0.22), 0 0 18px rgba(var(--xpot-gold), 0.18);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(var(--xpot-gold), 0.0);
+          }
+        }
+        .xpot-warmup-ring {
+          animation: xpotPulseGold 2.8s ease-in-out infinite;
+          border-radius: 999px;
+        }
       `}</style>
 
       <div className="xpot-hero-engine" aria-hidden />
@@ -898,6 +919,10 @@ function useLatestEntriesTelemetry() {
   return entries;
 }
 
+/* ─────────────────────────────────────────────
+   Avatars (handle-first)
+───────────────────────────────────────────── */
+
 function Avatar({
   src,
   label,
@@ -1109,6 +1134,447 @@ function WinnerSpotlight({ winner, compact = false }: { winner: WinnerRow | null
 }
 
 /* ─────────────────────────────────────────────
+   Daytime layer + warm-up + ceremony
+───────────────────────────────────────────── */
+
+type DrawPhase = 'daytime' | 'warmup' | 'final_minute' | 'drawing' | 'reveal';
+
+function useDrawPhase(nowMs: number, nextDrawUtcMs: number) {
+  const msLeft = nextDrawUtcMs - nowMs;
+
+  const warmup = msLeft > 0 && msLeft <= 2 * 60 * 60 * 1000; // 2h
+  const finalMinute = msLeft > 0 && msLeft <= 60 * 1000; // 60s
+  const due = msLeft <= 0;
+
+  return {
+    msLeft,
+    warmup,
+    finalMinute,
+    due,
+  };
+}
+
+function getMadridYmdFromMs(ms: number) {
+  const d = new Date(ms);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function DaytimeLayerCard({
+  entries,
+  countdown,
+  cutoffLabel,
+  warmup,
+}: {
+  entries: EntryRow[];
+  countdown: string;
+  cutoffLabel: string;
+  warmup: boolean;
+}) {
+  const [signal, setSignal] = useState<string>('XPOT is building for tonight’s draw');
+  const [pulse, setPulse] = useState(0);
+
+  const entryCount = Array.isArray(entries) ? entries.length : 0;
+
+  const milestone = useMemo(() => {
+    const marks = [25, 50, 100, 250, 500, 1000];
+    const reached = marks.filter(m => entryCount >= m);
+    const next = marks.find(m => entryCount < m) ?? null;
+    return { reached: reached.at(-1) ?? null, next };
+  }, [entryCount]);
+
+  useEffect(() => {
+    const lines = [
+      'XPOT is building for tonight’s draw',
+      'Identity cache warming',
+      'Proof index ready',
+      'Entry window open',
+      'Feed is live',
+    ];
+
+    const warmupLines = [
+      'Final window approaching',
+      'Lock sequence arming',
+      'Winner selection preparing',
+      'Final countdown soon',
+    ];
+
+    const t = window.setInterval(() => {
+      setPulse(p => p + 1);
+      const pickFrom = warmup ? warmupLines : lines;
+      const i = Math.floor(Math.random() * pickFrom.length);
+      setSignal(pickFrom[i]);
+    }, 14_000);
+
+    return () => window.clearInterval(t);
+  }, [warmup]);
+
+  const tone = warmup ? 'amber' : 'sky';
+
+  return (
+    <div className="relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
+      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_14%_30%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(16,185,129,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
+      <div className="relative px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Pill tone={tone}>
+            <Sparkles className="h-3.5 w-3.5" />
+            {warmup ? 'Warm-up phase' : 'Daytime layer'}
+          </Pill>
+
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+            Next cutoff {cutoffLabel}
+          </span>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[12px] text-slate-300">{signal}</p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Next draw in <span className="font-mono text-slate-200">{countdown}</span>
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span
+              className={[
+                'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px]',
+                warmup
+                  ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] text-slate-100'
+                  : 'border-white/10 bg-white/[0.03] text-slate-200',
+              ].join(' ')}
+            >
+              <Users className="h-4 w-4 text-slate-300" />
+              Live entries <span className="font-mono text-slate-100">{entryCount}</span>
+            </span>
+
+            {milestone.next ? (
+              <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] text-slate-300">
+                Next milestone <span className="font-mono text-slate-100">{milestone.next}</span>
+              </span>
+            ) : (
+              <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] text-slate-300">
+                Milestones active
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Activity</p>
+            <p className="mt-1 text-[12px] text-slate-200">
+              Feed refresh <span className="font-mono text-slate-100">10s</span>
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Cadence</p>
+            <p className="mt-1 text-[12px] text-slate-200">
+              One entry per day, handle-first
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Milestone</p>
+            <p className="mt-1 text-[12px] text-slate-200">
+              {milestone.reached ? (
+                <>
+                  Reached <span className="font-mono text-slate-100">{milestone.reached}</span>
+                </>
+              ) : (
+                <>Arming</>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* subtle pulse */}
+        <div className="pointer-events-none absolute right-4 top-4 h-2 w-2 rounded-full bg-white/10">
+          <span
+            key={pulse}
+            className="absolute inset-0 rounded-full bg-white/20"
+            style={{ animation: 'ping 1.4s cubic-bezier(0,0,0.2,1) 1' } as any}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DrawCeremonyOverlay({
+  nowMs,
+  nextDrawUtcMs,
+  countdown,
+  cutoffLabel,
+  latestWinner,
+}: {
+  nowMs: number;
+  nextDrawUtcMs: number;
+  countdown: string;
+  cutoffLabel: string;
+  latestWinner: WinnerRow | null;
+}) {
+  const reduced = useReducedMotion();
+  const { msLeft, finalMinute, due } = useDrawPhase(nowMs, nextDrawUtcMs);
+
+  const [phase, setPhase] = useState<DrawPhase>('daytime');
+  const [open, setOpen] = useState(false);
+
+  const lastKeyRef = useRef<string>('');
+  const revealWinnerIdRef = useRef<string>('');
+
+  // decide phase (without opening overlay)
+  useEffect(() => {
+    if (due) return;
+    if (finalMinute) {
+      setPhase('final_minute');
+      return;
+    }
+    setPhase(msLeft <= 2 * 60 * 60 * 1000 ? 'warmup' : 'daytime');
+  }, [due, finalMinute, msLeft]);
+
+  // Trigger ceremony once per Madrid day
+  useEffect(() => {
+    const madridYmd = getMadridYmdFromMs(nowMs);
+    const storeKey = `xpot_ceremony_${madridYmd}`;
+    const already = typeof window !== 'undefined' ? window.localStorage.getItem(storeKey) : null;
+
+    // when due hits, fire if not already
+    if (due && !already) {
+      try {
+        window.localStorage.setItem(storeKey, '1');
+      } catch {}
+
+      setOpen(true);
+      setPhase('drawing');
+
+      // short pause then reveal
+      const t1 = window.setTimeout(() => {
+        setPhase('reveal');
+        // if winner changes later, we still show current latestWinner live in UI
+      }, 1600);
+
+      // auto close after a beat
+      const t2 = window.setTimeout(() => {
+        setOpen(false);
+      }, 6200);
+
+      return () => {
+        window.clearTimeout(t1);
+        window.clearTimeout(t2);
+      };
+    }
+  }, [due, nowMs]);
+
+  // If overlay is open and latestWinner updates, remember it so reveal looks "earned"
+  useEffect(() => {
+    if (!open) return;
+    if (!latestWinner?.id) return;
+    if (revealWinnerIdRef.current !== latestWinner.id) {
+      revealWinnerIdRef.current = latestWinner.id;
+    }
+  }, [open, latestWinner?.id]);
+
+  // Smooth pre-open attention in final minute (no overlay)
+  const showFinalMinuteHint = finalMinute && !open;
+
+  const label = latestWinner?.handle
+    ? normalizeHandle(latestWinner.handle)
+    : latestWinner?.wallet
+    ? shortenAddress(latestWinner.wallet, 6, 6)
+    : '@winner';
+
+  const ymd = latestWinner?.drawDate ? formatIsoToMadridYmd(latestWinner.drawDate) : null;
+
+  const content = (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-[9998] flex items-center justify-center px-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          aria-live="polite"
+          role="dialog"
+          aria-label="XPOT draw ceremony"
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[6px]" />
+
+          <motion.div
+            className="relative w-full max-w-[760px] overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/60 shadow-[0_50px_160px_rgba(0,0,0,0.75)]"
+            initial={{ y: 10, scale: 0.98, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: 8, scale: 0.99, opacity: 0 }}
+            transition={{ duration: reduced ? 0 : 0.32 }}
+          >
+            <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.10),transparent_62%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.08),rgba(56,189,248,0.28),transparent)]" />
+
+            <div className="relative p-6 sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Pill tone="amber">
+                  <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                  Daily draw
+                </Pill>
+
+                <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                  {cutoffLabel}
+                </span>
+              </div>
+
+              <div className="mt-4">
+                <AnimatePresence mode="wait">
+                  {phase === 'drawing' ? (
+                    <motion.div
+                      key="drawing"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: reduced ? 0 : 0.28 }}
+                    >
+                      <h3 className="text-balance text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+                        XPOT is drawing...
+                      </h3>
+                      <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+                        Final selection is being locked and published.
+                      </p>
+
+                      <div className="mt-5 flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-[rgb(var(--xpot-gold-2))] shadow-[0_0_18px_rgba(var(--xpot-gold),0.7)]" />
+                        <div className="h-2 w-2 rounded-full bg-white/15" />
+                        <div className="h-2 w-2 rounded-full bg-white/10" />
+                        <span className="ml-2 text-[11px] uppercase tracking-[0.22em] text-slate-400">
+                          ceremony
+                        </span>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="reveal"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: reduced ? 0 : 0.32 }}
+                    >
+                      <h3 className="text-balance text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+                        Winner revealed
+                      </h3>
+                      <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+                        Published handle-first, with on-chain proof.
+                      </p>
+
+                      <div className="mt-5 overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.03]">
+                        <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
+                          <div className="flex items-center gap-3">
+                            <Avatar src={latestWinner?.avatarUrl} label={label} size={46} />
+                            <div>
+                              <div className="text-[14px] font-semibold text-slate-50">{label}</div>
+                              <div className="mt-1 text-[12px] text-slate-400">
+                                {ymd ? <span className="font-mono">{ymd}</span> : null}
+                                {latestWinner?.wallet ? (
+                                  <>
+                                    <span className="text-slate-700"> • </span>
+                                    <span className="font-mono">{shortenAddress(latestWinner.wallet, 8, 8)}</span>
+                                  </>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Payout</div>
+                            <div className={`mt-1 font-mono text-[18px] ${GOLD_TEXT}`}>
+                              {formatXpotAmount(
+                                typeof latestWinner?.amountXpot === 'number'
+                                  ? latestWinner.amountXpot
+                                  : typeof latestWinner?.amount === 'number'
+                                  ? latestWinner.amount
+                                  : 1_000_000,
+                              )}
+                            </div>
+
+                            <div className="mt-2">
+                              {latestWinner?.txUrl ? (
+                                <a
+                                  href={latestWinner.txUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                                >
+                                  View proof
+                                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                                </a>
+                              ) : (
+                                <span className="text-[11px] text-slate-500">proof link appears after payout</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="h-px bg-white/10" />
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-[11px] text-slate-400">
+                          <span className="inline-flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 text-slate-400" />
+                            Proof stays on-chain
+                          </span>
+                          <span className="inline-flex items-center gap-2">
+                            <Globe className="h-4 w-4 text-slate-400" />
+                            Identity stays handle-first
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap items-center gap-3">
+                        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
+                          Enter today&apos;s XPOT
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                        </Link>
+
+                        <span className="text-[11px] text-slate-500">
+                          The UI will reset to the next countdown automatically.
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+
+  return (
+    <>
+      {showFinalMinuteHint ? (
+        <div className="mt-4 rounded-2xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-3 ring-1 ring-white/[0.05]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-100">
+              <span className="h-2 w-2 rounded-full bg-[rgb(var(--xpot-gold-2))] shadow-[0_0_16px_rgba(var(--xpot-gold),0.6)]" />
+              Final minute
+            </span>
+
+            <span className="font-mono text-[12px] text-slate-100">{countdown}</span>
+          </div>
+
+          <p className="mt-1 text-[12px] text-slate-200/90">
+            Ceremony begins at zero. Winner reveal follows immediately.
+          </p>
+        </div>
+      ) : null}
+
+      {typeof document !== 'undefined' ? createPortal(content, document.body) : null}
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Control room (read-only live view)
 ───────────────────────────────────────────── */
 
@@ -1238,7 +1704,7 @@ function LiveControlRoom({
       </div>
 
       <p className="mt-3 text-[12px] text-slate-400">
-        Read-only cockpit view. Run is public. Identity stays handle-first. Proof stays on-chain.
+        Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.
       </p>
     </div>
   );
@@ -1250,7 +1716,7 @@ function buildInitialLines(countdown: string, cutoffLabel: string, runLine: stri
     `  run:            ${runLine}`,
     `  primitive:      daily reward selection`,
     `  eligibility:    hold XPOT (min threshold applies)`,
-    `  identity:       @handle-first (not wallet profiles)`,
+    `  identity:       @handle-first`,
     `  proof:          on-chain payout verification`,
     ``,
     `> NEXT_DRAW`,
@@ -1504,10 +1970,14 @@ function StepCard({
   );
 }
 
-function PrimaryCtaRow({ countdown }: { countdown: string }) {
+function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boolean }) {
   return (
     <div className="mt-6 flex flex-wrap items-center gap-3">
-      <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`} title="Enter the hub">
+      <Link
+        href={ROUTE_HUB}
+        className={`${BTN_GREEN} group px-6 py-3.5 text-sm ${warmup ? 'xpot-warmup-ring' : ''}`}
+        title="Enter the hub"
+      >
         Enter today&apos;s XPOT
         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
       </Link>
@@ -1545,9 +2015,11 @@ function HomePageInner() {
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
 
-  const { countdown, cutoffLabel, nowMs } = useNextDraw();
+  const { countdown, cutoffLabel, nowMs, nextDrawUtcMs } = useNextDraw();
   const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
   const runLine = useMemo(() => `DAY ${run.day}/${RUN_DAYS}`, [run.day]);
+
+  const { warmup } = useDrawPhase(nowMs, nextDrawUtcMs);
 
   const reduceMotion = useReducedMotion();
   const { scrollY } = useScroll();
@@ -1604,13 +2076,13 @@ function HomePageInner() {
 
                       {/* 3-second clarity row */}
                       <div className="relative flex flex-wrap items-center justify-between gap-3">
-                        <Pill tone="emerald">
+                        <Pill tone={warmup ? 'amber' : 'emerald'}>
                           <Radio className="h-3.5 w-3.5" />
-                          Live run
+                          {warmup ? 'Warm-up' : 'Live run'}
                         </Pill>
 
                         <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          No tickets - just XPOT holdings
+                          No tickets - eligibility by holdings
                         </span>
                       </div>
 
@@ -1641,8 +2113,16 @@ function HomePageInner() {
                           </span>
                         </div>
 
-                        <PrimaryCtaRow countdown={countdown} />
+                        <PrimaryCtaRow countdown={countdown} warmup={warmup} />
                       </div>
+
+                      {/* Daytime layer + warm-up motion */}
+                      <DaytimeLayerCard
+                        entries={entries}
+                        countdown={countdown}
+                        cutoffLabel={cutoffLabel}
+                        warmup={warmup}
+                      />
 
                       {/* MOBILE: compact winner + jackpot immediately after clarity */}
                       <div className="mt-5 grid gap-4 lg:hidden">
@@ -1706,7 +2186,7 @@ function HomePageInner() {
 
                       <div className="mt-6 grid gap-3 sm:grid-cols-3">
                         <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="sky" />
-                        <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
+                        <MiniStat label="Next cutoff" value={countdown} tone={warmup ? 'amber' : 'emerald'} />
                         <MiniStat label="Final draw" value={String(RUN_END_EU).split(' ')[0]} tone="amber" />
                       </div>
                     </div>
@@ -1778,6 +2258,15 @@ function HomePageInner() {
                   </PremiumCard>
                 </motion.div>
               </div>
+
+              {/* Ceremony overlay (portal) */}
+              <DrawCeremonyOverlay
+                nowMs={nowMs}
+                nextDrawUtcMs={nextDrawUtcMs}
+                countdown={countdown}
+                cutoffLabel={cutoffLabel}
+                latestWinner={winnerSpotlight}
+              />
             </div>
           </div>
         </div>
@@ -1838,7 +2327,7 @@ function HomePageInner() {
               <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Simple loop</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
-                  Hold XPOT - enter daily - watch winners - verify payout. No complicated mechanics on the homepage.
+                  Hold XPOT - enter daily - watch winners - verify payout. Clear mechanics, public proof.
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
@@ -1911,7 +2400,7 @@ function HomePageInner() {
         <SectionHeader
           eyebrow="FAQ"
           title="Common questions"
-          desc="Keep the homepage simple. The hub contains the full entry and verification flow."
+          desc="The homepage stays simple. The hub contains the entry and verification flow."
         />
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -1932,14 +2421,14 @@ function HomePageInner() {
           <PremiumCard className="p-6" halo={false}>
             <h3 className="text-[14px] font-semibold text-slate-50">Why show avatars?</h3>
             <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-              It makes the feed instantly human. XPOT is handle-first, so real social identity matters.
+              It makes the feed instantly human. XPOT is handle-first, so social identity matters.
             </p>
           </PremiumCard>
 
           <PremiumCard className="p-6" halo={false}>
             <h3 className="text-[14px] font-semibold text-slate-50">When is the Final Draw?</h3>
             <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-              Final draw is scheduled for {String(RUN_END_EU)}. Countdown is always shown for the next daily cutoff.
+              Final draw is scheduled for {String(RUN_END_EU)}. Countdown always shows the next daily cutoff.
             </p>
           </PremiumCard>
         </div>
