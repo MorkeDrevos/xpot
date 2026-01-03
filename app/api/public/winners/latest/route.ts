@@ -12,30 +12,47 @@ export async function GET() {
         ticket: {
           include: {
             wallet: {
-              include: { user: true },
+              include: {
+                user: true,
+              },
             },
           },
         },
       },
     });
 
-    if (!w) return NextResponse.json({ ok: true, winner: null }, { status: 200 });
+    if (!w) {
+      return NextResponse.json(
+        { ok: true, winner: null },
+        { status: 200 },
+      );
+    }
 
     const payload = {
       id: w.id,
       drawDate: w.draw.drawDate.toISOString(),
       wallet: w.walletAddress ?? null,
-      amount: (w.amount ?? null) as number | null, // if your schema differs, it will just be null
+
+      // ❌ REMOVED:
+      // amount: w.amount
+      // This field does NOT exist on the Winner model and breaks the build.
+
       handle: w.ticket?.wallet?.user?.xHandle ?? null,
       name: w.ticket?.wallet?.user?.name ?? null,
       avatarUrl: w.ticket?.wallet?.user?.avatarUrl ?? null,
-      txUrl: (w.txUrl ?? null) as string | null,
+      txUrl: w.txUrl ?? null,
       isPaidOut: Boolean((w as any).isPaidOut ?? false),
     };
 
-    return NextResponse.json({ ok: true, winner: payload }, { status: 200 });
-  } catch (err: any) {
+    return NextResponse.json(
+      { ok: true, winner: payload },
+      { status: 200 },
+    );
+  } catch (err) {
     console.error('GET /api/public/winners/latest error', err);
-    return NextResponse.json({ ok: false, winner: null }, { status: 200 });
+    return NextResponse.json(
+      { ok: false, winner: null },
+      { status: 200 },
+    );
   }
 }
