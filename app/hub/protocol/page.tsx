@@ -60,6 +60,8 @@ type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 
 const LIVE_REFRESH_MS = 15_000;
 const PROTO_REFRESH_MS = 20_000;
+const SHOW_LIQUIDITY_STATUS =
+  process.env.NODE_ENV !== 'production';
 
 // Client-side sampling (no backend changes)
 type Sample = { t: number; v: number };
@@ -757,10 +759,12 @@ export default function HubProtocolPage() {
                 {liveIsOpen ? 'Live entries' : 'Standby'}
               </StatusPill>
 
-              <StatusPill tone={toneFromSignal(proto?.liquiditySignal)}>
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Liquidity: {labelFromSignal(proto?.liquiditySignal)}
-              </StatusPill>
+              {SHOW_LIQUIDITY_STATUS && (
+  <StatusPill tone={toneFromSignal(proto?.liquiditySignal)}>
+    <ShieldCheck className="h-3.5 w-3.5" />
+    Liquidity: {labelFromSignal(proto?.liquiditySignal)}
+  </StatusPill>
+)}
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
