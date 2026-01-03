@@ -1423,7 +1423,6 @@ function TokenomicsPageInner() {
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <ProofLinkPill href={reserveProofHref} label="Locked reserve (19.18y)" tone="emerald" />
           <ProofLinkPill href={solscanAccountUrl(REWARDS_RESERVE_WALLET)} label="Wallet (Solscan)" tone="slate" />
-          <SilentCopyButton text={REWARDS_RESERVE_WALLET} title="Copy reserve wallet" />
         </div>
 
         <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
