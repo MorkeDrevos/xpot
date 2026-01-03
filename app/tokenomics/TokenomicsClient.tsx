@@ -80,8 +80,8 @@ const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
 // Rewards reserve wallet
 const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
 
-// Streamflow reserve proof
-const RESERVE_STREAMFLOW_CONTRACT: string | null = null;
+// Streamflow reserve proof (XPOT Daily - reserve/distribution lock)
+const RESERVE_STREAMFLOW_CONTRACT = 'HDJC3BV5XvZ8vN2h9X8x3XipLJ3';
 
 function solscanAccountUrl(account: string) {
   return `https://solscan.io/account/${account}`;
