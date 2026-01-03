@@ -1,7 +1,8 @@
+// components/EnteringStageLive.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Users } from 'lucide-react';
+import { ExternalLink, Users } from 'lucide-react';
 
 type EntryRow = {
   id?: string;
@@ -16,6 +17,26 @@ function normalizeHandle(h: string | null | undefined) {
   const s = String(h ?? '').trim();
   if (!s) return '@unknown';
   return s.startsWith('@') ? s : `@${s}`;
+}
+
+function toXProfileUrl(handle: string) {
+  const h = normalizeHandle(handle).replace(/^@/, '');
+  return `https://x.com/${encodeURIComponent(h)}`;
+}
+
+function useLocalHandle() {
+  const [h, setH] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem('xpot_last_handle');
+      setH(v ? normalizeHandle(v) : null);
+    } catch {
+      setH(null);
+    }
+  }, []);
+
+  return h;
 }
 
 function Avatar({
@@ -73,7 +94,6 @@ function buildLoop(entries: EntryRow[]) {
   const safe = Array.isArray(entries) ? entries.filter(e => Boolean(e?.handle)) : [];
   if (safe.length === 0) return [];
 
-  // If only a few, duplicate to keep motion alive
   if (safe.length < 8) {
     const times = Math.ceil(10 / safe.length);
     const out: EntryRow[] = [];
@@ -95,6 +115,8 @@ export default function EnteringStageLive({
 }) {
   const loop = useMemo(() => buildLoop(entries), [entries]);
   const has = loop.length > 0;
+
+  const localHandle = useLocalHandle();
 
   // Tiny jitter so it never looks frozen
   const [seed, setSeed] = useState(0);
@@ -181,17 +203,42 @@ export default function EnteringStageLive({
                 <div className="xpot-marquee" style={{ animationDelay: `${(seed % 6) * -0.18}s` }}>
                   {[...loop, ...loop].map((e, idx) => {
                     const handle = normalizeHandle(e?.handle);
+                    const name = e?.name ? String(e.name).trim() : '';
+                    const xUrl = toXProfileUrl(handle);
+
                     const key = e?.id ? String(e.id) : `${handle}-${e?.createdAt ?? ''}-${idx}`;
+                    const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
 
                     return (
-                      <div
+                      <a
                         key={key}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1.5"
-                        title={handle}
+                        href={xUrl}
+                        target="_blank"
+                        rel="nofollow noopener noreferrer"
+                        className={[
+                          'inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 transition',
+                          isMe
+                            ? 'border-emerald-400/35 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.20),0_0_22px_rgba(16,185,129,0.18)]'
+                            : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]',
+                        ].join(' ')}
+                        title={isMe ? `${handle} - that’s you` : `Open ${handle} on X`}
                       >
                         <Avatar src={e?.avatarUrl} label={handle} />
-                        <span className="max-w-[140px] truncate text-[12px] text-slate-200">{handle}</span>
-                      </div>
+                        <span className="flex min-w-0 flex-col leading-tight">
+                          <span className="max-w-[140px] truncate text-[12px] text-slate-200">{handle}</span>
+                          {name ? (
+                            <span className="max-w-[140px] truncate text-[10px] text-slate-400">{name}</span>
+                          ) : null}
+                        </span>
+
+                        {isMe ? (
+                          <span className="ml-1 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                            You
+                          </span>
+                        ) : (
+                          <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                        )}
+                      </a>
                     );
                   })}
                 </div>
