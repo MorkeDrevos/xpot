@@ -49,7 +49,7 @@ type ProtocolState = {
   priceUsd?: number;
   volume24hUsd?: number;
   updatedAt?: string; // ISO
-  source?: 'dexscreener';
+  source?: 'DexScreener';
   pairUrl?: string;
   pairAddress?: string;
   chainId?: string;
