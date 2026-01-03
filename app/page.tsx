@@ -1,8 +1,8 @@
 // app/page.tsx
 'use client';
 
-import HomePageClient from '@/app/_home/HomePageClient';
+import HomePageClient from '@/components/home/HomePageClient';
 
-export default function HomePage() {
+export default function Page() {
   return <HomePageClient />;
 }
