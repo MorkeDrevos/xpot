@@ -78,7 +78,7 @@ const FREEZE_AUTHORITY_REVOKE_TX: string | null = null;
 const UPDATE_AUTHORITY_REVOKE_TX: string | null = null;
 
 // Rewards reserve wallet
-const REWARDS_RESERVE_WALLET = '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o';
+const REWARDS_RESERVE_WALLET = 'Bk7ganFvbZ6XEvKmeTQ7NnoF5tGUnEoNbxsBq7K6kLk4';
 
 // Streamflow reserve proof
 const RESERVE_STREAMFLOW_CONTRACT: string | null = null;
