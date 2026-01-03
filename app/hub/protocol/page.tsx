@@ -455,9 +455,12 @@ export default function HubProtocolPage() {
         const nextPx = Number(next?.priceUsd);
         const nextVol = Number(next?.volume24hUsd);
 
-        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp) setLpKey((k) => k + 1);
-        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx) setPxKey((k) => k + 1);
-        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol) setVolKey((k) => k + 1);
+        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp)
+          setLpKey((k) => k + 1);
+        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx)
+          setPxKey((k) => k + 1);
+        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol)
+          setVolKey((k) => k + 1);
 
         return next;
       });
@@ -838,7 +841,49 @@ export default function HubProtocolPage() {
           ) : null}
         </motion.section>
 
-        {/* MAIN XPOT */}
+        {/* LIVE MARKET PANELS */}
+        <section className="grid gap-6 lg:grid-cols-2">
+          <PremiumPanel
+            title="Liquidity"
+            subtitle="LP integrity and stability signals."
+            icon={<Waves className="h-5 w-5 text-sky-300" />}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)} />
+              <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
+            </div>
+
+            <div className="mt-5">
+              <GraphBlock title="LP micro-trend" badge="Live" spark={<Sparkline samples={lpSamples} height={44} />} />
+            </div>
+          </PremiumPanel>
+
+          <PremiumPanel
+            title="Market"
+            subtitle="Reference price and volume behaviour."
+            icon={<Activity className="h-5 w-5 text-emerald-300" />}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SoftKpi label="Price" value={protoLoading ? 'Loading…' : fmtUsd(proto?.priceUsd, 6)} />
+              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)} />
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <GraphBlock
+                title="Price micro-trend"
+                badge="Live"
+                spark={<Sparkline samples={priceSamples} height={44} />}
+              />
+              <GraphBlock
+                title="Volume micro-trend"
+                badge="Live"
+                spark={<Sparkline samples={volSamples} height={44} />}
+              />
+            </div>
+          </PremiumPanel>
+        </section>
+
+        {/* MAIN XPOT (MOVED TO BOTTOM) */}
         <motion.section
           initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
           animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
@@ -906,7 +951,7 @@ export default function HubProtocolPage() {
           </div>
         </motion.section>
 
-        {/* BONUS XPOTS */}
+        {/* BONUS XPOTS (MOVED TO BOTTOM) */}
         <section className="rounded-[36px] border border-white/10 bg-white/[0.02] px-6 py-6 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -970,48 +1015,6 @@ export default function HubProtocolPage() {
               ))
             )}
           </div>
-        </section>
-
-        {/* LIVE MARKET PANELS */}
-        <section className="grid gap-6 lg:grid-cols-2">
-          <PremiumPanel
-            title="Liquidity"
-            subtitle="LP integrity and stability signals."
-            icon={<Waves className="h-5 w-5 text-sky-300" />}
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)} />
-              <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
-            </div>
-
-            <div className="mt-5">
-              <GraphBlock title="LP micro-trend" badge="Live" spark={<Sparkline samples={lpSamples} height={44} />} />
-            </div>
-          </PremiumPanel>
-
-          <PremiumPanel
-            title="Market"
-            subtitle="Reference price and volume behaviour."
-            icon={<Activity className="h-5 w-5 text-emerald-300" />}
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SoftKpi label="Price" value={protoLoading ? 'Loading…' : fmtUsd(proto?.priceUsd, 6)} />
-              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)} />
-            </div>
-
-            <div className="mt-5 space-y-3">
-              <GraphBlock
-                title="Price micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={priceSamples} height={44} />}
-              />
-              <GraphBlock
-                title="Volume micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={volSamples} height={44} />}
-              />
-            </div>
-          </PremiumPanel>
         </section>
       </section>
     </XpotPageShell>
