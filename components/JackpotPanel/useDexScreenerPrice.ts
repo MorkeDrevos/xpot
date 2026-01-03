@@ -1,10 +1,17 @@
+// components/JackpotPanel/useDexScreenerPrice.ts
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { readDexScreenerMetrics } from './utils';
+import { TOKEN_MINT } from '@/lib/xpot';
+import { PRICE_POLL_MS, readDexScreenerMetrics } from './utils';
 import type { DexMetrics } from './types';
 
-export function useDexScreenerPrice(tokenMint: string, pollMs: number) {
+/**
+ * DexScreener live price hook
+ * - Backwards compatible: can be called with NO args (uses TOKEN_MINT + PRICE_POLL_MS)
+ * - Or override: useDexScreenerPrice(customMint, customPollMs)
+ */
+export function useDexScreenerPrice(tokenMint: string = TOKEN_MINT, pollMs: number = PRICE_POLL_MS) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const [momentumGlobalH1, setMomentumGlobalH1] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -14,6 +21,8 @@ export function useDexScreenerPrice(tokenMint: string, pollMs: number) {
   const updatePulseTimeout = useRef<number | null>(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     let timer: number | null = null;
     let aborted = false;
     const ctrl = new AbortController();
@@ -34,8 +43,8 @@ export function useDexScreenerPrice(tokenMint: string, pollMs: number) {
 
         const dexMetrics = await fetchFromDexScreener();
 
-        if (!aborted && dexMetrics.changeH1 != null) {
-          setMomentumGlobalH1(dexMetrics.changeH1);
+        if (!aborted) {
+          setMomentumGlobalH1(dexMetrics.changeH1 ?? null);
         }
 
         const price =
@@ -47,6 +56,7 @@ export function useDexScreenerPrice(tokenMint: string, pollMs: number) {
 
         if (price != null) {
           setPriceUsd(price);
+
           setJustUpdated(true);
           if (updatePulseTimeout.current !== null) window.clearTimeout(updatePulseTimeout.current);
           updatePulseTimeout.current = window.setTimeout(() => setJustUpdated(false), 420);
@@ -71,7 +81,10 @@ export function useDexScreenerPrice(tokenMint: string, pollMs: number) {
     }
 
     fetchPrice();
-    timer = window.setInterval(fetchPrice, pollMs);
+
+    if (Number.isFinite(pollMs) && pollMs > 0) {
+      timer = window.setInterval(fetchPrice, pollMs);
+    }
 
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', onVis);
@@ -80,9 +93,17 @@ export function useDexScreenerPrice(tokenMint: string, pollMs: number) {
     return () => {
       aborted = true;
       ctrl.abort();
+
       if (timer !== null) window.clearInterval(timer);
-      if (updatePulseTimeout.current !== null) window.clearTimeout(updatePulseTimeout.current);
-      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
+
+      if (updatePulseTimeout.current !== null) {
+        window.clearTimeout(updatePulseTimeout.current);
+        updatePulseTimeout.current = null;
+      }
+
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVis);
+      }
     };
   }, [tokenMint, pollMs]);
 
