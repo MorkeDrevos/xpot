@@ -33,7 +33,6 @@ import {
   Hourglass,
   Home,
   BadgeCheck,
-  Activity,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -78,11 +77,10 @@ const XPOT_X_POST = 'https://x.com/xpotbet';
 const FINAL_DAY_HREF = '/2045/final-day';
 const FINAL_DAY_LABEL = 'Final Draw';
 
-// const WINNERS_HREF = '/winners'; // disabled for now
+// const WINNERS_HREF = '/winners'; // commented out per request
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
 const PROTOCOL_HREF = '/hub/protocol';
-const HEALTH_HREF = PROTOCOL_HREF;
 
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
@@ -630,13 +628,25 @@ function PublicNavCenter({
                   Roadmap
                 </Link>
 
-                {/* Winners disabled -> replaced by Health */}
+                {/* Winners removed - replaced with Health */}
+                {/*
                 <Link
-                  href={HEALTH_HREF}
+                  href={WINNERS_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
                 >
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Activity className="h-4 w-4 text-emerald-300" />
+                    <Trophy className="h-4 w-4 text-amber-300" />
+                  </span>
+                  Winners
+                </Link>
+                */}
+
+                <Link
+                  href={PROTOCOL_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
                   </span>
                   Health
                 </Link>
@@ -706,9 +716,16 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         Roadmap
       </NavLink>
 
-      {/* Winners disabled -> replaced by Health */}
-      <NavLink href={HEALTH_HREF} title="Protocol health">
-        <Activity className="h-4 w-4 text-emerald-300" />
+      {/* Winners removed - replaced with Health */}
+      {/*
+      <NavLink href={WINNERS_HREF}>
+        <Trophy className="h-4 w-4 text-amber-300" />
+        Winners
+      </NavLink>
+      */}
+
+      <NavLink href={PROTOCOL_HREF}>
+        <ShieldCheck className="h-4 w-4 text-emerald-300" />
         Health
       </NavLink>
 
@@ -1268,13 +1285,25 @@ function MobileMenu({
                 </span>
               </Link>
 
-              {/* Winners disabled -> replaced by Health */}
+              {/* Winners removed - replaced with Health */}
+              {/*
               <Link
                 className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-                href={HEALTH_HREF}
+                href={WINNERS_HREF}
               >
                 <span className="inline-flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-emerald-300" />
+                  <Trophy className="h-4 w-4 text-amber-300" />
+                  Winners
+                </span>
+              </Link>
+              */}
+
+              <Link
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                href={PROTOCOL_HREF}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
                   Health
                 </span>
               </Link>
