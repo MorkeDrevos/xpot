@@ -10,12 +10,17 @@ type LatestWinnerPayload = {
     id: string;
     drawDate: string | null;
     wallet: string | null;
-    amountXpot: number; // fixed daily amount for UI
+
+    // UI-friendly daily amount (protocol constant)
+    amountXpot: number;
+
     handle: string | null;
     name: string | null;
     avatarUrl: string | null;
+
     txUrl: string | null;
     isPaidOut: boolean;
+
     jackpotUsd: number;
     payoutUsd: number;
   } | null;
@@ -49,7 +54,7 @@ export async function GET() {
     const drawDate =
       w.draw?.drawDate instanceof Date ? w.draw.drawDate.toISOString() : null;
 
-    const user = w.ticket?.wallet?.user;
+    const user = w.ticket?.wallet?.user ?? null;
 
     const payload: LatestWinnerPayload = {
       ok: true,
@@ -58,10 +63,10 @@ export async function GET() {
         drawDate,
         wallet: w.walletAddress ?? null,
 
-        // UI-friendly daily amount (your protocol is 1,000,000/day)
+        // Winner model has no "amount" in your schema, so we provide protocol constant
         amountXpot: DAILY_XPOT,
 
-        // These fields DO exist in your Prisma schema:
+        // Your schema fields:
         handle: user?.xHandle ?? null,
         name: user?.xName ?? null,
         avatarUrl: user?.xAvatarUrl ?? null,
