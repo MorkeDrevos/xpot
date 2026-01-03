@@ -1050,7 +1050,9 @@ export default function HubProtocolPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-100">Main XPOT</p>
-                <p className="mt-1 text-xs text-slate-400">Today’s primary draw</p>
+                <p className="mt-1 text-xs text-slate-400">
+  {liveIsOpen ? "Today’s primary draw" : 'Next draw cycle'}
+</p>
               </div>
 
               <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'} className={liveIsOpen ? 'xpot-live-pulse' : ''}>
