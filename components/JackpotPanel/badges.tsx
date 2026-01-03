@@ -1,7 +1,8 @@
+// components/JackpotPanel/badges.tsx
 'use client';
 
-import type { ReactNode } from 'react';
-import { Info } from 'lucide-react';
+import { Info, Sparkles } from 'lucide-react';
+import { type ReactNode } from 'react';
 import { TooltipBubble, useAnchoredTooltip } from './tooltip';
 
 export function UsdEstimateBadge({ compact }: { compact?: boolean }) {
@@ -69,11 +70,20 @@ export function RunwayBadge({ label, tooltip }: { label: string; tooltip?: strin
 
           <TooltipBubble open={t.open} rect={t.rect} width={340}>
             <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
-              {tooltip as ReactNode}
+              {tooltip}
             </div>
           </TooltipBubble>
         </>
       )}
     </div>
+  );
+}
+
+export function VerifiedPill() {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+      <Sparkles className="h-3.5 w-3.5 opacity-90" />
+      Verified
+    </span>
   );
 }
