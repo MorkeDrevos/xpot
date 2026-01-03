@@ -33,6 +33,7 @@ import {
   Hourglass,
   Home,
   BadgeCheck,
+  Activity,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -77,10 +78,11 @@ const XPOT_X_POST = 'https://x.com/xpotbet';
 const FINAL_DAY_HREF = '/2045/final-day';
 const FINAL_DAY_LABEL = 'Final Draw';
 
-const WINNERS_HREF = '/winners';
+// const WINNERS_HREF = '/winners'; // disabled for now
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
 const PROTOCOL_HREF = '/hub/protocol';
+const HEALTH_HREF = PROTOCOL_HREF;
 
 const XPOT_OFFICIAL_CA = 'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
 
@@ -256,23 +258,23 @@ export default function XpotTopBar({
                   <OfficialCAChipMobile />
 
                   {isHub ? (
-  <button
-    type="button"
-    onClick={() => openWallet?.()}
-    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-100"
-    aria-label="Wallet"
-  >
-    <Wallet className="h-5 w-5 text-slate-200" />
-  </button>
-) : (
-  <Link
-    href={FINAL_DAY_HREF}
-    className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[13px] font-semibold text-slate-100"
-  >
-    <Hourglass className="h-4 w-4 text-amber-200" />
-    {FINAL_DAY_LABEL}
-  </Link>
-)}
+                    <button
+                      type="button"
+                      onClick={() => openWallet?.()}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-100"
+                      aria-label="Wallet"
+                    >
+                      <Wallet className="h-5 w-5 text-slate-200" />
+                    </button>
+                  ) : (
+                    <Link
+                      href={FINAL_DAY_HREF}
+                      className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[13px] font-semibold text-slate-100"
+                    >
+                      <Hourglass className="h-4 w-4 text-amber-200" />
+                      {FINAL_DAY_LABEL}
+                    </Link>
+                  )}
 
                   <button
                     type="button"
@@ -628,14 +630,15 @@ function PublicNavCenter({
                   Roadmap
                 </Link>
 
+                {/* Winners disabled -> replaced by Health */}
                 <Link
-                  href={WINNERS_HREF}
+                  href={HEALTH_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
                 >
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Trophy className="h-4 w-4 text-amber-300" />
+                    <Activity className="h-4 w-4 text-emerald-300" />
                   </span>
-                  Winners
+                  Health
                 </Link>
 
                 <div className="my-2 h-px bg-white/10" />
@@ -703,9 +706,10 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         Roadmap
       </NavLink>
 
-      <NavLink href={WINNERS_HREF}>
-        <Trophy className="h-4 w-4 text-amber-300" />
-        Winners
+      {/* Winners disabled -> replaced by Health */}
+      <NavLink href={HEALTH_HREF} title="Protocol health">
+        <Activity className="h-4 w-4 text-emerald-300" />
+        Health
       </NavLink>
 
       <NavLink href={XPOT_X_POST} external title="Official XPOT X">
@@ -1227,39 +1231,59 @@ function MobileMenu({
             <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">NAVIGATION</p>
 
             <div className="mt-3 space-y-2">
-              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href="/hub">
+              <Link
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                href="/hub"
+              >
                 Hub
               </Link>
 
-              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={FINAL_DAY_HREF}>
+              <Link
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                href={FINAL_DAY_HREF}
+              >
                 <span className="inline-flex items-center gap-2">
                   <Hourglass className="h-4 w-4 text-amber-200" />
                   {FINAL_DAY_LABEL}
                 </span>
               </Link>
 
-              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={TOKENOMICS_HREF}>
+              <Link
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                href={TOKENOMICS_HREF}
+              >
                 <span className="inline-flex items-center gap-2">
                   <PieChart className="h-4 w-4 text-emerald-300" />
                   Tokenomics
                 </span>
               </Link>
 
-              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={ROADMAP_HREF}>
+              <Link
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                href={ROADMAP_HREF}
+              >
                 <span className="inline-flex items-center gap-2">
                   <Map className="h-4 w-4 text-sky-300" />
                   Roadmap
                 </span>
               </Link>
 
-              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={WINNERS_HREF}>
+              {/* Winners disabled -> replaced by Health */}
+              <Link
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                href={HEALTH_HREF}
+              >
                 <span className="inline-flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-amber-300" />
-                  Winners
+                  <Activity className="h-4 w-4 text-emerald-300" />
+                  Health
                 </span>
               </Link>
 
-              <Link className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100" href={XPOT_X_POST} target="_blank">
+              <Link
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                href={XPOT_X_POST}
+                target="_blank"
+              >
                 <span className="inline-flex items-center gap-2">
                   <ExternalLink className="h-4 w-4" />
                   Official X
