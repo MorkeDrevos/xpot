@@ -1,32 +1,10 @@
-// app/public/winners/latest/route.ts
+// app/api/public/winners/latest/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 const DAILY_XPOT = 1_000_000;
-
-type LatestWinnerPayload = {
-  ok: true;
-  winner: {
-    id: string;
-    drawDate: string | null;
-    wallet: string | null;
-
-    // homepage expects this key
-    amount: number;
-
-    handle: string | null;
-    name: string | null;
-    avatarUrl: string | null;
-
-    txUrl: string | null;
-    isPaidOut: boolean;
-
-    jackpotUsd: number;
-    payoutUsd: number;
-  } | null;
-};
 
 export async function GET() {
   try {
@@ -47,44 +25,38 @@ export async function GET() {
     });
 
     if (!w) {
-      return NextResponse.json({ ok: true, winner: null }, { status: 200 });
+      return NextResponse.json(
+        { ok: true, winner: null },
+        { status: 200 }
+      );
     }
 
-    const user = w.ticket?.wallet?.user ?? null;
+    const user = w.ticket.wallet.user;
 
     return NextResponse.json(
       {
         ok: true,
         winner: {
           id: w.id,
-          drawDate:
-            w.draw?.drawDate instanceof Date
-              ? w.draw.drawDate.toISOString()
-              : null,
-          wallet: w.walletAddress ?? null,
-
-          // IMPORTANT: Winner model has NO amount field
-          amount: DAILY_XPOT,
-
-          // Prisma User fields (confirmed from your schema)
+          drawDate: w.draw.drawDate.toISOString(),
+          wallet: w.walletAddress,
+          amount: DAILY_XPOT, // UI-stable constant
           handle: user?.xHandle ?? null,
           name: user?.xName ?? null,
           avatarUrl: user?.xAvatarUrl ?? null,
-
           txUrl: w.txUrl ?? null,
           isPaidOut: w.isPaidOut,
-
           jackpotUsd: Number(w.jackpotUsd ?? 0),
           payoutUsd: Number(w.payoutUsd ?? 0),
         },
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (err: any) {
-    console.error('GET /public/winners/latest error', err);
+    console.error('GET /api/public/winners/latest failed', err);
     return NextResponse.json(
-      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
-      { status: 500 },
+      { ok: false, error: err?.message ?? 'Unknown error' },
+      { status: 500 }
     );
   }
 }
