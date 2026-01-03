@@ -12,7 +12,9 @@ export async function GET() {
         ticket: {
           include: {
             wallet: {
-              include: { user: true },
+              include: {
+                user: true,
+              },
             },
           },
         },
@@ -20,29 +22,45 @@ export async function GET() {
     });
 
     if (!w) {
-      return NextResponse.json({ ok: true, winner: null }, { status: 200 });
+      return NextResponse.json(
+        { ok: true, winner: null },
+        { status: 200 }
+      );
     }
+
+    // Use `any` for optional fields so Prisma type changes never break builds
+    const winnerAny = w as any;
+    const userAny = (w.ticket?.wallet?.user as any) ?? null;
 
     const payload = {
       id: w.id,
-      drawDate: w.draw.drawDate.toISOString(),
+      drawDate: w.draw?.drawDate
+        ? w.draw.drawDate.toISOString()
+        : null,
 
-      // Winner wallet (this exists in your Winner model)
+      // winner wallet (exists in your Winner model)
       wallet: w.walletAddress ?? null,
 
-      // This exists in your User model
-      handle: w.ticket?.wallet?.user?.xHandle ?? null,
+      // optional / future-safe fields
+      amount: winnerAny.amount ?? null,
+      txUrl: winnerAny.txUrl ?? null,
+      isPaidOut: Boolean(winnerAny.isPaidOut ?? false),
 
-      // Safe optional fields
-      txUrl: w.txUrl ?? null,
-
-      // Keep future-proof payout flag (won't break types)
-      isPaidOut: Boolean((w as any).isPaidOut ?? false),
+      // user-facing identity (only if present in schema)
+      handle: userAny?.xHandle ?? null,
+      name: userAny?.name ?? null,
+      avatarUrl: userAny?.avatarUrl ?? null,
     };
 
-    return NextResponse.json({ ok: true, winner: payload }, { status: 200 });
+    return NextResponse.json(
+      { ok: true, winner: payload },
+      { status: 200 }
+    );
   } catch (err) {
     console.error('GET /api/public/winners/latest error', err);
-    return NextResponse.json({ ok: false, winner: null }, { status: 200 });
+    return NextResponse.json(
+      { ok: false, winner: null },
+      { status: 200 }
+    );
   }
 }
