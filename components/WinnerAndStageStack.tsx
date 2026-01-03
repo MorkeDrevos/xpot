@@ -1,3 +1,4 @@
+// components/WinnerAndStageStack.tsx
 'use client';
 
 import WinnerSpotlightCard from '@/components/WinnerSpotlightCard';
