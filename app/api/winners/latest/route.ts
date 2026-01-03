@@ -13,7 +13,7 @@ type LatestWinnerPayload = {
     drawDate: string | null;
     wallet: string | null;
 
-    // keep this key name stable for the homepage
+    // keep this key stable for the homepage UI
     amount: number;
 
     handle: string | null;
@@ -61,10 +61,10 @@ export async function GET() {
           w.draw?.drawDate instanceof Date ? w.draw.drawDate.toISOString() : null,
         wallet: w.walletAddress ?? null,
 
-        // ✅ Winner model has no `amount` field in your schema
+        // ✅ Winner has no "amount" field in your schema - use constant
         amount: DAILY_XPOT,
 
-        // ✅ These exist in your User model
+        // ✅ matches your User model fields
         handle: user?.xHandle ?? null,
         name: user?.xName ?? null,
         avatarUrl: user?.xAvatarUrl ?? null,
