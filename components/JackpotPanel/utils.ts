@@ -1,4 +1,26 @@
-import type { DexMetrics, PriceSample } from './types';
+// components/JackpotPanel/utils.ts
+export const PRICE_POLL_MS = 4000; // 4s
+
+export const RANGE_SAMPLE_MS = 10_000; // 10s
+export const RANGE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
+export const RANGE_STORAGE_KEY = 'xpot_price_samples_24h_v1';
+
+export const SPARK_WINDOW_MS = 60 * 60 * 1000; // 1h
+export const SPARK_MAX_POINTS = 80;
+
+export const MILESTONES = [
+  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
+  3_000, 4_000, 5_000, 7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000,
+  100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000, 1_500_000,
+  2_000_000, 3_000_000, 5_000_000, 10_000_000,
+] as const;
+
+export type PriceSample = { t: number; p: number };
+
+export type DexMetrics = {
+  priceUsd: number | null;
+  changeH1: number | null;
+};
 
 export function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
@@ -61,9 +83,11 @@ export function getMadridSessionKey(cutoffHour = 22) {
   return `${y}${m}${d}`;
 }
 
-/* Madrid cutoff helpers (DST-safe) */
+/* ─────────────────────────────────────────────
+   Madrid cutoff: correct UTC ms for "22:00 Europe/Madrid"
+───────────────────────────────────────────── */
 
-export function getMadridParts(date = new Date()) {
+function getMadridParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Madrid',
     year: 'numeric',
@@ -88,7 +112,7 @@ export function getMadridParts(date = new Date()) {
   };
 }
 
-export function getMadridOffsetMs(now = new Date()) {
+function getMadridOffsetMs(now = new Date()) {
   const p = getMadridParts(now);
   const asUtc = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss);
   return asUtc - now.getTime();
@@ -98,7 +122,14 @@ export function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
   const p = getMadridParts(now);
   const offsetMs = getMadridOffsetMs(now);
 
-  const mkUtcFromMadridWallClock = (yy: number, mm: number, dd: number, hh: number, mi: number, ss: number) => {
+  const mkUtcFromMadridWallClock = (
+    yy: number,
+    mm: number,
+    dd: number,
+    hh: number,
+    mi: number,
+    ss: number,
+  ) => {
     const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
     return asUtc - offsetMs;
   };
@@ -116,8 +147,6 @@ export function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
 
   return targetUtc;
 }
-
-/* samples + sparkline */
 
 export function safeParseSamples(raw: string | null): PriceSample[] {
   if (!raw) return [];
@@ -145,8 +174,8 @@ export function buildSparklinePoints(samples: PriceSample[], width: number, heig
     if (s.p < min) min = s.p;
     if (s.p > max) max = s.p;
   }
-
   if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+
   const span = Math.max(1e-12, max - min);
 
   const n = samples.length;
@@ -160,8 +189,6 @@ export function buildSparklinePoints(samples: PriceSample[], width: number, heig
 
   return { points: pts.join(' '), min, max };
 }
-
-/* DexScreener parsing */
 
 export function readDexScreenerMetrics(payload: unknown): DexMetrics {
   if (!payload || typeof payload !== 'object') return { priceUsd: null, changeH1: null };
