@@ -1,7 +1,8 @@
+// components/WinnerSpotlightCard.tsx
 'use client';
 
 import { useMemo, useState } from 'react';
-import { BadgeCheck, Copy, Crown, ExternalLink, ShieldCheck } from 'lucide-react';
+import { BadgeCheck, Crown, ExternalLink, ShieldCheck } from 'lucide-react';
 
 type WinnerRow = {
   id: string;
@@ -23,6 +24,11 @@ function normalizeHandle(h: string | null | undefined) {
   const s = String(h ?? '').trim();
   if (!s) return '@unknown';
   return s.startsWith('@') ? s : `@${s}`;
+}
+
+function toXProfileUrl(handle: string) {
+  const h = normalizeHandle(handle).replace(/^@/, '');
+  return `https://x.com/${encodeURIComponent(h)}`;
 }
 
 function shortenAddress(addr: string, left = 6, right = 6) {
@@ -110,7 +116,11 @@ export default function WinnerSpotlightCard({
   compact?: boolean;
 }) {
   const paid = Boolean(winner?.isPaidOut);
+
   const handle = winner?.handle ? normalizeHandle(winner.handle) : null;
+  const displayName = winner?.name ? String(winner.name).trim() : '';
+  const xUrl = handle ? toXProfileUrl(handle) : null;
+
   const label = winner
     ? handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : '@winner')
     : '@winner';
@@ -128,6 +138,11 @@ export default function WinnerSpotlightCard({
 
   const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
   const avatarSize = compact ? 34 : 40;
+
+  const shareText = winner
+    ? `I just won today’s XPOT draw ${payoutText}. Proof on-chain. @XPOTbet`
+    : `XPOT - one daily draw. @XPOTbet`;
+  const shareIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
 
   return (
     <div
@@ -202,16 +217,43 @@ export default function WinnerSpotlightCard({
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex items-center gap-3">
             <Avatar src={winner?.avatarUrl} label={label} size={avatarSize} />
+
             <div className="min-w-0">
-              <div className="truncate text-[14px] font-semibold text-slate-50">{winner ? label : 'Syncing winner'}</div>
+              <div className="flex min-w-0 items-center gap-2">
+                {winner ? (
+                  xUrl ? (
+                    <a
+                      href={xUrl}
+                      target="_blank"
+                      rel="nofollow noopener noreferrer"
+                      className="inline-flex min-w-0 items-center gap-2 hover:opacity-95"
+                      title={`Open ${label} on X`}
+                    >
+                      <span className="truncate text-[14px] font-semibold text-slate-50">{label}</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                    </a>
+                  ) : (
+                    <div className="truncate text-[14px] font-semibold text-slate-50">{label}</div>
+                  )
+                ) : (
+                  <div className="truncate text-[14px] font-semibold text-slate-50">Syncing winner</div>
+                )}
+              </div>
+
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
+                {displayName ? <span className="max-w-[240px] truncate text-slate-300">{displayName}</span> : null}
+                {displayName && (ymd || winner?.wallet || winner?.label) ? (
+                  <span className="text-slate-700">•</span>
+                ) : null}
                 {ymd ? <span className="font-mono">{ymd}</span> : null}
+
                 {winner?.wallet ? (
                   <>
                     <span className="text-slate-700">•</span>
                     <span className="font-mono">{shortenAddress(winner.wallet, 7, 7)}</span>
                   </>
                 ) : null}
+
                 {winner?.label ? (
                   <>
                     <span className="text-slate-700">•</span>
@@ -224,10 +266,10 @@ export default function WinnerSpotlightCard({
 
           <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-center">
             <div className="text-right">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Payout</div>
-              <div className="mt-1 font-mono text-[18px] text-[rgb(var(--xpot-gold-2))]">
-                {payoutText}
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Payout
               </div>
+              <div className="mt-1 font-mono text-[18px] text-[rgb(var(--xpot-gold-2))]">{payoutText}</div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -235,7 +277,7 @@ export default function WinnerSpotlightCard({
                 <a
                   href={winner.txUrl}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="nofollow noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
                 >
                   <ShieldCheck className="h-4 w-4 text-slate-300" />
@@ -248,11 +290,23 @@ export default function WinnerSpotlightCard({
                   Proof after payout
                 </div>
               )}
+
+              {winner ? (
+                <a
+                  href={shareIntentUrl}
+                  target="_blank"
+                  rel="nofollow noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                  title="Share on X"
+                >
+                  Share
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
 
-        {/* subtle footer line - keeps it “connected” but not busy */}
         {!compact ? (
           <div className="mt-4 text-[12px] text-slate-400">
             Ops triggers payout - then the on-chain transaction is published here.
