@@ -30,7 +30,7 @@ import { TOKEN_MINT } from '@/lib/xpot';
 type LiveDraw = {
   jackpotXpot: number; // API field name (keep), UI avoids "jackpot"
   jackpotUsd?: number; // legacy/stub only - UI should not rely on it
-  closesAt: string; // ISO (normalized to real ISO with timezone/Z when possible)
+  closesAt: string; // ISO
   status: 'OPEN' | 'LOCKED' | 'DRAWING' | 'COMPLETED';
 };
 
@@ -70,6 +70,11 @@ const SAMPLE_MAX = 180; // ~60 min if sampling ~20s
 const KEY_PRICE = 'xpot_protocol_samples_price_v1';
 const KEY_LP = 'xpot_protocol_samples_lp_v1';
 const KEY_VOL = 'xpot_protocol_samples_vol_v1';
+
+const MADRID_TZ = 'Europe/Madrid';
+const CLOSE_HOUR_MADRID = 22;
+const CLOSE_MINUTE_MADRID = 0;
+const CLOSE_SECOND_MADRID = 0;
 
 function StatusPill({
   children,
@@ -162,8 +167,8 @@ function formatMadridTime(iso?: string) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Madrid',
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: MADRID_TZ,
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -228,6 +233,105 @@ function pushSample({
     saveSamples(key, next);
     return next;
   });
+}
+
+/**
+ * Option B (marketing consistency):
+ * When the current draw is closed/locked, show NEXT draw countdown.
+ * We compute the next close time as "22:00 Madrid" on the next Madrid day after the current closesAt date.
+ */
+function getMadridYMD(d: Date): { y: number; m: number; day: number } {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: MADRID_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  const parts = fmt.formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+
+  const y = Number(get('year'));
+  const m = Number(get('month'));
+  const day = Number(get('day'));
+
+  if (![y, m, day].every((n) => Number.isFinite(n))) {
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, day: d.getUTCDate() };
+  }
+
+  return { y, m, day };
+}
+
+function madridLocalToUtcDate(
+  y: number,
+  m: number,
+  day: number,
+  hh: number,
+  mm: number,
+  ss: number,
+) {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: MADRID_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+
+  function partsToUtcMs(date: Date) {
+    const parts = fmt.formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+    const yy = Number(get('year'));
+    const m2 = Number(get('month'));
+    const dd = Number(get('day'));
+    const h2 = Number(get('hour'));
+    const mi2 = Number(get('minute'));
+    const s2 = Number(get('second'));
+    return Date.UTC(yy, m2 - 1, dd, h2, mi2, s2);
+  }
+
+  let guessUtc = Date.UTC(y, m - 1, day, hh, mm, ss);
+
+  for (let i = 0; i < 3; i++) {
+    const shownAsMadridUtc = partsToUtcMs(new Date(guessUtc));
+    const offsetMs = shownAsMadridUtc - guessUtc;
+    const targetUtc = Date.UTC(y, m - 1, day, hh, mm, ss) - offsetMs;
+
+    if (Math.abs(targetUtc - guessUtc) < 500) {
+      guessUtc = targetUtc;
+      break;
+    }
+    guessUtc = targetUtc;
+  }
+
+  return new Date(guessUtc);
+}
+
+function computeNextCloseIsoFromClosesAt(currentClosesAtIso: string) {
+  const d = new Date(currentClosesAtIso);
+  if (Number.isNaN(d.getTime())) return '';
+
+  // Take the Madrid-local date of the current closesAt, then move to next day
+  const { y, m, day } = getMadridYMD(d);
+
+  // Create a UTC date for that YMD and add 1 day safely (date rollover in UTC)
+  const utcMid = new Date(Date.UTC(y, m - 1, day, 12, 0, 0, 0)); // midday avoids edge cases
+  const utcNext = new Date(utcMid.getTime() + 24 * 60 * 60 * 1000);
+  const nextYMD = getMadridYMD(utcNext);
+
+  const nextClose = madridLocalToUtcDate(
+    nextYMD.y,
+    nextYMD.m,
+    nextYMD.day,
+    CLOSE_HOUR_MADRID,
+    CLOSE_MINUTE_MADRID,
+    CLOSE_SECOND_MADRID,
+  );
+
+  return nextClose.toISOString();
 }
 
 function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: number }) {
@@ -323,87 +427,12 @@ function SkeletonLine({ w = 'w-24' }: { w?: string }) {
 }
 
 /**
- * Robust time parsing for closesAt.
- * If API gives a proper ISO with timezone (Z or ±hh:mm) -> normal Date.parse works.
- * If API gives a timezone-less ISO (YYYY-MM-DDTHH:mm:ss) -> treat it as Europe/Madrid local time.
- */
-function parseIsoAssumingMadrid(iso: string): number | null {
-  if (!iso || typeof iso !== 'string') return null;
-  const s = iso.trim();
-  if (!s) return null;
-
-  // If it already has timezone info, trust native parse.
-  const hasTz = /([zZ]|[+\-]\d{2}:\d{2})$/.test(s);
-  if (hasTz) {
-    const ms = Date.parse(s);
-    return Number.isFinite(ms) ? ms : null;
-  }
-
-  // Expect: YYYY-MM-DDTHH:mm(:ss)?
-  const m = s.match(
-    /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/
-  );
-  if (!m) {
-    const ms = Date.parse(s);
-    return Number.isFinite(ms) ? ms : null;
-  }
-
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  const hh = Number(m[4]);
-  const mm = Number(m[5]);
-  const ss = Number(m[6] ?? '0');
-
-  if (![y, mo, d, hh, mm, ss].every((n) => Number.isFinite(n))) return null;
-
-  const fmt = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  });
-
-  function partsToUtcMs(date: Date) {
-    const parts = fmt.formatToParts(date);
-    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
-    const yy = Number(get('year'));
-    const m2 = Number(get('month'));
-    const dd = Number(get('day'));
-    const h2 = Number(get('hour'));
-    const mi2 = Number(get('minute'));
-    const s2 = Number(get('second'));
-    return Date.UTC(yy, m2 - 1, dd, h2, mi2, s2);
-  }
-
-  // Start with naive UTC guess of the Madrid local components.
-  let guessUtc = Date.UTC(y, mo - 1, d, hh, mm, ss);
-
-  // Iterate a couple times to converge offset/DST.
-  for (let i = 0; i < 3; i++) {
-    const shownAsMadridUtc = partsToUtcMs(new Date(guessUtc));
-    const offsetMs = shownAsMadridUtc - guessUtc;
-    const targetUtc = Date.UTC(y, mo - 1, d, hh, mm, ss) - offsetMs;
-    if (Math.abs(targetUtc - guessUtc) < 500) {
-      guessUtc = targetUtc;
-      break;
-    }
-    guessUtc = targetUtc;
-  }
-
-  return Number.isFinite(guessUtc) ? guessUtc : null;
-}
-
-/**
  * Normalize live draw payloads so Main XPOT matches the rest of the site even if
  * /api/draw/live returns slightly different shapes across deployments.
  */
 function normalizeLiveDraw(payload: any): LiveDraw | null {
   const root = payload?.draw ?? payload?.live ?? payload?.data ?? payload;
+
   if (!root || typeof root !== 'object') return null;
 
   const closesAtRaw =
@@ -425,35 +454,23 @@ function normalizeLiveDraw(payload: any): LiveDraw | null {
     root.rewardXpot ??
     null;
 
-  const closesAtStr = typeof closesAtRaw === 'string' ? closesAtRaw : '';
-  const closesAtMs = closesAtStr ? parseIsoAssumingMadrid(closesAtStr) : null;
+  const closesAt = typeof closesAtRaw === 'string' ? closesAtRaw : '';
+  const closesAtMs = closesAt ? new Date(closesAt).getTime() : NaN;
 
   const jackpotXpot = Number(jackpotRaw);
   const jackpotUsd = Number(root.jackpotUsd);
 
-  // Only trust API for DRAWING/COMPLETED. OPEN/LOCKED is derived from closesAt.
-  let apiStatus: LiveDraw['status'] | null = null;
+  let status: LiveDraw['status'] = 'LOCKED';
   if (typeof statusRaw === 'string') {
     const s = statusRaw.toUpperCase();
-    if (s === 'DRAWING' || s === 'COMPLETED') apiStatus = s;
-    if (s === 'OPEN' || s === 'LOCKED') apiStatus = s; // keep for fallback if closesAt missing
-  }
-
-  let status: LiveDraw['status'] = 'LOCKED';
-  if (apiStatus === 'DRAWING' || apiStatus === 'COMPLETED') {
-    status = apiStatus;
-  } else if (typeof closesAtMs === 'number') {
+    if (s === 'OPEN' || s === 'LOCKED' || s === 'DRAWING' || s === 'COMPLETED') status = s;
+  } else if (Number.isFinite(closesAtMs)) {
     status = Date.now() < closesAtMs ? 'OPEN' : 'LOCKED';
-  } else if (apiStatus === 'OPEN' || apiStatus === 'LOCKED') {
-    status = apiStatus;
   }
 
-  const safeClosesAt =
-    typeof closesAtMs === 'number' ? new Date(closesAtMs).toISOString() : '';
+  const safeClosesAt = Number.isFinite(closesAtMs) ? new Date(closesAtMs).toISOString() : '';
 
-  const hasMeaningful =
-    Number.isFinite(jackpotXpot) || Boolean(safeClosesAt) || Boolean(status);
-
+  const hasMeaningful = Number.isFinite(jackpotXpot) || Boolean(safeClosesAt) || Boolean(status);
   if (!hasMeaningful) return null;
 
   return {
@@ -473,8 +490,7 @@ function normalizeBonus(payload: any): BonusXPOT[] {
       const amountXpot = Number(b?.amountXpot ?? b?.amount ?? b?.xpot ?? 0);
       const scheduledAt = String(b?.scheduledAt ?? b?.at ?? b?.time ?? '');
       const statusRaw = String(b?.status ?? 'UPCOMING').toUpperCase();
-      const status =
-        statusRaw === 'CLAIMED' || statusRaw === 'CANCELLED' ? statusRaw : 'UPCOMING';
+      const status = statusRaw === 'CLAIMED' || statusRaw === 'CANCELLED' ? statusRaw : 'UPCOMING';
       const label = typeof b?.label === 'string' ? b.label : undefined;
 
       if (!id) return null;
@@ -607,7 +623,6 @@ export default function HubProtocolPage() {
       const j = await res.json().catch(() => ({}));
       const next = (j?.state ?? j ?? null) as ProtocolState | null;
 
-      // Tick triggers only if changed vs previous proto
       setProto((prev) => {
         const prevLp = Number(prev?.lpUsd);
         const prevPx = Number(prev?.priceUsd);
@@ -617,17 +632,13 @@ export default function HubProtocolPage() {
         const nextPx = Number(next?.priceUsd);
         const nextVol = Number(next?.volume24hUsd);
 
-        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp)
-          setLpKey((k) => k + 1);
-        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx)
-          setPxKey((k) => k + 1);
-        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol)
-          setVolKey((k) => k + 1);
+        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp) setLpKey((k) => k + 1);
+        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx) setPxKey((k) => k + 1);
+        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol) setVolKey((k) => k + 1);
 
         return next;
       });
 
-      // Samples: update using functional setState (no stale closure)
       if (next) {
         pushSample({ key: KEY_PRICE, v: next.priceUsd, setCurrent: setPriceSamples });
         pushSample({ key: KEY_LP, v: next.lpUsd, setCurrent: setLpSamples });
@@ -674,49 +685,60 @@ export default function HubProtocolPage() {
   const closesAtMs = useMemo(() => {
     const iso = draw?.closesAt;
     if (!iso) return null;
-    const ms = Date.parse(iso);
+    const ms = new Date(iso).getTime();
     return Number.isFinite(ms) ? ms : null;
   }, [draw?.closesAt]);
 
   const closesInMs = useMemo(() => {
-    if (typeof closesAtMs !== 'number') return null;
+    if (!closesAtMs) return null;
     return closesAtMs - now;
   }, [closesAtMs, now]);
 
-  // Authority rule:
-  // - If API says DRAWING/COMPLETED, show it.
-  // - Otherwise OPEN/LOCKED is derived from closesAt (same logic as the rest of the site).
+  // Safety: if API says OPEN but close time has passed, treat as locked UI-side
   const effectiveStatus = useMemo<LiveDraw['status'] | null>(() => {
     if (!draw) return null;
 
-    if (draw.status === 'DRAWING' || draw.status === 'COMPLETED') return draw.status;
+    const st = draw.status;
+    if (st === 'OPEN' && typeof closesInMs === 'number' && closesInMs <= 0) return 'LOCKED';
 
-    if (typeof closesAtMs === 'number') return now < closesAtMs ? 'OPEN' : 'LOCKED';
+    if (st !== 'OPEN' && st !== 'LOCKED' && st !== 'DRAWING' && st !== 'COMPLETED') {
+      if (typeof closesInMs === 'number') return closesInMs > 0 ? 'OPEN' : 'LOCKED';
+      return 'LOCKED';
+    }
 
-    // No closesAt - fallback to API OPEN/LOCKED if it exists, else locked.
-    if (draw.status === 'OPEN' || draw.status === 'LOCKED') return draw.status;
-
-    return 'LOCKED';
-  }, [draw, closesAtMs, now]);
+    return st;
+  }, [draw, closesInMs]);
 
   const liveIsOpen = effectiveStatus === 'OPEN';
   const isRefreshing = liveFetching || protoFetching;
 
+  // Option B: when locked, show NEXT draw countdown instead of 00:00:00
+  const mainClosesAtIso = useMemo(() => {
+    if (!draw?.closesAt) return '';
+    if (effectiveStatus === 'OPEN') return draw.closesAt;
+
+    // If locked/drawing/completed, switch to next draw close for marketing consistency
+    return computeNextCloseIsoFromClosesAt(draw.closesAt);
+  }, [draw?.closesAt, effectiveStatus]);
+
+  const mainClosesAtMs = useMemo(() => {
+    if (!mainClosesAtIso) return null;
+    const ms = new Date(mainClosesAtIso).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }, [mainClosesAtIso]);
+
+  const mainClosesInMs = useMemo(() => {
+    if (!mainClosesAtMs) return null;
+    return mainClosesAtMs - now;
+  }, [mainClosesAtMs, now]);
+
   const closesIn = useMemo(() => {
-    if (typeof closesInMs !== 'number') return '—';
-    if (closesInMs <= 0) return '00:00:00';
-    return formatCountdown(closesInMs);
-  }, [closesInMs]);
+    if (typeof mainClosesInMs !== 'number') return '—';
+    if (mainClosesInMs <= 0) return '00:00:00';
+    return formatCountdown(mainClosesInMs);
+  }, [mainClosesInMs]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
-
-  // USD estimate: derived from live token price (proto.priceUsd) * daily amount
-  const dailyUsdEstimate = useMemo(() => {
-    const amt = Number(draw?.jackpotXpot);
-    const px = Number(proto?.priceUsd);
-    if (Number.isFinite(amt) && Number.isFinite(px) && amt > 0 && px > 0) return amt * px;
-    return undefined;
-  }, [draw?.jackpotXpot, proto?.priceUsd]);
 
   const liveRefreshIn = useMemo(() => Math.max(0, liveNextAt - now), [liveNextAt, now]);
   const protoRefreshIn = useMemo(() => Math.max(0, protoNextAt - now), [protoNextAt, now]);
@@ -753,6 +775,10 @@ export default function HubProtocolPage() {
     setProtoLoading(true);
     await Promise.allSettled([loadLive(), loadProto()]);
   }
+
+  // Marketing-consistent status label for Main XPOT card
+  const mainStatusLabel = liveIsOpen ? 'OPEN' : 'STANDBY';
+  const mainStatusHint = liveIsOpen ? 'Entries are active' : 'Awaiting next draw';
 
   return (
     <XpotPageShell
@@ -931,10 +957,7 @@ export default function HubProtocolPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <StatusPill
-                tone={liveIsOpen ? 'emerald' : 'slate'}
-                className={liveIsOpen ? 'xpot-live-pulse' : ''}
-              >
+              <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'} className={liveIsOpen ? 'xpot-live-pulse' : ''}>
                 <Sparkles className="h-3.5 w-3.5" />
                 {liveIsOpen ? 'Live entries' : 'Standby'}
               </StatusPill>
@@ -1030,10 +1053,7 @@ export default function HubProtocolPage() {
                 <p className="mt-1 text-xs text-slate-400">Today’s primary draw</p>
               </div>
 
-              <StatusPill
-                tone={liveIsOpen ? 'emerald' : 'slate'}
-                className={liveIsOpen ? 'xpot-live-pulse' : ''}
-              >
+              <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'} className={liveIsOpen ? 'xpot-live-pulse' : ''}>
                 <Sparkles className="h-3.5 w-3.5" />
                 {liveIsOpen ? 'LIVE' : 'STANDBY'}
               </StatusPill>
@@ -1058,27 +1078,21 @@ export default function HubProtocolPage() {
                       <span className="text-slate-400 font-semibold">—</span>
                     )
                   }
-                  hint={Number.isFinite(Number(dailyUsdEstimate)) ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}` : ''}
+                  // ✅ USD estimate removed completely (per request)
+                  hint=""
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
                   label="Closes in"
                   value={closesIn}
-                  hint={draw.closesAt ? `Closes at ${formatMadridTime(draw.closesAt)} (Madrid)` : ''}
+                  hint={mainClosesAtIso ? `Closes at ${formatMadridTime(mainClosesAtIso)} (Madrid)` : ''}
                   icon={<Timer className="h-4 w-4 text-sky-300" />}
                 />
                 <MetricCard
                   label="Status"
-                  value={effectiveStatus ?? draw.status}
-                  hint={
-                    (effectiveStatus ?? draw.status) === 'OPEN'
-                      ? 'Entries are active'
-                      : (effectiveStatus ?? draw.status) === 'LOCKED'
-                      ? 'Entry window closed'
-                      : (effectiveStatus ?? draw.status) === 'DRAWING'
-                      ? 'Picking winner'
-                      : 'Completed'
-                  }
+                  // ✅ Marketing-consistent label (mirrors homepage)
+                  value={mainStatusLabel}
+                  hint={mainStatusHint}
                   icon={<Sparkles className="h-4 w-4 text-emerald-300" />}
                 />
               </div>
@@ -1180,16 +1194,8 @@ export default function HubProtocolPage() {
             </div>
 
             <div className="mt-5 space-y-3">
-              <GraphBlock
-                title="Price micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={priceSamples} height={44} />}
-              />
-              <GraphBlock
-                title="Volume micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={volSamples} height={44} />}
-              />
+              <GraphBlock title="Price micro-trend" badge="Live" spark={<Sparkline samples={priceSamples} height={44} />} />
+              <GraphBlock title="Volume micro-trend" badge="Live" spark={<Sparkline samples={volSamples} height={44} />} />
             </div>
           </PremiumPanel>
         </section>
@@ -1246,7 +1252,6 @@ function MetricCard({
       </div>
 
       {!loading && hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
-
       {spark ? <div className="mt-3">{spark}</div> : null}
     </div>
   );
