@@ -12,9 +12,7 @@ export async function GET() {
         ticket: {
           include: {
             wallet: {
-              include: {
-                user: true,
-              },
+              include: { user: true },
             },
           },
         },
@@ -22,37 +20,29 @@ export async function GET() {
     });
 
     if (!w) {
-      return NextResponse.json(
-        { ok: true, winner: null },
-        { status: 200 },
-      );
+      return NextResponse.json({ ok: true, winner: null }, { status: 200 });
     }
 
     const payload = {
       id: w.id,
       drawDate: w.draw.drawDate.toISOString(),
+
+      // Winner wallet (this exists in your Winner model)
       wallet: w.walletAddress ?? null,
 
-      // ❌ REMOVED:
-      // amount: w.amount
-      // This field does NOT exist on the Winner model and breaks the build.
-
+      // This exists in your User model
       handle: w.ticket?.wallet?.user?.xHandle ?? null,
-      name: w.ticket?.wallet?.user?.name ?? null,
-      avatarUrl: w.ticket?.wallet?.user?.avatarUrl ?? null,
+
+      // Safe optional fields
       txUrl: w.txUrl ?? null,
+
+      // Keep future-proof payout flag (won't break types)
       isPaidOut: Boolean((w as any).isPaidOut ?? false),
     };
 
-    return NextResponse.json(
-      { ok: true, winner: payload },
-      { status: 200 },
-    );
+    return NextResponse.json({ ok: true, winner: payload }, { status: 200 });
   } catch (err) {
     console.error('GET /api/public/winners/latest error', err);
-    return NextResponse.json(
-      { ok: false, winner: null },
-      { status: 200 },
-    );
+    return NextResponse.json({ ok: false, winner: null }, { status: 200 });
   }
 }
