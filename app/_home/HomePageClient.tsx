@@ -1571,7 +1571,6 @@ function DaytimeLayerCard({
 }
 
 function DrawCeremonyOverlay({
-  const mounted = useBodyMounted();
   nowMs,
   nextDrawUtcMs,
   countdown,
@@ -1584,6 +1583,7 @@ function DrawCeremonyOverlay({
   cutoffLabel: string;
   latestWinner: WinnerRow | null;
 }) {
+  const mounted = useBodyMounted();
   const reduced = useReducedMotion();
   const { msLeft, finalMinute, due } = useDrawPhase(nowMs, nextDrawUtcMs);
 
@@ -1694,9 +1694,7 @@ function DrawCeremonyOverlay({
                         <div className="h-2 w-2 rounded-full bg-[rgb(var(--xpot-gold-2))] shadow-[0_0_18px_rgba(var(--xpot-gold),0.7)]" />
                         <div className="h-2 w-2 rounded-full bg-white/15" />
                         <div className="h-2 w-2 rounded-full bg-white/10" />
-                        <span className="ml-2 text-[11px] uppercase tracking-[0.22em] text-slate-400">
-                          ceremony
-                        </span>
+                        <span className="ml-2 text-[11px] uppercase tracking-[0.22em] text-slate-400">ceremony</span>
                       </div>
                     </motion.div>
                   ) : (
@@ -1810,13 +1808,13 @@ function DrawCeremonyOverlay({
             <span className="font-mono text-[12px] text-slate-100">{countdown}</span>
           </div>
 
-          <p className="mt-1 text-[12px] text-slate-200/90">Ceremony begins at zero. Winner reveal follows immediately.</p>
+          <p className="mt-1 text-[12px] text-slate-200/90">
+            Ceremony begins at zero. Winner reveal follows immediately.
+          </p>
         </div>
       ) : null}
 
-      {mounted && typeof document !== 'undefined' && document.body
-  ? createPortal(content, document.body)
-  : null}
+      {mounted && typeof document !== 'undefined' && document.body ? createPortal(content, document.body) : null}
     </>
   );
 }
