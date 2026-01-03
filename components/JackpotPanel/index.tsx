@@ -7,15 +7,21 @@ import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
 
 import XpotLogo from '@/components/XpotLogo';
 
-// If your helpers already exist in this folder, keep these imports.
-// If any filename/export differs, just rename the import to match your actual helper.
 import type { JackpotPanelProps } from './types';
-import { JACKPOT_XPOT, PRICE_POLL_MS, SPARK_WINDOW_MS, clamp, formatCoverage, formatUsd } from './utils';
+import {
+  JACKPOT_XPOT,
+  PRICE_POLL_MS,
+  SPARK_WINDOW_MS,
+  clamp,
+  formatCoverage,
+  formatUsd,
+} from './utils';
+
 import { useDexScreenerPrice } from './useDexScreenerPrice';
 import { usePriceSamples } from './usePriceSamples';
 import { useMadridCountdown } from './useMadridCountdown';
 import { RunwayBadge, UsdEstimateBadge } from './badges';
-import PriceUnavailableNote from './PriceUnavailableNote';
+import { PriceUnavailableNote } from './PriceUnavailableNote';
 
 /**
  * Small local hook to keep the big USD number "drifting" smoothly (instead of snapping).
