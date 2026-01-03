@@ -1,3 +1,4 @@
+// app/api/public/winners/latest/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -25,18 +26,10 @@ export async function GET() {
 
     const payload = {
       id: w.id,
-      drawDate: w.draw.drawDate.toISOString(),
-
-      // Winner wallet (this exists in your Winner model)
-      wallet: w.walletAddress ?? null,
-
-      // This exists in your User model
-      handle: w.ticket?.wallet?.user?.xHandle ?? null,
-
-      // Safe optional fields
-      txUrl: w.txUrl ?? null,
-
-      // Keep future-proof payout flag (won't break types)
+      drawDate: w.draw?.drawDate ? w.draw.drawDate.toISOString() : null,
+      wallet: (w as any).walletAddress ?? null, // keep tolerant if schema differs
+      handle: (w as any)?.ticket?.wallet?.user?.xHandle ?? null,
+      txUrl: (w as any).txUrl ?? null,
       isPaidOut: Boolean((w as any).isPaidOut ?? false),
     };
 
