@@ -24,8 +24,7 @@ import { RunwayBadge, UsdEstimateBadge } from './badges';
 import { PriceUnavailableNote } from './PriceUnavailableNote';
 
 /**
- * Small local hook to keep the big USD number "drifting" smoothly (instead of snapping).
- * Keeping this here avoids re-bloating utils, while still shrinking the file a ton.
+ * Small local hook to keep the big USD number "drifting" smoothly.
  */
 function useSmoothNumber(target: number | null, opts?: { durationMs?: number }) {
   const durationMs = opts?.durationMs ?? 650;
@@ -93,13 +92,17 @@ export default function JackpotPanel({
   badgeTooltip,
   layout = 'auto',
 }: JackpotPanelProps) {
-  // --- Live price + global momentum (DexScreener)
-  const { priceUsd, momentumH1, isLoading, hadError, justUpdated } = useDexScreenerPrice();
+  // ✅ FIXED: correct property name
+  const {
+    priceUsd,
+    momentumGlobalH1,
+    isLoading,
+    hadError,
+    justUpdated,
+  } = useDexScreenerPrice();
 
-  // --- Countdown (hydration safe)
   const { mounted, countdownMs, countPulse } = useMadridCountdown();
 
-  // --- Observed samples (range + sparkline + session peak)
   const {
     range24h,
     coverageMs,
@@ -109,7 +112,6 @@ export default function JackpotPanel({
     registerJackpotUsdForSessionPeak,
   } = usePriceSamples(priceUsd);
 
-  // --- Panel layout auto-wide (kept tiny here)
   const slabRef = useRef<HTMLDivElement | null>(null);
   const [autoWide, setAutoWide] = useState(false);
   const autoWideRef = useRef(false);
@@ -125,7 +127,6 @@ export default function JackpotPanel({
     if (!RO) return;
 
     let raf = 0;
-
     const WIDE_ON = 900;
     const WIDE_OFF = 840;
 
@@ -152,32 +153,43 @@ export default function JackpotPanel({
     };
   }, [layout]);
 
-  // --- Derived numbers
   const jackpotUsd = priceUsd != null ? JACKPOT_XPOT * priceUsd : null;
-  const smoothJackpotUsd = useSmoothNumber(jackpotUsd, { durationMs: 650 });
+  const smoothJackpotUsd = useSmoothNumber(jackpotUsd);
 
   useEffect(() => {
-    if (typeof onJackpotUsdChange === 'function') onJackpotUsdChange(jackpotUsd ?? null);
+    if (typeof onJackpotUsdChange === 'function') {
+      onJackpotUsdChange(jackpotUsd ?? null);
+    }
   }, [jackpotUsd, onJackpotUsdChange]);
 
   useEffect(() => {
-    if (jackpotUsd == null) return;
-    registerJackpotUsdForSessionPeak(jackpotUsd);
+    if (jackpotUsd != null) {
+      registerJackpotUsdForSessionPeak(jackpotUsd);
+    }
   }, [jackpotUsd, registerJackpotUsdForSessionPeak]);
 
-  const showUnavailable = !isLoading && (jackpotUsd == null || hadError || priceUsd == null);
+  const showUnavailable =
+    !isLoading && (jackpotUsd == null || hadError || priceUsd == null);
 
   const displayUsdText =
-    smoothJackpotUsd == null || !Number.isFinite(smoothJackpotUsd) ? '-' : formatUsd(smoothJackpotUsd);
+    smoothJackpotUsd == null || !Number.isFinite(smoothJackpotUsd)
+      ? '-'
+      : formatUsd(smoothJackpotUsd);
 
   const observedLabel =
-    coverageMs >= 24 * 60 * 60 * 1000 ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
+    coverageMs >= 24 * 60 * 60 * 1000
+      ? 'Observed: 24h'
+      : `Observed: ${formatCoverage(coverageMs)}`;
 
   const localSparkLabel =
-    sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
+    sparkCoverageMs >= SPARK_WINDOW_MS
+      ? 'Local ticks: 1h'
+      : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
 
   const globalMomentumText =
-    momentumH1 == null || !Number.isFinite(momentumH1) ? '-' : `${momentumH1.toFixed(2)}%`;
+    momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1)
+      ? '-'
+      : `${momentumGlobalH1.toFixed(2)}%`;
 
   // Milestones still computed here, but you can move to utils if you already did.
   const MILESTONES = useMemo(
