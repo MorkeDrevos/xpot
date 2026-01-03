@@ -11,6 +11,7 @@ import {
   useContext,
 } from 'react';
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import {
   AnimatePresence,
   motion,
@@ -48,7 +49,6 @@ import FinalDrawDate from '@/components/FinalDrawDate';
 import RotatingAnnouncement from '@/components/RotatingAnnouncement';
 
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
-import { createPortal } from 'react-dom';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_TERMS = '/terms';
@@ -1738,7 +1738,7 @@ function HomePageInner() {
                         </div>
                       </div>
 
-                       <div className="relative mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
+                      <div className="relative mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
 
