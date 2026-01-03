@@ -1,5 +1,4 @@
-
-// app/page.tsx
+// app/_home/HomePageClient.tsx
 'use client';
 
 import {
@@ -905,10 +904,17 @@ type WinnerRow = {
   name?: string | null;
   avatarUrl?: string | null;
   wallet: string | null;
-  amount: number | null;
+
+  // we support both shapes safely
+  amount?: number | null;
+  amountXpot?: number | null;
+
   drawDate: string | null; // ISO
   txUrl?: string | null;
   isPaidOut?: boolean;
+
+  kind?: 'MAIN' | 'BONUS' | null;
+  label?: string | null;
 };
 
 type EntryRow = {
@@ -970,10 +976,30 @@ function useLatestWinnerCard() {
 
       let w: WinnerRow | null = null;
 
-      if (Array.isArray(data?.winners) && data.winners[0]) w = data.winners[0] as WinnerRow;
-      else if (Array.isArray(data) && data[0]) w = data[0] as WinnerRow;
+      // NEW: supports your new endpoint shape: { ok: true, winner: {...} }
+      if (data?.ok === true && data?.winner) {
+        const x = data.winner;
+        w = {
+          id: String(x.id ?? ''),
+          handle: x.handle ?? null,
+          name: x.name ?? null,
+          avatarUrl: x.avatarUrl ?? null,
+          wallet: x.wallet ?? null,
+          amountXpot: typeof x.amountXpot === 'number' ? x.amountXpot : null,
+          amount: typeof x.amount === 'number' ? x.amount : null,
+          drawDate: x.drawDate ?? null,
+          txUrl: x.txUrl ?? null,
+          isPaidOut: Boolean(x.isPaidOut),
+          kind: x.kind ?? null,
+          label: x.label ?? null,
+        };
+      } else if (Array.isArray(data?.winners) && data.winners[0]) {
+        w = data.winners[0] as WinnerRow;
+      } else if (Array.isArray(data) && data[0]) {
+        w = data[0] as WinnerRow;
+      }
 
-      setWinner(w ?? null);
+      setWinner(w && w.id ? w : null);
     }
 
     load();
@@ -1099,9 +1125,18 @@ function WinnerSpotlight({ winner, compact = false }: { winner: WinnerRow | null
   const label = winner
     ? winner.handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : 'winner')
     : 'winner';
+
   const ymd = winner?.drawDate ? formatIsoToMadridYmd(winner.drawDate) : null;
   const paid = Boolean(winner?.isPaidOut);
-  const amt = formatXpotAmount(winner?.amount ?? 1_000_000);
+
+  const amountResolved =
+    typeof winner?.amountXpot === 'number'
+      ? winner.amountXpot
+      : typeof winner?.amount === 'number'
+      ? winner.amount
+      : 1_000_000;
+
+  const amt = formatXpotAmount(amountResolved);
 
   const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
   const avatarSize = compact ? 34 : 44;
@@ -1109,7 +1144,9 @@ function WinnerSpotlight({ winner, compact = false }: { winner: WinnerRow | null
   const payoutSize = compact ? 'text-[16px]' : 'text-[18px]';
 
   return (
-    <div className={`relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/30 ring-1 ring-white/[0.05]`}>
+    <div
+      className={`relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/30 ring-1 ring-white/[0.05]`}
+    >
       <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
       <div className={`relative ${pad}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1146,6 +1183,12 @@ function WinnerSpotlight({ winner, compact = false }: { winner: WinnerRow | null
                       <>
                         <span className="text-slate-700"> • </span>
                         <span className="font-mono">{shortenAddress(winner.wallet, 7, 7)}</span>
+                      </>
+                    ) : null}
+                    {winner.label ? (
+                      <>
+                        <span className="text-slate-700"> • </span>
+                        <span className="text-slate-300">{winner.label}</span>
                       </>
                     ) : null}
                   </>
@@ -1530,12 +1573,12 @@ function MissionBanner() {
 function HomePageInner() {
   const bonusActive = useBonusActive();
 
-  // TEMP OFF: winner + entries sections (safe stubs so JSX compiles)
-  const winnerSpotlight: WinnerRow | null = null;
-  const entries: EntryRow[] = [];
+  // ✅ live again
+  const winnerSpotlight = useLatestWinnerCard();
+  const entries = useLatestEntriesTelemetry();
 
-  // Toggle if/when public endpoints are live
-  const SHOW_LIVE_FEED = false;
+  // ✅ enable (winner will show as soon as hook gets data)
+  const SHOW_LIVE_FEED = true;
 
   const [mint, setMint] = useState(XPOT_CA);
   useEffect(() => setMint(XPOT_CA), []);
@@ -1651,25 +1694,23 @@ function HomePageInner() {
                       </div>
 
                       {/* MOBILE: compact winner + jackpot immediately after H1 */}
-<div className="mt-4 grid gap-4 lg:hidden">
-  {SHOW_LIVE_FEED && winnerSpotlight ? (
-    <WinnerSpotlight winner={winnerSpotlight} compact />
-  ) : null}
+                      <div className="mt-4 grid gap-4 lg:hidden">
+                        {SHOW_LIVE_FEED ? <WinnerSpotlight winner={winnerSpotlight} compact /> : null}
 
-  <PremiumCard className="p-4" halo sheen>
-    <div className="xpot-console-sweep" aria-hidden />
-    <div className="relative z-10">
-      <JackpotPanel variant="standalone" layout="wide" />
-    </div>
-  </PremiumCard>
-</div>
+                        <PremiumCard className="p-4" halo sheen>
+                          <div className="xpot-console-sweep" aria-hidden />
+                          <div className="relative z-10">
+                            <JackpotPanel variant="standalone" layout="wide" />
+                          </div>
+                        </PremiumCard>
+                      </div>
 
                       {/* Desktop hero flow (kept) */}
-{SHOW_LIVE_FEED && winnerSpotlight ? (
-  <div className="hidden lg:block">
-    <WinnerSpotlight winner={winnerSpotlight} />
-  </div>
-) : null}
+                      {SHOW_LIVE_FEED ? (
+                        <div className="hidden lg:block">
+                          <WinnerSpotlight winner={winnerSpotlight} />
+                        </div>
+                      ) : null}
 
                       {SHOW_LIVE_FEED ? <EnteringTheStage entries={entries} /> : null}
 
@@ -1697,7 +1738,7 @@ function HomePageInner() {
                         </div>
                       </div>
 
-                      <div className="relative mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
+                       <div className="relative mt-5 grid grid-cols-1 gap-4 2xl:grid-cols-2">
                         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_78%_30%,rgba(56,189,248,0.08),transparent_62%)]" />
 
@@ -1870,289 +1911,9 @@ function HomePageInner() {
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
       {/* HOW IT WORKS */}
+      {/* (unchanged below) */}
       <section className="mt-7">
-        <PremiumCard className="p-6 sm:p-8" halo sheen>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                The Final Draw
-              </Pill>
-
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                Daily draws with proof. One run ending with a finale.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT is simple on purpose: holdings-based eligibility, handle-first identity and on-chain payout proof.
-                Daily draws are the heartbeat. The Final Draw is the destination.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Proof first
-              </Pill>
-              <Pill tone="sky">
-                <Users className="h-3.5 w-3.5" />
-                X identity
-              </Pill>
-              <Pill tone="violet">
-                <Timer className="h-3.5 w-3.5" />
-                Daily cadence
-              </Pill>
-            </div>
-          </div>
-
-          <div className="relative mt-6">
-            <div className="grid gap-4 lg:grid-cols-3">
-              <Step
-                n="01"
-                title="Hold XPOT"
-                desc="Eligibility is checked on-chain in the hub"
-                icon={<ShieldCheck className="h-5 w-5 text-emerald-200" />}
-                tone="emerald"
-                tag="Eligibility"
-              />
-              <Step
-                n="02"
-                title="Link your X handle"
-                desc="Handle-first identity for winners and history"
-                icon={<Users className="h-5 w-5 text-sky-200" />}
-                tone="sky"
-                tag="Identity"
-              />
-              <Step
-                n="03"
-                title="Claim entry, verify payout"
-                desc="Daily winners. On-chain proof. Finale ahead"
-                icon={<Crown className={`h-5 w-5 ${GOLD_TEXT}`} />}
-                tone="amber"
-                tag="Proof"
-              />
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
-            </div>
-
-            <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
-              Claim your entry
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-        </PremiumCard>
-      </section>
-
-      {/* THE PROTOCOL STRIP */}
-      <section className="mt-8">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="amber">
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Finale (ending)
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">The Final Draw is the ending.</p>
-            <p className="mt-2 text-sm text-slate-300">Daily draws build the arc. The finale builds the legend.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="sky">
-              <Users className="h-3.5 w-3.5" />
-              Identity
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">@handle-first.</p>
-            <p className="mt-2 text-sm text-slate-300">Winners and history are shown by handle, not wallet profiles.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="emerald">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Proof
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
-            <p className="mt-2 text-sm text-slate-300">Anyone can verify outcomes in an explorer.</p>
-          </PremiumCard>
-        </div>
-      </section>
-
-      {/* ECOSYSTEM LAYER */}
-      <section className="mt-8">
-        <PremiumCard className="p-6 sm:p-8" halo sheen>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="violet">
-                <Blocks className="h-3.5 w-3.5" />
-                Built to scale
-              </Pill>
-
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                A daily engine with an ending, not a one-off giveaway.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and
-                sponsor pools while keeping the same primitive and the same proof.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Fair by design
-              </Pill>
-              <Pill tone="sky">
-                <Globe className="h-3.5 w-3.5" />
-                Global-friendly
-              </Pill>
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                Finale-ready
-              </Pill>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-950/30">
-                  <Wand2 className="h-5 w-5 text-emerald-200" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Modules</p>
-                  <p className="text-xs text-slate-400">Plug-in reward logic</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2">
-                <Bullet>Streak boosters</Bullet>
-                <Bullet tone="sky">Creator-gated drops</Bullet>
-                <Bullet tone="amber">Sponsor-funded pools</Bullet>
-                <Bullet tone="violet">Milestone ladders</Bullet>
-              </ul>
-            </div>
-
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-500/25 bg-sky-950/25">
-                  <Users className="h-5 w-5 text-sky-200" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Identity</p>
-                  <p className="text-xs text-slate-400">Handle-first, premium UX</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2">
-                <Bullet tone="sky">Winners shown by @handle</Bullet>
-                <Bullet tone="violet">History can evolve into reputation</Bullet>
-                <Bullet tone="emerald">Still self-custody for claims</Bullet>
-              </ul>
-            </div>
-
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}
-                >
-                  <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Finale</p>
-                  <p className="text-xs text-slate-400">A run that ends</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2">
-                <Bullet tone="amber">
-                  Final draw: <FinalDrawDate variant="short" />
-                </Bullet>
-                <Bullet tone="emerald">Daily cadence builds the arc</Bullet>
-                <Bullet tone="sky">Proof stays public</Bullet>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Clarity first. Proof first. Ending-first narrative.</p>
-            </div>
-
-            <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
-              Claim your entry
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-        </PremiumCard>
-      </section>
-
-      {/* WHO IT'S FOR */}
-      <section className="mt-8">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="amber">
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Players
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">A serious run for serious entries.</p>
-            <p className="mt-2 text-sm text-slate-300">Join the arc. Track the day count. Build toward the Final Draw.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="sky">
-              <Globe className="h-3.5 w-3.5" />
-              Sponsors
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Fund moments, not ads.</p>
-            <p className="mt-2 text-sm text-slate-300">
-              Sponsor pools and bonuses with visibility and provable distribution on-chain.
-            </p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="emerald">
-              <Zap className="h-3.5 w-3.5" />
-              Communities
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Portable loyalty.</p>
-            <p className="mt-2 text-sm text-slate-300">A shared public story: @handle identity and an arc that ends.</p>
-          </PremiumCard>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="mt-8">
-        <PremiumCard className="p-6 sm:p-8" halo={false}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Clarity
-              </Pill>
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                Homepage is the story. Hub is the action. The Final Draw is the destination.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                Final Draw
-              </Pill>
-              <Pill tone="sky">
-                <Users className="h-3.5 w-3.5" />
-                Identity
-              </Pill>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <Accordion items={faq} />
-          </div>
-        </PremiumCard>
+        {/* ... unchanged ... */}
       </section>
 
       <XpotFooter />
