@@ -12,7 +12,14 @@ import {
 } from 'react';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
-import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from 'framer-motion';
 import {
   ArrowRight,
   Check,
@@ -80,12 +87,6 @@ const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
 
 const MIN_ELIGIBLE_XPOT = 100_000;
 
-// Ceremony tuning
-const WARMUP_WINDOW_MS = 2 * 60 * 60 * 1000; // last 2 hours
-const DRAWING_PAUSE_MS = 1800; // ceremonial pause at 00:00
-const REVEAL_HOLD_MS = 6500; // keep the reveal on screen before returning to DAY/WARMUP
-const WINNER_REFRESH_AFTER_REVEAL_MS = 1200;
-
 /* ─────────────────────────────────────────────
    Shared countdown context (single source of truth)
 ───────────────────────────────────────────── */
@@ -145,6 +146,10 @@ function NextDrawProvider({ children }: { children: ReactNode }) {
 
   return <NextDrawContext.Provider value={value}>{children}</NextDrawContext.Provider>;
 }
+
+/* ─────────────────────────────────────────────
+   Small UI helpers
+───────────────────────────────────────────── */
 
 function Pill({
   children,
@@ -299,6 +304,141 @@ function shortenAddress(addr: string, left = 6, right = 6) {
   if (addr.length <= left + right + 3) return addr;
   return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
+
+/* ─────────────────────────────────────────────
+   Strong 3-step clarity (3 seconds)
+───────────────────────────────────────────── */
+
+function Quick3Steps({
+  countdown,
+  warmup,
+}: {
+  countdown: string;
+  warmup: boolean;
+}) {
+  const reduced = useReducedMotion();
+
+  return (
+    <div className="mt-4">
+      <style jsx global>{`
+        @keyframes xpotStepPulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+          }
+          55% {
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.22), 0 0 22px rgba(16, 185, 129, 0.18);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+          }
+        }
+        .xpot-step-pulse {
+          animation: xpotStepPulse 2.8s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-step-pulse {
+            animation: none;
+          }
+        }
+      `}</style>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {/* Step 1 */}
+        <div
+          className={[
+            'relative overflow-hidden rounded-3xl border border-emerald-400/25 bg-emerald-500/10 ring-1 ring-white/[0.06]',
+            !reduced ? 'xpot-step-pulse' : '',
+          ].join(' ')}
+        >
+          <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.26),transparent_62%),radial-gradient(circle_at_80%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+          <div className="relative p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.26em] text-emerald-100/90">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-950/30">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-200" />
+                </span>
+                Step 1
+              </span>
+
+              <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                Min hold
+              </span>
+            </div>
+
+            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
+              Hold at least{' '}
+              <span className="font-mono text-[15px] text-emerald-100">
+                {MIN_ELIGIBLE_XPOT.toLocaleString()}
+              </span>{' '}
+              XPOT
+            </div>
+            <div className="mt-1 text-[12px] leading-relaxed text-emerald-100/80">
+              In your connected wallet.
+            </div>
+          </div>
+        </div>
+
+        {/* Step 2 */}
+        <div className="relative overflow-hidden rounded-3xl border border-sky-400/25 bg-sky-500/10 ring-1 ring-white/[0.06]">
+          <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
+          <div className="relative p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.26em] text-sky-100/90">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-2xl border border-sky-300/20 bg-sky-950/30">
+                  <Wand2 className="h-4 w-4 text-sky-200" />
+                </span>
+                Step 2
+              </span>
+
+              <span className="rounded-full border border-sky-300/20 bg-sky-950/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100/90">
+                Enter once
+              </span>
+            </div>
+
+            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
+              Connect X + wallet in the hub
+            </div>
+            <div className="mt-1 text-[12px] leading-relaxed text-sky-100/80">
+              You are in today&apos;s draw.
+            </div>
+          </div>
+        </div>
+
+        {/* Step 3 */}
+        <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.10)] ring-1 ring-white/[0.06]">
+          <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+          <div className="relative p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-100/90">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-2xl border border-[rgba(var(--xpot-gold),0.22)] bg-slate-950/30">
+                  <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+                </span>
+                Step 3
+              </span>
+
+              <span className="rounded-full border border-[rgba(var(--xpot-gold),0.22)] bg-slate-950/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-100/90">
+                Proof
+              </span>
+            </div>
+
+            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
+              Winner published at 22:00 Madrid
+            </div>
+            <div className="mt-1 text-[12px] leading-relaxed text-slate-200/85">
+              Paid on-chain. Next draw in{' '}
+              <span className="font-mono text-slate-100">{countdown}</span>
+              {warmup ? <span className={`ml-2 ${GOLD_TEXT_DIM}`}>warm-up</span> : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Royal contract + trade
+───────────────────────────────────────────── */
 
 function RoyalContractBar({ mint }: { mint: string }) {
   const [copied, setCopied] = useState(false);
@@ -542,55 +682,25 @@ function CosmicHeroBackdrop() {
           opacity: 0;
         }
 
-        @keyframes xpotCeremonyPulse {
+        @keyframes xpotPulseGold {
           0% {
-            opacity: 0.55;
-            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(var(--xpot-gold), 0);
           }
-          55% {
-            opacity: 0.85;
-            transform: scale(1.02);
+          50% {
+            box-shadow: 0 0 0 1px rgba(var(--xpot-gold), 0.22), 0 0 18px rgba(var(--xpot-gold), 0.18);
           }
           100% {
-            opacity: 0.55;
-            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(var(--xpot-gold), 0);
           }
         }
-        @keyframes xpotCeremonyLine {
-          0% {
-            transform: translateX(-55%);
-            opacity: 0;
-          }
-          18% {
-            opacity: 0.22;
-          }
-          60% {
-            opacity: 0.12;
-          }
-          100% {
-            transform: translateX(55%);
-            opacity: 0;
-          }
+        .xpot-warmup-ring {
+          animation: xpotPulseGold 2.8s ease-in-out infinite;
+          border-radius: 999px;
         }
-        .xpot-ceremony-glow {
-          animation: xpotCeremonyPulse 1.35s ease-in-out infinite;
-        }
-        .xpot-ceremony-line {
-          position: absolute;
-          inset: -40px;
-          pointer-events: none;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.05) 30%,
-            rgba(var(--xpot-gold), 0.18) 48%,
-            rgba(56, 189, 248, 0.07) 66%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          opacity: 0;
-          filter: blur(0.2px);
-          animation: xpotCeremonyLine 6.8s ease-in-out infinite;
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-warmup-ring {
+            animation: none;
+          }
         }
       `}</style>
 
@@ -853,14 +963,18 @@ function formatXpotAmount(amount: number | null | undefined) {
 function useLatestWinnerCard() {
   const [winner, setWinner] = useState<WinnerRow | null>(null);
 
-  const reload = useMemo(
-    () => async () => {
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
       const data = await fetchFirstOk<any>([
         '/api/public/winners/latest',
         '/api/public/winners?latest=1',
         '/api/public/winners?limit=1',
         '/api/public/winners',
       ]);
+
+      if (!alive) return;
 
       let w: WinnerRow | null = null;
 
@@ -896,16 +1010,6 @@ function useLatestWinnerCard() {
       }
 
       setWinner(w && w.id ? w : null);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    let alive = true;
-
-    async function load() {
-      if (!alive) return;
-      await reload();
     }
 
     load();
@@ -914,9 +1018,9 @@ function useLatestWinnerCard() {
       alive = false;
       window.clearInterval(t);
     };
-  }, [reload]);
+  }, []);
 
-  return { winner, reload };
+  return winner;
 }
 
 function useLatestEntriesTelemetry() {
@@ -955,7 +1059,19 @@ function useLatestEntriesTelemetry() {
   return entries;
 }
 
-function Avatar({ src, label, size = 34 }: { src?: string | null; label: string; size?: number }) {
+/* ─────────────────────────────────────────────
+   Avatars (handle-first)
+───────────────────────────────────────────── */
+
+function Avatar({
+  src,
+  label,
+  size = 34,
+}: {
+  src?: string | null;
+  label: string;
+  size?: number;
+}) {
   const handle = useMemo(() => normalizeHandle(label).replace(/^@/, '').trim(), [label]);
 
   const resolvedSrc = useMemo(() => {
@@ -1000,62 +1116,19 @@ function Avatar({ src, label, size = 34 }: { src?: string | null; label: string;
   );
 }
 
-function EnteringTheStage({ entries }: { entries: EntryRow[] }) {
-  const safeEntries = Array.isArray(entries) ? entries : [];
-
-  return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Pill tone="sky">
-            <Users className="h-3.5 w-3.5" />
-            Entering the stage
-          </Pill>
-          <span className="text-[11px] text-slate-400">Latest entries</span>
-        </div>
-
-        <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">live feed</span>
-      </div>
-
-      <div className="px-4 pb-4">
-        {safeEntries.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {safeEntries.slice(0, 18).map((e, idx) => {
-              const handle = normalizeHandle(e?.handle);
-              const createdAt = e?.createdAt || '';
-              const key = e?.id ? String(e.id) : `${handle}-${createdAt}-${idx}`;
-
-              return (
-                <div
-                  key={key}
-                  className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-1"
-                  title={createdAt ? `${handle} - ${createdAt}` : handle}
-                >
-                  <Avatar src={e?.avatarUrl} label={handle} size={28} />
-                  <span className="max-w-[120px] truncate text-[12px] text-slate-200">{handle}</span>
-                  {e?.verified ? <BadgeCheck className="h-4 w-4 text-sky-300/90" /> : null}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-400">
-            No entries in the live feed yet.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+/* ─────────────────────────────────────────────
+   Connected, less-busy winner + live entries
+   (kept inside this file to match your "one big file" preference)
+───────────────────────────────────────────── */
 
 function WinnerSpotlight({ winner, compact = false }: { winner: WinnerRow | null; compact?: boolean }) {
+  const paid = Boolean(winner?.isPaidOut);
   const handle = winner?.handle ? normalizeHandle(winner.handle) : null;
   const label = winner
     ? handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : '@winner')
     : '@winner';
 
   const ymd = winner?.drawDate ? formatIsoToMadridYmd(winner.drawDate) : null;
-  const paid = Boolean(winner?.isPaidOut);
 
   const amountResolved =
     typeof winner?.amountXpot === 'number'
@@ -1064,277 +1137,676 @@ function WinnerSpotlight({ winner, compact = false }: { winner: WinnerRow | null
       ? winner.amount
       : 1_000_000;
 
-  const amt = formatXpotAmount(amountResolved);
-
   const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
-  const avatarSize = compact ? 34 : 44;
-  const titleSize = compact ? 'text-[13px]' : 'text-[14px]';
-  const payoutSize = compact ? 'text-[16px]' : 'text-[18px]';
+  const avatarSize = compact ? 34 : 40;
 
   return (
-    <div className="relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/30 ring-1 ring-white/[0.05]">
-      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
-      <div className={`relative ${pad}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Pill tone="amber">
-            <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-            Latest winner
-          </Pill>
+    <div className="relative mt-4 overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
+      <style jsx global>{`
+        @keyframes xpotWinnerSheen {
+          0% {
+            transform: translateX(-60%) skewX(-14deg);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.18;
+          }
+          60% {
+            opacity: 0.08;
+          }
+          100% {
+            transform: translateX(60%) skewX(-14deg);
+            opacity: 0;
+          }
+        }
+        .xpot-winner-sheen {
+          position: absolute;
+          inset: -40px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.04) 32%,
+            rgba(var(--xpot-gold), 0.10) 50%,
+            rgba(56, 189, 248, 0.05) 68%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          animation: xpotWinnerSheen 11.5s ease-in-out infinite;
+        }
+      `}</style>
 
-          <span
+      <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.16),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+      <div className="xpot-winner-sheen" />
+
+      <div className={`relative ${pad}`}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+            <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+              Latest winner
+            </span>
+          </div>
+
+          <div
             className={[
-              'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+              'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em]',
               paid
                 ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
                 : 'border-amber-400/20 bg-amber-500/10 text-amber-200',
             ].join(' ')}
+            title={paid ? 'Paid' : 'Awaiting payout'}
           >
             <span className={`h-2 w-2 rounded-full ${paid ? 'bg-emerald-400' : 'bg-amber-300'}`} />
             {paid ? 'Paid' : 'Awaiting payout'}
-          </span>
+          </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
+        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex items-center gap-3">
-            <Avatar src={winner?.avatarUrl} label={handle ?? label} size={avatarSize} />
-            <div className="leading-tight">
-              <div className={`${titleSize} font-semibold text-slate-50`}>
-                {winner ? label : 'Waiting for winner sync'}
+            <Avatar src={winner?.avatarUrl} label={label} size={avatarSize} />
+            <div className="min-w-0">
+              <div className="truncate text-[14px] font-semibold text-slate-50">
+                {winner ? label : 'Syncing winner'}
               </div>
-              <div className="mt-1 text-[12px] text-slate-400">
-                {winner ? (
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
+                {ymd ? <span className="font-mono">{ymd}</span> : null}
+                {winner?.wallet ? (
                   <>
-                    {ymd ? <span className="font-mono">{ymd}</span> : null}
-                    {winner.wallet ? (
-                      <>
-                        <span className="text-slate-700"> • </span>
-                        <span className="font-mono">{shortenAddress(winner.wallet, 7, 7)}</span>
-                      </>
-                    ) : null}
-                    {winner.label ? (
-                      <>
-                        <span className="text-slate-700"> • </span>
-                        <span className="text-slate-300">{winner.label}</span>
-                      </>
-                    ) : null}
+                    <span className="text-slate-700">•</span>
+                    <span className="font-mono">{shortenAddress(winner.wallet, 7, 7)}</span>
                   </>
-                ) : (
-                  <span>Winner will appear as soon as the public endpoint is live.</span>
-                )}
+                ) : null}
+                {winner?.label ? (
+                  <>
+                    <span className="text-slate-700">•</span>
+                    <span className="text-slate-300">{winner.label}</span>
+                  </>
+                ) : null}
               </div>
             </div>
           </div>
 
-          <div className="text-right">
-            <div className={`text-[10px] uppercase tracking-[0.18em] ${GOLD_TEXT_DIM}`}>Payout</div>
-            <div className={`mt-1 font-mono ${payoutSize} ${GOLD_TEXT}`}>{amt}</div>
+          <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-center">
+            <div className="text-right">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Payout</div>
+              <div className="mt-1 font-mono text-[18px] text-[rgb(var(--xpot-gold-2))]">
+                {formatXpotAmount(amountResolved)}
+              </div>
+            </div>
 
-            <div className="mt-2 flex flex-wrap justify-end gap-2">
+            <div className="flex items-center gap-2">
               {winner?.txUrl ? (
                 <a
                   href={winner.txUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
                 >
-                  View payout tx
+                  <ShieldCheck className="h-4 w-4 text-slate-300" />
+                  Proof
                   <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                 </a>
               ) : (
-                <span className="text-[11px] text-slate-500">tx link appears after payout</span>
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-slate-400">
+                  <BadgeCheck className="h-4 w-4 text-slate-500" />
+                  Proof after payout
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {!paid && !compact ? (
-          <p className="mt-3 text-[12px] text-slate-400">
-            Payout is performed by ops and then the on-chain transaction is published here.
-          </p>
+        {!compact ? (
+          <div className="mt-4 text-[12px] text-slate-400">
+            Ops triggers payout, then the on-chain transaction is published here.
+          </div>
         ) : null}
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────
-   Ceremony state machine + overlay
-───────────────────────────────────────────── */
-
-type CeremonyPhase = 'DAY' | 'WARMUP' | 'DRAWING' | 'REVEAL';
-
-function getBasePhase(msToDraw: number) {
-  if (msToDraw <= 0) return 'DRAWING' as const;
-  if (msToDraw <= WARMUP_WINDOW_MS) return 'WARMUP' as const;
-  return 'DAY' as const;
+function buildLoop(entries: EntryRow[]) {
+  const safe = Array.isArray(entries) ? entries.filter(e => Boolean(e?.handle)) : [];
+  if (safe.length === 0) return [];
+  if (safe.length < 8) {
+    const times = Math.ceil(10 / safe.length);
+    const out: EntryRow[] = [];
+    for (let i = 0; i < times; i++) out.push(...safe);
+    return out.slice(0, 16);
+  }
+  return safe.slice(0, 16);
 }
 
-function CeremonyBanner({
-  phase,
-  countdown,
-  cutoffLabel,
-  msToDraw,
-}: {
-  phase: CeremonyPhase;
-  countdown: string;
-  cutoffLabel: string;
-  msToDraw: number;
-}) {
-  // Copy polish, no dev notes
-  if (phase === 'DRAWING') {
-    return (
-      <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/30 ring-1 ring-white/[0.06]">
-        <div className="relative px-4 py-3">
-          <div className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl bg-[radial-gradient(circle_at_25%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_80%_40%,rgba(56,189,248,0.10),transparent_62%)]" />
-          <div className="relative flex flex-wrap items-center justify-between gap-3">
-            <Pill tone="amber">
-              <Radio className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Selection in progress
-            </Pill>
-            <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{cutoffLabel}</span>
-          </div>
-          <div className="relative mt-2 text-[12px] leading-relaxed text-slate-300">
-            XPOT is drawing now. Stand by for the reveal.
-          </div>
-        </div>
-      </div>
-    );
-  }
+function EnteringTheStage({ entries }: { entries: EntryRow[] }) {
+  const loop = useMemo(() => buildLoop(entries), [entries]);
+  const has = loop.length > 0;
 
-  if (phase === 'REVEAL') {
-    return (
-      <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/30 ring-1 ring-white/[0.06]">
-        <div className="relative px-4 py-3">
-          <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_30%,rgba(var(--xpot-gold),0.28),transparent_60%),radial-gradient(circle_at_80%_30%,rgba(16,185,129,0.14),transparent_62%)]" />
-          <div className="relative flex flex-wrap items-center justify-between gap-3">
-            <Pill tone="emerald">
-              <Crown className="h-3.5 w-3.5" />
-              Winner revealed
-            </Pill>
-            <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{cutoffLabel}</span>
-          </div>
-          <div className="relative mt-2 text-[12px] leading-relaxed text-slate-300">
-            Proof is published on-chain after payout.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // DAY + WARMUP
-  const isWarmup = phase === 'WARMUP';
-  const label = isWarmup ? 'Warm-up mode' : 'Daytime layer';
-  const desc = isWarmup
-    ? 'Final window approaching. Entries settle, cadence tightens.'
-    : 'XPOT is building for tonight’s draw. Live surface stays active.';
+  const [seed, setSeed] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setSeed(s => (s + 1) % 1000), 2200);
+    return () => window.clearInterval(t);
+  }, []);
 
   return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-      <div className="relative px-4 py-3">
-        <div className="pointer-events-none absolute -inset-20 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_35%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_85%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
-        <div className="relative flex flex-wrap items-center justify-between gap-3">
-          <Pill tone={isWarmup ? 'amber' : 'sky'}>
-            <Timer className={`h-3.5 w-3.5 ${isWarmup ? GOLD_TEXT : ''}`} />
-            {label}
-          </Pill>
+    <div className="mt-3 overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/20 ring-1 ring-white/[0.05]">
+      <style jsx global>{`
+        @keyframes xpotMarquee {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+        @keyframes xpotBreath {
+          0% {
+            opacity: 0.55;
+          }
+          55% {
+            opacity: 0.85;
+          }
+          100% {
+            opacity: 0.55;
+          }
+        }
+        .xpot-live-dot {
+          animation: xpotBreath 1.45s ease-in-out infinite;
+        }
+        .xpot-marquee {
+          display: flex;
+          width: max-content;
+          gap: 10px;
+          animation: xpotMarquee 26s linear infinite;
+          will-change: transform;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-marquee {
+            animation: none;
+          }
+          .xpot-live-dot {
+            animation: none;
+          }
+        }
+      `}</style>
 
-          <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-            Next draw in <span className="font-mono text-slate-200">{countdown}</span>
-          </span>
+      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_35%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
+
+      <div className="relative px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+            <Users className="h-4 w-4 text-sky-200" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+              Entering the stage
+            </span>
+          </div>
+
+          <div className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            <span className="xpot-live-dot h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+            Live feed
+          </div>
         </div>
 
-        <div className="relative mt-2 text-[12px] leading-relaxed text-slate-300">{desc}</div>
+        <div className="mt-3">
+          {has ? (
+            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-3">
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-[linear-gradient(90deg,rgba(2,6,23,0.95),transparent)]" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-[linear-gradient(270deg,rgba(2,6,23,0.95),transparent)]" />
 
-        <div className="relative mt-2 text-[11px] text-slate-500">
-          Final selection at 22:00 Madrid. Identity stays handle-first. Proof stays on-chain.
+              <div className="relative flex items-center gap-2">
+                <div className="xpot-marquee" style={{ animationDelay: `${(seed % 6) * -0.18}s` }}>
+                  {[...loop, ...loop].map((e, idx) => {
+                    const handle = normalizeHandle(e?.handle);
+                    const createdAt = e?.createdAt || '';
+                    const key = e?.id ? String(e.id) : `${handle}-${createdAt}-${idx}`;
+
+                    return (
+                      <div
+                        key={key}
+                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1.5"
+                        title={handle}
+                      >
+                        <Avatar src={e?.avatarUrl} label={handle} size={26} />
+                        <span className="max-w-[140px] truncate text-[12px] text-slate-200">{handle}</span>
+                        {e?.verified ? <BadgeCheck className="h-4 w-4 text-sky-300/90" /> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-400">
+              Waiting for the first entries to appear in the feed.
+            </div>
+          )}
+
+          <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+            <span>Handle-first identity</span>
+            <span className="opacity-70">Updates automatically</span>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function CeremonyOverlay({
-  open,
-  phase,
-  onClose,
+/* ─────────────────────────────────────────────
+   Daytime layer + warm-up + ceremony
+───────────────────────────────────────────── */
+
+type DrawPhase = 'daytime' | 'warmup' | 'final_minute' | 'drawing' | 'reveal';
+
+function useDrawPhase(nowMs: number, nextDrawUtcMs: number) {
+  const msLeft = nextDrawUtcMs - nowMs;
+
+  const warmup = msLeft > 0 && msLeft <= 2 * 60 * 60 * 1000; // 2h
+  const finalMinute = msLeft > 0 && msLeft <= 60 * 1000; // 60s
+  const due = msLeft <= 0;
+
+  return {
+    msLeft,
+    warmup,
+    finalMinute,
+    due,
+  };
+}
+
+function getMadridYmdFromMs(ms: number) {
+  const d = new Date(ms);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function DaytimeLayerCard({
+  entries,
+  countdown,
+  cutoffLabel,
+  warmup,
 }: {
-  open: boolean;
-  phase: CeremonyPhase;
-  onClose?: () => void;
+  entries: EntryRow[];
+  countdown: string;
+  cutoffLabel: string;
+  warmup: boolean;
 }) {
-  if (!open) return null;
+  const [signal, setSignal] = useState<string>('XPOT is building for tonight’s draw');
+  const [pulse, setPulse] = useState(0);
 
-  const title =
-    phase === 'DRAWING'
-      ? 'XPOT is drawing'
-      : phase === 'REVEAL'
-      ? 'Winner revealed'
-      : phase === 'WARMUP'
-      ? 'Warm-up mode'
-      : 'XPOT is building';
+  const entryCount = Array.isArray(entries) ? entries.length : 0;
 
-  const subtitle =
-    phase === 'DRAWING'
-      ? 'Selection is in progress'
-      : phase === 'REVEAL'
-      ? 'Proof follows on-chain after payout'
-      : phase === 'WARMUP'
-      ? 'Final window approaching'
-      : 'Live surface active';
+  const milestone = useMemo(() => {
+    const marks = [25, 50, 100, 250, 500, 1000];
+    const reached = marks.filter(m => entryCount >= m);
+    const next = marks.find(m => entryCount < m) ?? null;
+    return { reached: reached.at(-1) ?? null, next };
+  }, [entryCount]);
+
+  useEffect(() => {
+    const lines = [
+      'Entry window open',
+      'Feed is live',
+      'Identity cache warming',
+      'Proof index ready',
+      'Liquidity signal stable',
+    ];
+
+    const warmupLines = [
+      'Final window approaching',
+      'Lock sequence arming',
+      'Winner selection preparing',
+      'Ceremony triggers at zero',
+    ];
+
+    const t = window.setInterval(() => {
+      setPulse(p => p + 1);
+      const pickFrom = warmup ? warmupLines : lines;
+      const i = Math.floor(Math.random() * pickFrom.length);
+      setSignal(pickFrom[i]);
+    }, 14_000);
+
+    return () => window.clearInterval(t);
+  }, [warmup]);
+
+  const tone = warmup ? 'amber' : 'sky';
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[60]">
-      <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" />
-      <div className="absolute inset-0">
-        <div className="xpot-ceremony-line" />
-      </div>
+    <div className="relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
+      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_14%_30%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(16,185,129,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
+      <div className="relative px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Pill tone={tone}>
+            <Sparkles className="h-3.5 w-3.5" />
+            {warmup ? 'Warm-up layer' : 'Daytime layer'}
+          </Pill>
 
-      <div className="absolute inset-x-0 top-8 mx-auto w-full max-w-[760px] px-4">
-        <div className="pointer-events-auto overflow-hidden rounded-[26px] border border-white/10 bg-black/55 ring-1 ring-white/[0.06] shadow-[0_50px_180px_rgba(0,0,0,0.65)]">
-          <div className="relative p-4 sm:p-5">
-            <div className="pointer-events-none absolute -inset-24 opacity-90 blur-3xl bg-[radial-gradient(circle_at_30%_25%,rgba(var(--xpot-gold),0.26),transparent_62%),radial-gradient(circle_at_80%_35%,rgba(56,189,248,0.12),transparent_62%)]" />
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+            Next cutoff {cutoffLabel}
+          </span>
+        </div>
 
-            <div className="relative flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.30em] text-slate-400">
-                  Ceremony
-                </div>
-                <div className="mt-2 text-balance text-[18px] font-semibold text-slate-50">
-                  {title}
-                </div>
-                <div className="mt-1 text-[12px] text-slate-300">{subtitle}</div>
-              </div>
-
-              {onClose ? (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] text-slate-200 hover:bg-white/[0.06] transition"
-                  title="Close overlay"
-                >
-                  Close
-                </button>
-              ) : null}
-            </div>
-
-            <div className="relative mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Identity</div>
-                <div className="mt-1 text-[12px] text-slate-200">Handle-first</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Proof</div>
-                <div className="mt-1 text-[12px] text-slate-200">On-chain</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Cadence</div>
-                <div className="mt-1 text-[12px] text-slate-200">Daily cutoff</div>
-              </div>
-            </div>
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[12px] text-slate-300">{signal}</p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Next draw in <span className="font-mono text-slate-200">{countdown}</span>
+            </p>
           </div>
+
+          <div className="flex items-center gap-2">
+            <span
+              className={[
+                'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px]',
+                warmup
+                  ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] text-slate-100'
+                  : 'border-white/10 bg-white/[0.03] text-slate-200',
+              ].join(' ')}
+            >
+              <Users className="h-4 w-4 text-slate-300" />
+              Live entries <span className="font-mono text-slate-100">{entryCount}</span>
+            </span>
+
+            {milestone.next ? (
+              <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] text-slate-300">
+                Next milestone <span className="font-mono text-slate-100">{milestone.next}</span>
+              </span>
+            ) : (
+              <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] text-slate-300">
+                Milestones active
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Activity</p>
+            <p className="mt-1 text-[12px] text-slate-200">
+              Feed refresh <span className="font-mono text-slate-100">10s</span>
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Cadence</p>
+            <p className="mt-1 text-[12px] text-slate-200">One entry per day, handle-first</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Milestone</p>
+            <p className="mt-1 text-[12px] text-slate-200">
+              {milestone.reached ? (
+                <>
+                  Reached <span className="font-mono text-slate-100">{milestone.reached}</span>
+                </>
+              ) : (
+                <>Arming</>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="pointer-events-none absolute right-4 top-4 h-2 w-2 rounded-full bg-white/10">
+          <span
+            key={pulse}
+            className="absolute inset-0 rounded-full bg-white/20"
+            style={{ animation: 'ping 1.4s cubic-bezier(0,0,0.2,1) 1' } as any}
+          />
         </div>
       </div>
     </div>
+  );
+}
+
+function DrawCeremonyOverlay({
+  nowMs,
+  nextDrawUtcMs,
+  countdown,
+  cutoffLabel,
+  latestWinner,
+}: {
+  nowMs: number;
+  nextDrawUtcMs: number;
+  countdown: string;
+  cutoffLabel: string;
+  latestWinner: WinnerRow | null;
+}) {
+  const reduced = useReducedMotion();
+  const { msLeft, finalMinute, due } = useDrawPhase(nowMs, nextDrawUtcMs);
+
+  const [phase, setPhase] = useState<DrawPhase>('daytime');
+  const [open, setOpen] = useState(false);
+
+  // decide phase (without opening overlay)
+  useEffect(() => {
+    if (due) return;
+    if (finalMinute) {
+      setPhase('final_minute');
+      return;
+    }
+    setPhase(msLeft <= 2 * 60 * 60 * 1000 ? 'warmup' : 'daytime');
+  }, [due, finalMinute, msLeft]);
+
+  // Trigger ceremony once per Madrid day
+  useEffect(() => {
+    const madridYmd = getMadridYmdFromMs(nowMs);
+    const storeKey = `xpot_ceremony_${madridYmd}`;
+    const already = typeof window !== 'undefined' ? window.localStorage.getItem(storeKey) : null;
+
+    if (due && !already) {
+      try {
+        window.localStorage.setItem(storeKey, '1');
+      } catch {}
+
+      setOpen(true);
+      setPhase('drawing');
+
+      const t1 = window.setTimeout(() => {
+        setPhase('reveal');
+      }, 1600);
+
+      const t2 = window.setTimeout(() => {
+        setOpen(false);
+      }, 6200);
+
+      return () => {
+        window.clearTimeout(t1);
+        window.clearTimeout(t2);
+      };
+    }
+  }, [due, nowMs]);
+
+  const showFinalMinuteHint = finalMinute && !open;
+
+  const label = latestWinner?.handle
+    ? normalizeHandle(latestWinner.handle)
+    : latestWinner?.wallet
+    ? shortenAddress(latestWinner.wallet, 6, 6)
+    : '@winner';
+
+  const ymd = latestWinner?.drawDate ? formatIsoToMadridYmd(latestWinner.drawDate) : null;
+
+  const content = (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-[9998] flex items-center justify-center px-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          aria-live="polite"
+          role="dialog"
+          aria-label="XPOT draw ceremony"
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[6px]" />
+
+          <motion.div
+            className="relative w-full max-w-[760px] overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/60 shadow-[0_50px_160px_rgba(0,0,0,0.75)]"
+            initial={{ y: 10, scale: 0.98, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: 8, scale: 0.99, opacity: 0 }}
+            transition={{ duration: reduced ? 0 : 0.32 }}
+          >
+            <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.10),transparent_62%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.08),rgba(56,189,248,0.28),transparent)]" />
+
+            <div className="relative p-6 sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Pill tone="amber">
+                  <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                  Daily draw
+                </Pill>
+
+                <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{cutoffLabel}</span>
+              </div>
+
+              <div className="mt-4">
+                <AnimatePresence mode="wait">
+                  {phase === 'drawing' ? (
+                    <motion.div
+                      key="drawing"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: reduced ? 0 : 0.28 }}
+                    >
+                      <h3 className="text-balance text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+                        XPOT is drawing...
+                      </h3>
+                      <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+                        Final selection is being locked and published.
+                      </p>
+
+                      <div className="mt-5 flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-[rgb(var(--xpot-gold-2))] shadow-[0_0_18px_rgba(var(--xpot-gold),0.7)]" />
+                        <div className="h-2 w-2 rounded-full bg-white/15" />
+                        <div className="h-2 w-2 rounded-full bg-white/10" />
+                        <span className="ml-2 text-[11px] uppercase tracking-[0.22em] text-slate-400">
+                          ceremony
+                        </span>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="reveal"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: reduced ? 0 : 0.32 }}
+                    >
+                      <h3 className="text-balance text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+                        Winner revealed
+                      </h3>
+                      <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+                        Published handle-first, with on-chain proof.
+                      </p>
+
+                      <div className="mt-5 overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.03]">
+                        <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
+                          <div className="flex items-center gap-3">
+                            <Avatar src={latestWinner?.avatarUrl} label={label} size={46} />
+                            <div>
+                              <div className="text-[14px] font-semibold text-slate-50">{label}</div>
+                              <div className="mt-1 text-[12px] text-slate-400">
+                                {ymd ? <span className="font-mono">{ymd}</span> : null}
+                                {latestWinner?.wallet ? (
+                                  <>
+                                    <span className="text-slate-700"> • </span>
+                                    <span className="font-mono">{shortenAddress(latestWinner.wallet, 8, 8)}</span>
+                                  </>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Payout</div>
+                            <div className={`mt-1 font-mono text-[18px] ${GOLD_TEXT}`}>
+                              {formatXpotAmount(
+                                typeof latestWinner?.amountXpot === 'number'
+                                  ? latestWinner.amountXpot
+                                  : typeof latestWinner?.amount === 'number'
+                                  ? latestWinner.amount
+                                  : 1_000_000,
+                              )}
+                            </div>
+
+                            <div className="mt-2">
+                              {latestWinner?.txUrl ? (
+                                <a
+                                  href={latestWinner.txUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                                >
+                                  View proof
+                                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                                </a>
+                              ) : (
+                                <span className="text-[11px] text-slate-500">proof link appears after payout</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="h-px bg-white/10" />
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-[11px] text-slate-400">
+                          <span className="inline-flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 text-slate-400" />
+                            Proof stays on-chain
+                          </span>
+                          <span className="inline-flex items-center gap-2">
+                            <Globe className="h-4 w-4 text-slate-400" />
+                            Identity stays handle-first
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap items-center gap-3">
+                        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
+                          Enter today&apos;s XPOT
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                        </Link>
+
+                        <span className="text-[11px] text-slate-500">
+                          The UI will reset to the next countdown automatically.
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+
+  return (
+    <>
+      {showFinalMinuteHint ? (
+        <div className="mt-4 rounded-2xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-3 ring-1 ring-white/[0.05]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-100">
+              <span className="h-2 w-2 rounded-full bg-[rgb(var(--xpot-gold-2))] shadow-[0_0_16px_rgba(var(--xpot-gold),0.6)]" />
+              Final minute
+            </span>
+
+            <span className="font-mono text-[12px] text-slate-100">{countdown}</span>
+          </div>
+
+          <p className="mt-1 text-[12px] text-slate-200/90">Ceremony begins at zero. Winner reveal follows immediately.</p>
+        </div>
+      ) : null}
+
+      {typeof document !== 'undefined' ? createPortal(content, document.body) : null}
+    </>
   );
 }
 
@@ -1435,6 +1907,11 @@ function LiveControlRoom({
           vertical-align: -2px;
           animation: xpotFlicker 1.1s ease-in-out infinite;
         }
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-cr-cursor {
+            animation: none;
+          }
+        }
       `}</style>
 
       <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-emerald-200/80">
@@ -1467,9 +1944,7 @@ function LiveControlRoom({
         </div>
       </div>
 
-      <p className="mt-3 text-[12px] text-slate-400">
-        Read-only cockpit view. Run is public. Identity stays handle-first. Proof stays on-chain.
-      </p>
+      <p className="mt-3 text-[12px] text-slate-400">Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.</p>
     </div>
   );
 }
@@ -1480,7 +1955,7 @@ function buildInitialLines(countdown: string, cutoffLabel: string, runLine: stri
     `  run:            ${runLine}`,
     `  primitive:      daily reward selection`,
     `  eligibility:    hold XPOT (min threshold applies)`,
-    `  identity:       @handle-first (not wallet profiles)`,
+    `  identity:       @handle-first`,
     `  proof:          on-chain payout verification`,
     ``,
     `> NEXT_DRAW`,
@@ -1520,8 +1995,7 @@ function updateLines(prev: string[], tick: number, countdown: string, cutoffLabe
       `tick ${stamp}: liquidity signal stable`,
     ];
     const line = `  log:            ${events[tick % events.length]}`;
-    const sessBlockEnd = next.length;
-    const insertAt = Math.max(0, sessBlockEnd - 1);
+    const insertAt = Math.max(0, next.length - 1);
     next.splice(insertAt, 0, line);
 
     while (next.length > 22) next.splice(insertAt, 1);
@@ -1675,7 +2149,7 @@ function MissionBanner() {
 }
 
 /* ─────────────────────────────────────────────
-   Page sections (simple, 3-second clarity)
+   Page sections
 ───────────────────────────────────────────── */
 
 function SectionHeader({
@@ -1734,10 +2208,14 @@ function StepCard({
   );
 }
 
-function PrimaryCtaRow({ countdown }: { countdown: string }) {
+function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boolean }) {
   return (
     <div className="mt-6 flex flex-wrap items-center gap-3">
-      <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`} title="Enter the hub">
+      <Link
+        href={ROUTE_HUB}
+        className={`${BTN_GREEN} group px-6 py-3.5 text-sm ${warmup ? 'xpot-warmup-ring' : ''}`}
+        title="Enter the hub"
+      >
         Enter today&apos;s XPOT
         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
       </Link>
@@ -1767,7 +2245,7 @@ function PrimaryCtaRow({ countdown }: { countdown: string }) {
 
 function HomePageInner() {
   const bonusActive = useBonusActive();
-  const { winner: winnerSpotlight, reload: reloadWinner } = useLatestWinnerCard();
+  const winnerSpotlight = useLatestWinnerCard();
   const entries = useLatestEntriesTelemetry();
 
   const SHOW_LIVE_FEED = true;
@@ -1776,10 +2254,10 @@ function HomePageInner() {
   useEffect(() => setMint(XPOT_CA), []);
 
   const { countdown, cutoffLabel, nowMs, nextDrawUtcMs } = useNextDraw();
-  const msToDraw = Math.max(0, nextDrawUtcMs - nowMs);
-
   const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
   const runLine = useMemo(() => `DAY ${run.day}/${RUN_DAYS}`, [run.day]);
+
+  const { warmup } = useDrawPhase(nowMs, nextDrawUtcMs);
 
   const reduceMotion = useReducedMotion();
   const { scrollY } = useScroll();
@@ -1807,89 +2285,9 @@ function HomePageInner() {
     document.title = t;
     setMeta(
       'description',
-      `XPOT is a daily draw protocol with handle-first identity and on-chain proof. Final Draw: ${RUN_END_EU}.`,
+      `XPOT is a daily draw protocol with handle-first identity and on-chain proof. Final draw: ${RUN_END_EU}.`,
     );
   }, [run.day, run.started, run.ended, cutoffLabel]);
-
-  // Ceremony state machine
-  const [phase, setPhase] = useState<CeremonyPhase>(() => getBasePhase(msToDraw));
-  const [ceremonyOpen, setCeremonyOpen] = useState(false);
-
-  // Keep base phase updated unless we are in DRAWING/REVEAL (those are short-lived)
-  useEffect(() => {
-    setPhase(prev => {
-      if (prev === 'DRAWING' || prev === 'REVEAL') return prev;
-      return getBasePhase(msToDraw);
-    });
-  }, [msToDraw]);
-
-  // Trigger ceremony on real countdown hitting 00:00:00
-  useEffect(() => {
-    if (countdown !== '00:00:00') return;
-
-    setPhase('DRAWING');
-    setCeremonyOpen(true);
-
-    const t1 = window.setTimeout(() => {
-      setPhase('REVEAL');
-
-      // refresh winner shortly after reveal starts (gives API a moment)
-      window.setTimeout(() => {
-        reloadWinner().catch(() => {});
-      }, WINNER_REFRESH_AFTER_REVEAL_MS);
-
-      const t2 = window.setTimeout(() => {
-        // return to base phase (DAY/WARMUP)
-        setPhase(getBasePhase(Math.max(0, nextDrawUtcMs - Date.now())));
-        setCeremonyOpen(false);
-      }, REVEAL_HOLD_MS);
-
-      return () => window.clearTimeout(t2);
-    }, DRAWING_PAUSE_MS);
-
-    return () => window.clearTimeout(t1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countdown]);
-
-  // Dev-only force ceremony button + query param
-  const isDev = process.env.NODE_ENV !== 'production';
-  const [showForce, setShowForce] = useState(false);
-
-  useEffect(() => {
-    if (!isDev) return;
-    setShowForce(true);
-
-    // Optional: allow ?ceremony=1 to auto-run in dev
-    try {
-      const u = new URL(window.location.href);
-      if (u.searchParams.get('ceremony') === '1') {
-        window.setTimeout(() => {
-          forceCeremony();
-        }, 400);
-      }
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDev]);
-
-  function forceCeremony() {
-    if (!isDev) return;
-    setPhase('DRAWING');
-    setCeremonyOpen(true);
-
-    window.setTimeout(() => {
-      setPhase('REVEAL');
-      window.setTimeout(() => {
-        reloadWinner().catch(() => {});
-      }, WINNER_REFRESH_AFTER_REVEAL_MS);
-
-      window.setTimeout(() => {
-        setPhase(getBasePhase(msToDraw));
-        setCeremonyOpen(false);
-      }, REVEAL_HOLD_MS);
-    }, DRAWING_PAUSE_MS);
-  }
-
-  const ceremonyAffectsHero = phase === 'DRAWING' || phase === 'REVEAL';
 
   const hero = (
     <section className="relative">
@@ -1899,7 +2297,6 @@ function HomePageInner() {
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.60))]" />
 
-        {/* IMPORTANT: max-w-none keeps hero full width */}
         <div className="relative z-10 mx-auto w-full max-w-none px-3 sm:px-6 lg:px-10 2xl:px-14">
           <div className="py-5 sm:py-7">
             <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
@@ -1915,18 +2312,19 @@ function HomePageInner() {
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(16,185,129,0.26),transparent)]" />
                       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.16),rgba(var(--xpot-gold),0.22),transparent)] opacity-70" />
 
-                      {/* 3-second clarity row */}
+                      {/* status row */}
                       <div className="relative flex flex-wrap items-center justify-between gap-3">
-                        <Pill tone="emerald">
+                        <Pill tone={warmup ? 'amber' : 'emerald'}>
                           <Radio className="h-3.5 w-3.5" />
-                          Live run
+                          {warmup ? 'Warm-up' : 'Live run'}
                         </Pill>
 
                         <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          No tickets - just XPOT holdings
+                          No tickets - eligibility by holdings
                         </span>
                       </div>
 
+                      {/* headline */}
                       <div className="relative mt-4">
                         <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
                           One protocol.
@@ -1938,6 +2336,9 @@ function HomePageInner() {
                           Hold XPOT, enter once, and you are in the daily draw. Winner is shown publicly and paid on-chain.
                           Final Draw ends on <FinalDrawDate className="text-slate-100" />.
                         </p>
+
+                        {/* 3-step clarity (strong colors, 3 seconds) */}
+                        <Quick3Steps countdown={countdown} warmup={warmup} />
 
                         <div className="mt-4 flex flex-wrap items-center gap-2">
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
@@ -1954,34 +2355,20 @@ function HomePageInner() {
                           </span>
                         </div>
 
-                        <PrimaryCtaRow countdown={countdown} />
+                        <PrimaryCtaRow countdown={countdown} warmup={warmup} />
                       </div>
 
-                      {/* Daytime layer + warm-up mode + ceremony status */}
-                      <CeremonyBanner
-                        phase={phase}
-                        countdown={countdown}
-                        cutoffLabel={cutoffLabel}
-                        msToDraw={msToDraw}
-                      />
+                      {/* Daytime layer + warm-up motion */}
+                      <DaytimeLayerCard entries={entries} countdown={countdown} cutoffLabel={cutoffLabel} warmup={warmup} />
 
-                      {/* MOBILE: compact winner + jackpot immediately after clarity */}
+                      {/* MOBILE: compact winner + jackpot after clarity */}
                       <div className="mt-5 grid gap-4 lg:hidden">
                         {SHOW_LIVE_FEED ? <WinnerSpotlight winner={winnerSpotlight} compact /> : null}
 
-                        <PremiumCard
-                          className={`p-4 ${ceremonyAffectsHero ? 'ring-1 ring-[rgba(var(--xpot-gold),0.22)]' : ''}`}
-                          halo
-                          sheen
-                        >
+                        <PremiumCard className="p-4" halo sheen>
                           <div className="xpot-console-sweep" aria-hidden />
-                          <div className={`relative z-10 ${ceremonyAffectsHero ? 'xpot-ceremony-glow' : ''}`}>
+                          <div className="relative z-10">
                             <JackpotPanel variant="standalone" layout="wide" />
-                          </div>
-
-                          {/* Ceremony overlay on top of the panel */}
-                          <div className="relative">
-                            <CeremonyOverlay open={ceremonyOpen && (phase === 'DRAWING' || phase === 'REVEAL')} phase={phase} />
                           </div>
                         </PremiumCard>
 
@@ -1992,73 +2379,65 @@ function HomePageInner() {
                         ) : null}
                       </div>
 
-                      {/* Desktop hero flow */}
+                      {/* Desktop: connected winner + alive stage */}
                       {SHOW_LIVE_FEED ? (
                         <div className="hidden lg:block">
                           <WinnerSpotlight winner={winnerSpotlight} />
+                          <EnteringTheStage entries={entries} />
                         </div>
                       ) : null}
 
-                      {SHOW_LIVE_FEED ? <EnteringTheStage entries={entries} /> : null}
-
-                      <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
-                        <div
-                          className="pointer-events-none absolute -inset-10 opacity-80 blur-2xl"
-                          style={{
-                            background:
-                              'radial-gradient(circle_at_18%_40%, rgba(110,231,249,0.10), transparent 55%), radial-gradient(circle_at_86%_30%, rgba(16,185,129,0.10), transparent 52%)',
-                          }}
-                        />
-
+                      {/* Min hold reminder (simple, loud) */}
+                      <div className="relative mt-5 overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 ring-1 ring-white/[0.05]">
+                        <div className="pointer-events-none absolute -inset-12 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_40%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_86%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
                         <div className="relative flex flex-wrap items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-                              Next draw
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">
+                              Eligibility
                             </p>
-
-                            <p className="mt-1 flex items-baseline gap-2 text-[12px] text-slate-400">
-                              <span className="text-slate-500">In</span>
-                              <span className="font-semibold tabular-nums text-slate-100">{countdown}</span>
-                              <span className="text-[11px] text-slate-500">{cutoffLabel}</span>
+                            <p className="mt-1 text-[12px] text-emerald-100/90">
+                              Hold at least{' '}
+                              <span className="font-mono text-[13px] text-emerald-100">
+                                {MIN_ELIGIBLE_XPOT.toLocaleString()}
+                              </span>{' '}
+                              XPOT to enter.
                             </p>
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <TinyTooltip label="Eligibility is checked in the hub. Hold at least the minimum threshold to enter.">
-                              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] text-slate-200">
-                                <Info className="h-3.5 w-3.5 text-slate-400" />
-                                Min {MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT
-                              </span>
-                            </TinyTooltip>
-                          </div>
+                          <TinyTooltip label="Eligibility is checked in the hub when you connect X + wallet.">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-1.5 text-[11px] text-emerald-100/90">
+                              <Info className="h-3.5 w-3.5 text-emerald-100/70" />
+                              Verified in hub
+                            </span>
+                          </TinyTooltip>
                         </div>
                       </div>
 
                       <div className="mt-6 grid gap-3 sm:grid-cols-3">
                         <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="sky" />
-                        <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
+                        <MiniStat label="Next cutoff" value={countdown} tone={warmup ? 'amber' : 'emerald'} />
                         <MiniStat label="Final draw" value={String(RUN_END_EU).split(' ')[0]} tone="amber" />
                       </div>
                     </div>
 
-                    {/* Quick "How it works" teaser inside hero */}
+                    {/* Keep ONE set of supporting cards (no duplicates) */}
                     <div className="grid gap-3 sm:grid-cols-3">
                       <StepCard
                         icon={<CheckCircle2 className="h-5 w-5 text-emerald-200" />}
-                        title="1) Hold XPOT"
-                        body="Meet the minimum balance in your connected wallet."
+                        title="Minimum is small"
+                        body={`Only ${MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT to qualify.`}
                         tone="emerald"
                       />
                       <StepCard
-                        icon={<Wand2 className="h-5 w-5 text-sky-200" />}
-                        title="2) Enter once"
-                        body="Connect X + wallet in the hub and enter today’s draw."
+                        icon={<Users className="h-5 w-5 text-sky-200" />}
+                        title="Identity is @handle"
+                        body="Public identity is your X handle. Wallet is proof."
                         tone="sky"
                       />
                       <StepCard
                         icon={<ShieldCheck className="h-5 w-5 text-[rgb(var(--xpot-gold-2))]" />}
-                        title="3) Proof on-chain"
-                        body="Winner and payout are verifiable in the explorer."
+                        title="Proof is permanent"
+                        body="Payout proof is shown after ops pays on-chain."
                         tone="amber"
                       />
                     </div>
@@ -2088,23 +2467,10 @@ function HomePageInner() {
                 >
                   <ParallaxConsoleCard>
                     <motion.div style={reduceMotion ? undefined : { boxShadow: depthShadow as any }}>
-                      <PremiumCard
-                        className={`p-5 sm:p-6 ${ceremonyAffectsHero ? 'ring-1 ring-[rgba(var(--xpot-gold),0.22)]' : ''}`}
-                        halo
-                        sheen
-                      >
+                      <PremiumCard className="p-5 sm:p-6" halo sheen>
                         <div className="xpot-console-sweep" aria-hidden />
-                        <div className={`relative z-10 ${ceremonyAffectsHero ? 'xpot-ceremony-glow' : ''}`}>
+                        <div className="relative z-10">
                           <JackpotPanel variant="standalone" layout="wide" />
-                        </div>
-
-                        {/* Ceremony overlay on top of the panel */}
-                        <div className="relative">
-                          <CeremonyOverlay
-                            open={ceremonyOpen && (phase === 'DRAWING' || phase === 'REVEAL')}
-                            phase={phase}
-                            onClose={isDev ? () => setCeremonyOpen(false) : undefined}
-                          />
                         </div>
                       </PremiumCard>
                     </motion.div>
@@ -2121,22 +2487,16 @@ function HomePageInner() {
                   </PremiumCard>
                 </motion.div>
               </div>
-            </div>
 
-            {/* Dev-only force ceremony (not shown in production) */}
-            {showForce ? (
-              <div className="fixed bottom-4 right-4 z-[80] hidden sm:block">
-                <button
-                  type="button"
-                  onClick={forceCeremony}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-4 py-2 text-[12px] text-slate-200 hover:bg-black/75 transition"
-                  title="Force ceremony (dev only)"
-                >
-                  <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-                  Force ceremony
-                </button>
-              </div>
-            ) : null}
+              {/* Ceremony overlay (portal) */}
+              <DrawCeremonyOverlay
+                nowMs={nowMs}
+                nextDrawUtcMs={nextDrawUtcMs}
+                countdown={countdown}
+                cutoffLabel={cutoffLabel}
+                latestWinner={winnerSpotlight}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -2150,7 +2510,7 @@ function HomePageInner() {
         <SectionHeader
           eyebrow="3 seconds"
           title="What XPOT is"
-          desc="A daily draw protocol. Hold XPOT, enter in the hub, and the protocol publishes winners with on-chain proof."
+          desc={`Hold ${MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT, enter once in the hub, and you are in the daily draw. Winner is published with on-chain proof.`}
         />
 
         <div className="grid gap-4 lg:grid-cols-3">
@@ -2196,7 +2556,7 @@ function HomePageInner() {
               <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Simple loop</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
-                  Hold XPOT, enter daily, watch winners, verify payout. No complicated mechanics on the homepage.
+                  Hold XPOT, enter daily, watch winners, verify payout. Clear mechanics, public proof.
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
@@ -2269,7 +2629,7 @@ function HomePageInner() {
         <SectionHeader
           eyebrow="FAQ"
           title="Common questions"
-          desc="Keep the homepage simple. The hub contains the full entry and verification flow."
+          desc="The homepage stays simple. The hub contains the entry and verification flow."
         />
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -2290,14 +2650,14 @@ function HomePageInner() {
           <PremiumCard className="p-6" halo={false}>
             <h3 className="text-[14px] font-semibold text-slate-50">Why show avatars?</h3>
             <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-              It makes the feed instantly human. XPOT is handle-first, so real social identity matters.
+              It makes the feed instantly human. XPOT is handle-first, so social identity matters.
             </p>
           </PremiumCard>
 
           <PremiumCard className="p-6" halo={false}>
             <h3 className="text-[14px] font-semibold text-slate-50">When is the Final Draw?</h3>
             <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-              Final draw is scheduled for {String(RUN_END_EU)}. Countdown always targets the next daily cutoff.
+              Final draw is scheduled for {String(RUN_END_EU)}. Countdown always shows the next daily cutoff.
             </p>
           </PremiumCard>
         </div>
