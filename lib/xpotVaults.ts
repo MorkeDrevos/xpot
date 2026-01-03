@@ -13,7 +13,7 @@ export type XpotVault = { name: string; address: string };
 
 export const XPOT_VAULTS: Record<XpotVaultKey, XpotVault[]> = {
   rewards: [
-    { name: 'XPOT Rewards / Distribution Vault', address: '8FfoRtXDj1Q1Y2DbY2b8Rp5bLBLLstd6fYe2GcDTMg9o' },
+    { name: 'XPOT Rewards / Distribution Escrow (Streamflow)', address: 'Bk7ganFvbZ6XEvKmeTQ7NnoF5tGUnEoNbxsBq7K6kLk4' },
   ],
   liquidityOps: [
     { name: 'XPOT Liquidity + Market Ops Vault', address: '8VPiF9Mp8eoxSxg1m5m371d6D4V32iH6wf9KyMisxr67' },

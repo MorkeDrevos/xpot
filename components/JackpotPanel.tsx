@@ -1,45 +1,57 @@
 // components/JackpotPanel.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
 
-import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
 import XpotLogo from '@/components/XpotLogo';
+import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
+
+type JackpotPanelVariant = 'standalone' | 'embedded';
+type JackpotPanelLayout = 'auto' | 'wide' | 'normal';
+
+export type JackpotPanelProps = {
+  isLocked?: boolean;
+  onJackpotUsdChange?: (usd: number | null) => void;
+  variant?: JackpotPanelVariant;
+  badgeLabel?: string;
+  badgeTooltip?: string;
+  layout?: JackpotPanelLayout;
+};
+
+/* ──────────────────────────────────────────────────────────────
+   Constants
+───────────────────────────────────────────────────────────── */
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 
-// DexScreener can rate-limit too - keep this calmer than 2s
 const PRICE_POLL_MS = 4000; // 4s
 
-// 24h observed range via rolling samples
-const RANGE_SAMPLE_MS = 10_000; // store one sample every 10s
+const RANGE_SAMPLE_MS = 10_000; // 10s
 const RANGE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 const RANGE_STORAGE_KEY = 'xpot_price_samples_24h_v1';
-const RANGE_MAX_SAMPLES = Math.ceil(RANGE_WINDOW_MS / RANGE_SAMPLE_MS) + 120;
 
-// Sparkline window (local ticks)
 const SPARK_WINDOW_MS = 60 * 60 * 1000; // 1h
 const SPARK_MAX_POINTS = 80;
 
-type JackpotPanelProps = {
-  isLocked?: boolean;
-  onJackpotUsdChange?: (value: number | null) => void;
+const MILESTONES = [
+  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
+  3_000, 4_000, 5_000, 7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000,
+  100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000, 1_500_000,
+  2_000_000, 3_000_000, 5_000_000, 10_000_000,
+] as const;
 
-  // Visual variants
-  variant?: 'standalone' | 'embedded';
+type PriceSample = { t: number; p: number };
 
-  // Badge in header (eg "10+ year runway")
-  badgeLabel?: string;
-  badgeTooltip?: string;
-
-  // Layout
-  layout?: 'auto' | 'wide';
+type DexMetrics = {
+  priceUsd: number | null;
+  changeH1: number | null;
 };
 
-type PriceSource = 'DexScreener';
+/* ──────────────────────────────────────────────────────────────
+   Small helpers
+───────────────────────────────────────────────────────────── */
 
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
@@ -55,10 +67,6 @@ function formatUsd(value: number | null) {
   });
 }
 
-function easeOutCubic(t: number) {
-  return 1 - Math.pow(1 - t, 3);
-}
-
 function formatCoverage(ms: number) {
   const totalMin = Math.max(0, Math.floor(ms / 60_000));
   const h = Math.floor(totalMin / 60);
@@ -68,7 +76,7 @@ function formatCoverage(ms: number) {
 }
 
 /**
- * "Session" key that flips at 22:00 Madrid time.
+ * "Session" flips at 22:00 Madrid time.
  */
 function getMadridSessionKey(cutoffHour = 22) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -94,10 +102,9 @@ function getMadridSessionKey(cutoffHour = 22) {
   return `${y}${m}${d}`;
 }
 
-/* ─────────────────────────────────────────────
-   Madrid cutoff: correct UTC ms for "22:00 Europe/Madrid"
-   (DST-safe, no UTC/Madrid drift)
-───────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────
+   Madrid cutoff - correct UTC ms for 22:00 Europe/Madrid
+───────────────────────────────────────────────────────────── */
 
 function getMadridParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -160,70 +167,9 @@ function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
   return targetUtc;
 }
 
-function formatCountdown(ms: number) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-}
-
-// Milestone ladder for highlights (USD) - start at $5
-const MILESTONES = [
-  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
-  3_000, 4_000, 5_000, 7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000,
-  100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000, 1_500_000,
-  2_000_000, 3_000_000, 5_000_000, 10_000_000,
-];
-
-type PriceSample = { t: number; p: number };
-
-function safeParseSamples(raw: string | null): PriceSample[] {
-  if (!raw) return [];
-  try {
-    const v = JSON.parse(raw) as unknown;
-    if (!Array.isArray(v)) return [];
-    const out: PriceSample[] = [];
-    for (const item of v) {
-      const t = Number((item as any)?.t);
-      const p = Number((item as any)?.p);
-      if (Number.isFinite(t) && Number.isFinite(p)) out.push({ t, p });
-    }
-    return out;
-  } catch {
-    return [];
-  }
-}
-
-function buildSparklinePoints(samples: PriceSample[], width: number, height: number) {
-  if (samples.length < 2) return null;
-
-  let min = Infinity;
-  let max = -Infinity;
-  for (const s of samples) {
-    if (s.p < min) min = s.p;
-    if (s.p > max) max = s.p;
-  }
-
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-  const span = Math.max(1e-12, max - min);
-
-  const n = samples.length;
-  const pts: string[] = [];
-  for (let i = 0; i < n; i++) {
-    const x = (i / (n - 1)) * width;
-    const yNorm = (samples[i].p - min) / span;
-    const y = height - yNorm * height;
-    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-  }
-
-  return { points: pts.join(' '), min, max };
-}
-
-type DexMetrics = {
-  priceUsd: number | null;
-  changeH1: number | null;
-};
+/* ──────────────────────────────────────────────────────────────
+   DexScreener payload reader
+───────────────────────────────────────────────────────────── */
 
 function readDexScreenerMetrics(payload: unknown): DexMetrics {
   if (!payload || typeof payload !== 'object') return { priceUsd: null, changeH1: null };
@@ -261,446 +207,26 @@ function readDexScreenerMetrics(payload: unknown): DexMetrics {
   };
 }
 
-/* -----------------------------
-   Tooltips (anchored + edge-smart)
------------------------------- */
+/* ──────────────────────────────────────────────────────────────
+   Hooks
+───────────────────────────────────────────────────────────── */
 
-function useAnchoredTooltip<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null);
-  const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState<DOMRect | null>(null);
-
-  const update = () => {
-    if (!ref.current) return;
-    setRect(ref.current.getBoundingClientRect());
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    update();
-
-    const onMove = () => update();
-    window.addEventListener('resize', onMove);
-    window.addEventListener('scroll', onMove, true);
-
-    return () => {
-      window.removeEventListener('resize', onMove);
-      window.removeEventListener('scroll', onMove, true);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  return { ref, open, setOpen, rect };
-}
-
-function TooltipBubble({
-  open,
-  rect,
-  width = 380,
-  children,
-}: {
-  open: boolean;
-  rect: DOMRect | null;
-  width?: number;
-  children: ReactNode;
-}) {
-  const bubbleRef = useRef<HTMLDivElement | null>(null);
-  const [h, setH] = useState<number>(160);
-
-  useEffect(() => {
-    if (!open) return;
-    const el = bubbleRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    if (r.height && Number.isFinite(r.height)) setH(r.height);
-  }, [open]);
-
-  if (!open || !rect) return null;
-  if (typeof window === 'undefined') return null;
-  if (typeof document === 'undefined') return null;
-
-  const pad = 14;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
-  const maxW = Math.max(240, vw - pad * 2);
-  const w = clamp(width, 240, maxW);
-
-  const anchorCenterX = rect.left + rect.width / 2;
-
-  const EDGE_ZONE = 220;
-
-  let left = 0;
-  if (anchorCenterX > vw - EDGE_ZONE) {
-    left = clamp(rect.right - w, pad, vw - w - pad);
-  } else if (anchorCenterX < EDGE_ZONE) {
-    left = clamp(rect.left, pad, vw - w - pad);
-  } else {
-    left = clamp(anchorCenterX - w / 2, pad, vw - w - pad);
-  }
-
-  const belowTop = rect.bottom + 10;
-  const aboveTop = rect.top - 10 - h;
-
-  const fitsBelow = belowTop + h <= vh - pad;
-  const top = fitsBelow ? belowTop : clamp(aboveTop, pad, vh - h - pad);
-
-  const arrowX = clamp(anchorCenterX - left, 22, w - 22);
-  const arrowIsTop = fitsBelow;
-
-  return createPortal(
-    <div
-      ref={bubbleRef}
-      className="pointer-events-none fixed z-[9999] rounded-2xl border border-slate-700/80 bg-slate-950/95 shadow-[0_18px_40px_rgba(15,23,42,0.92)] backdrop-blur-xl"
-      style={{ left, top, width: w, opacity: 1, transform: 'translateY(4px)' }}
-    >
-      <div
-        className={[
-          'absolute h-3.5 w-3.5 rotate-45 bg-slate-950/95 shadow-[0_4px_10px_rgba(15,23,42,0.7)] border-slate-700/80',
-          arrowIsTop ? '-top-1.5 border-l border-t' : '-bottom-1.5 border-r border-b',
-        ].join(' ')}
-        style={{ left: arrowX - 7 }}
-      />
-      {children}
-    </div>,
-    document.body,
-  );
-}
-
-function UsdEstimateBadge({ compact }: { compact?: boolean }) {
-  const t = useAnchoredTooltip<HTMLButtonElement>();
-
-  return (
-    <div
-      className="relative inline-flex items-center"
-      onMouseEnter={() => t.setOpen(true)}
-      onMouseLeave={() => t.setOpen(false)}
-    >
-      <button
-        ref={t.ref}
-        type="button"
-        aria-label="USD estimate info"
-        className={
-          compact
-            ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/60 bg-black/25 text-slate-300 hover:text-white hover:border-slate-500/70 transition shadow-[0_10px_20px_rgba(0,0,0,0.25)]'
-            : 'inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-black/25 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200 hover:bg-slate-900/40 transition'
-        }
-      >
-        <Info className={compact ? 'h-4 w-4 opacity-95' : 'h-4 w-4 opacity-90'} />
-        {!compact && <span>USD estimate</span>}
-      </button>
-
-      <TooltipBubble open={t.open} rect={t.rect} width={380}>
-        <div className="px-4 py-3 text-[12px] leading-snug text-slate-100">
-          <p className="text-slate-100">
-            Current USD value of today&apos;s XPOT, based on the live XPOT price from DexScreener.
-          </p>
-          <p className="mt-2 text-slate-400">
-            Winner is paid in <span className="font-semibold text-[#7CC8FF]">XPOT</span>, not USD.
-          </p>
-        </div>
-      </TooltipBubble>
-    </div>
-  );
-}
-
-function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
-  const t = useAnchoredTooltip<HTMLDivElement>();
-  if (!label) return null;
-
-  return (
-    <div
-      ref={t.ref}
-      className="relative inline-flex items-center justify-center gap-2"
-      onMouseEnter={() => t.setOpen(true)}
-      onMouseLeave={() => t.setOpen(false)}
-    >
-      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-100 max-w-[92vw] cursor-default select-none">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.45)]" />
-        <span className="truncate">{label}</span>
-      </span>
-
-      {!!tooltip && (
-        <>
-          <button
-            type="button"
-            aria-label="More info"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 bg-black/25 text-slate-200 hover:bg-slate-900/50 hover:text-white transition"
-          >
-            <Info className="h-4 w-4 opacity-90" />
-          </button>
-
-          <TooltipBubble open={t.open} rect={t.rect} width={340}>
-            <div className="px-4 py-3 text-[12px] leading-snug text-slate-100 whitespace-pre-line select-none">
-              {tooltip}
-            </div>
-          </TooltipBubble>
-        </>
-      )}
-    </div>
-  );
-}
-
-function PriceUnavailableNote({
-  compact,
-  mode = 'pending-pair',
-}: {
-  compact?: boolean;
-  mode?: 'feed-error' | 'pending-pair';
-}) {
-  const title = mode === 'feed-error' ? 'PRICE FEED UNAVAILABLE' : 'TOKEN NOT TRADABLE YET';
-  const body = 'Price feed is temporarily unavailable. We will retry automatically.';
-  const secondary =
-    mode === 'feed-error'
-      ? 'If this persists, DexScreener may be rate limiting. Refresh later.'
-      : 'XPOT is not trading yet. Liquidity has not been deployed, so no market price exists.';
-
-  return (
-    <div
-      className={[
-        'relative overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.25)]',
-        compact ? 'px-3 py-2' : 'px-4 py-3',
-      ].join(' ')}
-    >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-70"
-        style={{
-          background:
-            'radial-gradient(circle_at_18%_30%, rgba(245,158,11,0.12), transparent 60%), radial-gradient(circle_at_82%_20%, rgba(251,191,36,0.08), transparent 62%)',
-        }}
-      />
-
-      <p className="relative text-[11px] uppercase tracking-[0.22em] text-amber-300 font-semibold">{title}</p>
-      <p className="relative mt-2 text-[12px] text-amber-100/80">{body}</p>
-      <p className="mt-1 text-[11px] italic text-slate-300/60">{secondary}</p>
-    </div>
-  );
-}
-
-export default function JackpotPanel({
-  isLocked,
-  onJackpotUsdChange,
-  variant = 'standalone',
-  badgeLabel,
-  badgeTooltip,
-  layout = 'auto',
-}: JackpotPanelProps) {
+function useDexScreenerPrice(tokenMint = TOKEN_MINT, pollMs = PRICE_POLL_MS) {
   const [priceUsd, setPriceUsd] = useState<number | null>(null);
-  const priceSource: PriceSource = 'DexScreener';
-
+  const [momentumGlobalH1, setMomentumGlobalH1] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hadError, setHadError] = useState(false);
-
-  const [maxJackpotToday, setMaxJackpotToday] = useState<number | null>(null);
-
-  // Soft drift animation for the big USD number
-  const [displayJackpotUsd, setDisplayJackpotUsd] = useState<number | null>(null);
-
-  // Pump glow + update pulse
-  const [justPumped, setJustPumped] = useState(false);
-  const pumpTimeout = useRef<number | null>(null);
-  const prevJackpot = useRef<number | null>(null);
 
   const [justUpdated, setJustUpdated] = useState(false);
   const updatePulseTimeout = useRef<number | null>(null);
 
-  // GLOBAL momentum (DexScreener priceChange.h1)
-  const [momentumGlobalH1, setMomentumGlobalH1] = useState<number | null>(null);
-
-  // 24h observed range (from rolling samples)
-  const samplesRef = useRef<PriceSample[]>([]);
-  const lastSampleAtRef = useRef<number>(0);
-  const lastPersistAtRef = useRef<number>(0);
-
-  const [range24h, setRange24h] = useState<{ lowUsd: number; highUsd: number } | null>(null);
-  const [coverageMs, setCoverageMs] = useState<number>(0);
-
-  // Sparkline (local ticks, last 1h)
-  const [spark, setSpark] = useState<{ points: string; min: number; max: number } | null>(null);
-  const [sparkCoverageMs, setSparkCoverageMs] = useState<number>(0);
-
-  // Premium runway fade-in (after price loads)
-  const [showRunway, setShowRunway] = useState(false);
-
-  // Hydration-safe: only render time-based UI after mount
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  // Countdown - hydration safe (no Date() in initial render)
-  const [nextDrawUtcMs, setNextDrawUtcMs] = useState<number>(0);
-  const [countdownMs, setCountdownMs] = useState<number>(0);
-  const [countPulse, setCountPulse] = useState(false);
-
-  useEffect(() => {
-    if (!mounted) return;
-    const nd = getNextMadridCutoffUtcMs(22, new Date());
-    setNextDrawUtcMs(nd);
-    setCountdownMs(Math.max(0, nd - Date.now()));
-  }, [mounted]);
-
-  // Hydration-safe session key (avoid Date() during first render)
-  const [sessionKey, setSessionKey] = useState('xpot_max_session_usd_boot');
-  useEffect(() => {
-    setSessionKey(`xpot_max_session_usd_${getMadridSessionKey(22)}`);
-  }, []);
-
-  // AUTO responsive wide switching (Layout "auto")
-  const slabRef = useRef<HTMLDivElement | null>(null);
-  const [autoWide, setAutoWide] = useState(false);
-  const autoWideRef = useRef(false);
-
-  useEffect(() => {
-    if (layout !== 'auto') return;
-    if (typeof window === 'undefined') return;
-
-    const el = slabRef.current;
-    if (!el) return;
-
-    const RO = (window as any).ResizeObserver as typeof ResizeObserver | undefined;
-    if (!RO) return;
-
-    let raf = 0;
-
-    const WIDE_ON = 900;
-    const WIDE_OFF = 840;
-
-    const applyWidth = (w: number) => {
-      const curr = autoWideRef.current;
-      const next = curr ? w >= WIDE_OFF : w >= WIDE_ON;
-      if (next === curr) return;
-
-      autoWideRef.current = next;
-      setAutoWide(next);
-    };
-
-    const ro = new RO(entries => {
-      const w = entries[0]?.contentRect?.width ?? 0;
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => applyWidth(w));
-    });
-
-    ro.observe(el);
-
-    const initial = el.getBoundingClientRect().width;
-    applyWidth(initial);
-
-    return () => {
-      ro.disconnect();
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [layout]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!mounted) return;
-    if (sessionKey.endsWith('_boot')) return;
-
-    const stored = window.localStorage.getItem(sessionKey);
-    if (stored) {
-      const num = Number(stored);
-      if (!Number.isNaN(num)) setMaxJackpotToday(num);
-      else setMaxJackpotToday(null);
-    } else {
-      setMaxJackpotToday(null);
-    }
-  }, [sessionKey, mounted]);
-
-  // Countdown ticker
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!mounted) return;
-
-    let interval: number | null = null;
-
-    const tick = () => {
-      const nd = nextDrawUtcMs || getNextMadridCutoffUtcMs(22, new Date());
-      const now = Date.now();
-      setCountdownMs(Math.max(0, nd - now));
-      setCountPulse(p => !p);
-
-      if (now >= nd) {
-        const next = getNextMadridCutoffUtcMs(22, new Date());
-        setNextDrawUtcMs(next);
-      }
-    };
-
-    const msToNextSecond = 1000 - (Date.now() % 1000);
-    const t = window.setTimeout(() => {
-      tick();
-      interval = window.setInterval(tick, 1000);
-    }, msToNextSecond);
-
-    return () => {
-      window.clearTimeout(t);
-      if (interval) window.clearInterval(interval);
-    };
-  }, [nextDrawUtcMs, mounted]);
-
-  // Load rolling samples
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const now = Date.now();
-    const cutoff24 = now - RANGE_WINDOW_MS;
-
-    const stored = safeParseSamples(window.localStorage.getItem(RANGE_STORAGE_KEY))
-      .filter(s => s.t >= cutoff24)
-      .slice(-RANGE_MAX_SAMPLES);
-
-    samplesRef.current = stored;
-    lastSampleAtRef.current = stored.length ? stored[stored.length - 1].t : 0;
-
-    if (stored.length >= 2) {
-      let low = Infinity;
-      let high = -Infinity;
-      for (const s of stored) {
-        if (s.p < low) low = s.p;
-        if (s.p > high) high = s.p;
-      }
-      if (Number.isFinite(low) && Number.isFinite(high)) {
-        setRange24h({ lowUsd: low * JACKPOT_XPOT, highUsd: high * JACKPOT_XPOT });
-      }
-
-      setCoverageMs(clamp(now - stored[0].t, 0, RANGE_WINDOW_MS));
-
-      const cutoffSpark = now - SPARK_WINDOW_MS;
-      const sparkRaw = stored.filter(s => s.t >= cutoffSpark);
-      if (sparkRaw.length >= 2) {
-        const step = Math.max(1, Math.floor(sparkRaw.length / SPARK_MAX_POINTS));
-        const down: PriceSample[] = [];
-        for (let i = 0; i < sparkRaw.length; i += step) down.push(sparkRaw[i]);
-        if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) {
-          down.push(sparkRaw[sparkRaw.length - 1]);
-        }
-
-        const built = buildSparklinePoints(down, 560, 54);
-        setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
-        setSparkCoverageMs(clamp(now - sparkRaw[0].t, 0, SPARK_WINDOW_MS));
-      } else {
-        setSpark(null);
-        setSparkCoverageMs(0);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (showRunway) return;
-    if (isLoading) return;
-    if (priceUsd == null) return;
-    if (displayJackpotUsd == null) return;
-
-    const t = window.setTimeout(() => setShowRunway(true), 320);
-    return () => window.clearTimeout(t);
-  }, [isLoading, priceUsd, displayJackpotUsd, showRunway]);
-
-  // Live price: DexScreener only
   useEffect(() => {
     let timer: number | null = null;
     let aborted = false;
     const ctrl = new AbortController();
 
     async function fetchFromDexScreener(): Promise<DexMetrics> {
-      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${TOKEN_MINT}`, {
+      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenMint}`, {
         signal: ctrl.signal,
         cache: 'no-store',
       });
@@ -715,8 +241,8 @@ export default function JackpotPanel({
 
         const dexMetrics = await fetchFromDexScreener();
 
-        if (!aborted) {
-          if (dexMetrics.changeH1 != null) setMomentumGlobalH1(dexMetrics.changeH1);
+        if (!aborted && dexMetrics.changeH1 != null) {
+          setMomentumGlobalH1(dexMetrics.changeH1);
         }
 
         const price =
@@ -729,6 +255,7 @@ export default function JackpotPanel({
         if (price != null) {
           setPriceUsd(price);
           setJustUpdated(true);
+
           if (updatePulseTimeout.current !== null) window.clearTimeout(updatePulseTimeout.current);
           updatePulseTimeout.current = window.setTimeout(() => setJustUpdated(false), 420);
         } else {
@@ -752,7 +279,7 @@ export default function JackpotPanel({
     }
 
     fetchPrice();
-    timer = window.setInterval(fetchPrice, PRICE_POLL_MS);
+    timer = window.setInterval(fetchPrice, pollMs);
 
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', onVis);
@@ -761,85 +288,299 @@ export default function JackpotPanel({
     return () => {
       aborted = true;
       ctrl.abort();
-
       if (timer !== null) window.clearInterval(timer);
       if (updatePulseTimeout.current !== null) window.clearTimeout(updatePulseTimeout.current);
-      if (pumpTimeout.current !== null) window.clearTimeout(pumpTimeout.current);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [tokenMint, pollMs]);
 
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', onVis);
+  return { priceUsd, momentumGlobalH1, isLoading, hadError, justUpdated };
+}
+
+function safeParseSamples(raw: string | null): PriceSample[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!Array.isArray(v)) return [];
+    const out: PriceSample[] = [];
+    for (const item of v) {
+      const t = Number((item as any)?.t);
+      const p = Number((item as any)?.p);
+      if (Number.isFinite(t) && Number.isFinite(p)) out.push({ t, p });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+function buildSparklinePoints(samples: PriceSample[], width: number, height: number) {
+  if (samples.length < 2) return null;
+
+  let min = Infinity;
+  let max = -Infinity;
+  for (const s of samples) {
+    if (s.p < min) min = s.p;
+    if (s.p > max) max = s.p;
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+
+  const span = Math.max(1e-12, max - min);
+
+  const n = samples.length;
+  const pts: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * width;
+    const yNorm = (samples[i].p - min) / span;
+    const y = height - yNorm * height;
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+
+  return { points: pts.join(' '), min, max };
+}
+
+function usePriceSamples(priceUsd: number | null) {
+  const [range24h, setRange24h] = useState<{ lowUsd: number; highUsd: number } | null>(null);
+  const [coverageMs, setCoverageMs] = useState(0);
+  const [spark, setSpark] = useState<{ points: string; min: number; max: number } | null>(null);
+  const [sparkCoverageMs, setSparkCoverageMs] = useState(0);
+
+  const [maxJackpotToday, setMaxJackpotToday] = useState<number | null>(null);
+
+  const sessionKey = useMemo(() => getMadridSessionKey(22), []);
+
+  const peakKey = useMemo(() => `xpot_session_peak_${sessionKey}`, [sessionKey]);
+
+  // session peak writer
+  const registerJackpotUsdForSessionPeak = (usd: number) => {
+    if (typeof window === 'undefined') return;
+    if (!Number.isFinite(usd)) return;
+
+    try {
+      const prev = Number(window.localStorage.getItem(peakKey) ?? NaN);
+      const next = !Number.isFinite(prev) ? usd : Math.max(prev, usd);
+      window.localStorage.setItem(peakKey, String(next));
+      setMaxJackpotToday(next);
+    } catch {
+      // ignore
+    }
+  };
+
+  // read peak on mount/sessionKey
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const v = Number(window.localStorage.getItem(peakKey) ?? NaN);
+      setMaxJackpotToday(Number.isFinite(v) ? v : null);
+    } catch {
+      setMaxJackpotToday(null);
+    }
+  }, [peakKey]);
+
+  // store samples
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (priceUsd == null || !Number.isFinite(priceUsd)) return;
+
+    const now = Date.now();
+    const raw = window.localStorage.getItem(RANGE_STORAGE_KEY);
+    const samples = safeParseSamples(raw);
+
+    // push new sample
+    samples.push({ t: now, p: priceUsd });
+
+    // trim range window (+ some slack)
+    const minT = now - RANGE_WINDOW_MS - RANGE_SAMPLE_MS * 3;
+    const trimmed = samples.filter(s => s.t >= minT && Number.isFinite(s.p));
+
+    // also avoid insane size
+    const hardMax = Math.ceil(RANGE_WINDOW_MS / RANGE_SAMPLE_MS) + 200;
+    const finalSamples = trimmed.length > hardMax ? trimmed.slice(trimmed.length - hardMax) : trimmed;
+
+    try {
+      window.localStorage.setItem(RANGE_STORAGE_KEY, JSON.stringify(finalSamples));
+    } catch {
+      // ignore quota
+    }
+  }, [priceUsd]);
+
+  // compute range + spark periodically
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let raf = 0;
+    let timer: number | null = null;
+
+    const compute = () => {
+      const now = Date.now();
+      const raw = window.localStorage.getItem(RANGE_STORAGE_KEY);
+      const all = safeParseSamples(raw);
+
+      // 24h window
+      const from24 = now - RANGE_WINDOW_MS;
+      const w24 = all.filter(s => s.t >= from24);
+
+      if (w24.length >= 2) {
+        let low = Infinity;
+        let high = -Infinity;
+        for (const s of w24) {
+          low = Math.min(low, s.p);
+          high = Math.max(high, s.p);
+        }
+        if (Number.isFinite(low) && Number.isFinite(high)) {
+          setRange24h({ lowUsd: low, highUsd: high });
+          setCoverageMs(Math.max(0, w24[w24.length - 1].t - w24[0].t));
+        } else {
+          setRange24h(null);
+          setCoverageMs(0);
+        }
+      } else {
+        setRange24h(null);
+        setCoverageMs(0);
       }
+
+      // spark window 1h
+      const fromSpark = now - SPARK_WINDOW_MS;
+      const w1h = all.filter(s => s.t >= fromSpark);
+
+      if (w1h.length >= 2) {
+        const cov = Math.max(0, w1h[w1h.length - 1].t - w1h[0].t);
+        setSparkCoverageMs(cov);
+
+        // downsample to max points
+        const step = Math.max(1, Math.floor(w1h.length / SPARK_MAX_POINTS));
+        const sampled: PriceSample[] = [];
+        for (let i = 0; i < w1h.length; i += step) sampled.push(w1h[i]);
+        if (sampled[sampled.length - 1]?.t !== w1h[w1h.length - 1]?.t) sampled.push(w1h[w1h.length - 1]);
+
+        const built = buildSparklinePoints(sampled, 560, 54);
+        setSpark(built);
+      } else {
+        setSpark(null);
+        setSparkCoverageMs(0);
+      }
+    };
+
+    const tick = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(compute);
+    };
+
+    // compute immediately and every 5s
+    tick();
+    timer = window.setInterval(tick, 5000);
+
+    return () => {
+      if (timer !== null) window.clearInterval(timer);
+      if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 
-  const jackpotUsd = priceUsd !== null ? JACKPOT_XPOT * priceUsd : null;
+  return {
+    range24h,
+    coverageMs,
+    spark,
+    sparkCoverageMs,
+    maxJackpotToday,
+    registerJackpotUsdForSessionPeak,
+  };
+}
+
+function useMadridCountdown(cutoffHour = 22) {
+  const [mounted, setMounted] = useState(false);
+  const [countdownMs, setCountdownMs] = useState(0);
+  const [countPulse, setCountPulse] = useState(false);
 
   useEffect(() => {
-    if (typeof onJackpotUsdChange === 'function') onJackpotUsdChange(jackpotUsd);
-    if (jackpotUsd == null) return;
-
-    if (prevJackpot.current !== null && jackpotUsd > prevJackpot.current) {
-      setJustPumped(true);
-      if (pumpTimeout.current !== null) window.clearTimeout(pumpTimeout.current);
-      pumpTimeout.current = window.setTimeout(() => setJustPumped(false), 1200);
-    }
-    prevJackpot.current = jackpotUsd;
-
-    if (typeof window !== 'undefined') {
-      if (!mounted) return;
-      if (sessionKey.endsWith('_boot')) return;
-
-      setMaxJackpotToday(prev => {
-        const next = prev == null ? jackpotUsd : Math.max(prev, jackpotUsd);
-        window.localStorage.setItem(sessionKey, String(next));
-        return next;
-      });
-    }
-  }, [jackpotUsd, sessionKey, onJackpotUsdChange, mounted]);
-
-  // Soft USD drift animation (stale-safe)
-  const displayRef = useRef<number | null>(null);
-  useEffect(() => {
-    displayRef.current = displayJackpotUsd;
-  }, [displayJackpotUsd]);
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    if (jackpotUsd == null) {
-      setDisplayJackpotUsd(null);
-      displayRef.current = null;
+    let raf = 0;
+    let timer: number | null = null;
+    let lastSecond = -1;
+
+    const update = () => {
+      const now = Date.now();
+      const next = getNextMadridCutoffUtcMs(cutoffHour, new Date(now));
+      const left = Math.max(0, next - now);
+      setCountdownMs(left);
+
+      const sec = Math.floor(left / 1000);
+      if (sec !== lastSecond) {
+        lastSecond = sec;
+        setCountPulse(true);
+        window.setTimeout(() => setCountPulse(false), 140);
+      }
+    };
+
+    const tick = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+
+    tick();
+    timer = window.setInterval(tick, 250);
+
+    return () => {
+      if (timer !== null) window.clearInterval(timer);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [cutoffHour]);
+
+  return { mounted, countdownMs, countPulse };
+}
+
+/**
+ * Small local hook to keep the big USD number drifting smoothly.
+ */
+function useSmoothNumber(target: number | null, opts?: { durationMs?: number }) {
+  const durationMs = opts?.durationMs ?? 650;
+  const [value, setValue] = useState<number | null>(null);
+  const valueRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (target == null || !Number.isFinite(target)) {
+      setValue(null);
+      valueRef.current = null;
       return;
     }
 
-    const from = displayRef.current;
-
+    const from = valueRef.current;
     if (from == null || !Number.isFinite(from)) {
-      setDisplayJackpotUsd(jackpotUsd);
-      displayRef.current = jackpotUsd;
+      setValue(target);
+      valueRef.current = target;
       return;
     }
 
-    const to = jackpotUsd;
+    const to = target;
     const delta = Math.abs(to - from);
-
     if (!Number.isFinite(delta) || delta < 0.01) {
-      setDisplayJackpotUsd(to);
-      displayRef.current = to;
+      setValue(to);
+      valueRef.current = to;
       return;
     }
 
-    const DURATION_MS = 650;
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
     const start = performance.now();
     let raf = 0;
 
     const tick = (now: number) => {
-      const t = clamp((now - start) / DURATION_MS, 0, 1);
+      const t = clamp((now - start) / durationMs, 0, 1);
       const eased = easeOutCubic(t);
       const next = from + (to - from) * eased;
 
-      setDisplayJackpotUsd(next);
-      displayRef.current = next;
+      setValue(next);
+      valueRef.current = next;
 
       if (t < 1) raf = window.requestAnimationFrame(tick);
     };
@@ -848,99 +589,160 @@ export default function JackpotPanel({
     return () => {
       if (raf) window.cancelAnimationFrame(raf);
     };
-  }, [jackpotUsd]);
+  }, [target, durationMs]);
 
-  // Update rolling 24h samples + compute observed high/low + coverage + local sparkline
+  return value;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Small UI pieces
+───────────────────────────────────────────────────────────── */
+
+function RunwayBadge({ label, tooltip }: { label: string; tooltip?: string }) {
+  return (
+    <div className="group relative inline-flex items-center justify-center">
+      <span
+        className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+        title={tooltip || label}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-200 shadow-[0_0_12px_rgba(251,191,36,0.35)]" />
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function UsdEstimateBadge({ compact }: { compact?: boolean }) {
+  return (
+    <span
+      className={[
+        'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] font-semibold uppercase tracking-[0.18em] text-slate-200',
+        compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1 text-[10px]',
+      ].join(' ')}
+      title="USD value is an estimate from live price feeds"
+    >
+      Est.
+    </span>
+  );
+}
+
+function PriceUnavailableNote() {
+  return (
+    <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-center">
+      <p className="text-xs font-semibold text-rose-100">Price feed temporarily unavailable</p>
+      <p className="mt-1 text-[11px] text-rose-200/80">
+        DexScreener may be rate-limiting or the token is not indexed yet. We’ll keep retrying.
+      </p>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Component
+───────────────────────────────────────────────────────────── */
+
+export default function JackpotPanel({
+  isLocked,
+  onJackpotUsdChange,
+  variant = 'standalone',
+  badgeLabel,
+  badgeTooltip,
+  layout = 'auto',
+}: JackpotPanelProps) {
+  const { priceUsd, momentumGlobalH1, isLoading, hadError, justUpdated } = useDexScreenerPrice(
+    TOKEN_MINT,
+    PRICE_POLL_MS,
+  );
+
+  const { mounted, countdownMs, countPulse } = useMadridCountdown(22);
+
+  const { range24h, coverageMs, spark, sparkCoverageMs, maxJackpotToday, registerJackpotUsdForSessionPeak } =
+    usePriceSamples(priceUsd);
+
+  // auto-wide slab
+  const slabRef = useRef<HTMLDivElement | null>(null);
+  const [autoWide, setAutoWide] = useState(false);
+  const autoWideRef = useRef(false);
+
   useEffect(() => {
+    if (layout !== 'auto') return;
     if (typeof window === 'undefined') return;
-    if (priceUsd == null || !Number.isFinite(priceUsd)) return;
 
-    const now = Date.now();
-    const cutoff24 = now - RANGE_WINDOW_MS;
+    const el = slabRef.current;
+    if (!el) return;
 
-    if (now - lastSampleAtRef.current >= RANGE_SAMPLE_MS) {
-      const arr = samplesRef.current;
+    const RO = (window as any).ResizeObserver as typeof ResizeObserver | undefined;
+    if (!RO) return;
 
-      arr.push({ t: now, p: priceUsd });
-      lastSampleAtRef.current = now;
+    let raf = 0;
+    const WIDE_ON = 900;
+    const WIDE_OFF = 840;
 
-      while (arr.length && arr[0].t < cutoff24) arr.shift();
+    const applyWidth = (w: number) => {
+      const curr = autoWideRef.current;
+      const next = curr ? w >= WIDE_OFF : w >= WIDE_ON;
+      if (next === curr) return;
+      autoWideRef.current = next;
+      setAutoWide(next);
+    };
 
-      if (arr.length > RANGE_MAX_SAMPLES) {
-        arr.splice(0, arr.length - RANGE_MAX_SAMPLES);
-      }
+    const ro = new RO(entries => {
+      const w = entries[0]?.contentRect?.width ?? 0;
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => applyWidth(w));
+    });
 
-      let low = Infinity;
-      let high = -Infinity;
-      for (const s of arr) {
-        if (s.p < low) low = s.p;
-        if (s.p > high) high = s.p;
-      }
-      if (Number.isFinite(low) && Number.isFinite(high)) {
-        setRange24h({ lowUsd: low * JACKPOT_XPOT, highUsd: high * JACKPOT_XPOT });
-      }
+    ro.observe(el);
+    applyWidth(el.getBoundingClientRect().width);
 
-      if (arr.length >= 2) setCoverageMs(clamp(now - arr[0].t, 0, RANGE_WINDOW_MS));
-      else setCoverageMs(0);
+    return () => {
+      ro.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [layout]);
 
-      const cutoffSpark = now - SPARK_WINDOW_MS;
-      const sparkRaw = arr.filter(s => s.t >= cutoffSpark);
+  // derived numbers
+  const jackpotUsd = priceUsd != null ? JACKPOT_XPOT * priceUsd : null;
+  const smoothJackpotUsd = useSmoothNumber(jackpotUsd, { durationMs: 650 });
 
-      if (sparkRaw.length >= 2) {
-        const step = Math.max(1, Math.floor(sparkRaw.length / SPARK_MAX_POINTS));
-        const down: PriceSample[] = [];
-        for (let i = 0; i < sparkRaw.length; i += step) down.push(sparkRaw[i]);
-        if (down[down.length - 1] !== sparkRaw[sparkRaw.length - 1]) {
-          down.push(sparkRaw[sparkRaw.length - 1]);
-        }
+  useEffect(() => {
+    if (typeof onJackpotUsdChange === 'function') onJackpotUsdChange(jackpotUsd ?? null);
+  }, [jackpotUsd, onJackpotUsdChange]);
 
-        const built = buildSparklinePoints(down, 560, 54);
-        setSpark(built ? { points: built.points, min: built.min, max: built.max } : null);
-        setSparkCoverageMs(clamp(now - sparkRaw[0].t, 0, SPARK_WINDOW_MS));
-      } else {
-        setSpark(null);
-        setSparkCoverageMs(0);
-      }
+  useEffect(() => {
+    if (jackpotUsd == null) return;
+    registerJackpotUsdForSessionPeak(jackpotUsd);
+  }, [jackpotUsd, registerJackpotUsdForSessionPeak]);
 
-      if (now - lastPersistAtRef.current >= 60_000) {
-        lastPersistAtRef.current = now;
-        try {
-          window.localStorage.setItem(RANGE_STORAGE_KEY, JSON.stringify(arr));
-        } catch {
-          // ignore
-        }
-      }
-    }
-  }, [priceUsd]);
+  const showUnavailable = !isLoading && (jackpotUsd == null || hadError || priceUsd == null);
 
-  const nextMilestone = jackpotUsd != null ? MILESTONES.find(m => jackpotUsd < m) ?? null : null;
+  const displayUsdText =
+    smoothJackpotUsd == null || !Number.isFinite(smoothJackpotUsd) ? '-' : formatUsd(smoothJackpotUsd);
+
+  const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
+
+  const localSparkLabel =
+    sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
+
+  const globalMomentumText =
+    momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '-' : `${momentumGlobalH1.toFixed(2)}%`;
+
+  const nextMilestone = jackpotUsd != null ? (MILESTONES.find(m => jackpotUsd < m) ?? null) : null;
 
   const prevMilestoneForBar = useMemo(() => {
-    if (jackpotUsd == null) return null;
+    if (jackpotUsd == null) return 0;
     const prev = MILESTONES.filter(m => jackpotUsd >= m).slice(-1)[0];
     return prev ?? 0;
   }, [jackpotUsd]);
 
   const progressToNext = useMemo(() => {
-    if (jackpotUsd == null) return null;
+    if (jackpotUsd == null) return 0;
     const prev = prevMilestoneForBar ?? 0;
     const next = nextMilestone ?? null;
     if (next == null) return 1;
     if (next === prev) return 1;
     return clamp((jackpotUsd - prev) / (next - prev), 0, 1);
   }, [jackpotUsd, nextMilestone, prevMilestoneForBar]);
-
-  const showUnavailable = !isLoading && (jackpotUsd === null || hadError || priceUsd === null);
-
-  const displayUsdText =
-    displayJackpotUsd === null || !Number.isFinite(displayJackpotUsd) ? '-' : formatUsd(displayJackpotUsd);
-
-  const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
-  const localSparkLabel =
-    sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
-
-  const globalMomentumText =
-    momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '-' : `${momentumGlobalH1.toFixed(2)}%`;
 
   const leftMilestoneLabel =
     (nextMilestone === 5 && (prevMilestoneForBar ?? 0) === 0) || (prevMilestoneForBar ?? 0) === 0
@@ -950,20 +752,15 @@ export default function JackpotPanel({
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
   const panelChrome =
-  variant === 'embedded'
-    ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
-    : 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-5 sm:px-6 sm:py-6';
+    variant === 'embedded'
+      ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
+      : 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-5 sm:px-6 sm:py-6';
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
-  <div>
+      <div>
         {!!badgeLabel && (
-          <div
-            className={[
-              'relative z-10 mb-4 flex justify-center transition-all duration-[900ms] ease-out',
-              showRunway ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
-            ].join(' ')}
-          >
+          <div className="relative z-10 mb-4 flex justify-center">
             <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
           </div>
         )}
@@ -986,9 +783,12 @@ export default function JackpotPanel({
         {/* MAIN SLAB */}
         <div
           ref={slabRef}
-          className="relative z-10 mt-5 overflow-hidden border-y border-slate-800/80 bg-black/25 px-4 py-4 sm:rounded-2xl sm:border sm:p-5"
+          className={[
+            'relative z-10 mt-5 overflow-hidden border-y border-slate-800/80 bg-black/25 px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
+            layout === 'wide' ? 'w-full' : '',
+            layout === 'auto' && autoWide ? 'w-full' : '',
+          ].join(' ')}
         >
-          {/* Visible engine + alive background */}
           <div className="pointer-events-none absolute inset-0">
             <div className="xpot-engine absolute inset-0" />
             <div className="xpot-aurora absolute inset-0 opacity-70" />
@@ -999,7 +799,6 @@ export default function JackpotPanel({
           {/* Marketing row */}
           <div className="relative flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
-              {/* Pool capsule (premium centered readout) */}
               <div className="group relative inline-flex max-w-full items-center">
                 <div className="relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-black/55 px-4 py-3 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl">
                   <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
@@ -1007,13 +806,11 @@ export default function JackpotPanel({
                   <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
                   <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
 
-                  {/* Left tag */}
                   <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
                     Today&apos;s XPOT
                   </span>
 
-                  {/* Center hero amount */}
                   <div className="min-w-0 px-1 text-center">
                     <span
                       className="xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white"
@@ -1024,7 +821,6 @@ export default function JackpotPanel({
                     </span>
                   </div>
 
-                  {/* Right tag */}
                   <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
                     Daily
                   </span>
@@ -1041,38 +837,25 @@ export default function JackpotPanel({
             </div>
           </div>
 
-          {/* Value row (XPOT token box removed to give this full width) */}
+          {/* Big USD */}
           <div className="relative mt-5 grid gap-4">
-            {/* Big USD */}
             <div
               className={[
-                'relative overflow-visible rounded-2xl border bg-black/30 px-4 sm:px-5 py-4',
+                'relative overflow-visible rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
                 justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
-                justPumped ? 'shadow-[0_0_34px_rgba(56,189,248,0.16)]' : 'shadow-none',
               ].join(' ')}
               style={{
                 background:
                   'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.08), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
               }}
             >
-              {/* Alive halo on updates */}
-              <div
-                className={[
-                  'pointer-events-none absolute -inset-6 opacity-0 transition-opacity duration-300',
-                  justUpdated ? 'opacity-100' : '',
-                ].join(' ')}
-              >
-                <div className="xpot-pulse-halo absolute inset-0" />
-              </div>
-
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                {/* USD value + INFO */}
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
                   <div
                     className={[
-                      'xpot-usd-live text-4xl sm:text-[4.25rem] font-semibold tabular-nums transition-transform transition-colors duration-200',
+                      'xpot-usd-live text-4xl font-semibold tabular-nums transition-transform transition-colors duration-200 sm:text-[4.25rem]',
                       justUpdated ? 'scale-[1.01]' : '',
-                      justPumped ? 'text-[#7CC8FF]' : 'text-white',
+                      justUpdated ? 'text-[#7CC8FF]' : 'text-white',
                     ].join(' ')}
                     style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
                   >
@@ -1081,7 +864,7 @@ export default function JackpotPanel({
 
                   <div className="flex items-center gap-2 sm:mb-2">
                     <UsdEstimateBadge compact />
-                    <span className="hidden sm:inline text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                    <span className="hidden text-[11px] uppercase tracking-[0.22em] text-slate-500 sm:inline">
                       USD estimate
                     </span>
                   </div>
@@ -1091,7 +874,9 @@ export default function JackpotPanel({
                   <span
                     className={[
                       'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
-                      justUpdated ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]' : '',
+                      justUpdated
+                        ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]'
+                        : '',
                     ].join(' ')}
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
@@ -1105,7 +890,9 @@ export default function JackpotPanel({
                 <span
                   className={[
                     'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
-                    countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]' : '',
+                    countPulse
+                      ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]'
+                      : '',
                   ].join(' ')}
                 >
                   Next draw in
@@ -1118,7 +905,7 @@ export default function JackpotPanel({
                   ].join(' ')}
                   style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
                 >
-                  {mounted ? formatCountdown(countdownMs) : '00:00:00'}
+                  {mounted ? new Date(Math.max(0, countdownMs)).toISOString().slice(11, 19) : '00:00:00'}
                 </span>
 
                 <span className="text-[11px] text-slate-600">22:00 Madrid</span>
@@ -1129,14 +916,11 @@ export default function JackpotPanel({
                   <PriceUnavailableNote />
                 </div>
               ) : (
-                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">
-                  Auto-updates from DexScreener ticks
-                </p>
+                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Auto-updates from DexScreener ticks</p>
               )}
 
-              {/* Token info (moved from the right box) */}
+              {/* Token info row */}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {/* Token identity */}
                 <div
                   className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3"
                   style={{
@@ -1146,7 +930,7 @@ export default function JackpotPanel({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30 border border-slate-700/60 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700/60 bg-black/30 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
                         <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
                       </span>
 
@@ -1165,7 +949,6 @@ export default function JackpotPanel({
                   <p className="mt-3 text-[11px] text-slate-500">Paid in XPOT. USD is an estimate only.</p>
                 </div>
 
-                {/* Price meta */}
                 <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
                   <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
 
@@ -1180,7 +963,7 @@ export default function JackpotPanel({
                     <span>{observedLabel}</span>
                     <span className="text-slate-700">•</span>
                     <span>
-                      Source <span className="font-mono text-slate-200">{priceSource}</span>
+                      Source <span className="font-mono text-slate-200">DexScreener</span>
                     </span>
                   </div>
                 </div>
@@ -1188,9 +971,8 @@ export default function JackpotPanel({
             </div>
           </div>
 
-          {/* Compact premium telemetry strip */}
+          {/* Telemetry strip */}
           <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            {/* Pulse */}
             <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -1225,7 +1007,6 @@ export default function JackpotPanel({
               )}
             </div>
 
-            {/* 24h range */}
             <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -1254,7 +1035,6 @@ export default function JackpotPanel({
               ) : null}
             </div>
 
-            {/* Next milestone */}
             <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -1263,9 +1043,7 @@ export default function JackpotPanel({
                     {nextMilestone ? (
                       <>
                         <span className="font-mono">{rightMilestoneLabel}</span>{' '}
-                        <span className="text-[11px] text-slate-500">
-                          ({jackpotUsd != null && progressToNext != null ? `${Math.round(progressToNext * 100)}%` : '-'})
-                        </span>
+                        <span className="text-[11px] text-slate-500">({Math.round(progressToNext * 100)}%)</span>
                       </>
                     ) : (
                       '-'
@@ -1274,7 +1052,7 @@ export default function JackpotPanel({
                 </div>
 
                 <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/60 bg-black/25">
-                  <Crown className="h-4 w-4 opacity-90 text-slate-200/80" />
+                  <Crown className="h-4 w-4 text-slate-200/80" />
                 </span>
               </div>
 
@@ -1283,7 +1061,7 @@ export default function JackpotPanel({
                   <div
                     className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.12)]"
                     style={{
-                      width: `${Math.round((progressToNext ?? 0) * 100)}%`,
+                      width: `${Math.round(progressToNext * 100)}%`,
                       background: 'linear-gradient(90deg, rgba(236,72,153,0.28), rgba(124,200,255,0.60))',
                     }}
                   />
@@ -1300,11 +1078,6 @@ export default function JackpotPanel({
               </div>
             </div>
           </div>
-
-          {/* styles unchanged (your big <style jsx> block stays exactly as-is) */}
-          <style jsx>{`
-            /* (unchanged styles - keep your existing style block here) */
-          `}</style>
         </div>
 
         {/* CONTEXT STRIP */}
@@ -1335,7 +1108,7 @@ export default function JackpotPanel({
 
             <Link
               href="/hub"
-              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition"
+              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-emerald-400/20 hover:text-emerald-100"
             >
               Enter today&apos;s XPOT →
             </Link>
