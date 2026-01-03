@@ -26,19 +26,28 @@ function dayNumberFromDrawDate(drawDateUtc: Date) {
   return clamp(diffDays + 1, 1, DAY_TOTAL);
 }
 
-function normalizeStatus(status: string | null | undefined) {
+function isCompleted(status: string | null | undefined) {
   const s = (status ?? '').toLowerCase();
-  if (s === 'open') return 'OPEN';
-  if (s === 'completed') return 'COMPLETED';
-  return 'LOCKED';
+  return s === 'completed';
+}
+
+function deriveLiveStatus(now: Date, closesAt: Date, dbStatus: string | null | undefined) {
+  // Completed is authoritative
+  if (isCompleted(dbStatus)) return 'COMPLETED';
+
+  // OPEN/LOCKED is derived from time so it can never lie
+  return now.getTime() < closesAt.getTime() ? 'OPEN' : 'LOCKED';
 }
 
 export async function GET() {
   try {
-    const draw = await ensureActiveDraw(new Date());
+    const now = new Date();
+
+    const draw = await ensureActiveDraw(now);
     if (!draw.closesAt) throw new Error('Invariant violation: draw.closesAt is null');
 
     const dayNumber = dayNumberFromDrawDate(draw.drawDate);
+    const status = deriveLiveStatus(now, draw.closesAt, draw.status);
 
     return NextResponse.json(
       {
@@ -48,7 +57,7 @@ export async function GET() {
           dayTotal: DAY_TOTAL,
           drawDate: draw.drawDate.toISOString(),
           closesAt: draw.closesAt.toISOString(),
-          status: normalizeStatus(draw.status),
+          status,
         },
       },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } },
