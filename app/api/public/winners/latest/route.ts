@@ -26,9 +26,15 @@ export async function GET() {
 
     const payload = {
       id: w.id,
-      drawDate: w.draw?.drawDate ? w.draw.drawDate.toISOString() : null,
-      wallet: (w as any).walletAddress ?? null, // keep tolerant if schema differs
-      handle: (w as any)?.ticket?.wallet?.user?.xHandle ?? null,
+      drawDate: w.draw?.drawDate
+        ? w.draw.drawDate.toISOString()
+        : null,
+
+      // exists on Winner
+      wallet: (w as any).walletAddress ?? null,
+
+      // optional / tolerant fields
+      handle: (w as any).ticket?.wallet?.user?.xHandle ?? null,
       txUrl: (w as any).txUrl ?? null,
       isPaidOut: Boolean((w as any).isPaidOut ?? false),
     };
