@@ -35,7 +35,16 @@ import {
   ArrowDownRight,
   ShieldCheck,
   ExternalLink,
+  Info,
 } from 'lucide-react';
+
+// ─────────────────────────────────────────────
+// Feature flags
+// ─────────────────────────────────────────────
+
+// We are not ready yet (admin/winner pipeline still unstable)
+// This disables all Recent Winners fetching + UI.
+const ENABLE_RECENT_WINNERS = false;
 
 // ─────────────────────────────────────────────
 // Small UI helpers (darker, no white borders)
@@ -190,7 +199,6 @@ function StatusPill({
     'relative isolate inline-flex items-center gap-2 rounded-full border px-3 py-1 ' +
     'text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur-md ' +
     '[&_svg]:text-current ' +
-    // force crisp text (prevents “grey/disabled” look in Safari)
     'text-opacity-100 opacity-100 ' +
     '[text-shadow:0_1px_0_rgba(0,0,0,0.75)] ' +
     'drop-shadow-[0_1px_0_rgba(0,0,0,0.65)]';
@@ -208,18 +216,12 @@ function StatusPill({
       : tone === 'amber'
       ? [
           'border-amber-200/80',
-
-          // TEXT MUST BE WHITE
           'text-white',
           '[&_svg]:text-white',
           '[text-shadow:0_1px_0_rgba(0,0,0,0.75)]',
-
-          // gold shell only
           'bg-[linear-gradient(180deg,rgba(255,214,102,0.72),rgba(251,191,36,0.42),rgba(245,158,11,0.22),rgba(2,6,23,0.70))]',
           'shadow-[0_0_0_1px_rgba(251,191,36,0.38),0_26px_140px_rgba(251,191,36,0.20)]',
           'ring-1 ring-amber-300/18',
-
-          // highlight + sheen
           'before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:opacity-95',
           'before:bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.26),transparent_56%)]',
           'after:absolute after:inset-0 after:rounded-full after:pointer-events-none after:opacity-60',
@@ -474,7 +476,9 @@ function useBonusUpcoming() {
 
 function playChime() {
   try {
-    const AudioCtx = (window.AudioContext || (window as any).webkitmlxAudioContext || (window as any).webkitAudioContext) as any;
+    const AudioCtx = (window.AudioContext ||
+      (window as any).webkitmlxAudioContext ||
+      (window as any).webkitAudioContext) as any;
     if (!AudioCtx) return;
 
     const ctx = new AudioCtx();
@@ -647,15 +651,6 @@ type Entry = {
   walletAddress: string;
 };
 
-type RecentWinner = {
-  id: string;
-  drawDate: string;
-  ticketCode: string;
-  jackpotUsd: number;
-  walletAddress: string;
-  handle?: string | null;
-};
-
 type Mission = { title: string; desc: string; ymd?: string };
 type Streak = { days: number; todayDone: boolean; lastDoneYmd?: string | null };
 
@@ -805,9 +800,7 @@ function DashboardInner() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
-  const [loadingWinners, setLoadingWinners] = useState(false);
-  const [winnersError, setWinnersError] = useState<string | null>(null);
+  // Winners disabled (feature-flag)
   const [countdown, setCountdown] = useState('00:00:00');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncPulse, setSyncPulse] = useState(0);
@@ -973,25 +966,6 @@ function DashboardInner() {
     return raw.map(normalizeEntry).filter(Boolean) as Entry[];
   }, []);
 
-  const fetchRecentWinners = useCallback(async () => {
-    const res = await fetch('/api/winners/recent?limit=5', { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to load recent winners');
-    const data = await res.json().catch(() => ({} as any));
-
-    const winners: RecentWinner[] = Array.isArray((data as any).winners)
-      ? (data as any).winners.map((w: any) => ({
-          id: String(w?.id ?? ''),
-          drawDate: String(w?.drawDate ?? ''),
-          ticketCode: String(w?.ticketCode ?? ''),
-          jackpotUsd: Number(w?.jackpotUsd ?? 0),
-          walletAddress: String(w?.walletAddress ?? ''),
-          handle: w?.handle ?? null,
-        }))
-      : [];
-
-    return winners.filter(w => w.id && w.ticketCode);
-  }, []);
-
   const lastBalanceFetchAtRef = useRef<number>(0);
   const BALANCE_MIN_INTERVAL_MS = 30_000;
 
@@ -1008,13 +982,10 @@ function DashboardInner() {
         if (reason === 'initial') {
           setLoadingTickets(true);
           setTicketsError(null);
-          setLoadingWinners(true);
-          setWinnersError(null);
         }
 
-        const [nextTickets, nextWinners] = await Promise.all([fetchTicketsToday(), fetchRecentWinners()]);
+        const nextTickets = await fetchTicketsToday();
         setEntries(nextTickets);
-        setRecentWinners(nextWinners);
 
         if (walletConnected && addr) {
           const now = Date.now();
@@ -1059,14 +1030,12 @@ function DashboardInner() {
       } catch (e) {
         console.error('[XPOT] refreshAll error', e);
         setTicketsError((e as Error).message ?? 'Failed to load tickets');
-        setWinnersError((e as Error).message ?? 'Failed to load recent winners');
       } finally {
         setLoadingTickets(false);
-        setLoadingWinners(false);
         refreshingRef.current = false;
       }
     },
-    [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchRecentWinners, fetchXpotBalance, fetchHistory],
+    [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchXpotBalance, fetchHistory],
   );
 
   // Initial load + polling
@@ -1075,10 +1044,6 @@ function DashboardInner() {
       setEntries([]);
       setLoadingTickets(false);
       setTicketsError(null);
-
-      setRecentWinners([]);
-      setLoadingWinners(false);
-      setWinnersError(null);
 
       setHistoryEntries([]);
       setHistoryError(null);
@@ -2018,62 +1983,30 @@ function DashboardInner() {
                 )}
               </LuxeCard>
 
-              <LuxeCard accent="sky">
-                <LuxeTitle
-                  title="Recent winners"
-                  subtitle="Latest completed draws across all holders."
-                  right={
-                    <StatusPill tone="emerald">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Live
-                    </StatusPill>
-                  }
-                />
+              {/* Recent winners - intentionally disabled until admin is stable */}
+              {ENABLE_RECENT_WINNERS ? null : (
+                <LuxeCard accent="sky">
+                  <LuxeTitle
+                    title="Recent winners"
+                    subtitle="Coming soon. Winner proofs go live when the admin pipeline is stable."
+                    right={<StatusPill tone="slate">Soon</StatusPill>}
+                  />
 
-                <div className="mt-4 space-y-2">
-                  {loadingWinners ? (
-                    <p className="text-xs text-slate-200/65">Loading…</p>
-                  ) : winnersError ? (
-                    <p className="text-xs xpot-gold-text">{winnersError}</p>
-                  ) : recentWinners.length === 0 ? (
-                    <p className="text-xs text-slate-200/65">No completed draws yet.</p>
-                  ) : (
-                    recentWinners.map(w => {
-                      const h = w.handle ? w.handle.replace(/^@/, '') : null;
-                      return (
-                        <div key={w.id} className={`rounded-2xl ${SURFACE_INNER} px-4 py-3`}>
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-slate-200/65">{formatDate(w.drawDate)}</p>
-                            {h ? (
-                              <StatusPill tone="sky">
-                                <X className="h-3.5 w-3.5" />
-                                @{h}
-                              </StatusPill>
-                            ) : (
-                              <StatusPill tone="slate">wallet</StatusPill>
-                            )}
-                          </div>
-
-                          <div className="mt-3 flex items-center gap-3">
-                            <div
-                              className={`flex h-9 w-9 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45 text-sm font-semibold text-slate-100`}
-                            >
-                              {initialFromHandle(h)}
-                            </div>
-
-                            <div className="min-w-0">
-                              <p className="truncate font-mono text-sm text-slate-100">{w.ticketCode}</p>
-                              <p className="mt-1 text-xs text-slate-200/65">
-                                {h ? `@${h}` : shortWallet(w.walletAddress)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </LuxeCard>
+                  <div className={`mt-4 rounded-[24px] ${SURFACE_INNER} p-4`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45`}>
+                        <Info className="h-4 w-4 text-slate-200/75" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-100">Winners feed is paused</p>
+                        <p className="mt-1 text-xs text-slate-200/65">
+                          We are finishing the draw automation and admin verification. This will reappear automatically once ready.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </LuxeCard>
+              )}
 
               <LuxeCard accent="neutral">
                 <LuxeTitle
