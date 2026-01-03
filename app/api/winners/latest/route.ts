@@ -13,7 +13,7 @@ type LatestWinnerPayload = {
     drawDate: string | null;
     wallet: string | null;
 
-    // Keep the field name "amount" if your homepage already expects it
+    // keep this key name stable for the homepage
     amount: number;
 
     handle: string | null;
@@ -61,10 +61,10 @@ export async function GET() {
           w.draw?.drawDate instanceof Date ? w.draw.drawDate.toISOString() : null,
         wallet: w.walletAddress ?? null,
 
-        // ✅ Winner has no amount field in your schema, so we provide the protocol constant
+        // ✅ Winner model has no `amount` field in your schema
         amount: DAILY_XPOT,
 
-        // ✅ Matches your User model fields
+        // ✅ These exist in your User model
         handle: user?.xHandle ?? null,
         name: user?.xName ?? null,
         avatarUrl: user?.xAvatarUrl ?? null,
