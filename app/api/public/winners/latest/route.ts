@@ -3,11 +3,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Keep homepage stable (Winner model does NOT have "amount" in your schema)
 const DAILY_XPOT = 1_000_000;
 
-type LatestWinnerPayload = {
+type LatestWinnerOkPayload = {
   ok: true;
   winner: {
     id: string;
@@ -30,6 +31,13 @@ type LatestWinnerPayload = {
   } | null;
 };
 
+type LatestWinnerErrPayload = {
+  ok: false;
+  error: string;
+};
+
+type LatestWinnerPayload = LatestWinnerOkPayload | LatestWinnerErrPayload;
+
 export async function GET() {
   try {
     const w = await prisma.winner.findFirst({
@@ -39,9 +47,7 @@ export async function GET() {
         ticket: {
           include: {
             wallet: {
-              include: {
-                user: true,
-              },
+              include: { user: true },
             },
           },
         },
@@ -53,14 +59,14 @@ export async function GET() {
       return NextResponse.json(payload, { status: 200 });
     }
 
-    const user = w.ticket?.wallet?.user;
+    const user = w.ticket.wallet.user;
 
     const payload: LatestWinnerPayload = {
       ok: true,
       winner: {
         id: w.id,
-        drawDate: w.draw?.drawDate ? w.draw.drawDate.toISOString() : null,
-        wallet: w.walletAddress ?? w.ticket?.walletAddress ?? w.ticket?.wallet?.address ?? null,
+        drawDate: w.draw.drawDate ? w.draw.drawDate.toISOString() : null,
+        wallet: w.walletAddress ?? w.ticket.walletAddress ?? w.ticket.wallet.address ?? null,
 
         amountXpot: DAILY_XPOT,
 
@@ -73,7 +79,7 @@ export async function GET() {
 
         jackpotUsd: Number(w.jackpotUsd ?? 0),
         payoutUsd: Number(w.payoutUsd ?? 0),
-        kind: (w.kind as any) ?? null,
+        kind: (w.kind as 'MAIN' | 'BONUS') ?? null,
         label: w.label ?? null,
       },
     };
@@ -81,9 +87,10 @@ export async function GET() {
     return NextResponse.json(payload, { status: 200 });
   } catch (err: any) {
     console.error('GET /api/public/winners/latest error', err);
-    return NextResponse.json(
-      { ok: false, error: err?.message ?? 'Unknown error' },
-      { status: 500 }
-    );
+    const payload: LatestWinnerPayload = {
+      ok: false,
+      error: err?.message ?? 'Unknown error',
+    };
+    return NextResponse.json(payload, { status: 500 });
   }
 }
