@@ -1,9 +1,14 @@
 // components/JackpotPanel/utils.ts
+import { XPOT_POOL_SIZE } from '@/lib/xpot';
+
+export const JACKPOT_XPOT = XPOT_POOL_SIZE;
+
 export const PRICE_POLL_MS = 4000; // 4s
 
 export const RANGE_SAMPLE_MS = 10_000; // 10s
 export const RANGE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 export const RANGE_STORAGE_KEY = 'xpot_price_samples_24h_v1';
+export const RANGE_MAX_SAMPLES = Math.ceil(RANGE_WINDOW_MS / RANGE_SAMPLE_MS) + 120;
 
 export const SPARK_WINDOW_MS = 60 * 60 * 1000; // 1h
 export const SPARK_MAX_POINTS = 80;
