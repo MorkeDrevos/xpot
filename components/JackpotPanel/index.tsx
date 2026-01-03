@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
 
 import XpotLogo from '@/components/XpotLogo';
+import { TOKEN_MINT } from '@/lib/xpot';
 
 import type { JackpotPanelProps } from './types';
 import {
@@ -92,14 +93,11 @@ export default function JackpotPanel({
   badgeTooltip,
   layout = 'auto',
 }: JackpotPanelProps) {
-  // ✅ FIXED: correct property name
-  const {
-    priceUsd,
-    momentumGlobalH1,
-    isLoading,
-    hadError,
-    justUpdated,
-  } = useDexScreenerPrice();
+  // ✅ FIX: your hook requires 2 args (mint + poll interval)
+  const { priceUsd, momentumGlobalH1, isLoading, hadError, justUpdated } = useDexScreenerPrice(
+    TOKEN_MINT,
+    PRICE_POLL_MS,
+  );
 
   const { mounted, countdownMs, countPulse } = useMadridCountdown();
 
@@ -168,30 +166,20 @@ export default function JackpotPanel({
     }
   }, [jackpotUsd, registerJackpotUsdForSessionPeak]);
 
-  const showUnavailable =
-    !isLoading && (jackpotUsd == null || hadError || priceUsd == null);
+  const showUnavailable = !isLoading && (jackpotUsd == null || hadError || priceUsd == null);
 
   const displayUsdText =
-    smoothJackpotUsd == null || !Number.isFinite(smoothJackpotUsd)
-      ? '-'
-      : formatUsd(smoothJackpotUsd);
+    smoothJackpotUsd == null || !Number.isFinite(smoothJackpotUsd) ? '-' : formatUsd(smoothJackpotUsd);
 
   const observedLabel =
-    coverageMs >= 24 * 60 * 60 * 1000
-      ? 'Observed: 24h'
-      : `Observed: ${formatCoverage(coverageMs)}`;
+    coverageMs >= 24 * 60 * 60 * 1000 ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
 
   const localSparkLabel =
-    sparkCoverageMs >= SPARK_WINDOW_MS
-      ? 'Local ticks: 1h'
-      : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
+    sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
 
   const globalMomentumText =
-    momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1)
-      ? '-'
-      : `${momentumGlobalH1.toFixed(2)}%`;
+    momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '-' : `${momentumGlobalH1.toFixed(2)}%`;
 
-  // Milestones still computed here, but you can move to utils if you already did.
   const MILESTONES = useMemo(
     () => [
       5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
