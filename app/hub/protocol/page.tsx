@@ -403,18 +403,21 @@ function XpotAmount({ amount }: { amount: number }) {
       <span
         className="
           font-mono tracking-[0.18em] text-lg sm:text-xl
-          bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400
+          bg-gradient-to-r from-[#FFE6A6] via-[#FFD35A] to-[#FFB800]
           bg-clip-text text-transparent
-          drop-shadow-[0_0_22px_rgba(255,215,128,0.55)]
+          drop-shadow-[0_0_28px_rgba(255,210,90,0.70)]
+          [text-shadow:0_0_18px_rgba(255,210,90,0.45)]
         "
       >
         {text}
       </span>
+
       <span
         className="
           font-semibold tracking-[0.14em]
-          text-amber-200
-          drop-shadow-[0_0_10px_rgba(255,215,128,0.35)]
+          text-[#FFD35A]
+          drop-shadow-[0_0_18px_rgba(255,210,90,0.55)]
+          [text-shadow:0_0_14px_rgba(255,210,90,0.35)]
         "
       >
         XPOT
