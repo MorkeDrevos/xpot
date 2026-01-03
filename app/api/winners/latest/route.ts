@@ -1,30 +1,8 @@
-// app/public/winners/latest/route.ts
+// app/api/winners/latest/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
-
-type LatestWinnerPayload = {
-  ok: true;
-  winner: {
-    id: string;
-    drawDate: string | null;
-    wallet: string | null;
-
-    // UI-friendly daily amount (protocol constant)
-    amountXpot: number;
-
-    handle: string | null;
-    name: string | null;
-    avatarUrl: string | null;
-
-    txUrl: string | null;
-    isPaidOut: boolean;
-
-    jackpotUsd: number;
-    payoutUsd: number;
-  } | null;
-};
 
 const DAILY_XPOT = 1_000_000;
 
@@ -46,42 +24,35 @@ export async function GET() {
       },
     });
 
-    if (!w) {
-      const payload: LatestWinnerPayload = { ok: true, winner: null };
-      return NextResponse.json(payload, { status: 200 });
-    }
-
-    const drawDate =
-      w.draw?.drawDate instanceof Date ? w.draw.drawDate.toISOString() : null;
+    if (!w) return NextResponse.json({ ok: true, winner: null }, { status: 200 });
 
     const user = w.ticket?.wallet?.user ?? null;
 
-    const payload: LatestWinnerPayload = {
-      ok: true,
-      winner: {
-        id: w.id,
-        drawDate,
-        wallet: w.walletAddress ?? null,
+    return NextResponse.json(
+      {
+        ok: true,
+        winner: {
+          id: w.id,
+          drawDate:
+            w.draw?.drawDate instanceof Date ? w.draw.drawDate.toISOString() : null,
+          wallet: w.walletAddress ?? null,
 
-        // Winner model has no "amount" in your schema, so we provide protocol constant
-        amountXpot: DAILY_XPOT,
+          amountXpot: DAILY_XPOT,
 
-        // Your schema fields:
-        handle: user?.xHandle ?? null,
-        name: user?.xName ?? null,
-        avatarUrl: user?.xAvatarUrl ?? null,
+          handle: user?.xHandle ?? null,
+          name: user?.xName ?? null,
+          avatarUrl: user?.xAvatarUrl ?? null,
 
-        txUrl: w.txUrl ?? null,
-        isPaidOut: w.isPaidOut,
-
-        jackpotUsd: Number(w.jackpotUsd ?? 0),
-        payoutUsd: Number(w.payoutUsd ?? 0),
+          txUrl: w.txUrl ?? null,
+          isPaidOut: w.isPaidOut,
+          jackpotUsd: Number(w.jackpotUsd ?? 0),
+          payoutUsd: Number(w.payoutUsd ?? 0),
+        },
       },
-    };
-
-    return NextResponse.json(payload, { status: 200 });
+      { status: 200 },
+    );
   } catch (err: any) {
-    console.error('GET /public/winners/latest error', err);
+    console.error('GET /api/winners/latest error', err);
     return NextResponse.json(
       { ok: false, error: err?.message || 'INTERNAL_ERROR' },
       { status: 500 },
