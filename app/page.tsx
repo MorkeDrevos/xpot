@@ -1,7 +1,7 @@
 // app/page.tsx
-'use client';
+import HomePageClient from './_home/HomePageClient';
 
-import HomePageClient from '@/components/home/HomePageClient';
+export const dynamic = 'force-dynamic';
 
 export default function Page() {
   return <HomePageClient />;
