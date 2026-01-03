@@ -403,8 +403,10 @@ function XpotAmount({ amount }: { amount: number }) {
   const text = Number.isFinite(n) ? n.toLocaleString() : '—';
   return (
     <span className="inline-flex items-baseline gap-3">
-      <span className="font-mono text-amber-200 tracking-[0.18em] text-lg sm:text-xl">{text}</span>
-      <span className="text-slate-400 font-semibold tracking-[0.14em]">XPOT</span>
+      <span className="font-mono text-amber-300 tracking-[0.18em] text-lg sm:text-xl drop-shadow-[0_0_12px_rgba(251,191,36,0.20)]">
+  {text}
+</span>
+      <span className="text-slate-300/80 font-semibold tracking-[0.14em]">XPOT</span>
     </span>
   );
 }
