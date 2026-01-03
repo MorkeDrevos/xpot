@@ -1,7 +1,32 @@
+// app/public/winners/latest/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
+
+const DAILY_XPOT = 1_000_000;
+
+type LatestWinnerPayload = {
+  ok: true;
+  winner: {
+    id: string;
+    drawDate: string | null;
+    wallet: string | null;
+
+    // homepage expects this key
+    amount: number;
+
+    handle: string | null;
+    name: string | null;
+    avatarUrl: string | null;
+
+    txUrl: string | null;
+    isPaidOut: boolean;
+
+    jackpotUsd: number;
+    payoutUsd: number;
+  } | null;
+};
 
 export async function GET() {
   try {
@@ -12,30 +37,54 @@ export async function GET() {
         ticket: {
           include: {
             wallet: {
-              include: { user: true },
+              include: {
+                user: true,
+              },
             },
           },
         },
       },
     });
 
-    if (!w) return NextResponse.json({ ok: true, winner: null }, { status: 200 });
+    if (!w) {
+      return NextResponse.json({ ok: true, winner: null }, { status: 200 });
+    }
 
-    const payload = {
-      id: w.id,
-      drawDate: w.draw.drawDate.toISOString(),
-      wallet: w.walletAddress ?? null,
-      amount: (w.amount ?? null) as number | null, // if your schema differs, it will just be null
-      handle: w.ticket?.wallet?.user?.xHandle ?? null,
-      name: w.ticket?.wallet?.user?.name ?? null,
-      avatarUrl: w.ticket?.wallet?.user?.avatarUrl ?? null,
-      txUrl: (w.txUrl ?? null) as string | null,
-      isPaidOut: Boolean((w as any).isPaidOut ?? false),
-    };
+    const user = w.ticket?.wallet?.user ?? null;
 
-    return NextResponse.json({ ok: true, winner: payload }, { status: 200 });
+    return NextResponse.json(
+      {
+        ok: true,
+        winner: {
+          id: w.id,
+          drawDate:
+            w.draw?.drawDate instanceof Date
+              ? w.draw.drawDate.toISOString()
+              : null,
+          wallet: w.walletAddress ?? null,
+
+          // IMPORTANT: Winner model has NO amount field
+          amount: DAILY_XPOT,
+
+          // Prisma User fields (confirmed from your schema)
+          handle: user?.xHandle ?? null,
+          name: user?.xName ?? null,
+          avatarUrl: user?.xAvatarUrl ?? null,
+
+          txUrl: w.txUrl ?? null,
+          isPaidOut: w.isPaidOut,
+
+          jackpotUsd: Number(w.jackpotUsd ?? 0),
+          payoutUsd: Number(w.payoutUsd ?? 0),
+        },
+      },
+      { status: 200 },
+    );
   } catch (err: any) {
-    console.error('GET /api/public/winners/latest error', err);
-    return NextResponse.json({ ok: false, winner: null }, { status: 200 });
+    console.error('GET /public/winners/latest error', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
+      { status: 500 },
+    );
   }
 }
