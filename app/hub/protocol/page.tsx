@@ -324,6 +324,90 @@ function SkeletonLine({ w = 'w-24' }: { w?: string }) {
   );
 }
 
+/**
+ * Normalize live draw payloads so Main XPOT matches the rest of the site even if
+ * /api/draw/live returns slightly different shapes across deployments.
+ */
+function normalizeLiveDraw(payload: any): LiveDraw | null {
+  const root = payload?.draw ?? payload?.live ?? payload?.data ?? payload;
+
+  if (!root || typeof root !== 'object') return null;
+
+  const closesAtRaw =
+    root.closesAt ??
+    root.closeAt ??
+    root.cutoffAt ??
+    root.endsAt ??
+    root.entryClosesAt ??
+    null;
+
+  const statusRaw =
+    root.status ??
+    root.state ??
+    root.drawStatus ??
+    null;
+
+  const jackpotRaw =
+    root.jackpotXpot ??
+    root.jackpot ??
+    root.amountXpot ??
+    root.dailyXpot ??
+    root.poolXpot ??
+    root.rewardXpot ??
+    null;
+
+  const closesAt = typeof closesAtRaw === 'string' ? closesAtRaw : '';
+  const closesAtMs = closesAt ? new Date(closesAt).getTime() : NaN;
+
+  const jackpotXpot = Number(jackpotRaw);
+  const jackpotUsd = Number(root.jackpotUsd);
+
+  // If API doesn't provide status, derive it from closesAt (same philosophy as homepage).
+  let status: LiveDraw['status'] = 'LOCKED';
+  if (typeof statusRaw === 'string') {
+    const s = statusRaw.toUpperCase();
+    if (s === 'OPEN' || s === 'LOCKED' || s === 'DRAWING' || s === 'COMPLETED') status = s;
+  } else if (Number.isFinite(closesAtMs)) {
+    status = Date.now() < closesAtMs ? 'OPEN' : 'LOCKED';
+  }
+
+  // If closesAt is invalid, we still return a draw if jackpot is valid - but countdown will show —
+  const safeClosesAt = Number.isFinite(closesAtMs) ? new Date(closesAtMs).toISOString() : '';
+
+  const hasMeaningful =
+    Number.isFinite(jackpotXpot) ||
+    Boolean(safeClosesAt) ||
+    Boolean(status);
+
+  if (!hasMeaningful) return null;
+
+  return {
+    jackpotXpot: Number.isFinite(jackpotXpot) ? jackpotXpot : 0,
+    jackpotUsd: Number.isFinite(jackpotUsd) ? jackpotUsd : undefined,
+    closesAt: safeClosesAt,
+    status,
+  };
+}
+
+function normalizeBonus(payload: any): BonusXPOT[] {
+  const arr = payload?.bonus ?? payload?.items ?? payload?.data ?? payload;
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((b: any) => {
+      const id = String(b?.id ?? b?._id ?? '');
+      const amountXpot = Number(b?.amountXpot ?? b?.amount ?? b?.xpot ?? 0);
+      const scheduledAt = String(b?.scheduledAt ?? b?.at ?? b?.time ?? '');
+      const statusRaw = String(b?.status ?? 'UPCOMING').toUpperCase();
+      const status =
+        statusRaw === 'CLAIMED' || statusRaw === 'CANCELLED' ? statusRaw : 'UPCOMING';
+      const label = typeof b?.label === 'string' ? b.label : undefined;
+
+      if (!id) return null;
+      return { id, amountXpot, scheduledAt, status, label } as BonusXPOT;
+    })
+    .filter(Boolean) as BonusXPOT[];
+}
+
 export default function HubProtocolPage() {
   const reduceMotion = useReducedMotion();
 
@@ -399,13 +483,16 @@ export default function HubProtocolPage() {
 
       setLiveLatencyMs(Math.round(t1 - t0));
 
-      const d = await dRes.json().catch(() => ({}));
-      const b = await bRes.json().catch(() => ({}));
+      const dJson = await dRes.json().catch(() => ({}));
+      const bJson = await bRes.json().catch(() => ({}));
 
       if (req !== liveReqId.current) return;
 
-      setDraw(d?.draw ?? null);
-      setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
+      const nextDraw = normalizeLiveDraw(dJson);
+      const nextBonus = normalizeBonus(bJson);
+
+      setDraw(nextDraw);
+      setBonus(nextBonus);
     } catch {
       if (req !== liveReqId.current) return;
       setError('Failed to load live data. Please refresh.');
@@ -455,12 +542,9 @@ export default function HubProtocolPage() {
         const nextPx = Number(next?.priceUsd);
         const nextVol = Number(next?.volume24hUsd);
 
-        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp)
-          setLpKey((k) => k + 1);
-        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx)
-          setPxKey((k) => k + 1);
-        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol)
-          setVolKey((k) => k + 1);
+        if (Number.isFinite(prevLp) && Number.isFinite(nextLp) && prevLp !== nextLp) setLpKey((k) => k + 1);
+        if (Number.isFinite(prevPx) && Number.isFinite(nextPx) && prevPx !== nextPx) setPxKey((k) => k + 1);
+        if (Number.isFinite(prevVol) && Number.isFinite(nextVol) && prevVol !== nextVol) setVolKey((k) => k + 1);
 
         return next;
       });
@@ -509,9 +593,6 @@ export default function HubProtocolPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const liveIsOpen = draw?.status === 'OPEN';
-  const isRefreshing = liveFetching || protoFetching;
-
   const closesAtMs = useMemo(() => {
     const iso = draw?.closesAt;
     if (!iso) return null;
@@ -524,12 +605,24 @@ export default function HubProtocolPage() {
     return closesAtMs - now;
   }, [closesAtMs, now]);
 
-  // Production-grade: if API says OPEN but close time has passed, treat as locked UI-side
+  // Homepage-style safety: if API says OPEN but close time has passed, treat as locked UI-side
   const effectiveStatus = useMemo<LiveDraw['status'] | null>(() => {
     if (!draw) return null;
-    if (draw.status === 'OPEN' && typeof closesInMs === 'number' && closesInMs <= 0) return 'LOCKED';
-    return draw.status;
+
+    const st = draw.status;
+    if (st === 'OPEN' && typeof closesInMs === 'number' && closesInMs <= 0) return 'LOCKED';
+
+    // If status is missing/weird, derive from time (same philosophy as rest of site)
+    if (st !== 'OPEN' && st !== 'LOCKED' && st !== 'DRAWING' && st !== 'COMPLETED') {
+      if (typeof closesInMs === 'number') return closesInMs > 0 ? 'OPEN' : 'LOCKED';
+      return 'LOCKED';
+    }
+
+    return st;
   }, [draw, closesInMs]);
+
+  const liveIsOpen = effectiveStatus === 'OPEN';
+  const isRefreshing = liveFetching || protoFetching;
 
   const closesIn = useMemo(() => {
     if (typeof closesInMs !== 'number') return '—';
@@ -841,49 +934,7 @@ export default function HubProtocolPage() {
           ) : null}
         </motion.section>
 
-        {/* LIVE MARKET PANELS */}
-        <section className="grid gap-6 lg:grid-cols-2">
-          <PremiumPanel
-            title="Liquidity"
-            subtitle="LP integrity and stability signals."
-            icon={<Waves className="h-5 w-5 text-sky-300" />}
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)} />
-              <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
-            </div>
-
-            <div className="mt-5">
-              <GraphBlock title="LP micro-trend" badge="Live" spark={<Sparkline samples={lpSamples} height={44} />} />
-            </div>
-          </PremiumPanel>
-
-          <PremiumPanel
-            title="Market"
-            subtitle="Reference price and volume behaviour."
-            icon={<Activity className="h-5 w-5 text-emerald-300" />}
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SoftKpi label="Price" value={protoLoading ? 'Loading…' : fmtUsd(proto?.priceUsd, 6)} />
-              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)} />
-            </div>
-
-            <div className="mt-5 space-y-3">
-              <GraphBlock
-                title="Price micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={priceSamples} height={44} />}
-              />
-              <GraphBlock
-                title="Volume micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={volSamples} height={44} />}
-              />
-            </div>
-          </PremiumPanel>
-        </section>
-
-        {/* MAIN XPOT (MOVED TO BOTTOM) */}
+        {/* MAIN XPOT */}
         <motion.section
           initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
           animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
@@ -951,7 +1002,7 @@ export default function HubProtocolPage() {
           </div>
         </motion.section>
 
-        {/* BONUS XPOTS (MOVED TO BOTTOM) */}
+        {/* BONUS XPOTS */}
         <section className="rounded-[36px] border border-white/10 bg-white/[0.02] px-6 py-6 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -1015,6 +1066,48 @@ export default function HubProtocolPage() {
               ))
             )}
           </div>
+        </section>
+
+        {/* LIVE MARKET PANELS */}
+        <section className="grid gap-6 lg:grid-cols-2">
+          <PremiumPanel
+            title="Liquidity"
+            subtitle="LP integrity and stability signals."
+            icon={<Waves className="h-5 w-5 text-sky-300" />}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SoftKpi label="Total LP" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.lpUsd)} />
+              <SoftKpi label="24h change" value={protoLoading ? 'Loading…' : fmtPct(proto?.lpChange24hPct)} />
+            </div>
+
+            <div className="mt-5">
+              <GraphBlock title="LP micro-trend" badge="Live" spark={<Sparkline samples={lpSamples} height={44} />} />
+            </div>
+          </PremiumPanel>
+
+          <PremiumPanel
+            title="Market"
+            subtitle="Reference price and volume behaviour."
+            icon={<Activity className="h-5 w-5 text-emerald-300" />}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SoftKpi label="Price" value={protoLoading ? 'Loading…' : fmtUsd(proto?.priceUsd, 6)} />
+              <SoftKpi label="Volume (24h)" value={protoLoading ? 'Loading…' : fmtUsdCompact(proto?.volume24hUsd)} />
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <GraphBlock
+                title="Price micro-trend"
+                badge="Live"
+                spark={<Sparkline samples={priceSamples} height={44} />}
+              />
+              <GraphBlock
+                title="Volume micro-trend"
+                badge="Live"
+                spark={<Sparkline samples={volSamples} height={44} />}
+              />
+            </div>
+          </PremiumPanel>
         </section>
       </section>
     </XpotPageShell>
