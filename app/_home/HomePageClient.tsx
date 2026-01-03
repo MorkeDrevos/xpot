@@ -928,12 +928,34 @@ function useLatestEntriesTelemetry() {
   return entries;
 }
 
-function Avatar({ src, label, size = 34 }: { src?: string | null; label: string; size?: number }) {
+function Avatar({
+  src,
+  label,
+  size = 34,
+}: {
+  src?: string | null;
+  label: string; // usually "@handle"
+  size?: number;
+}) {
+  const handle = useMemo(() => (label || '').replace(/^@/, '').trim(), [label]);
+
+  // If API doesn't give avatarUrl, resolve from handle (no X API key needed)
+  const resolvedSrc = useMemo(() => {
+    if (src) return src;
+    if (!handle) return null;
+
+    // refresh occasionally but avoid spamming
+    const cacheKey = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // every 6h
+    return `https://unavatar.io/twitter/${encodeURIComponent(handle)}?cache=${cacheKey}`;
+  }, [src, handle]);
+
+  const [failed, setFailed] = useState(false);
+
   const initials = useMemo(() => {
-    const s = (label || '').replace(/^@/, '').trim();
+    const s = handle || '';
     if (!s) return 'X';
     return s.slice(0, 2).toUpperCase();
-  }, [label]);
+  }, [handle]);
 
   return (
     <div
@@ -941,20 +963,30 @@ function Avatar({ src, label, size = 34 }: { src?: string | null; label: string;
       style={{ width: size, height: size }}
       title={label}
     >
-      {src ? (
+      {resolvedSrc && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={label} className="h-full w-full object-cover" />
+        <img
+          src={resolvedSrc}
+          alt={label}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center font-mono text-[12px] text-slate-200">
           {initials}
         </div>
       )}
+
       <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
     </div>
   );
 }
 
 function EnteringTheStage({ entries }: { entries: EntryRow[] }) {
+  const safeEntries = Array.isArray(entries) ? entries : [];
+
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
       <div className="flex items-center justify-between gap-3 px-4 py-3">
@@ -970,18 +1002,22 @@ function EnteringTheStage({ entries }: { entries: EntryRow[] }) {
       </div>
 
       <div className="px-4 pb-4">
-        {entries && entries.length > 0 ? (
+        {safeEntries.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
-            {entries.slice(0, 18).map(e => {
-              const key = `${e.id ?? ''}_${e.handle}_${e.createdAt ?? ''}`;
+            {safeEntries.slice(0, 18).map((e, idx) => {
+              const handle = (e?.handle || '').trim() || '@unknown';
+              const createdAt = e?.createdAt || '';
+              const key = e?.id ? String(e.id) : `${handle}-${createdAt}-${idx}`;
+
               return (
                 <div
                   key={key}
                   className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-1"
+                  title={createdAt ? `${handle} • ${createdAt}` : handle}
                 >
-                  <Avatar src={e.avatarUrl} label={e.handle} size={28} />
-                  <span className="max-w-[120px] truncate text-[12px] text-slate-200">{e.handle}</span>
-                  {e.verified ? <BadgeCheck className="h-4 w-4 text-sky-300/90" /> : null}
+                  <Avatar src={e?.avatarUrl} label={handle} size={28} />
+                  <span className="max-w-[120px] truncate text-[12px] text-slate-200">{handle}</span>
+                  {e?.verified ? <BadgeCheck className="h-4 w-4 text-sky-300/90" /> : null}
                 </div>
               );
             })}
