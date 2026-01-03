@@ -8,11 +8,10 @@ type LatestWinnerPayload = {
   ok: true;
   winner: {
     id: string;
-    drawDate: string | null; // ISO
+    drawDate: string | null;
     wallet: string | null;
-    amount: number | null;
+    amount: number;
     handle: string | null;
-    name: string | null;
     avatarUrl: string | null;
     txUrl: string | null;
     isPaidOut: boolean;
@@ -22,14 +21,14 @@ type LatestWinnerPayload = {
 export async function GET() {
   try {
     const w = await prisma.winner.findFirst({
-      orderBy: { date: 'desc' }, // your canonical winner timestamp
+      orderBy: { date: 'desc' },
       include: {
         draw: true,
         ticket: {
           include: {
             wallet: {
               include: {
-                user: true, // xHandle, name, avatar, etc.
+                user: true, // has xHandle, avatarUrl
               },
             },
           },
@@ -42,29 +41,24 @@ export async function GET() {
       return NextResponse.json(payload, { status: 200 });
     }
 
-    // IMPORTANT:
-    // Your schema may or may not have these fields on winner.
-    // So we read safely with `any` and fall back cleanly.
+    // DO NOT ASSUME OPTIONAL COLUMNS
     const anyW = w as any;
 
-    const drawDateISO =
-      w.draw?.drawDate instanceof Date ? w.draw.drawDate.toISOString() : null;
+    const drawDate =
+      w.draw?.drawDate instanceof Date
+        ? w.draw.drawDate.toISOString()
+        : null;
 
     const wallet =
       (anyW.walletAddress as string | null | undefined) ??
       (w.ticket?.wallet?.address as string | null | undefined) ??
       null;
 
-    const amount =
-      typeof anyW.amount === 'number' && Number.isFinite(anyW.amount)
-        ? (anyW.amount as number)
-        : 1_000_000;
+    // XPOT daily draw fallback
+    const amount = 1_000_000;
 
     const handle =
       (w.ticket?.wallet?.user?.xHandle as string | null | undefined) ?? null;
-
-    const name =
-      (w.ticket?.wallet?.user?.name as string | null | undefined) ?? null;
 
     const avatarUrl =
       (w.ticket?.wallet?.user?.avatarUrl as string | null | undefined) ?? null;
@@ -76,18 +70,17 @@ export async function GET() {
 
     const isPaidOut =
       typeof anyW.isPaidOut === 'boolean'
-        ? (anyW.isPaidOut as boolean)
+        ? anyW.isPaidOut
         : Boolean(txUrl);
 
     const payload: LatestWinnerPayload = {
       ok: true,
       winner: {
         id: w.id,
-        drawDate: drawDateISO,
+        drawDate,
         wallet,
         amount,
         handle,
-        name,
         avatarUrl,
         txUrl,
         isPaidOut,
@@ -96,7 +89,7 @@ export async function GET() {
 
     return NextResponse.json(payload, { status: 200 });
   } catch (err: any) {
-    console.error('GET /app/public/winners/latest error', err);
+    console.error('GET /api/public/winners/latest error', err);
     return NextResponse.json(
       { ok: false, error: err?.message || 'INTERNAL_ERROR' },
       { status: 500 },
