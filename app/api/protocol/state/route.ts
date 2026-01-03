@@ -18,19 +18,31 @@ function n(v: unknown): number | undefined {
   return Number.isFinite(num) ? num : undefined;
 }
 
-function normChainId(v?: string) {
-  return (v || '').toLowerCase().trim();
-}
-
-function pickBestPair(pairs: DexPair[]): DexPair | null {
+function pickBestPairForLink(pairs: DexPair[]): DexPair | null {
   if (!Array.isArray(pairs) || pairs.length === 0) return null;
 
-  // Prefer Solana, then highest liquidity USD
-  const sol = pairs.filter((p) => normChainId(p.chainId) === 'solana');
+  // Prefer Solana, then highest liquidity
+  const sol = pairs.filter(p => (p.chainId || '').toLowerCase() === 'solana');
   const list = sol.length ? sol : pairs;
 
-  const sorted = [...list].sort((a, b) => (n(b.liquidity?.usd) ?? 0) - (n(a.liquidity?.usd) ?? 0));
-  return sorted[0] ?? null;
+  list.sort((a, b) => (n(b.liquidity?.usd) ?? 0) - (n(a.liquidity?.usd) ?? 0));
+  return list[0] ?? null;
+}
+
+function sumPairsUsd(pairs: DexPair[], getter: (p: DexPair) => number | undefined): number | undefined {
+  if (!Array.isArray(pairs) || pairs.length === 0) return undefined;
+  let sum = 0;
+  let any = false;
+
+  for (const p of pairs) {
+    const v = getter(p);
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      sum += v;
+      any = true;
+    }
+  }
+
+  return any ? sum : undefined;
 }
 
 function liquiditySignal(lpUsd?: number) {
@@ -38,33 +50,6 @@ function liquiditySignal(lpUsd?: number) {
   if ((lpUsd ?? 0) >= 100_000) return 'HEALTHY' as const;
   if ((lpUsd ?? 0) >= 20_000) return 'WATCH' as const;
   return 'CRITICAL' as const;
-}
-
-function filterRelevantPairs(pairs: DexPair[], scope: 'solana' | 'all') {
-  const base = Array.isArray(pairs) ? pairs : [];
-
-  const scoped =
-    scope === 'solana'
-      ? base.filter((p) => normChainId(p.chainId) === 'solana')
-      : base;
-
-  // Keep only pairs with valid positive liquidity
-  return scoped.filter((p) => {
-    const lp = n(p.liquidity?.usd);
-    return typeof lp === 'number' && lp > 0;
-  });
-}
-
-function sumLpUsd(pairs: DexPair[]) {
-  let total = 0;
-  for (const p of pairs) total += n(p.liquidity?.usd) ?? 0;
-  return total > 0 ? total : undefined;
-}
-
-function sumVol24hUsd(pairs: DexPair[]) {
-  let total = 0;
-  for (const p of pairs) total += n(p.volume?.h24) ?? 0;
-  return total > 0 ? total : undefined;
 }
 
 export async function GET(req: Request) {
@@ -76,12 +61,6 @@ export async function GET(req: Request) {
     process.env.NEXT_PUBLIC_XPOT_CA ||
     process.env.XPOT_MINT ||
     '';
-
-  // Birdeye-like ALL PAIRS:
-  // - default scope is Solana (this matches how you likely want XPOT)
-  // - allow ?scope=all to aggregate across all chains DexScreener returns
-  const scopeParam = (searchParams.get('scope') || '').toLowerCase().trim();
-  const scope: 'solana' | 'all' = scopeParam === 'all' ? 'all' : 'solana';
 
   if (!mint) {
     return NextResponse.json(
@@ -108,42 +87,42 @@ export async function GET(req: Request) {
     }
 
     const j = (await r.json().catch(() => ({}))) as { pairs?: DexPair[] };
-    const allPairs = Array.isArray(j?.pairs) ? j.pairs : [];
+    const pairsRaw = Array.isArray(j?.pairs) ? j.pairs : [];
 
-    // 1) Filter to relevant pairs (Solana by default) and only pairs with positive LP
-    const relevantPairs = filterRelevantPairs(allPairs, scope);
+    // Prefer Solana pairs for totals. If none exist, fall back to whatever pairs exist.
+    const solPairs = pairsRaw.filter(p => (p.chainId || '').toLowerCase() === 'solana');
+    const pairs = solPairs.length ? solPairs : pairsRaw;
 
-    // 2) Aggregate LP + volume across all relevant pairs (Birdeye "ALL PAIRS" style)
-    const lpUsd = sumLpUsd(relevantPairs);
-    const volume24hUsd = sumVol24hUsd(relevantPairs);
+    // ✅ Birdeye-style totals: combine ALL LPs + ALL volume across relevant pairs
+    const lpUsdTotal = sumPairsUsd(pairs, p => n(p.liquidity?.usd));
+    const volume24hUsdTotal = sumPairsUsd(pairs, p => n(p.volume?.h24));
 
-    // 3) Choose a single "reference pair" for price + link display
-    //    Use the best among relevant pairs; fallback to best among all pairs.
-    const ref = pickBestPair(relevantPairs.length ? relevantPairs : allPairs);
+    // Price should come from the deepest pair (for best price quality)
+    const best = pickBestPairForLink(pairs);
 
-    const priceUsd = n(ref?.priceUsd);
+    const priceUsd = n(best?.priceUsd);
 
     return NextResponse.json({
       state: {
-        // Aggregated (ALL PAIRS style)
-        lpUsd,
-        volume24hUsd,
+        // totals
+        lpUsd: lpUsdTotal,
+        volume24hUsd: volume24hUsdTotal,
+        pairsCount: pairs.length,
 
-        // Still optional until you implement real 24h change
+        // optional until you implement history
         lpChange24hPct: undefined,
+        liquiditySignal: liquiditySignal(lpUsdTotal),
 
-        liquiditySignal: liquiditySignal(lpUsd),
-
-        // Reference values from the best pair
         priceUsd,
 
         updatedAt: new Date().toISOString(),
         source: 'dexscreener',
 
-        pairUrl: ref?.url,
-        pairAddress: ref?.pairAddress,
-        chainId: ref?.chainId,
-        dexId: ref?.dexId,
+        // best-pair link metadata (keeps your "View chart" working)
+        pairUrl: best?.url,
+        pairAddress: best?.pairAddress,
+        chainId: best?.chainId,
+        dexId: best?.dexId,
       },
     });
   } catch {
