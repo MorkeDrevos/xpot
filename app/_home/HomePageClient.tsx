@@ -1102,13 +1102,6 @@ function HomePageInner() {
           <div className="relative flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">Eligibility</p>
-              <p className="mt-1 text-[12px] text-emerald-100/90">
-                Hold at least{' '}
-                <span className="font-mono text-[13px] text-emerald-100">
-                  {MIN_ELIGIBLE_XPOT.toLocaleString()}
-                </span>{' '}
-                XPOT to claim entry.
-              </p>
             </div>
 
             <TinyTooltip label="Eligibility is checked in the hub when you connect X + wallet.">
