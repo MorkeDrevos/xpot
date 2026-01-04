@@ -224,35 +224,36 @@ export default function JackpotPanel({
 
   const capsuleWrap = 'group relative inline-flex max-w-full items-center';
 
+  // MOBILE FIX:
+  // - Stack capsule content on mobile to avoid "1,000,000 XPOT" colliding with the tag
+  // - Keep the nice inline layout from sm+
   const capsuleInner = [
-    'relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl',
-    isHero ? 'bg-black/65 px-5 py-4 sm:px-6 sm:py-4' : 'bg-black/55 px-4 py-3',
+    'relative grid max-w-full grid-cols-1 gap-2 rounded-2xl',
+    'sm:inline-grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-3',
+    isHero ? 'bg-black/65 px-4 py-3 sm:px-6 sm:py-4' : 'bg-black/55 px-3 py-2.5 sm:px-4 sm:py-3',
     'shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl',
   ].join(' ');
 
   const capsuleTag = [
-    'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em]',
+    'inline-flex items-center gap-2 rounded-full border',
+    'px-2.5 py-1 text-[9px] sm:px-3 sm:py-1.5 sm:text-[10px]',
+    'font-semibold uppercase tracking-[0.22em]',
     isHero ? 'border-white/12 bg-white/[0.04] text-slate-100' : 'border-white/10 bg-white/[0.03] text-slate-200',
   ].join(' ');
 
   const capsuleValue = [
     'xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white',
-    isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : '',
+    'whitespace-nowrap',
+    isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : 'text-[1.0rem] sm:text-[1.05rem]',
   ].join(' ');
 
   // BIGGER, better scaling across your actual layout width
   const usdClampStyle: React.CSSProperties = isHero
-  ? { fontSize: 'clamp(4.6rem, 7.2vw, 8.4rem)', lineHeight: '0.86' }
-  : { fontSize: 'clamp(3.4rem, 5.8vw, 6.4rem)', lineHeight: '0.90' };
+    ? { fontSize: 'clamp(4.6rem, 7.2vw, 8.4rem)', lineHeight: '0.86' }
+    : { fontSize: 'clamp(3.4rem, 5.8vw, 6.4rem)', lineHeight: '0.90' };
 
   return (
-    <section
-      className={[
-        'relative transition-colors duration-300',
-        panelChrome,
-        isHero ? '-mt-3 sm:-mt-5' : '',
-      ].join(' ')}
-    >
+    <section className={['relative transition-colors duration-300', panelChrome, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
       {/* Self-contained “alive” motion, premium not noisy */}
       <style jsx>{`
         @keyframes xpotSweep {
@@ -359,12 +360,14 @@ export default function JackpotPanel({
 
                   <div className="min-w-0 px-1 text-center">
                     <span className={capsuleValue} style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}>
-                      <span className="xpot-pool-num">{JACKPOT_XPOT.toLocaleString()}</span>
+                      <span className="xpot-pool-num inline-block max-w-full truncate">
+                        {JACKPOT_XPOT.toLocaleString()}
+                      </span>
                       <span className="xpot-pool-unit">XPOT</span>
                     </span>
                   </div>
 
-                  <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                  <span className="inline-flex items-center justify-center rounded-full border border-slate-700/60 bg-black/30 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-200 sm:px-3 sm:py-1 sm:text-[10px]">
                     Daily
                   </span>
                 </div>
@@ -468,13 +471,13 @@ export default function JackpotPanel({
                       className={[
                         'relative xpot-usd-live xpot-usd-float font-semibold tabular-nums transition-all duration-300 ease-out',
                         justUpdated ? 'scale-[1.02]' : '',
-                        justUpdated
-                          ? 'text-[#7CC8FF] drop-shadow-[0_0_54px_rgba(124,200,255,0.22)]'
-                          : 'text-white',
+                        justUpdated ? 'text-[#7CC8FF] drop-shadow-[0_0_54px_rgba(124,200,255,0.22)]' : 'text-white',
                       ].join(' ')}
                       style={{
                         ...usdClampStyle,
-                        textShadow: justUpdated ? '0 0 40px rgba(124,200,255,0.18)' : '0 0 30px rgba(124,200,255,0.12)',
+                        textShadow: justUpdated
+                          ? '0 0 40px rgba(124,200,255,0.18)'
+                          : '0 0 30px rgba(124,200,255,0.12)',
                         letterSpacing: isHero ? '-0.03em' : '-0.02em',
                       }}
                     >
@@ -500,24 +503,24 @@ export default function JackpotPanel({
                   </div>
                 </div>
 
+                {/* LIVE pill - responsive and compact */}
                 <div className="flex items-center justify-center gap-2 sm:mb-2 sm:justify-end">
                   <span
-  className={[
-    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03]',
-    // responsive sizing
-    'px-2 py-0.5 text-[9px] sm:px-2.5 sm:py-1 sm:text-[10px] md:px-3',
-    'font-semibold uppercase tracking-[0.18em] text-slate-300',
-    'transition-shadow',
-    justUpdated
-      ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_22px_rgba(59,167,255,0.10)]'
-      : '',
-  ].join(' ')}
-  aria-label="Live"
-  title="Live"
->
-  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-  <span className="leading-none">Live</span>
-</span>
+                    className={[
+                      'inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03]',
+                      'px-2 py-0.5 text-[9px] sm:px-2.5 sm:py-1 sm:text-[10px] md:px-3',
+                      'font-semibold uppercase tracking-[0.16em] text-slate-300',
+                      'transition-shadow',
+                      justUpdated
+                        ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_18px_rgba(59,167,255,0.10)]'
+                        : '',
+                    ].join(' ')}
+                    aria-label="Live"
+                    title="Live"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+                    <span className="leading-none">Live</span>
+                  </span>
                 </div>
               </div>
 
@@ -525,9 +528,7 @@ export default function JackpotPanel({
                 <span
                   className={[
                     'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
-                    countPulse
-                      ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.16),0_0_18px_rgba(59,167,255,0.10)]'
-                      : '',
+                    countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.16),0_0_18px_rgba(59,167,255,0.10)]' : '',
                   ].join(' ')}
                 >
                   Next draw in
@@ -760,7 +761,7 @@ export default function JackpotPanel({
 
                       <p className="text-[11px] text-slate-500">
                         Hold XPOT to qualify. Claim your daily entry in the hub. Winners are published handle-first and
-                        paid on-chain with proof.
+                        paid on-chain with TX.
                       </p>
                     </div>
 
