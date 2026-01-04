@@ -474,10 +474,11 @@ export default function JackpotPanel({
 
           <div className="relative mt-5 grid gap-4">
             <div
-              className={[
-                'xpot-usd-box relative overflow-hidden rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
-                justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
-              ].join(' ')}
+  className={[
+    'xpot-usd-box relative overflow-hidden rounded-2xl border bg-black/30',
+    'px-5 py-5 sm:px-7 sm:py-6 lg:px-8 lg:py-7',
+    justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
+  ].join(' ')}
               data-hero={isHero ? '1' : '0'}
               style={{
                 background:
@@ -540,7 +541,7 @@ export default function JackpotPanel({
               <div className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:justify-between">
   {/* LEFT: USD amount (auto-fits the box width, never spills) */}
   <div className="min-w-0 overflow-hidden">
-    <div className="relative">
+    <div className="relative py-2 sm:py-3">
       <div
         aria-hidden
         className={[
