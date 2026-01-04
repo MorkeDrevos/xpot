@@ -38,7 +38,6 @@ import {
   Users,
   Wand2,
   Zap,
-  BadgeCheck,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -47,6 +46,7 @@ import XpotPageShell from '@/components/XpotPageShell';
 import XpotFooter from '@/components/XpotFooter';
 import FinalDrawDate from '@/components/FinalDrawDate';
 import RotatingAnnouncement from '@/components/RotatingAnnouncement';
+import WinnerAndStageStack from '@/components/WinnerAndStageStack';
 
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
 
@@ -83,7 +83,6 @@ const GOLD_BORDER_SOFT = 'border-[rgba(var(--xpot-gold),0.25)]';
 const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
 const GOLD_BG_WASH_2 = 'bg-[rgba(var(--xpot-gold),0.08)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
-const GOLD_GLOW_SHADOW = 'shadow-[0_0_10px_rgba(var(--xpot-gold),0.85)]';
 
 const MIN_ELIGIBLE_XPOT = 100_000;
 
@@ -224,17 +223,17 @@ function TinyTooltip({ label, children }: { label: string; children: ReactNode }
       </span>
 
       {open && pos && mounted && typeof document !== 'undefined' && document.body
-  ? createPortal(
-      <div
-        className="fixed z-[9999] -translate-x-1/2 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 text-[11px] leading-relaxed text-slate-200 shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
-        style={{ left: pos.left, top: pos.top }}
-        role="tooltip"
-      >
-        {label}
-      </div>,
-      document.body,
-    )
-  : null}
+        ? createPortal(
+            <div
+              className="fixed z-[9999] -translate-x-1/2 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 text-[11px] leading-relaxed text-slate-200 shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
+              style={{ left: pos.left, top: pos.top }}
+              role="tooltip"
+            >
+              {label}
+            </div>,
+            document.body,
+          )
+        : null}
     </span>
   );
 }
@@ -317,13 +316,7 @@ function shortenAddress(addr: string, left = 6, right = 6) {
    Strong 3-step clarity (3 seconds)
 ───────────────────────────────────────────── */
 
-function Quick3Steps({
-  countdown,
-  warmup,
-}: {
-  countdown: string;
-  warmup: boolean;
-}) {
+function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean }) {
   const reduced = useReducedMotion();
 
   return (
@@ -1011,10 +1004,10 @@ function useLatestWinnerCard() {
         };
       } else if (Array.isArray(data?.winners) && data.winners[0]) {
         const x = data.winners[0] as WinnerRow;
-        w = { ...x, id: String(x.id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
+        w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
       } else if (Array.isArray(data) && data[0]) {
         const x = data[0] as WinnerRow;
-        w = { ...x, id: String(x.id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
+        w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
       }
 
       setWinner(w && w.id ? w : null);
@@ -1068,7 +1061,7 @@ function useLatestEntriesTelemetry() {
 }
 
 /* ─────────────────────────────────────────────
-   Avatars (handle-first)
+   Avatar helper (still used by ceremony overlay)
 ───────────────────────────────────────────── */
 
 function Avatar({
@@ -1120,283 +1113,6 @@ function Avatar({
       )}
 
       <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Connected, less-busy winner + live entries
-   (kept inside this file to match your "one big file" preference)
-───────────────────────────────────────────── */
-
-function WinnerSpotlight({ winner, compact = false }: { winner: WinnerRow | null; compact?: boolean }) {
-  const paid = Boolean(winner?.isPaidOut);
-  const handle = winner?.handle ? normalizeHandle(winner.handle) : null;
-  const label = winner
-    ? handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : '@winner')
-    : '@winner';
-
-  const ymd = winner?.drawDate ? formatIsoToMadridYmd(winner.drawDate) : null;
-
-  const amountResolved =
-    typeof winner?.amountXpot === 'number'
-      ? winner.amountXpot
-      : typeof winner?.amount === 'number'
-      ? winner.amount
-      : 1_000_000;
-
-  const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
-  const avatarSize = compact ? 34 : 40;
-
-  return (
-    <div className="relative mt-4 overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-      <style jsx global>{`
-        @keyframes xpotWinnerSheen {
-          0% {
-            transform: translateX(-60%) skewX(-14deg);
-            opacity: 0;
-          }
-          18% {
-            opacity: 0.18;
-          }
-          60% {
-            opacity: 0.08;
-          }
-          100% {
-            transform: translateX(60%) skewX(-14deg);
-            opacity: 0;
-          }
-        }
-        .xpot-winner-sheen {
-          position: absolute;
-          inset: -40px;
-          pointer-events: none;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.04) 32%,
-            rgba(var(--xpot-gold), 0.10) 50%,
-            rgba(56, 189, 248, 0.05) 68%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          opacity: 0;
-          animation: xpotWinnerSheen 11.5s ease-in-out infinite;
-        }
-      `}</style>
-
-      <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.16),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
-      <div className="xpot-winner-sheen" />
-
-      <div className={`relative ${pad}`}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
-            <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-              Latest winner
-            </span>
-          </div>
-
-          <div
-            className={[
-              'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em]',
-              paid
-                ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
-                : 'border-amber-400/20 bg-amber-500/10 text-amber-200',
-            ].join(' ')}
-            title={paid ? 'Paid' : 'Awaiting payout'}
-          >
-            <span className={`h-2 w-2 rounded-full ${paid ? 'bg-emerald-400' : 'bg-amber-300'}`} />
-            {paid ? 'Paid' : 'Awaiting payout'}
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-          <div className="flex items-center gap-3">
-            <Avatar src={winner?.avatarUrl} label={label} size={avatarSize} />
-            <div className="min-w-0">
-              <div className="truncate text-[14px] font-semibold text-slate-50">
-                {winner ? label : 'Syncing winner'}
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
-                {ymd ? <span className="font-mono">{ymd}</span> : null}
-                {winner?.wallet ? (
-                  <>
-                    <span className="text-slate-700">•</span>
-                    <span className="font-mono">{shortenAddress(winner.wallet, 7, 7)}</span>
-                  </>
-                ) : null}
-                {winner?.label ? (
-                  <>
-                    <span className="text-slate-700">•</span>
-                    <span className="text-slate-300">{winner.label}</span>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-center">
-            <div className="text-right">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Payout</div>
-              <div className="mt-1 font-mono text-[18px] text-[rgb(var(--xpot-gold-2))]">
-                {formatXpotAmount(amountResolved)}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {winner?.txUrl ? (
-                <a
-                  href={winner.txUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-                >
-                  <ShieldCheck className="h-4 w-4 text-slate-300" />
-                  Proof
-                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                </a>
-              ) : (
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-slate-400">
-                  <BadgeCheck className="h-4 w-4 text-slate-500" />
-                  Proof after payout
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {!compact ? (
-          <div className="mt-4 text-[12px] text-slate-400">
-            Ops triggers payout, then the on-chain transaction is published here.
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function buildLoop(entries: EntryRow[]) {
-  const safe = Array.isArray(entries) ? entries.filter(e => Boolean(e?.handle)) : [];
-  if (safe.length === 0) return [];
-  if (safe.length < 8) {
-    const times = Math.ceil(10 / safe.length);
-    const out: EntryRow[] = [];
-    for (let i = 0; i < times; i++) out.push(...safe);
-    return out.slice(0, 16);
-  }
-  return safe.slice(0, 16);
-}
-
-function EnteringTheStage({ entries }: { entries: EntryRow[] }) {
-  const loop = useMemo(() => buildLoop(entries), [entries]);
-  const has = loop.length > 0;
-
-  const [seed, setSeed] = useState(0);
-  useEffect(() => {
-    const t = window.setInterval(() => setSeed(s => (s + 1) % 1000), 2200);
-    return () => window.clearInterval(t);
-  }, []);
-
-  return (
-    <div className="mt-3 overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/20 ring-1 ring-white/[0.05]">
-      <style jsx global>{`
-        @keyframes xpotMarquee {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-        @keyframes xpotBreath {
-          0% {
-            opacity: 0.55;
-          }
-          55% {
-            opacity: 0.85;
-          }
-          100% {
-            opacity: 0.55;
-          }
-        }
-        .xpot-live-dot {
-          animation: xpotBreath 1.45s ease-in-out infinite;
-        }
-        .xpot-marquee {
-          display: flex;
-          width: max-content;
-          gap: 10px;
-          animation: xpotMarquee 26s linear infinite;
-          will-change: transform;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .xpot-marquee {
-            animation: none;
-          }
-          .xpot-live-dot {
-            animation: none;
-          }
-        }
-      `}</style>
-
-      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_35%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
-
-      <div className="relative px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
-            <Users className="h-4 w-4 text-sky-200" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-              Entering the stage
-            </span>
-          </div>
-
-          <div className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            <span className="xpot-live-dot h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-            Live feed
-          </div>
-        </div>
-
-        <div className="mt-3">
-          {has ? (
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-3">
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-[linear-gradient(90deg,rgba(2,6,23,0.95),transparent)]" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-[linear-gradient(270deg,rgba(2,6,23,0.95),transparent)]" />
-
-              <div className="relative flex items-center gap-2">
-                <div className="xpot-marquee" style={{ animationDelay: `${(seed % 6) * -0.18}s` }}>
-                  {[...loop, ...loop].map((e, idx) => {
-                    const handle = normalizeHandle(e?.handle);
-                    const createdAt = e?.createdAt || '';
-                    const key = e?.id ? String(e.id) : `${handle}-${createdAt}-${idx}`;
-
-                    return (
-                      <div
-                        key={key}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1.5"
-                        title={handle}
-                      >
-                        <Avatar src={e?.avatarUrl} label={handle} size={26} />
-                        <span className="max-w-[140px] truncate text-[12px] text-slate-200">{handle}</span>
-                        {e?.verified ? <BadgeCheck className="h-4 w-4 text-sky-300/90" /> : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-400">
-              Waiting for the first entries to appear in the feed.
-            </div>
-          )}
-
-          <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
-            <span>Handle-first identity</span>
-            <span className="opacity-70">Updates automatically</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1590,7 +1306,6 @@ function DrawCeremonyOverlay({
   const [phase, setPhase] = useState<DrawPhase>('daytime');
   const [open, setOpen] = useState(false);
 
-  // decide phase (without opening overlay)
   useEffect(() => {
     if (due) return;
     if (finalMinute) {
@@ -1600,7 +1315,6 @@ function DrawCeremonyOverlay({
     setPhase(msLeft <= 2 * 60 * 60 * 1000 ? 'warmup' : 'daytime');
   }, [due, finalMinute, msLeft]);
 
-  // Trigger ceremony once per Madrid day
   useEffect(() => {
     const madridYmd = getMadridYmdFromMs(nowMs);
     const storeKey = `xpot_ceremony_${madridYmd}`;
@@ -1694,7 +1408,9 @@ function DrawCeremonyOverlay({
                         <div className="h-2 w-2 rounded-full bg-[rgb(var(--xpot-gold-2))] shadow-[0_0_18px_rgba(var(--xpot-gold),0.7)]" />
                         <div className="h-2 w-2 rounded-full bg-white/15" />
                         <div className="h-2 w-2 rounded-full bg-white/10" />
-                        <span className="ml-2 text-[11px] uppercase tracking-[0.22em] text-slate-400">ceremony</span>
+                        <span className="ml-2 text-[11px] uppercase tracking-[0.22em] text-slate-400">
+                          ceremony
+                        </span>
                       </div>
                     </motion.div>
                   ) : (
@@ -1723,7 +1439,9 @@ function DrawCeremonyOverlay({
                                 {latestWinner?.wallet ? (
                                   <>
                                     <span className="text-slate-700"> • </span>
-                                    <span className="font-mono">{shortenAddress(latestWinner.wallet, 8, 8)}</span>
+                                    <span className="font-mono">
+                                      {shortenAddress(latestWinner.wallet, 8, 8)}
+                                    </span>
                                   </>
                                 ) : null}
                               </div>
@@ -1731,7 +1449,9 @@ function DrawCeremonyOverlay({
                           </div>
 
                           <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Payout</div>
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                              Payout
+                            </div>
                             <div className={`mt-1 font-mono text-[18px] ${GOLD_TEXT}`}>
                               {formatXpotAmount(
                                 typeof latestWinner?.amountXpot === 'number'
@@ -1754,7 +1474,9 @@ function DrawCeremonyOverlay({
                                   <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                                 </a>
                               ) : (
-                                <span className="text-[11px] text-slate-500">proof link appears after payout</span>
+                                <span className="text-[11px] text-slate-500">
+                                  proof link appears after payout
+                                </span>
                               )}
                             </div>
                           </div>
@@ -1835,7 +1557,7 @@ function LiveControlRoom({
   const reduced = useLocalReducedMotion();
   const [tick, setTick] = useState(0);
 
-  const [lines, setLines] = useState<string[]>(() => buildInitialLines(countdown, cutoffLabel, runLine));
+  const [lines, setLines] = useState(() => buildInitialLines(countdown, cutoffLabel, runLine));
 
   useEffect(() => {
     const t = window.setInterval(() => setTick(v => v + 1), 1000);
@@ -1953,7 +1675,9 @@ function LiveControlRoom({
         </div>
       </div>
 
-      <p className="mt-3 text-[12px] text-slate-400">Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.</p>
+      <p className="mt-3 text-[12px] text-slate-400">
+        Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.
+      </p>
     </div>
   );
 }
@@ -2092,7 +1816,9 @@ function BonusVault({ children, spotlight = true }: { children: ReactNode; spotl
           <div className="relative">{children}</div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[12px] text-slate-300">Bonus window is live - same entry, extra payout, proof on-chain.</p>
+            <p className="text-[12px] text-slate-300">
+              Bonus window is live - same entry, extra payout, proof on-chain.
+            </p>
 
             <span className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200 ring-1 ring-violet-400/20">
               <Sparkles className="h-3.5 w-3.5" />
@@ -2175,7 +1901,9 @@ function SectionHeader({
       {eyebrow ? (
         <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">{eyebrow}</p>
       ) : null}
-      <h2 className="mt-2 text-pretty text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">{title}</h2>
+      <h2 className="mt-2 text-pretty text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+        {title}
+      </h2>
       {desc ? <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-slate-400">{desc}</p> : null}
     </div>
   );
@@ -2346,7 +2074,6 @@ function HomePageInner() {
                           Final Draw ends on <FinalDrawDate className="text-slate-100" />.
                         </p>
 
-                        {/* 3-step clarity (strong colors, 3 seconds) */}
                         <Quick3Steps countdown={countdown} warmup={warmup} />
 
                         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -2367,12 +2094,18 @@ function HomePageInner() {
                         <PrimaryCtaRow countdown={countdown} warmup={warmup} />
                       </div>
 
-                      {/* Daytime layer + warm-up motion */}
-                      <DaytimeLayerCard entries={entries} countdown={countdown} cutoffLabel={cutoffLabel} warmup={warmup} />
+                      <DaytimeLayerCard
+                        entries={entries}
+                        countdown={countdown}
+                        cutoffLabel={cutoffLabel}
+                        warmup={warmup}
+                      />
 
-                      {/* MOBILE: compact winner + jackpot after clarity */}
+                      {/* MOBILE: use your own stack component (winner + stage) */}
                       <div className="mt-5 grid gap-4 lg:hidden">
-                        {SHOW_LIVE_FEED ? <WinnerSpotlight winner={winnerSpotlight} compact /> : null}
+                        {SHOW_LIVE_FEED ? (
+                          <WinnerAndStageStack winner={winnerSpotlight} entries={entries} />
+                        ) : null}
 
                         <PremiumCard className="p-4" halo sheen>
                           <div className="xpot-console-sweep" aria-hidden />
@@ -2388,15 +2121,14 @@ function HomePageInner() {
                         ) : null}
                       </div>
 
-                      {/* Desktop: connected winner + alive stage */}
+                      {/* DESKTOP: keep it, but via your stack component */}
                       {SHOW_LIVE_FEED ? (
-                        <div className="hidden lg:block">
-                          <WinnerSpotlight winner={winnerSpotlight} />
-                          <EnteringTheStage entries={entries} />
+                        <div className="hidden lg:block mt-5">
+                          <WinnerAndStageStack winner={winnerSpotlight} entries={entries} />
                         </div>
                       ) : null}
 
-                      {/* Min hold reminder (simple, loud) */}
+                      {/* Min hold reminder */}
                       <div className="relative mt-5 overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 ring-1 ring-white/[0.05]">
                         <div className="pointer-events-none absolute -inset-12 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_40%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_86%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
                         <div className="relative flex flex-wrap items-center justify-between gap-3">
@@ -2429,7 +2161,6 @@ function HomePageInner() {
                       </div>
                     </div>
 
-                    {/* Keep ONE set of supporting cards (no duplicates) */}
                     <div className="grid gap-3 sm:grid-cols-3">
                       <StepCard
                         icon={<CheckCircle2 className="h-5 w-5 text-emerald-200" />}
@@ -2452,7 +2183,6 @@ function HomePageInner() {
                     </div>
                   </div>
 
-                  {/* Contract + Trade */}
                   <div className="space-y-3">
                     <RoyalContractBar mint={mint} />
                     <PremiumCard className="p-5" halo={false}>
@@ -2497,7 +2227,6 @@ function HomePageInner() {
                 </motion.div>
               </div>
 
-              {/* Ceremony overlay (portal) */}
               <DrawCeremonyOverlay
                 nowMs={nowMs}
                 nextDrawUtcMs={nextDrawUtcMs}
