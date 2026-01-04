@@ -228,52 +228,81 @@ function HoverProfileCard({
 }: {
   entry: EntryRow;
   isMe: boolean;
-  pos: { left: number; top: number };
+  pos: { left: number; top: number; placement: 'top' | 'bottom' };
 }) {
   const handle = normalizeHandle(entry.handle);
   const name = entry.name ? String(entry.name).trim() : '';
+  const xUrl = toXProfileUrl(handle);
 
   return (
     <motion.div
       className={[
         'fixed z-[9999]',
-        'w-[320px] overflow-hidden rounded-2xl border border-white/12 bg-slate-950/86 backdrop-blur-xl',
-        'shadow-[0_40px_160px_rgba(0,0,0,0.82)]',
+        'w-[340px] overflow-hidden rounded-[22px]',
+        'border border-white/12 bg-slate-950/85 backdrop-blur-xl',
+        'ring-1 ring-white/[0.06]',
+        'shadow-[0_50px_180px_rgba(0,0,0,0.88)]',
       ].join(' ')}
       style={{ left: pos.left, top: pos.top, transform: 'translateX(-50%)' }}
-      initial={{ opacity: 0, y: 10, scale: 0.985, filter: 'blur(10px)' }}
+      initial={{ opacity: 0, y: pos.placement === 'top' ? 14 : -14, scale: 0.985, filter: 'blur(10px)' }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, y: 10, scale: 0.985, filter: 'blur(12px)' }}
+      exit={{ opacity: 0, y: pos.placement === 'top' ? 14 : -14, scale: 0.985, filter: 'blur(12px)' }}
       transition={{ duration: 0.16, ease: 'easeOut' }}
     >
-      <div className="h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.70),rgba(56,189,248,0.35),transparent)] opacity-85" />
+      {/* premium top rule */}
+      <div className="h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.70),rgba(56,189,248,0.40),transparent)] opacity-90" />
 
-      <div className="p-4">
+      {/* soft aura */}
+      <div className="pointer-events-none absolute -inset-16 opacity-70 blur-3xl bg-[radial-gradient(circle_at_25%_25%,rgba(56,189,248,0.18),transparent_60%),radial-gradient(circle_at_82%_38%,rgba(var(--xpot-gold),0.18),transparent_62%)]" />
+
+      {/* subtle grain */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.10] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.18)_1px,transparent_0)] [background-size:18px_18px]" />
+
+      {/* pointer */}
+      {pos.placement === 'top' ? (
+        <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2">
+          <div className="h-3 w-3 rotate-45 border border-white/12 bg-slate-950/85 shadow-[0_20px_60px_rgba(0,0,0,0.55)]" />
+        </div>
+      ) : (
+        <div className="pointer-events-none absolute left-1/2 bottom-full -translate-x-1/2">
+          <div className="h-3 w-3 rotate-45 border border-white/12 bg-slate-950/85 shadow-[0_20px_60px_rgba(0,0,0,0.55)]" />
+        </div>
+      )}
+
+      <a
+        href={xUrl}
+        target="_blank"
+        rel="nofollow noopener noreferrer"
+        className="relative block p-4 hover:bg-white/[0.03] transition"
+        aria-label={`Open ${handle} on X`}
+      >
         <div className="flex items-center gap-3">
-          <Avatar src={entry.avatarUrl} label={handle} verified={entry.verified} size={56} />
+          <Avatar src={entry.avatarUrl} label={handle} verified={entry.verified} size={60} />
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <div className="truncate text-[14px] font-semibold text-slate-100">{handle}</div>
+              <div className="truncate text-[14px] font-semibold text-slate-50">{name || handle}</div>
+              {entry.verified ? (
+                <span className="inline-flex items-center rounded-full border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-[rgb(var(--xpot-gold-2))]">
+                  Verified
+                </span>
+              ) : null}
               {isMe ? (
-                <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                <span className="inline-flex items-center rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
                   You
                 </span>
               ) : null}
             </div>
 
-            {name ? (
-              <div className="truncate text-[13px] text-slate-400">{name}</div>
-            ) : (
-              <div className="text-[12px] text-slate-500">x.com profile</div>
-            )}
+            <div className="mt-0.5 truncate text-[12px] text-slate-300">{handle}</div>
 
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200">
-              Open profile on X
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-slate-100">
+              Open on X
+              <span className="text-slate-400">↗</span>
             </div>
           </div>
         </div>
-      </div>
+      </a>
     </motion.div>
   );
 }
@@ -327,7 +356,12 @@ function TapSheet({
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <div className="truncate text-[16px] font-semibold text-slate-100">{handle}</div>
+                    <div className="truncate text-[16px] font-semibold text-slate-100">{name || handle}</div>
+                    {entry.verified ? (
+                      <span className="inline-flex items-center rounded-full border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-[rgb(var(--xpot-gold-2))]">
+                        Verified
+                      </span>
+                    ) : null}
                     {isMe ? (
                       <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
                         You
@@ -335,11 +369,7 @@ function TapSheet({
                     ) : null}
                   </div>
 
-                  {name ? (
-                    <div className="truncate text-[13px] text-slate-400">{name}</div>
-                  ) : (
-                    <div className="text-[12px] text-slate-500">x.com profile</div>
-                  )}
+                  <div className="mt-1 truncate text-[13px] text-slate-300">{handle}</div>
                 </div>
               </div>
 
@@ -406,10 +436,13 @@ export default function EnteringStageLive({
 
   const [sheetEntry, setSheetEntry] = useState<EntryRow | null>(null);
 
-  // Hover state (desktop): render portal card so it’s not clipped by overflow containers
   const [hoverEntry, setHoverEntry] = useState<EntryRow | null>(null);
   const hoverElRef = useRef<HTMLElement | null>(null);
-  const [hoverPos, setHoverPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const [hoverPos, setHoverPos] = useState<{ left: number; top: number; placement: 'top' | 'bottom' }>({
+    left: 0,
+    top: 0,
+    placement: 'top',
+  });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -438,17 +471,28 @@ export default function EnteringStageLive({
     if (!el) return;
 
     const r = el.getBoundingClientRect();
-    const cardW = 320;
+
+    const cardW = 340;
+    const cardH = 150; // safe estimate
     const pad = 12;
+    const gap = 14;
 
     const desiredLeft = r.left + r.width / 2;
     const minLeft = pad + cardW / 2;
     const maxLeft = window.innerWidth - pad - cardW / 2;
-
     const left = clamp(desiredLeft, minLeft, maxLeft);
-    const top = r.bottom + 14;
 
-    setHoverPos({ left, top });
+    // Prefer above
+    const topCandidate = r.top - gap - cardH;
+    const bottomCandidate = r.bottom + gap;
+
+    const canTop = topCandidate >= pad;
+    const canBottom = bottomCandidate + cardH <= window.innerHeight - pad;
+
+    const placement: 'top' | 'bottom' = canTop ? 'top' : canBottom ? 'bottom' : 'top';
+    const top = placement === 'top' ? Math.max(pad, topCandidate) : bottomCandidate;
+
+    setHoverPos({ left, top, placement });
   };
 
   useEffect(() => {
@@ -494,7 +538,7 @@ export default function EnteringStageLive({
 
           @keyframes xpotAuraBreath {
             0% { opacity: 0.35; }
-            55% { opacity: 0.60; }
+            55% { opacity: 0.62; }
             100% { opacity: 0.35; }
           }
           .xpot-aura-breath { animation: xpotAuraBreath 3.6s ease-in-out infinite; }
@@ -553,9 +597,10 @@ export default function EnteringStageLive({
           }
         `}</style>
 
+        {/* Ambient aura */}
         <div className="pointer-events-none absolute -inset-[2px] rounded-[22px] opacity-60 blur-xl xpot-aura-breath bg-[radial-gradient(circle_at_18%_45%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_82%_50%,rgba(16,185,129,0.14),transparent_58%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.12),transparent_60%)]" />
         <div className="pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-white/[0.08]" />
-        <div className="pointer-events-none absolute inset-0 rounded-[22px] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_50px_rgba(56,189,248,0.08),0_0_45px_rgba(16,185,129,0.06)]" />
+        <div className="pointer-events-none absolute inset-0 rounded-[22px] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_55px_rgba(56,189,248,0.09),0_0_48px_rgba(16,185,129,0.06)]" />
 
         <div className={['xpot-new-sweep', newPulse && !reduceMotion ? 'on' : ''].join(' ')} />
 
@@ -607,12 +652,24 @@ export default function EnteringStageLive({
                                 setHoverEntry(e);
                                 // compute now
                                 const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
-                                const cardW = 320;
+                                const cardW = 340;
+                                const cardH = 150;
                                 const pad = 12;
+                                const gap = 14;
+
                                 const desiredLeft = r.left + r.width / 2;
                                 const minLeft = pad + cardW / 2;
                                 const maxLeft = window.innerWidth - pad - cardW / 2;
-                                setHoverPos({ left: clamp(desiredLeft, minLeft, maxLeft), top: r.bottom + 14 });
+                                const left = clamp(desiredLeft, minLeft, maxLeft);
+
+                                const topCandidate = r.top - gap - cardH;
+                                const bottomCandidate = r.bottom + gap;
+
+                                const canTop = topCandidate >= pad;
+                                const placement: 'top' | 'bottom' = canTop ? 'top' : 'bottom';
+                                const top = placement === 'top' ? Math.max(pad, topCandidate) : bottomCandidate;
+
+                                setHoverPos({ left, top, placement });
                               }}
                               onMouseLeave={() => {
                                 if (isTouch) return;
