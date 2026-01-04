@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { BadgeCheck, Crown, ExternalLink, ShieldCheck } from 'lucide-react';
+import { BadgeCheck, Crown, ExternalLink, ShieldCheck, Sparkles } from 'lucide-react';
 
 export type WinnerRow = {
   id: string;
@@ -14,7 +14,7 @@ export type WinnerRow = {
   amount?: number | null;
   drawDate: string | null;
   txUrl?: string | null;
-  isPaidOut?: boolean;
+  isPaidOut?: boolean; // ignored for UI - keep for backwards compatibility
   label?: string | null;
 };
 
@@ -22,7 +22,7 @@ const XPOT_SIGN = '✕';
 
 function normalizeHandle(h: string | null | undefined) {
   const s = String(h ?? '').trim();
-  if (!s) return '@unknown';
+  if (!s) return '@winner';
   return s.startsWith('@') ? s : `@${s}`;
 }
 
@@ -58,7 +58,7 @@ function formatXpotAmount(amount: number | null | undefined) {
 function Avatar({
   src,
   label,
-  size = 36,
+  size = 40,
 }: {
   src?: string | null;
   label: string;
@@ -83,7 +83,7 @@ function Avatar({
 
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]"
+      className="relative shrink-0 overflow-hidden rounded-full border border-white/12 bg-white/[0.04]"
       style={{ width: size, height: size }}
       title={normalizeHandle(label)}
     >
@@ -102,9 +102,35 @@ function Avatar({
           {initials}
         </div>
       )}
-      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_35%_30%,rgba(255,255,255,0.10),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.08]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.12),transparent_58%)]" />
     </div>
+  );
+}
+
+function Pill({
+  children,
+  tone = 'neutral',
+}: {
+  children: React.ReactNode;
+  tone?: 'neutral' | 'emerald' | 'gold';
+}) {
+  const cls =
+    tone === 'emerald'
+      ? 'border-emerald-300/20 bg-emerald-500/10 text-emerald-100/90'
+      : tone === 'gold'
+      ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
+      : 'border-white/10 bg-white/[0.03] text-slate-200/90';
+
+  return (
+    <span
+      className={[
+        'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em]',
+        cls,
+      ].join(' ')}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -136,17 +162,16 @@ export default function WinnerSpotlightCard({
       ? winner.amount
       : 1_000_000;
 
-  const payoutText = formatXpotAmount(amountResolved);
+  const prizeText = formatXpotAmount(amountResolved);
+  const hasProof = Boolean(winner?.txUrl);
 
   const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
   const avatarSize = compact ? 34 : 40;
 
-  const hasProof = Boolean(winner?.txUrl);
-
   const shareText = winner
     ? hasProof
-      ? `I just won today’s XPOT draw ${payoutText}. Proof on-chain. @XPOTbet`
-      : `I just won today’s XPOT draw ${payoutText}. @XPOTbet`
+      ? `I just won today’s XPOT draw ${prizeText}. Proof on-chain. @XPOTbet`
+      : `I just won today’s XPOT draw ${prizeText}. @XPOTbet`
     : `XPOT - one daily draw. @XPOTbet`;
 
   const shareIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}`;
@@ -164,35 +189,35 @@ export default function WinnerSpotlightCard({
       <style jsx global>{`
         @keyframes xpotWinnerSheen {
           0% {
-            transform: translateX(-60%) skewX(-14deg);
+            transform: translateX(-65%) skewX(-14deg);
             opacity: 0;
           }
-          18% {
+          16% {
             opacity: 0.18;
           }
-          60% {
-            opacity: 0.08;
+          55% {
+            opacity: 0.10;
           }
           100% {
-            transform: translateX(60%) skewX(-14deg);
+            transform: translateX(65%) skewX(-14deg);
             opacity: 0;
           }
         }
         .xpot-winner-sheen {
           position: absolute;
-          inset: -40px;
+          inset: -50px;
           pointer-events: none;
           background: linear-gradient(
             100deg,
             transparent 0%,
-            rgba(255, 255, 255, 0.04) 32%,
-            rgba(var(--xpot-gold), 0.1) 50%,
-            rgba(56, 189, 248, 0.05) 68%,
+            rgba(255, 255, 255, 0.04) 30%,
+            rgba(var(--xpot-gold), 0.12) 50%,
+            rgba(56, 189, 248, 0.06) 70%,
             transparent 100%
           );
           mix-blend-mode: screen;
           opacity: 0;
-          animation: xpotWinnerSheen 11.5s ease-in-out infinite;
+          animation: xpotWinnerSheen 12.5s ease-in-out infinite;
         }
       `}</style>
 
@@ -206,31 +231,26 @@ export default function WinnerSpotlightCard({
       <div className={`relative ${pad}`}>
         {/* header */}
         <div className="flex items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+          <Pill>
             <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-              Latest winner
-            </span>
-          </div>
+            Latest winner
+          </Pill>
 
-          <div
-            className={[
-              'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em]',
-              hasProof
-                ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
-                : 'border-white/12 bg-white/[0.03] text-slate-300',
-            ].join(' ')}
-            title={hasProof ? 'On-chain proof available' : 'Winner announced'}
-          >
+          <Pill tone={hasProof ? 'emerald' : 'neutral'}>
             <span className={`h-2 w-2 rounded-full ${hasProof ? 'bg-emerald-400' : 'bg-slate-400'}`} />
-            {hasProof ? 'On-chain proof' : 'Winner announced'}
-          </div>
+            {hasProof ? 'On-chain proof' : 'Winner published'}
+          </Pill>
         </div>
 
-        {/* main row */}
+        {/* body */}
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex items-center gap-3">
-            <Avatar src={winner?.avatarUrl} label={label} size={avatarSize} />
+            <div className="relative">
+              <Avatar src={winner?.avatarUrl} label={label} size={avatarSize} />
+              {winner?.handle ? (
+                <div className="pointer-events-none absolute -inset-1 rounded-full ring-1 ring-white/[0.06]" />
+              ) : null}
+            </div>
 
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
@@ -256,9 +276,7 @@ export default function WinnerSpotlightCard({
               </div>
 
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
-                {displayName ? (
-                  <span className="max-w-[240px] truncate text-slate-300">{displayName}</span>
-                ) : null}
+                {displayName ? <span className="max-w-[240px] truncate text-slate-300">{displayName}</span> : null}
 
                 {(displayName || ymd) && (ymd || winner?.wallet || winner?.label) ? (
                   <span className="text-slate-700">•</span>
@@ -285,10 +303,8 @@ export default function WinnerSpotlightCard({
 
           <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-center">
             <div className="text-right">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Prize
-              </div>
-              <div className="mt-1 font-mono text-[18px] text-[rgb(var(--xpot-gold-2))]">{payoutText}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Prize</div>
+              <div className="mt-1 font-mono text-[18px] text-[rgb(var(--xpot-gold-2))]">{prizeText}</div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -324,6 +340,7 @@ export default function WinnerSpotlightCard({
                   title="Share on X"
                   aria-label="Share on X"
                 >
+                  <Sparkles className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
                   Share
                   <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                 </a>
@@ -333,9 +350,7 @@ export default function WinnerSpotlightCard({
         </div>
 
         {!compact ? (
-          <div className="mt-4 text-[12px] text-slate-500">
-            Winner and proof are published here.
-          </div>
+          <div className="mt-4 text-[12px] text-slate-500">Winner and proof are published here.</div>
         ) : null}
       </div>
     </Outer>
