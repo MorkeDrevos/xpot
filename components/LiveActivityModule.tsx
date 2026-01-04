@@ -3,11 +3,10 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Crown, ExternalLink, Users } from 'lucide-react';
+import { Crown, ExternalLink, Sparkles, Users } from 'lucide-react';
 
 /**
- * ✅ Self-contained types so you can delete EnteringStageLive.tsx and WinnerSpotlightCard.tsx safely.
- * This module now owns the EntryRow type.
+ * Self-contained types (safe if you remove EnteringStageLive / WinnerSpotlightCard).
  */
 export type EntryRow = {
   id?: string;
@@ -28,7 +27,7 @@ export type LiveWinnerRow = {
   amount?: number | null;
   amountXpot?: number | null;
 
-  drawDate: string | null; // ISO string
+  drawDate: string | null; // ISO
   txUrl?: string | null;
   isPaidOut?: boolean;
 
@@ -88,9 +87,7 @@ function formatXpotAmount(winner: LiveWinnerRow | null) {
         : null;
 
   if (!raw || raw <= 0) return null;
-
-  const n = Math.round(raw);
-  return n.toLocaleString('en-US');
+  return Math.round(raw).toLocaleString('en-US');
 }
 
 function Avatar({
@@ -123,28 +120,25 @@ function Avatar({
         loading="lazy"
         referrerPolicy="no-referrer"
       />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.16),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
     </div>
   );
 }
 
 function useIsTouch() {
   const [touch, setTouch] = useState(false);
-
   useEffect(() => {
     const onFirstTouch = () => setTouch(true);
     window.addEventListener('touchstart', onFirstTouch, { passive: true, once: true });
     return () => window.removeEventListener('touchstart', onFirstTouch as any);
   }, []);
-
   return touch;
 }
 
 /**
  * Avatar tooltip.
- * - Desktop: hover/focus
- * - Mobile: tap avatar toggles tooltip (prevents navigation)
- *          then tap "Open on X" inside tooltip to open profile
+ * Desktop: hover/focus
+ * Mobile: tap avatar toggles tooltip. Tap "Open on X" inside tooltip to navigate.
  */
 function AvatarTooltip({
   handle,
@@ -183,7 +177,7 @@ function AvatarTooltip({
     };
   }, []);
 
-  // ✅ Mobile: tap outside closes tooltip
+  // Mobile: tap outside closes
   useEffect(() => {
     if (!open || !isTouch) return;
 
@@ -242,10 +236,10 @@ function AvatarTooltip({
       {open ? (
         <div
           className={[
-            'absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2',
-            'min-w-[240px] max-w-[300px]',
-            'rounded-2xl border border-white/10 bg-black/85 backdrop-blur',
-            'px-3 py-2 shadow-[0_30px_90px_rgba(0,0,0,0.6)]',
+            'absolute left-1/2 top-full z-30 mt-3 -translate-x-1/2',
+            'min-w-[260px] max-w-[320px]',
+            'rounded-[18px] border border-white/12 bg-black/80 backdrop-blur-xl',
+            'px-3 py-2 shadow-[0_30px_90px_rgba(0,0,0,0.7)]',
           ].join(' ')}
           onMouseEnter={() => {
             if (isTouch) return;
@@ -254,9 +248,9 @@ function AvatarTooltip({
           onMouseLeave={onLeave}
           role="tooltip"
         >
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.08),rgba(56,189,248,0.24),transparent)]" />
           <div className="flex items-start gap-3">
-            <Avatar src={avatarUrl} handle={handle} size={34} />
-
+            <Avatar src={avatarUrl} handle={handle} size={36} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <div className="truncate text-[12px] font-semibold text-slate-100">{labelTop}</div>
@@ -266,7 +260,6 @@ function AvatarTooltip({
                   </span>
                 ) : null}
               </div>
-
               {labelSub ? <div className="truncate text-[11px] text-slate-300/80">{labelSub}</div> : null}
               {labelMeta ? <div className="mt-1 text-[10px] text-slate-400">{labelMeta}</div> : null}
 
@@ -274,7 +267,7 @@ function AvatarTooltip({
                 href={href}
                 target="_blank"
                 rel="nofollow noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-100/90 hover:text-slate-50"
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100/90 hover:bg-white/[0.06] hover:text-slate-50"
               >
                 Open on X <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
               </a>
@@ -309,6 +302,34 @@ function cleanEntries(entries: EntryRow[]) {
   return out;
 }
 
+function PillLabel({
+  icon,
+  text,
+  tone = 'gold',
+}: {
+  icon: React.ReactNode;
+  text: string;
+  tone?: 'gold' | 'sky';
+}) {
+  const cls =
+    tone === 'gold'
+      ? 'border-[rgba(var(--xpot-gold),0.26)] bg-[rgba(var(--xpot-gold),0.10)] text-slate-100'
+      : 'border-sky-400/22 bg-sky-500/10 text-slate-100';
+
+  return (
+    <span
+      className={[
+        'inline-flex items-center gap-2 rounded-full border px-3 py-1.5',
+        'text-[11px] font-semibold uppercase tracking-[0.22em]',
+        cls,
+      ].join(' ')}
+    >
+      {icon}
+      {text}
+    </span>
+  );
+}
+
 export default function LiveActivityModule({
   winner,
   entries,
@@ -319,7 +340,7 @@ export default function LiveActivityModule({
   className?: string;
 }) {
   const list = useMemo(() => cleanEntries(entries), [entries]);
-  const top = list.slice(0, 8);
+  const top = list.slice(0, 6);
 
   const winnerHandle = normalizeHandle(winner?.handle ?? '');
   const winnerName = winner?.name ? String(winner.name).trim() : '';
@@ -332,55 +353,59 @@ export default function LiveActivityModule({
   return (
     <section
       className={[
-        'relative overflow-hidden rounded-[28px] sm:rounded-[32px]',
-        'border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]',
-        'shadow-[0_40px_140px_rgba(0,0,0,0.6)]',
+        'relative overflow-hidden rounded-[30px] sm:rounded-[36px]',
+        'border border-white/10 bg-slate-950/20 ring-1 ring-white/[0.06]',
+        'shadow-[0_50px_170px_rgba(0,0,0,0.70)]',
         className,
       ].join(' ')}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.34),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)]" />
-      <div className="pointer-events-none absolute -inset-28 opacity-65 blur-3xl bg-[radial-gradient(circle_at_14%_18%,rgba(var(--xpot-gold),0.10),transparent_60%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.08),transparent_62%)]" />
+      {/* Premium top seam */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
+      {/* Aura */}
+      <div className="pointer-events-none absolute -inset-40 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(var(--xpot-gold),0.14),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.10),transparent_62%)]" />
+      {/* Subtle grid */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.10] bg-[linear-gradient(to_right,rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[size:120px_120px]" />
 
       <div className="relative p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Header */}
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Live activity</p>
-            <h3 className="mt-2 text-pretty text-[15px] font-semibold text-slate-50">
-              Spotlight winner and recent entries
+            <h3 className="mt-2 text-pretty text-[16px] font-semibold text-slate-50">
+              Today&apos;s spotlight and who just entered
             </h3>
             <p className="mt-1 text-[12px] text-slate-400">Hover desktop. Tap mobile.</p>
           </div>
 
           <Link
             href={ROUTE_HUB}
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.07] transition"
           >
             Claim entry
             <ExternalLink className="h-4 w-4 text-slate-500" />
           </Link>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-          {/* Spotlight (winner) */}
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.32),transparent)]" />
+        {/* Cards */}
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)]">
+          {/* Spotlight */}
+          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] ring-1 ring-white/[0.05]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),transparent)]" />
+            <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_24%,rgba(var(--xpot-gold),0.16),transparent_62%),radial-gradient(circle_at_80%_22%,rgba(56,189,248,0.10),transparent_62%)]" />
 
             <div className="p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-                  <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-                  Spotlight
-                </span>
+                <PillLabel icon={<Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />} text="Spotlight" />
 
                 {winner?.txUrl ? (
                   <a
                     href={winner.txUrl}
                     target="_blank"
                     rel="nofollow noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.05] transition"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
                     title="Open on-chain proof"
                   >
-                    Proof <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                    Proof <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
                   </a>
                 ) : (
                   <span className="text-[11px] text-slate-500">Proof pending</span>
@@ -394,7 +419,7 @@ export default function LiveActivityModule({
                   meta={winnerWhen ? `Madrid time: ${winnerWhen}` : null}
                   avatarUrl={winner?.avatarUrl ?? null}
                   href={winnerHref}
-                  size={42}
+                  size={46}
                   verified={Boolean((winner as any)?.verified)}
                 />
 
@@ -404,7 +429,7 @@ export default function LiveActivityModule({
                       href={winnerHref}
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      className="truncate text-[16px] font-semibold text-slate-100"
+                      className="truncate text-[16px] font-semibold text-slate-100 hover:text-white"
                       title={winnerHandle}
                     >
                       {winnerHandle}
@@ -416,31 +441,39 @@ export default function LiveActivityModule({
                 </div>
               </div>
 
-              {/* ✅ Wallet removed completely */}
-              <div className="mt-4">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Prize</div>
-                  <div className="mt-1 text-[16px] font-semibold text-[rgb(var(--xpot-gold-2))]">
-                    {winnerPrize ? `×${winnerPrize}` : '—'}
+              {/* Prize slab */}
+              <div className="mt-4 rounded-[22px] border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.04]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Prize</div>
+                    <div className="mt-1 text-[22px] font-semibold text-[rgb(var(--xpot-gold-2))]">
+                      {winnerPrize ? `×${winnerPrize}` : '—'}
+                    </div>
+                  </div>
+
+                  <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200">
+                    <Sparkles className="h-4 w-4 text-slate-400" />
+                    Published handle-first
                   </div>
                 </div>
               </div>
+
+              {/* No wallet shown */}
             </div>
           </div>
 
-          {/* Recent entries */}
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.24),transparent)]" />
+          {/* Entries */}
+          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] ring-1 ring-white/[0.05]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.30),transparent)]" />
+            <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_22%_22%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_82%_22%,rgba(139,92,246,0.10),transparent_62%)]" />
 
             <div className="p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-                  <Users className="h-4 w-4 text-sky-200" />
-                  Entered
-                </span>
+                <PillLabel icon={<Users className="h-4 w-4 text-sky-200" />} text="Entered" tone="sky" />
                 <span className="text-[11px] text-slate-500">{list.length ? `${list.length} today` : '—'}</span>
               </div>
 
+              {/* Premium chips list */}
               <div className="mt-4 space-y-2">
                 {top.length ? (
                   top.map((e, idx) => {
@@ -452,7 +485,12 @@ export default function LiveActivityModule({
                     return (
                       <div
                         key={`${handle}-${e.createdAt ?? idx}`}
-                        className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2"
+                        className={[
+                          'group flex items-center justify-between gap-3',
+                          'rounded-[18px] border border-white/10 bg-slate-950/20',
+                          'px-3 py-2 ring-1 ring-white/[0.03]',
+                          'hover:bg-white/[0.04] transition',
+                        ].join(' ')}
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <AvatarTooltip
@@ -470,7 +508,7 @@ export default function LiveActivityModule({
                               href={href}
                               target="_blank"
                               rel="nofollow noopener noreferrer"
-                              className="truncate text-[13px] font-semibold text-slate-100"
+                              className="truncate text-[13px] font-semibold text-slate-100 hover:text-white"
                               title={handle}
                             >
                               {handle}
@@ -487,7 +525,7 @@ export default function LiveActivityModule({
                     );
                   })
                 ) : (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-3 text-[12px] text-slate-400">
+                  <div className="rounded-[18px] border border-white/10 bg-slate-950/20 px-3 py-3 text-[12px] text-slate-400 ring-1 ring-white/[0.03]">
                     No entries yet.
                   </div>
                 )}
