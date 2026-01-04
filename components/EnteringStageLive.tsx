@@ -100,8 +100,9 @@ function Avatar({
       )}
 
       {/* glass + highlight */}
-      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.09]" />
+      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.10]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.14),transparent_58%)]" />
+      <div className="pointer-events-none absolute -inset-6 opacity-40 blur-2xl bg-[radial-gradient(circle_at_55%_35%,rgba(56,189,248,0.18),transparent_65%)]" />
     </div>
   );
 }
@@ -117,7 +118,6 @@ function sanitize(entries: EntryRow[]) {
       name: e.name ? String(e.name).trim() : '',
     }));
 
-  // dedupe: id first, else handle+createdAt
   const seen = new Set<string>();
   const out: EntryRow[] = [];
   for (const e of filtered) {
@@ -144,7 +144,7 @@ function Pill({
       : tone === 'sky'
       ? 'border-sky-300/20 bg-sky-500/10 text-sky-100/90'
       : tone === 'gold'
-      ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
+      ? 'border-[rgba(var(--xpot-gold),0.26)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
       : 'border-white/10 bg-white/[0.03] text-slate-200/90';
 
   return (
@@ -179,7 +179,6 @@ export default function EnteringStageLive({
   const newest = list[0] ?? null;
   const grid = list.slice(1, 7); // 6 tiles
 
-  // arrival overlay (premium, not “scrolling”)
   const newestKey = useMemo(() => (newest ? makeKey(newest, 0) : null), [newest]);
   const prevNewestKey = useRef<string | null>(null);
   const [arrival, setArrival] = useState<EntryRow | null>(null);
@@ -189,7 +188,7 @@ export default function EnteringStageLive({
 
     if (prevNewestKey.current && prevNewestKey.current !== newestKey) {
       setArrival(newest);
-      const t = window.setTimeout(() => setArrival(null), reduceMotion ? 650 : 1600);
+      const t = window.setTimeout(() => setArrival(null), reduceMotion ? 700 : 1700);
       return () => window.clearTimeout(t);
     }
 
@@ -200,8 +199,9 @@ export default function EnteringStageLive({
   const outerClass = embedded
     ? ['relative', className].join(' ')
     : [
-        'relative overflow-hidden rounded-[30px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.06]',
-        'shadow-[0_38px_140px_rgba(0,0,0,0.60)]',
+        'relative overflow-hidden rounded-[32px]',
+        'border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.06]',
+        'shadow-[0_40px_160px_rgba(0,0,0,0.70)]',
         className,
       ].join(' ');
 
@@ -210,32 +210,68 @@ export default function EnteringStageLive({
       <style jsx global>{`
         @keyframes xpotLiveDot {
           0% {
-            opacity: 0.55;
-            transform: scale(0.95);
+            opacity: 0.5;
+            transform: scale(0.92);
           }
           55% {
             opacity: 1;
-            transform: scale(1.06);
+            transform: scale(1.08);
           }
           100% {
-            opacity: 0.55;
-            transform: scale(0.95);
+            opacity: 0.5;
+            transform: scale(0.92);
           }
         }
         .xpot-live-dot {
           animation: xpotLiveDot 1.35s ease-in-out infinite;
         }
+
+        @keyframes xpotSweep {
+          0% {
+            transform: translateX(-70%) skewX(-12deg);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.12;
+          }
+          55% {
+            opacity: 0.08;
+          }
+          100% {
+            transform: translateX(70%) skewX(-12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-sweep {
+          position: absolute;
+          inset: -120px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(var(--xpot-gold), 0.14) 50%,
+            rgba(56, 189, 248, 0.10) 70%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          animation: xpotSweep 12.8s ease-in-out infinite;
+        }
+
         @media (prefers-reduced-motion: reduce) {
-          .xpot-live-dot {
-            animation: none;
+          .xpot-live-dot,
+          .xpot-sweep {
+            animation: none !important;
           }
         }
       `}</style>
 
       {!embedded ? (
         <>
-          <div className="pointer-events-none absolute -inset-28 opacity-70 blur-3xl bg-[radial-gradient(circle_at_15%_20%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_85%_25%,rgba(16,185,129,0.09),transparent_64%),radial-gradient(circle_at_50%_95%,rgba(var(--xpot-gold),0.08),transparent_58%)]" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
+          <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_14%_16%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_84%_22%,rgba(16,185,129,0.10),transparent_64%),radial-gradient(circle_at_55%_92%,rgba(var(--xpot-gold),0.10),transparent_60%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
+          <div className="xpot-sweep" />
         </>
       ) : null}
 
@@ -248,7 +284,7 @@ export default function EnteringStageLive({
           </Pill>
 
           <div className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            <span className="xpot-live-dot h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+            <span className="xpot-live-dot h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.95)]" />
             Live feed
           </div>
         </div>
@@ -257,30 +293,31 @@ export default function EnteringStageLive({
         <div className="mt-4">
           {has ? (
             <div className="relative">
-              {/* Arrival overlay */}
+              {/* arrival overlay */}
               <AnimatePresence>
                 {arrival && !reduceMotion ? (
                   <motion.div
                     key={makeKey(arrival, 0)}
-                    initial={{ opacity: 0, y: 8, scale: 0.98, filter: 'blur(10px)' }}
+                    initial={{ opacity: 0, y: 10, scale: 0.985, filter: 'blur(12px)' }}
                     animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                    exit={{ opacity: 0, y: -6, scale: 0.99, filter: 'blur(10px)' }}
+                    exit={{ opacity: 0, y: -8, scale: 0.99, filter: 'blur(12px)' }}
                     transition={{ duration: 0.32, ease: 'easeOut' }}
-                    className="pointer-events-none absolute inset-x-0 -top-2 z-20"
+                    className="pointer-events-none absolute inset-x-0 -top-3 z-20"
                   >
-                    <div className="mx-auto w-full max-w-[520px]">
-                      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/70 p-3 ring-1 ring-white/[0.06] shadow-[0_20px_80px_rgba(0,0,0,0.55)] backdrop-blur">
-                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(56,189,248,0.10),transparent_35%,rgba(16,185,129,0.10))]" />
-                        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.16),transparent_60%),radial-gradient(circle_at_80%_25%,rgba(16,185,129,0.16),transparent_62%)]" />
+                    <div className="mx-auto w-full max-w-[540px]">
+                      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/75 p-3 ring-1 ring-white/[0.06] shadow-[0_24px_90px_rgba(0,0,0,0.65)] backdrop-blur">
+                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(56,189,248,0.14),transparent_40%,rgba(16,185,129,0.14))]" />
+                        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.22),transparent_60%),radial-gradient(circle_at_80%_25%,rgba(16,185,129,0.20),transparent_62%)]" />
+
                         <div className="relative flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
-                            <Avatar src={arrival.avatarUrl} label={arrival.handle} size={36} />
+                            <Avatar src={arrival.avatarUrl} label={arrival.handle} size={38} />
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="truncate text-[13px] font-semibold text-slate-100">
                                   {normalizeHandle(arrival.handle)}
                                 </span>
-                                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-300/90">
+                                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-200/90">
                                   <Sparkles className="h-3.5 w-3.5 text-[rgb(var(--xpot-gold-2))]" />
                                   New entry
                                 </span>
@@ -291,14 +328,12 @@ export default function EnteringStageLive({
                             </div>
                           </div>
 
-                          <div className="hidden sm:flex items-center gap-2">
-                            {arrival.verified ? (
-                              <span className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-100/90">
-                                <ShieldCheck className="h-4 w-4" />
-                                Verified
-                              </span>
-                            ) : null}
-                          </div>
+                          {arrival.verified ? (
+                            <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-100/90">
+                              <ShieldCheck className="h-4 w-4" />
+                              Verified
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -306,17 +341,19 @@ export default function EnteringStageLive({
                 ) : null}
               </AnimatePresence>
 
-              {/* Main console */}
-              <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]">
+              {/* console */}
+              <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]">
                 {/* top gradient rule */}
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.60),rgba(16,185,129,0.55),rgba(var(--xpot-gold),0.35),transparent)] opacity-70" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.70),rgba(16,185,129,0.62),rgba(var(--xpot-gold),0.55),transparent)] opacity-75" />
                 {/* inner sheen */}
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255,255,255,0.06),transparent_55%)]" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255,255,255,0.07),transparent_58%)]" />
+                {/* subtle bottom glow */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 opacity-70 bg-[radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
 
-                {/* head row */}
+                {/* header row */}
                 <div className="flex items-center justify-between px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-2xl border border-white/10 bg-white/[0.03] ring-1 ring-white/[0.05] flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-2xl border border-white/10 bg-white/[0.03] ring-1 ring-white/[0.05] flex items-center justify-center">
                       <Sparkles className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
                     </div>
                     <div className="leading-tight">
@@ -327,13 +364,13 @@ export default function EnteringStageLive({
 
                   <div className="hidden sm:flex items-center gap-2">
                     <Pill tone="neutral">
-                      <span className="text-slate-300/90">{list.length}</span>
+                      <span className="text-slate-200/90">{list.length}</span>
                       total today
                     </Pill>
                   </div>
                 </div>
 
-                {/* newest spotlight */}
+                {/* newest */}
                 <div className="px-4 pb-4">
                   <AnimatePresence initial={false}>
                     {newest ? (
@@ -342,28 +379,27 @@ export default function EnteringStageLive({
                         href={toXProfileUrl(newest.handle)}
                         target="_blank"
                         rel="nofollow noopener noreferrer"
-                        className="group relative flex items-center gap-4 rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4 ring-1 ring-white/[0.05] transition hover:bg-white/[0.05]"
+                        className="group relative flex items-center gap-4 rounded-[24px] border border-white/10 bg-white/[0.03] px-4 py-4 ring-1 ring-white/[0.06] transition hover:bg-white/[0.055]"
                         initial={
                           reduceMotion
                             ? { opacity: 1 }
-                            : { opacity: 0, y: 10, scale: 0.99, filter: 'blur(10px)' }
+                            : { opacity: 0, y: 10, scale: 0.99, filter: 'blur(12px)' }
                         }
                         animate={
                           reduceMotion
                             ? { opacity: 1 }
                             : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }
                         }
-                        exit={
-                          reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(10px)' }
-                        }
+                        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(12px)' }}
                         transition={reduceMotion ? undefined : { duration: 0.32, ease: 'easeOut' }}
                         aria-label={`Open ${normalizeHandle(newest.handle)} on X`}
                         title={`Open ${normalizeHandle(newest.handle)} on X`}
                       >
-                        <div className="pointer-events-none absolute inset-0 rounded-[22px] bg-[linear-gradient(110deg,rgba(56,189,248,0.10),transparent_40%,rgba(16,185,129,0.10))] opacity-70" />
+                        <div className="pointer-events-none absolute inset-0 rounded-[24px] bg-[linear-gradient(110deg,rgba(56,189,248,0.14),transparent_42%,rgba(16,185,129,0.14))] opacity-80" />
+                        <div className="pointer-events-none absolute inset-0 rounded-[24px] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.07),transparent_60%)]" />
 
                         <div className="relative">
-                          <Avatar src={newest.avatarUrl} label={newest.handle} size={44} />
+                          <Avatar src={newest.avatarUrl} label={newest.handle} size={46} />
                           {newest.verified ? (
                             <div className="absolute -bottom-1 -right-1 rounded-full border border-white/10 bg-slate-950/70 p-1 ring-1 ring-white/[0.06]">
                               <ShieldCheck className="h-3.5 w-3.5 text-sky-200" />
@@ -378,7 +414,7 @@ export default function EnteringStageLive({
                             </span>
 
                             {localHandle && normalizeHandle(localHandle) === normalizeHandle(newest.handle) ? (
-                              <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                              <span className="rounded-full border border-emerald-300/20 bg-emerald-950/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
                                 You
                               </span>
                             ) : null}
@@ -396,13 +432,13 @@ export default function EnteringStageLive({
                         </div>
 
                         <div className="flex items-center gap-2 text-slate-500">
-                          <ExternalLink className="h-4 w-4 transition group-hover:text-slate-300" />
+                          <ExternalLink className="h-4 w-4 transition group-hover:text-slate-200" />
                         </div>
                       </motion.a>
                     ) : null}
                   </AnimatePresence>
 
-                  {/* premium tiles */}
+                  {/* tiles */}
                   <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <AnimatePresence initial={false}>
                       {grid.length ? (
@@ -419,23 +455,17 @@ export default function EnteringStageLive({
                               target="_blank"
                               rel="nofollow noopener noreferrer"
                               className={[
-                                'group flex items-center gap-3 rounded-[18px] border px-3 py-3 transition',
-                                'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
+                                'group relative flex items-center gap-3 rounded-[18px] border px-3 py-3 transition',
+                                'border-white/10 bg-white/[0.02] hover:bg-white/[0.045] ring-1 ring-transparent hover:ring-white/[0.05]',
                                 isMe
-                                  ? 'shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_0_26px_rgba(16,185,129,0.10)]'
+                                  ? 'shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_0_30px_rgba(16,185,129,0.10)]'
                                   : '',
                               ].join(' ')}
                               initial={
-                                reduceMotion
-                                  ? { opacity: 1 }
-                                  : { opacity: 0, y: 10, filter: 'blur(8px)' }
+                                reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10, filter: 'blur(10px)' }
                               }
-                              animate={
-                                reduceMotion
-                                  ? { opacity: 1 }
-                                  : { opacity: 1, y: 0, filter: 'blur(0px)' }
-                              }
-                              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(8px)' }}
+                              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+                              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(10px)' }}
                               transition={
                                 reduceMotion
                                   ? undefined
@@ -444,6 +474,8 @@ export default function EnteringStageLive({
                               aria-label={`Open ${h} on X`}
                               title={`Open ${h} on X`}
                             >
+                              <div className="pointer-events-none absolute inset-0 rounded-[18px] opacity-0 group-hover:opacity-100 transition bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.06),transparent_60%)]" />
+
                               <Avatar src={e.avatarUrl} label={h} size={32} />
 
                               <div className="min-w-0 flex-1">
@@ -451,17 +483,15 @@ export default function EnteringStageLive({
                                   <span className="truncate text-[13px] font-medium text-slate-200">{h}</span>
                                   {e.verified ? <ShieldCheck className="h-4 w-4 text-sky-200/90" /> : null}
                                   {isMe ? (
-                                    <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                                    <span className="rounded-full border border-emerald-300/20 bg-emerald-950/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
                                       You
                                     </span>
                                   ) : null}
                                 </div>
-                                <div className="truncate text-[11px] text-slate-500">
-                                  {name ? name : 'x.com profile'}
-                                </div>
+                                <div className="truncate text-[11px] text-slate-500">{name ? name : 'x.com profile'}</div>
                               </div>
 
-                              <ExternalLink className="h-4 w-4 text-slate-600 transition group-hover:text-slate-300" />
+                              <ExternalLink className="h-4 w-4 text-slate-600 transition group-hover:text-slate-200" />
                             </motion.a>
                           );
                         })
@@ -486,8 +516,8 @@ export default function EnteringStageLive({
               </div>
             </div>
           ) : (
-            <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]">
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.55),rgba(16,185,129,0.45),transparent)] opacity-60" />
+            <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.65),rgba(16,185,129,0.55),transparent)] opacity-65" />
               <div className="p-5">
                 <div className="flex items-center justify-between">
                   <Pill>
@@ -497,7 +527,9 @@ export default function EnteringStageLive({
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-600">Idle</div>
                 </div>
                 <div className="mt-4 text-[13px] text-slate-400">No entries yet.</div>
-                <div className="mt-2 text-[11px] text-slate-500">The feed will light up as soon as the first entry lands.</div>
+                <div className="mt-2 text-[11px] text-slate-500">
+                  The feed will light up as soon as the first entry lands.
+                </div>
               </div>
             </div>
           )}
