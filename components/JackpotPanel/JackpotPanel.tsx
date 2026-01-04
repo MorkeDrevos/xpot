@@ -449,18 +449,30 @@ export default function JackpotPanel({
         )}
 
         <div
-          ref={slabRef}
-          className={[
-            'relative z-10 overflow-hidden border-y border-slate-800/80 bg-transparent',
-            isHero
-              ? 'mt-3 px-4 py-4 sm:mt-4 sm:rounded-2xl sm:border sm:p-6'
-              : 'mt-4 px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
-            layout === 'wide' ? 'w-full' : '',
-            layout === 'auto' && autoWide ? 'w-full' : '',
-          ].join(' ')}
-        >
-          <div className="relative flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
+  ref={slabRef}
+  className={[
+    'relative z-10 overflow-visible rounded-3xl bg-black/10 ring-1 ring-white/5',
+    isHero ? 'mt-3 px-4 py-4 sm:mt-4 sm:p-6' : 'mt-4 px-4 py-4 sm:p-5',
+    layout === 'wide' ? 'w-full' : '',
+    layout === 'auto' && autoWide ? 'w-full' : '',
+  ].join(' ')}
+>
+  {/* Ambient glow layer (No 4) */}
+  <div
+    aria-hidden
+    className="pointer-events-none absolute inset-0 rounded-3xl"
+    style={{
+      background: `
+        radial-gradient(circle at 25% 20%, rgba(124,200,255,0.10), transparent 55%),
+        radial-gradient(circle at 75% 30%, rgba(236,72,153,0.06), transparent 60%),
+        linear-gradient(180deg, rgba(2,6,23,0.35), rgba(2,6,23,0.15))
+      `,
+      filter: indication: 'blur(0.2px)',
+    }}
+  />
+
+  <div className="relative flex flex-wrap items-center justify-between gap-4">
+    <div className="flex flex-wrap items-center gap-3">
               <div className={capsuleWrap}>
                 <div className={capsuleInner}>
                   <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
@@ -510,15 +522,15 @@ export default function JackpotPanel({
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
                   <div
-                    className={[
-                      'xpot-usd-live text-4xl font-semibold tabular-nums transition-transform transition-colors duration-200 sm:text-[4.25rem]',
-                      justUpdated ? 'scale-[1.01]' : '',
-                      justUpdated ? 'text-[#7CC8FF]' : 'text-white',
-                    ].join(' ')}
-                    style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
-                  >
-                    {displayUsdText}
-                  </div>
+  className={[
+    'xpot-usd-live text-4xl font-semibold tabular-nums transition-all duration-300 ease-out sm:text-[4.25rem]',
+    justUpdated ? 'scale-[1.01]' : '',
+    justUpdated ? 'text-[#7CC8FF] shadow-[0_0_40px_rgba(124,200,255,0.25)]' : 'text-white',
+  ].join(' ')}
+  style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
+>
+  {displayUsdText}
+</div>
 
                   <div className="flex items-center gap-2 sm:mb-2">
                     <UsdEstimateBadge compact />
