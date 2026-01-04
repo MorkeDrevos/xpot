@@ -1,11 +1,10 @@
 // app/ops/AdminClient.tsx
 'use client';
 
-import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import XpotLogoLottie from '@/components/XpotLogoLottie';
 import XpotPageShell from '@/components/XpotPageShell';
 import OperationsCenterBadge from '@/components/OperationsCenterBadge';
-import JackpotPanel from '@/components/JackpotPanel';
 
 import {
   BadgeCheck,
@@ -19,18 +18,13 @@ import {
   Ticket,
   Timer,
   XCircle,
-  Wifi,
-  WifiOff,
-  Gauge,
-  Sparkles,
 } from 'lucide-react';
 
 const MAX_TODAY_TICKETS = 7;
 const MAX_RECENT_WINNERS = 10;
 
-// We will auto-detect which backend exists on THIS deployment.
-// Preference order: /api/admin (your legacy stable routes) -> /api/ops (newer experimental routes)
-const API_BASE_CANDIDATES = ['/api/admin', '/api/ops'] as const;
+// ✅ Try both backends on every request (no /health dependency)
+const API_BASES = ['/api/admin', '/api/ops'] as const;
 
 // ✅ known legacy endpoint you have (manual trigger)
 const ADMIN_PICK_WINNER_API = '/api/admin/draw/pick-winner';
@@ -44,7 +38,6 @@ type TodayDraw = {
   ticketsCount: number;
   closesAt?: string | null;
 
-  // keep optional so UI never breaks if backend returns them
   jackpotUsd?: number;
   rolloverUsd?: number;
 };
@@ -75,7 +68,6 @@ type AdminWinner = {
   kind?: AdminWinnerKind;
   label?: string | null;
 
-  // optional legacy fields
   jackpotUsd?: number;
 };
 
@@ -89,7 +81,7 @@ type AdminBonusDrop = {
   status: BonusDropStatus;
 };
 
-// Public live draw payload (fallback when ops/admin today returns null)
+// Public live draw payload (fallback)
 type LiveDrawPayload = {
   draw: {
     dailyXpot: number;
@@ -99,6 +91,16 @@ type LiveDrawPayload = {
     closesAt: string; // ISO
     status: 'OPEN' | 'LOCKED' | 'COMPLETED';
   } | null;
+};
+
+// Public winners fallback (best-effort)
+type PublicWinnerRow = {
+  id: string;
+  drawDate: string;
+  wallet: string | null;
+  amount: number | null;
+  handle: string | null;
+  txUrl?: string | null;
 };
 
 const ADMIN_TOKEN_KEY = 'xpot_admin_token';
@@ -119,11 +121,6 @@ function formatDateTime(date: string | Date) {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function formatTime(date: string | Date) {
-  const d = new Date(date);
-  return d.toLocaleTimeString('en-GB', { timeZone: MADRID_TZ, hour: '2-digit', minute: '2-digit' });
 }
 
 function formatUsd(amount: number | null | undefined, decimals = 2) {
@@ -268,7 +265,6 @@ function CopyableWallet({ address }: { address: string }) {
   );
 }
 
-// Map public live draw status to admin UI status
 function mapLiveStatus(s: any): DrawStatus {
   const status = String(s ?? '').toUpperCase();
   if (status === 'OPEN') return 'open';
@@ -376,24 +372,11 @@ export default function AdminPage() {
   const [cancelingDropId, setCancelingDropId] = useState<string | null>(null);
   const [cancelDropError, setCancelDropError] = useState<string | null>(null);
 
-  // Selected API base for this deployment (auto-detected)
-  const [apiBase, setApiBase] = useState<string | null>(null);
-  const [apiBanner, setApiBanner] = useState<string | null>(null);
-
-  // Server clock skew (ms)
+  // ✅ server clock skew (ms)
   const [serverSkewMs, setServerSkewMs] = useState(0);
 
-  // “Alive”/ops telemetry
-  const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
-  const [isRefreshingNow, setIsRefreshingNow] = useState(false);
-  const [autoRefreshOn, setAutoRefreshOn] = useState(true);
-  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
-  const [apiLatencyMs, setApiLatencyMs] = useState<number | null>(null);
-
-  // Live USD from embedded JackpotPanel (so ops feels “wired” even if backend doesn’t send jackpotUsd)
-  const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
-
-  const refreshAbortRef = useRef<AbortController | null>(null);
+  // ✅ backend availability banner (only if both admin+ops routes are missing)
+  const [apiBanner, setApiBanner] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') setIsDevHost(window.location.hostname.startsWith('dev.'));
@@ -410,76 +393,18 @@ export default function AdminPage() {
     }
   }, []);
 
-  function api(path: string) {
-    const base = apiBase ?? '/api/admin';
-    return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
-  }
-
-  async function probeApiBase(): Promise<string | null> {
-    for (const base of API_BASE_CANDIDATES) {
-      try {
-        const t0 = performance.now();
-        const res = await fetch(`${base}/health`, { cache: 'no-store' });
-        const t1 = performance.now();
-        if (res.ok) {
-          setApiOnline(true);
-          setApiLatencyMs(Math.max(0, Math.round(t1 - t0)));
-          return base;
-        }
-      } catch {
-        // ignore
-      }
-    }
-    setApiOnline(false);
-    setApiLatencyMs(null);
-    return null;
-  }
-
-  // Detect API base once we have a token
-  useEffect(() => {
-    if (!adminToken) return;
-
-    let cancelled = false;
-
-    (async () => {
-      const detected = await probeApiBase();
-      if (cancelled) return;
-
-      if (!detected) {
-        setApiBase('/api/admin'); // default
-        setApiBanner(
-          'No Ops/Admin API detected on this deployment (missing /api/admin/* and /api/ops/*). Deploy backend routes to use Operations Center.',
-        );
-        return;
-      }
-
-      setApiBase(detected);
-      setApiBanner(null);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [adminToken]);
-
-  // IMPORTANT:
-  // - authedFetch THROWS on failures
-  // - send multiple header names to stay compatible with older routes (fixes 401/UNAUTHED in UI)
+  // ✅ Authed fetch with status-aware errors
   async function authedFetch(input: string, init?: RequestInit) {
     if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
     const token = adminToken.trim();
     const headers = new Headers(init?.headers || {});
 
-    // keep json header only when we actually send a body
     if (init?.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
-    // primary (new)
     headers.set('x-xpot-admin-key', token);
-    // backwards compat (old variants)
     headers.set('x-admin-key', token);
     headers.set('x-xpot-admin-token', token);
-    // some older middleware checks Authorization
     if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
 
     const res = await fetch(input, { ...init, headers, cache: 'no-store' });
@@ -493,26 +418,77 @@ export default function AdminPage() {
 
     if (!res.ok) {
       const msg = data?.error || data?.message || `Request failed (${res.status})`;
-      throw new Error(msg);
+      // ✅ include status so we can route around 404s
+      throw new Error(`HTTP_${res.status}:${msg}`);
     }
 
     return data;
   }
 
+  // ✅ Try BOTH /api/admin and /api/ops for the same path
+  async function authedFetchAny(path: string, init?: RequestInit) {
+    const paths: string[] = [];
+
+    // absolute /api/... -> try as-is first, then mirror across the other base when possible
+    if (path.startsWith('/api/')) {
+      paths.push(path);
+    } else {
+      for (const base of API_BASES) paths.push(`${base}${path.startsWith('/') ? '' : '/'}${path}`);
+    }
+
+    // also try both bases even if caller passed "/today" (non-/api)
+    if (!path.startsWith('/api/')) {
+      // already added
+    } else {
+      // If they passed "/api/admin/..." or "/api/ops/...", add the sibling base version too
+      if (path.startsWith('/api/admin/')) paths.push(path.replace('/api/admin/', '/api/ops/'));
+      if (path.startsWith('/api/ops/')) paths.push(path.replace('/api/ops/', '/api/admin/'));
+    }
+
+    let lastErr: any = null;
+    for (const url of Array.from(new Set(paths))) {
+      try {
+        return await authedFetch(url, init);
+      } catch (e: any) {
+        lastErr = e;
+        // keep trying on 404/405; stop early on 401/403 (token/wiring issue)
+        const msg = String(e?.message || '');
+        if (msg.startsWith('HTTP_401:') || msg.startsWith('HTTP_403:')) break;
+      }
+    }
+    throw lastErr || new Error('Request failed');
+  }
+
+  function isHttp(err: any, code: number) {
+    const m = String(err?.message || '');
+    return m.startsWith(`HTTP_${code}:`);
+  }
+
   async function loadOpsMode() {
-    const data = await authedFetch(api('/ops-mode'));
+    try {
+      const data = await authedFetchAny('/ops-mode');
 
-    const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
-    const eff = ((data as any).effectiveMode ?? m) as OpsMode;
-    const allowed = !!(data as any).envAutoAllowed;
+      const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
+      const eff = ((data as any).effectiveMode ?? m) as OpsMode;
+      const allowed = !!(data as any).envAutoAllowed;
 
-    setOpsMode(m);
-    setEffectiveOpsMode(eff);
-    setEnvAutoAllowed(allowed);
+      setOpsMode(m);
+      setEffectiveOpsMode(eff);
+      setEnvAutoAllowed(allowed);
+    } catch (err: any) {
+      // ✅ If endpoint doesn't exist on this deployment, don't spam console/UI
+      if (isHttp(err, 404) || isHttp(err, 405)) {
+        setOpsMode('MANUAL');
+        setEffectiveOpsMode('MANUAL');
+        setEnvAutoAllowed(false);
+        return;
+      }
+      throw err;
+    }
   }
 
   async function saveOpsMode(next: OpsMode) {
-    const data = await authedFetch(api('/ops-mode'), {
+    const data = await authedFetchAny('/ops-mode', {
       method: 'POST',
       body: JSON.stringify({ mode: next }),
     });
@@ -531,10 +507,19 @@ export default function AdminPage() {
     setUpcomingError(null);
 
     try {
-      const data = await authedFetch(api('/bonus-upcoming'));
+      const data = await authedFetchAny('/bonus-upcoming');
       setUpcomingDrops((data as any).upcoming ?? []);
+      setApiBanner(null);
     } catch (err: any) {
       console.error('[ADMIN] refresh upcoming error', err);
+
+      // ✅ If not deployed, don't show "UNAUTHED" - show gentle fallback
+      if (isHttp(err, 404) || isHttp(err, 405)) {
+        setUpcomingDrops([]);
+        setUpcomingError(null);
+        return;
+      }
+
       setUpcomingError(err?.message || 'Failed to load upcoming drops');
     } finally {
       setUpcomingLoading(false);
@@ -552,13 +537,13 @@ export default function AdminPage() {
 
     setCreatingDraw(true);
     try {
-      const data = await authedFetch(api('/create-today-draw'), { method: 'POST' });
+      const data = await authedFetchAny('/create-today-draw', { method: 'POST' });
       if (!data || (data as any).ok === false)
         throw new Error((data as any)?.error || 'Failed to create today’s draw');
       window.location.reload();
     } catch (err: any) {
       console.error('[XPOT] create today draw error:', err);
-      alert(err.message || 'Unexpected error creating today’s round');
+      alert(String(err?.message || 'Unexpected error creating today’s round').replace(/^HTTP_\d+:/, ''));
     } finally {
       setCreatingDraw(false);
     }
@@ -599,7 +584,7 @@ export default function AdminPage() {
 
     setBonusSubmitting(true);
     try {
-      const data = (await authedFetch(api('/bonus-schedule'), {
+      const data = (await authedFetchAny('/bonus-schedule', {
         method: 'POST',
         body: JSON.stringify({
           amountXpot: amountNumber,
@@ -617,7 +602,12 @@ export default function AdminPage() {
       await refreshUpcomingDrops();
     } catch (err: any) {
       console.error('[ADMIN] schedule bonus error', err);
-      setBonusError(err?.message || 'Failed to schedule bonus XPOT.');
+
+      if (isHttp(err, 404) || isHttp(err, 405)) {
+        setBonusError('Bonus scheduling routes are not deployed on this environment yet.');
+      } else {
+        setBonusError(String(err?.message || 'Failed to schedule bonus XPOT.').replace(/^HTTP_\d+:/, ''));
+      }
     } finally {
       setBonusSubmitting(false);
     }
@@ -634,7 +624,7 @@ export default function AdminPage() {
 
     setCancelingDropId(dropId);
     try {
-      const data = await authedFetch(`${api('/bonus')}?id=${encodeURIComponent(dropId)}`, {
+      const data = await authedFetchAny(`/bonus?id=${encodeURIComponent(dropId)}`, {
         method: 'POST',
       });
 
@@ -644,7 +634,12 @@ export default function AdminPage() {
       setUpcomingDrops(prev => prev.map(d => (d.id === dropId ? { ...d, status: 'CANCELLED' } : d)));
     } catch (err: any) {
       console.error('[ADMIN] cancel drop error', err);
-      setCancelDropError(err?.message || 'Failed to cancel bonus drop.');
+
+      if (isHttp(err, 404) || isHttp(err, 405)) {
+        setCancelDropError('Bonus routes are not deployed on this environment yet.');
+      } else {
+        setCancelDropError(String(err?.message || 'Failed to cancel bonus drop.').replace(/^HTTP_\d+:/, ''));
+      }
     } finally {
       setCancelingDropId(null);
     }
@@ -662,12 +657,14 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
-      // Try candidates so "pick winner" works on both /api/admin and /api/ops deployments.
+      // ✅ try your known stable manual route first, then try /api/admin or /api/ops variants
       const candidates = [
         ADMIN_PICK_WINNER_API,
-        api('/draw/pick-winner'),
-        api('/pick-winner'),
-      ].filter(Boolean);
+        '/api/ops/draw/pick-winner',
+        '/api/admin/draw/pick-winner',
+        '/api/ops/pick-winner',
+        '/api/admin/pick-winner',
+      ];
 
       let data: any = null;
       let lastErr: any = null;
@@ -677,7 +674,7 @@ export default function AdminPage() {
           data = await authedFetch(url, { method: 'POST' });
           lastErr = null;
           break;
-        } catch (e) {
+        } catch (e: any) {
           lastErr = e;
         }
       }
@@ -704,9 +701,9 @@ export default function AdminPage() {
       const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
       setPickSuccess(`Main XPOT winner: ${normalized.ticketCode || '(no ticket)'} (${shortAddr})`);
 
-      // Refresh winners list from the detected API
+      // Refresh winners list (best effort)
       try {
-        const winnersData = await authedFetch(api('/winners'));
+        const winnersData = await authedFetchAny('/winners');
         setWinners((winnersData as any).winners ?? []);
       } catch (err) {
         console.error('[ADMIN] refresh winners after pick error', err);
@@ -715,7 +712,7 @@ export default function AdminPage() {
 
       setTodayDraw(prev => (prev ? { ...prev, status: 'closed' } : prev));
     } catch (err: any) {
-      setPickError(err?.message || 'Failed to pick main XPOT winner');
+      setPickError(String(err?.message || 'Failed to pick main XPOT winner').replace(/^HTTP_\d+:/, ''));
     } finally {
       setIsPickingWinner(false);
     }
@@ -742,7 +739,7 @@ export default function AdminPage() {
 
     setIsPickingBonusWinner(true);
     try {
-      const data = await authedFetch(api('/pick-bonus-winner'), {
+      const data = await authedFetchAny('/pick-bonus-winner', {
         method: 'POST',
         body: JSON.stringify({
           drawId: todayDraw.id,
@@ -764,7 +761,11 @@ export default function AdminPage() {
       setBonusPickSuccess(`Bonus winner: ${winner.ticketCode || '(no ticket)'}`);
       setWinners(prev => [winner, ...prev]);
     } catch (err: any) {
-      setBonusPickError(err.message || 'Failed to pick bonus winner');
+      if (isHttp(err, 404) || isHttp(err, 405)) {
+        setBonusPickError('Bonus routes are not deployed on this environment yet.');
+      } else {
+        setBonusPickError(String(err?.message || 'Failed to pick bonus winner').replace(/^HTTP_\d+:/, ''));
+      }
     } finally {
       setIsPickingBonusWinner(false);
     }
@@ -781,13 +782,13 @@ export default function AdminPage() {
 
     setIsReopeningDraw(true);
     try {
-      const data = await authedFetch(api('/reopen-draw'), { method: 'POST' });
+      const data = await authedFetchAny('/reopen-draw', { method: 'POST' });
       if (!data || (data as any).ok === false)
         throw new Error((data as any)?.error || 'Failed to reopen draw');
       setTodayDraw(prev => (prev ? { ...prev, status: 'open' } : prev));
     } catch (err: any) {
       console.error('[XPOT] reopen draw error:', err);
-      alert(err.message || 'Unexpected error reopening draw');
+      alert(String(err?.message || 'Unexpected error reopening draw').replace(/^HTTP_\d+:/, ''));
     } finally {
       setIsReopeningDraw(false);
     }
@@ -810,7 +811,7 @@ export default function AdminPage() {
 
     setSavingPaidId(winnerId);
     try {
-      const data = await authedFetch(api('/mark-paid'), {
+      const data = await authedFetchAny('/mark-paid', {
         method: 'POST',
         body: JSON.stringify({ winnerId, txUrl }),
       });
@@ -820,15 +821,17 @@ export default function AdminPage() {
 
       setWinners(prev => prev.map(w => (w.id === winnerId ? { ...w, isPaidOut: true, txUrl } : w)));
     } catch (err: any) {
-      setMarkPaidError(err.message || 'Failed to mark as paid');
+      if (isHttp(err, 404) || isHttp(err, 405)) {
+        setMarkPaidError('Mark-paid route is not deployed on this environment yet.');
+      } else {
+        setMarkPaidError(String(err?.message || 'Failed to mark as paid').replace(/^HTTP_\d+:/, ''));
+      }
     } finally {
       setSavingPaidId(null);
     }
   }
 
-  // Always fetch live draw too, to:
-  // - provide fallback
-  // - compute server clock skew
+  // ✅ Live draw (fallback + skew)
   async function fetchLiveDrawWithSkew(): Promise<LiveDrawPayload['draw']> {
     const res = await fetch('/api/draw/live', { cache: 'no-store' });
     try {
@@ -847,11 +850,12 @@ export default function AdminPage() {
 
   async function loadTodayWithFallback() {
     try {
-      const data = await authedFetch(api('/today'));
+      const data = await authedFetchAny('/today');
       const t = (data as any).today ?? null;
       if (t) return t as TodayDraw;
-    } catch {
-      // fall back below
+    } catch (err: any) {
+      // 404 is fine -> fallback
+      if (!isHttp(err, 404) && !isHttp(err, 405)) throw err;
     }
 
     const live = await fetchLiveDrawWithSkew();
@@ -861,134 +865,133 @@ export default function AdminPage() {
     return null;
   }
 
-  async function pingApiHealth() {
-    const base = apiBase ?? '/api/admin';
+  async function loadWinnersWithFallback() {
     try {
-      const t0 = performance.now();
-      const res = await fetch(`${base}/health`, { cache: 'no-store' });
-      const t1 = performance.now();
-      setApiOnline(res.ok);
-      setApiLatencyMs(res.ok ? Math.max(0, Math.round(t1 - t0)) : null);
-    } catch {
-      setApiOnline(false);
-      setApiLatencyMs(null);
-    }
-  }
+      const data = await authedFetchAny('/winners');
+      const arr = (data as any).winners ?? [];
+      setApiBanner(null);
+      return arr as AdminWinner[];
+    } catch (err: any) {
+      // If admin winners route isn't deployed, fallback to public "recent winners"
+      if (isHttp(err, 404) || isHttp(err, 405)) {
+        try {
+          const res = await fetch(`/api/winners/recent?limit=${MAX_RECENT_WINNERS}`, { cache: 'no-store' });
+          const j = await res.json();
+          const rows: PublicWinnerRow[] = (j?.winners ?? []) as any;
 
-  // ── “Alive” refresh: single function used by auto + manual ──
-  async function refreshAll(opts?: { silent?: boolean }) {
-    if (!adminToken) return;
-    if (!apiBase) return;
+          const mapped: AdminWinner[] = rows.map(r => ({
+            id: r.id,
+            drawId: `draw:${r.drawDate}`,
+            date: r.drawDate,
+            ticketCode: r.handle ? `@${r.handle}` : '(unknown)',
+            walletAddress: r.wallet ?? '',
+            payoutUsd: Number(r.amount ?? 0),
+            isPaidOut: !!r.txUrl,
+            txUrl: r.txUrl ?? null,
+            kind: 'main',
+            label: 'Main XPOT',
+          }));
 
-    if (!opts?.silent) setIsRefreshingNow(true);
-
-    // abort any in-flight refresh
-    try {
-      refreshAbortRef.current?.abort();
-    } catch {
-      // ignore
-    }
-    const ctrl = new AbortController();
-    refreshAbortRef.current = ctrl;
-
-    const safeSet = <T,>(fn: (v: T) => void, v: T) => {
-      if (ctrl.signal.aborted) return;
-      fn(v);
-    };
-
-    try {
-      await pingApiHealth();
-
-      // Ops mode (non-fatal)
-      try {
-        const data = await authedFetch(api('/ops-mode'), { signal: ctrl.signal as any });
-        const m = ((data as any).mode ?? 'MANUAL') as OpsMode;
-        const eff = ((data as any).effectiveMode ?? m) as OpsMode;
-        const allowed = !!(data as any).envAutoAllowed;
-        safeSet(setOpsMode as any, m);
-        safeSet(setEffectiveOpsMode, eff);
-        safeSet(setEnvAutoAllowed, allowed);
-      } catch (err) {
-        console.error('[ADMIN] load ops mode error', err);
+          // gentle banner only once - backend ops routes missing
+          setApiBanner('Ops/admin API routes are not deployed on this environment. Showing public winner feed as fallback.');
+          return mapped;
+        } catch (e) {
+          return [];
+        }
       }
-
-      // Today
-      safeSet(setTodayLoading, true);
-      safeSet(setTodayDrawError, null);
-      try {
-        const t = await loadTodayWithFallback();
-        safeSet(setTodayDraw, t);
-      } catch (err: any) {
-        safeSet(setTodayDrawError, err?.message || 'Failed to load today');
-        safeSet(setTodayDraw, null);
-      } finally {
-        safeSet(setTodayLoading, false);
-      }
-
-      // Tickets
-      safeSet(setTicketsLoading, true);
-      safeSet(setTicketsError, null);
-      try {
-        const data = await authedFetch(api('/tickets'), { signal: ctrl.signal as any });
-        safeSet(setTickets, (data as any).tickets ?? []);
-      } catch (err: any) {
-        safeSet(setTicketsError, err?.message || 'Failed to load tickets');
-      } finally {
-        safeSet(setTicketsLoading, false);
-      }
-
-      // Winners
-      safeSet(setWinnersLoading, true);
-      safeSet(setWinnersError, null);
-      try {
-        const data = await authedFetch(api('/winners'), { signal: ctrl.signal as any });
-        safeSet(setWinners, (data as any).winners ?? []);
-      } catch (err: any) {
-        safeSet(setWinnersError, err?.message || 'Failed to load winners');
-      } finally {
-        safeSet(setWinnersLoading, false);
-      }
-
-      // Upcoming
-      safeSet(setUpcomingLoading, true);
-      safeSet(setUpcomingError, null);
-      try {
-        const data = await authedFetch(api('/bonus-upcoming'), { signal: ctrl.signal as any });
-        safeSet(setUpcomingDrops, (data as any).upcoming ?? []);
-      } catch (err: any) {
-        safeSet(setUpcomingError, err?.message || 'Failed to load upcoming drops');
-      } finally {
-        safeSet(setUpcomingLoading, false);
-      }
-
-      safeSet(setLastRefreshAt, new Date().toISOString());
-    } finally {
-      if (!opts?.silent) setIsRefreshingNow(false);
+      throw err;
     }
   }
 
   // ── Load Today, tickets, winners, upcoming ──
   useEffect(() => {
     if (!adminToken) return;
-    if (!apiBase) return; // wait until detected
-    refreshAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken, apiBase]);
 
-  // ── Auto-refresh: keeps page “alive” ─────────
-  useEffect(() => {
-    if (!adminToken) return;
-    if (!apiBase) return;
-    if (!autoRefreshOn) return;
+    let cancelled = false;
 
-    // Tight but not spammy: 10s keeps ops feeling live
-    const id = window.setInterval(() => {
-      refreshAll({ silent: true });
-    }, 10_000);
+    async function loadAll() {
+      // Ops mode (optional)
+      try {
+        await loadOpsMode();
+      } catch (err) {
+        console.error('[ADMIN] load ops mode error', err);
+      }
 
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken, apiBase, autoRefreshOn]);
+      // Today
+      setTodayLoading(true);
+      setTodayDrawError(null);
+      try {
+        const t = await loadTodayWithFallback();
+        if (!cancelled) setTodayDraw(t);
+      } catch (err: any) {
+        if (!cancelled) setTodayDrawError(String(err?.message || 'Failed to load today').replace(/^HTTP_\d+:/, ''));
+        if (!cancelled) setTodayDraw(null);
+      } finally {
+        if (!cancelled) setTodayLoading(false);
+      }
+
+      // Tickets (optional endpoint)
+      setTicketsLoading(true);
+      setTicketsError(null);
+      try {
+        const data = await authedFetchAny('/tickets');
+        if (!cancelled) setTickets((data as any).tickets ?? []);
+        if (!cancelled) setApiBanner(null);
+      } catch (err: any) {
+        // ✅ 404 -> not deployed, don't show scary error
+        if (isHttp(err, 404) || isHttp(err, 405)) {
+          if (!cancelled) {
+            setTickets([]);
+            setTicketsError(null);
+            setApiBanner(prev => prev ?? 'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.');
+          }
+        } else {
+          if (!cancelled) setTicketsError(String(err?.message || 'Failed to load tickets').replace(/^HTTP_\d+:/, ''));
+        }
+      } finally {
+        if (!cancelled) setTicketsLoading(false);
+      }
+
+      // Winners (with public fallback)
+      setWinnersLoading(true);
+      setWinnersError(null);
+      try {
+        const arr = await loadWinnersWithFallback();
+        if (!cancelled) setWinners(arr);
+      } catch (err: any) {
+        if (!cancelled) setWinnersError(String(err?.message || 'Failed to load winners').replace(/^HTTP_\d+:/, ''));
+      } finally {
+        if (!cancelled) setWinnersLoading(false);
+      }
+
+      // Upcoming (optional endpoint)
+      setUpcomingLoading(true);
+      setUpcomingError(null);
+      try {
+        const data = await authedFetchAny('/bonus-upcoming');
+        if (!cancelled) setUpcomingDrops((data as any).upcoming ?? []);
+        if (!cancelled) setApiBanner(null);
+      } catch (err: any) {
+        if (isHttp(err, 404) || isHttp(err, 405)) {
+          if (!cancelled) {
+            setUpcomingDrops([]);
+            setUpcomingError(null);
+            setApiBanner(prev => prev ?? 'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.');
+          }
+        } else {
+          if (!cancelled) setUpcomingError(String(err?.message || 'Failed to load upcoming drops').replace(/^HTTP_\d+:/, ''));
+        }
+      } finally {
+        if (!cancelled) setUpcomingLoading(false);
+      }
+    }
+
+    loadAll();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adminToken]);
 
   // ── Countdown (today draw closesAt) ─────────
   useEffect(() => {
@@ -1078,7 +1081,6 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [upcomingDrops, serverSkewMs]);
 
-  // ✅ keep visible count sane
   useEffect(() => {
     setVisibleTicketCount(prev => {
       if (tickets.length === 0) return 0;
@@ -1110,12 +1112,11 @@ export default function AdminPage() {
 
     setIsSavingToken(true);
     try {
-      if (typeof window !== 'undefined') window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
+      if (typeof window !== 'undefined')
+        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
       setAdminToken(tokenInput.trim());
       setTokenAccepted(true);
-      setApiBase(null); // re-detect after unlock
       setApiBanner(null);
-      setLastRefreshAt(null);
     } finally {
       setIsSavingToken(false);
     }
@@ -1126,9 +1127,7 @@ export default function AdminPage() {
     setAdminToken(null);
     setTokenAccepted(false);
     setTokenInput('');
-    setApiBase(null);
     setApiBanner(null);
-    setLastRefreshAt(null);
   }
 
   const isDrawLocked = todayDraw?.status === 'closed';
@@ -1146,10 +1145,7 @@ export default function AdminPage() {
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
 
-  // If backend provides jackpotUsd use it, else use live feed from JackpotPanel, else 0
-  const todayXpotUsd = todayDraw?.jackpotUsd ?? liveJackpotUsd ?? 0;
-
-  const apiPillTone = apiOnline === null ? 'slate' : apiOnline ? 'emerald' : 'red';
+  const todayXpotUsd = todayDraw?.jackpotUsd ?? 0;
 
   return (
     <XpotPageShell
@@ -1158,7 +1154,7 @@ export default function AdminPage() {
       rightSlot={<OperationsCenterBadge live={true} autoDraw={isAutoActive} />}
     >
       {apiBanner && (
-        <div className="mt-4 xpot-panel px-5 py-3 text-xs text-amber-200 border border-amber-400/20 bg-amber-500/[0.06]">
+        <div className="mt-4 xpot-panel px-5 py-3 text-xs text-slate-300 border border-white/10 bg-slate-950/30">
           {apiBanner}
         </div>
       )}
@@ -1168,7 +1164,7 @@ export default function AdminPage() {
         <div className="relative xpot-panel">
           <div className="xpot-nebula-halo" />
           <div className="relative z-10 flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-3">
               <span className="inline-flex items-center gap-2 rounded-full bg-slate-950/70 px-3 py-1">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                   Admin key
@@ -1176,124 +1172,41 @@ export default function AdminPage() {
                 <StatusDot on={tokenAccepted} />
               </span>
 
-              <Badge tone={apiPillTone}>
-                {apiOnline === null ? (
-                  <>
-                    <Gauge className="h-3.5 w-3.5" />
-                    Probing API
-                  </>
-                ) : apiOnline ? (
-                  <>
-                    <Wifi className="h-3.5 w-3.5" />
-                    API online{apiLatencyMs != null ? ` · ${apiLatencyMs}ms` : ''}
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="h-3.5 w-3.5" />
-                    API offline
-                  </>
-                )}
-              </Badge>
+              <span className="text-xs text-slate-400">Paste your private admin key to unlock XPOT operations.</span>
 
-              <span className="text-xs text-slate-400">
-                Paste your private admin key to unlock XPOT operations.
+              <span
+                className={`hidden sm:inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
+                shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] ${
+                  tokenAccepted
+                    ? 'border border-slate-600/60 bg-slate-800/50 text-slate-200'
+                    : 'border border-slate-700/70 bg-slate-900/60 text-slate-400'
+                }`}
+              >
+                {tokenAccepted ? 'Access level confirmed' : 'Locked - token required'}
               </span>
-
-              {lastRefreshAt && (
-                <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-950/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
-                  Updated {formatTime(lastRefreshAt)}
-                </span>
-              )}
             </div>
 
-            <div className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center sm:justify-end">
-              <button
-                type="button"
-                className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                disabled={!tokenAccepted || isRefreshingNow}
-                onClick={() => refreshAll()}
-              >
-                <span className="inline-flex items-center gap-2">
-                  {isRefreshingNow ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-                  Refresh now
-                </span>
-              </button>
+            <form onSubmit={handleUnlock} className="flex flex-1 flex-col gap-2 sm:max-w-xl sm:flex-row">
+              <input
+                type="password"
+                className="xpot-input flex-1 text-sm"
+                value={tokenInput}
+                onChange={e => setTokenInput(e.target.value)}
+                placeholder="Paste admin token..."
+              />
 
-              <button
-                type="button"
-                className={`${BTN_UTILITY} h-10 px-4 text-xs`}
-                disabled={!tokenAccepted}
-                onClick={() => setAutoRefreshOn(v => !v)}
-                title="Keeps Ops feeling live (updates every 10s)"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${autoRefreshOn ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-                  Auto refresh {autoRefreshOn ? 'ON' : 'OFF'}
-                </span>
-              </button>
-
-              <form onSubmit={handleUnlock} className="flex flex-1 flex-col gap-2 sm:flex-row">
-                <input
-                  type="password"
-                  className="xpot-input flex-1 text-sm"
-                  value={tokenInput}
-                  onChange={e => setTokenInput(e.target.value)}
-                  placeholder="Paste admin token..."
-                />
-
-                <div className="flex gap-2">
-                  <button type="submit" disabled={isSavingToken || !tokenInput.trim()} className={`${BTN} px-4 py-2 text-xs`}>
-                    {tokenAccepted ? 'Update key' : 'Unlock'}
-                  </button>
-
-                  {tokenAccepted && (
-                    <button type="button" onClick={handleClearToken} className={`${BTN} px-4 py-2 text-xs`}>
-                      Clear
-                    </button>
-                  )}
-                </div>
-              </form>
-            </div>
-          </div>
-
-          {/* Ops mode strip (wired) */}
-          <div className="relative z-10 border-t border-white/5 px-4 py-3 sm:px-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={isAutoActive ? 'emerald' : 'slate'}>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Effective mode {effectiveOpsMode}
-                </Badge>
-
-                {effectiveOpsMode === 'AUTO' && !envAutoAllowed && (
-                  <Badge tone="gold">
-                    <Info className="h-3.5 w-3.5" />
-                    AUTO saved but env locked
-                  </Badge>
-                )}
-
-                <span className="text-[11px] text-slate-500">
-                  This controls whether the system crowns winners automatically at close.
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className={`${BTN_UTILITY} h-9 px-4 text-xs`}
-                  disabled={!tokenAccepted}
-                  onClick={() => {
-                    setModePending(effectiveOpsMode === 'AUTO' ? 'MANUAL' : 'AUTO');
-                    setModeTokenInput('');
-                    setModeError(null);
-                    setModeModalOpen(true);
-                  }}
-                >
-                  Switch to {effectiveOpsMode === 'AUTO' ? 'MANUAL' : 'AUTO'}
+              <div className="flex gap-2">
+                <button type="submit" disabled={isSavingToken || !tokenInput.trim()} className={`${BTN} px-4 py-2 text-xs`}>
+                  {tokenAccepted ? 'Update key' : 'Unlock'}
                 </button>
+
+                {tokenAccepted && (
+                  <button type="button" onClick={handleClearToken} className={`${BTN} px-4 py-2 text-xs`}>
+                    Clear
+                  </button>
+                )}
               </div>
-            </div>
+            </form>
           </div>
         </div>
       </section>
@@ -1311,7 +1224,7 @@ export default function AdminPage() {
                   <div>
                     <p className="text-sm font-semibold text-slate-100">Today's round</p>
                     <p className="mt-1 text-xs text-slate-400">
-                      Live overview of today's XPOT draw, entries, rollovers and pool value.
+                      Live overview of today's XPOT draw, entries, rollovers and prize pool.
                     </p>
                   </div>
 
@@ -1357,43 +1270,10 @@ export default function AdminPage() {
 
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today's XPOT (USD)</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1">
                       <UsdPill amount={todayXpotUsd} size="sm" />
-                      {liveJackpotUsd != null && (
-                        <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Live</span>
-                      )}
                     </div>
                   </div>
-                </div>
-
-                {/* Embedded live value console (alive, compact) */}
-                <div className="mt-4">
-                  <details className="group">
-                    <summary
-                      className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-3 text-sm text-slate-200 transition hover:bg-black/20"
-                      aria-label="Open live value console"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                          Live value console
-                        </span>
-                        <span className="text-xs text-slate-400">DexScreener wired</span>
-                      </span>
-                      <ChevronDownIcon />
-                    </summary>
-
-                    <div className="mt-3">
-                      <JackpotPanel
-                        variant="embedded"
-                        mode="default"
-                        layout="wide"
-                        onJackpotUsdChange={usd => setLiveJackpotUsd(usd)}
-                        badgeLabel={undefined}
-                        badgeTooltip={undefined}
-                        isLocked={isDrawLocked}
-                      />
-                    </div>
-                  </details>
                 </div>
 
                 <div className="mt-5 xpot-card px-3 py-3 text-xs text-slate-400">
@@ -1694,7 +1574,9 @@ export default function AdminPage() {
               ) : ticketsError ? (
                 <p className="text-xs text-amber-300">{ticketsError}</p>
               ) : tickets.length === 0 ? (
-                <p className="text-xs text-slate-500">No entries yet for today's XPOT.</p>
+                <p className="text-xs text-slate-500">
+                  No entries loaded (this environment may not have the /tickets admin route deployed).
+                </p>
               ) : (
                 <>
                   {visibleTickets.map(t => (
@@ -1920,9 +1802,8 @@ export default function AdminPage() {
                     if (!adminToken || modeTokenInput.trim() !== adminToken.trim()) throw new Error('Admin key mismatch.');
                     await saveOpsMode(modePending);
                     setModeModalOpen(false);
-                    await refreshAll(); // reflect immediately
                   } catch (err: any) {
-                    setModeError(err?.message || 'Failed to switch mode');
+                    setModeError(String(err?.message || 'Failed to switch mode').replace(/^HTTP_\d+:/, ''));
                   } finally {
                     setModeSaving(false);
                   }
@@ -2009,28 +1890,5 @@ export default function AdminPage() {
         </div>
       )}
     </XpotPageShell>
-  );
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      className="text-slate-400 transition-transform group-open:rotate-180"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <path
-        d="M6 9l6 6 6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.9"
-      />
-    </svg>
   );
 }
