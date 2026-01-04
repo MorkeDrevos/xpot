@@ -37,8 +37,8 @@ import XpotFooter from '@/components/XpotFooter';
 import FinalDrawDate from '@/components/FinalDrawDate';
 import RotatingAnnouncement from '@/components/RotatingAnnouncement';
 
-import WinnerSpotlightCard from '@/components/WinnerSpotlightCard';
-import EnteringStageLive from '@/components/EnteringStageLive';
+import LiveActivityModule, { type LiveWinnerRow } from '@/components/LiveActivityModule';
+import type { EntryRow } from '@/components/EnteringStageLive';
 
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
 
@@ -521,40 +521,6 @@ function CosmicHeroBackdrop() {
             animation: none;
           }
         }
-
-        /* Live activity console header */
-        @keyframes xpotLiveSweep {
-          0% {
-            transform: translateX(-55%) skewX(-12deg);
-            opacity: 0;
-          }
-          15% {
-            opacity: 0.18;
-          }
-          55% {
-            opacity: 0.08;
-          }
-          100% {
-            transform: translateX(55%) skewX(-12deg);
-            opacity: 0;
-          }
-        }
-        .xpot-live-sweep {
-          position: absolute;
-          inset: -40px;
-          pointer-events: none;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.04) 30%,
-            rgba(var(--xpot-gold), 0.08) 48%,
-            rgba(56, 189, 248, 0.05) 66%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          opacity: 0;
-          animation: xpotLiveSweep 12.5s ease-in-out infinite;
-        }
       `}</style>
 
       <div className="xpot-hero-engine" aria-hidden />
@@ -759,15 +725,6 @@ type WinnerRow = {
   label?: string | null;
 };
 
-type EntryRow = {
-  id?: string;
-  createdAt?: string;
-  handle: string;
-  name?: string | null;
-  avatarUrl?: string | null;
-  verified?: boolean;
-};
-
 async function fetchFirstOk<T = any>(urls: string[]): Promise<T | null> {
   for (const url of urls) {
     try {
@@ -781,22 +738,18 @@ async function fetchFirstOk<T = any>(urls: string[]): Promise<T | null> {
 }
 
 /**
- * ✅ FIX: Home page uses the SAME canonical source as /winners page first:
+ * ✅ Home page uses the SAME canonical source as /winners page first:
  *    GET /api/winners/recent?limit=1
- * This guarantees the latest winner matches the Winners archive.
  */
 function useLatestWinnerCard() {
-  const [winner, setWinner] = useState<WinnerRow | null>(null);
+  const [winner, setWinner] = useState<LiveWinnerRow | null>(null);
 
   useEffect(() => {
     let alive = true;
 
     async function load() {
       const data = await fetchFirstOk<any>([
-        // ✅ canonical: same as /winners page
         '/api/winners/recent?limit=1',
-
-        // optional fallbacks for resilience (safe to keep)
         '/api/public/winners/latest',
         '/api/public/winners?latest=1',
         '/api/public/winners?limit=1',
@@ -805,9 +758,8 @@ function useLatestWinnerCard() {
 
       if (!alive) return;
 
-      let w: WinnerRow | null = null;
+      let w: any = null;
 
-      // shape: { winners: [...] }
       if (data && Array.isArray(data?.winners) && data.winners[0]) {
         const x = data.winners[0];
 
@@ -837,9 +789,7 @@ function useLatestWinnerCard() {
           kind: (x.kind ?? x.winnerKind ?? x.type ?? null) as any,
           label: x.label ?? null,
         };
-      }
-      // shape: { ok: true, winner: {...} }
-      else if (data?.ok === true && data?.winner) {
+      } else if (data?.ok === true && data?.winner) {
         const x = data.winner;
 
         const safeId =
@@ -863,19 +813,15 @@ function useLatestWinnerCard() {
           kind: x.kind ?? null,
           label: x.label ?? null,
         };
-      }
-      // shape: { winners: [...] } but no ok wrapper
-      else if (Array.isArray(data?.winners) && data.winners[0]) {
+      } else if (Array.isArray(data?.winners) && data.winners[0]) {
         const x = data.winners[0] as WinnerRow;
         w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
-      }
-      // shape: array
-      else if (Array.isArray(data) && data[0]) {
+      } else if (Array.isArray(data) && data[0]) {
         const x = data[0] as WinnerRow;
         w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
       }
 
-      setWinner(w && w.id ? w : null);
+      setWinner(w && w.id ? (w as LiveWinnerRow) : null);
     }
 
     load();
@@ -1040,78 +986,6 @@ function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boole
         Next draw in <span className="font-mono font-semibold text-slate-100">{countdown}</span>
       </div>
     </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Live Activity - unified module (winner + stage)
-───────────────────────────────────────────── */
-
-function LiveActivityModule({
-  winner,
-  entries,
-  className = '',
-}: {
-  winner: WinnerRow | null;
-  entries: EntryRow[];
-  className?: string;
-}) {
-  return (
-    <section
-      className={[
-        'relative overflow-hidden rounded-[36px]',
-        'border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]',
-        'shadow-[0_50px_200px_rgba(0,0,0,0.68)]',
-        className,
-      ].join(' ')}
-    >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),rgba(56,189,248,0.22),transparent)]" />
-      <div className="xpot-live-sweep" aria-hidden />
-
-      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_12%_22%,rgba(var(--xpot-gold),0.12),transparent_60%),radial-gradient(circle_at_84%_26%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_50%_110%,rgba(16,185,129,0.08),transparent_62%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.05] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
-
-      <div className="relative p-5 sm:p-6">
-        {/* header row */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Live activity</p>
-            <p className="mt-2 text-pretty text-[15px] font-semibold text-slate-50">
-              Today&apos;s entries and the latest winner
-            </p>
-          </div>
-
-          <Link
-            href={ROUTE_HUB}
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-          >
-            Claim entry
-            <ArrowRight className="h-4 w-4 text-slate-400" />
-          </Link>
-        </div>
-
-        {/* unified console */}
-        <div className="mt-5 relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/22 ring-1 ring-white/[0.05] shadow-[0_30px_140px_rgba(0,0,0,0.58)]">
-          <div className="pointer-events-none absolute inset-0 rounded-[28px] ring-1 ring-white/[0.06]" />
-          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_16%_40%,rgba(56,189,248,0.08),transparent_60%),radial-gradient(circle_at_86%_44%,rgba(var(--xpot-gold),0.08),transparent_62%)]" />
-
-          {/* winner lane - embedded so it doesn't look like a second card */}
-          <div className="relative px-4 py-4 sm:px-5">
-            <WinnerSpotlightCard winner={winner as any} embedded />
-          </div>
-
-          {/* premium seam */}
-          <div className="relative px-4 sm:px-5">
-            <div className="pointer-events-none h-px w-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),rgba(var(--xpot-gold),0.18),rgba(56,189,248,0.12),rgba(255,255,255,0.08),transparent)] opacity-85" />
-          </div>
-
-          {/* stage lane - embedded so it reads as one system */}
-          <div className="relative px-4 py-4 sm:px-5">
-            <EnteringStageLive entries={entries as any} embedded variant="ultra" avatarSize={34} max={12} />
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }
 
