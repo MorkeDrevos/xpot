@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { BadgeCheck, Crown, ExternalLink, ShieldCheck, Sparkles } from 'lucide-react';
+import { BadgeCheck, Crown, ExternalLink, ShieldCheck, Sparkles, Megaphone } from 'lucide-react';
 
 export type WinnerRow = {
   id: string;
@@ -58,7 +58,7 @@ function formatXpotAmount(amount: number | null | undefined) {
 function Avatar({
   src,
   label,
-  size = 40,
+  size = 42,
 }: {
   src?: string | null;
   label: string;
@@ -136,6 +136,12 @@ function Pill({
   );
 }
 
+function buildPromoShareText(prizeText: string, hasWinner: boolean) {
+  // short, clean, works for non-winners too
+  if (hasWinner) return `XPOT just paid out ${prizeText}. One daily draw. Enter today. @XPOTbet`;
+  return `XPOT - one daily draw. Enter today. @XPOTbet`;
+}
+
 export default function WinnerSpotlightCard({
   winner,
   className = '',
@@ -166,16 +172,13 @@ export default function WinnerSpotlightCard({
 
   const prizeText = formatXpotAmount(amountResolved);
   const hasProof = Boolean(winner?.txUrl);
+  const hasWinner = Boolean(winner);
 
   const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
   const avatarSize = compact ? 34 : 42;
 
-  const shareText = winner
-    ? hasProof
-      ? `I just won today’s XPOT draw ${prizeText}. Proof on-chain. @XPOTbet`
-      : `I just won today’s XPOT draw ${prizeText}. @XPOTbet`
-    : `XPOT - one daily draw. @XPOTbet`;
-
+  // IMPORTANT: share should be promotional for anyone, not only winners
+  const shareText = buildPromoShareText(prizeText, hasWinner);
   const shareIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}`;
 
   const Outer = embedded ? 'div' : 'section';
@@ -240,7 +243,7 @@ export default function WinnerSpotlightCard({
       ) : null}
 
       <div className={`relative ${pad}`}>
-        {/* top gradient rule (matches console vibe) */}
+        {/* top gradient rule (console vibe) */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.75),rgba(56,189,248,0.55),transparent)] opacity-70" />
 
         {/* header */}
@@ -256,7 +259,7 @@ export default function WinnerSpotlightCard({
           </Pill>
         </div>
 
-        {/* body */}
+        {/* main */}
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -283,7 +286,7 @@ export default function WinnerSpotlightCard({
                     <div className="truncate text-[14px] font-semibold text-slate-50">{label}</div>
                   )
                 ) : (
-                  <div className="truncate text-[14px] font-semibold text-slate-50">Syncing winner</div>
+                  <div className="truncate text-[14px] font-semibold text-slate-50">Winner syncing</div>
                 )}
 
                 {winner?.handle ? (
@@ -320,7 +323,7 @@ export default function WinnerSpotlightCard({
             </div>
           </div>
 
-          {/* prize + actions */}
+          {/* right column */}
           <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-center">
             <div className="text-right">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Prize</div>
@@ -353,25 +356,29 @@ export default function WinnerSpotlightCard({
                 </div>
               )}
 
-              {winner ? (
-                <a
-                  href={shareIntentUrl}
-                  target="_blank"
-                  rel="nofollow noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-                  title="Share on X"
-                  aria-label="Share on X"
-                >
-                  <Sparkles className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-                  Share
-                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                </a>
-              ) : null}
+              {/* Promotional share for ANYONE */}
+              <a
+                href={shareIntentUrl}
+                target="_blank"
+                rel="nofollow noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                title="Post about XPOT on X"
+                aria-label="Post about XPOT on X"
+              >
+                <Megaphone className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
+                Post on X
+                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+              </a>
             </div>
           </div>
         </div>
 
-        {!compact ? <div className="mt-4 text-[12px] text-slate-500">Winner and proof are published here.</div> : null}
+        {/* footer message - clean */}
+        {!compact ? (
+          <div className="mt-4 text-[12px] text-slate-500">
+            Winner and proof are published here.
+          </div>
+        ) : null}
       </div>
     </Outer>
   );
