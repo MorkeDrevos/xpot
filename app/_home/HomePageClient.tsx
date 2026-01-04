@@ -37,6 +37,9 @@ import XpotFooter from '@/components/XpotFooter';
 import FinalDrawDate from '@/components/FinalDrawDate';
 import RotatingAnnouncement from '@/components/RotatingAnnouncement';
 
+import WinnerSpotlightCard from '@/components/WinnerSpotlightCard';
+import EnteringStageLive from '@/components/EnteringStageLive';
+
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
 
 const ROUTE_HUB = '/hub';
@@ -313,7 +316,9 @@ function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean
 
             <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
               Hold at least{' '}
-              <span className="font-mono text-[15px] text-emerald-100">{MIN_ELIGIBLE_XPOT.toLocaleString()}</span>{' '}
+              <span className="font-mono text-[15px] text-emerald-100">
+                {MIN_ELIGIBLE_XPOT.toLocaleString()}
+              </span>{' '}
               XPOT
             </div>
             <div className="mt-1 text-[12px] leading-relaxed text-emerald-100/80">In your connected wallet.</div>
@@ -336,7 +341,9 @@ function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean
               </span>
             </div>
 
-            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">Connect X + wallet in the hub</div>
+            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
+              Connect X + wallet in the hub
+            </div>
             <div className="mt-1 text-[12px] leading-relaxed text-sky-100/80">You are in today&apos;s draw.</div>
           </div>
         </div>
@@ -357,7 +364,9 @@ function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean
               </span>
             </div>
 
-            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">Winner published at 22:00 Madrid</div>
+            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
+              Winner published at 22:00 Madrid
+            </div>
             <div className="mt-1 text-[12px] leading-relaxed text-slate-200/85">
               Paid on-chain. Next draw in <span className="font-mono text-slate-100">{countdown}</span>
               {warmup ? <span className={`ml-2 ${GOLD_TEXT_DIM}`}>warm-up</span> : null}
@@ -509,6 +518,40 @@ function CosmicHeroBackdrop() {
           .xpot-warmup-ring {
             animation: none;
           }
+        }
+
+        /* Live activity console header */
+        @keyframes xpotLiveSweep {
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          15% {
+            opacity: 0.18;
+          }
+          55% {
+            opacity: 0.08;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-live-sweep {
+          position: absolute;
+          inset: -40px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.04) 30%,
+            rgba(var(--xpot-gold), 0.08) 48%,
+            rgba(56, 189, 248, 0.05) 66%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          animation: xpotLiveSweep 12.5s ease-in-out infinite;
         }
       `}</style>
 
@@ -840,9 +883,7 @@ function useLatestEntriesTelemetry() {
 
 function useDrawPhase(nowMs: number, nextDrawUtcMs: number) {
   const msLeft = nextDrawUtcMs - nowMs;
-
   const warmup = msLeft > 0 && msLeft <= 2 * 60 * 60 * 1000;
-
   return { msLeft, warmup };
 }
 
@@ -1048,7 +1089,7 @@ function HomePageInner() {
                   </div>
                 </div>
 
-                {/* RIGHT - Jackpot first (no duplicate mobile/desktop blocks) */}
+                {/* RIGHT - Jackpot first */}
                 <div className="grid gap-4">
                   <PremiumCard className="p-5 sm:p-6" halo sheen>
                     <div className="xpot-console-sweep" aria-hidden />
@@ -1062,13 +1103,8 @@ function HomePageInner() {
                       <BonusStrip />
                     </PremiumCard>
                   ) : null}
-
-                  {/* NOTE: We intentionally moved the live winner + entries OUT of the hero.
-                      Jackpot is the star. Live activity gets its own premium section below. */}
                 </div>
               </div>
-
-              {/* Keep ceremony overlay as-is (it is conditional) */}
             </div>
           </div>
         </div>
@@ -1078,7 +1114,7 @@ function HomePageInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* LIVE ACTIVITY - separated from hero so it doesn't cheapen the first impression */}
+      {/* LIVE ACTIVITY */}
       {SHOW_LIVE_FEED ? (
         <section className="mt-8">
           <SectionHeader
@@ -1088,11 +1124,39 @@ function HomePageInner() {
           />
 
           <PremiumCard className="p-5 sm:p-6" halo sheen>
-            <div className="pointer-events-none absolute -inset-28 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(16,185,129,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
-            <div className="grid gap-4">
-  <WinnerSpotlightCard winner={winner} />
-  <EnteringStageLive entries={entries} />
-</div>
+            {/* Console vibe header + sweep */}
+            <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
+              <div className="xpot-live-sweep" aria-hidden />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),rgba(56,189,248,0.22),transparent)]" />
+
+              <div className="relative px-4 py-3 sm:px-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+                    <Users className="h-4 w-4 text-sky-200" />
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+                      Live activity
+                    </span>
+                  </div>
+
+                  <div className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.85)]" />
+                    Updates automatically
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4">
+              <WinnerSpotlightCard winner={winnerSpotlight as any} />
+
+              {/* Neon seam divider */}
+              <div className="relative my-1">
+                <div className="h-px w-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)]" />
+                <div className="pointer-events-none absolute inset-x-0 -top-[1px] h-[2px] opacity-70 blur-[0.6px] bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.28),rgba(56,189,248,0.18),transparent)]" />
+              </div>
+
+              <EnteringStageLive entries={entries as any} />
+            </div>
           </PremiumCard>
         </section>
       ) : null}
@@ -1114,7 +1178,9 @@ function HomePageInner() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">Eligibility</p>
               <p className="mt-1 text-[12px] text-emerald-100/90">
                 Hold at least{' '}
-                <span className="font-mono text-[13px] text-emerald-100">{MIN_ELIGIBLE_XPOT.toLocaleString()}</span>{' '}
+                <span className="font-mono text-[13px] text-emerald-100">
+                  {MIN_ELIGIBLE_XPOT.toLocaleString()}
+                </span>{' '}
                 XPOT to enter.
               </p>
             </div>
