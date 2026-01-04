@@ -7,7 +7,16 @@ import Link from 'next/link';
 import XpotPageShell from '@/components/XpotPageShell';
 import GoldAmount from '@/components/GoldAmount';
 
-import { Crown, ExternalLink, Trophy, X as XIcon, ChevronDown, Search, BadgeCheck, XCircle } from 'lucide-react';
+import {
+  Crown,
+  ExternalLink,
+  Trophy,
+  X as XIcon,
+  ChevronDown,
+  Search,
+  BadgeCheck,
+  XCircle,
+} from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +59,9 @@ function formatDate(date: string) {
 function normalizeHandle(h: string | null | undefined) {
   const s = String(h ?? '').trim();
   if (!s) return null;
-  return s.startsWith('@') ? s : `@${s}`;
+  const clean = s.replace(/^@+/, ''); // prevent @@
+  if (!clean) return null;
+  return `@${clean}`;
 }
 
 function toXProfileUrl(handle: string | null | undefined) {
@@ -106,7 +117,7 @@ function WinnerIdentity({
   const h = normalizeHandle(handle);
   const xUrl = toXProfileUrl(h);
 
-  const title = (name && name.trim()) ? name.trim() : (h ?? shortWallet(walletAddress || '—'));
+  const title = name && name.trim() ? name.trim() : h ?? shortWallet(walletAddress || '—');
   const subtitle = h ?? shortWallet(walletAddress || '—');
 
   const content = (
@@ -123,12 +134,8 @@ function WinnerIdentity({
       </div>
 
       <div className="min-w-0">
-        <div className="truncate text-sm font-semibold text-slate-100">
-          {title}
-        </div>
-        <div className="truncate font-mono text-xs text-slate-400">
-          {subtitle}
-        </div>
+        <div className="truncate text-sm font-semibold text-slate-100">{title}</div>
+        <div className="truncate font-mono text-xs text-slate-400">{subtitle}</div>
       </div>
     </div>
   );
@@ -143,7 +150,7 @@ function WinnerIdentity({
       className="group block rounded-xl outline-none transition hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-[rgba(var(--xpot-gold),0.35)]"
       title="Open X profile"
     >
-      <div className="p-2 -m-2">{content}</div>
+      <div className="-m-2 p-2">{content}</div>
     </a>
   );
 }
@@ -414,7 +421,7 @@ export default function WinnersPage() {
 
                           const amountText =
                             typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot)
-                              ? fmtInt(w.amountXpot)
+                              ? fmtInt(Math.round(w.amountXpot))
                               : '—';
 
                           return (
