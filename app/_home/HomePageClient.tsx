@@ -39,6 +39,7 @@ import XpotPageShell from '@/components/XpotPageShell';
 import XpotFooter from '@/components/XpotFooter';
 import FinalDrawDate from '@/components/FinalDrawDate';
 import RotatingAnnouncement from '@/components/RotatingAnnouncement';
+import WinnerCelebrationCard from '@/components/WinnerCelebrationCard';
 
 import LiveActivityModule, { type LiveWinnerRow, type EntryRow } from '@/components/LiveActivityModule';
 
@@ -1261,8 +1262,8 @@ function HomePageInner() {
                       <CopyMintRow />
 
                       <div className="mt-5">
-                        <WinnerMiniCard winner={winnerSpotlight} />
-                      </div>
+  <WinnerCelebrationCard winner={winnerSpotlight} />
+</div>
                     </div>
                   </div>
                 </div>
