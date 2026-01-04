@@ -966,7 +966,7 @@ function StepCard({
 
 function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boolean }) {
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-3">
+    <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
       <Link
         href={ROUTE_HUB}
         className={`${BTN_GREEN} group px-6 py-3.5 text-sm ${warmup ? 'xpot-warmup-ring' : ''}`}
@@ -987,7 +987,7 @@ function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boole
         <ExternalLink className="h-4 w-4 text-slate-500" />
       </a>
 
-      <div className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-300">
+      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-300">
         <Timer className="h-4 w-4 text-slate-400" />
         Next draw in <span className="font-mono font-semibold text-slate-100">{countdown}</span>
       </div>
@@ -1040,7 +1040,7 @@ function HomePageInner() {
 
               <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start">
                 {/* LEFT */}
-                <div className="flex flex-col justify-between gap-5 lg:pt-8">
+                <div className="flex flex-col items-center text-center gap-5 lg:pt-8">
                   <div className="space-y-5">
                     <div className="relative p-2 sm:p-3">
                       <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.14),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
@@ -1051,12 +1051,12 @@ function HomePageInner() {
                           {warmup ? 'Warm-up' : 'Live run'}
                         </Pill>
 
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500 text-center">
                           handle-first - proof on-chain
                         </span>
                       </div>
 
-                      <div className="relative mt-4">
+                      <div className="relative mt-4 w-full max-w-3xl">
                         <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
                           One protocol.
                           <br />
@@ -1068,7 +1068,7 @@ function HomePageInner() {
                           with proof. Final Draw ends on <FinalDrawDate className="text-slate-100" />.
                         </p>
 
-                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
                             <ShieldCheck className="h-4 w-4 text-slate-300" />
                             Proof
@@ -1173,7 +1173,7 @@ function HomePageInner() {
 
         <div className="mt-4 relative overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 ring-1 ring-white/[0.05]">
           <div className="pointer-events-none absolute -inset-12 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_40%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_86%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
-          <div className="relative flex flex-wrap items-center justify-between gap-3">
+          <div className="relative flex flex-wrap items-center justify-center gap-3 text-center">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">Eligibility</p>
               <p className="mt-1 text-[12px] text-emerald-100/90">
