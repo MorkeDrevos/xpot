@@ -27,7 +27,7 @@ export type JackpotPanelProps = {
   badgeTooltip?: string;
   layout?: JackpotPanelLayout;
 
-  // ✅ added - fixes your build error and enables hero styling
+  // New: optional "hero" mode used on homepage
   mode?: JackpotPanelMode;
 };
 
@@ -222,9 +222,27 @@ export default function JackpotPanel({
   const panelChrome =
     variant === 'embedded'
       ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
-      : isHero
-      ? 'w-full rounded-[28px] border border-white/10 bg-black/30 px-4 py-6 sm:px-6 sm:py-7'
       : 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-5 sm:px-6 sm:py-6';
+
+  // Hero capsule tuning (Today’s XPOT)
+  const capsuleWrap =
+    'group relative inline-flex max-w-full items-center';
+
+  const capsuleInner = [
+    'relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl',
+    isHero ? 'bg-black/65 px-5 py-4 sm:px-6 sm:py-4' : 'bg-black/55 px-4 py-3',
+    'shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl',
+  ].join(' ');
+
+  const capsuleTag = [
+    'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em]',
+    isHero ? 'border-white/12 bg-white/[0.04] text-slate-100' : 'border-white/10 bg-white/[0.03] text-slate-200',
+  ].join(' ');
+
+  const capsuleValue = [
+    'xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white',
+    isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : '',
+  ].join(' ');
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -238,10 +256,8 @@ export default function JackpotPanel({
         {/* HEADER */}
         <div className="relative z-10 flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-slate-100">{isHero ? "Today's pool" : 'XPOT live console'}</p>
-            <p className="mt-1 text-xs text-slate-400">
-              {isHero ? 'The daily draw amount and live valuation.' : 'Real-time pool value and price telemetry.'}
-            </p>
+            <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
+            <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -257,7 +273,6 @@ export default function JackpotPanel({
           ref={slabRef}
           className={[
             'relative z-10 mt-5 overflow-hidden border-y border-slate-800/80 bg-black/25 px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
-            isHero ? 'sm:p-6' : '',
             layout === 'wide' ? 'w-full' : '',
             layout === 'auto' && autoWide ? 'w-full' : '',
           ].join(' ')}
@@ -272,48 +287,29 @@ export default function JackpotPanel({
           {/* Marketing row */}
           <div className="relative flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="group relative inline-flex max-w-full items-center">
-                <div
-                  className={[
-                    'relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-black/55 shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl',
-                    isHero ? 'px-5 py-3.5 sm:px-6 sm:py-4' : 'px-4 py-3',
-                  ].join(' ')}
-                >
+              <div className={capsuleWrap}>
+                <div className={capsuleInner}>
                   <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
                   <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
                   <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
                   <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
 
-                  <span
-                    className={[
-                      'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] font-semibold uppercase text-slate-200',
-                      isHero ? 'px-3.5 py-2 text-[10px] tracking-[0.24em]' : 'px-3 py-1.5 text-[10px] tracking-[0.22em]',
-                    ].join(' ')}
-                  >
+                  <span className={capsuleTag}>
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
                     Today&apos;s XPOT
                   </span>
 
                   <div className="min-w-0 px-1 text-center">
                     <span
-                      className="xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white"
+                      className={capsuleValue}
                       style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
                     >
-                      <span className={['xpot-pool-num', isHero ? 'text-[1.35rem] sm:text-[1.55rem]' : ''].join(' ')}>
-                        {JACKPOT_XPOT.toLocaleString()}
-                      </span>
-                      <span className={['xpot-pool-unit', isHero ? 'text-[11px] sm:text-[12px]' : ''].join(' ')}>
-                        XPOT
-                      </span>
+                      <span className="xpot-pool-num">{JACKPOT_XPOT.toLocaleString()}</span>
+                      <span className="xpot-pool-unit">XPOT</span>
                     </span>
                   </div>
 
-                  <span
-                    className={[
-                      'inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 font-semibold uppercase text-slate-200',
-                      isHero ? 'px-3.5 py-2 text-[10px] tracking-[0.18em]' : 'px-3 py-1 text-[10px] tracking-[0.18em]',
-                    ].join(' ')}
-                  >
+                  <span className="inline-flex items-center rounded-full border border-slate-700/60 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
                     Daily
                   </span>
                 </div>
@@ -335,7 +331,6 @@ export default function JackpotPanel({
               className={[
                 'relative overflow-visible rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
                 justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
-                isHero ? 'sm:px-6 sm:py-5' : '',
               ].join(' ')}
               style={{
                 background:
@@ -346,8 +341,7 @@ export default function JackpotPanel({
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
                   <div
                     className={[
-                      'xpot-usd-live font-semibold tabular-nums transition-transform transition-colors duration-200',
-                      isHero ? 'text-[2.65rem] sm:text-[5.0rem]' : 'text-4xl sm:text-[4.25rem]',
+                      'xpot-usd-live text-4xl font-semibold tabular-nums transition-transform transition-colors duration-200 sm:text-[4.25rem]',
                       justUpdated ? 'scale-[1.01]' : '',
                       justUpdated ? 'text-[#7CC8FF]' : 'text-white',
                     ].join(' ')}
@@ -410,11 +404,13 @@ export default function JackpotPanel({
                   <PriceUnavailableNote />
                 </div>
               ) : (
-                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Auto-updates from DexScreener ticks</p>
+                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">
+                  Auto-updates from DexScreener ticks
+                </p>
               )}
 
               {/* Token info row */}
-              <div className={['mt-4 grid gap-3 sm:grid-cols-2', isHero ? 'sm:mt-5' : ''].join(' ')}>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div
                   className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3"
                   style={{
@@ -466,7 +462,7 @@ export default function JackpotPanel({
           </div>
 
           {/* Telemetry strip */}
-          <div className={['mt-4 grid gap-3', isHero ? 'lg:grid-cols-3' : 'lg:grid-cols-3'].join(' ')}>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
             <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -497,7 +493,7 @@ export default function JackpotPanel({
                   <p className="mt-1 text-[11px] text-slate-600">{localSparkLabel}</p>
                 </div>
               ) : (
-                <p className="mt-2 text-[11px] text-slate-600">Collecting ticks...</p>
+                <p className="mt-2 text-[11px] text-slate-600">Collecting ticks…</p>
               )}
             </div>
 
@@ -608,7 +604,9 @@ export default function JackpotPanel({
             </Link>
           </div>
 
-          <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
+          <p className="mt-3 text-[11px] text-slate-500">
+            Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s
+          </p>
         </div>
       </div>
     </section>
