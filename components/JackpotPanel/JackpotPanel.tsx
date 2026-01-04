@@ -350,6 +350,24 @@ export default function JackpotPanel({
           opacity: 1;
           transform: translateY(0px);
         }
+        /* ✅ Hero-only: spill the details band left so it visually spans the hero */
+        .xpot-spill-wrap {
+          position: relative;
+        }
+
+        /* default: no spill (mobile / smaller screens) */
+        .xpot-spill-band {
+          position: relative;
+        }
+
+        /* spill only on large screens where you have the 2-column hero */
+        @media (min-width: 1024px) {
+          .xpot-spill-band {
+            width: calc(100% + var(--xpot-spill-left, 560px));
+            margin-left: calc(-1 * var(--xpot-spill-left, 560px));
+          }
+        }
+      `}</style>
       `}</style>
 
       <div>
@@ -622,7 +640,7 @@ export default function JackpotPanel({
             </div>
 
             {/* Controlled details with hover-expand (desktop) */}
-            <div className={['group', isOpen ? 'xpot-details-open' : ''].join(' ')}>
+            <div className={['group xpot-spill-wrap', isOpen ? 'xpot-details-open' : ''].join(' ')}>
               <button
                 type="button"
                 className="flex w-full items-center justify-between rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-3 text-sm text-slate-200 transition hover:bg-black/20"
@@ -639,7 +657,7 @@ export default function JackpotPanel({
                 <ChevronDown className={['h-4 w-4 text-slate-400 transition-transform', isOpen ? 'rotate-180' : ''].join(' ')} />
               </button>
 
-              <div id="xpot-more-details" className="xpot-details-body">
+              <div id="xpot-more-details" className={['xpot-details-body', isHero ? 'xpot-spill-band' : ''].join(' ')}>
                 <div className="mt-3">
                   <div className="mt-1 grid gap-3 sm:grid-cols-2">
                     <div
