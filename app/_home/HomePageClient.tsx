@@ -37,7 +37,8 @@ import XpotFooter from '@/components/XpotFooter';
 import FinalDrawDate from '@/components/FinalDrawDate';
 import RotatingAnnouncement from '@/components/RotatingAnnouncement';
 
-import LiveActivityModule, { type LiveWinnerRow } from '@/components/LiveActivityModule';
+import LiveActivityModule
+  from '@/components/LiveActivityModule';
 import type { EntryRow } from '@/components/EnteringStageLive';
 
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
@@ -1046,7 +1047,7 @@ function HomePageInner() {
                         </Pill>
 
                         <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          handle-first - proof on-chain
+                          NO TICKETS - JUST 100,000 XPOT HOLDINGS
                         </span>
                       </div>
 
