@@ -224,7 +224,7 @@ export default function JackpotPanel({
 
   const capsuleWrap = 'group relative inline-flex max-w-full items-center';
 
-  // ✅ FIX: minmax(0, 1fr) + overflow hidden prevents the value from painting over "Daily"
+  // minmax(0, 1fr) + overflow hidden prevents the value from painting over "Daily"
   const capsuleInner = [
     'relative grid max-w-full grid-cols-1 gap-2 rounded-2xl',
     'sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3',
@@ -240,7 +240,6 @@ export default function JackpotPanel({
     isHero ? 'border-white/12 bg-white/[0.04] text-slate-100' : 'border-white/10 bg-white/[0.03] text-slate-200',
   ].join(' ');
 
-  // ✅ FIX: remove whitespace-nowrap, allow truncation, keep unit from shrinking
   const capsuleValue = [
     'xpot-pool-hero inline-flex min-w-0 items-baseline justify-center gap-2',
     'font-mono tabular-nums text-white',
@@ -248,22 +247,12 @@ export default function JackpotPanel({
     isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : 'text-[1.0rem] sm:text-[1.05rem]',
   ].join(' ');
 
-  const usdClampStyle: React.CSSProperties = isHero
-    ? { fontSize: 'clamp(4.6rem, 7.2vw, 8.4rem)', lineHeight: '0.86' }
-    : { fontSize: 'clamp(3.4rem, 5.8vw, 6.4rem)', lineHeight: '0.90' };
-
-  // ✅ Click-only details (no hover)
+  // Click-only details (no hover)
   const [manualOpen, setManualOpen] = useState(false);
   const isOpen = manualOpen;
 
   return (
-    <section
-      className={[
-        'relative',
-        panelChrome,
-        isHero ? '-mt-3 sm:-mt-5' : '',
-      ].join(' ')}
-    >
+    <section className={['relative', panelChrome, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
       <style jsx>{`
         @keyframes xpotSweep {
           0% { transform: translateX(-30%) skewX(-12deg); opacity: 0.0; }
@@ -305,12 +294,28 @@ export default function JackpotPanel({
           will-change: max-height, opacity, transform;
         }
         .xpot-details-open .xpot-details-body {
-          max-height: 1200px;
+          max-height: 1400px;
           opacity: 1;
           transform: translateY(0px);
         }
 
-        /* Hero-only: spill the details band left so it visually spans the hero */
+        /* This is the "solid surface" behind the expanded content so nothing bleeds through */
+        .xpot-details-surface {
+          position: relative;
+          z-index: 2;
+          border-radius: 22px;
+          border: 1px solid rgba(148,163,184,0.14);
+          background:
+            radial-gradient(circle at 20% 18%, rgba(124,200,255,0.10), transparent 55%),
+            radial-gradient(circle at 82% 22%, rgba(236,72,153,0.07), transparent 60%),
+            linear-gradient(180deg, rgba(2,6,23,0.62), rgba(0,0,0,0.34));
+          box-shadow: 0 28px 90px rgba(0,0,0,0.55);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          padding: 12px;
+        }
+
+        /* Hero-only spill band */
         .xpot-spill-wrap { position: relative; }
         .xpot-spill-band { position: relative; }
 
@@ -318,6 +323,38 @@ export default function JackpotPanel({
           .xpot-spill-band {
             width: calc(100% + var(--xpot-spill-left, 560px));
             margin-left: calc(-1 * var(--xpot-spill-left, 560px));
+          }
+        }
+
+        /* USD box becomes a container so the $ number sizes to the box width */
+        .xpot-usd-box { container-type: inline-size; }
+
+        .xpot-usd-amount {
+          white-space: nowrap;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: clip;
+        }
+
+        /* Container query sizing (best) */
+        .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
+          font-size: clamp(3.1rem, 18cqw, 8.4rem);
+          line-height: 0.86;
+        }
+        .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
+          font-size: clamp(2.6rem, 16cqw, 6.4rem);
+          line-height: 0.90;
+        }
+
+        /* Fallback if a browser doesn't support cqw */
+        @supports not (font-size: 1cqw) {
+          .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
+            font-size: clamp(3.1rem, 7.8vw, 8.4rem);
+            line-height: 0.86;
+          }
+          .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
+            font-size: clamp(2.6rem, 6.6vw, 6.4rem);
+            line-height: 0.90;
           }
         }
       `}</style>
@@ -393,7 +430,6 @@ export default function JackpotPanel({
                     Today&apos;s XPOT
                   </span>
 
-                  {/* ✅ FIX: overflow-hidden here too so the center can’t paint over the right pill */}
                   <div className="min-w-0 overflow-hidden px-1 text-center">
                     <span className={capsuleValue} style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}>
                       <span className="xpot-pool-num inline-block min-w-0 max-w-full truncate">
@@ -422,9 +458,10 @@ export default function JackpotPanel({
           <div className="relative mt-5 grid gap-4">
             <div
               className={[
-                'relative overflow-hidden rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
+                'xpot-usd-box relative overflow-hidden rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
                 justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
               ].join(' ')}
+              data-hero={isHero ? '1' : '0'}
               style={{
                 background:
                   'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.11), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.08), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.34), rgba(0,0,0,0.06))',
@@ -485,7 +522,7 @@ export default function JackpotPanel({
 
               <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
-                  <div className="relative">
+                  <div className="relative max-w-full overflow-hidden">
                     <div
                       aria-hidden
                       className={[
@@ -500,16 +537,16 @@ export default function JackpotPanel({
 
                     <div
                       className={[
-                        'relative xpot-usd-live xpot-usd-float font-semibold tabular-nums transition-all duration-300 ease-out',
+                        'xpot-usd-amount relative xpot-usd-live xpot-usd-float font-semibold tabular-nums transition-all duration-300 ease-out',
                         justUpdated ? 'scale-[1.02]' : '',
                         justUpdated ? 'text-[#7CC8FF] drop-shadow-[0_0_54px_rgba(124,200,255,0.22)]' : 'text-white',
                       ].join(' ')}
                       style={{
-                        ...usdClampStyle,
                         textShadow: justUpdated
                           ? '0 0 40px rgba(124,200,255,0.18)'
                           : '0 0 30px rgba(124,200,255,0.12)',
                         letterSpacing: isHero ? '-0.03em' : '-0.02em',
+                        paddingRight: '0.25rem',
                       }}
                     >
                       {displayUsdText}
@@ -608,15 +645,12 @@ export default function JackpotPanel({
                   <span className="text-xs text-slate-400">Token info, range, milestones</span>
                 </span>
                 <ChevronDown
-                  className={[
-                    'h-4 w-4 text-slate-400 transition-transform',
-                    isOpen ? 'rotate-180' : '',
-                  ].join(' ')}
+                  className={['h-4 w-4 text-slate-400 transition-transform', isOpen ? 'rotate-180' : ''].join(' ')}
                 />
               </button>
 
               <div id="xpot-more-details" className={['xpot-details-body', isHero ? 'xpot-spill-band' : ''].join(' ')}>
-                <div className="mt-3">
+                <div className="mt-3 xpot-details-surface">
                   <div className="mt-1 grid gap-3 sm:grid-cols-2">
                     <div
                       className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3"
