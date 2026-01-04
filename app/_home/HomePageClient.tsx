@@ -1138,15 +1138,17 @@ function HomePageInner() {
                 </Link>
               </div>
 
-              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <div className="min-w-0">
-                  <WinnerSpotlightCard winner={winnerSpotlight as any} />
-                </div>
+              <div className="mt-5 grid gap-5">
+  <div className="min-w-0">
+    <WinnerSpotlightCard winner={winnerSpotlight as any} />
+  </div>
 
-                <div className="min-w-0">
-                  <EnteringStageLive entries={entries as any} />
-                </div>
-              </div>
+  <div className="pointer-events-none h-px w-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),rgba(var(--xpot-gold),0.16),rgba(56,189,248,0.10),transparent)] opacity-60" />
+
+  <div className="min-w-0">
+    <EnteringStageLive entries={entries as any} />
+  </div>
+</div>
             </div>
           </div>
         </section>
