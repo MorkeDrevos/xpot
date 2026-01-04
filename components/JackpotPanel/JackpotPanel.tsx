@@ -544,7 +544,7 @@ export default function JackpotPanel({
               <div className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:justify-between">
   {/* LEFT: USD amount (auto-fits the box width, never spills) */}
   <div className="min-w-0 overflow-hidden">
-    <div className="relative py-2 sm:py-3">
+    <div className="relative pt-3 pb-2 sm:pt-4 sm:pb-3">
       <div
         aria-hidden
         className={[
@@ -564,11 +564,12 @@ export default function JackpotPanel({
           justUpdated ? 'text-[#7CC8FF]' : '',
         ].join(' ')}
         style={{
-          letterSpacing: isHero ? '-0.04em' : '-0.035em',
-          textShadow: justUpdated
-            ? '0 0 44px rgba(124,200,255,0.18)'
-            : '0 0 34px rgba(124,200,255,0.12)',
-        }}
+  transform: 'translateY(1px)', // 👈 ADD THIS LINE
+  letterSpacing: isHero ? '-0.04em' : '-0.035em',
+  textShadow: justUpdated
+    ? '0 0 44px rgba(124,200,255,0.18)'
+    : '0 0 34px rgba(124,200,255,0.12)',
+}}
       >
         {displayUsdText}
       </div>
