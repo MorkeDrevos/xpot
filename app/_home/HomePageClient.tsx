@@ -337,14 +337,16 @@ function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean
               </span>
 
               <span className="rounded-full border border-sky-300/20 bg-sky-950/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100/90">
-                Enter once
+                Claim daily
               </span>
             </div>
 
             <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
               Connect X + wallet in the hub
             </div>
-            <div className="mt-1 text-[12px] leading-relaxed text-sky-100/80">You are in today&apos;s draw.</div>
+            <div className="mt-1 text-[12px] leading-relaxed text-sky-100/80">
+              Claim entry for today&apos;s draw.
+            </div>
           </div>
         </div>
 
@@ -860,8 +862,8 @@ function useLatestEntriesTelemetry() {
       const arr = Array.isArray(data?.entries)
         ? (data.entries as EntryRow[])
         : Array.isArray(data)
-        ? (data as EntryRow[])
-        : [];
+          ? (data as EntryRow[])
+          : [];
 
       setEntries(arr.filter(e => Boolean(e?.handle)));
     }
@@ -941,12 +943,12 @@ function StepCard({
     tone === 'emerald'
       ? 'border-emerald-400/20'
       : tone === 'sky'
-      ? 'border-sky-400/20'
-      : tone === 'amber'
-      ? 'border-[rgba(var(--xpot-gold),0.22)]'
-      : tone === 'violet'
-      ? 'border-violet-400/20'
-      : 'border-white/10';
+        ? 'border-sky-400/20'
+        : tone === 'amber'
+          ? 'border-[rgba(var(--xpot-gold),0.22)]'
+          : tone === 'violet'
+            ? 'border-violet-400/20'
+            : 'border-white/10';
 
   return (
     <div
@@ -970,9 +972,9 @@ function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boole
       <Link
         href={ROUTE_HUB}
         className={`${BTN_GREEN} group px-6 py-3.5 text-sm ${warmup ? 'xpot-warmup-ring' : ''}`}
-        title="Enter the hub"
+        title="Open the hub"
       >
-        Enter today&apos;s XPOT
+        Claim today&apos;s entry
         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
       </Link>
 
@@ -1014,8 +1016,8 @@ function HomePageInner() {
     const t = run.ended
       ? `XPOT - Final Draw live (${RUN_END_EU})`
       : run.started
-      ? `XPOT - Day ${run.day}/${RUN_DAYS} (Next draw ${cutoffLabel})`
-      : `XPOT - Run starts ${RUN_START_EU}`;
+        ? `XPOT - Day ${run.day}/${RUN_DAYS} (Next draw ${cutoffLabel})`
+        : `XPOT - Run starts ${RUN_START_EU}`;
 
     document.title = t;
     setMeta(
@@ -1064,8 +1066,8 @@ function HomePageInner() {
                         </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-300">
-                          Hold XPOT to qualify. Enter once in the hub. Winner is published handle-first and paid on-chain
-                          with proof. Final Draw ends on <FinalDrawDate className="text-slate-100" />.
+                          Hold XPOT to qualify. Claim entry each day in the hub. Winner is published handle-first and
+                          paid on-chain with proof. Final Draw ends on <FinalDrawDate className="text-slate-100" />.
                         </p>
 
                         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -1090,16 +1092,17 @@ function HomePageInner() {
                 </div>
 
                 {/* RIGHT - Jackpot first */}
-<div className="min-w-0 grid gap-4">
-  <div className="relative">
-    <JackpotPanel variant="standalone" layout="wide" mode="hero" />
-  </div>
+                <div className="min-w-0 grid gap-4">
+                  <div className="relative">
+                    <JackpotPanel variant="standalone" layout="wide" mode="hero" />
+                  </div>
 
-  {bonusActive ? (
-    <PremiumCard className="p-5 sm:p-6" halo={false}>
-      <BonusStrip />
-    </PremiumCard>
-  ) : null}
+                  {bonusActive ? (
+                    <PremiumCard className="p-5 sm:p-6" halo={false}>
+                      <BonusStrip />
+                    </PremiumCard>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
@@ -1110,13 +1113,51 @@ function HomePageInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
+      {/* LIVE ACTIVITY */}
+      {SHOW_LIVE_FEED ? (
+        <section className="mt-10">
+          <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05] shadow-[0_40px_140px_rgba(0,0,0,0.55)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),rgba(56,189,248,0.22),transparent)]" />
+            <div className="xpot-live-sweep" aria-hidden />
+
+            <div className="relative p-5 sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Live activity</p>
+                  <p className="mt-2 text-pretty text-[15px] font-semibold text-slate-50">
+                    Today&apos;s entries and the latest winner
+                  </p>
+                </div>
+
+                <Link
+                  href={ROUTE_HUB}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                >
+                  Claim entry
+                  <ArrowRight className="h-4 w-4 text-slate-400" />
+                </Link>
+              </div>
+
+              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <div className="min-w-0">
+                  <WinnerSpotlightCard winner={winnerSpotlight as any} />
+                </div>
+
+                <div className="min-w-0">
+                  <EnteringStageLive entries={entries as any} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* WHAT XPOT IS */}
       <section className="mt-10">
         <SectionHeader
           eyebrow="3 seconds"
           title="What XPOT is"
-          desc={`Hold ${MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT, enter once in the hub, and you are in the daily draw. Winner is published with on-chain proof.`}
+          desc={`Hold ${MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT, claim entry in the hub each day, and you are in the daily draw. Winner is published with on-chain proof.`}
         />
 
         <Quick3Steps countdown={countdown} warmup={warmup} />
@@ -1131,7 +1172,7 @@ function HomePageInner() {
                 <span className="font-mono text-[13px] text-emerald-100">
                   {MIN_ELIGIBLE_XPOT.toLocaleString()}
                 </span>{' '}
-                XPOT to enter.
+                XPOT to claim entry.
               </p>
             </div>
 
@@ -1187,7 +1228,7 @@ function HomePageInner() {
               <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Simple loop</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
-                  Hold XPOT, enter daily, watch winners, verify payout. Clear mechanics, public proof.
+                  Hold XPOT, claim entry daily, watch winners, verify payout. Clear mechanics, public proof.
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
@@ -1200,7 +1241,7 @@ function HomePageInner() {
 
             <div className="mt-5">
               <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
-                Enter today&apos;s XPOT
+                Claim today&apos;s entry
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>
@@ -1260,14 +1301,14 @@ function HomePageInner() {
         <SectionHeader
           eyebrow="FAQ"
           title="Common questions"
-          desc="The homepage stays simple. The hub contains the entry and verification flow."
+          desc="The homepage stays simple. The hub contains the daily entry and verification flow."
         />
 
         <div className="grid gap-4 lg:grid-cols-2">
           <PremiumCard className="p-6" halo={false}>
             <h3 className="text-[14px] font-semibold text-slate-50">Do I need to buy tickets?</h3>
             <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-              No. Eligibility is based on XPOT holdings. Connect in the hub to check and enter.
+              No. Eligibility is based on XPOT holdings. Claim entry each day in the hub.
             </p>
           </PremiumCard>
 
