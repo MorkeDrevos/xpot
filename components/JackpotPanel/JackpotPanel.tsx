@@ -338,24 +338,24 @@ export default function JackpotPanel({
 
         /* Container query sizing (best) */
         .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
-          font-size: clamp(3.1rem, 18cqw, 8.4rem);
-          line-height: 0.86;
-        }
-        .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
-          font-size: clamp(2.6rem, 16cqw, 6.4rem);
-          line-height: 0.90;
-        }
+  font-size: clamp(2.9rem, 16cqw, 8.2rem);
+  line-height: 0.86;
+}
+.xpot-usd-box[data-hero="0"] .xpot-usd-amount {
+  font-size: clamp(2.4rem, 14cqw, 6.2rem);
+  line-height: 0.90;
+}
 
         /* Fallback if a browser doesn't support cqw */
         @supports not (font-size: 1cqw) {
           .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
-            font-size: clamp(3.1rem, 7.8vw, 8.4rem);
-            line-height: 0.86;
-          }
-          .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
-            font-size: clamp(2.6rem, 6.6vw, 6.4rem);
-            line-height: 0.90;
-          }
+  font-size: clamp(2.9rem, 7.2vw, 8.2rem);
+  line-height: 0.86;
+}
+.xpot-usd-box[data-hero="0"] .xpot-usd-amount {
+  font-size: clamp(2.4rem, 6.0vw, 6.2rem);
+  line-height: 0.90;
+}
         }
       `}</style>
 
@@ -521,8 +521,8 @@ export default function JackpotPanel({
               </div>
 
               <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
-                  <div className="relative max-w-full overflow-hidden">
+                <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3 sm:flex-1 sm:min-w-0">
+                  <div className="relative max-w-full overflow-hidden sm:flex-1 sm:min-w-0">
                     <div
                       aria-hidden
                       className={[
@@ -571,7 +571,7 @@ export default function JackpotPanel({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-2 sm:mb-2 sm:justify-end">
+                <div className="flex items-center justify-center gap-2 sm:mb-2 sm:justify-end shrink-0">
                   <span
                     className={[
                       'inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03]',
