@@ -425,8 +425,8 @@ export default function JackpotPanel({
         {/* HEADER */}
         <div className="relative z-10 flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
-            <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
+            <p className="text-sm font-semibold text-slate-100">Today&apos;s XPOT draw</p>
+            <p className="mt-1 text-xs text-slate-400">Simple daily reward. Winner posted and verifiable.</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -522,7 +522,7 @@ export default function JackpotPanel({
                   <div className="flex items-center gap-2 sm:mb-2">
                     <UsdEstimateBadge compact />
                     <span className="hidden text-[11px] uppercase tracking-[0.22em] text-slate-500 sm:inline">
-                      USD estimate
+                      Estimated value
                     </span>
                   </div>
                 </div>
@@ -537,7 +537,7 @@ export default function JackpotPanel({
                     ].join(' ')}
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-                    Live tick
+                    Updating live
                   </span>
                 </div>
               </div>
@@ -573,28 +573,30 @@ export default function JackpotPanel({
                   <PriceUnavailableNote />
                 </div>
               ) : (
-                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">
-                  Auto-updates from DexScreener ticks
-                </p>
+                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Live market price feed</p>
               )}
 
-              {/* ✅ Latest winner (click to verify) */}
+              {/* ✅ Latest winner (click to verify) - GOLDEN + HAPPY */}
               {showWinnerStrip && (
                 <WinnerWrapper
                   {...winnerWrapperProps}
                   className={[
-                    'group mt-4 block overflow-hidden rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition',
+                    'group mt-4 block overflow-hidden rounded-2xl border px-4 py-3 transition',
                     winnerHref ? 'cursor-pointer' : '',
-                    winnerPulse ? 'ring-1 ring-[#F5C84C]/25' : '',
-                    winnerHref ? 'hover:border-[#F5C84C]/25 hover:bg-black/30' : '',
+                    winnerPulse ? 'ring-2 ring-[#FFD27A]/30' : '',
+                    winnerHref ? 'hover:border-[#FFD27A]/35 hover:bg-black/30' : '',
                   ].join(' ')}
                   style={{
+                    borderColor: 'rgba(255,210,122,0.22)',
                     background:
-                      'radial-gradient(circle_at_18%_30%, rgba(245,200,76,0.16), transparent 58%), radial-gradient(circle_at_82%_22%, rgba(124,200,255,0.10), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(0,0,0,0.06))',
+                      'radial-gradient(circle_at_14%_22%, rgba(255,210,122,0.22), transparent 56%),' +
+                      'radial-gradient(circle_at_70%_18%, rgba(245,200,76,0.14), transparent 58%),' +
+                      'radial-gradient(circle_at_86%_72%, rgba(56,189,248,0.10), transparent 60%),' +
+                      'linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.10))',
                     boxShadow: winnerPulse
-                      ? '0 0 0 1px rgba(245,200,76,0.18), 0 0 28px rgba(245,200,76,0.10)'
+                      ? '0 0 0 1px rgba(255,210,122,0.22), 0 0 44px rgba(245,200,76,0.16)'
                       : winnerHref
-                        ? '0 0 0 1px rgba(245,200,76,0.10), 0 0 18px rgba(245,200,76,0.06)'
+                        ? '0 0 0 1px rgba(255,210,122,0.14), 0 0 28px rgba(245,200,76,0.10)'
                         : '0 0 0 1px rgba(255,255,255,0.04)',
                   }}
                 >
@@ -602,24 +604,28 @@ export default function JackpotPanel({
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span
-                          className="h-2 w-2 rounded-full animate-pulse"
+                          className="h-2.5 w-2.5 rounded-full"
                           style={{
-                            background: 'rgba(245,200,76,0.95)',
+                            background: 'linear-gradient(180deg, #FFE39A, #F5C84C)',
                             boxShadow:
-                              '0 0 14px rgba(245,200,76,0.55), 0 0 34px rgba(245,200,76,0.22)',
+                              '0 0 16px rgba(245,200,76,0.65), 0 0 46px rgba(245,200,76,0.28)',
                           }}
                         />
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-                          Latest winner
+                        <p
+                          className="text-[10px] font-semibold uppercase tracking-[0.22em]"
+                          style={{ color: 'rgba(255,226,160,0.95)' }}
+                        >
+                          Latest winner - paid on-chain
                         </p>
                         {winnerAgo && (
-                          <span className="text-[10px] uppercase tracking-[0.20em] text-slate-500">
-                            {winnerAgo}
-                          </span>
+                          <span className="text-[10px] uppercase tracking-[0.20em] text-slate-500">{winnerAgo}</span>
                         )}
                         {winnerHref && (
-                          <span className="ml-1 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.20em] text-[#F5C84C]/80 opacity-90 transition group-hover:opacity-100">
-                            Verify
+                          <span
+                            className="ml-1 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.20em] transition group-hover:opacity-100"
+                            style={{ color: 'rgba(255,210,122,0.92)', opacity: 0.92 }}
+                          >
+                            Verify now
                             <ExternalLink className="h-3 w-3" />
                           </span>
                         )}
@@ -628,10 +634,13 @@ export default function JackpotPanel({
                       <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                         <span
                           className={[
-                            'max-w-full truncate text-sm font-semibold text-slate-100',
-                            winnerHref ? 'group-hover:underline decoration-[#F5C84C]/35' : '',
+                            'max-w-full truncate text-sm font-semibold',
+                            winnerHref ? 'group-hover:underline decoration-[#FFD27A]/45' : '',
                           ].join(' ')}
-                          style={{ textShadow: '0 0 20px rgba(245,200,76,0.10)' }}
+                          style={{
+                            color: 'rgba(255,226,160,0.98)',
+                            textShadow: '0 0 22px rgba(245,200,76,0.22)',
+                          }}
                         >
                           {winnerName}
                         </span>
@@ -639,25 +648,28 @@ export default function JackpotPanel({
                         <span className="text-[11px] text-slate-600">·</span>
 
                         <span
-                          className="font-mono text-sm text-slate-100"
+                          className="font-mono text-sm"
                           style={{
-                            textShadow:
-                              '0 0 18px rgba(245,200,76,0.18), 0 0 40px rgba(245,200,76,0.08)',
+                            color: 'rgba(255,226,160,0.98)',
+                            textShadow: '0 0 22px rgba(245,200,76,0.26), 0 0 46px rgba(245,200,76,0.12)',
                           }}
                         >
                           {winnerAmount} XPOT
                         </span>
                       </div>
 
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        Paid out on-chain. Click to verify.
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Real winner, real payout. Tap to see the transaction.
                       </p>
                     </div>
 
                     <span
-                      className="shrink-0 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200"
+                      className="shrink-0 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
                       style={{
-                        boxShadow: '0 0 18px rgba(245,200,76,0.10)',
+                        borderColor: 'rgba(255,210,122,0.26)',
+                        background: 'rgba(255,210,122,0.10)',
+                        color: 'rgba(255,226,160,0.96)',
+                        boxShadow: '0 0 28px rgba(245,200,76,0.14)',
                       }}
                     >
                       <Sparkles className="h-3.5 w-3.5 opacity-90" />
