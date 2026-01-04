@@ -393,6 +393,23 @@ export default function JackpotPanel({
           style={{ boxShadow: '0 40px 140px rgba(0,0,0,0.60)' }}
         >
           <div
+  aria-hidden
+  className="pointer-events-none absolute -inset-[2px] rounded-3xl opacity-70"
+  style={{
+    background:
+      'radial-gradient(circle at 18% 18%, rgba(124,200,255,0.22), transparent 52%), radial-gradient(circle at 82% 22%, rgba(124,200,255,0.16), transparent 58%), radial-gradient(circle at 50% 100%, rgba(124,200,255,0.10), transparent 60%)',
+    filter: 'blur(10px)',
+  }}
+/>
+<div
+  aria-hidden
+  className="pointer-events-none absolute inset-0 rounded-3xl"
+  style={{
+    boxShadow:
+      '0 0 0 1px rgba(124,200,255,0.10), 0 0 70px rgba(124,200,255,0.10), 0 0 140px rgba(124,200,255,0.06)',
+  }}
+/>
+          <div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-3xl"
             style={{
