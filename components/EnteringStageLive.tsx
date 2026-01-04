@@ -53,6 +53,32 @@ function useLocalHandle() {
   return h;
 }
 
+function useIsTouch() {
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      // If the device can hover, we treat it as desktop.
+      const canHover =
+        typeof window !== 'undefined' &&
+        window.matchMedia &&
+        window.matchMedia('(hover: hover)').matches;
+      const hasCoarse =
+        typeof window !== 'undefined' &&
+        window.matchMedia &&
+        window.matchMedia('(pointer: coarse)').matches;
+
+      setIsTouch(Boolean(!canHover && hasCoarse));
+    };
+
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  return isTouch;
+}
+
 function sanitize(entries: EntryRow[]) {
   const arr = Array.isArray(entries) ? entries : [];
   const filtered = arr
@@ -107,7 +133,7 @@ function Avatar({
 
   // VIP tags: verified gets gold outline, others neutral
   const frame = verified
-    ? 'border-[rgba(var(--xpot-gold),0.42)] ring-2 ring-[rgba(var(--xpot-gold),0.30)] shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.18),0_0_30px_rgba(245,158,11,0.14)]'
+    ? 'border-[rgba(var(--xpot-gold),0.35)] ring-2 ring-[rgba(var(--xpot-gold),0.22)] shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.14),0_0_28px_rgba(245,158,11,0.10)]'
     : 'border-white/12 ring-1 ring-white/[0.08]';
 
   return (
@@ -115,10 +141,14 @@ function Avatar({
       className={[
         'relative shrink-0 overflow-hidden rounded-full border bg-white/[0.035]',
         frame,
+        verified ? 'xpot-verified-shimmer' : '',
       ].join(' ')}
       style={{ width: size, height: size }}
       title={normalizeHandle(label)}
     >
+      {/* shimmer overlay only for verified */}
+      {verified ? <span className="pointer-events-none absolute inset-0 xpot-verified-sheen" /> : null}
+
       {resolvedSrc && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -137,9 +167,6 @@ function Avatar({
 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.12),transparent_60%)]" />
       <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
-
-      {/* subtle “spotlight” halo */}
-      <div className="pointer-events-none absolute -inset-7 opacity-50 blur-2xl bg-[radial-gradient(circle_at_50%_35%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_40%_60%,rgba(var(--xpot-gold),0.11),transparent_64%)]" />
     </div>
   );
 }
@@ -165,7 +192,7 @@ function MiniDot({
   const [failed, setFailed] = useState(false);
 
   const cls = verified
-    ? 'border-[rgba(var(--xpot-gold),0.42)] ring-1 ring-[rgba(var(--xpot-gold),0.26)]'
+    ? 'border-[rgba(var(--xpot-gold),0.38)] ring-1 ring-[rgba(var(--xpot-gold),0.22)]'
     : 'border-white/14 ring-1 ring-white/[0.06]';
 
   return (
@@ -192,41 +219,153 @@ function MiniDot({
   );
 }
 
-function TooltipCard({ e, isMe }: { e: EntryRow; isMe: boolean }) {
+/** Animated X-style hover card (desktop only) */
+function ProfileHoverCard({ e, isMe }: { e: EntryRow; isMe: boolean }) {
   const handle = normalizeHandle(e.handle);
   const name = e.name ? String(e.name).trim() : '';
+
   return (
-    <div
+    <motion.div
       className={[
-        'pointer-events-none absolute left-1/2 top-full z-20 mt-3 -translate-x-1/2',
-        'w-[260px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/82',
-        'ring-1 ring-white/[0.06] shadow-[0_30px_120px_rgba(0,0,0,0.72)]',
-        'backdrop-blur-xl',
+        'pointer-events-none absolute left-1/2 top-full z-30 mt-4 -translate-x-1/2',
+        'w-[300px] overflow-hidden rounded-2xl border border-white/12 bg-slate-950/85 backdrop-blur-xl',
+        'shadow-[0_40px_140px_rgba(0,0,0,0.75)]',
       ].join(' ')}
+      initial={{ opacity: 0, y: 10, scale: 0.98, filter: 'blur(8px)' }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, y: 10, scale: 0.985, filter: 'blur(10px)' }}
+      transition={{ duration: 0.16, ease: 'easeOut' }}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.70),rgba(56,189,248,0.40),transparent)] opacity-80" />
-      <div className="pointer-events-none absolute -inset-10 opacity-60 blur-3xl bg-[radial-gradient(circle_at_30%_10%,rgba(var(--xpot-gold),0.12),transparent_60%),radial-gradient(circle_at_70%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+      <div className="h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.65),rgba(56,189,248,0.35),transparent)] opacity-80" />
 
-      <div className="p-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="truncate text-[13px] font-semibold text-slate-100">{handle}</div>
-            {name ? (
-              <div className="truncate text-[12px] text-slate-400">{name}</div>
-            ) : (
-              <div className="text-[12px] text-slate-600">x.com profile</div>
-            )}
+      <div className="p-4 flex items-center gap-3">
+        <Avatar src={e.avatarUrl} label={handle} verified={e.verified} size={54} />
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="truncate text-[14px] font-semibold text-slate-100">{handle}</span>
+            {isMe ? (
+              <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                You
+              </span>
+            ) : null}
           </div>
-          {isMe ? (
-            <span className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
-              You
-            </span>
-          ) : null}
-        </div>
 
-        <div className="mt-2 text-[11px] text-slate-500">Tap to open on X</div>
+          {name ? (
+            <div className="truncate text-[13px] text-slate-400">{name}</div>
+          ) : (
+            <div className="text-[12px] text-slate-500">x.com profile</div>
+          )}
+
+          <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200">
+            View profile on X
+          </div>
+        </div>
       </div>
-    </div>
+    </motion.div>
+  );
+}
+
+/** Mobile tap sheet (bottom) */
+function TapSheet({
+  open,
+  onClose,
+  entry,
+  isMe,
+}: {
+  open: boolean;
+  onClose: () => void;
+  entry: EntryRow | null;
+  isMe: boolean;
+}) {
+  const reduceMotion = useReducedMotion();
+
+  const handle = entry ? normalizeHandle(entry.handle) : '@unknown';
+  const name = entry?.name ? String(entry.name).trim() : '';
+  const xUrl = entry ? toXProfileUrl(handle) : null;
+
+  return (
+    <AnimatePresence>
+      {open && entry ? (
+        <>
+          <motion.div
+            className="fixed inset-0 z-[80] bg-black/55 backdrop-blur-[2px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={reduceMotion ? undefined : { duration: 0.18 }}
+            onClick={onClose}
+          />
+
+          <motion.div
+            className={[
+              'fixed inset-x-0 bottom-0 z-[90]',
+              'rounded-t-[28px] border-t border-white/12 bg-slate-950/92 backdrop-blur-xl',
+              'shadow-[0_-30px_120px_rgba(0,0,0,0.75)]',
+            ].join(' ')}
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+            transition={reduceMotion ? undefined : { duration: 0.2, ease: 'easeOut' }}
+          >
+            <div className="mx-auto h-1.5 w-12 rounded-full bg-white/10 mt-3" />
+
+            <div className="p-5">
+              <div className="flex items-center gap-4">
+                <Avatar
+                  src={entry.avatarUrl}
+                  label={handle}
+                  verified={entry.verified}
+                  size={64}
+                />
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="truncate text-[16px] font-semibold text-slate-100">{handle}</div>
+                    {isMe ? (
+                      <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                        You
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {name ? (
+                    <div className="truncate text-[13px] text-slate-400">{name}</div>
+                  ) : (
+                    <div className="text-[12px] text-slate-500">x.com profile</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center gap-3">
+                {xUrl ? (
+                  <a
+                    href={xUrl}
+                    target="_blank"
+                    rel="nofollow noopener noreferrer"
+                    className="flex-1 inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.06] px-4 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.10] transition"
+                  >
+                    Open on X
+                  </a>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-4 text-center text-[11px] text-slate-500">
+                Tap outside to dismiss
+              </div>
+            </div>
+          </motion.div>
+        </>
+      ) : null}
+    </AnimatePresence>
   );
 }
 
@@ -244,10 +383,11 @@ export default function EnteringStageLive({
   label?: string;
   embedded?: boolean;
   variant?: Variant;
-  avatarSize?: number; // used by vip + ultra
+  avatarSize?: number;
   max?: number;
 }) {
   const reduceMotion = useReducedMotion();
+  const isTouch = useIsTouch();
   const localHandle = useLocalHandle();
 
   const list = useMemo(() => sanitize(entries), [entries]);
@@ -260,380 +400,338 @@ export default function EnteringStageLive({
   const prevNewestKey = useRef<string | null>(null);
   const [newPulse, setNewPulse] = useState(false);
 
+  const [sheetEntry, setSheetEntry] = useState<EntryRow | null>(null);
+
   useEffect(() => {
     if (!newestKey) return;
     if (prevNewestKey.current && prevNewestKey.current !== newestKey) {
       setNewPulse(true);
-      const t = window.setTimeout(() => setNewPulse(false), reduceMotion ? 320 : 1400);
+      const t = window.setTimeout(() => setNewPulse(false), reduceMotion ? 300 : 1200);
       return () => window.clearTimeout(t);
     }
     prevNewestKey.current = newestKey;
   }, [newestKey, reduceMotion]);
 
+  // close sheet on escape
+  useEffect(() => {
+    if (!sheetEntry) return;
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setSheetEntry(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sheetEntry]);
+
   const Outer = embedded ? 'div' : 'section';
   const outerClass = embedded
     ? ['relative', className].join(' ')
     : [
-        'relative overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/18 ring-1 ring-white/[0.05]',
-        'shadow-[0_34px_160px_rgba(0,0,0,0.62)]',
+        'relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/18 ring-1 ring-white/[0.05]',
+        'shadow-[0_30px_140px_rgba(0,0,0,0.60)]',
         className,
       ].join(' ');
 
+  const sheetIsMe = useMemo(() => {
+    if (!sheetEntry || !localHandle) return false;
+    return normalizeHandle(localHandle) === normalizeHandle(sheetEntry.handle);
+  }, [sheetEntry, localHandle]);
+
   return (
-    <Outer className={outerClass}>
-      <style jsx global>{`
-        @keyframes xpotLiveDot {
-          0% {
-            opacity: 0.55;
-            transform: scale(0.95);
+    <>
+      <Outer className={outerClass}>
+        <style jsx global>{`
+          @keyframes xpotLiveDot {
+            0% { opacity: 0.55; transform: scale(0.95); }
+            55% { opacity: 1; transform: scale(1.06); }
+            100% { opacity: 0.55; transform: scale(0.95); }
           }
-          55% {
-            opacity: 1;
-            transform: scale(1.08);
-          }
-          100% {
-            opacity: 0.55;
-            transform: scale(0.95);
-          }
-        }
-        .xpot-live-dot {
-          animation: xpotLiveDot 1.35s ease-in-out infinite;
-        }
+          .xpot-live-dot { animation: xpotLiveDot 1.35s ease-in-out infinite; }
 
-        /* Hollywood “stage lights” shimmer */
-        @keyframes xpotStageSweep {
-          0% {
-            transform: translateX(-65%) skewX(-16deg);
+          @keyframes xpotAuraBreath {
+            0% { opacity: 0.35; }
+            55% { opacity: 0.60; }
+            100% { opacity: 0.35; }
+          }
+          .xpot-aura-breath { animation: xpotAuraBreath 3.6s ease-in-out infinite; }
+
+          @keyframes xpotNewSweep {
+            0% { transform: translateX(-70%) skewX(-18deg); opacity: 0; }
+            22% { opacity: 0.20; }
+            65% { opacity: 0.10; }
+            100% { transform: translateX(70%) skewX(-18deg); opacity: 0; }
+          }
+          .xpot-new-sweep {
+            position: absolute;
+            inset: -70px;
+            pointer-events: none;
+            background: linear-gradient(
+              100deg,
+              transparent 0%,
+              rgba(255,255,255,0.05) 30%,
+              rgba(var(--xpot-gold),0.16) 50%,
+              rgba(56,189,248,0.10) 70%,
+              transparent 100%
+            );
+            mix-blend-mode: screen;
             opacity: 0;
           }
-          18% {
-            opacity: 0.16;
+          .xpot-new-sweep.on { animation: xpotNewSweep 1.35s ease-in-out 1; }
+
+          /* Verified shimmer (subtle, premium) */
+          @keyframes xpotVerifiedSheen {
+            0% { transform: translateX(-120%) skewX(-16deg); opacity: 0; }
+            20% { opacity: 0.22; }
+            55% { opacity: 0.14; }
+            100% { transform: translateX(120%) skewX(-16deg); opacity: 0; }
           }
-          55% {
-            opacity: 0.10;
-          }
-          100% {
-            transform: translateX(65%) skewX(-16deg);
+          .xpot-verified-sheen {
+            position: absolute;
+            inset: -18px;
+            background: linear-gradient(
+              100deg,
+              transparent 0%,
+              rgba(var(--xpot-gold),0.10) 40%,
+              rgba(255,255,255,0.10) 50%,
+              rgba(var(--xpot-gold),0.10) 60%,
+              transparent 100%
+            );
+            mix-blend-mode: screen;
+            animation: xpotVerifiedSheen 6.5s ease-in-out infinite;
             opacity: 0;
           }
-        }
-        .xpot-stage-sweep {
-          position: absolute;
-          inset: -140px;
-          pointer-events: none;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.05) 28%,
-            rgba(var(--xpot-gold), 0.22) 50%,
-            rgba(56, 189, 248, 0.12) 72%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          opacity: 0;
-          animation: xpotStageSweep 10.8s ease-in-out infinite;
-        }
-
-        /* “new entrant” hero sweep */
-        @keyframes xpotNewSweep {
-          0% {
-            transform: translateX(-75%) skewX(-18deg);
-            opacity: 0;
+          .xpot-verified-shimmer:hover .xpot-verified-sheen {
+            animation-duration: 4.2s;
           }
-          20% {
-            opacity: 0.22;
+
+          @media (prefers-reduced-motion: reduce) {
+            .xpot-live-dot { animation: none; }
+            .xpot-aura-breath { animation: none; opacity: 0.45; }
+            .xpot-new-sweep.on { animation: none; opacity: 0; }
+            .xpot-verified-sheen { animation: none; opacity: 0; }
           }
-          60% {
-            opacity: 0.12;
-          }
-          100% {
-            transform: translateX(75%) skewX(-18deg);
-            opacity: 0;
-          }
-        }
-        .xpot-new-sweep {
-          position: absolute;
-          inset: -90px;
-          pointer-events: none;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.05) 30%,
-            rgba(var(--xpot-gold), 0.18) 50%,
-            rgba(56, 189, 248, 0.10) 70%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          opacity: 0;
-        }
-        .xpot-new-sweep.on {
-          animation: xpotNewSweep 1.6s ease-in-out 1;
-        }
+        `}</style>
 
-        /* breathing rim glow (expensive, alive) */
-        @keyframes xpotAuraBreath {
-          0% {
-            opacity: 0.38;
-          }
-          55% {
-            opacity: 0.70;
-          }
-          100% {
-            opacity: 0.38;
-          }
-        }
-        .xpot-aura-breath {
-          animation: xpotAuraBreath 4.2s ease-in-out infinite;
-        }
+        {/* Premium ambient aura (alive) */}
+        <div
+          className="pointer-events-none absolute -inset-[2px] rounded-[22px] opacity-60 blur-xl xpot-aura-breath
+          bg-[radial-gradient(circle_at_18%_45%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_82%_50%,rgba(16,185,129,0.14),transparent_58%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.12),transparent_60%)]"
+        />
 
-        @media (prefers-reduced-motion: reduce) {
-          .xpot-live-dot {
-            animation: none;
-          }
-          .xpot-stage-sweep {
-            animation: none;
-            opacity: 0.08;
-          }
-          .xpot-aura-breath {
-            animation: none;
-            opacity: 0.60;
-          }
-          .xpot-new-sweep.on {
-            animation: none;
-            opacity: 0;
-          }
-        }
-      `}</style>
+        {/* Thin luminous rim (expensive, not neon) */}
+        <div className="pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-white/[0.08]" />
+        <div
+          className="pointer-events-none absolute inset-0 rounded-[22px]
+          shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_50px_rgba(56,189,248,0.08),0_0_45px_rgba(16,185,129,0.06)]"
+        />
 
-      {/* Hollywood ambient “stage lights” */}
-      <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_14%_40%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_86%_44%,rgba(16,185,129,0.08),transparent_64%),radial-gradient(circle_at_55%_110%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
+        {!embedded ? (
+          <>
+            <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_16%_40%,rgba(56,189,248,0.08),transparent_62%),radial-gradient(circle_at_84%_42%,rgba(16,185,129,0.07),transparent_64%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.06),transparent_58%)]" />
+            <div className="pointer-events-none absolute inset-0 opacity-[0.05] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(56,189,248,0.30),transparent)] opacity-70" />
+          </>
+        ) : null}
 
-      {/* expensive rim + glow */}
-      <div className="pointer-events-none absolute -inset-[2px] rounded-[26px] opacity-65 blur-xl xpot-aura-breath bg-[radial-gradient(circle_at_18%_45%,rgba(56,189,248,0.20),transparent_55%),radial-gradient(circle_at_82%_50%,rgba(16,185,129,0.15),transparent_58%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.13),transparent_60%)]" />
-      <div className="pointer-events-none absolute inset-0 rounded-[26px] ring-1 ring-white/[0.08]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.62),rgba(56,189,248,0.40),transparent)] opacity-80" />
+        {/* FULL container sweep (alive) */}
+        <div className={['xpot-new-sweep', newPulse && !reduceMotion ? 'on' : ''].join(' ')} />
 
-      {/* perpetual stage sweep (subtle, always-on) */}
-      <div className="xpot-stage-sweep" />
+        <div className="relative flex items-center gap-3 px-4 py-3 sm:px-5">
+          {/* label */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+            <Users className="h-4 w-4 text-sky-200" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+              {label}
+            </span>
+          </div>
 
-      {/* full container “new entrant” sweep */}
-      <div className={['xpot-new-sweep', newPulse && !reduceMotion ? 'on' : ''].join(' ')} />
+          {/* runway */}
+          <div className="relative min-w-0 flex-1">
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-[linear-gradient(90deg,rgba(2,6,23,0.92),transparent)]" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-[linear-gradient(270deg,rgba(2,6,23,0.92),transparent)]" />
 
-      <div className="relative flex items-center gap-3 px-4 py-3 sm:px-5">
-        {/* label - now feels like a plaque */}
-        <div className="relative inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.035] px-3 py-1.5">
-          <div className="pointer-events-none absolute -inset-3 opacity-50 blur-2xl bg-[radial-gradient(circle_at_30%_30%,rgba(var(--xpot-gold),0.10),transparent_60%),radial-gradient(circle_at_70%_60%,rgba(56,189,248,0.08),transparent_64%)]" />
-          <Users className="h-4 w-4 text-sky-200" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-200">
-            {label}
-          </span>
-        </div>
+            <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div className="relative flex items-center gap-2 pr-6">
+                <div className={['xpot-new-sweep', newPulse && !reduceMotion ? 'on' : ''].join(' ')} />
 
-        {/* runway */}
-        <div className="relative min-w-0 flex-1">
-          {/* cinematic fades */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-[linear-gradient(90deg,rgba(2,6,23,0.94),transparent)]" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-[linear-gradient(270deg,rgba(2,6,23,0.94),transparent)]" />
+                {has ? (
+                  <>
+                    {/* ULTRA: avatars only (desktop hover card, mobile tap sheet) */}
+                    {variant === 'ultra' ? (
+                      <AnimatePresence initial={false}>
+                        {row.map((e, idx) => {
+                          const key = makeKey(e, idx);
+                          const handle = normalizeHandle(e.handle);
+                          const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
 
-          <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <div className="relative flex items-center gap-2 pr-6">
-              {has ? (
-                <>
-                  {/* ULTRA: avatars only, hover reveals */}
-                  {variant === 'ultra' ? (
-                    <AnimatePresence initial={false}>
-                      {row.map((e, idx) => {
-                        const key = makeKey(e, idx);
-                        const handle = normalizeHandle(e.handle);
-                        const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
+                          return (
+                            <motion.a
+                              key={key}
+                              href={isTouch ? undefined : toXProfileUrl(handle)}
+                              onClick={ev => {
+                                if (!isTouch) return;
+                                ev.preventDefault();
+                                setSheetEntry(e);
+                              }}
+                              target={isTouch ? undefined : '_blank'}
+                              rel={isTouch ? undefined : 'nofollow noopener noreferrer'}
+                              className="group relative inline-flex items-center"
+                              initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6, filter: 'blur(8px)' }}
+                              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+                              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(8px)' }}
+                              transition={reduceMotion ? undefined : { duration: 0.22, ease: 'easeOut' }}
+                              aria-label={isTouch ? `Open ${handle}` : `Open ${handle} on X`}
+                              title={handle}
+                            >
+                              <Avatar
+                                src={e.avatarUrl}
+                                label={handle}
+                                verified={e.verified}
+                                size={Math.max(30, avatarSize)}
+                              />
 
-                        return (
-                          <motion.a
-                            key={key}
-                            href={toXProfileUrl(handle)}
-                            target="_blank"
-                            rel="nofollow noopener noreferrer"
-                            className="group relative inline-flex items-center"
-                            initial={
-                              reduceMotion
-                                ? { opacity: 1 }
-                                : { opacity: 0, y: 10, filter: 'blur(10px)' }
-                            }
-                            animate={
-                              reduceMotion
-                                ? { opacity: 1 }
-                                : { opacity: 1, y: 0, filter: 'blur(0px)' }
-                            }
-                            exit={
-                              reduceMotion
-                                ? { opacity: 0 }
-                                : { opacity: 0, y: -10, filter: 'blur(10px)' }
-                            }
-                            transition={reduceMotion ? undefined : { duration: 0.28, ease: 'easeOut' }}
-                            aria-label={`Open ${handle} on X`}
-                            title={handle}
-                          >
-                            {/* subtle “footlight” under each avatar */}
-                            <div className="pointer-events-none absolute -bottom-2 left-1/2 h-8 w-10 -translate-x-1/2 opacity-60 blur-xl bg-[radial-gradient(circle_at_50%_70%,rgba(var(--xpot-gold),0.12),transparent_70%)]" />
-                            <Avatar
-                              src={e.avatarUrl}
-                              label={handle}
-                              verified={e.verified}
-                              size={Math.max(30, avatarSize)}
-                            />
+                              {/* desktop hover only */}
+                              {!isTouch ? (
+                                <AnimatePresence>
+                                  <div className="absolute left-1/2 top-full -translate-x-1/2">
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                      <ProfileHoverCard e={e} isMe={isMe} />
+                                    </div>
+                                  </div>
+                                </AnimatePresence>
+                              ) : null}
+                            </motion.a>
+                          );
+                        })}
+                      </AnimatePresence>
+                    ) : null}
 
-                            <div className="hidden group-hover:block">
-                              <TooltipCard e={e} isMe={isMe} />
-                            </div>
-                          </motion.a>
-                        );
-                      })}
-                    </AnimatePresence>
-                  ) : null}
+                    {/* TICKER: handle text only with tiny dot avatar */}
+                    {variant === 'ticker' ? (
+                      <AnimatePresence initial={false}>
+                        {row.map((e, idx) => {
+                          const key = makeKey(e, idx);
+                          const handle = normalizeHandle(e.handle);
+                          const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
 
-                  {/* TICKER: handle text only with tiny dot avatar */}
-                  {variant === 'ticker' ? (
-                    <AnimatePresence initial={false}>
-                      {row.map((e, idx) => {
-                        const key = makeKey(e, idx);
-                        const handle = normalizeHandle(e.handle);
-                        const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
-
-                        return (
-                          <motion.a
-                            key={key}
-                            href={toXProfileUrl(handle)}
-                            target="_blank"
-                            rel="nofollow noopener noreferrer"
-                            className={[
-                              'group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 transition',
-                              'border-white/10 bg-white/[0.02] hover:bg-white/[0.045]',
-                              isMe ? 'border-emerald-300/20 bg-emerald-500/10' : '',
-                            ].join(' ')}
-                            initial={
-                              reduceMotion
-                                ? { opacity: 1 }
-                                : { opacity: 0, y: 10, filter: 'blur(10px)' }
-                            }
-                            animate={
-                              reduceMotion
-                                ? { opacity: 1 }
-                                : { opacity: 1, y: 0, filter: 'blur(0px)' }
-                            }
-                            exit={
-                              reduceMotion
-                                ? { opacity: 0 }
-                                : { opacity: 0, y: -10, filter: 'blur(10px)' }
-                            }
-                            transition={reduceMotion ? undefined : { duration: 0.26, ease: 'easeOut' }}
-                            aria-label={`Open ${handle} on X`}
-                            title={handle}
-                          >
-                            <MiniDot src={e.avatarUrl} label={handle} verified={e.verified} />
-                            <span className="max-w-[170px] truncate text-[12px] font-semibold text-slate-200">
-                              {handle}
-                            </span>
-                            {e.name ? (
-                              <span className="max-w-[220px] truncate text-[12px] text-slate-500">
-                                {e.name}
+                          return (
+                            <motion.a
+                              key={key}
+                              href={toXProfileUrl(handle)}
+                              target="_blank"
+                              rel="nofollow noopener noreferrer"
+                              className={[
+                                'group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 transition',
+                                'border-white/10 bg-white/[0.02] hover:bg-white/[0.045]',
+                                isMe ? 'border-emerald-300/20 bg-emerald-500/10' : '',
+                              ].join(' ')}
+                              initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6, filter: 'blur(8px)' }}
+                              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+                              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(8px)' }}
+                              transition={reduceMotion ? undefined : { duration: 0.22, ease: 'easeOut' }}
+                              aria-label={`Open ${handle} on X`}
+                              title={handle}
+                            >
+                              <MiniDot src={e.avatarUrl} label={handle} verified={e.verified} />
+                              <span className="max-w-[170px] truncate text-[12px] font-semibold text-slate-200">
+                                {handle}
                               </span>
-                            ) : null}
-                          </motion.a>
-                        );
-                      })}
-                    </AnimatePresence>
-                  ) : null}
-
-                  {/* VIP: verified gold outline, others neutral, zero icons */}
-                  {variant === 'vip' ? (
-                    <AnimatePresence initial={false}>
-                      {row.map((e, idx) => {
-                        const key = makeKey(e, idx);
-                        const handle = normalizeHandle(e.handle);
-                        const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
-
-                        const border = e.verified
-                          ? 'border-[rgba(var(--xpot-gold),0.32)] bg-[rgba(var(--xpot-gold),0.07)]'
-                          : 'border-white/10 bg-white/[0.02]';
-
-                        return (
-                          <motion.a
-                            key={key}
-                            href={toXProfileUrl(handle)}
-                            target="_blank"
-                            rel="nofollow noopener noreferrer"
-                            className={[
-                              'group inline-flex items-center gap-3 rounded-full border px-3 py-2 transition',
-                              border,
-                              'hover:bg-white/[0.045]',
-                              isMe ? 'ring-1 ring-emerald-300/20' : 'ring-1 ring-white/[0.04]',
-                            ].join(' ')}
-                            initial={
-                              reduceMotion
-                                ? { opacity: 1 }
-                                : { opacity: 0, y: 10, filter: 'blur(10px)' }
-                            }
-                            animate={
-                              reduceMotion
-                                ? { opacity: 1 }
-                                : { opacity: 1, y: 0, filter: 'blur(0px)' }
-                            }
-                            exit={
-                              reduceMotion
-                                ? { opacity: 0 }
-                                : { opacity: 0, y: -10, filter: 'blur(10px)' }
-                            }
-                            transition={reduceMotion ? undefined : { duration: 0.26, ease: 'easeOut' }}
-                            aria-label={`Open ${handle} on X`}
-                            title={handle}
-                          >
-                            <Avatar
-                              src={e.avatarUrl}
-                              label={handle}
-                              verified={e.verified}
-                              size={Math.max(28, avatarSize)}
-                            />
-
-                            <div className="min-w-0 leading-tight">
-                              <div className="flex items-center gap-2">
-                                <span className="max-w-[170px] truncate text-[12.5px] font-semibold text-slate-200">
-                                  {handle}
+                              {e.name ? (
+                                <span className="max-w-[220px] truncate text-[12px] text-slate-500">
+                                  {e.name}
                                 </span>
-                                {isMe ? (
-                                  <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
-                                    You
+                              ) : null}
+                            </motion.a>
+                          );
+                        })}
+                      </AnimatePresence>
+                    ) : null}
+
+                    {/* VIP: verified gold outline, others neutral, zero icons */}
+                    {variant === 'vip' ? (
+                      <AnimatePresence initial={false}>
+                        {row.map((e, idx) => {
+                          const key = makeKey(e, idx);
+                          const handle = normalizeHandle(e.handle);
+                          const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
+
+                          const border = e.verified
+                            ? 'border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.06)]'
+                            : 'border-white/10 bg-white/[0.02]';
+
+                          return (
+                            <motion.a
+                              key={key}
+                              href={toXProfileUrl(handle)}
+                              target="_blank"
+                              rel="nofollow noopener noreferrer"
+                              className={[
+                                'group inline-flex items-center gap-3 rounded-full border px-3 py-2 transition',
+                                border,
+                                'hover:bg-white/[0.045]',
+                                isMe ? 'ring-1 ring-emerald-300/20' : 'ring-1 ring-white/[0.04]',
+                              ].join(' ')}
+                              initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6, filter: 'blur(8px)' }}
+                              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+                              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(8px)' }}
+                              transition={reduceMotion ? undefined : { duration: 0.22, ease: 'easeOut' }}
+                              aria-label={`Open ${handle} on X`}
+                              title={handle}
+                            >
+                              <Avatar
+                                src={e.avatarUrl}
+                                label={handle}
+                                verified={e.verified}
+                                size={Math.max(26, avatarSize)}
+                              />
+
+                              <div className="min-w-0 leading-tight">
+                                <div className="flex items-center gap-2">
+                                  <span className="max-w-[170px] truncate text-[12.5px] font-semibold text-slate-200">
+                                    {handle}
                                   </span>
+                                  {isMe ? (
+                                    <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                                      You
+                                    </span>
+                                  ) : null}
+                                </div>
+                                {e.name ? (
+                                  <div className="max-w-[240px] truncate text-[11.5px] text-slate-500">
+                                    {e.name}
+                                  </div>
                                 ) : null}
                               </div>
-                              {e.name ? (
-                                <div className="max-w-[240px] truncate text-[11.5px] text-slate-500">
-                                  {e.name}
-                                </div>
-                              ) : null}
-                            </div>
-                          </motion.a>
-                        );
-                      })}
-                    </AnimatePresence>
-                  ) : null}
-                </>
-              ) : (
-                <div className="text-[12px] text-slate-400">No entries yet.</div>
-              )}
+                            </motion.a>
+                          );
+                        })}
+                      </AnimatePresence>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="text-[12px] text-slate-400">No entries yet.</div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* live count (clean, small) */}
-        <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
-          <span className="xpot-live-dot h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-            Live
-          </span>
-          <span className="font-mono text-[11px] text-slate-200">{list.length}</span>
+          {/* live count */}
+          <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+            <span className="xpot-live-dot h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              Live
+            </span>
+            <span className="font-mono text-[11px] text-slate-200">{list.length}</span>
+          </div>
         </div>
-      </div>
-    </Outer>
+      </Outer>
+
+      {/* Mobile tap sheet */}
+      <TapSheet
+        open={Boolean(sheetEntry)}
+        onClose={() => setSheetEntry(null)}
+        entry={sheetEntry}
+        isMe={sheetIsMe}
+      />
+    </>
   );
 }
