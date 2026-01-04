@@ -1,0 +1,181 @@
+'use client';
+
+import React from 'react';
+import { Crown, ExternalLink, Sparkles, Trophy } from 'lucide-react';
+
+type WinnerSpotlight = {
+  handle: string | null;
+  name?: string | null;
+  avatarUrl?: string | null;
+  txUrl?: string | null;
+  amountXpot?: number | null;
+  kind?: 'MAIN' | 'BONUS' | null;
+};
+
+function normalizeHandle(h: string | null | undefined) {
+  const s = String(h ?? '').trim();
+  if (!s) return '@unknown';
+  return s.startsWith('@') ? s : `@${s}`;
+}
+
+function xProfileUrl(handle: string) {
+  const h = normalizeHandle(handle).replace(/^@/, '');
+  return `https://x.com/${encodeURIComponent(h)}`;
+}
+
+function formatXp(amount?: number | null) {
+  const n = Number(amount ?? 0);
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n);
+}
+
+export default function WinnerCelebrationCard({
+  winner,
+  className = '',
+}: {
+  winner: WinnerSpotlight | null | undefined;
+  className?: string;
+}) {
+  const hasWinner = !!winner?.handle || !!winner?.txUrl || !!winner?.avatarUrl;
+  const handle = normalizeHandle(winner?.handle);
+  const amount = formatXp(winner?.amountXpot ?? 1_000_000);
+
+  return (
+    <section
+      className={[
+        'relative overflow-hidden rounded-[28px]',
+        'border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.06]',
+        'shadow-[0_40px_140px_rgba(0,0,0,0.55)]',
+        className,
+      ].join(' ')}
+      aria-label="Latest winner"
+    >
+      {/* celebratory glow */}
+      <div className="pointer-events-none absolute -inset-24 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(circle_at_60%_90%,rgba(34,197,94,0.10),transparent_60%)]" />
+
+      {/* subtle sweep line */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.18),rgba(var(--xpot-gold),0.35),transparent)] opacity-80" />
+
+      <div className="relative p-4 sm:p-5 lg:p-6">
+        {/* header */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+              <Trophy className="h-4.5 w-4.5 text-[rgb(var(--xpot-gold))]" />
+            </span>
+
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-400">
+                Winner just took home
+              </p>
+              <p className="mt-0.5 text-[12px] text-slate-300">
+                Paid on-chain, published with a real @handle
+              </p>
+            </div>
+          </div>
+
+          <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.10)] px-3 py-1.5 text-[12px] font-semibold text-[rgb(var(--xpot-gold))]">
+            <Sparkles className="h-4 w-4" />
+            {winner?.kind === 'BONUS' ? 'BONUS' : 'MAIN'}
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
+          {/* identity */}
+          <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="relative">
+              <div className="h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40">
+                {winner?.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={winner.avatarUrl}
+                    alt={handle}
+                    className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="h-full w-full bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.12),transparent_60%)]" />
+                )}
+              </div>
+
+              {/* tiny crown badge */}
+              <div className="absolute -bottom-2 -right-2 inline-flex h-7 w-7 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/70 ring-1 ring-white/[0.06]">
+                <Crown className="h-3.5 w-3.5 text-[rgb(var(--xpot-gold))]" />
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <a
+                href={xProfileUrl(handle)}
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex items-center gap-2 text-[14px] font-semibold text-white hover:text-white"
+                title="Open X profile"
+              >
+                <span className="truncate">{handle}</span>
+                <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-slate-200" />
+              </a>
+
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                {winner?.txUrl ? (
+                  <a
+                    href={winner.txUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[12px] text-slate-200 hover:bg-white/[0.05]"
+                  >
+                    On-chain proof
+                    <ExternalLink className="h-4 w-4 text-slate-400" />
+                  </a>
+                ) : (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[12px] text-slate-400">
+                    On-chain proof
+                  </span>
+                )}
+
+                {!hasWinner ? (
+                  <span className="text-[12px] text-slate-400">Awaiting publish</span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* payout */}
+          <div className="relative overflow-hidden rounded-2xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] p-4 ring-1 ring-white/[0.06]">
+            <div className="pointer-events-none absolute -inset-16 opacity-70 blur-2xl bg-[radial-gradient(circle_at_15%_20%,rgba(var(--xpot-gold),0.22),transparent_55%),radial-gradient(circle_at_80%_25%,rgba(255,255,255,0.10),transparent_60%)]" />
+
+            {/* shine */}
+            <div className="pointer-events-none absolute -inset-x-24 top-0 h-[140%] rotate-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)] opacity-50 animate-[xpotSweep_5.5s_linear_infinite]" />
+
+            <p className="relative text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+              Payout
+            </p>
+
+            <div className="relative mt-2 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold tracking-tight text-white sm:text-[34px]">
+                {amount}
+              </span>
+              <span className="text-[14px] font-semibold text-[rgb(var(--xpot-gold))]">XPOT</span>
+            </div>
+
+            <p className="relative mt-2 text-[12px] leading-relaxed text-slate-300">
+              Every day, one verified holder claims entry and one handle gets paid. No anonymous winners.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* keyframes */}
+      <style jsx>{`
+        @keyframes xpotSweep {
+          0% {
+            transform: translateX(-30%) rotate(12deg);
+          }
+          100% {
+            transform: translateX(30%) rotate(12deg);
+          }
+        }
+      `}</style>
+    </section>
+  );
+}
