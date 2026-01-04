@@ -1090,7 +1090,7 @@ function HomePageInner() {
       {/* WHAT XPOT IS */}
       <section className="mt-10">
         <SectionHeader
-          eyebrow="3 seconds"
+          eyebrow=""
           title="What XPOT is"
           desc={`Hold ${MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT, claim entry in the hub each day, and you are in the daily draw. Winner is published with on-chain proof.`}
         />
