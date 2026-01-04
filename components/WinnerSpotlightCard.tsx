@@ -9,13 +9,13 @@ export type WinnerRow = {
   handle: string | null;
   name?: string | null;
   avatarUrl?: string | null;
-  wallet: string | null;
+  wallet: string | null; // kept for compatibility, but NEVER displayed
   amountXpot?: number | null;
   amount?: number | null;
   drawDate: string | null;
   txUrl?: string | null;
   isPaidOut?: boolean; // ignored for UI - keep for backwards compatibility
-  label?: string | null;
+  label?: string | null; // kept for compatibility, but NEVER displayed
 };
 
 const XPOT_SIGN = '✕';
@@ -29,12 +29,6 @@ function normalizeHandle(h: string | null | undefined) {
 function toXProfileUrl(handle: string) {
   const h = normalizeHandle(handle).replace(/^@/, '');
   return `https://x.com/${encodeURIComponent(h)}`;
-}
-
-function shortenAddress(addr: string, left = 6, right = 6) {
-  if (!addr) return '';
-  if (addr.length <= left + right + 3) return addr;
-  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
 
 function formatIsoToMadridYmd(iso: string) {
@@ -137,7 +131,6 @@ function Pill({
 }
 
 function buildPromoShareText(prizeText: string, hasWinner: boolean) {
-  // short, clean, works for non-winners too
   if (hasWinner) return `XPOT just paid out ${prizeText}. One daily draw. Enter today. @XPOTbet`;
   return `XPOT - one daily draw. Enter today. @XPOTbet`;
 }
@@ -157,9 +150,8 @@ export default function WinnerSpotlightCard({
   const displayName = winner?.name ? String(winner.name).trim() : '';
   const xUrl = handle ? toXProfileUrl(handle) : null;
 
-  const label = winner
-    ? handle ?? (winner.wallet ? shortenAddress(winner.wallet, 6, 6) : '@winner')
-    : '@winner';
+  // XPOT rule: ONLY X identity details - never show wallet or internal label
+  const label = winner ? handle ?? '@winner' : '@winner';
 
   const ymd = winner?.drawDate ? formatIsoToMadridYmd(winner.drawDate) : null;
 
@@ -177,7 +169,7 @@ export default function WinnerSpotlightCard({
   const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
   const avatarSize = compact ? 34 : 42;
 
-  // IMPORTANT: share should be promotional for anyone, not only winners
+  // Promotional share for anyone
   const shareText = buildPromoShareText(prizeText, hasWinner);
   const shareIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}`;
 
@@ -280,10 +272,18 @@ export default function WinnerSpotlightCard({
                       aria-label={`Open ${label} on X`}
                     >
                       <span className="truncate text-[14px] font-semibold text-slate-50">{label}</span>
+                      {displayName ? (
+                        <span className="truncate text-[13px] text-slate-400">- {displayName}</span>
+                      ) : null}
                       <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                     </a>
                   ) : (
-                    <div className="truncate text-[14px] font-semibold text-slate-50">{label}</div>
+                    <div className="min-w-0">
+                      <div className="truncate text-[14px] font-semibold text-slate-50">{label}</div>
+                      {displayName ? (
+                        <div className="truncate text-[13px] text-slate-400">{displayName}</div>
+                      ) : null}
+                    </div>
                   )
                 ) : (
                   <div className="truncate text-[14px] font-semibold text-slate-50">Winner syncing</div>
@@ -297,28 +297,9 @@ export default function WinnerSpotlightCard({
                 ) : null}
               </div>
 
+              {/* XP-only metadata (no wallet, no label) */}
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
-                {displayName ? <span className="max-w-[240px] truncate text-slate-200/90">{displayName}</span> : null}
-
-                {(displayName || ymd) && (ymd || winner?.wallet || winner?.label) ? (
-                  <span className="text-slate-700">•</span>
-                ) : null}
-
                 {ymd ? <span className="font-mono">{ymd}</span> : null}
-
-                {winner?.wallet ? (
-                  <>
-                    <span className="text-slate-700">•</span>
-                    <span className="font-mono">{shortenAddress(winner.wallet, 7, 7)}</span>
-                  </>
-                ) : null}
-
-                {winner?.label ? (
-                  <>
-                    <span className="text-slate-700">•</span>
-                    <span className="text-slate-300">{winner.label}</span>
-                  </>
-                ) : null}
               </div>
             </div>
           </div>
@@ -373,12 +354,7 @@ export default function WinnerSpotlightCard({
           </div>
         </div>
 
-        {/* footer message - clean */}
-        {!compact ? (
-          <div className="mt-4 text-[12px] text-slate-500">
-            Winner and proof are published here.
-          </div>
-        ) : null}
+        {/* Removed: "Winner and proof are published here." (not premium, redundant) */}
       </div>
     </Outer>
   );
