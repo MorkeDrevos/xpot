@@ -1098,19 +1098,7 @@ function HomePageInner() {
         <Quick3Steps countdown={countdown} warmup={warmup} />
 
         <div className="mt-4 relative overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 ring-1 ring-white/[0.05]">
-          <div className="pointer-events-none absolute -inset-12 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_40%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_86%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
-          <div className="relative flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">Eligibility</p>
-            </div>
 
-            <TinyTooltip label="Eligibility is checked in the hub when you connect X + wallet.">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-1.5 text-[11px] text-emerald-100/90">
-                <Info className="h-3.5 w-3.5 text-emerald-100/70" />
-                Verified in hub
-              </span>
-            </TinyTooltip>
-          </div>
         </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
