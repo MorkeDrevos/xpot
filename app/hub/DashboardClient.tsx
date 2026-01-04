@@ -721,17 +721,19 @@ function WinnersRow({
   w: PublicWinner;
   dense?: boolean;
 }) {
-  const walletLabel = w.wallet ? shortWallet(w.wallet) : '—';
-const rewardLabel = w.amount && w.amount > 0 ? `${Math.floor(w.amount).toLocaleString()} XPOT` : '—';
-
-// IMPORTANT: if backend sends paid=true but amount is 0, don't show PAID
-const paidUi = Boolean(w.isPaidOut) && Boolean(w.amount && w.amount > 0);
-
   const handle = w.handle ? normalizeHandle(w.handle) : null;
   const xUrl = handle ? toXProfileUrl(handle) : null;
 
   const title = handle || w.name || 'XPOT winner';
   const sub = w.drawDate ? formatDateTime(w.drawDate) : '—';
+
+  // Labels (single source of truth)
+  const walletLabel = w.wallet ? shortWallet(w.wallet) : '—';
+  const rewardLabel =
+    w.amount && w.amount > 0 ? `${Math.floor(w.amount).toLocaleString()} XPOT` : '—';
+
+  // IMPORTANT: if backend sends paid=true but amount is 0, don't show PAID
+  const paidUi = Boolean(w.isPaidOut) && Boolean(w.amount && w.amount > 0);
 
   return (
     <div className={`rounded-2xl border ${BORDER_SOFTER} bg-slate-950/55 px-4 py-3`}>
@@ -778,35 +780,25 @@ const paidUi = Boolean(w.isPaidOut) && Boolean(w.amount && w.amount > 0);
 
         <div className="shrink-0 text-right">
           <StatusPill tone={paidUi ? 'emerald' : 'sky'}>
-  <Crown className="h-3.5 w-3.5" />
-  {paidUi ? 'Paid' : 'Winner'}
-</StatusPill>
+            <Crown className="h-3.5 w-3.5" />
+            {paidUi ? 'Paid' : 'Winner'}
+          </StatusPill>
         </div>
       </div>
 
       <div className={`mt-3 grid gap-2 ${dense ? '' : 'sm:grid-cols-2'}`}>
-  {/* WALLET */}
-  <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
-    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">
-      Wallet
-    </span>
-    <span className="font-mono text-xs text-slate-100">
-      {w.wallet ? shortWallet(w.wallet) : '—'}
-    </span>
-  </div>
+        {/* WALLET */}
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">Wallet</span>
+          <span className="font-mono text-xs text-slate-100">{walletLabel}</span>
+        </div>
 
-  {/* REWARD */}
-  <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
-    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">
-      Reward
-    </span>
-    <span className="text-xs font-semibold text-slate-100">
-      {w.amount && w.amount > 0
-        ? `${Math.floor(w.amount).toLocaleString()} XPOT`
-        : '—'}
-    </span>
-  </div>
-</div>
+        {/* REWARD */}
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">Reward</span>
+          <span className="text-xs font-semibold text-slate-100">{rewardLabel}</span>
+        </div>
+      </div>
 
       {w.txUrl ? (
         <div className="mt-3">
