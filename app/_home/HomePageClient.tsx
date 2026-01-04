@@ -702,28 +702,6 @@ function useBonusActive() {
   return active;
 }
 
-/* ─────────────────────────────────────────────
-   Winners + entries telemetry (public)
-───────────────────────────────────────────── */
-
-type WinnerRow = {
-  id: string;
-  handle: string | null;
-  name?: string | null;
-  avatarUrl?: string | null;
-  wallet: string | null;
-
-  amount?: number | null;
-  amountXpot?: number | null;
-
-  drawDate: string | null;
-  txUrl?: string | null;
-  isPaidOut?: boolean;
-
-  kind?: 'MAIN' | 'BONUS' | null;
-  label?: string | null;
-};
-
 async function fetchFirstOk<T = any>(urls: string[]): Promise<T | null> {
   for (const url of urls) {
     try {
@@ -741,7 +719,7 @@ async function fetchFirstOk<T = any>(urls: string[]): Promise<T | null> {
  *    GET /api/winners/recent?limit=1
  */
 function useLatestWinnerCard() {
-  const [winner, setWinner] = useState<WinnerRow | null>(null);
+  const [winner, setWinner] = useState<LiveWinnerRow | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -813,10 +791,10 @@ function useLatestWinnerCard() {
           label: x.label ?? null,
         };
       } else if (Array.isArray(data?.winners) && data.winners[0]) {
-        const x = data.winners[0] as WinnerRow;
+        const x = data.winners[0] as LiveWinnerRow;;
         w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
       } else if (Array.isArray(data) && data[0]) {
-        const x = data[0] as WinnerRow;
+        const x = data[0] as LiveWinnerRow;
         w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
       }
 
