@@ -780,6 +780,11 @@ async function fetchFirstOk<T = any>(urls: string[]): Promise<T | null> {
   return null;
 }
 
+/**
+ * ✅ FIX: Home page uses the SAME canonical source as /winners page first:
+ *    GET /api/winners/recent?limit=1
+ * This guarantees the latest winner matches the Winners archive.
+ */
 function useLatestWinnerCard() {
   const [winner, setWinner] = useState<WinnerRow | null>(null);
 
@@ -788,6 +793,10 @@ function useLatestWinnerCard() {
 
     async function load() {
       const data = await fetchFirstOk<any>([
+        // ✅ canonical: same as /winners page
+        '/api/winners/recent?limit=1',
+
+        // optional fallbacks for resilience (safe to keep)
         '/api/public/winners/latest',
         '/api/public/winners?latest=1',
         '/api/public/winners?limit=1',
@@ -798,8 +807,41 @@ function useLatestWinnerCard() {
 
       let w: WinnerRow | null = null;
 
-      if (data?.ok === true && data?.winner) {
+      // shape: { winners: [...] }
+      if (data && Array.isArray(data?.winners) && data.winners[0]) {
+        const x = data.winners[0];
+
+        const safeId =
+          x?.id ??
+          x?.winnerId ??
+          x?.txSig ??
+          x?.txHash ??
+          (x?.drawDate ? `win_${String(x.drawDate)}` : 'latest');
+
+        w = {
+          id: String(safeId),
+          handle: x.handle ?? x.xHandle ?? null,
+          name: x.name ?? x.xName ?? null,
+          avatarUrl: x.avatarUrl ?? x.xAvatarUrl ?? null,
+          wallet: x.wallet ?? x.walletAddress ?? x.walletAddr ?? null,
+          amountXpot:
+            typeof x.amountXpot === 'number'
+              ? x.amountXpot
+              : typeof x.amount === 'number'
+                ? x.amount
+                : null,
+          amount: typeof x.amount === 'number' ? x.amount : null,
+          drawDate: x.drawDate ?? x.date ?? x.createdAt ?? null,
+          txUrl: x.txUrl ?? x.txLink ?? null,
+          isPaidOut: typeof x.isPaidOut === 'boolean' ? x.isPaidOut : Boolean(x.txUrl ?? x.txLink),
+          kind: (x.kind ?? x.winnerKind ?? x.type ?? null) as any,
+          label: x.label ?? null,
+        };
+      }
+      // shape: { ok: true, winner: {...} }
+      else if (data?.ok === true && data?.winner) {
         const x = data.winner;
+
         const safeId =
           x?.id ??
           x?.winnerId ??
@@ -821,10 +863,14 @@ function useLatestWinnerCard() {
           kind: x.kind ?? null,
           label: x.label ?? null,
         };
-      } else if (Array.isArray(data?.winners) && data.winners[0]) {
+      }
+      // shape: { winners: [...] } but no ok wrapper
+      else if (Array.isArray(data?.winners) && data.winners[0]) {
         const x = data.winners[0] as WinnerRow;
         w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
-      } else if (Array.isArray(data) && data[0]) {
+      }
+      // shape: array
+      else if (Array.isArray(data) && data[0]) {
         const x = data[0] as WinnerRow;
         w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
       }
@@ -1139,16 +1185,16 @@ function HomePageInner() {
               </div>
 
               <div className="mt-5 grid gap-5">
-  <div className="min-w-0">
-    <WinnerSpotlightCard winner={winnerSpotlight as any} />
-  </div>
+                <div className="min-w-0">
+                  <WinnerSpotlightCard winner={winnerSpotlight as any} />
+                </div>
 
-  <div className="pointer-events-none h-px w-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),rgba(var(--xpot-gold),0.16),rgba(56,189,248,0.10),transparent)] opacity-60" />
+                <div className="pointer-events-none h-px w-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),rgba(var(--xpot-gold),0.16),rgba(56,189,248,0.10),transparent)] opacity-60" />
 
-  <div className="min-w-0">
-    <EnteringStageLive entries={entries as any} />
-  </div>
-</div>
+                <div className="min-w-0">
+                  <EnteringStageLive entries={entries as any} />
+                </div>
+              </div>
             </div>
           </div>
         </section>
