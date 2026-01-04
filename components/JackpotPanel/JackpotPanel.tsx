@@ -338,25 +338,28 @@ export default function JackpotPanel({
 
         /* Container query sizing (best) */
         .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
-  font-size: clamp(3.6rem, 20cqw, 10.2rem);
-  line-height: 0.84;
+  font-size: clamp(4.4rem, 26cqw, 12.8rem);
+  line-height: 0.80;
+  letter-spacing: -0.045em;
 }
 .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
-  font-size: clamp(2.9rem, 18cqw, 7.6rem);
-  line-height: 0.88;
+  font-size: clamp(3.4rem, 22cqw, 9.2rem);
+  line-height: 0.84;
+  letter-spacing: -0.04em;
 }
 
-        /* Fallback if a browser doesn't support cqw */
-        @supports not (font-size: 1cqw) {
-          .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
-  font-size: clamp(3.6rem, 8.8vw, 10.2rem);
-  line-height: 0.84;
+@supports not (font-size: 1cqw) {
+  .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
+    font-size: clamp(4.4rem, 9.6vw, 12.8rem);
+    line-height: 0.80;
+    letter-spacing: -0.045em;
+  }
+  .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
+    font-size: clamp(3.4rem, 7.8vw, 9.2rem);
+    line-height: 0.84;
+    letter-spacing: -0.04em;
+  }
 }
-.xpot-usd-box[data-hero="0"] .xpot-usd-amount {
-  font-size: clamp(2.9rem, 7.4vw, 7.6rem);
-  line-height: 0.88;
-}
-        }
       `}</style>
 
       <div>
