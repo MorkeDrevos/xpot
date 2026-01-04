@@ -502,16 +502,22 @@ export default function JackpotPanel({
 
                 <div className="flex items-center justify-center gap-2 sm:mb-2 sm:justify-end">
                   <span
-                    className={[
-                      'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
-                      justUpdated
-                        ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_22px_rgba(59,167,255,0.10)]'
-                        : '',
-                    ].join(' ')}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-                    Updating live
-                  </span>
+  className={[
+    'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03]',
+    // responsive sizing
+    'px-2 py-0.5 text-[9px] sm:px-2.5 sm:py-1 sm:text-[10px] md:px-3',
+    'font-semibold uppercase tracking-[0.18em] text-slate-300',
+    'transition-shadow',
+    justUpdated
+      ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_22px_rgba(59,167,255,0.10)]'
+      : '',
+  ].join(' ')}
+  aria-label="Live"
+  title="Live"
+>
+  <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+  <span className="leading-none">Live</span>
+</span>
                 </div>
               </div>
 
