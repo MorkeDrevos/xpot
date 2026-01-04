@@ -379,6 +379,190 @@ function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean
 }
 
 /* ─────────────────────────────────────────────
+   Premium cosmic backdrop
+───────────────────────────────────────────── */
+
+function CosmicHeroBackdrop() {
+  return (
+    <>
+      <style jsx global>{`
+        @keyframes xpotHeroRotate {
+          0% {
+            transform: translateZ(0) rotate(0deg) scale(1);
+          }
+          100% {
+            transform: translateZ(0) rotate(360deg) scale(1);
+          }
+        }
+        @keyframes xpotHeroSheen {
+          0% {
+            transform: translateX(-25%) translateY(-10%) rotate(8deg);
+            opacity: 0;
+          }
+          20% {
+            opacity: 0.28;
+          }
+          60% {
+            opacity: 0.18;
+          }
+          100% {
+            transform: translateX(25%) translateY(10%) rotate(8deg);
+            opacity: 0;
+          }
+        }
+        @keyframes xpotConsoleSweep {
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          15% {
+            opacity: 0.22;
+          }
+          55% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-console-sweep {
+          position: absolute;
+          inset: -40px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(var(--xpot-gold), 0.1) 48%,
+            rgba(56, 189, 248, 0.06) 66%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          filter: blur(0.2px);
+          animation: xpotConsoleSweep 12s ease-in-out infinite;
+          z-index: 2;
+        }
+        .xpot-hero-engine {
+          position: absolute;
+          inset: -180px;
+          pointer-events: none;
+          opacity: 0.85;
+        }
+        .xpot-hero-engine::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 999px;
+          background: radial-gradient(circle at 30% 25%, rgba(16, 185, 129, 0.18), transparent 55%),
+            radial-gradient(circle at 70% 25%, rgba(56, 189, 248, 0.14), transparent 58%),
+            radial-gradient(circle at 55% 70%, rgba(var(--xpot-gold), 0.12), transparent 62%),
+            radial-gradient(circle at 30% 80%, rgba(139, 92, 246, 0.12), transparent 60%);
+          animation: xpotHeroRotate 44s linear infinite;
+          transform-origin: center;
+          opacity: 0.95;
+        }
+        .xpot-hero-engine::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 999px;
+          background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05), transparent 55%);
+          opacity: 0.55;
+          mix-blend-mode: screen;
+        }
+        .xpot-hero-grain {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.22;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+          background-size: 260px 260px;
+          mix-blend-mode: overlay;
+        }
+        .xpot-hero-sheen {
+          position: absolute;
+          inset: -60px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.06) 32%,
+            rgba(var(--xpot-gold), 0.08) 50%,
+            rgba(56, 189, 248, 0.06) 68%,
+            transparent 100%
+          );
+          transform: rotate(8deg);
+          animation: xpotHeroSheen 9.8s ease-in-out infinite;
+          mix-blend-mode: screen;
+          opacity: 0;
+        }
+
+        @keyframes xpotPulseGold {
+          0% {
+            box-shadow: 0 0 0 0 rgba(var(--xpot-gold), 0);
+          }
+          50% {
+            box-shadow: 0 0 0 1px rgba(var(--xpot-gold), 0.22), 0 0 18px rgba(var(--xpot-gold), 0.18);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(var(--xpot-gold), 0);
+          }
+        }
+        .xpot-warmup-ring {
+          animation: xpotPulseGold 2.8s ease-in-out infinite;
+          border-radius: 999px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-warmup-ring {
+            animation: none;
+          }
+        }
+
+        /* Live activity console header */
+        @keyframes xpotLiveSweep {
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          15% {
+            opacity: 0.18;
+          }
+          55% {
+            opacity: 0.08;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-live-sweep {
+          position: absolute;
+          inset: -40px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.04) 30%,
+            rgba(var(--xpot-gold), 0.08) 48%,
+            rgba(56, 189, 248, 0.05) 66%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          animation: xpotLiveSweep 12.5s ease-in-out infinite;
+        }
+      `}</style>
+
+      <div className="xpot-hero-engine" aria-hidden />
+      <div className="xpot-hero-sheen" aria-hidden />
+      <div className="xpot-hero-grain" aria-hidden />
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Madrid cutoff helpers
 ───────────────────────────────────────────── */
 
@@ -847,95 +1031,68 @@ function HomePageInner() {
 
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.60))]" />
-        <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.10),transparent_60%),radial-gradient(circle_at_82%_20%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_52%_-10%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
 
         <div className="relative z-10 mx-auto w-full max-w-none px-3 sm:px-6 lg:px-10 2xl:px-14">
           <div className="py-5 sm:py-7">
-            <div
-              className={[
-                'relative w-full overflow-hidden rounded-[38px]',
-                'border border-slate-900/70 bg-slate-950/35',
-                'shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl',
-              ].join(' ')}
-            >
-              {/* clean premium top seam */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),rgba(56,189,248,0.22),transparent)]" />
+            <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              <CosmicHeroBackdrop />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
-              <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)] 2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)]">
-                {/* LEFT - redesigned */}
-                <div className="min-w-0 flex flex-col justify-between gap-6 lg:pt-8">
+              <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.18fr)] 2xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.24fr)]">
+                {/* LEFT */}
+                <div className="min-w-0 flex flex-col justify-between gap-5 lg:pt-8">
                   <div className="space-y-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <Pill tone={warmup ? 'amber' : 'emerald'}>
-                        <Radio className="h-3.5 w-3.5" />
-                        {warmup ? 'Warm-up' : 'Live'}
-                      </Pill>
+                    <div className="relative p-2 sm:p-3">
+                      <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.14),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
 
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                        Proof on-chain
-                      </span>
-                    </div>
+                      <div className="relative flex flex-wrap items-center justify-between gap-3">
+                        <Pill tone={warmup ? 'amber' : 'emerald'}>
+                          <Radio className="h-3.5 w-3.5" />
+                          {warmup ? 'Warm-up' : 'Live run'}
+                        </Pill>
 
-                    <div>
-                      <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                        One protocol.
-                        <br />
-                        One daily <span className="xpot-xpotword">XPOT</span> draw.
-                      </h1>
-
-                      <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-300">
-                        Simple daily routine. Hold XPOT, enter once in the hub, and the winner is published handle-first
-                        with verifiable proof. Final Draw ends on <FinalDrawDate className="text-slate-100" />.
-                      </p>
-                    </div>
-
-                    {/* Calm 3-line "what matters" */}
-                    <div className="grid gap-2">
-                      <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/40">
-                          <Zap className="h-4 w-4 text-emerald-200" />
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+                          handle-first - proof on-chain
                         </span>
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-semibold text-slate-100">Hold XPOT to qualify</p>
-                          <p className="mt-0.5 text-[12px] leading-relaxed text-slate-400">
-                            Minimum{' '}
-                            <span className="font-mono text-slate-200">{MIN_ELIGIBLE_XPOT.toLocaleString()}</span> XPOT
-                          </p>
-                        </div>
                       </div>
 
-                      <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/40">
-                          <Globe className="h-4 w-4 text-sky-200" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-semibold text-slate-100">Enter once in the hub</p>
-                          <p className="mt-0.5 text-[12px] leading-relaxed text-slate-400">
-                            Connect X + wallet and you are in today&apos;s draw
-                          </p>
-                        </div>
-                      </div>
+                      <div className="relative mt-4">
+                        <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                          One protocol.
+                          <br />
+                          One daily <span className="xpot-xpotword">XPOT</span> draw.
+                        </h1>
 
-                      <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/40">
-                          <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-semibold text-slate-100">Winner at 22:00 Madrid</p>
-                          <p className="mt-0.5 text-[12px] leading-relaxed text-slate-400">
-                            Paid on-chain with verification
-                          </p>
+                        <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-300">
+                          Hold XPOT to qualify. Enter once in the hub. Winner is published handle-first and paid on-chain
+                          with proof. Final Draw ends on <FinalDrawDate className="text-slate-100" />.
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                            <ShieldCheck className="h-4 w-4 text-slate-300" />
+                            Proof
+                          </span>
+                          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                            <Globe className="h-4 w-4 text-slate-300" />
+                            Identity
+                          </span>
+                          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                            <Zap className="h-4 w-4 text-slate-300" />
+                            Daily
+                          </span>
                         </div>
+
+                        <PrimaryCtaRow countdown={countdown} warmup={warmup} />
                       </div>
                     </div>
-
-                    <PrimaryCtaRow countdown={countdown} warmup={warmup} />
                   </div>
                 </div>
 
-                {/* RIGHT - Jackpot first (no stacked frame background) */}
+                {/* RIGHT - Jackpot first */}
                 <div className="min-w-0 grid gap-4">
-                  <PremiumCard className="p-5 sm:p-6" halo={false} sheen>
+                  <PremiumCard className="p-5 sm:p-6" halo sheen>
+                    <div className="xpot-console-sweep" aria-hidden />
                     <div className="relative z-10">
                       <JackpotPanel variant="standalone" layout="wide" mode="hero" />
                     </div>
@@ -948,8 +1105,6 @@ function HomePageInner() {
                   ) : null}
                 </div>
               </div>
-
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px opacity-70 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),rgba(var(--xpot-gold),0.18),rgba(56,189,248,0.16),transparent)]" />
             </div>
           </div>
         </div>
@@ -971,6 +1126,7 @@ function HomePageInner() {
           <PremiumCard className="p-5 sm:p-6" halo sheen>
             {/* Console vibe header + sweep */}
             <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
+              <div className="xpot-live-sweep" aria-hidden />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),rgba(56,189,248,0.22),transparent)]" />
 
               <div className="relative px-4 py-3 sm:px-5">
