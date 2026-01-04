@@ -966,34 +966,28 @@ function StepCard({
 
 function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boolean }) {
   return (
-    <div className="mt-6 flex flex-col items-start gap-3">
-      {/* Buttons stacked */}
-      <div className="flex w-full flex-col gap-3 sm:max-w-xs">
-        <Link
-          href={ROUTE_HUB}
-          className={`${BTN_GREEN} group w-full px-6 py-3.5 text-sm ${warmup ? 'xpot-warmup-ring' : ''}`}
-          title="Enter the hub"
-        >
-          <span className="inline-flex w-full items-center justify-center">
-            Enter today&apos;s XPOT
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </Link>
+    <div className="mt-6 flex flex-wrap items-center gap-3">
+      <Link
+        href={ROUTE_HUB}
+        className={`${BTN_GREEN} group px-6 py-3.5 text-sm ${warmup ? 'xpot-warmup-ring' : ''}`}
+        title="Enter the hub"
+      >
+        Enter today&apos;s XPOT
+        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+      </Link>
 
-        <a
-          href={XPOT_JUP_SWAP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-          title="Buy XPOT on Jupiter"
-        >
-          Buy XPOT
-          <ExternalLink className="h-4 w-4 text-slate-500" />
-        </a>
-      </div>
+      <a
+        href={XPOT_JUP_SWAP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+        title="Buy XPOT on Jupiter"
+      >
+        Buy XPOT
+        <ExternalLink className="h-4 w-4 text-slate-500" />
+      </a>
 
-      {/* Countdown pill below (kept) */}
-      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-300">
+      <div className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-300">
         <Timer className="h-4 w-4 text-slate-400" />
         Next draw in <span className="font-mono font-semibold text-slate-100">{countdown}</span>
       </div>
@@ -1044,7 +1038,7 @@ function HomePageInner() {
               <CosmicHeroBackdrop />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
-              <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,1.0fr)_minmax(0,1.12fr)]">
+              <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start 2xl:grid-cols-[minmax(0,1.0fr)_minmax(0,1.12fr)]">
                 {/* LEFT */}
                 <div className="flex flex-col justify-between gap-5 lg:pt-8">
                   <div className="space-y-5">
