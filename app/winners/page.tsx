@@ -281,7 +281,6 @@ export default function WinnersPage() {
       pageTag="hub"
     >
       <section className="mt-6 space-y-6">
-        {/* Controls */}
         <section className="xpot-panel px-5 py-5 sm:px-6 sm:py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -374,7 +373,6 @@ export default function WinnersPage() {
           </div>
         </section>
 
-        {/* Winner log */}
         <section className="xpot-card-primary" data-glow="magenta">
           <div className="xpot-nebula-halo" />
           <div className="relative z-10 px-5 py-5 sm:px-6 sm:py-6">
@@ -428,7 +426,6 @@ export default function WinnersPage() {
 
                           return (
                             <article key={w.id} className="xpot-card px-4 py-4">
-                              {/* Top badges row */}
                               <div className="flex flex-wrap items-center gap-2">
                                 <span
                                   className={[
@@ -474,7 +471,6 @@ export default function WinnersPage() {
                                 )}
                               </div>
 
-                              {/* Main row: Identity | Amount(hero) | TX */}
                               <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
                                 <WinnerIdentity
                                   avatarUrl={w.avatarUrl}
@@ -483,12 +479,13 @@ export default function WinnersPage() {
                                   walletAddress={w.walletAddress}
                                 />
 
-                                {/* Amount - hero */}
+                                {/* ↓↓↓ Amount reduced (scale) */}
                                 <div className="flex justify-start sm:justify-center">
-                                  <GoldAmount value={amountText} suffix="XPOT" size="lg" />
+                                  <div className="origin-left sm:origin-center scale-[0.78] sm:scale-[0.85]">
+                                    <GoldAmount value={amountText} suffix="XPOT" size="md" />
+                                  </div>
                                 </div>
 
-                                {/* TX button */}
                                 <div className="flex justify-start sm:justify-end">
                                   {hasTx && w.txUrl ? (
                                     <Link
