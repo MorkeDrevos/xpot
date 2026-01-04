@@ -156,9 +156,7 @@ function UsdPill({
   return (
     <span className={cls}>
       <span className="font-mono text-[0.92em]">{value}</span>
-      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">
-        USD
-      </span>
+      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">USD</span>
     </span>
   );
 }
@@ -182,9 +180,7 @@ function XpotPill({
   return (
     <span className={cls}>
       <span className="font-mono tracking-[0.14em] text-[0.9em]">{amountStr}</span>
-      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">
-        {unit}
-      </span>
+      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">{unit}</span>
     </span>
   );
 }
@@ -296,18 +292,12 @@ const BTN_UTILITY = 'xpot-btn';
 const BTN_DANGER = 'xpot-btn xpot-btn-danger';
 const BTN_CROWN = BTN_VAULT;
 
-// ✅ Guarantee API URLs are absolute, not relative to /ops, /hub etc.
-function toAbsolutePath(url: string) {
-  if (!url) return url;
-
-  // keep absolute URLs intact
-  if (/^https?:\/\//i.test(url)) return url;
-
-  // already absolute path
-  if (url.startsWith('/')) return url;
-
-  // fix: "api/admin/today" -> "/api/admin/today"
-  return `/${url}`;
+// ✅ CRITICAL: normalize all fetch URLs so we never hit relative "api/..." under /ops
+function normalizeUrl(u: string) {
+  const s = String(u || '').trim();
+  if (!s) return '/';
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  return s.startsWith('/') ? s : `/${s}`;
 }
 
 export default function AdminPage() {
@@ -425,8 +415,10 @@ export default function AdminPage() {
     headers.set('x-xpot-admin-token', token);
     if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
 
-    const abs = toAbsolutePath(input);
-    const res = await fetch(abs, { ...init, headers, cache: 'no-store' });
+    // ✅ ensure absolute URL
+    const url = normalizeUrl(input);
+
+    const res = await fetch(url, { ...init, headers, cache: 'no-store' });
 
     let data: any = null;
     try {
@@ -437,7 +429,6 @@ export default function AdminPage() {
 
     if (!res.ok) {
       const msg = data?.error || data?.message || `Request failed (${res.status})`;
-      // ✅ include status so we can route around 404s
       throw new Error(`HTTP_${res.status}:${msg}`);
     }
 
@@ -448,27 +439,22 @@ export default function AdminPage() {
   async function authedFetchAny(path: string, init?: RequestInit) {
     const paths: string[] = [];
 
-    // absolute /api/... -> try as-is first, then mirror across the other base when possible
     if (path.startsWith('/api/')) {
       paths.push(path);
     } else {
       for (const base of API_BASES) paths.push(`${base}${path.startsWith('/') ? '' : '/'}${path}`);
     }
 
-    // also try both bases even if caller passed "/today" (non-/api)
-    if (path.startsWith('/api/')) {
-      // If they passed "/api/admin/..." or "/api/ops/...", add the sibling base version too
-      if (path.startsWith('/api/admin/')) paths.push(path.replace('/api/admin/', '/api/ops/'));
-      if (path.startsWith('/api/ops/')) paths.push(path.replace('/api/ops/', '/api/admin/'));
-    }
+    if (path.startsWith('/api/admin/')) paths.push(path.replace('/api/admin/', '/api/ops/'));
+    if (path.startsWith('/api/ops/')) paths.push(path.replace('/api/ops/', '/api/admin/'));
 
     let lastErr: any = null;
-    for (const url of Array.from(new Set(paths)).map(toAbsolutePath)) {
+    for (const raw of Array.from(new Set(paths))) {
+      const url = normalizeUrl(raw);
       try {
         return await authedFetch(url, init);
       } catch (e: any) {
         lastErr = e;
-        // keep trying on 404/405; stop early on 401/403 (token/wiring issue)
         const msg = String(e?.message || '');
         if (msg.startsWith('HTTP_401:') || msg.startsWith('HTTP_403:')) break;
       }
@@ -493,7 +479,6 @@ export default function AdminPage() {
       setEffectiveOpsMode(eff);
       setEnvAutoAllowed(allowed);
     } catch (err: any) {
-      // ✅ If endpoint doesn't exist on this deployment, don't spam console/UI
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setOpsMode('MANUAL');
         setEffectiveOpsMode('MANUAL');
@@ -530,7 +515,6 @@ export default function AdminPage() {
     } catch (err: any) {
       console.error('[ADMIN] refresh upcoming error', err);
 
-      // ✅ If not deployed, don't show "UNAUTHED" - show gentle fallback
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setUpcomingDrops([]);
         setUpcomingError(null);
@@ -543,7 +527,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Manually create today’s draw (dev) ──────
   async function handleCreateTodayDraw() {
     setTodayDrawError(null);
 
@@ -560,18 +543,12 @@ export default function AdminPage() {
       window.location.reload();
     } catch (err: any) {
       console.error('[XPOT] create today draw error:', err);
-      alert(
-        String(err?.message || 'Unexpected error creating today’s round').replace(
-          /^HTTP_\d+:/,
-          '',
-        ),
-      );
+      alert(String(err?.message || 'Unexpected error creating today’s round').replace(/^HTTP_\d+:/, ''));
     } finally {
       setCreatingDraw(false);
     }
   }
 
-  // ── Schedule bonus XPOT ─────────────────────
   async function handleScheduleBonus(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBonusError(null);
@@ -583,9 +560,7 @@ export default function AdminPage() {
     }
 
     if (!todayDraw) {
-      setBonusError(
-        'No draw detected for today yet. Create today’s draw first or wait for auto-create.',
-      );
+      setBonusError('No draw detected for today yet. Create today’s draw first or wait for auto-create.');
       return;
     }
 
@@ -630,16 +605,13 @@ export default function AdminPage() {
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setBonusError('Bonus scheduling routes are not deployed on this environment yet.');
       } else {
-        setBonusError(
-          String(err?.message || 'Failed to schedule bonus XPOT.').replace(/^HTTP_\d+:/, ''),
-        );
+        setBonusError(String(err?.message || 'Failed to schedule bonus XPOT.').replace(/^HTTP_\d+:/, ''));
       }
     } finally {
       setBonusSubmitting(false);
     }
   }
 
-  // ── Cancel scheduled bonus drop ─────────────
   async function handleCancelBonusDrop(dropId: string) {
     setCancelDropError(null);
 
@@ -657,25 +629,20 @@ export default function AdminPage() {
       if (data && (data as any).ok === false)
         throw new Error((data as any).error || 'Failed to cancel drop');
 
-      setUpcomingDrops(prev =>
-        prev.map(d => (d.id === dropId ? { ...d, status: 'CANCELLED' } : d)),
-      );
+      setUpcomingDrops(prev => prev.map(d => (d.id === dropId ? { ...d, status: 'CANCELLED' } : d)));
     } catch (err: any) {
       console.error('[ADMIN] cancel drop error', err);
 
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setCancelDropError('Bonus routes are not deployed on this environment yet.');
       } else {
-        setCancelDropError(
-          String(err?.message || 'Failed to cancel bonus drop.').replace(/^HTTP_\d+:/, ''),
-        );
+        setCancelDropError(String(err?.message || 'Failed to cancel bonus drop.').replace(/^HTTP_\d+:/, ''));
       }
     } finally {
       setCancelingDropId(null);
     }
   }
 
-  // ── Pick main winner (manual override) ───────
   async function handlePickMainWinner() {
     setPickError(null);
     setPickSuccess(null);
@@ -687,7 +654,6 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
-      // ✅ try your known stable manual route first, then try /api/admin or /api/ops variants
       const candidates = [
         ADMIN_PICK_WINNER_API,
         '/api/ops/draw/pick-winner',
@@ -699,9 +665,9 @@ export default function AdminPage() {
       let data: any = null;
       let lastErr: any = null;
 
-      for (const url of candidates) {
+      for (const u of candidates) {
         try {
-          data = await authedFetch(url, { method: 'POST' });
+          data = await authedFetch(u, { method: 'POST' });
           lastErr = null;
           break;
         } catch (e: any) {
@@ -731,7 +697,6 @@ export default function AdminPage() {
       const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
       setPickSuccess(`Main XPOT winner: ${normalized.ticketCode || '(no ticket)'} (${shortAddr})`);
 
-      // Refresh winners list (best effort)
       try {
         const winnersData = await authedFetchAny('/winners');
         setWinners((winnersData as any).winners ?? []);
@@ -742,9 +707,7 @@ export default function AdminPage() {
 
       setTodayDraw(prev => (prev ? { ...prev, status: 'closed' } : prev));
     } catch (err: any) {
-      setPickError(
-        String(err?.message || 'Failed to pick main XPOT winner').replace(/^HTTP_\d+:/, ''),
-      );
+      setPickError(String(err?.message || 'Failed to pick main XPOT winner').replace(/^HTTP_\d+:/, ''));
     } finally {
       setIsPickingWinner(false);
     }
@@ -796,16 +759,13 @@ export default function AdminPage() {
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setBonusPickError('Bonus routes are not deployed on this environment yet.');
       } else {
-        setBonusPickError(
-          String(err?.message || 'Failed to pick bonus winner').replace(/^HTTP_\d+:/, ''),
-        );
+        setBonusPickError(String(err?.message || 'Failed to pick bonus winner').replace(/^HTTP_\d+:/, ''));
       }
     } finally {
       setIsPickingBonusWinner(false);
     }
   }
 
-  // ── Panic reopen draw ───────────────────────
   async function handleReopenDraw() {
     setTodayDrawError(null);
 
@@ -828,7 +788,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Mark winner as paid ─────────────────────
   async function handleMarkAsPaid(winnerId: string) {
     setMarkPaidError(null);
 
@@ -858,16 +817,13 @@ export default function AdminPage() {
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setMarkPaidError('Mark-paid route is not deployed on this environment yet.');
       } else {
-        setMarkPaidError(
-          String(err?.message || 'Failed to mark as paid').replace(/^HTTP_\d+:/, ''),
-        );
+        setMarkPaidError(String(err?.message || 'Failed to mark as paid').replace(/^HTTP_\d+:/, ''));
       }
     } finally {
       setSavingPaidId(null);
     }
   }
 
-  // ✅ Live draw (fallback + skew)
   async function fetchLiveDrawWithSkew(): Promise<LiveDrawPayload['draw']> {
     const res = await fetch('/api/draw/live', { cache: 'no-store' });
     try {
@@ -876,9 +832,7 @@ export default function AdminPage() {
         const serverNow = new Date(hdr).getTime();
         if (Number.isFinite(serverNow)) setServerSkewMs(serverNow - Date.now());
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     const json = (await res.json()) as LiveDrawPayload;
     return json.draw;
@@ -890,7 +844,6 @@ export default function AdminPage() {
       const t = (data as any).today ?? null;
       if (t) return t as TodayDraw;
     } catch (err: any) {
-      // 404 is fine -> fallback
       if (!isHttp(err, 404) && !isHttp(err, 405)) throw err;
     }
 
@@ -908,7 +861,6 @@ export default function AdminPage() {
       setApiBanner(null);
       return arr as AdminWinner[];
     } catch (err: any) {
-      // If admin winners route isn't deployed, fallback to public "recent winners"
       if (isHttp(err, 404) || isHttp(err, 405)) {
         try {
           const res = await fetch(`/api/winners/recent?limit=${MAX_RECENT_WINNERS}`, { cache: 'no-store' });
@@ -928,7 +880,6 @@ export default function AdminPage() {
             label: 'Main XPOT',
           }));
 
-          // gentle banner only once - backend ops routes missing
           setApiBanner('Ops/admin API routes are not deployed on this environment. Showing public winner feed as fallback.');
           return mapped;
         } catch (e) {
@@ -939,21 +890,18 @@ export default function AdminPage() {
     }
   }
 
-  // ── Load Today, tickets, winners, upcoming ──
   useEffect(() => {
     if (!adminToken) return;
 
     let cancelled = false;
 
     async function loadAll() {
-      // Ops mode (optional)
       try {
         await loadOpsMode();
       } catch (err) {
         console.error('[ADMIN] load ops mode error', err);
       }
 
-      // Today
       setTodayLoading(true);
       setTodayDrawError(null);
       try {
@@ -966,7 +914,6 @@ export default function AdminPage() {
         if (!cancelled) setTodayLoading(false);
       }
 
-      // Tickets (optional endpoint)
       setTicketsLoading(true);
       setTicketsError(null);
       try {
@@ -974,7 +921,6 @@ export default function AdminPage() {
         if (!cancelled) setTickets((data as any).tickets ?? []);
         if (!cancelled) setApiBanner(null);
       } catch (err: any) {
-        // ✅ 404 -> not deployed, don't show scary error
         if (isHttp(err, 404) || isHttp(err, 405)) {
           if (!cancelled) {
             setTickets([]);
@@ -988,7 +934,6 @@ export default function AdminPage() {
         if (!cancelled) setTicketsLoading(false);
       }
 
-      // Winners (with public fallback)
       setWinnersLoading(true);
       setWinnersError(null);
       try {
@@ -1000,7 +945,6 @@ export default function AdminPage() {
         if (!cancelled) setWinnersLoading(false);
       }
 
-      // Upcoming (optional endpoint)
       setUpcomingLoading(true);
       setUpcomingError(null);
       try {
@@ -1029,7 +973,6 @@ export default function AdminPage() {
     };
   }, [adminToken]);
 
-  // ── Countdown (today draw closesAt) ─────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -1066,7 +1009,6 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, serverSkewMs]);
 
-  // ── Next bonus countdown ────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -1141,14 +1083,14 @@ export default function AdminPage() {
     setVisibleWinnerCount(prev => Math.min(prev + MAX_RECENT_WINNERS, winners.length));
   }
 
-  // ── Admin token handling ────────────────────
   async function handleUnlock(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!tokenInput.trim()) return;
 
     setIsSavingToken(true);
     try {
-      if (typeof window !== 'undefined') window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
+      if (typeof window !== 'undefined')
+        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
       setAdminToken(tokenInput.trim());
       setTokenAccepted(true);
       setApiBanner(null);
@@ -1787,69 +1729,6 @@ export default function AdminPage() {
           </section>
         </div>
       </section>
-
-      {modeModalOpen && (
-        <div className="fixed inset-0 z-[999] flex items-start justify-center bg-black/45 backdrop-blur-md pt-24 px-4">
-          <div className="w-full max-w-md xpot-panel px-6 py-6">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-50">Switch ops mode</p>
-              <button type="button" className={`${BTN_UTILITY} h-8 px-3 text-[11px]`} onClick={() => setModeModalOpen(false)}>
-                Close
-              </button>
-            </div>
-
-            <p className="mt-2 text-xs text-slate-400">
-              Confirm your admin key to switch to{' '}
-              <span className="font-semibold text-slate-200">{modePending === 'AUTO' ? 'AUTO' : 'MANUAL'}</span>.
-            </p>
-
-            {!envAutoAllowed && modePending === 'AUTO' && (
-              <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
-                AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won't take effect until allowed.
-              </div>
-            )}
-
-            <div className="mt-4 space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Admin key (re-enter)</label>
-              <input
-                type="password"
-                className="xpot-input rounded-2xl"
-                value={modeTokenInput}
-                onChange={e => setModeTokenInput(e.target.value)}
-                placeholder="Paste admin token..."
-              />
-              {modeError && <p className="text-xs text-amber-300">{modeError}</p>}
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <button type="button" className={`${BTN_UTILITY} flex-1 h-11 text-sm`} onClick={() => setModeModalOpen(false)} disabled={modeSaving}>
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className={`${BTN_VAULT} flex-1 h-11 text-sm`}
-                disabled={modeSaving || !modeTokenInput.trim()}
-                onClick={async () => {
-                  setModeError(null);
-                  setModeSaving(true);
-                  try {
-                    if (!adminToken || modeTokenInput.trim() !== adminToken.trim()) throw new Error('Admin key mismatch.');
-                    await saveOpsMode(modePending);
-                    setModeModalOpen(false);
-                  } catch (err: any) {
-                    setModeError(String(err?.message || 'Failed to switch mode').replace(/^HTTP_\d+:/, ''));
-                  } finally {
-                    setModeSaving(false);
-                  }
-                }}
-              >
-                {modeSaving ? 'Saving...' : 'Confirm switch'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ULTRA PREMIUM LOCK MODAL */}
       {!tokenAccepted && (
