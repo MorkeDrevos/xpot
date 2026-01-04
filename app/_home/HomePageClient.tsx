@@ -12,7 +12,6 @@ import {
 } from 'react';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
-import { useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
   BadgeCheck,
@@ -31,6 +30,7 @@ import {
   Zap,
   Copy,
   Check,
+  CalendarClock,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -66,7 +66,6 @@ const BTN_GREEN =
   'inline-flex items-center justify-center rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition';
 
 const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
-const GOLD_TEXT_DIM = 'text-[rgba(var(--xpot-gold-2),0.85)]';
 const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
 const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
@@ -796,7 +795,7 @@ function MissionBanner() {
 }
 
 /* ─────────────────────────────────────────────
-   Page building blocks (new)
+   Page building blocks
 ───────────────────────────────────────────── */
 
 function SectionHeader({
@@ -932,7 +931,12 @@ function WinnerMiniCard({ winner }: { winner: LiveWinnerRow | null }) {
   const handle = winner?.handle ? normalizeHandle(winner.handle) : null;
   const xUrl = handle ? toXProfileUrl(handle) : null;
 
-  const amount = typeof winner?.amountXpot === 'number' ? winner.amountXpot : typeof winner?.amount === 'number' ? winner.amount : null;
+  const amount =
+    typeof winner?.amountXpot === 'number'
+      ? winner.amountXpot
+      : typeof winner?.amount === 'number'
+        ? winner.amount
+        : null;
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
@@ -1091,7 +1095,7 @@ function FAQItem({
 }
 
 /* ─────────────────────────────────────────────
-   Home page (redesigned)
+   Home page
 ───────────────────────────────────────────── */
 
 function HomePageInner() {
@@ -1190,14 +1194,46 @@ function HomePageInner() {
                     </div>
 
                     <div className="mt-4">
+                      {/* ORIGINAL H1 (back) */}
                       <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                        The daily <span className="xpot-xpotword">XPOT</span> moment.
+                        One protocol. One identity. One daily <span className="xpot-xpotword">XPOT</span> draw.
                       </h1>
 
                       <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300">
                         Hold XPOT to qualify. Claim entry each day in the hub. Winner is published with a real @handle
-                        and paid on-chain. Final Draw ends on <FinalDrawDate className="text-slate-100" />.
+                        and paid on-chain.
                       </p>
+
+                      {/* FINAL DRAW - promoted */}
+                      <div className="mt-4">
+                        <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-3 ring-1 ring-white/[0.06]">
+                          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_82%_20%,rgba(56,189,248,0.10),transparent_62%)]" />
+                          <div className="relative flex flex-wrap items-center gap-3">
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/30">
+                              <CalendarClock className={`h-5 w-5 ${GOLD_TEXT}`} />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                                Final Draw ends
+                              </p>
+                              <p className="mt-1 text-[13px] font-semibold text-slate-50">
+                                <span className={`${GOLD_TEXT}`}>28/02/2045 22:00</span>
+                                <span className="text-slate-400"> (Madrid)</span>
+                              </p>
+                            </div>
+                            <div className="grow" />
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200">
+                              <Timer className="h-4 w-4 text-slate-300" />
+                              Next cutoff <span className="font-mono font-semibold text-slate-100">{countdown}</span>
+                            </span>
+                          </div>
+
+                          {/* keeps FinalDrawDate component in sync if you later change run end */}
+                          <div className="sr-only">
+                            <FinalDrawDate />
+                          </div>
+                        </div>
+                      </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
@@ -1396,11 +1432,11 @@ function HomePageInner() {
           desc="Homepage stays hype and simple. Hub is where the entry and verification happens."
         />
 
+        {/* ✅ no tab pre-opened */}
         <div className="grid gap-4 lg:grid-cols-2">
           <FAQItem
             q="Do I need to buy tickets?"
             a="No. Eligibility is based on XPOT holdings. If you qualify, you claim a daily entry in the hub."
-            defaultOpen
           />
           <FAQItem
             q="How do I verify a payout?"
@@ -1418,8 +1454,9 @@ function HomePageInner() {
             q="When is the Final Draw?"
             a={
               <span>
-                Final draw is scheduled for <span className="text-slate-200">{String(RUN_END_EU)}</span>. Countdown on
-                this page always shows the next daily cutoff.
+                Final draw ends on <span className={`${GOLD_TEXT} font-semibold`}>28/02/2045 22:00</span>
+                <span className="text-slate-400"> (Madrid)</span>. Countdown on this page always shows the next daily
+                cutoff.
               </span>
             }
           />
@@ -1433,7 +1470,6 @@ function HomePageInner() {
         </div>
       </section>
 
-      {/* FOOTER (unchanged) */}
       <XpotFooter />
     </XpotPageShell>
   );
