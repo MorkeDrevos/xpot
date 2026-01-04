@@ -966,7 +966,7 @@ function WinnerMiniCard({ winner }: { winner: LiveWinnerRow | null }) {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition"
                     >
-                      On-chain proof
+                      TX
                       <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                     </a>
                   ) : (
