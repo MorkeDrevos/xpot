@@ -26,9 +26,7 @@ export type JackpotPanelProps = {
   badgeLabel?: string;
   badgeTooltip?: string;
   layout?: JackpotPanelLayout;
-
-  // optional "hero" mode used on homepage
-  mode?: JackpotPanelMode;
+  mode?: JackpotPanelMode; // optional "hero" mode used on homepage
 };
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
@@ -106,116 +104,7 @@ function useSmoothNumber(target: number | null, opts?: { durationMs?: number }) 
 /* ===========================
    Latest winner (DISABLED)
    ===========================
-
-type LatestWinner = {
-  id?: string | null;
-  drawDate?: string | null; // ISO
-  amount?: number | null;
-  handle?: string | null;
-  wallet?: string | null;
-  txSignature?: string | null;
-};
-
-function shortWallet(w: string, head = 4, tail = 4) {
-  if (!w) return '';
-  if (w.length <= head + tail + 3) return w;
-  return `${w.slice(0, head)}…${w.slice(-tail)}`;
-}
-
-function timeAgo(iso: string | null | undefined) {
-  if (!iso) return null;
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return null;
-  const diff = Date.now() - t;
-  if (!Number.isFinite(diff)) return null;
-
-  const s = Math.floor(diff / 1000);
-  if (s < 15) return 'just now';
-  if (s < 60) return `${s}s ago`;
-
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-
-  const h = Math.floor(m / 60);
-  if (h < 48) return `${h}h ago`;
-
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
-}
-
-function pickTxSignature(obj: any): string | null {
-  if (!obj || typeof obj !== 'object') return null;
-  const candidates = [obj.txSignature, obj.txSig, obj.tx, obj.signature, obj.txHash, obj.transaction];
-  for (const c of candidates) {
-    if (typeof c === 'string' && c.length > 20) return c;
-  }
-  return null;
-}
-
-function solscanTxUrl(sig: string) {
-  return `https://solscan.io/tx/${encodeURIComponent(sig)}`;
-}
-
-function internalWinnerUrl(id: string) {
-  return `/winners/${encodeURIComponent(id)}`;
-}
-
-function normalizeHandle(h: string | null | undefined) {
-  if (!h) return null;
-  const s = String(h).trim();
-  if (!s) return null;
-  return s.replace(/^@/, '');
-}
-
-function xProfileUrl(handle: string) {
-  return `https://x.com/${encodeURIComponent(handle)}`;
-}
-
-function xAvatarUrl(handle: string) {
-  return `https://unavatar.io/twitter/${encodeURIComponent(handle)}`;
-}
-
-async function fetchLatestWinner(signal?: AbortSignal): Promise<LatestWinner | null> {
-  const tryUrls = ['/api/winners/latest', '/api/winners/recent?limit=1'];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { method: 'GET', signal, cache: 'no-store' });
-      if (!res.ok) continue;
-      const data = await res.json();
-
-      if (data?.winner) {
-        const w = data.winner;
-        return {
-          id: w.id ?? null,
-          drawDate: w.drawDate ?? w.date ?? null,
-          amount: typeof w.amount === 'number' ? w.amount : w.amount != null ? Number(w.amount) : null,
-          handle: w.handle ?? w.xHandle ?? null,
-          wallet: w.wallet ?? w.walletAddress ?? null,
-          txSignature: pickTxSignature(w),
-        };
-      }
-
-      const arr = Array.isArray(data) ? data : Array.isArray(data?.winners) ? data.winners : null;
-      if (arr?.length) {
-        const w = arr[0];
-        return {
-          id: w.id ?? null,
-          drawDate: w.drawDate ?? w.date ?? null,
-          amount: typeof w.amount === 'number' ? w.amount : w.amount != null ? Number(w.amount) : null,
-          handle: w.handle ?? w.xHandle ?? null,
-          wallet: w.wallet ?? w.walletAddress ?? null,
-          txSignature: pickTxSignature(w),
-        };
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  return null;
-}
-
+   Kept as a block so you can re-enable safely later without merge pain.
 */
 
 export default function JackpotPanel({
@@ -244,65 +133,6 @@ export default function JackpotPanel({
     maxJackpotToday,
     registerJackpotUsdForSessionPeak,
   } = usePriceSamples(priceUsd);
-
-  /* ===========================
-     Winner state/poll (DISABLED)
-     ===========================
-
-  const [latestWinner, setLatestWinner] = useState<LatestWinner | null>(null);
-  const [winnerHadError, setWinnerHadError] = useState(false);
-  const [winnerPulse, setWinnerPulse] = useState(false);
-  const winnerPulseTimer = useRef<number | null>(null);
-  const lastWinnerIdRef = useRef<string | null>(null);
-
-  const normalizedHandle = normalizeHandle(latestWinner?.handle ?? null);
-  const winnerLabel = normalizedHandle ? `@${normalizedHandle}` : null;
-  const [winnerAvatarOk, setWinnerAvatarOk] = useState(true);
-
-  useEffect(() => {
-    setWinnerAvatarOk(true);
-  }, [normalizedHandle]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    let timer: number | null = null;
-    const ctrl = new AbortController();
-
-    const tick = async () => {
-      const w = await fetchLatestWinner(ctrl.signal);
-      if (!w) return;
-
-      setWinnerHadError(false);
-
-      const incomingId =
-        (w.id ?? `${w.drawDate ?? ''}-${w.wallet ?? ''}-${w.amount ?? ''}-${w.txSignature ?? ''}`) || null;
-      const prevId = lastWinnerIdRef.current;
-
-      setLatestWinner(w);
-
-      if (incomingId && incomingId !== prevId) {
-        lastWinnerIdRef.current = incomingId;
-        setWinnerPulse(true);
-        if (winnerPulseTimer.current) window.clearTimeout(winnerPulseTimer.current);
-        winnerPulseTimer.current = window.setTimeout(() => setWinnerPulse(false), 1400);
-      }
-    };
-
-    tick().catch(() => setWinnerHadError(true));
-
-    timer = window.setInterval(() => {
-      tick().catch(() => setWinnerHadError(true));
-    }, WINNER_POLL_MS);
-
-    return () => {
-      ctrl.abort();
-      if (timer) window.clearInterval(timer);
-      if (winnerPulseTimer.current) window.clearTimeout(winnerPulseTimer.current);
-    };
-  }, []);
-
-  */
 
   // auto-wide slab
   const slabRef = useRef<HTMLDivElement | null>(null);
@@ -394,10 +224,11 @@ export default function JackpotPanel({
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
+  // More premium than borders: ring + deep glass
   const panelChrome =
     variant === 'embedded'
-      ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
-      : 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-5 sm:px-6 sm:py-6';
+      ? 'w-full rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/10 shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
+      : 'w-full rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/10 shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
 
   const capsuleWrap = 'group relative inline-flex max-w-full items-center';
 
@@ -448,31 +279,47 @@ export default function JackpotPanel({
           </div>
         )}
 
+        {/* Slab */}
         <div
-  ref={slabRef}
-  className={[
-    'relative z-10 overflow-visible rounded-3xl bg-black/10 ring-1 ring-white/5',
-    isHero ? 'mt-3 px-4 py-4 sm:mt-4 sm:p-6' : 'mt-4 px-4 py-4 sm:p-5',
-    layout === 'wide' ? 'w-full' : '',
-    layout === 'auto' && autoWide ? 'w-full' : '',
-  ].join(' ')}
->
-  {/* Ambient glow layer (No 4) */}
-  <div
-    aria-hidden
-    className="pointer-events-none absolute inset-0 rounded-3xl"
-    style={{
-      background: `
-        radial-gradient(circle at 25% 20%, rgba(124,200,255,0.10), transparent 55%),
-        radial-gradient(circle at 75% 30%, rgba(236,72,153,0.06), transparent 60%),
-        linear-gradient(180deg, rgba(2,6,23,0.35), rgba(2,6,23,0.15))
-      `,
-      filter: indication: 'blur(0.2px)',
-    }}
-  />
+          ref={slabRef}
+          className={[
+            'relative z-10 overflow-visible rounded-3xl bg-black/10 ring-1 ring-white/5',
+            isHero ? 'mt-3 px-4 py-4 sm:mt-4 sm:p-6' : 'mt-4 px-4 py-4 sm:p-5',
+            layout === 'wide' ? 'w-full' : '',
+            layout === 'auto' && autoWide ? 'w-full' : '',
+          ].join(' ')}
+          style={{
+            boxShadow: '0 40px 140px rgba(0,0,0,0.60)',
+          }}
+        >
+          {/* Ambient glow layer */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-3xl"
+            style={{
+              background: `
+                radial-gradient(circle at 25% 20%, rgba(124,200,255,0.10), transparent 55%),
+                radial-gradient(circle at 75% 30%, rgba(236,72,153,0.06), transparent 60%),
+                linear-gradient(180deg, rgba(2,6,23,0.35), rgba(2,6,23,0.15))
+              `,
+              filter: 'blur(0.2px)',
+            }}
+          />
+          {/* Soft sweep (premium “alive” feel, no animation spam) */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-3xl opacity-60"
+            style={{
+              background:
+                'linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.03) 22%, transparent 45%)',
+              transform: 'translateX(-12%)',
+              maskImage: 'radial-gradient(circle at 50% 30%, black 45%, transparent 70%)',
+              WebkitMaskImage: 'radial-gradient(circle at 50% 30%, black 45%, transparent 70%)',
+            }}
+          />
 
-  <div className="relative flex flex-wrap items-center justify-between gap-4">
-    <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={capsuleWrap}>
                 <div className={capsuleInner}>
                   <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
@@ -509,6 +356,7 @@ export default function JackpotPanel({
           </div>
 
           <div className="relative mt-5 grid gap-4">
+            {/* Main USD console */}
             <div
               className={[
                 'relative overflow-visible rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
@@ -519,18 +367,32 @@ export default function JackpotPanel({
                   'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.08), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
               }}
             >
+              {/* Update aura (subtle, only on ticks) */}
+              <div
+                aria-hidden
+                className={[
+                  'pointer-events-none absolute -inset-2 rounded-3xl opacity-0 transition-opacity duration-300',
+                  justUpdated ? 'opacity-100' : '',
+                ].join(' ')}
+                style={{
+                  background:
+                    'radial-gradient(circle at 30% 30%, rgba(124,200,255,0.12), transparent 55%), radial-gradient(circle at 80% 20%, rgba(236,72,153,0.08), transparent 60%)',
+                  filter: 'blur(10px)',
+                }}
+              />
+
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
                   <div
-  className={[
-    'xpot-usd-live text-4xl font-semibold tabular-nums transition-all duration-300 ease-out sm:text-[4.25rem]',
-    justUpdated ? 'scale-[1.01]' : '',
-    justUpdated ? 'text-[#7CC8FF] shadow-[0_0_40px_rgba(124,200,255,0.25)]' : 'text-white',
-  ].join(' ')}
-  style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
->
-  {displayUsdText}
-</div>
+                    className={[
+                      'xpot-usd-live text-4xl font-semibold tabular-nums transition-all duration-300 ease-out sm:text-[4.25rem]',
+                      justUpdated ? 'scale-[1.01]' : '',
+                      justUpdated ? 'text-[#7CC8FF] drop-shadow-[0_0_40px_rgba(124,200,255,0.18)]' : 'text-white',
+                    ].join(' ')}
+                    style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
+                  >
+                    {displayUsdText}
+                  </div>
 
                   <div className="flex items-center gap-2 sm:mb-2">
                     <UsdEstimateBadge compact />
@@ -569,7 +431,7 @@ export default function JackpotPanel({
 
                 <span
                   className={[
-                    'font-mono text-sm tracking-[0.26em] transition-colors',
+                    'font-mono text-sm tracking-[0.26em] transition-colors duration-300',
                     countPulse ? 'text-white' : 'text-slate-100',
                   ].join(' ')}
                   style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
@@ -590,12 +452,11 @@ export default function JackpotPanel({
 
               {/* Latest winner (DISABLED until admin is fixed) */}
               {/*
-              {showWinnerStrip && (
-                <WinnerWrapper {...winnerWrapperProps}>...</WinnerWrapper>
-              )}
+                Winner strip intentionally disabled.
               */}
             </div>
 
+            {/* Details */}
             <details className="mt-0 group">
               <summary
                 className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-3 text-sm text-slate-200 transition hover:bg-black/20"
