@@ -1237,26 +1237,24 @@ function HomePageInner() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
-                          <Users className="h-4 w-4 text-slate-300" />
-                          Real handles
-                        </span>
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
-                          <ShieldCheck className="h-4 w-4 text-slate-300" />
-                          Proof
-                        </span>
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
-                          <Globe className="h-4 w-4 text-slate-300" />
-                          One cadence
-                        </span>
+  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+    <Users className="h-4 w-4 text-slate-300" />
+    Real handles
+    <span className="text-slate-500">•</span>
+    <ShieldCheck className="h-4 w-4 text-slate-300" />
+    On-chain proof
+    <span className="text-slate-500">•</span>
+    <Globe className="h-4 w-4 text-slate-300" />
+    One cadence
+  </span>
 
-                        <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
-                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
-                            <Info className="h-4 w-4 text-emerald-100/70" />
-                            Verified in hub
-                          </span>
-                        </TinyTooltip>
-                      </div>
+  <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
+    <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
+      <Info className="h-4 w-4 text-emerald-100/70" />
+      Verified in hub
+    </span>
+  </TinyTooltip>
+</div>
 
                       <PrimaryCtaRow countdown={countdown} warmup={warmup} />
                       <CopyMintRow />
