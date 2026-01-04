@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 function intParam(v: string | null, fallback: number) {
   const n = v ? Number(v) : NaN;
   if (!Number.isFinite(n)) return fallback;
-  return Math.max(1, Math.min(80, Math.floor(n))); // allow up to 80 for UI
+  return Math.max(1, Math.min(80, Math.floor(n)));
 }
 
 function safeIso(d: any) {
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const limit = intParam(req.nextUrl.searchParams.get('limit'), 5);
 
     const winners = await prisma.winner.findMany({
-      orderBy: { date: 'desc' }, // canonical winner timestamp
+      orderBy: { date: 'desc' },
       take: limit,
       include: {
         draw: true,
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
           include: {
             wallet: {
               include: {
-                user: true, // gives us xHandle
+                user: true,
               },
             },
           },
@@ -42,32 +42,57 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const payload = winners.map(w => ({
-      id: w.id,
+    const payload = winners.map(w => {
+      const user: any = (w as any)?.ticket?.wallet?.user ?? null;
 
-      // dates
-      drawDate: safeIso(w.draw?.drawDate ?? w.date ?? w.createdAt),
+      // try common field names, fall back safely
+      const handle =
+        user?.xHandle ??
+        user?.handle ??
+        user?.twitterHandle ??
+        user?.x_username ??
+        null;
 
-      // ids/codes
-      ticketCode: w.ticketCode ?? null,
+      const name =
+        user?.xName ??
+        user?.name ??
+        user?.displayName ??
+        user?.twitterName ??
+        null;
 
-      // values
-      jackpotUsd: w.jackpotUsd ?? null,
-      amountXpot: (w as any).payoutXpot ?? (w as any).amountXpot ?? null, // optional if exists in schema
+      const avatarUrl =
+        user?.xAvatarUrl ??
+        user?.avatarUrl ??
+        user?.imageUrl ??
+        user?.profileImageUrl ??
+        null;
 
-      // identity
-      walletAddress: w.walletAddress ?? w.ticket?.wallet?.address ?? null,
-      handle: w.ticket?.wallet?.user?.xHandle ?? null,
+      return {
+        id: w.id,
+        kind: (w as any).kind ?? (w as any).winnerKind ?? null,
+        label: (w as any).label ?? null,
 
-      // payout/proof
-      isPaidOut: (w as any).isPaidOut ?? null,
-      txUrl: (w as any).txUrl ?? null,
-      txSig: (w as any).txSig ?? null,
+        drawDate: safeIso((w as any)?.draw?.drawDate ?? (w as any)?.date ?? (w as any)?.createdAt),
+        ticketCode: (w as any)?.ticketCode ?? null,
 
-      // classification (if present)
-      kind: (w as any).kind ?? (w as any).winnerKind ?? null,
-      label: (w as any).label ?? null,
-    }));
+        walletAddress: (w as any)?.walletAddress ?? (w as any)?.ticket?.wallet?.address ?? null,
+
+        handle,
+        name,
+        avatarUrl,
+
+        // payout + proof
+        amountXpot:
+          (w as any)?.amountXpot ??
+          (w as any)?.payoutXpot ??
+          (w as any)?.jackpotXpot ??
+          null,
+
+        isPaidOut: (w as any)?.isPaidOut ?? null,
+        txUrl: (w as any)?.txUrl ?? null,
+        txSig: (w as any)?.txSig ?? null,
+      };
+    });
 
     return NextResponse.json({ ok: true, winners: payload }, { status: 200 });
   } catch (err: any) {
