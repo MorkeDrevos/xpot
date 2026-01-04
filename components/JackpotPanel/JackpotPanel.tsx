@@ -27,7 +27,7 @@ export type JackpotPanelProps = {
   badgeTooltip?: string;
   layout?: JackpotPanelLayout;
 
-  // New: optional "hero" mode used on homepage
+  // optional "hero" mode used on homepage
   mode?: JackpotPanelMode;
 };
 
@@ -168,7 +168,6 @@ function xProfileUrl(handle: string) {
 }
 
 function xAvatarUrl(handle: string) {
-  // Unavatar is simple + fast for social avatars.
   return `https://unavatar.io/twitter/${encodeURIComponent(handle)}`;
 }
 
@@ -246,13 +245,11 @@ export default function JackpotPanel({
   const winnerPulseTimer = useRef<number | null>(null);
   const lastWinnerIdRef = useRef<string | null>(null);
 
-  // winner avatar fallback state (fixes empty circle if avatar fails)
   const normalizedHandle = normalizeHandle(latestWinner?.handle ?? null);
   const winnerLabel = normalizedHandle ? `@${normalizedHandle}` : null;
   const [winnerAvatarOk, setWinnerAvatarOk] = useState(true);
 
   useEffect(() => {
-    // reset when handle changes
     setWinnerAvatarOk(true);
   }, [normalizedHandle]);
 
@@ -422,7 +419,6 @@ export default function JackpotPanel({
   const solscanHref = latestWinner?.txSignature ? solscanTxUrl(latestWinner.txSignature) : null;
   const internalHref = !solscanHref && latestWinner?.id ? internalWinnerUrl(latestWinner.id) : null;
 
-  // Winner primary link: X profile if we have a handle. Otherwise fallback to internal/solscan.
   const xHref = normalizedHandle ? xProfileUrl(normalizedHandle) : null;
   const winnerPrimaryHref = xHref ?? internalHref ?? solscanHref ?? null;
 
@@ -445,7 +441,6 @@ export default function JackpotPanel({
       className={[
         'relative transition-colors duration-300',
         panelChrome,
-        // hero dominance: lift slightly
         isHero ? '-mt-3 sm:-mt-5' : '',
       ].join(' ')}
     >
@@ -490,7 +485,6 @@ export default function JackpotPanel({
           </div>
         )}
 
-        {/* HEADER (hide in hero mode to avoid duplicated messaging) */}
         {!isHero && (
           <div className="relative z-10 flex items-start justify-between gap-4">
             <div>
@@ -507,17 +501,17 @@ export default function JackpotPanel({
           </div>
         )}
 
-        {/* MAIN SLAB (background removed completely) */}
         <div
           ref={slabRef}
           className={[
             'relative z-10 overflow-hidden border-y border-slate-800/80 bg-transparent',
-            isHero ? 'mt-3 px-4 py-4 sm:mt-4 sm:rounded-2xl sm:border sm:p-6' : 'mt-4 px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
+            isHero
+              ? 'mt-3 px-4 py-4 sm:mt-4 sm:rounded-2xl sm:border sm:p-6'
+              : 'mt-4 px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
             layout === 'wide' ? 'w-full' : '',
             layout === 'auto' && autoWide ? 'w-full' : '',
           ].join(' ')}
         >
-          {/* Marketing row */}
           <div className="relative flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className={capsuleWrap}>
@@ -555,7 +549,6 @@ export default function JackpotPanel({
             </div>
           </div>
 
-          {/* Big USD */}
           <div className="relative mt-5 grid gap-4">
             <div
               className={[
@@ -603,7 +596,6 @@ export default function JackpotPanel({
                 </div>
               </div>
 
-              {/* countdown */}
               <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
                 <span
                   className={[
@@ -637,7 +629,6 @@ export default function JackpotPanel({
                 <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Live market price feed</p>
               )}
 
-              {/* Latest winner */}
               {showWinnerStrip && (
                 <WinnerWrapper
                   {...winnerWrapperProps}
@@ -685,15 +676,14 @@ export default function JackpotPanel({
                     </div>
                   )}
 
-                  <div className="relative flex items-start justify-between gap-3">
+                  <div className="relative flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span
                           className="h-2.5 w-2.5 rounded-full"
                           style={{
                             background: 'linear-gradient(180deg, #FFE39A, #F5C84C)',
-                            boxShadow:
-                              '0 0 16px rgba(245,200,76,0.65), 0 0 46px rgba(245,200,76,0.28)',
+                            boxShadow: '0 0 16px rgba(245,200,76,0.65), 0 0 46px rgba(245,200,76,0.28)',
                           }}
                         />
                         <p
@@ -702,8 +692,11 @@ export default function JackpotPanel({
                         >
                           Latest winner
                         </p>
+
                         {winnerAgo && (
-                          <span className="text-[10px] uppercase tracking-[0.20em] text-slate-500">{winnerAgo}</span>
+                          <span className="ml-1 inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.20em] text-slate-400">
+                            {winnerAgo}
+                          </span>
                         )}
                       </div>
 
@@ -714,17 +707,17 @@ export default function JackpotPanel({
                               className="absolute -inset-[2px] rounded-full"
                               style={{
                                 background:
-                                  'radial-gradient(circle_at_35%_30%, rgba(255,226,160,0.35), transparent 62%)',
+                                  'radial-gradient(circle_at_35%_30%, rgba(255,226,160,0.30), transparent 62%)',
                               }}
                             />
                             {winnerAvatarOk ? (
                               <img
                                 src={xAvatarUrl(normalizedHandle)}
                                 alt={`${winnerLabel ?? 'Winner'} avatar`}
-                                className="relative h-10 w-10 rounded-full border"
+                                className="relative h-9 w-9 rounded-full border object-cover"
                                 style={{
-                                  borderColor: 'rgba(255,210,122,0.28)',
-                                  boxShadow: '0 0 24px rgba(245,200,76,0.14)',
+                                  borderColor: 'rgba(255,210,122,0.26)',
+                                  boxShadow: '0 0 22px rgba(245,200,76,0.12)',
                                 }}
                                 loading="lazy"
                                 referrerPolicy="no-referrer"
@@ -732,12 +725,12 @@ export default function JackpotPanel({
                               />
                             ) : (
                               <span
-                                className="relative flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold"
+                                className="relative flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold"
                                 style={{
-                                  borderColor: 'rgba(255,210,122,0.28)',
+                                  borderColor: 'rgba(255,210,122,0.26)',
                                   color: 'rgba(255,226,160,0.96)',
                                   background: 'rgba(0,0,0,0.22)',
-                                  boxShadow: '0 0 24px rgba(245,200,76,0.12)',
+                                  boxShadow: '0 0 22px rgba(245,200,76,0.10)',
                                 }}
                                 aria-hidden
                               >
@@ -756,7 +749,7 @@ export default function JackpotPanel({
                               ].join(' ')}
                               style={{
                                 color: 'rgba(255,226,160,0.98)',
-                                textShadow: '0 0 22px rgba(245,200,76,0.22)',
+                                textShadow: '0 0 18px rgba(245,200,76,0.18)',
                               }}
                             >
                               {winnerName}
@@ -768,8 +761,7 @@ export default function JackpotPanel({
                               className="font-mono text-sm"
                               style={{
                                 color: 'rgba(255,226,160,0.98)',
-                                textShadow:
-                                  '0 0 22px rgba(245,200,76,0.26), 0 0 46px rgba(245,200,76,0.12)',
+                                textShadow: '0 0 18px rgba(245,200,76,0.20), 0 0 44px rgba(245,200,76,0.10)',
                               }}
                             >
                               {winnerAmount} XPOT
@@ -777,9 +769,9 @@ export default function JackpotPanel({
                           </div>
 
                           {normalizedHandle ? (
-                            <p className="mt-1 text-[11px] text-slate-400">Open X profile</p>
+                            <p className="mt-1 text-[11px] text-slate-400">View on X</p>
                           ) : (
-                            <p className="mt-1 text-[11px] text-slate-400">Winner</p>
+                            <p className="mt-1 text-[11px] text-slate-400">Published handle-first</p>
                           )}
                         </div>
                       </div>
@@ -823,7 +815,6 @@ export default function JackpotPanel({
                 </WinnerWrapper>
               )}
 
-              {/* Everything else closed by default */}
               <details className="mt-4 group">
                 <summary
                   className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-3 text-sm text-slate-200 transition hover:bg-black/20"
@@ -839,7 +830,6 @@ export default function JackpotPanel({
                 </summary>
 
                 <div className="mt-3">
-                  {/* Token info row */}
                   <div className="mt-1 grid gap-3 sm:grid-cols-2">
                     <div
                       className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3"
@@ -889,7 +879,6 @@ export default function JackpotPanel({
                     </div>
                   </div>
 
-                  {/* Telemetry strip */}
                   <div className="mt-4 grid gap-3 lg:grid-cols-3">
                     <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
                       <div className="flex items-start justify-between gap-3">
@@ -999,37 +988,43 @@ export default function JackpotPanel({
                     </div>
                   </div>
 
-                  {/* CONTEXT STRIP */}
                   <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-4 sm:px-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
-                        <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
+                          <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
 
-                        {maxJackpotToday != null && (
-                          <span>
-                            Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+                          {maxJackpotToday != null && (
+                            <span>
+                              Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+                            </span>
+                          )}
+
+                          {range24h && (
+                            <span>
+                              24h <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span> -{' '}
+                              <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
+                            </span>
+                          )}
+
+                          <span className="text-slate-500">{observedLabel}</span>
+
+                          <span className="text-slate-500">
+                            Source <span className="font-mono text-slate-200">DexScreener</span>
                           </span>
-                        )}
+                        </div>
 
-                        {range24h && (
-                          <span>
-                            24h <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span> -{' '}
-                            <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
-                          </span>
-                        )}
-
-                        <span className="text-slate-500">{observedLabel}</span>
-
-                        <span className="text-slate-500">
-                          Source <span className="font-mono text-slate-200">DexScreener</span>
-                        </span>
+                        <p className="text-[11px] text-slate-500">
+                          Hold XPOT to qualify. Claim your daily entry in the hub. Winners are published handle-first and
+                          paid on-chain with proof.
+                        </p>
                       </div>
 
                       <Link
                         href="/hub"
                         className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-emerald-400/20 hover:text-emerald-100"
                       >
-                        Enter today&apos;s XPOT →
+                        Claim today&apos;s entry →
                       </Link>
                     </div>
 
