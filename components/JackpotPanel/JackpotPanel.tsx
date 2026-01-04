@@ -109,7 +109,7 @@ type LatestWinner = {
   amount?: number | null;
   handle?: string | null;
   wallet?: string | null;
-  txSignature?: string | null; // ✅ NEW: Solana tx signature (preferred verification link)
+  txSignature?: string | null; // Solana tx signature (preferred verification link)
 };
 
 function shortWallet(w: string, head = 4, tail = 4) {
@@ -149,12 +149,10 @@ function pickTxSignature(obj: any): string | null {
 }
 
 function solscanTxUrl(sig: string) {
-  // mainnet by default
   return `https://solscan.io/tx/${encodeURIComponent(sig)}`;
 }
 
 function internalWinnerUrl(id: string) {
-  // Update this route if your app uses a different receipt page.
   return `/winners/${encodeURIComponent(id)}`;
 }
 
@@ -167,7 +165,6 @@ async function fetchLatestWinner(signal?: AbortSignal): Promise<LatestWinner | n
       if (!res.ok) continue;
       const data = await res.json();
 
-      // /api/winners/latest -> { ok, winner }
       if (data?.winner) {
         const w = data.winner;
         return {
@@ -180,7 +177,6 @@ async function fetchLatestWinner(signal?: AbortSignal): Promise<LatestWinner | n
         };
       }
 
-      // /api/winners/recent -> { ok, winners: [...] } or [...] (fallback)
       const arr = Array.isArray(data) ? data : Array.isArray(data?.winners) ? data.winners : null;
       if (arr?.length) {
         const w = arr[0];
@@ -194,7 +190,7 @@ async function fetchLatestWinner(signal?: AbortSignal): Promise<LatestWinner | n
         };
       }
     } catch {
-      // ignore and try next
+      // ignore
     }
   }
 
@@ -228,7 +224,6 @@ export default function JackpotPanel({
     registerJackpotUsdForSessionPeak,
   } = usePriceSamples(priceUsd);
 
-  // Latest winner (proof of life)
   const [latestWinner, setLatestWinner] = useState<LatestWinner | null>(null);
   const [winnerHadError, setWinnerHadError] = useState(false);
   const [winnerPulse, setWinnerPulse] = useState(false);
@@ -369,7 +364,6 @@ export default function JackpotPanel({
       ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
       : 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-5 sm:px-6 sm:py-6';
 
-  // Hero capsule tuning (Today’s XPOT)
   const capsuleWrap = 'group relative inline-flex max-w-full items-center';
 
   const capsuleInner = [
@@ -415,6 +409,41 @@ export default function JackpotPanel({
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
+      {/* Local shimmer keyframes (so you don't need a global css edit) */}
+      <style jsx global>{`
+        @keyframes xpotWinnerSweep {
+          0% {
+            transform: translateX(-120%) skewX(-18deg);
+            opacity: 0;
+          }
+          12% {
+            opacity: 0.9;
+          }
+          55% {
+            opacity: 0.9;
+          }
+          100% {
+            transform: translateX(140%) skewX(-18deg);
+            opacity: 0;
+          }
+        }
+        @keyframes xpotWinnerGlint {
+          0%,
+          100% {
+            opacity: 0;
+            transform: translateY(0px);
+          }
+          25% {
+            opacity: 0.65;
+            transform: translateY(-1px);
+          }
+          60% {
+            opacity: 0.3;
+            transform: translateY(0px);
+          }
+        }
+      `}</style>
+
       <div>
         {!!badgeLabel && (
           <div className="relative z-10 mb-4 flex justify-center">
@@ -469,10 +498,7 @@ export default function JackpotPanel({
                   </span>
 
                   <div className="min-w-0 px-1 text-center">
-                    <span
-                      className={capsuleValue}
-                      style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}
-                    >
+                    <span className={capsuleValue} style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}>
                       <span className="xpot-pool-num">{JACKPOT_XPOT.toLocaleString()}</span>
                       <span className="xpot-pool-unit">XPOT</span>
                     </span>
@@ -576,7 +602,7 @@ export default function JackpotPanel({
                 <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Live market price feed</p>
               )}
 
-              {/* ✅ Latest winner (click to verify) - GOLDEN + HAPPY */}
+              {/* ✅ Latest winner (celebration shimmer on winnerPulse only) */}
               {showWinnerStrip && (
                 <WinnerWrapper
                   {...winnerWrapperProps}
@@ -600,7 +626,32 @@ export default function JackpotPanel({
                         : '0 0 0 1px rgba(255,255,255,0.04)',
                   }}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  {/* shimmer overlays - only while winnerPulse is true */}
+                  {winnerPulse && (
+                    <div className="pointer-events-none absolute inset-0">
+                      <div
+                        className="absolute -inset-y-10 left-0 w-[55%]"
+                        style={{
+                          background:
+                            'linear-gradient(90deg, rgba(255,255,255,0.00), rgba(255,226,160,0.14), rgba(245,200,76,0.30), rgba(255,226,160,0.14), rgba(255,255,255,0.00))',
+                          filter: 'blur(1px)',
+                          animation: 'xpotWinnerSweep 1200ms ease-out 1',
+                          willChange: 'transform, opacity',
+                        }}
+                      />
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'radial-gradient(circle_at_28%_40%, rgba(255,226,160,0.14), transparent 45%),' +
+                            'radial-gradient(circle_at_70%_35%, rgba(245,200,76,0.10), transparent 55%)',
+                          animation: 'xpotWinnerGlint 1200ms ease-out 1',
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="relative flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span
