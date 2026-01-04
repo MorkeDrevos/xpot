@@ -248,6 +248,10 @@ export default function JackpotPanel({
     isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : '',
   ].join(' ');
 
+  const usdSize = isHero
+    ? 'text-[4.6rem] leading-[0.90] sm:text-[6.2rem] sm:leading-[0.90] lg:text-[7.4rem] lg:leading-[0.88]'
+    : 'text-5xl leading-[0.95] sm:text-[4.75rem] sm:leading-[0.92] lg:text-[5.4rem] lg:leading-[0.90]';
+
   return (
     <section
       className={[
@@ -256,6 +260,63 @@ export default function JackpotPanel({
         isHero ? '-mt-3 sm:-mt-5' : '',
       ].join(' ')}
     >
+      {/* tiny, self-contained premium motion (no extra deps) */}
+      <style jsx>{`
+        @keyframes xpotSweep {
+          0% {
+            transform: translateX(-30%) skewX(-12deg);
+            opacity: 0.0;
+          }
+          20% {
+            opacity: 0.55;
+          }
+          55% {
+            opacity: 0.18;
+          }
+          100% {
+            transform: translateX(130%) skewX(-12deg);
+            opacity: 0.0;
+          }
+        }
+
+        @keyframes xpotFloat {
+          0% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-2px);
+          }
+          100% {
+            transform: translateY(0px);
+          }
+        }
+
+        @keyframes xpotBreathe {
+          0% {
+            opacity: 0.22;
+          }
+          50% {
+            opacity: 0.46;
+          }
+          100% {
+            opacity: 0.22;
+          }
+        }
+
+        .xpot-live-sweep {
+          animation: xpotSweep 2.9s ease-in-out infinite;
+        }
+
+        .xpot-usd-float {
+          animation: xpotFloat 4.2s ease-in-out infinite;
+          will-change: transform;
+        }
+
+        .xpot-ambient-breathe {
+          animation: xpotBreathe 5.2s ease-in-out infinite;
+        }
+      `}</style>
+
       <div>
         {!!badgeLabel && (
           <div className="relative z-10 mb-4 flex justify-center">
@@ -305,13 +366,13 @@ export default function JackpotPanel({
               filter: 'blur(0.2px)',
             }}
           />
+
           {/* Soft sweep */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-3xl opacity-60"
             style={{
-              background:
-                'linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.03) 22%, transparent 45%)',
+              background: 'linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.03) 22%, transparent 45%)',
               transform: 'translateX(-12%)',
               maskImage: 'radial-gradient(circle at 50% 30%, black 45%, transparent 70%)',
               WebkitMaskImage: 'radial-gradient(circle at 50% 30%, black 45%, transparent 70%)',
@@ -359,14 +420,25 @@ export default function JackpotPanel({
             {/* Main USD console */}
             <div
               className={[
-                'relative overflow-visible rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
+                'relative overflow-hidden rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
                 justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
               ].join(' ')}
               style={{
                 background:
-                  'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.08), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
+                  'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.10), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.07), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.32), rgba(0,0,0,0.06))',
               }}
             >
+              {/* Ambient breathing aura (always subtle) */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -inset-10 rounded-[28px] xpot-ambient-breathe"
+                style={{
+                  background:
+                    'radial-gradient(circle at 18% 35%, rgba(124,200,255,0.12), transparent 58%), radial-gradient(circle at 82% 18%, rgba(236,72,153,0.09), transparent 62%)',
+                  filter: 'blur(22px)',
+                }}
+              />
+
               {/* Update aura (only on ticks) */}
               <div
                 aria-hidden
@@ -376,22 +448,71 @@ export default function JackpotPanel({
                 ].join(' ')}
                 style={{
                   background:
-                    'radial-gradient(circle at 30% 30%, rgba(124,200,255,0.12), transparent 55%), radial-gradient(circle at 80% 20%, rgba(236,72,153,0.08), transparent 60%)',
+                    'radial-gradient(circle at 30% 30%, rgba(124,200,255,0.16), transparent 55%), radial-gradient(circle at 80% 20%, rgba(236,72,153,0.10), transparent 60%)',
                   filter: 'blur(10px)',
                 }}
               />
 
+              {/* Premium sweep line (feels "alive") */}
+              <div aria-hidden className="pointer-events-none absolute inset-0">
+                <div
+                  className={[
+                    'absolute -left-1/2 top-0 h-full w-1/2 opacity-[0.22]',
+                    justUpdated ? 'opacity-[0.38]' : '',
+                    'xpot-live-sweep',
+                  ].join(' ')}
+                  style={{
+                    background:
+                      'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.16) 40%, rgba(124,200,255,0.12) 55%, transparent 100%)',
+                    filter: 'blur(0.3px)',
+                  }}
+                />
+              </div>
+
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
-                  <div
-                    className={[
-                      'xpot-usd-live text-4xl font-semibold tabular-nums transition-all duration-300 ease-out sm:text-[4.25rem]',
-                      justUpdated ? 'scale-[1.01]' : '',
-                      justUpdated ? 'text-[#7CC8FF] drop-shadow-[0_0_40px_rgba(124,200,255,0.18)]' : 'text-white',
-                    ].join(' ')}
-                    style={{ textShadow: '0 0 26px rgba(124,200,255,0.12)' }}
-                  >
-                    {displayUsdText}
+                  <div className="relative">
+                    {/* faint outline glow to boost perceived size */}
+                    <div
+                      aria-hidden
+                      className={[
+                        'pointer-events-none absolute inset-0 translate-y-[2px] blur-[10px] opacity-0 transition-opacity duration-300',
+                        justUpdated ? 'opacity-100' : 'opacity-60',
+                      ].join(' ')}
+                      style={{
+                        background:
+                          'radial-gradient(circle at 30% 40%, rgba(124,200,255,0.26), transparent 60%), radial-gradient(circle at 80% 25%, rgba(236,72,153,0.16), transparent 62%)',
+                      }}
+                    />
+
+                    <div
+                      className={[
+                        'relative xpot-usd-live xpot-usd-float font-semibold tabular-nums transition-all duration-300 ease-out',
+                        usdSize,
+                        justUpdated ? 'scale-[1.02]' : '',
+                        justUpdated
+                          ? 'text-[#7CC8FF] drop-shadow-[0_0_46px_rgba(124,200,255,0.20)]'
+                          : 'text-white',
+                      ].join(' ')}
+                      style={{
+                        textShadow: justUpdated ? '0 0 32px rgba(124,200,255,0.16)' : '0 0 26px rgba(124,200,255,0.10)',
+                        letterSpacing: isHero ? '-0.02em' : '-0.015em',
+                      }}
+                    >
+                      {displayUsdText}
+                    </div>
+
+                    {/* tiny "tick" sparkle dots (only when updating) */}
+                    <div
+                      aria-hidden
+                      className={[
+                        'pointer-events-none absolute -right-2 -top-2 hidden sm:block',
+                        justUpdated ? 'opacity-100' : 'opacity-0',
+                        'transition-opacity duration-300',
+                      ].join(' ')}
+                    >
+                      <div className="h-2 w-2 rounded-full bg-sky-300 shadow-[0_0_18px_rgba(124,200,255,0.55)]" />
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 sm:mb-2">
@@ -407,7 +528,7 @@ export default function JackpotPanel({
                     className={[
                       'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
                       justUpdated
-                        ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]'
+                        ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_20px_rgba(59,167,255,0.10)]'
                         : '',
                     ].join(' ')}
                   >
@@ -422,7 +543,7 @@ export default function JackpotPanel({
                   className={[
                     'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
                     countPulse
-                      ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_16px_rgba(59,167,255,0.08)]'
+                      ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.16),0_0_18px_rgba(59,167,255,0.10)]'
                       : '',
                   ].join(' ')}
                 >
@@ -431,7 +552,8 @@ export default function JackpotPanel({
 
                 <span
                   className={[
-                    'font-mono text-sm tracking-[0.26em] transition-colors duration-300',
+                    'font-mono transition-colors duration-300',
+                    isHero ? 'text-[15px] tracking-[0.30em] sm:text-base' : 'text-sm tracking-[0.26em]',
                     countPulse ? 'text-white' : 'text-slate-100',
                   ].join(' ')}
                   style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
