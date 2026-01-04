@@ -17,6 +17,7 @@ import { RunwayBadge, UsdEstimateBadge, PriceUnavailableNote } from './ui/badges
 
 type JackpotPanelVariant = 'standalone' | 'embedded';
 type JackpotPanelLayout = 'auto' | 'wide' | 'normal';
+type JackpotPanelMode = 'hero' | 'full';
 
 export type JackpotPanelProps = {
   isLocked?: boolean;
@@ -25,6 +26,11 @@ export type JackpotPanelProps = {
   badgeLabel?: string;
   badgeTooltip?: string;
   layout?: JackpotPanelLayout;
+
+  // New:
+  // - hero: premium centerpiece for homepage (less telemetry, more focus)
+  // - full: your current console-style panel
+  mode?: JackpotPanelMode;
 };
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
@@ -105,7 +111,10 @@ export default function JackpotPanel({
   badgeLabel,
   badgeTooltip,
   layout = 'auto',
+  mode = 'full',
 }: JackpotPanelProps) {
+  const isHero = mode === 'hero';
+
   const { priceUsd, momentumGlobalH1, isLoading, hadError, justUpdated } = useDexScreenerPrice(
     TOKEN_MINT,
     PRICE_POLL_MS,
@@ -215,37 +224,57 @@ export default function JackpotPanel({
   const panelChrome =
     variant === 'embedded'
       ? 'w-full rounded-2xl border border-slate-800/70 bg-slate-950/60 px-5 py-5 shadow-sm'
+      : isHero
+      ? 'w-full rounded-3xl border border-white/10 bg-black/30 px-4 py-5 sm:px-6 sm:py-6'
       : 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-5 sm:px-6 sm:py-6';
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
       <div>
-        {!!badgeLabel && (
+        {!!badgeLabel && !isHero && (
           <div className="relative z-10 mb-4 flex justify-center">
             <RunwayBadge label={badgeLabel} tooltip={badgeTooltip} />
           </div>
         )}
 
         {/* HEADER */}
-        <div className="relative z-10 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
-            <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
-          </div>
+        {!isHero ? (
+          <div className="relative z-10 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-100">XPOT live console</p>
+              <p className="mt-1 text-xs text-slate-400">Real-time pool value and price telemetry.</p>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
+                <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
+                Live
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="relative z-10 flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.45)]" />
               Live
             </span>
+
+            {isLocked ? (
+              <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+                Draw locked
+              </span>
+            ) : null}
           </div>
-        </div>
+        )}
 
         {/* MAIN SLAB */}
         <div
           ref={slabRef}
           className={[
-            'relative z-10 mt-5 overflow-hidden border-y border-slate-800/80 bg-black/25 px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
+            'relative z-10 mt-4 overflow-hidden',
+            isHero
+              ? 'rounded-3xl border border-white/10 bg-black/22 px-4 py-4 sm:px-6 sm:py-6'
+              : 'border-y border-slate-800/80 bg-black/25 px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
             layout === 'wide' ? 'w-full' : '',
             layout === 'auto' && autoWide ? 'w-full' : '',
           ].join(' ')}
@@ -289,13 +318,15 @@ export default function JackpotPanel({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {isLocked && (
-                <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
-                  Draw locked
-                </span>
-              )}
-            </div>
+            {!isHero ? (
+              <div className="flex items-center gap-2">
+                {isLocked && (
+                  <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200">
+                    Draw locked
+                  </span>
+                )}
+              </div>
+            ) : null}
           </div>
 
           {/* Big USD */}
@@ -303,7 +334,7 @@ export default function JackpotPanel({
             <div
               className={[
                 'relative overflow-visible rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
-                justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
+                justUpdated ? 'border-sky-400/35' : 'border-white/10',
               ].join(' ')}
               style={{
                 background:
@@ -314,7 +345,8 @@ export default function JackpotPanel({
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
                   <div
                     className={[
-                      'xpot-usd-live text-4xl font-semibold tabular-nums transition-transform transition-colors duration-200 sm:text-[4.25rem]',
+                      'xpot-usd-live font-semibold tabular-nums transition-transform transition-colors duration-200',
+                      isHero ? 'text-[3.25rem] sm:text-[4.75rem]' : 'text-4xl sm:text-[4.25rem]',
                       justUpdated ? 'scale-[1.01]' : '',
                       justUpdated ? 'text-[#7CC8FF]' : 'text-white',
                     ].join(' ')}
@@ -361,7 +393,8 @@ export default function JackpotPanel({
 
                 <span
                   className={[
-                    'font-mono text-sm tracking-[0.26em] transition-colors',
+                    'font-mono tracking-[0.26em] transition-colors',
+                    isHero ? 'text-base sm:text-lg' : 'text-sm',
                     countPulse ? 'text-white' : 'text-slate-100',
                   ].join(' ')}
                   style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
@@ -372,149 +405,100 @@ export default function JackpotPanel({
                 <span className="text-[11px] text-slate-600">22:00 Madrid</span>
               </div>
 
+              {/* price note */}
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">1 XPOT ≈</span>
+                <span className="font-mono text-[12px] text-slate-100">
+                  {priceUsd !== null && Number.isFinite(priceUsd) ? priceUsd.toFixed(8) : '0.00000000'}
+                </span>
+                <span className="text-[11px] text-slate-600">USD</span>
+                {!isHero ? (
+                  <>
+                    <span className="text-slate-700">•</span>
+                    <span className="text-[11px] text-slate-600">{observedLabel}</span>
+                  </>
+                ) : null}
+              </div>
+
               {showUnavailable ? (
                 <div className="mt-3">
                   <PriceUnavailableNote />
                 </div>
               ) : (
-                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Auto-updates from DexScreener ticks</p>
+                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">
+                  Auto-updates from DexScreener ticks
+                </p>
               )}
 
-              {/* Token info row */}
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div
-                  className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3"
-                  style={{
-                    background:
-                      'radial-gradient(circle_at_18%_18%, rgba(124,200,255,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700/60 bg-black/30 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
-                        <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
-                      </span>
+              {/* FULL MODE ONLY - token info row */}
+              {!isHero ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div
+                    className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3"
+                    style={{
+                      background:
+                        'radial-gradient(circle_at_18%_18%, rgba(124,200,255,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700/60 bg-black/30 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
+                          <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
+                        </span>
 
-                      <div className="leading-tight">
-                        <p className="text-[10px] uppercase tracking-[0.24em] text-slate-200">XPOT token</p>
-                        <p className="text-xs text-slate-300">Winners paid in XPOT</p>
+                        <div className="leading-tight">
+                          <p className="text-[10px] uppercase tracking-[0.24em] text-slate-200">XPOT token</p>
+                          <p className="text-xs text-slate-300">Winners paid in XPOT</p>
+                        </div>
                       </div>
+
+                      <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                        <Sparkles className="h-3.5 w-3.5 opacity-90" />
+                        Verified
+                      </span>
                     </div>
 
-                    <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                      <Sparkles className="h-3.5 w-3.5 opacity-90" />
-                      Verified
-                    </span>
+                    <p className="mt-3 text-[11px] text-slate-500">Paid in XPOT. USD is an estimate only.</p>
                   </div>
 
-                  <p className="mt-3 text-[11px] text-slate-500">Paid in XPOT. USD is an estimate only.</p>
-                </div>
+                  <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
 
-                <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
+                    <p className="mt-1 text-sm text-slate-300">
+                      1 XPOT ≈{' '}
+                      <span className="font-mono text-slate-100">
+                        {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+                      </span>
+                    </p>
 
-                  <p className="mt-1 text-sm text-slate-300">
-                    1 XPOT ≈{' '}
-                    <span className="font-mono text-slate-100">
-                      {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
-                    </span>
-                  </p>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
-                    <span>{observedLabel}</span>
-                    <span className="text-slate-700">•</span>
-                    <span>
-                      Source <span className="font-mono text-slate-200">DexScreener</span>
-                    </span>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+                      <span>{observedLabel}</span>
+                      <span className="text-slate-700">•</span>
+                      <span>
+                        Source <span className="font-mono text-slate-200">DexScreener</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : null}
             </div>
           </div>
 
-          {/* Telemetry strip */}
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Pulse (global 1h)</p>
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <span className="text-sm font-semibold text-slate-100">{globalMomentumText}</span>
-                    <span className="text-[11px] text-slate-500">DexScreener</span>
-                  </div>
-                </div>
-                <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
-                  <TrendingUp className="h-4 w-4 text-slate-200/80" />
-                </span>
-              </div>
-
-              {spark ? (
-                <div className="mt-2">
-                  <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70">
-                    <polyline
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.0"
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                      points={spark.points}
-                      opacity="0.85"
-                    />
-                  </svg>
-                  <p className="mt-1 text-[11px] text-slate-600">{localSparkLabel}</p>
-                </div>
-              ) : (
-                <p className="mt-2 text-[11px] text-slate-600">Collecting ticks…</p>
-              )}
-            </div>
-
-            <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
-                  {range24h ? (
-                    <p className="mt-1 text-sm text-slate-100">
-                      <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
-                      <span className="text-slate-600">-</span>{' '}
-                      <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
-                    </p>
+          {/* HERO MODE - milestone only (clean, premium) */}
+          {isHero ? (
+            <div className="relative mt-4 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
+                <p className="text-[12px] text-slate-200">
+                  {nextMilestone ? (
+                    <>
+                      <span className="font-mono text-slate-100">{rightMilestoneLabel}</span>{' '}
+                      <span className="text-[11px] text-slate-500">({Math.round(progressToNext * 100)}%)</span>
+                    </>
                   ) : (
-                    <p className="mt-1 text-sm text-slate-100">-</p>
+                    '-'
                   )}
-                  <p className="mt-2 text-[11px] text-slate-600">{observedLabel}</p>
-                </div>
-
-                <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
-                  <Info className="h-4 w-4 text-slate-200/70" />
-                </span>
-              </div>
-
-              {maxJackpotToday != null ? (
-                <p className="mt-2 text-[11px] text-slate-600">
-                  Session peak <span className="font-mono text-slate-200">{formatUsd(maxJackpotToday)}</span>
                 </p>
-              ) : null}
-            </div>
-
-            <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
-                  <p className="mt-1 text-sm text-slate-100">
-                    {nextMilestone ? (
-                      <>
-                        <span className="font-mono">{rightMilestoneLabel}</span>{' '}
-                        <span className="text-[11px] text-slate-500">({Math.round(progressToNext * 100)}%)</span>
-                      </>
-                    ) : (
-                      '-'
-                    )}
-                  </p>
-                </div>
-
-                <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/60 bg-black/25">
-                  <Crown className="h-4 w-4 text-slate-200/80" />
-                </span>
               </div>
 
               <div className="mt-3">
@@ -534,49 +518,172 @@ export default function JackpotPanel({
                 </div>
 
                 <p className="mt-2 text-[11px] text-slate-600">
-                  Today&apos;s pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT.
+                  Pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT.
                 </p>
               </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <Link
+                  href="/hub"
+                  className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-emerald-400/20 hover:text-emerald-100"
+                >
+                  Enter today&apos;s XPOT →
+                </Link>
+
+                <p className="text-[11px] text-slate-600">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
+              </div>
             </div>
-          </div>
+          ) : null}
+
+          {/* FULL MODE - telemetry strip */}
+          {!isHero ? (
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Pulse (global 1h)</p>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="text-sm font-semibold text-slate-100">{globalMomentumText}</span>
+                      <span className="text-[11px] text-slate-500">DexScreener</span>
+                    </div>
+                  </div>
+                  <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+                    <TrendingUp className="h-4 w-4 text-slate-200/80" />
+                  </span>
+                </div>
+
+                {spark ? (
+                  <div className="mt-2">
+                    <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70">
+                      <polyline
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.0"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                        points={spark.points}
+                        opacity="0.85"
+                      />
+                    </svg>
+                    <p className="mt-1 text-[11px] text-slate-600">{localSparkLabel}</p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[11px] text-slate-600">Collecting ticks…</p>
+                )}
+              </div>
+
+              <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
+                    {range24h ? (
+                      <p className="mt-1 text-sm text-slate-100">
+                        <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
+                        <span className="text-slate-600">-</span>{' '}
+                        <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-slate-100">-</p>
+                    )}
+                    <p className="mt-2 text-[11px] text-slate-600">{observedLabel}</p>
+                  </div>
+
+                  <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+                    <Info className="h-4 w-4 text-slate-200/70" />
+                  </span>
+                </div>
+
+                {maxJackpotToday != null ? (
+                  <p className="mt-2 text-[11px] text-slate-600">
+                    Session peak <span className="font-mono text-slate-200">{formatUsd(maxJackpotToday)}</span>
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
+                    <p className="mt-1 text-sm text-slate-100">
+                      {nextMilestone ? (
+                        <>
+                          <span className="font-mono">{rightMilestoneLabel}</span>{' '}
+                          <span className="text-[11px] text-slate-500">({Math.round(progressToNext * 100)}%)</span>
+                        </>
+                      ) : (
+                        '-'
+                      )}
+                    </p>
+                  </div>
+
+                  <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/60 bg-black/25">
+                    <Crown className="h-4 w-4 text-slate-200/80" />
+                  </span>
+                </div>
+
+                <div className="mt-3">
+                  <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.12)]"
+                      style={{
+                        width: `${Math.round(progressToNext * 100)}%`,
+                        background: 'linear-gradient(90deg, rgba(236,72,153,0.28), rgba(124,200,255,0.60))',
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                    <span className="font-semibold text-slate-200">{leftMilestoneLabel}</span>
+                    <span className="font-mono text-slate-200">{rightMilestoneLabel}</span>
+                  </div>
+
+                  <p className="mt-2 text-[11px] text-slate-600">
+                    Today&apos;s pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT. Paid in XPOT.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
 
-        {/* CONTEXT STRIP */}
-        <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-4 sm:px-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
-              <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
+        {/* FULL MODE - context strip */}
+        {!isHero ? (
+          <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-4 sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
+                <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
 
-              {maxJackpotToday != null && (
-                <span>
-                  Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+                {maxJackpotToday != null && (
+                  <span>
+                    Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+                  </span>
+                )}
+
+                {range24h && (
+                  <span>
+                    24h <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span> -{' '}
+                    <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
+                  </span>
+                )}
+
+                <span className="text-slate-500">{observedLabel}</span>
+
+                <span className="text-slate-500">
+                  Source <span className="font-mono text-slate-200">DexScreener</span>
                 </span>
-              )}
+              </div>
 
-              {range24h && (
-                <span>
-                  24h <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span> -{' '}
-                  <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
-                </span>
-              )}
-
-              <span className="text-slate-500">{observedLabel}</span>
-
-              <span className="text-slate-500">
-                Source <span className="font-mono text-slate-200">DexScreener</span>
-              </span>
+              <Link
+                href="/hub"
+                className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-emerald-400/20 hover:text-emerald-100"
+              >
+                Enter today&apos;s XPOT →
+              </Link>
             </div>
 
-            <Link
-              href="/hub"
-              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-emerald-400/20 hover:text-emerald-100"
-            >
-              Enter today&apos;s XPOT →
-            </Link>
+            <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
           </div>
-
-          <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
-        </div>
+        ) : null}
       </div>
     </section>
   );
