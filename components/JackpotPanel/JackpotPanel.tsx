@@ -217,14 +217,14 @@ export default function JackpotPanel({
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
+  // Borders toned down (less “white frame”)
   const panelChrome =
     variant === 'embedded'
-      ? 'w-full rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/[0.06] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
-      : 'w-full rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.06] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
+      ? 'w-full max-w-none rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
+      : 'w-full max-w-none rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
 
   const capsuleWrap = 'group relative inline-flex max-w-full items-center';
 
-  // minmax(0, 1fr) + overflow hidden prevents the value from painting over "Daily"
   const capsuleInner = [
     'relative grid max-w-full grid-cols-1 gap-2 rounded-2xl',
     'sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3',
@@ -299,7 +299,6 @@ export default function JackpotPanel({
           transform: translateY(0px);
         }
 
-        /* This is the "solid surface" behind the expanded content so nothing bleeds through */
         .xpot-details-surface {
           position: relative;
           z-index: 2;
@@ -315,7 +314,6 @@ export default function JackpotPanel({
           padding: 12px;
         }
 
-        /* Hero-only spill band */
         .xpot-spill-wrap { position: relative; }
         .xpot-spill-band { position: relative; }
 
@@ -338,28 +336,28 @@ export default function JackpotPanel({
 
         /* Container query sizing (best) */
         .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
-  font-size: clamp(4.4rem, 26cqw, 12.8rem);
-  line-height: 0.80;
-  letter-spacing: -0.045em;
-}
-.xpot-usd-box[data-hero="0"] .xpot-usd-amount {
-  font-size: clamp(3.4rem, 22cqw, 9.2rem);
-  line-height: 0.84;
-  letter-spacing: -0.04em;
-}
+          font-size: clamp(4.4rem, 26cqw, 12.8rem);
+          line-height: 0.80;
+          letter-spacing: -0.045em;
+        }
+        .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
+          font-size: clamp(3.4rem, 22cqw, 9.2rem);
+          line-height: 0.84;
+          letter-spacing: -0.04em;
+        }
 
-@supports not (font-size: 1cqw) {
-  .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
-    font-size: clamp(4.4rem, 9.6vw, 12.8rem);
-    line-height: 0.80;
-    letter-spacing: -0.045em;
-  }
-  .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
-    font-size: clamp(3.4rem, 7.8vw, 9.2rem);
-    line-height: 0.84;
-    letter-spacing: -0.04em;
-  }
-}
+        @supports not (font-size: 1cqw) {
+          .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
+            font-size: clamp(4.4rem, 9.6vw, 12.8rem);
+            line-height: 0.80;
+            letter-spacing: -0.045em;
+          }
+          .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
+            font-size: clamp(3.4rem, 7.8vw, 9.2rem);
+            line-height: 0.84;
+            letter-spacing: -0.04em;
+          }
+        }
       `}</style>
 
       <div>
@@ -396,22 +394,23 @@ export default function JackpotPanel({
           style={{ boxShadow: '0 40px 140px rgba(0,0,0,0.60)' }}
         >
           <div
-  aria-hidden
-  className="pointer-events-none absolute -inset-[2px] rounded-3xl opacity-70"
-  style={{
-    background:
-      'radial-gradient(circle at 18% 18%, rgba(124,200,255,0.22), transparent 52%), radial-gradient(circle at 82% 22%, rgba(124,200,255,0.16), transparent 58%), radial-gradient(circle at 50% 100%, rgba(124,200,255,0.10), transparent 60%)',
-    filter: 'blur(10px)',
-  }}
-/>
-<div
-  aria-hidden
-  className="pointer-events-none absolute inset-0 rounded-3xl"
-  style={{
-    boxShadow:
-      '0 0 0 1px rgba(124,200,255,0.10), 0 0 70px rgba(124,200,255,0.10), 0 0 140px rgba(124,200,255,0.06)',
-  }}
-/>
+            aria-hidden
+            className="pointer-events-none absolute -inset-[2px] rounded-3xl opacity-70"
+            style={{
+              background:
+                'radial-gradient(circle at 18% 18%, rgba(124,200,255,0.22), transparent 52%), radial-gradient(circle at 82% 22%, rgba(124,200,255,0.16), transparent 58%), radial-gradient(circle at 50% 100%, rgba(124,200,255,0.10), transparent 60%)',
+              filter: 'blur(10px)',
+            }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-3xl"
+            style={{
+              boxShadow:
+                '0 0 0 1px rgba(124,200,255,0.08), 0 0 70px rgba(124,200,255,0.08), 0 0 140px rgba(124,200,255,0.05)',
+            }}
+          />
+
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-3xl"
@@ -477,10 +476,10 @@ export default function JackpotPanel({
 
           <div className="relative mt-5 grid gap-4">
             <div
-  className={[
-  'xpot-usd-box relative overflow-hidden rounded-2xl border',
-  justUpdated ? 'border-sky-400/25' : 'border-white/[0.05]',
-].join(' ')}
+              className={[
+                'xpot-usd-box relative overflow-hidden rounded-2xl border',
+                justUpdated ? 'border-sky-400/20' : 'border-white/[0.035]',
+              ].join(' ')}
               data-hero={isHero ? '1' : '0'}
               style={{
                 background:
@@ -529,7 +528,7 @@ export default function JackpotPanel({
                 <div
                   className={[
                     'absolute -left-1/2 top-0 h-full w-1/2 opacity-[0.18]',
-                    justUpdated ? 'opacity-[0.36]' : '',
+                    justUpdated ? 'opacity-[0.32]' : '',
                     'xpot-live-sweep',
                   ].join(' ')}
                   style={{
@@ -540,98 +539,97 @@ export default function JackpotPanel({
                 />
               </div>
 
-              <div className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:justify-between">
-  {/* LEFT: USD amount (auto-fits the box width, never spills) */}
-  <div className="min-w-0 overflow-hidden">
-    <div className="relative pt-3 pb-2 sm:pt-4 sm:pb-3">
-      <div
-        aria-hidden
-        className={[
-          'pointer-events-none absolute inset-0 translate-y-[2px] blur-[12px] opacity-60',
-          justUpdated ? 'opacity-100' : '',
-        ].join(' ')}
-        style={{
-          background:
-            'radial-gradient(circle at 30% 40%, rgba(124,200,255,0.28), transparent 60%), radial-gradient(circle at 80% 25%, rgba(236,72,153,0.18), transparent 62%)',
-        }}
-      />
+              {/* ✅ INNER PADDING WRAPPER (this is the “needs padding around number” fix) */}
+              <div className="relative z-10 px-4 py-4 sm:px-5 sm:py-5">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:justify-between">
+                  <div className="min-w-0 overflow-hidden">
+                    <div className="relative pt-3 pb-2 sm:pt-4 sm:pb-3">
+                      <div
+                        aria-hidden
+                        className={[
+                          'pointer-events-none absolute inset-0 translate-y-[2px] blur-[12px] opacity-60',
+                          justUpdated ? 'opacity-100' : '',
+                        ].join(' ')}
+                        style={{
+                          background:
+                            'radial-gradient(circle at 30% 40%, rgba(124,200,255,0.28), transparent 60%), radial-gradient(circle at 80% 25%, rgba(236,72,153,0.18), transparent 62%)',
+                        }}
+                      />
 
-      <div
-        className={[
-          'xpot-usd-amount xpot-usd-live xpot-usd-float font-semibold tabular-nums',
-          'min-w-0 overflow-hidden text-white',
-          justUpdated ? 'text-[#7CC8FF]' : '',
-        ].join(' ')}
-        style={{
-  transform: 'translateY(1px)', // 👈 ADD THIS LINE
-  letterSpacing: isHero ? '-0.04em' : '-0.035em',
-  textShadow: justUpdated
-    ? '0 0 44px rgba(124,200,255,0.18)'
-    : '0 0 34px rgba(124,200,255,0.12)',
-}}
-      >
-        {displayUsdText}
-      </div>
-    </div>
+                      <div
+                        className={[
+                          'xpot-usd-amount xpot-usd-live xpot-usd-float font-semibold tabular-nums',
+                          'min-w-0 overflow-hidden text-white',
+                          justUpdated ? 'text-[#7CC8FF]' : '',
+                        ].join(' ')}
+                        style={{
+                          transform: 'translateY(1px)', // 👈 THIS is where you add it
+                          textShadow: justUpdated
+                            ? '0 0 44px rgba(124,200,255,0.18)'
+                            : '0 0 34px rgba(124,200,255,0.12)',
+                        }}
+                      >
+                        {displayUsdText}
+                      </div>
+                    </div>
 
-    <div className="mt-2 flex flex-wrap items-center gap-2">
-      <UsdEstimateBadge compact />
-      <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Estimated value</span>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <UsdEstimateBadge compact />
+                      <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Estimated value</span>
 
-      <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-300 md:px-3 md:text-[10px]">
-        <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-        <span className="leading-none">Live</span>
-      </span>
-    </div>
-  </div>
+                      <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-white/[0.05] bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-300 md:px-3 md:text-[10px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+                        <span className="leading-none">Live</span>
+                      </span>
+                    </div>
+                  </div>
 
-  {/* RIGHT: (kept empty on desktop so USD stays dominant) */}
-  <div className="hidden sm:block" />
-</div>
-
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-                <span
-                  className={[
-                    'inline-flex items-center rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
-                    countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.16),0_0_18px_rgba(59,167,255,0.10)]' : '',
-                  ].join(' ')}
-                >
-                  Next draw in
-                </span>
-
-                <span
-                  className={[
-                    'font-mono transition-colors duration-300',
-                    isHero ? 'text-[15px] tracking-[0.30em] sm:text-base' : 'text-sm tracking-[0.26em]',
-                    countPulse ? 'text-white' : 'text-slate-100',
-                  ].join(' ')}
-                  style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
-                >
-                  {mounted ? new Date(Math.max(0, countdownMs)).toISOString().slice(11, 19) : '00:00:00'}
-                </span>
-
-                <span className="text-[11px] text-slate-600">22:00 Madrid</span>
-              </div>
-
-              {showUnavailable ? (
-                <div className="mt-3">
-                  <PriceUnavailableNote />
+                  <div className="hidden sm:block" />
                 </div>
-              ) : (
-                <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Live market price feed</p>
-              )}
 
-              {/* Latest winner (DISABLED until admin is fixed) */}
-              {/*
-                Winner strip intentionally disabled.
-              */}
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+                  <span
+                    className={[
+                      'inline-flex items-center rounded-full border border-white/[0.05] bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
+                      countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.14),0_0_18px_rgba(59,167,255,0.10)]' : '',
+                    ].join(' ')}
+                  >
+                    Next draw in
+                  </span>
+
+                  <span
+                    className={[
+                      'font-mono transition-colors duration-300',
+                      isHero ? 'text-[15px] tracking-[0.30em] sm:text-base' : 'text-sm tracking-[0.26em]',
+                      countPulse ? 'text-white' : 'text-slate-100',
+                    ].join(' ')}
+                    style={{ textShadow: '0 0 18px rgba(124,200,255,0.10)' }}
+                  >
+                    {mounted ? new Date(Math.max(0, countdownMs)).toISOString().slice(11, 19) : '00:00:00'}
+                  </span>
+
+                  <span className="text-[11px] text-slate-600">22:00 Madrid</span>
+                </div>
+
+                {showUnavailable ? (
+                  <div className="mt-3">
+                    <PriceUnavailableNote />
+                  </div>
+                ) : (
+                  <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Live market price feed</p>
+                )}
+
+                {/* Latest winner (DISABLED until admin is fixed) */}
+                {/*
+                  Winner strip intentionally disabled.
+                */}
+              </div>
             </div>
 
-            {/* Controlled details (click-only) */}
             <div className={['group xpot-spill-wrap', isOpen ? 'xpot-details-open' : ''].join(' ')}>
               <button
                 type="button"
-                className="flex w-full items-center justify-between rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-3 text-sm text-slate-200 transition hover:bg-black/20"
+                className="flex w-full items-center justify-between rounded-2xl border border-white/[0.045] bg-black/15 px-4 py-3 text-sm text-slate-200 transition hover:bg-black/20"
                 aria-expanded={isOpen}
                 aria-controls="xpot-more-details"
                 onClick={() => setManualOpen(v => !v)}
@@ -783,7 +781,7 @@ export default function JackpotPanel({
                       </div>
 
                       <div className="mt-3">
-                        <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/[0.06]">
+                        <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/[0.05]">
                           <div
                             className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.12)]"
                             style={{
