@@ -53,7 +53,6 @@ function Avatar({
   const resolvedSrc = useMemo(() => {
     if (src) return src;
     if (!handle) return null;
-    // rotate cache bucket every 6h so avatars refresh but still cache nicely
     const cacheKey = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
     return `https://unavatar.io/twitter/${encodeURIComponent(handle)}?cache=${cacheKey}`;
   }, [src, handle]);
@@ -96,7 +95,6 @@ function buildLoop(entries: EntryRow[]) {
   const safe = Array.isArray(entries) ? entries.filter(e => Boolean(e?.handle)) : [];
   if (safe.length === 0) return [];
 
-  // if the feed is short, duplicate enough so the marquee feels alive
   if (safe.length < 8) {
     const times = Math.ceil(10 / safe.length);
     const out: EntryRow[] = [];
@@ -111,17 +109,18 @@ export default function EnteringStageLive({
   entries,
   className = '',
   label = 'Entering the stage',
+  embedded = false,
 }: {
   entries: EntryRow[];
   className?: string;
   label?: string;
+  embedded?: boolean;
 }) {
   const loop = useMemo(() => buildLoop(entries), [entries]);
   const has = loop.length > 0;
 
   const localHandle = useLocalHandle();
 
-  // tiny jitter so it never looks frozen (and also busts any identical render timing)
   const [seed, setSeed] = useState(0);
   useEffect(() => {
     const t = window.setInterval(() => setSeed(s => (s + 1) % 1000), 2200);
@@ -130,13 +129,16 @@ export default function EnteringStageLive({
 
   const delay = `${(seed % 6) * -0.18}s`;
 
-  return (
-    <div
-      className={[
+  const Outer = embedded ? 'div' : 'section';
+  const outerClass = embedded
+    ? ['relative', className].join(' ')
+    : [
         'relative overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/20 ring-1 ring-white/[0.05]',
         className,
-      ].join(' ')}
-    >
+      ].join(' ');
+
+  return (
+    <Outer className={outerClass}>
       <style jsx global>{`
         @keyframes xpotMarquee {
           0% {
@@ -177,7 +179,9 @@ export default function EnteringStageLive({
         }
       `}</style>
 
-      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_35%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
+      {!embedded ? (
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_35%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
+      ) : null}
 
       <div className="relative px-5 py-4">
         {/* header */}
@@ -199,11 +203,9 @@ export default function EnteringStageLive({
         <div className="mt-3">
           {has ? (
             <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-3">
-              {/* soft edge fades */}
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-[linear-gradient(90deg,rgba(2,6,23,0.95),transparent)]" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-[linear-gradient(270deg,rgba(2,6,23,0.95),transparent)]" />
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-[linear-gradient(90deg,rgba(2,6,23,0.92),transparent)]" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-[linear-gradient(270deg,rgba(2,6,23,0.92),transparent)]" />
 
-              {/* marquee track - doubled for seamless loop */}
               <div className="relative flex items-center gap-2">
                 <div className="xpot-marquee" style={{ animationDelay: delay }}>
                   {[...loop, ...loop].map((e, idx) => {
@@ -262,6 +264,6 @@ export default function EnteringStageLive({
           </div>
         </div>
       </div>
-    </div>
+    </Outer>
   );
 }
