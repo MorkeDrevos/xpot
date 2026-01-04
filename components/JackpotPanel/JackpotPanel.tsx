@@ -765,12 +765,6 @@ export default function JackpotPanel({
                       </p>
                     </div>
 
-                    <Link
-                      href="/hub"
-                      className="shrink-0 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition hover:bg-emerald-400/20 hover:text-emerald-100"
-                    >
-                      Claim today&apos;s entry →
-                    </Link>
                   </div>
 
                   <p className="mt-3 text-[11px] text-slate-500">
