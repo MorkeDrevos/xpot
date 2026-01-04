@@ -23,7 +23,7 @@ function safeIso(d: any) {
 
 export async function GET(req: NextRequest) {
   try {
-    const limit = intParam(req.nextUrl.searchParams.get('limit'), 5);
+    const limit = intParam(req.nextUrl.searchParams.get('limit'), 20);
 
     const winners = await prisma.winner.findMany({
       orderBy: { date: 'desc' },
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
           include: {
             wallet: {
               include: {
-                user: true,
+                user: true, // xHandle / xName / xAvatarUrl
               },
             },
           },
@@ -43,57 +43,43 @@ export async function GET(req: NextRequest) {
     });
 
     const payload = winners.map(w => {
-      const user: any = (w as any)?.ticket?.wallet?.user ?? null;
+      const user = w.ticket?.wallet?.user;
 
-      const handle =
-        user?.xHandle ??
-        user?.handle ??
-        user?.twitterHandle ??
-        user?.x_username ??
-        null;
-
-      const name =
-        user?.xName ??
-        user?.name ??
-        user?.displayName ??
-        user?.twitterName ??
-        null;
-
-      const avatarUrl =
-        user?.xAvatarUrl ??
-        user?.avatarUrl ??
-        user?.imageUrl ??
-        user?.profileImageUrl ??
-        null;
-
-      // ✅ IMPORTANT:
-      // Your schema uses payoutUsd (float8) but it's actually XPOT amount.
-      // We'll treat it as XPOT amount everywhere in the UI.
+      // IMPORTANT:
+      // You said payoutUsd is actually XPOT amount (historical naming).
+      // So amountXpot = payoutUsd.
       const amountXpot =
-        (w as any)?.payoutUsd ??
-        (w as any)?.amountXpot ??
-        (w as any)?.payoutXpot ??
-        null;
+        typeof (w as any).payoutUsd === 'number' && Number.isFinite((w as any).payoutUsd)
+          ? (w as any).payoutUsd
+          : null;
+
+      // Prefer draw.drawDate if it exists, fallback to winner.date, then createdAt
+      const drawDate =
+        safeIso((w as any).draw?.drawDate) ?? safeIso((w as any).date) ?? safeIso((w as any).createdAt);
 
       return {
         id: w.id,
-        kind: (w as any).kind ?? (w as any).winnerKind ?? null,
+
+        kind: (w as any).kind ?? null,
         label: (w as any).label ?? null,
 
-        drawDate: safeIso((w as any)?.draw?.drawDate ?? (w as any)?.date ?? (w as any)?.createdAt),
-        ticketCode: (w as any)?.ticketCode ?? null,
+        drawDate,
+        ticketCode: (w as any).ticketCode ?? null,
 
-        walletAddress: (w as any)?.walletAddress ?? (w as any)?.ticket?.wallet?.address ?? null,
-
-        handle,
-        name,
-        avatarUrl,
-
+        // XPOT amount:
         amountXpot,
 
-        isPaidOut: (w as any)?.isPaidOut ?? null,
-        txUrl: (w as any)?.txUrl ?? null,
-        txSig: (w as any)?.txSig ?? null,
+        walletAddress: (w as any).walletAddress ?? null,
+
+        // X identity (if present)
+        handle: user?.xHandle ?? null,
+        name: (user as any)?.xName ?? null,
+        avatarUrl: (user as any)?.xAvatarUrl ?? null,
+
+        // payout/proof
+        isPaidOut: typeof (w as any).isPaidOut === 'boolean' ? (w as any).isPaidOut : null,
+        txUrl: (w as any).txUrl ?? null,
+        txSig: (w as any).txSig ?? null,
       };
     });
 
