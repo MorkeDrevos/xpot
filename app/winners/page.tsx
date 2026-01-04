@@ -26,7 +26,7 @@ type WinnerRow = {
   id: string;
   kind?: WinnerKind | string | null;
 
-  drawDate?: string | null; // ISO or date-ish
+  drawDate?: string | null;
   ticketCode?: string | null;
 
   amountXpot?: number | null;
@@ -59,7 +59,7 @@ function formatDate(date: string) {
 function normalizeHandle(h: string | null | undefined) {
   const s = String(h ?? '').trim();
   if (!s) return null;
-  const clean = s.replace(/^@+/, ''); // prevent @@
+  const clean = s.replace(/^@+/, '');
   if (!clean) return null;
   return `@${clean}`;
 }
@@ -122,7 +122,7 @@ function WinnerIdentity({
 
   const content = (
     <div className="flex items-center gap-3">
-      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-slate-900/60 ring-1 ring-white/[0.06]">
+      <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-white/10 bg-slate-900/60 ring-1 ring-white/[0.06]">
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={avatarUrl} alt={subtitle} className="h-full w-full object-cover" />
@@ -281,6 +281,7 @@ export default function WinnersPage() {
       pageTag="hub"
     >
       <section className="mt-6 space-y-6">
+        {/* Controls */}
         <section className="xpot-panel px-5 py-5 sm:px-6 sm:py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -373,6 +374,7 @@ export default function WinnersPage() {
           </div>
         </section>
 
+        {/* Winner log */}
         <section className="xpot-card-primary" data-glow="magenta">
           <div className="xpot-nebula-halo" />
           <div className="relative z-10 px-5 py-5 sm:px-6 sm:py-6">
@@ -426,68 +428,68 @@ export default function WinnersPage() {
 
                           return (
                             <article key={w.id} className="xpot-card px-4 py-4">
-                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span
-                                      className={[
-                                        'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
-                                        isMain
-                                          ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
-                                          : isBonus
-                                          ? 'xpot-pill-gold border bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
-                                          : 'border-slate-700/70 bg-slate-900/60 text-slate-200',
-                                      ].join(' ')}
-                                    >
-                                      {isMain ? (
-                                        <>
-                                          <Crown className="h-3.5 w-3.5" />
-                                          Main XPOT
-                                        </>
-                                      ) : isBonus ? (
-                                        <>
-                                          <Trophy className="h-3.5 w-3.5" />
-                                          Bonus XPOT
-                                        </>
-                                      ) : (
-                                        <>Winner</>
-                                      )}
-                                    </span>
+                              {/* Top badges row */}
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className={[
+                                    'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+                                    isMain
+                                      ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
+                                      : isBonus
+                                      ? 'xpot-pill-gold border bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
+                                      : 'border-slate-700/70 bg-slate-900/60 text-slate-200',
+                                  ].join(' ')}
+                                >
+                                  {isMain ? (
+                                    <>
+                                      <Crown className="h-3.5 w-3.5" />
+                                      Main XPOT
+                                    </>
+                                  ) : isBonus ? (
+                                    <>
+                                      <Trophy className="h-3.5 w-3.5" />
+                                      Bonus XPOT
+                                    </>
+                                  ) : (
+                                    <>Winner</>
+                                  )}
+                                </span>
 
-                                    {w.ticketCode ? (
-                                      <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span>
-                                    ) : null}
+                                {w.ticketCode ? (
+                                  <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span>
+                                ) : null}
 
-                                    <span className="text-slate-700">•</span>
+                                <span className="text-slate-700">•</span>
 
-                                    {paid ? (
-                                      <Badge tone="emerald">
-                                        <BadgeCheck className="h-3.5 w-3.5" />
-                                        Paid
-                                      </Badge>
-                                    ) : (
-                                      <Badge tone="danger">
-                                        <XCircle className="h-3.5 w-3.5" />
-                                        Unpaid
-                                      </Badge>
-                                    )}
-                                  </div>
+                                {paid ? (
+                                  <Badge tone="emerald">
+                                    <BadgeCheck className="h-3.5 w-3.5" />
+                                    Paid
+                                  </Badge>
+                                ) : (
+                                  <Badge tone="danger">
+                                    <XCircle className="h-3.5 w-3.5" />
+                                    Unpaid
+                                  </Badge>
+                                )}
+                              </div>
 
-                                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <WinnerIdentity
-                                      avatarUrl={w.avatarUrl}
-                                      name={w.name}
-                                      handle={w.handle}
-                                      walletAddress={w.walletAddress}
-                                    />
+                              {/* Main row: Identity | Amount(hero) | TX */}
+                              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+                                <WinnerIdentity
+                                  avatarUrl={w.avatarUrl}
+                                  name={w.name}
+                                  handle={w.handle}
+                                  walletAddress={w.walletAddress}
+                                />
 
-                                    <div className="flex items-center">
-                                      <GoldAmount value={amountText} suffix="XPOT" size="md" />
-                                    </div>
-                                  </div>
+                                {/* Amount - hero */}
+                                <div className="flex justify-start sm:justify-center">
+                                  <GoldAmount value={amountText} suffix="XPOT" size="lg" />
                                 </div>
 
-                                <div className="flex shrink-0 items-center gap-2">
+                                {/* TX button */}
+                                <div className="flex justify-start sm:justify-end">
                                   {hasTx && w.txUrl ? (
                                     <Link
                                       href={w.txUrl}
