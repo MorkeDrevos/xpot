@@ -242,8 +242,8 @@ export default function JackpotPanel({
 
   // BIGGER, better scaling across your actual layout width
   const usdClampStyle: React.CSSProperties = isHero
-    ? { fontSize: 'clamp(3.9rem, 5.7vw, 7.2rem)', lineHeight: '0.88' }
-    : { fontSize: 'clamp(3.0rem, 4.9vw, 5.4rem)', lineHeight: '0.92' };
+  ? { fontSize: 'clamp(4.6rem, 7.2vw, 8.4rem)', lineHeight: '0.86' }
+  : { fontSize: 'clamp(3.4rem, 5.8vw, 6.4rem)', lineHeight: '0.90' };
 
   return (
     <section
