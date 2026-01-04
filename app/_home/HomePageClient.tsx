@@ -1100,14 +1100,6 @@ function HomePageInner() {
       <BonusStrip />
     </PremiumCard>
   ) : null}
-</div>
-
-                  {bonusActive ? (
-                    <PremiumCard className="p-5 sm:p-6" halo={false}>
-                      <BonusStrip />
-                    </PremiumCard>
-                  ) : null}
-                </div>
               </div>
             </div>
           </div>
