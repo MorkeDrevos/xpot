@@ -552,22 +552,27 @@ export default function JackpotPanel({
                       }}
                     />
 
-                    <div
-                      className={[
-                        'xpot-usd-amount relative xpot-usd-live xpot-usd-float font-semibold tabular-nums transition-all duration-300 ease-out',
-                        justUpdated ? 'scale-[1.02]' : '',
-                        justUpdated ? 'text-[#7CC8FF] drop-shadow-[0_0_54px_rgba(124,200,255,0.22)]' : 'text-white',
-                      ].join(' ')}
-                      style={{
-                        textShadow: justUpdated
-                          ? '0 0 40px rgba(124,200,255,0.18)'
-                          : '0 0 30px rgba(124,200,255,0.12)',
-                        letterSpacing: isHero ? '-0.03em' : '-0.02em',
-                        paddingRight: '0.25rem',
-                      }}
-                    >
-                      {displayUsdText}
-                    </div>
+                    <div className="relative flex min-w-0 flex-1 items-center">
+  <div
+    className={[
+      'xpot-usd-live xpot-usd-float font-semibold tabular-nums text-white',
+      'leading-none',
+      'min-w-0 overflow-hidden',
+      justUpdated ? 'text-[#7CC8FF]' : '',
+    ].join(' ')}
+    style={{
+      fontSize: isHero
+        ? 'clamp(5.8rem, 9.5vw, 10.5rem)'
+        : 'clamp(4.2rem, 8vw, 7.2rem)',
+      lineHeight: '0.85',
+      letterSpacing: '-0.035em',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    }}
+  >
+    {displayUsdText}
+  </div>
+</div>
 
                     <div
                       aria-hidden
