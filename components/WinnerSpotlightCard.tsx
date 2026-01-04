@@ -102,8 +102,10 @@ function Avatar({
           {initials}
         </div>
       )}
-      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.08]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.12),transparent_58%)]" />
+
+      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.10]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.14),transparent_58%)]" />
+      <div className="pointer-events-none absolute -inset-8 opacity-40 blur-2xl bg-[radial-gradient(circle_at_60%_30%,rgba(var(--xpot-gold),0.18),transparent_68%)]" />
     </div>
   );
 }
@@ -119,7 +121,7 @@ function Pill({
     tone === 'emerald'
       ? 'border-emerald-300/20 bg-emerald-500/10 text-emerald-100/90'
       : tone === 'gold'
-      ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
+      ? 'border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
       : 'border-white/10 bg-white/[0.03] text-slate-200/90';
 
   return (
@@ -166,7 +168,7 @@ export default function WinnerSpotlightCard({
   const hasProof = Boolean(winner?.txUrl);
 
   const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
-  const avatarSize = compact ? 34 : 40;
+  const avatarSize = compact ? 34 : 42;
 
   const shareText = winner
     ? hasProof
@@ -180,7 +182,9 @@ export default function WinnerSpotlightCard({
   const outerClass = embedded
     ? ['relative', className].join(' ')
     : [
-        'relative overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]',
+        'relative overflow-hidden rounded-[32px]',
+        'border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.06]',
+        'shadow-[0_40px_160px_rgba(0,0,0,0.70)]',
         className,
       ].join(' ');
 
@@ -193,7 +197,7 @@ export default function WinnerSpotlightCard({
             opacity: 0;
           }
           16% {
-            opacity: 0.18;
+            opacity: 0.16;
           }
           55% {
             opacity: 0.10;
@@ -205,30 +209,40 @@ export default function WinnerSpotlightCard({
         }
         .xpot-winner-sheen {
           position: absolute;
-          inset: -50px;
+          inset: -120px;
           pointer-events: none;
           background: linear-gradient(
             100deg,
             transparent 0%,
-            rgba(255, 255, 255, 0.04) 30%,
-            rgba(var(--xpot-gold), 0.12) 50%,
-            rgba(56, 189, 248, 0.06) 70%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(var(--xpot-gold), 0.18) 50%,
+            rgba(56, 189, 248, 0.10) 70%,
             transparent 100%
           );
           mix-blend-mode: screen;
           opacity: 0;
           animation: xpotWinnerSheen 12.5s ease-in-out infinite;
         }
+
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-winner-sheen {
+            animation: none !important;
+          }
+        }
       `}</style>
 
       {!embedded ? (
         <>
-          <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.16),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+          <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_14%_20%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_85%_28%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_50%_92%,rgba(16,185,129,0.10),transparent_62%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
           <div className="xpot-winner-sheen" />
         </>
       ) : null}
 
       <div className={`relative ${pad}`}>
+        {/* top gradient rule (matches console vibe) */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.75),rgba(56,189,248,0.55),transparent)] opacity-70" />
+
         {/* header */}
         <div className="flex items-center justify-between gap-3">
           <Pill>
@@ -247,9 +261,7 @@ export default function WinnerSpotlightCard({
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar src={winner?.avatarUrl} label={label} size={avatarSize} />
-              {winner?.handle ? (
-                <div className="pointer-events-none absolute -inset-1 rounded-full ring-1 ring-white/[0.06]" />
-              ) : null}
+              <div className="pointer-events-none absolute -inset-1 rounded-full ring-1 ring-white/[0.06]" />
             </div>
 
             <div className="min-w-0">
@@ -273,10 +285,17 @@ export default function WinnerSpotlightCard({
                 ) : (
                   <div className="truncate text-[14px] font-semibold text-slate-50">Syncing winner</div>
                 )}
+
+                {winner?.handle ? (
+                  <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-200/90">
+                    <Sparkles className="h-3.5 w-3.5 text-[rgb(var(--xpot-gold-2))]" />
+                    Spotlight
+                  </span>
+                ) : null}
               </div>
 
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
-                {displayName ? <span className="max-w-[240px] truncate text-slate-300">{displayName}</span> : null}
+                {displayName ? <span className="max-w-[240px] truncate text-slate-200/90">{displayName}</span> : null}
 
                 {(displayName || ymd) && (ymd || winner?.wallet || winner?.label) ? (
                   <span className="text-slate-700">•</span>
@@ -301,10 +320,13 @@ export default function WinnerSpotlightCard({
             </div>
           </div>
 
+          {/* prize + actions */}
           <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-center">
             <div className="text-right">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Prize</div>
-              <div className="mt-1 font-mono text-[18px] text-[rgb(var(--xpot-gold-2))]">{prizeText}</div>
+              <div className="mt-1 font-mono text-[19px] text-[rgb(var(--xpot-gold-2))] drop-shadow-[0_0_18px_rgba(245,199,95,0.25)]">
+                {prizeText}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -313,11 +335,11 @@ export default function WinnerSpotlightCard({
                   href={winner.txUrl}
                   target="_blank"
                   rel="nofollow noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
                   aria-label="Open on-chain proof"
                   title="Open on-chain proof"
                 >
-                  <ShieldCheck className="h-4 w-4 text-slate-300" />
+                  <ShieldCheck className="h-4 w-4 text-emerald-200/90" />
                   Proof
                   <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                 </a>
@@ -336,7 +358,7 @@ export default function WinnerSpotlightCard({
                   href={shareIntentUrl}
                   target="_blank"
                   rel="nofollow noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
                   title="Share on X"
                   aria-label="Share on X"
                 >
@@ -349,9 +371,7 @@ export default function WinnerSpotlightCard({
           </div>
         </div>
 
-        {!compact ? (
-          <div className="mt-4 text-[12px] text-slate-500">Winner and proof are published here.</div>
-        ) : null}
+        {!compact ? <div className="mt-4 text-[12px] text-slate-500">Winner and proof are published here.</div> : null}
       </div>
     </Outer>
   );
