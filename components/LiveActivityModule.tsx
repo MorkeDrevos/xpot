@@ -5,7 +5,18 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Crown, ExternalLink, Users } from 'lucide-react';
 
-import type { EntryRow } from '@/components/EnteringStageLive';
+/**
+ * ✅ Self-contained types so you can delete EnteringStageLive.tsx and WinnerSpotlightCard.tsx safely.
+ * This module now owns the EntryRow type.
+ */
+export type EntryRow = {
+  id?: string;
+  createdAt?: string;
+  handle: string;
+  name?: string | null;
+  avatarUrl?: string | null;
+  verified?: boolean;
+};
 
 export type LiveWinnerRow = {
   id: string;
@@ -24,7 +35,6 @@ export type LiveWinnerRow = {
   kind?: 'MAIN' | 'BONUS' | null;
   label?: string | null;
 
-  // Optional if you ever add it to API
   verified?: boolean;
 };
 
@@ -47,7 +57,6 @@ function safeTimeMs(iso?: string | null) {
 function formatEuDateTime(iso?: string | null) {
   const ms = safeTimeMs(iso);
   if (!ms) return '';
-  // EU style + 24h clock
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Madrid',
     day: '2-digit',
@@ -80,7 +89,6 @@ function formatXpotAmount(winner: LiveWinnerRow | null) {
 
   if (!raw || raw <= 0) return null;
 
-  // XPOT is usually shown as integer amount
   const n = Math.round(raw);
   return n.toLocaleString('en-US');
 }
@@ -122,18 +130,21 @@ function Avatar({
 
 function useIsTouch() {
   const [touch, setTouch] = useState(false);
+
   useEffect(() => {
     const onFirstTouch = () => setTouch(true);
     window.addEventListener('touchstart', onFirstTouch, { passive: true, once: true });
     return () => window.removeEventListener('touchstart', onFirstTouch as any);
   }, []);
+
   return touch;
 }
 
 /**
  * Avatar tooltip.
  * - Desktop: hover/focus
- * - Mobile: tap to toggle (first tap shows tooltip, tap inside tooltip opens X)
+ * - Mobile: tap avatar toggles tooltip (prevents navigation)
+ *          then tap "Open on X" inside tooltip to open profile
  */
 function AvatarTooltip({
   handle,
@@ -155,6 +166,7 @@ function AvatarTooltip({
   const isTouch = useIsTouch();
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
+  const rootRef = useRef<HTMLSpanElement | null>(null);
 
   const labelTop = normalizeHandle(handle);
   const labelSub = name ? String(name).trim() : '';
@@ -171,6 +183,27 @@ function AvatarTooltip({
     };
   }, []);
 
+  // ✅ Mobile: tap outside closes tooltip
+  useEffect(() => {
+    if (!open || !isTouch) return;
+
+    const onDocDown = (e: MouseEvent | TouchEvent) => {
+      const el = rootRef.current;
+      if (!el) return;
+      const target = e.target as Node | null;
+      if (target && el.contains(target)) return;
+      setOpen(false);
+    };
+
+    document.addEventListener('mousedown', onDocDown, true);
+    document.addEventListener('touchstart', onDocDown, { passive: true, capture: true } as any);
+
+    return () => {
+      document.removeEventListener('mousedown', onDocDown, true);
+      document.removeEventListener('touchstart', onDocDown as any, true);
+    };
+  }, [open, isTouch]);
+
   const onEnter = () => {
     if (isTouch) return;
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
@@ -184,14 +217,13 @@ function AvatarTooltip({
 
   const onToggleTouch = (e: React.MouseEvent) => {
     if (!isTouch) return;
-    // On mobile: first tap toggles tooltip instead of navigating away.
     e.preventDefault();
     e.stopPropagation();
     setOpen(v => !v);
   };
 
   return (
-    <span className="relative inline-flex">
+    <span ref={rootRef} className="relative inline-flex">
       <a
         href={href}
         target="_blank"
@@ -306,13 +338,10 @@ export default function LiveActivityModule({
         className,
       ].join(' ')}
     >
-      {/* subtle top seam */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.34),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)]" />
-      {/* calm aura */}
       <div className="pointer-events-none absolute -inset-28 opacity-65 blur-3xl bg-[radial-gradient(circle_at_14%_18%,rgba(var(--xpot-gold),0.10),transparent_60%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.08),transparent_62%)]" />
 
       <div className="relative p-4 sm:p-6">
-        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Live activity</p>
@@ -331,7 +360,6 @@ export default function LiveActivityModule({
           </Link>
         </div>
 
-        {/* Content grid */}
         <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           {/* Spotlight (winner) */}
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
@@ -388,6 +416,7 @@ export default function LiveActivityModule({
                 </div>
               </div>
 
+              {/* ✅ Wallet removed completely */}
               <div className="mt-4">
                 <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Prize</div>
