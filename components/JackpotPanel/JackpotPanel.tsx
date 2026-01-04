@@ -263,7 +263,7 @@ export default function JackpotPanel({
           </div>
         )}
 
-        {!isHero && (
+        {!isHero && variant !== 'embedded' && (
           <div className="relative z-10 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-slate-100">Today&apos;s XPOT</p>
@@ -305,7 +305,7 @@ export default function JackpotPanel({
               filter: 'blur(0.2px)',
             }}
           />
-          {/* Soft sweep (premium “alive” feel, no animation spam) */}
+          {/* Soft sweep */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-3xl opacity-60"
@@ -367,7 +367,7 @@ export default function JackpotPanel({
                   'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.08), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.30), rgba(0,0,0,0.05))',
               }}
             >
-              {/* Update aura (subtle, only on ticks) */}
+              {/* Update aura (only on ticks) */}
               <div
                 aria-hidden
                 className={[
