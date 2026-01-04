@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ExternalLink, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { ExternalLink, ShieldCheck, Users } from 'lucide-react';
 
 export type EntryRow = {
   id?: string;
@@ -51,10 +51,21 @@ function useLocalHandle() {
   return h;
 }
 
+function formatAgo(ms: number) {
+  if (!ms) return '';
+  const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (s < 8) return 'just now';
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  return `${h}h`;
+}
+
 function Avatar({
   src,
   label,
-  size = 34,
+  size = 28,
 }: {
   src?: string | null;
   label: string;
@@ -79,7 +90,7 @@ function Avatar({
 
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-full border border-white/12 bg-white/[0.04]"
+      className="relative shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]"
       style={{ width: size, height: size }}
       title={normalizeHandle(label)}
     >
@@ -94,15 +105,12 @@ function Avatar({
           onError={() => setFailed(true)}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center font-mono text-[12px] text-slate-200">
+        <div className="flex h-full w-full items-center justify-center font-mono text-[11px] text-slate-200">
           {initials}
         </div>
       )}
-
-      {/* glass + highlight */}
-      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.10]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.14),transparent_58%)]" />
-      <div className="pointer-events-none absolute -inset-6 opacity-40 blur-2xl bg-[radial-gradient(circle_at_55%_35%,rgba(56,189,248,0.18),transparent_65%)]" />
+      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.10),transparent_60%)]" />
     </div>
   );
 }
@@ -131,34 +139,6 @@ function sanitize(entries: EntryRow[]) {
   return out;
 }
 
-function Pill({
-  children,
-  tone = 'neutral',
-}: {
-  children: React.ReactNode;
-  tone?: 'neutral' | 'emerald' | 'sky' | 'gold';
-}) {
-  const cls =
-    tone === 'emerald'
-      ? 'border-emerald-300/20 bg-emerald-500/10 text-emerald-100/90'
-      : tone === 'sky'
-      ? 'border-sky-300/20 bg-sky-500/10 text-sky-100/90'
-      : tone === 'gold'
-      ? 'border-[rgba(var(--xpot-gold),0.26)] bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
-      : 'border-white/10 bg-white/[0.03] text-slate-200/90';
-
-  return (
-    <span
-      className={[
-        'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em]',
-        cls,
-      ].join(' ')}
-    >
-      {children}
-    </span>
-  );
-}
-
 export default function EnteringStageLive({
   entries,
   className = '',
@@ -176,32 +156,30 @@ export default function EnteringStageLive({
   const list = useMemo(() => sanitize(entries), [entries]);
   const has = list.length > 0;
 
-  const newest = list[0] ?? null;
-  const grid = list.slice(1, 7); // 6 tiles
+  // show a clean “console feed” (no tiles, no marquee)
+  const rows = list.slice(0, 8);
 
-  const newestKey = useMemo(() => (newest ? makeKey(newest, 0) : null), [newest]);
+  // highlight newest on change
+  const newestKey = useMemo(() => (rows[0] ? makeKey(rows[0], 0) : null), [rows]);
   const prevNewestKey = useRef<string | null>(null);
-  const [arrival, setArrival] = useState<EntryRow | null>(null);
+  const [flashKey, setFlashKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!newestKey || !newest) return;
-
+    if (!newestKey) return;
     if (prevNewestKey.current && prevNewestKey.current !== newestKey) {
-      setArrival(newest);
-      const t = window.setTimeout(() => setArrival(null), reduceMotion ? 700 : 1700);
+      setFlashKey(newestKey);
+      const t = window.setTimeout(() => setFlashKey(null), reduceMotion ? 500 : 1400);
       return () => window.clearTimeout(t);
     }
-
     prevNewestKey.current = newestKey;
-  }, [newestKey, newest, reduceMotion]);
+  }, [newestKey, reduceMotion]);
 
   const Outer = embedded ? 'div' : 'section';
   const outerClass = embedded
     ? ['relative', className].join(' ')
     : [
-        'relative overflow-hidden rounded-[32px]',
-        'border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.06]',
-        'shadow-[0_40px_160px_rgba(0,0,0,0.70)]',
+        'relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/20 ring-1 ring-white/[0.05]',
+        'shadow-[0_34px_140px_rgba(0,0,0,0.58)]',
         className,
       ].join(' ');
 
@@ -210,329 +188,215 @@ export default function EnteringStageLive({
       <style jsx global>{`
         @keyframes xpotLiveDot {
           0% {
-            opacity: 0.5;
-            transform: scale(0.92);
+            opacity: 0.55;
+            transform: scale(0.95);
           }
           55% {
             opacity: 1;
-            transform: scale(1.08);
+            transform: scale(1.06);
           }
           100% {
-            opacity: 0.5;
-            transform: scale(0.92);
+            opacity: 0.55;
+            transform: scale(0.95);
+          }
+        }
+        @keyframes xpotSweep {
+          0% {
+            transform: translateX(-65%) skewX(-14deg);
+            opacity: 0;
+          }
+          12% {
+            opacity: 0.18;
+          }
+          52% {
+            opacity: 0.08;
+          }
+          100% {
+            transform: translateX(65%) skewX(-14deg);
+            opacity: 0;
           }
         }
         .xpot-live-dot {
           animation: xpotLiveDot 1.35s ease-in-out infinite;
         }
-
-        @keyframes xpotSweep {
-          0% {
-            transform: translateX(-70%) skewX(-12deg);
-            opacity: 0;
-          }
-          18% {
-            opacity: 0.12;
-          }
-          55% {
-            opacity: 0.08;
-          }
-          100% {
-            transform: translateX(70%) skewX(-12deg);
-            opacity: 0;
-          }
-        }
         .xpot-sweep {
-          position: absolute;
-          inset: -120px;
-          pointer-events: none;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.05) 30%,
-            rgba(var(--xpot-gold), 0.14) 50%,
-            rgba(56, 189, 248, 0.10) 70%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          opacity: 0;
-          animation: xpotSweep 12.8s ease-in-out infinite;
+          animation: xpotSweep 12.5s ease-in-out infinite;
         }
-
         @media (prefers-reduced-motion: reduce) {
-          .xpot-live-dot,
+          .xpot-live-dot {
+            animation: none;
+          }
           .xpot-sweep {
-            animation: none !important;
+            animation: none;
           }
         }
       `}</style>
 
       {!embedded ? (
         <>
-          <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_14%_16%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_84%_22%,rgba(16,185,129,0.10),transparent_64%),radial-gradient(circle_at_55%_92%,rgba(var(--xpot-gold),0.10),transparent_60%)]" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
-          <div className="xpot-sweep" />
+          {/* subtle XPOT nebula + scan grid */}
+          <div className="pointer-events-none absolute -inset-24 opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_22%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(16,185,129,0.08),transparent_64%),radial-gradient(circle_at_50%_95%,rgba(var(--xpot-gold),0.07),transparent_58%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
         </>
       ) : null}
 
       <div className="relative p-5 sm:p-6">
-        {/* header */}
+        {/* header row */}
         <div className="flex items-center justify-between gap-3">
-          <Pill>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
             <Users className="h-4 w-4 text-sky-200" />
-            {label}
-          </Pill>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+              {label}
+            </span>
+          </div>
 
           <div className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            <span className="xpot-live-dot h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.95)]" />
+            <span className="xpot-live-dot h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
             Live feed
           </div>
         </div>
 
-        {/* content */}
-        <div className="mt-4">
-          {has ? (
-            <div className="relative">
-              {/* arrival overlay */}
-              <AnimatePresence>
-                {arrival && !reduceMotion ? (
-                  <motion.div
-                    key={makeKey(arrival, 0)}
-                    initial={{ opacity: 0, y: 10, scale: 0.985, filter: 'blur(12px)' }}
-                    animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                    exit={{ opacity: 0, y: -8, scale: 0.99, filter: 'blur(12px)' }}
-                    transition={{ duration: 0.32, ease: 'easeOut' }}
-                    className="pointer-events-none absolute inset-x-0 -top-3 z-20"
-                  >
-                    <div className="mx-auto w-full max-w-[540px]">
-                      <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/75 p-3 ring-1 ring-white/[0.06] shadow-[0_24px_90px_rgba(0,0,0,0.65)] backdrop-blur">
-                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(56,189,248,0.14),transparent_40%,rgba(16,185,129,0.14))]" />
-                        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.22),transparent_60%),radial-gradient(circle_at_80%_25%,rgba(16,185,129,0.20),transparent_62%)]" />
+        {/* console */}
+        <div className="mt-4 relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]">
+          {/* top “console rule” + sweep */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.55),rgba(16,185,129,0.45),rgba(var(--xpot-gold),0.25),transparent)] opacity-70" />
+          <div className="xpot-sweep pointer-events-none absolute -inset-10 bg-[linear-gradient(100deg,transparent_0%,rgba(255,255,255,0.04)_32%,rgba(56,189,248,0.05)_50%,rgba(16,185,129,0.04)_68%,transparent_100%)] opacity-0" />
 
-                        <div className="relative flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <Avatar src={arrival.avatarUrl} label={arrival.handle} size={38} />
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="truncate text-[13px] font-semibold text-slate-100">
-                                  {normalizeHandle(arrival.handle)}
-                                </span>
-                                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-200/90">
-                                  <Sparkles className="h-3.5 w-3.5 text-[rgb(var(--xpot-gold-2))]" />
-                                  New entry
-                                </span>
-                              </div>
-                              <div className="mt-0.5 truncate text-[11px] text-slate-400">
-                                {arrival.name ? String(arrival.name).trim() : 'Entered the stage'}
-                              </div>
-                            </div>
-                          </div>
+          {/* inner rails */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-[84px] bg-[linear-gradient(90deg,rgba(2,6,23,0.70),transparent)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.06),transparent_55%)]" />
 
-                          {arrival.verified ? (
-                            <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-100/90">
-                              <ShieldCheck className="h-4 w-4" />
-                              Verified
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
+          {/* title strip */}
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="leading-tight">
+              <div className="text-[12px] font-semibold text-slate-100">Stage feed</div>
+              <div className="text-[11px] text-slate-500">New entrants reveal cleanly - no scrolling</div>
+            </div>
 
-              {/* console */}
-              <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]">
-                {/* top gradient rule */}
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.70),rgba(16,185,129,0.62),rgba(var(--xpot-gold),0.55),transparent)] opacity-75" />
-                {/* inner sheen */}
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255,255,255,0.07),transparent_58%)]" />
-                {/* subtle bottom glow */}
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 opacity-70 bg-[radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+              <span className="font-mono text-[11px] text-slate-200">{list.length}</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                total today
+              </span>
+            </div>
+          </div>
 
-                {/* header row */}
-                <div className="flex items-center justify-between px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-2xl border border-white/10 bg-white/[0.03] ring-1 ring-white/[0.05] flex items-center justify-center">
-                      <Sparkles className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-                    </div>
-                    <div className="leading-tight">
-                      <div className="text-[12px] font-semibold text-slate-100">Live entries</div>
-                      <div className="text-[11px] text-slate-500">Curated reveal - no marquee</div>
-                    </div>
-                  </div>
+          {/* list */}
+          <div className="px-3 pb-3">
+            {has ? (
+              <AnimatePresence initial={false}>
+                <motion.ul layout className="grid gap-2">
+                  {rows.map((e, idx) => {
+                    const handle = normalizeHandle(e.handle);
+                    const name = e.name ? String(e.name).trim() : '';
+                    const key = makeKey(e, idx);
+                    const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
 
-                  <div className="hidden sm:flex items-center gap-2">
-                    <Pill tone="neutral">
-                      <span className="text-slate-200/90">{list.length}</span>
-                      total today
-                    </Pill>
-                  </div>
-                </div>
+                    const ms = safeTimeMs(e.createdAt);
+                    const ago = formatAgo(ms);
 
-                {/* newest */}
-                <div className="px-4 pb-4">
-                  <AnimatePresence initial={false}>
-                    {newest ? (
-                      <motion.a
-                        key={newestKey ?? 'newest'}
-                        href={toXProfileUrl(newest.handle)}
-                        target="_blank"
-                        rel="nofollow noopener noreferrer"
-                        className="group relative flex items-center gap-4 rounded-[24px] border border-white/10 bg-white/[0.03] px-4 py-4 ring-1 ring-white/[0.06] transition hover:bg-white/[0.055]"
+                    const isFlash = Boolean(flashKey && flashKey === key);
+
+                    return (
+                      <motion.li
+                        key={key}
+                        layout
                         initial={
-                          reduceMotion
-                            ? { opacity: 1 }
-                            : { opacity: 0, y: 10, scale: 0.99, filter: 'blur(12px)' }
+                          reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10, filter: 'blur(10px)' }
                         }
                         animate={
-                          reduceMotion
-                            ? { opacity: 1 }
-                            : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }
+                          reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }
                         }
-                        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(12px)' }}
-                        transition={reduceMotion ? undefined : { duration: 0.32, ease: 'easeOut' }}
-                        aria-label={`Open ${normalizeHandle(newest.handle)} on X`}
-                        title={`Open ${normalizeHandle(newest.handle)} on X`}
+                        exit={
+                          reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(10px)' }
+                        }
+                        transition={reduceMotion ? undefined : { duration: 0.26, ease: 'easeOut' }}
                       >
-                        <div className="pointer-events-none absolute inset-0 rounded-[24px] bg-[linear-gradient(110deg,rgba(56,189,248,0.14),transparent_42%,rgba(16,185,129,0.14))] opacity-80" />
-                        <div className="pointer-events-none absolute inset-0 rounded-[24px] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.07),transparent_60%)]" />
-
-                        <div className="relative">
-                          <Avatar src={newest.avatarUrl} label={newest.handle} size={46} />
-                          {newest.verified ? (
-                            <div className="absolute -bottom-1 -right-1 rounded-full border border-white/10 bg-slate-950/70 p-1 ring-1 ring-white/[0.06]">
-                              <ShieldCheck className="h-3.5 w-3.5 text-sky-200" />
-                            </div>
-                          ) : null}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="truncate text-[15px] font-semibold text-slate-100">
-                              {normalizeHandle(newest.handle)}
-                            </span>
-
-                            {localHandle && normalizeHandle(localHandle) === normalizeHandle(newest.handle) ? (
-                              <span className="rounded-full border border-emerald-300/20 bg-emerald-950/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
-                                You
-                              </span>
-                            ) : null}
-
-                            {newest.verified ? (
-                              <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-sky-100/90">
-                                Verified
-                              </span>
-                            ) : null}
-                          </div>
-
-                          <div className="mt-1 truncate text-[12px] text-slate-400">
-                            {newest.name ? String(newest.name).trim() : 'Entered the stage'}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-slate-500">
-                          <ExternalLink className="h-4 w-4 transition group-hover:text-slate-200" />
-                        </div>
-                      </motion.a>
-                    ) : null}
-                  </AnimatePresence>
-
-                  {/* tiles */}
-                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <AnimatePresence initial={false}>
-                      {grid.length ? (
-                        grid.map((e, idx) => {
-                          const h = normalizeHandle(e.handle);
-                          const name = e.name ? String(e.name).trim() : '';
-                          const key = makeKey(e, idx);
-                          const isMe = Boolean(localHandle && normalizeHandle(localHandle) === h);
-
-                          return (
-                            <motion.a
-                              key={key}
-                              href={toXProfileUrl(h)}
-                              target="_blank"
-                              rel="nofollow noopener noreferrer"
-                              className={[
-                                'group relative flex items-center gap-3 rounded-[18px] border px-3 py-3 transition',
-                                'border-white/10 bg-white/[0.02] hover:bg-white/[0.045] ring-1 ring-transparent hover:ring-white/[0.05]',
-                                isMe
-                                  ? 'shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_0_30px_rgba(16,185,129,0.10)]'
-                                  : '',
-                              ].join(' ')}
-                              initial={
-                                reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10, filter: 'blur(10px)' }
-                              }
-                              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-                              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(10px)' }}
-                              transition={
-                                reduceMotion
-                                  ? undefined
-                                  : { duration: 0.26, ease: 'easeOut', delay: Math.min(0.12, idx * 0.03) }
-                              }
-                              aria-label={`Open ${h} on X`}
-                              title={`Open ${h} on X`}
-                            >
-                              <div className="pointer-events-none absolute inset-0 rounded-[18px] opacity-0 group-hover:opacity-100 transition bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.06),transparent_60%)]" />
-
-                              <Avatar src={e.avatarUrl} label={h} size={32} />
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="truncate text-[13px] font-medium text-slate-200">{h}</span>
-                                  {e.verified ? <ShieldCheck className="h-4 w-4 text-sky-200/90" /> : null}
-                                  {isMe ? (
-                                    <span className="rounded-full border border-emerald-300/20 bg-emerald-950/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
-                                      You
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <div className="truncate text-[11px] text-slate-500">{name ? name : 'x.com profile'}</div>
-                              </div>
-
-                              <ExternalLink className="h-4 w-4 text-slate-600 transition group-hover:text-slate-200" />
-                            </motion.a>
-                          );
-                        })
-                      ) : (
-                        <motion.div
-                          key="no-grid"
-                          initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="rounded-[18px] border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-400 sm:col-span-2"
+                        <a
+                          href={toXProfileUrl(handle)}
+                          target="_blank"
+                          rel="nofollow noopener noreferrer"
+                          className={[
+                            'group relative flex items-center gap-3 rounded-[18px] border px-3 py-3 transition',
+                            'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
+                            isMe
+                              ? 'shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_0_24px_rgba(16,185,129,0.10)]'
+                              : '',
+                          ].join(' ')}
+                          aria-label={`Open ${handle} on X`}
+                          title={`Open ${handle} on X`}
                         >
-                          More entries will appear here.
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                          {/* premium “new entrant” halo - subtle, not loud */}
+                          {isFlash && !reduceMotion ? (
+                            <motion.div
+                              className="pointer-events-none absolute inset-0 rounded-[18px]"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: [0, 1, 0] }}
+                              transition={{ duration: 1.2, ease: 'easeInOut' }}
+                              style={{
+                                boxShadow:
+                                  '0 0 0 1px rgba(56,189,248,0.16), 0 0 28px rgba(16,185,129,0.10)',
+                              }}
+                            />
+                          ) : null}
 
-                  <div className="mt-4 flex items-center justify-between gap-3 px-1 text-[11px] text-slate-500">
-                    <span className="opacity-85">Handle-first identity</span>
-                    <span className="opacity-70">Premium reveal</span>
-                  </div>
-                </div>
+                          {/* left rail indicator */}
+                          <div className="relative flex items-center">
+                            <Avatar src={e.avatarUrl} label={handle} size={28} />
+                            <span className="pointer-events-none absolute -left-1 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border border-white/10 bg-slate-950/60 ring-1 ring-white/[0.06]" />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-[13px] font-semibold text-slate-100">
+                                {handle}
+                              </span>
+
+                              {e.verified ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/15 bg-sky-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-sky-100/90">
+                                  <ShieldCheck className="h-3.5 w-3.5" />
+                                  Verified
+                                </span>
+                              ) : null}
+
+                              {isMe ? (
+                                <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                                  You
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <div className="mt-0.5 truncate text-[11px] text-slate-500">
+                              {name ? name : 'Entered the stage'}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            {ago ? (
+                              <span className="hidden sm:inline font-mono text-[11px] text-slate-500">
+                                {ago}
+                              </span>
+                            ) : null}
+                            <ExternalLink className="h-4 w-4 text-slate-600 transition group-hover:text-slate-300" />
+                          </div>
+                        </a>
+                      </motion.li>
+                    );
+                  })}
+                </motion.ul>
+              </AnimatePresence>
+            ) : (
+              <div className="rounded-[18px] border border-white/10 bg-white/[0.02] px-4 py-4 text-[13px] text-slate-400">
+                No entries yet.
               </div>
+            )}
+
+            {/* bottom meta */}
+            <div className="mt-3 flex items-center justify-between px-2 text-[11px] text-slate-500">
+              <span className="opacity-85">Handle-first identity</span>
+              <span className="opacity-70">Live updates</span>
             </div>
-          ) : (
-            <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]">
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.65),rgba(16,185,129,0.55),transparent)] opacity-65" />
-              <div className="p-5">
-                <div className="flex items-center justify-between">
-                  <Pill>
-                    <Users className="h-4 w-4 text-sky-200" />
-                    Live entries
-                  </Pill>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-600">Idle</div>
-                </div>
-                <div className="mt-4 text-[13px] text-slate-400">No entries yet.</div>
-                <div className="mt-2 text-[11px] text-slate-500">
-                  The feed will light up as soon as the first entry lands.
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </Outer>
