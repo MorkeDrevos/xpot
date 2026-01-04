@@ -9,13 +9,13 @@ export type WinnerRow = {
   handle: string | null;
   name?: string | null;
   avatarUrl?: string | null;
-  wallet: string | null; // kept for compatibility, but NEVER displayed
+  wallet: string | null; // kept for compatibility - NEVER displayed
   amountXpot?: number | null;
   amount?: number | null;
   drawDate: string | null;
   txUrl?: string | null;
   isPaidOut?: boolean; // ignored for UI - keep for backwards compatibility
-  label?: string | null; // kept for compatibility, but NEVER displayed
+  label?: string | null; // kept for compatibility - NEVER displayed
 };
 
 const XPOT_SIGN = '✕';
@@ -150,7 +150,7 @@ export default function WinnerSpotlightCard({
   const displayName = winner?.name ? String(winner.name).trim() : '';
   const xUrl = handle ? toXProfileUrl(handle) : null;
 
-  // XPOT rule: ONLY X identity details - never show wallet or internal label
+  // XPOT rule: ONLY X identity details - never show wallet/label anywhere.
   const label = winner ? handle ?? '@winner' : '@winner';
 
   const ymd = winner?.drawDate ? formatIsoToMadridYmd(winner.drawDate) : null;
@@ -178,7 +178,7 @@ export default function WinnerSpotlightCard({
     ? ['relative', className].join(' ')
     : [
         'relative overflow-hidden rounded-[32px]',
-        'border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.06]',
+        'border border-white/10 bg-slate-950/22 ring-1 ring-white/[0.06]',
         'shadow-[0_40px_160px_rgba(0,0,0,0.70)]',
         className,
       ].join(' ');
@@ -192,7 +192,7 @@ export default function WinnerSpotlightCard({
             opacity: 0;
           }
           16% {
-            opacity: 0.16;
+            opacity: 0.18;
           }
           55% {
             opacity: 0.10;
@@ -204,14 +204,14 @@ export default function WinnerSpotlightCard({
         }
         .xpot-winner-sheen {
           position: absolute;
-          inset: -120px;
+          inset: -140px;
           pointer-events: none;
           background: linear-gradient(
             100deg,
             transparent 0%,
             rgba(255, 255, 255, 0.05) 30%,
-            rgba(var(--xpot-gold), 0.18) 50%,
-            rgba(56, 189, 248, 0.10) 70%,
+            rgba(var(--xpot-gold), 0.20) 50%,
+            rgba(56, 189, 248, 0.12) 70%,
             transparent 100%
           );
           mix-blend-mode: screen;
@@ -219,28 +219,51 @@ export default function WinnerSpotlightCard({
           animation: xpotWinnerSheen 12.5s ease-in-out infinite;
         }
 
+        @keyframes xpotHappyBreath {
+          0% {
+            opacity: 0.45;
+            filter: blur(26px);
+          }
+          55% {
+            opacity: 0.72;
+            filter: blur(30px);
+          }
+          100% {
+            opacity: 0.45;
+            filter: blur(26px);
+          }
+        }
+        .xpot-happy-breath {
+          animation: xpotHappyBreath 4.4s ease-in-out infinite;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .xpot-winner-sheen {
             animation: none !important;
           }
+          .xpot-happy-breath {
+            animation: none !important;
+            opacity: 0.62;
+          }
         }
       `}</style>
 
+      {/* “happy” premium glow wrapper */}
       {!embedded ? (
         <>
-          <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_14%_20%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_85%_28%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_50%_92%,rgba(16,185,129,0.10),transparent_62%)]" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
+          <div className="pointer-events-none absolute -inset-10 rounded-[38px] xpot-happy-breath opacity-60 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(56,189,248,0.18),transparent_56%),radial-gradient(circle_at_78%_40%,rgba(16,185,129,0.16),transparent_58%),radial-gradient(circle_at_52%_88%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
           <div className="xpot-winner-sheen" />
         </>
       ) : null}
 
       <div className={`relative ${pad}`}>
         {/* top gradient rule (console vibe) */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.75),rgba(56,189,248,0.55),transparent)] opacity-70" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.70),rgba(56,189,248,0.55),transparent)] opacity-70" />
 
         {/* header */}
         <div className="flex items-center justify-between gap-3">
-          <Pill>
+          <Pill tone="gold">
             <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
             Latest winner
           </Pill>
@@ -256,6 +279,8 @@ export default function WinnerSpotlightCard({
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar src={winner?.avatarUrl} label={label} size={avatarSize} />
+              {/* a tiny “happy” halo around avatar */}
+              <div className="pointer-events-none absolute -inset-3 rounded-full opacity-70 blur-2xl bg-[radial-gradient(circle_at_40%_35%,rgba(56,189,248,0.18),transparent_60%),radial-gradient(circle_at_70%_65%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
               <div className="pointer-events-none absolute -inset-1 rounded-full ring-1 ring-white/[0.06]" />
             </div>
 
@@ -273,7 +298,7 @@ export default function WinnerSpotlightCard({
                     >
                       <span className="truncate text-[14px] font-semibold text-slate-50">{label}</span>
                       {displayName ? (
-                        <span className="truncate text-[13px] text-slate-400">- {displayName}</span>
+                        <span className="truncate text-[13px] text-slate-300/80">- {displayName}</span>
                       ) : null}
                       <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                     </a>
@@ -281,7 +306,7 @@ export default function WinnerSpotlightCard({
                     <div className="min-w-0">
                       <div className="truncate text-[14px] font-semibold text-slate-50">{label}</div>
                       {displayName ? (
-                        <div className="truncate text-[13px] text-slate-400">{displayName}</div>
+                        <div className="truncate text-[13px] text-slate-300/80">{displayName}</div>
                       ) : null}
                     </div>
                   )
@@ -297,8 +322,8 @@ export default function WinnerSpotlightCard({
                 ) : null}
               </div>
 
-              {/* XP-only metadata (no wallet, no label) */}
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
+              {/* XP-only metadata: date only */}
+              <div className="mt-1 flex items-center gap-2 text-[12px] text-slate-400">
                 {ymd ? <span className="font-mono">{ymd}</span> : null}
               </div>
             </div>
@@ -308,7 +333,7 @@ export default function WinnerSpotlightCard({
           <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-center">
             <div className="text-right">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Prize</div>
-              <div className="mt-1 font-mono text-[19px] text-[rgb(var(--xpot-gold-2))] drop-shadow-[0_0_18px_rgba(245,199,95,0.25)]">
+              <div className="mt-1 font-mono text-[19px] text-[rgb(var(--xpot-gold-2))] drop-shadow-[0_0_22px_rgba(245,199,95,0.30)]">
                 {prizeText}
               </div>
             </div>
@@ -319,13 +344,13 @@ export default function WinnerSpotlightCard({
                   href={winner.txUrl}
                   target="_blank"
                   rel="nofollow noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                  className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100/90 hover:bg-emerald-500/15 transition"
                   aria-label="Open on-chain proof"
                   title="Open on-chain proof"
                 >
                   <ShieldCheck className="h-4 w-4 text-emerald-200/90" />
                   Proof
-                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                  <ExternalLink className="h-3.5 w-3.5 text-emerald-100/50" />
                 </a>
               ) : (
                 <div
@@ -342,19 +367,19 @@ export default function WinnerSpotlightCard({
                 href={shareIntentUrl}
                 target="_blank"
                 rel="nofollow noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                className="inline-flex items-center gap-2 rounded-full border border-[rgba(var(--xpot-gold),0.20)] bg-[rgba(var(--xpot-gold),0.08)] px-3 py-2 text-[11px] text-slate-100 hover:bg-[rgba(var(--xpot-gold),0.11)] transition"
                 title="Post about XPOT on X"
                 aria-label="Post about XPOT on X"
               >
                 <Megaphone className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
                 Post on X
-                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                <ExternalLink className="h-3.5 w-3.5 text-slate-400/70" />
               </a>
             </div>
           </div>
         </div>
 
-        {/* Removed: "Winner and proof are published here." (not premium, redundant) */}
+        {/* Removed footer text entirely */}
       </div>
     </Outer>
   );
