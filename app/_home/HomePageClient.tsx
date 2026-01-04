@@ -1038,9 +1038,9 @@ function HomePageInner() {
               <CosmicHeroBackdrop />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
-              <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)] 2xl:grid-cols-[minmax(0,0.90fr)_minmax(0,1.30fr)]">
+              <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.18fr)] 2xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.24fr)]">
                 {/* LEFT */}
-                <div className="flex flex-col justify-between gap-5 lg:pt-8">
+                <div className="min-w-0 flex flex-col justify-between gap-5 lg:pt-8">
                   <div className="space-y-5">
                     <div className="relative p-2 sm:p-3">
                       <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.14),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
@@ -1090,7 +1090,7 @@ function HomePageInner() {
                 </div>
 
                 {/* RIGHT - Jackpot first */}
-                <div className="grid gap-4">
+                <div className="min-w-0 grid gap-4">
                   <PremiumCard className="p-5 sm:p-6" halo sheen>
                     <div className="xpot-console-sweep" aria-hidden />
                     <div className="relative z-10">
