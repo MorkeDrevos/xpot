@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
 import XpotPageShell from '@/components/XpotPageShell';
-import { Crown, ExternalLink, Trophy, X as XIcon, ChevronDown, Search } from 'lucide-react';
+import { Crown, ExternalLink, Trophy, X as XIcon, ChevronDown, Search, BadgeCheck } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,8 +24,12 @@ type WinnerRow = {
   walletAddress?: string | null;
   handle?: string | null;
 
+  // proof
   txUrl?: string | null;
   txSig?: string | null;
+
+  // payout state (may not be returned by public endpoint)
+  isPaidOut?: boolean | null;
 };
 
 function shortWallet(addr: string) {
@@ -51,12 +55,64 @@ function formatXpot(v: any) {
   return `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} XPOT`;
 }
 
+function normalizeHandle(h: string | null | undefined) {
+  const s = String(h ?? '').trim();
+  if (!s) return null;
+  return s.startsWith('@') ? s.slice(1) : s;
+}
+
+/**
+ * Accepts:
+ * - full solscan url
+ * - "/tx/<sig>"
+ * - "tx/<sig>"
+ * - bare signature
+ * - empty / placeholders
+ *
+ * Returns a real https solscan tx URL or null.
+ */
+function normalizeTxUrl(txUrl?: string | null, txSig?: string | null) {
+  const rawUrl = String(txUrl ?? '').trim();
+  const rawSig = String(txSig ?? '').trim();
+
+  const bad = (s: string) =>
+    !s ||
+    s === '—' ||
+    s.toLowerCase().includes('dev_completed') ||
+    s.toLowerCase().includes('placeholder');
+
+  // Prefer txUrl if it looks usable
+  if (rawUrl && !bad(rawUrl)) {
+    // already a full url
+    if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+
+    // handle "/tx/<sig>" or "tx/<sig>"
+    const m = rawUrl.match(/\/?tx\/([1-9A-HJ-NP-Za-km-z]{20,})/);
+    if (m?.[1]) return `https://solscan.io/tx/${m[1]}`;
+  }
+
+  // Fallback to txSig
+  if (rawSig && !bad(rawSig)) {
+    // if they accidentally store a full url in txSig
+    if (/^https?:\/\//i.test(rawSig)) return rawSig;
+
+    // if they store "/tx/<sig>" in txSig
+    const m = rawSig.match(/\/?tx\/([1-9A-HJ-NP-Za-km-z]{20,})/);
+    if (m?.[1]) return `https://solscan.io/tx/${m[1]}`;
+
+    // bare signature
+    if (/^[1-9A-HJ-NP-Za-km-z]{20,}$/.test(rawSig)) return `https://solscan.io/tx/${rawSig}`;
+  }
+
+  return null;
+}
+
 function Badge({
   children,
   tone = 'slate',
 }: {
   children: React.ReactNode;
-  tone?: 'slate' | 'emerald' | 'gold' | 'sky';
+  tone?: 'slate' | 'emerald' | 'gold' | 'sky' | 'rose';
 }) {
   const cls =
     tone === 'emerald'
@@ -65,6 +121,8 @@ function Badge({
       ? 'xpot-pill-gold border bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
       : tone === 'sky'
       ? 'border-sky-400/40 bg-sky-500/10 text-sky-100'
+      : tone === 'rose'
+      ? 'border-rose-400/40 bg-rose-500/10 text-rose-100'
       : 'border-slate-700/70 bg-slate-900/70 text-slate-300';
 
   return (
@@ -123,18 +181,59 @@ export default function WinnersPage() {
         if (!alive) return;
 
         setRows(
-          winners.map((w: any) => ({
-            id: String(w.id ?? crypto.randomUUID()),
-            kind: w.kind ?? w.winnerKind ?? w.type ?? null,
-            drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
-            ticketCode: w.ticketCode ?? w.code ?? null,
-            jackpotUsd: w.jackpotUsd ?? null,
-            amountXpot: w.amountXpot ?? w.amount ?? null,
-            walletAddress: w.walletAddress ?? w.wallet ?? null,
-            handle: w.handle ?? w.xHandle ?? null,
-            txUrl: w.txUrl ?? w.txLink ?? null,
-            txSig: w.txSig ?? w.signature ?? null,
-          })),
+          winners.map((w: any) => {
+            // normalize fields coming from different endpoints/envs
+            const id = String(w.id ?? crypto.randomUUID());
+            const kind = w.kind ?? w.winnerKind ?? w.type ?? null;
+            const drawDate = w.drawDate ?? w.date ?? w.createdAt ?? null;
+            const ticketCode = w.ticketCode ?? w.code ?? null;
+
+            const jackpotUsd =
+              w.jackpotUsd ??
+              w.payoutUsd ?? // sometimes same value is used
+              null;
+
+            const amountXpot =
+              w.amountXpot ??
+              w.amount ??
+              w.xpot ??
+              null;
+
+            const walletAddress =
+              w.walletAddress ??
+              w.wallet ??
+              w.walletOwner ??
+              null;
+
+            const handle =
+              normalizeHandle(w.handle ?? w.xHandle ?? w.username ?? null);
+
+            const txUrl = w.txUrl ?? w.txLink ?? w.solscanUrl ?? w.proofUrl ?? null;
+            const txSig = w.txSig ?? w.signature ?? w.txSignature ?? null;
+
+            const isPaidOut =
+              typeof w.isPaidOut === 'boolean'
+                ? w.isPaidOut
+                : typeof w.paid === 'boolean'
+                ? w.paid
+                : typeof w.isPaid === 'boolean'
+                ? w.isPaid
+                : null;
+
+            return {
+              id,
+              kind,
+              drawDate,
+              ticketCode,
+              jackpotUsd,
+              amountXpot,
+              walletAddress,
+              handle,
+              txUrl,
+              txSig,
+              isPaidOut,
+            } as WinnerRow;
+          }),
         );
       } catch (e) {
         if (!alive) return;
@@ -159,9 +258,11 @@ export default function WinnersPage() {
       const isMain = kind === 'MAIN';
       const isBonus = kind === 'BONUS';
 
+      const proof = normalizeTxUrl(r.txUrl, r.txSig);
+
       if (kindFilter === 'MAIN' && !isMain) return false;
       if (kindFilter === 'BONUS' && !isBonus) return false;
-      if (showTxOnly && !r.txUrl) return false;
+      if (showTxOnly && !proof) return false;
 
       if (!q) return true;
 
@@ -170,6 +271,7 @@ export default function WinnersPage() {
         r.walletAddress || '',
         r.ticketCode || '',
         r.txSig || '',
+        r.txUrl || '',
       ]
         .join(' ')
         .toLowerCase();
@@ -218,9 +320,7 @@ export default function WinnersPage() {
                   <Trophy className="h-3.5 w-3.5" />
                   Public record
                 </Badge>
-                <Badge tone="slate">
-                  {totals.total} entries
-                </Badge>
+                <Badge tone="slate">{totals.total} entries</Badge>
                 <Badge tone="emerald">
                   <Crown className="h-3.5 w-3.5" />
                   {totals.main} main
@@ -351,6 +451,11 @@ export default function WinnersPage() {
                           const isMain = kind === 'MAIN';
                           const isBonus = kind === 'BONUS';
 
+                          const proof = normalizeTxUrl(w.txUrl, w.txSig);
+
+                          // If API does not expose isPaidOut, infer paid from proof
+                          const paid = typeof w.isPaidOut === 'boolean' ? w.isPaidOut : !!proof;
+
                           return (
                             <article key={w.id} className="xpot-card px-4 py-4">
                               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -384,6 +489,20 @@ export default function WinnersPage() {
                                     {w.ticketCode ? (
                                       <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span>
                                     ) : null}
+
+                                    <span className="text-slate-700">•</span>
+
+                                    {paid ? (
+                                      <Badge tone="emerald">
+                                        <BadgeCheck className="h-3.5 w-3.5" />
+                                        Paid
+                                      </Badge>
+                                    ) : (
+                                      <Badge tone="rose">
+                                        <span className="h-2 w-2 rounded-full bg-rose-400/80" />
+                                        Unpaid
+                                      </Badge>
+                                    )}
                                   </div>
 
                                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
@@ -392,7 +511,9 @@ export default function WinnersPage() {
                                       {w.handle ? (
                                         <span className="font-mono text-slate-200">@{w.handle}</span>
                                       ) : (
-                                        <span className="font-mono text-slate-300">{shortWallet(w.walletAddress || '—')}</span>
+                                        <span className="font-mono text-slate-300">
+                                          {shortWallet(w.walletAddress || '—')}
+                                        </span>
                                       )}
                                     </span>
 
@@ -408,9 +529,9 @@ export default function WinnersPage() {
                                 </div>
 
                                 <div className="flex shrink-0 items-center gap-2">
-                                  {w.txUrl ? (
+                                  {proof ? (
                                     <Link
-                                      href={w.txUrl}
+                                      href={proof}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="xpot-btn h-10 px-5 text-[12px]"
