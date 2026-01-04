@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ExternalLink, Users } from 'lucide-react';
 
-type EntryRow = {
+export type EntryRow = {
   id?: string;
   createdAt?: string;
   handle: string;
@@ -49,9 +49,11 @@ function Avatar({
   size?: number;
 }) {
   const handle = useMemo(() => normalizeHandle(label).replace(/^@/, '').trim(), [label]);
+
   const resolvedSrc = useMemo(() => {
     if (src) return src;
     if (!handle) return null;
+    // rotate cache bucket every 6h so avatars refresh but still cache nicely
     const cacheKey = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
     return `https://unavatar.io/twitter/${encodeURIComponent(handle)}?cache=${cacheKey}`;
   }, [src, handle]);
@@ -94,6 +96,7 @@ function buildLoop(entries: EntryRow[]) {
   const safe = Array.isArray(entries) ? entries.filter(e => Boolean(e?.handle)) : [];
   if (safe.length === 0) return [];
 
+  // if the feed is short, duplicate enough so the marquee feels alive
   if (safe.length < 8) {
     const times = Math.ceil(10 / safe.length);
     const out: EntryRow[] = [];
@@ -118,12 +121,14 @@ export default function EnteringStageLive({
 
   const localHandle = useLocalHandle();
 
-  // Tiny jitter so it never looks frozen
+  // tiny jitter so it never looks frozen (and also busts any identical render timing)
   const [seed, setSeed] = useState(0);
   useEffect(() => {
     const t = window.setInterval(() => setSeed(s => (s + 1) % 1000), 2200);
     return () => window.clearInterval(t);
   }, []);
+
+  const delay = `${(seed % 6) * -0.18}s`;
 
   return (
     <div
@@ -200,7 +205,7 @@ export default function EnteringStageLive({
 
               {/* marquee track - doubled for seamless loop */}
               <div className="relative flex items-center gap-2">
-                <div className="xpot-marquee" style={{ animationDelay: `${(seed % 6) * -0.18}s` }}>
+                <div className="xpot-marquee" style={{ animationDelay: delay }}>
                   {[...loop, ...loop].map((e, idx) => {
                     const handle = normalizeHandle(e?.handle);
                     const name = e?.name ? String(e.name).trim() : '';
@@ -222,6 +227,7 @@ export default function EnteringStageLive({
                             : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]',
                         ].join(' ')}
                         title={isMe ? `${handle} - that’s you` : `Open ${handle} on X`}
+                        aria-label={isMe ? `${handle} - that’s you` : `Open ${handle} on X`}
                       >
                         <Avatar src={e?.avatarUrl} label={handle} />
                         <span className="flex min-w-0 flex-col leading-tight">
