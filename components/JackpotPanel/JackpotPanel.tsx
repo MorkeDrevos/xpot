@@ -368,7 +368,6 @@ export default function JackpotPanel({
           }
         }
       `}</style>
-      `}</style>
 
       <div>
         {!!badgeLabel && (
