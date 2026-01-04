@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { BadgeCheck, Crown, ExternalLink, ShieldCheck } from 'lucide-react';
 
-type WinnerRow = {
+export type WinnerRow = {
   id: string;
   handle: string | null;
   name?: string | null;
@@ -65,6 +65,7 @@ function Avatar({
   size?: number;
 }) {
   const handle = useMemo(() => normalizeHandle(label).replace(/^@/, '').trim(), [label]);
+
   const resolvedSrc = useMemo(() => {
     if (src) return src;
     if (!handle) return null;
@@ -142,7 +143,9 @@ export default function WinnerSpotlightCard({
   const shareText = winner
     ? `I just won today’s XPOT draw ${payoutText}. Proof on-chain. @XPOTbet`
     : `XPOT - one daily draw. @XPOTbet`;
-  const shareIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+
+  // Use x.com (twitter.com still works, but x.com is cleaner)
+  const shareIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}`;
 
   return (
     <div
@@ -176,7 +179,7 @@ export default function WinnerSpotlightCard({
             100deg,
             transparent 0%,
             rgba(255, 255, 255, 0.04) 32%,
-            rgba(var(--xpot-gold), 0.10) 50%,
+            rgba(var(--xpot-gold), 0.1) 50%,
             rgba(56, 189, 248, 0.05) 68%,
             transparent 100%
           );
@@ -228,6 +231,7 @@ export default function WinnerSpotlightCard({
                       rel="nofollow noopener noreferrer"
                       className="inline-flex min-w-0 items-center gap-2 hover:opacity-95"
                       title={`Open ${label} on X`}
+                      aria-label={`Open ${label} on X`}
                     >
                       <span className="truncate text-[14px] font-semibold text-slate-50">{label}</span>
                       <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
@@ -241,10 +245,14 @@ export default function WinnerSpotlightCard({
               </div>
 
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
-                {displayName ? <span className="max-w-[240px] truncate text-slate-300">{displayName}</span> : null}
-                {displayName && (ymd || winner?.wallet || winner?.label) ? (
+                {displayName ? (
+                  <span className="max-w-[240px] truncate text-slate-300">{displayName}</span>
+                ) : null}
+
+                {(displayName || ymd) && (ymd || winner?.wallet || winner?.label) ? (
                   <span className="text-slate-700">•</span>
                 ) : null}
+
                 {ymd ? <span className="font-mono">{ymd}</span> : null}
 
                 {winner?.wallet ? (
@@ -279,6 +287,7 @@ export default function WinnerSpotlightCard({
                   target="_blank"
                   rel="nofollow noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
+                  aria-label="Open payout proof"
                 >
                   <ShieldCheck className="h-4 w-4 text-slate-300" />
                   Proof
@@ -298,6 +307,7 @@ export default function WinnerSpotlightCard({
                   rel="nofollow noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
                   title="Share on X"
+                  aria-label="Share on X"
                 >
                   Share
                   <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
