@@ -103,6 +103,7 @@ function Avatar({
         </div>
       )}
       <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_35%_30%,rgba(255,255,255,0.10),transparent_55%)]" />
     </div>
   );
 }
@@ -118,8 +119,6 @@ export default function WinnerSpotlightCard({
   compact?: boolean;
   embedded?: boolean;
 }) {
-  const paid = Boolean(winner?.isPaidOut);
-
   const handle = winner?.handle ? normalizeHandle(winner.handle) : null;
   const displayName = winner?.name ? String(winner.name).trim() : '';
   const xUrl = handle ? toXProfileUrl(handle) : null;
@@ -142,8 +141,12 @@ export default function WinnerSpotlightCard({
   const pad = compact ? 'px-4 py-3' : 'px-5 py-4';
   const avatarSize = compact ? 34 : 40;
 
+  const hasProof = Boolean(winner?.txUrl);
+
   const shareText = winner
-    ? `I just won today’s XPOT draw ${payoutText}. Proof on-chain. @XPOTbet`
+    ? hasProof
+      ? `I just won today’s XPOT draw ${payoutText}. Proof on-chain. @XPOTbet`
+      : `I just won today’s XPOT draw ${payoutText}. @XPOTbet`
     : `XPOT - one daily draw. @XPOTbet`;
 
   const shareIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}`;
@@ -213,14 +216,14 @@ export default function WinnerSpotlightCard({
           <div
             className={[
               'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em]',
-              paid
+              hasProof
                 ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
-                : 'border-amber-400/20 bg-amber-500/10 text-amber-200',
+                : 'border-white/12 bg-white/[0.03] text-slate-300',
             ].join(' ')}
-            title={paid ? 'Paid' : 'Awaiting payout'}
+            title={hasProof ? 'On-chain proof available' : 'Winner announced'}
           >
-            <span className={`h-2 w-2 rounded-full ${paid ? 'bg-emerald-400' : 'bg-amber-300'}`} />
-            {paid ? 'Paid' : 'Awaiting payout'}
+            <span className={`h-2 w-2 rounded-full ${hasProof ? 'bg-emerald-400' : 'bg-slate-400'}`} />
+            {hasProof ? 'On-chain proof' : 'Winner announced'}
           </div>
         </div>
 
@@ -283,7 +286,7 @@ export default function WinnerSpotlightCard({
           <div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-center">
             <div className="text-right">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Payout
+                Prize
               </div>
               <div className="mt-1 font-mono text-[18px] text-[rgb(var(--xpot-gold-2))]">{payoutText}</div>
             </div>
@@ -295,16 +298,20 @@ export default function WinnerSpotlightCard({
                   target="_blank"
                   rel="nofollow noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-                  aria-label="Open payout proof"
+                  aria-label="Open on-chain proof"
+                  title="Open on-chain proof"
                 >
                   <ShieldCheck className="h-4 w-4 text-slate-300" />
                   Proof
                   <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                 </a>
               ) : (
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-slate-400">
+                <div
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-slate-400"
+                  title="Proof will appear here when available"
+                >
                   <BadgeCheck className="h-4 w-4 text-slate-500" />
-                  Proof after payout
+                  Proof pending
                 </div>
               )}
 
@@ -326,8 +333,8 @@ export default function WinnerSpotlightCard({
         </div>
 
         {!compact ? (
-          <div className="mt-4 text-[12px] text-slate-400">
-            Ops triggers payout - then the on-chain transaction is published here.
+          <div className="mt-4 text-[12px] text-slate-500">
+            Winner and proof are published here.
           </div>
         ) : null}
       </div>
