@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Crown, Info, Sparkles, TrendingUp } from 'lucide-react';
+import { Crown, ExternalLink, Info, Sparkles, TrendingUp } from 'lucide-react';
 
 import XpotLogo from '@/components/XpotLogo';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
@@ -33,7 +33,6 @@ export type JackpotPanelProps = {
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 const PRICE_POLL_MS = 4000; // 4s
-
 const WINNER_POLL_MS = 15_000; // 15s
 
 const MILESTONES = [
@@ -110,6 +109,7 @@ type LatestWinner = {
   amount?: number | null;
   handle?: string | null;
   wallet?: string | null;
+  txSignature?: string | null; // ✅ NEW: Solana tx signature (preferred verification link)
 };
 
 function shortWallet(w: string, head = 4, tail = 4) {
@@ -139,8 +139,26 @@ function timeAgo(iso: string | null | undefined) {
   return `${d}d ago`;
 }
 
+function pickTxSignature(obj: any): string | null {
+  if (!obj || typeof obj !== 'object') return null;
+  const candidates = [obj.txSignature, obj.txSig, obj.tx, obj.signature, obj.txHash, obj.transaction];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.length > 20) return c;
+  }
+  return null;
+}
+
+function solscanTxUrl(sig: string) {
+  // mainnet by default
+  return `https://solscan.io/tx/${encodeURIComponent(sig)}`;
+}
+
+function internalWinnerUrl(id: string) {
+  // Update this route if your app uses a different receipt page.
+  return `/winners/${encodeURIComponent(id)}`;
+}
+
 async function fetchLatestWinner(signal?: AbortSignal): Promise<LatestWinner | null> {
-  // Prefer a dedicated endpoint if you have it
   const tryUrls = ['/api/winners/latest', '/api/winners/recent?limit=1'];
 
   for (const url of tryUrls) {
@@ -158,6 +176,7 @@ async function fetchLatestWinner(signal?: AbortSignal): Promise<LatestWinner | n
           amount: typeof w.amount === 'number' ? w.amount : w.amount != null ? Number(w.amount) : null,
           handle: w.handle ?? w.xHandle ?? null,
           wallet: w.wallet ?? w.walletAddress ?? null,
+          txSignature: pickTxSignature(w),
         };
       }
 
@@ -171,6 +190,7 @@ async function fetchLatestWinner(signal?: AbortSignal): Promise<LatestWinner | n
           amount: typeof w.amount === 'number' ? w.amount : w.amount != null ? Number(w.amount) : null,
           handle: w.handle ?? w.xHandle ?? null,
           wallet: w.wallet ?? w.walletAddress ?? null,
+          txSignature: pickTxSignature(w),
         };
       }
     } catch {
@@ -227,7 +247,8 @@ export default function JackpotPanel({
 
       setWinnerHadError(false);
 
-      const incomingId = (w.id ?? `${w.drawDate ?? ''}-${w.wallet ?? ''}-${w.amount ?? ''}`) || null;
+      const incomingId =
+        (w.id ?? `${w.drawDate ?? ''}-${w.wallet ?? ''}-${w.amount ?? ''}-${w.txSignature ?? ''}`) || null;
       const prevId = lastWinnerIdRef.current;
 
       setLatestWinner(w);
@@ -240,10 +261,8 @@ export default function JackpotPanel({
       }
     };
 
-    // first hit
     tick().catch(() => setWinnerHadError(true));
 
-    // polling
     timer = window.setInterval(() => {
       tick().catch(() => setWinnerHadError(true));
     }, WINNER_POLL_MS);
@@ -379,6 +398,20 @@ export default function JackpotPanel({
   const winnerAgo = timeAgo(latestWinner?.drawDate);
 
   const showWinnerStrip = !!winnerName && !winnerHadError;
+
+  const solscanHref = latestWinner?.txSignature ? solscanTxUrl(latestWinner.txSignature) : null;
+  const internalHref = !solscanHref && latestWinner?.id ? internalWinnerUrl(latestWinner.id) : null;
+  const winnerHref = solscanHref ?? internalHref ?? null;
+
+  const WinnerWrapper: React.ElementType = winnerHref ? 'a' : 'div';
+  const winnerWrapperProps = winnerHref
+    ? {
+        href: winnerHref,
+        target: solscanHref ? '_blank' : undefined,
+        rel: solscanHref ? 'noreferrer noopener' : undefined,
+        'aria-label': solscanHref ? 'Open Solscan transaction' : 'Open winner receipt',
+      }
+    : {};
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -545,19 +578,24 @@ export default function JackpotPanel({
                 </p>
               )}
 
-              {/* ✅ Latest winner (proof of life) */}
+              {/* ✅ Latest winner (click to verify) */}
               {showWinnerStrip && (
-                <div
+                <WinnerWrapper
+                  {...winnerWrapperProps}
                   className={[
-                    'mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/25 px-4 py-3',
+                    'group mt-4 block overflow-hidden rounded-2xl border border-white/10 bg-black/25 px-4 py-3 transition',
+                    winnerHref ? 'cursor-pointer' : '',
                     winnerPulse ? 'ring-1 ring-[#F5C84C]/25' : '',
+                    winnerHref ? 'hover:border-[#F5C84C]/25 hover:bg-black/30' : '',
                   ].join(' ')}
                   style={{
                     background:
                       'radial-gradient(circle_at_18%_30%, rgba(245,200,76,0.16), transparent 58%), radial-gradient(circle_at_82%_22%, rgba(124,200,255,0.10), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(0,0,0,0.06))',
                     boxShadow: winnerPulse
                       ? '0 0 0 1px rgba(245,200,76,0.18), 0 0 28px rgba(245,200,76,0.10)'
-                      : '0 0 0 1px rgba(255,255,255,0.04)',
+                      : winnerHref
+                        ? '0 0 0 1px rgba(245,200,76,0.10), 0 0 18px rgba(245,200,76,0.06)'
+                        : '0 0 0 1px rgba(255,255,255,0.04)',
                   }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -579,11 +617,20 @@ export default function JackpotPanel({
                             {winnerAgo}
                           </span>
                         )}
+                        {winnerHref && (
+                          <span className="ml-1 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.20em] text-[#F5C84C]/80 opacity-90 transition group-hover:opacity-100">
+                            Verify
+                            <ExternalLink className="h-3 w-3" />
+                          </span>
+                        )}
                       </div>
 
                       <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                         <span
-                          className="max-w-full truncate text-sm font-semibold text-slate-100"
+                          className={[
+                            'max-w-full truncate text-sm font-semibold text-slate-100',
+                            winnerHref ? 'group-hover:underline decoration-[#F5C84C]/35' : '',
+                          ].join(' ')}
                           style={{ textShadow: '0 0 20px rgba(245,200,76,0.10)' }}
                         >
                           {winnerName}
@@ -603,7 +650,7 @@ export default function JackpotPanel({
                       </div>
 
                       <p className="mt-1 text-[11px] text-slate-500">
-                        Paid out on-chain. Real winners, real protocol.
+                        Paid out on-chain. Click to verify.
                       </p>
                     </div>
 
@@ -617,7 +664,7 @@ export default function JackpotPanel({
                       Verified
                     </span>
                   </div>
-                </div>
+                </WinnerWrapper>
               )}
 
               {/* Token info row */}
