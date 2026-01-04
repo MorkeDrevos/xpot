@@ -279,43 +279,60 @@ export default function EnteringStageLive({
   return (
     <Outer className={outerClass}>
       <style jsx global>{`
-        @keyframes xpotLiveDot {
-          0% { opacity: 0.55; transform: scale(0.95); }
-          55% { opacity: 1; transform: scale(1.06); }
-          100% { opacity: 0.55; transform: scale(0.95); }
-        }
-        .xpot-live-dot { animation: xpotLiveDot 1.35s ease-in-out infinite; }
+  @keyframes xpotLiveDot {
+    0% { opacity: 0.55; transform: scale(0.95); }
+    55% { opacity: 1; transform: scale(1.06); }
+    100% { opacity: 0.55; transform: scale(0.95); }
+  }
+  .xpot-live-dot { animation: xpotLiveDot 1.35s ease-in-out infinite; }
 
-        @keyframes xpotNewSweep {
-          0% { transform: translateX(-65%) skewX(-18deg); opacity: 0; }
-          22% { opacity: 0.18; }
-          65% { opacity: 0.08; }
-          100% { transform: translateX(65%) skewX(-18deg); opacity: 0; }
-        }
-        .xpot-new-sweep {
-          position: absolute;
-          inset: -60px;
-          pointer-events: none;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255,255,255,0.05) 30%,
-            rgba(var(--xpot-gold),0.16) 50%,
-            rgba(56,189,248,0.09) 70%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          opacity: 0;
-        }
-        .xpot-new-sweep.on {
-          animation: xpotNewSweep 1.25s ease-in-out 1;
-        }
+  @keyframes xpotAuraBreath {
+    0% { opacity: 0.35; }
+    55% { opacity: 0.60; }
+    100% { opacity: 0.35; }
+  }
+  .xpot-aura-breath { animation: xpotAuraBreath 3.6s ease-in-out infinite; }
 
-        @media (prefers-reduced-motion: reduce) {
-          .xpot-live-dot { animation: none; }
-          .xpot-new-sweep.on { animation: none; opacity: 0; }
-        }
-      `}</style>
+  @keyframes xpotNewSweep {
+    0% { transform: translateX(-70%) skewX(-18deg); opacity: 0; }
+    22% { opacity: 0.20; }
+    65% { opacity: 0.10; }
+    100% { transform: translateX(70%) skewX(-18deg); opacity: 0; }
+  }
+  .xpot-new-sweep {
+    position: absolute;
+    inset: -70px;
+    pointer-events: none;
+    background: linear-gradient(
+      100deg,
+      transparent 0%,
+      rgba(255,255,255,0.05) 30%,
+      rgba(var(--xpot-gold),0.16) 50%,
+      rgba(56,189,248,0.10) 70%,
+      transparent 100%
+    );
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+  .xpot-new-sweep.on { animation: xpotNewSweep 1.35s ease-in-out 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .xpot-live-dot { animation: none; }
+    .xpot-aura-breath { animation: none; opacity: 0.45; }
+    .xpot-new-sweep.on { animation: none; opacity: 0; }
+  }
+`}</style>
+
+{/* Premium ambient aura (alive) */}
+<div className="pointer-events-none absolute -inset-[2px] rounded-[22px] opacity-60 blur-xl xpot-aura-breath
+  bg-[radial-gradient(circle_at_18%_45%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_82%_50%,rgba(16,185,129,0.14),transparent_58%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.12),transparent_60%)]"
+/>
+
+{/* Thin luminous rim (expensive, not neon) */}
+<div className="pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-white/[0.08]" />
+<div className="pointer-events-none absolute inset-0 rounded-[22px]
+  shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_50px_rgba(56,189,248,0.08),0_0_45px_rgba(16,185,129,0.06)]"
+/>
 
       {!embedded ? (
         <>
@@ -325,6 +342,8 @@ export default function EnteringStageLive({
         </>
       ) : null}
 
+{/* FULL container sweep (alive) */}
+<div className={['xpot-new-sweep', newPulse && !reduceMotion ? 'on' : ''].join(' ')} />
       <div className="relative flex items-center gap-3 px-4 py-3 sm:px-5">
         {/* label */}
         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
