@@ -1114,52 +1114,6 @@ function HomePageInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* LIVE ACTIVITY */}
-      {SHOW_LIVE_FEED ? (
-        <section className="mt-8">
-          <SectionHeader
-            eyebrow="Live"
-            title="Latest winner and live entries"
-            desc="This is the public surface. Winner is handle-first, proof is on-chain."
-          />
-
-          <PremiumCard className="p-5 sm:p-6" halo sheen>
-            {/* Console vibe header + sweep */}
-            <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-              <div className="xpot-live-sweep" aria-hidden />
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),rgba(56,189,248,0.22),transparent)]" />
-
-              <div className="relative px-4 py-3 sm:px-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
-                    <Users className="h-4 w-4 text-sky-200" />
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
-                      Live activity
-                    </span>
-                  </div>
-
-                  <div className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.85)]" />
-                    Updates automatically
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-4">
-              <WinnerSpotlightCard winner={winnerSpotlight as any} />
-
-              {/* Neon seam divider */}
-              <div className="relative my-1">
-                <div className="h-px w-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)]" />
-                <div className="pointer-events-none absolute inset-x-0 -top-[1px] h-[2px] opacity-70 blur-[0.6px] bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.28),rgba(56,189,248,0.18),transparent)]" />
-              </div>
-
-              <EnteringStageLive entries={entries as any} />
-            </div>
-          </PremiumCard>
-        </section>
-      ) : null}
 
       {/* WHAT XPOT IS */}
       <section className="mt-10">
