@@ -967,11 +967,12 @@ export default function AdminPage() {
       }
 
       const totalSeconds = Math.floor(diffMs / 1000);
-      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String.floor ? '' : ''; // (never used; keep TS happy)
-      const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-      const seconds = String(totalSeconds % 60).padStart(2, '0');
-      setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
+
+const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+const seconds = String(totalSeconds % 60).padStart(2, '0');
+
+setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
     }
 
     updateCountdown();
