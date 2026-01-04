@@ -261,42 +261,12 @@ function PremiumCard({
       ].join(' ')}
     >
       {halo && (
-        <div
-          className="pointer-events-none absolute -inset-28 bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.22),transparent_58%),radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.18),transparent_60%),radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.14),transparent_60%),radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.10),transparent_62%)] opacity-90"
-        />
+        <div className="pointer-events-none absolute -inset-28 bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.22),transparent_58%),radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.18),transparent_60%),radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.14),transparent_60%),radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.10),transparent_62%)] opacity-90" />
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
       <div className="relative z-10">{children}</div>
     </section>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-  tone = 'slate',
-}: {
-  label: string;
-  value: ReactNode;
-  tone?: 'slate' | 'emerald' | 'sky' | 'amber' | 'violet';
-}) {
-  const toneCls =
-    tone === 'emerald'
-      ? 'text-emerald-200'
-      : tone === 'sky'
-      ? 'text-sky-200'
-      : tone === 'amber'
-      ? `text-[rgb(var(--xpot-gold-2))]`
-      : tone === 'violet'
-      ? 'text-violet-200'
-      : 'text-slate-200';
-
-  return (
-    <div className="rounded-2xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.05]">
-      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <div className={`mt-1 font-mono text-sm ${toneCls}`}>{value}</div>
-    </div>
   );
 }
 
@@ -344,7 +314,6 @@ function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean
       `}</style>
 
       <div className="grid gap-2 sm:grid-cols-3">
-        {/* Step 1 */}
         <div
           className={[
             'relative overflow-hidden rounded-3xl border border-emerald-400/25 bg-emerald-500/10 ring-1 ring-white/[0.06]',
@@ -368,18 +337,13 @@ function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean
 
             <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
               Hold at least{' '}
-              <span className="font-mono text-[15px] text-emerald-100">
-                {MIN_ELIGIBLE_XPOT.toLocaleString()}
-              </span>{' '}
+              <span className="font-mono text-[15px] text-emerald-100">{MIN_ELIGIBLE_XPOT.toLocaleString()}</span>{' '}
               XPOT
             </div>
-            <div className="mt-1 text-[12px] leading-relaxed text-emerald-100/80">
-              In your connected wallet.
-            </div>
+            <div className="mt-1 text-[12px] leading-relaxed text-emerald-100/80">In your connected wallet.</div>
           </div>
         </div>
 
-        {/* Step 2 */}
         <div className="relative overflow-hidden rounded-3xl border border-sky-400/25 bg-sky-500/10 ring-1 ring-white/[0.06]">
           <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
           <div className="relative p-4">
@@ -396,16 +360,11 @@ function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean
               </span>
             </div>
 
-            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
-              Connect X + wallet in the hub
-            </div>
-            <div className="mt-1 text-[12px] leading-relaxed text-sky-100/80">
-              You are in today&apos;s draw.
-            </div>
+            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">Connect X + wallet in the hub</div>
+            <div className="mt-1 text-[12px] leading-relaxed text-sky-100/80">You are in today&apos;s draw.</div>
           </div>
         </div>
 
-        {/* Step 3 */}
         <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.10)] ring-1 ring-white/[0.06]">
           <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
           <div className="relative p-4">
@@ -422,139 +381,12 @@ function Quick3Steps({ countdown, warmup }: { countdown: string; warmup: boolean
               </span>
             </div>
 
-            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">
-              Winner published at 22:00 Madrid
-            </div>
+            <div className="mt-3 text-balance text-[13px] font-semibold text-slate-50">Winner published at 22:00 Madrid</div>
             <div className="mt-1 text-[12px] leading-relaxed text-slate-200/85">
-              Paid on-chain. Next draw in{' '}
-              <span className="font-mono text-slate-100">{countdown}</span>
+              Paid on-chain. Next draw in <span className="font-mono text-slate-100">{countdown}</span>
               {warmup ? <span className={`ml-2 ${GOLD_TEXT_DIM}`}>warm-up</span> : null}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Royal contract + trade
-───────────────────────────────────────────── */
-
-function RoyalContractBar({ mint }: { mint: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function onCopy() {
-    try {
-      await navigator.clipboard.writeText(mint);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1200);
-    } catch {}
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div
-        className={`relative inline-flex items-center gap-3 rounded-full border ${GOLD_BORDER_SOFT} bg-slate-950/55 px-3.5 py-2 shadow-[0_22px_90px_rgba(var(--xpot-gold),0.12)] backdrop-blur-md`}
-        title={mint}
-      >
-        <div className="pointer-events-none absolute -inset-10 rounded-full opacity-70 blur-2xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_85%_35%,rgba(255,255,255,0.06),transparent_62%)]" />
-
-        <span className="relative z-10 inline-flex items-center gap-2">
-          <span
-            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH_2} shadow-[0_0_22px_rgba(var(--xpot-gold),0.22)]`}
-          >
-            <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
-          </span>
-
-          <span className="flex flex-col leading-tight">
-            <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
-              Official contract
-            </span>
-
-            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 6, 6)}</span>
-          </span>
-        </span>
-
-        <span className="relative z-10 h-6 w-px bg-white/10" />
-
-        <button
-          type="button"
-          onClick={onCopy}
-          className="relative z-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-          title="Copy official contract address"
-        >
-          {copied ? (
-            <>
-              <Check className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="h-3.5 w-3.5 text-slate-300" />
-              Copy
-            </>
-          )}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function TradeOnJupiterCard({ mint }: { mint: string }) {
-  return (
-    <div className="relative overflow-hidden">
-      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_16%_20%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_85%_25%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
-
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Trade</p>
-          <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-            Primary venue is Jupiter. Always verify the mint and use official links.
-          </p>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <a
-              href={XPOT_JUP_SWAP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={[
-                BTN_GREEN,
-                'group px-5 py-2.5 text-[13px]',
-                'shadow-[0_18px_70px_rgba(16,185,129,0.25)]',
-              ].join(' ')}
-              title="Trade XPOT on Jupiter"
-            >
-              Trade on Jupiter
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
-
-            <a
-              href={XPOT_DEXSCREENER_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] text-slate-200 hover:bg-white/[0.06] transition"
-              title="View chart"
-            >
-              <TrendingUp className="h-4 w-4 text-slate-300" />
-              View chart
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-            </a>
-
-            <a
-              href={XPOT_SOLSCAN_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] text-slate-200 hover:bg-white/[0.06] transition"
-              title="View on Solscan"
-            >
-              <ShieldCheck className="h-4 w-4 text-slate-300" />
-              Explorer
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-            </a>
-          </div>
-
-          <p className="mt-3 font-mono text-[11px] text-slate-500">mint: {shortenAddress(mint, 8, 8)}</p>
         </div>
       </div>
     </div>
@@ -632,7 +464,6 @@ function CosmicHeroBackdrop() {
           inset: -180px;
           pointer-events: none;
           opacity: 0.85;
-          filter: blur(0px);
         }
         .xpot-hero-engine::before {
           content: '';
@@ -936,29 +767,9 @@ async function fetchFirstOk<T = any>(urls: string[]): Promise<T | null> {
       if (!r.ok) continue;
       const data = (await r.json().catch(() => null)) as T | null;
       if (data) return data;
-    } catch {
-      // keep trying fallbacks
-    }
+    } catch {}
   }
   return null;
-}
-
-function formatIsoToMadridYmd(iso: string) {
-  const d = new Date(iso);
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(d);
-
-  const get = (t: string) => parts.find(p => p.type === t)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')}`;
-}
-
-function formatXpotAmount(amount: number | null | undefined) {
-  const n = typeof amount === 'number' && Number.isFinite(amount) ? amount : 1_000_000;
-  return `${XPOT_SIGN}${n.toLocaleString()}`;
 }
 
 function useLatestWinnerCard() {
@@ -1061,64 +872,7 @@ function useLatestEntriesTelemetry() {
 }
 
 /* ─────────────────────────────────────────────
-   Avatar helper (still used by ceremony overlay)
-───────────────────────────────────────────── */
-
-function Avatar({
-  src,
-  label,
-  size = 34,
-}: {
-  src?: string | null;
-  label: string;
-  size?: number;
-}) {
-  const handle = useMemo(() => normalizeHandle(label).replace(/^@/, '').trim(), [label]);
-
-  const resolvedSrc = useMemo(() => {
-    if (src) return src;
-    if (!handle) return null;
-    const cacheKey = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
-    return `https://unavatar.io/twitter/${encodeURIComponent(handle)}?cache=${cacheKey}`;
-  }, [src, handle]);
-
-  const [failed, setFailed] = useState(false);
-
-  const initials = useMemo(() => {
-    const s = handle || '';
-    if (!s) return 'X';
-    return s.slice(0, 2).toUpperCase();
-  }, [handle]);
-
-  return (
-    <div
-      className="relative shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]"
-      style={{ width: size, height: size }}
-      title={normalizeHandle(label)}
-    >
-      {resolvedSrc && !failed ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={resolvedSrc}
-          alt={normalizeHandle(label)}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center font-mono text-[12px] text-slate-200">
-          {initials}
-        </div>
-      )}
-
-      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Daytime layer + warm-up + ceremony
+   Daytime layer + warm-up
 ───────────────────────────────────────────── */
 
 type DrawPhase = 'daytime' | 'warmup' | 'final_minute' | 'drawing' | 'reveal';
@@ -1126,28 +880,11 @@ type DrawPhase = 'daytime' | 'warmup' | 'final_minute' | 'drawing' | 'reveal';
 function useDrawPhase(nowMs: number, nextDrawUtcMs: number) {
   const msLeft = nextDrawUtcMs - nowMs;
 
-  const warmup = msLeft > 0 && msLeft <= 2 * 60 * 60 * 1000; // 2h
-  const finalMinute = msLeft > 0 && msLeft <= 60 * 1000; // 60s
+  const warmup = msLeft > 0 && msLeft <= 2 * 60 * 60 * 1000;
+  const finalMinute = msLeft > 0 && msLeft <= 60 * 1000;
   const due = msLeft <= 0;
 
-  return {
-    msLeft,
-    warmup,
-    finalMinute,
-    due,
-  };
-}
-
-function getMadridYmdFromMs(ms: number) {
-  const d = new Date(ms);
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Madrid',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(d);
-  const get = (t: string) => parts.find(p => p.type === t)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')}`;
+  return { msLeft, warmup, finalMinute, due };
 }
 
 function DaytimeLayerCard({
@@ -1211,9 +948,7 @@ function DaytimeLayerCard({
             {warmup ? 'Warm-up layer' : 'Daytime layer'}
           </Pill>
 
-          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-            Next cutoff {cutoffLabel}
-          </span>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Next cutoff {cutoffLabel}</span>
         </div>
 
         <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
@@ -1249,31 +984,6 @@ function DaytimeLayerCard({
           </div>
         </div>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Activity</p>
-            <p className="mt-1 text-[12px] text-slate-200">
-              Feed refresh <span className="font-mono text-slate-100">10s</span>
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Cadence</p>
-            <p className="mt-1 text-[12px] text-slate-200">One entry per day, handle-first</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Milestone</p>
-            <p className="mt-1 text-[12px] text-slate-200">
-              {milestone.reached ? (
-                <>
-                  Reached <span className="font-mono text-slate-100">{milestone.reached}</span>
-                </>
-              ) : (
-                <>Arming</>
-              )}
-            </p>
-          </div>
-        </div>
-
         <div className="pointer-events-none absolute right-4 top-4 h-2 w-2 rounded-full bg-white/10">
           <span
             key={pulse}
@@ -1286,596 +996,14 @@ function DaytimeLayerCard({
   );
 }
 
-function DrawCeremonyOverlay({
-  nowMs,
-  nextDrawUtcMs,
-  countdown,
-  cutoffLabel,
-  latestWinner,
-}: {
-  nowMs: number;
-  nextDrawUtcMs: number;
-  countdown: string;
-  cutoffLabel: string;
-  latestWinner: WinnerRow | null;
-}) {
-  const mounted = useBodyMounted();
-  const reduced = useReducedMotion();
-  const { msLeft, finalMinute, due } = useDrawPhase(nowMs, nextDrawUtcMs);
-
-  const [phase, setPhase] = useState<DrawPhase>('daytime');
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (due) return;
-    if (finalMinute) {
-      setPhase('final_minute');
-      return;
-    }
-    setPhase(msLeft <= 2 * 60 * 60 * 1000 ? 'warmup' : 'daytime');
-  }, [due, finalMinute, msLeft]);
-
-  useEffect(() => {
-    const madridYmd = getMadridYmdFromMs(nowMs);
-    const storeKey = `xpot_ceremony_${madridYmd}`;
-    const already = typeof window !== 'undefined' ? window.localStorage.getItem(storeKey) : null;
-
-    if (due && !already) {
-      try {
-        window.localStorage.setItem(storeKey, '1');
-      } catch {}
-
-      setOpen(true);
-      setPhase('drawing');
-
-      const t1 = window.setTimeout(() => {
-        setPhase('reveal');
-      }, 1600);
-
-      const t2 = window.setTimeout(() => {
-        setOpen(false);
-      }, 6200);
-
-      return () => {
-        window.clearTimeout(t1);
-        window.clearTimeout(t2);
-      };
-    }
-  }, [due, nowMs]);
-
-  const showFinalMinuteHint = finalMinute && !open;
-
-  const label = latestWinner?.handle
-    ? normalizeHandle(latestWinner.handle)
-    : latestWinner?.wallet
-    ? shortenAddress(latestWinner.wallet, 6, 6)
-    : '@winner';
-
-  const ymd = latestWinner?.drawDate ? formatIsoToMadridYmd(latestWinner.drawDate) : null;
-
-  const content = (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          className="fixed inset-0 z-[9998] flex items-center justify-center px-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          aria-live="polite"
-          role="dialog"
-          aria-label="XPOT draw ceremony"
-        >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-[6px]" />
-
-          <motion.div
-            className="relative w-full max-w-[760px] overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/60 shadow-[0_50px_160px_rgba(0,0,0,0.75)]"
-            initial={{ y: 10, scale: 0.98, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 8, scale: 0.99, opacity: 0 }}
-            transition={{ duration: reduced ? 0 : 0.32 }}
-          >
-            <div className="pointer-events-none absolute -inset-28 opacity-90 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.10),transparent_62%)]" />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.08),rgba(56,189,248,0.28),transparent)]" />
-
-            <div className="relative p-6 sm:p-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <Pill tone="amber">
-                  <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                  Daily draw
-                </Pill>
-
-                <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{cutoffLabel}</span>
-              </div>
-
-              <div className="mt-4">
-                <AnimatePresence mode="wait">
-                  {phase === 'drawing' ? (
-                    <motion.div
-                      key="drawing"
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: reduced ? 0 : 0.28 }}
-                    >
-                      <h3 className="text-balance text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
-                        XPOT is drawing...
-                      </h3>
-                      <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
-                        Final selection is being locked and published.
-                      </p>
-
-                      <div className="mt-5 flex items-center gap-3">
-                        <div className="h-2 w-2 rounded-full bg-[rgb(var(--xpot-gold-2))] shadow-[0_0_18px_rgba(var(--xpot-gold),0.7)]" />
-                        <div className="h-2 w-2 rounded-full bg-white/15" />
-                        <div className="h-2 w-2 rounded-full bg-white/10" />
-                        <span className="ml-2 text-[11px] uppercase tracking-[0.22em] text-slate-400">
-                          ceremony
-                        </span>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="reveal"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: reduced ? 0 : 0.32 }}
-                    >
-                      <h3 className="text-balance text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
-                        Winner revealed
-                      </h3>
-                      <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
-                        Published handle-first, with on-chain proof.
-                      </p>
-
-                      <div className="mt-5 overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.03]">
-                        <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
-                          <div className="flex items-center gap-3">
-                            <Avatar src={latestWinner?.avatarUrl} label={label} size={46} />
-                            <div>
-                              <div className="text-[14px] font-semibold text-slate-50">{label}</div>
-                              <div className="mt-1 text-[12px] text-slate-400">
-                                {ymd ? <span className="font-mono">{ymd}</span> : null}
-                                {latestWinner?.wallet ? (
-                                  <>
-                                    <span className="text-slate-700"> • </span>
-                                    <span className="font-mono">
-                                      {shortenAddress(latestWinner.wallet, 8, 8)}
-                                    </span>
-                                  </>
-                                ) : null}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                              Payout
-                            </div>
-                            <div className={`mt-1 font-mono text-[18px] ${GOLD_TEXT}`}>
-                              {formatXpotAmount(
-                                typeof latestWinner?.amountXpot === 'number'
-                                  ? latestWinner.amountXpot
-                                  : typeof latestWinner?.amount === 'number'
-                                  ? latestWinner.amount
-                                  : 1_000_000,
-                              )}
-                            </div>
-
-                            <div className="mt-2">
-                              {latestWinner?.txUrl ? (
-                                <a
-                                  href={latestWinner.txUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200 hover:bg-white/[0.06] transition"
-                                >
-                                  View proof
-                                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                                </a>
-                              ) : (
-                                <span className="text-[11px] text-slate-500">
-                                  proof link appears after payout
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="h-px bg-white/10" />
-
-                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-[11px] text-slate-400">
-                          <span className="inline-flex items-center gap-2">
-                            <ShieldCheck className="h-4 w-4 text-slate-400" />
-                            Proof stays on-chain
-                          </span>
-                          <span className="inline-flex items-center gap-2">
-                            <Globe className="h-4 w-4 text-slate-400" />
-                            Identity stays handle-first
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 flex flex-wrap items-center gap-3">
-                        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
-                          Enter today&apos;s XPOT
-                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                        </Link>
-
-                        <span className="text-[11px] text-slate-500">
-                          The UI will reset to the next countdown automatically.
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  );
-
-  return (
-    <>
-      {showFinalMinuteHint ? (
-        <div className="mt-4 rounded-2xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-3 ring-1 ring-white/[0.05]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-100">
-              <span className="h-2 w-2 rounded-full bg-[rgb(var(--xpot-gold-2))] shadow-[0_0_16px_rgba(var(--xpot-gold),0.6)]" />
-              Final minute
-            </span>
-
-            <span className="font-mono text-[12px] text-slate-100">{countdown}</span>
-          </div>
-
-          <p className="mt-1 text-[12px] text-slate-200/90">
-            Ceremony begins at zero. Winner reveal follows immediately.
-          </p>
-        </div>
-      ) : null}
-
-      {mounted && typeof document !== 'undefined' && document.body ? createPortal(content, document.body) : null}
-    </>
-  );
-}
-
 /* ─────────────────────────────────────────────
-   Control room (read-only live view)
+   Mission banner
 ───────────────────────────────────────────── */
-
-function LiveControlRoom({
-  countdown,
-  cutoffLabel,
-  runLine,
-}: {
-  countdown: string;
-  cutoffLabel: string;
-  runLine: string;
-}) {
-  const reduced = useLocalReducedMotion();
-  const [tick, setTick] = useState(0);
-
-  const [lines, setLines] = useState(() => buildInitialLines(countdown, cutoffLabel, runLine));
-
-  useEffect(() => {
-    const t = window.setInterval(() => setTick(v => v + 1), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    setLines(prev => updateLines(prev, tick, countdown, cutoffLabel, runLine));
-  }, [tick, countdown, cutoffLabel, runLine]);
-
-  const scanCls = reduced ? '' : 'xpot-cr-scan';
-
-  return (
-    <div className="relative">
-      <style jsx global>{`
-        @keyframes xpotScan {
-          0% {
-            transform: translateY(-18%);
-            opacity: 0;
-          }
-          18% {
-            opacity: 0.22;
-          }
-          55% {
-            opacity: 0.1;
-          }
-          100% {
-            transform: translateY(118%);
-            opacity: 0;
-          }
-        }
-        @keyframes xpotFlicker {
-          0% {
-            opacity: 0.35;
-          }
-          50% {
-            opacity: 0.75;
-          }
-          100% {
-            opacity: 0.35;
-          }
-        }
-        .xpot-cr-scan {
-          position: relative;
-          isolation: isolate;
-        }
-        .xpot-cr-scan::before {
-          content: '';
-          pointer-events: none;
-          position: absolute;
-          inset: 0;
-          border-radius: 18px;
-          background: linear-gradient(
-            to bottom,
-            transparent,
-            rgba(16, 185, 129, 0.1),
-            rgba(56, 189, 248, 0.07),
-            transparent
-          );
-          opacity: 0;
-          transform: translateY(-20%);
-          animation: xpotScan 5.6s ease-in-out infinite;
-          mix-blend-mode: screen;
-          z-index: 0;
-        }
-        .xpot-cr-scan > * {
-          position: relative;
-          z-index: 1;
-        }
-        .xpot-cr-cursor {
-          display: inline-block;
-          width: 8px;
-          height: 14px;
-          margin-left: 6px;
-          background: rgba(16, 185, 129, 0.75);
-          box-shadow: 0 0 16px rgba(52, 211, 153, 0.6);
-          border-radius: 2px;
-          vertical-align: -2px;
-          animation: xpotFlicker 1.1s ease-in-out infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .xpot-cr-cursor {
-            animation: none;
-          }
-        }
-      `}</style>
-
-      <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-emerald-200/80">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-          Control Room - session view
-        </span>
-
-        <span className="inline-flex items-center gap-2">
-          <span className="font-mono text-emerald-200/70">read-only</span>
-        </span>
-      </div>
-
-      <div
-        className={[
-          'relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-950/20',
-          'p-4 pb-5 shadow-[0_18px_60px_rgba(15,23,42,0.9)]',
-          scanCls,
-        ].join(' ')}
-      >
-        <div className="pointer-events-none absolute -inset-20 opacity-65 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(circle_at_88%_30%,rgba(56,189,248,0.12),transparent_65%)]" />
-
-        <pre className="relative z-10 max-h-60 overflow-auto whitespace-pre pr-2 pb-1 font-mono text-[11px] leading-relaxed text-emerald-100/90">
-          {lines.join('\n')}
-        </pre>
-
-        <div className="relative z-10 mt-2 text-[11px] leading-snug text-emerald-200/75">
-          Live cockpit feed - updates every 1s
-          <span className="xpot-cr-cursor" />
-        </div>
-      </div>
-
-      <p className="mt-3 text-[12px] text-slate-400">
-        Read-only cockpit view. Identity stays handle-first. Proof stays on-chain.
-      </p>
-    </div>
-  );
-}
-
-function buildInitialLines(countdown: string, cutoffLabel: string, runLine: string) {
-  return [
-    `> XPOT_PROTOCOL`,
-    `  run:            ${runLine}`,
-    `  primitive:      daily reward selection`,
-    `  eligibility:    hold XPOT (min threshold applies)`,
-    `  identity:       @handle-first`,
-    `  proof:          on-chain payout verification`,
-    ``,
-    `> NEXT_DRAW`,
-    `  in:             ${countdown}  (${cutoffLabel})`,
-    ``,
-    `> SESSION`,
-    `  heartbeat:      ok`,
-    `  status:         run telemetry`,
-  ];
-}
-
-function updateLines(prev: string[], tick: number, countdown: string, cutoffLabel: string, runLine: string) {
-  const next = [...prev];
-
-  const runIdx = next.findIndex(l => l.trim().startsWith('run:'));
-  if (runIdx !== -1) next[runIdx] = `  run:            ${runLine}`;
-
-  const idx = next.findIndex(l => l.trim().startsWith('in:'));
-  if (idx !== -1) next[idx] = `  in:             ${countdown}  (${cutoffLabel})`;
-
-  const hbIdx = next.findIndex(l => l.trim().startsWith('heartbeat:'));
-  if (hbIdx !== -1) next[hbIdx] = `  heartbeat:      ${tick % 9 === 0 ? 'sync' : 'ok'}`;
-
-  const stIdx = next.findIndex(l => l.trim().startsWith('status:'));
-  if (stIdx !== -1) {
-    const modes = ['run telemetry', 'proof verify', 'pool telemetry', 'entry window open'];
-    next[stIdx] = `  status:         ${modes[tick % modes.length]}`;
-  }
-
-  if (tick > 0 && tick % 7 === 0) {
-    const stamp = String(tick).padStart(4, '0');
-    const events = [
-      `tick ${stamp}: eligibility index ok`,
-      `tick ${stamp}: identity cache warm`,
-      `tick ${stamp}: proof cache updated`,
-      `tick ${stamp}: entry window open`,
-      `tick ${stamp}: liquidity signal stable`,
-    ];
-    const line = `  log:            ${events[tick % events.length]}`;
-    const insertAt = Math.max(0, next.length - 1);
-    next.splice(insertAt, 0, line);
-
-    while (next.length > 22) next.splice(insertAt, 1);
-  }
-
-  return next;
-}
-
-/* ─────────────────────────────────────────────
-   Bonus vault wrapper
-───────────────────────────────────────────── */
-
-function BonusVault({ children, spotlight = true }: { children: ReactNode; spotlight?: boolean }) {
-  const halo = spotlight ? 'opacity-95 blur-2xl' : 'opacity-75 blur-2xl';
-
-  return (
-    <div className="relative">
-      <style jsx global>{`
-        @keyframes xpotBonusSheen {
-          0% {
-            transform: translateX(-55%) skewX(-12deg);
-            opacity: 0;
-          }
-          18% {
-            opacity: 0.24;
-          }
-          60% {
-            opacity: 0.12;
-          }
-          100% {
-            transform: translateX(55%) skewX(-12deg);
-            opacity: 0;
-          }
-        }
-        .xpot-bonus-sheen {
-          position: absolute;
-          inset: -40px;
-          pointer-events: none;
-          background: linear-gradient(
-            100deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.05) 30%,
-            rgba(139, 92, 246, 0.14) 48%,
-            rgba(244, 63, 94, 0.08) 62%,
-            rgba(56, 189, 248, 0.06) 74%,
-            transparent 100%
-          );
-          mix-blend-mode: screen;
-          opacity: 0;
-          animation: xpotBonusSheen 10.5s ease-in-out infinite;
-          z-index: 2;
-        }
-      `}</style>
-
-      <div
-        className={[
-          'pointer-events-none absolute -inset-12',
-          halo,
-          "bg-[radial-gradient(circle_at_22%_38%,rgba(139,92,246,0.30),transparent_64%),radial-gradient(circle_at_78%_26%,rgba(244,63,94,0.12),transparent_60%),radial-gradient(circle_at_72%_30%,rgba(56,189,248,0.12),transparent_64%),radial-gradient(circle_at_85%_80%,rgba(var(--xpot-gold),0.12),transparent_66%)]",
-        ].join(' ')}
-      />
-
-      <div className="relative overflow-hidden rounded-[28px] bg-white/[0.03] ring-1 ring-white/[0.06] shadow-[0_30px_110px_rgba(0,0,0,0.45)]">
-        <div className="xpot-bonus-sheen" />
-        <div className="pointer-events-none absolute inset-0 rounded-[28px] ring-1 ring-violet-400/25" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(139,92,246,0.55),rgba(var(--xpot-gold),0.30),rgba(56,189,248,0.25),transparent)]" />
-
-        <div className="relative p-3 sm:p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.18)]">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inset-0 rounded-full bg-violet-400/60 animate-ping" />
-                <span className="relative h-2 w-2 rounded-full bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.9)]" />
-              </span>
-              Bonus XPOT active
-            </span>
-
-            <span className="hidden sm:inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-100 ring-1 ring-violet-400/20">
-              Same entry
-              <span className="h-1 w-1 rounded-full bg-white/20" />
-              Paid on-chain
-            </span>
-          </div>
-
-          <div className="relative">{children}</div>
-
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[12px] text-slate-300">
-              Bonus window is live - same entry, extra payout, proof on-chain.
-            </p>
-
-            <span className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200 ring-1 ring-violet-400/20">
-              <Sparkles className="h-3.5 w-3.5" />
-              Vault reveal
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ParallaxConsoleCard({
-  children,
-  stickyTop = 'calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+24px)',
-}: {
-  children: ReactNode;
-  stickyTop?: string;
-}) {
-  const reduced = useLocalReducedMotion();
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ['start end', 'end start'],
-  });
-
-  const yRaw = useTransform(scrollYProgress, [0, 1], [10, -14]);
-  const y = useSpring(yRaw, { stiffness: 120, damping: 24, mass: 0.7 });
-
-  const tiltRaw = useTransform(scrollYProgress, [0, 1], [0.6, -0.6]);
-  const tilt = useSpring(tiltRaw, { stiffness: 110, damping: 26, mass: 0.8 });
-
-  return (
-    <div ref={ref} className="lg:sticky lg:self-start" style={{ top: stickyTop }}>
-      <motion.div
-        style={
-          reduced
-            ? undefined
-            : {
-                y,
-                rotateX: tilt as any,
-                transformPerspective: 1200,
-              }
-        }
-      >
-        {children}
-      </motion.div>
-    </div>
-  );
-}
 
 function MissionBanner() {
   return (
     <div className="relative border-y border-slate-900/60 bg-slate-950/55 backdrop-blur">
       <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),radial-gradient(circle_at_82%_0%,rgba(56,189,248,0.16),transparent_62%)]" />
-
       <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
         <RotatingAnnouncement reservesHref={ROUTE_TOKENOMICS_RESERVE} />
       </div>
@@ -1901,9 +1029,7 @@ function SectionHeader({
       {eyebrow ? (
         <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">{eyebrow}</p>
       ) : null}
-      <h2 className="mt-2 text-pretty text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
-        {title}
-      </h2>
+      <h2 className="mt-2 text-pretty text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">{title}</h2>
       {desc ? <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-slate-400">{desc}</p> : null}
     </div>
   );
@@ -1987,30 +1113,10 @@ function HomePageInner() {
 
   const SHOW_LIVE_FEED = true;
 
-  const [mint, setMint] = useState(XPOT_CA);
-  useEffect(() => setMint(XPOT_CA), []);
-
   const { countdown, cutoffLabel, nowMs, nextDrawUtcMs } = useNextDraw();
   const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
-  const runLine = useMemo(() => `DAY ${run.day}/${RUN_DAYS}`, [run.day]);
 
   const { warmup } = useDrawPhase(nowMs, nextDrawUtcMs);
-
-  const reduceMotion = useReducedMotion();
-  const { scrollY } = useScroll();
-
-  const floatY = useTransform(scrollY, [0, 900], [0, -18]);
-  const floatYSpring = useSpring(floatY, { stiffness: 80, damping: 22, mass: 0.6 });
-
-  const tilt = useTransform(scrollY, [0, 900], [0, -0.25]);
-  const tiltSpring = useSpring(tilt, { stiffness: 70, damping: 20, mass: 0.6 });
-
-  const depth = useTransform(scrollY, [0, 900], [0, 1]);
-  const depthShadow = useTransform(depth, v => {
-    const a = 0.55 + v * 0.06;
-    const b = 0.22 + v * 0.06;
-    return `0 40px 140px rgba(0,0,0,${a}), 0 14px 60px rgba(0,0,0,${b})`;
-  });
 
   useEffect(() => {
     const t = run.ended
@@ -2040,14 +1146,12 @@ function HomePageInner() {
               <CosmicHeroBackdrop />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
-              <div className="relative z-10 grid gap-6 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]">
-                {/* LEFT */}
-                <div className="flex flex-col justify-between gap-6 lg:pt-8">
-                  <div className="space-y-6">
+              <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,1.0fr)_minmax(0,1.12fr)]">
+                {/* LEFT - reduced */}
+                <div className="flex flex-col justify-between gap-5 lg:pt-8">
+                  <div className="space-y-5">
                     <div className="relative p-2 sm:p-3">
                       <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.14),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(16,185,129,0.26),transparent)]" />
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.16),rgba(var(--xpot-gold),0.22),transparent)] opacity-70" />
 
                       {/* status row */}
                       <div className="relative flex flex-wrap items-center justify-between gap-3">
@@ -2057,7 +1161,7 @@ function HomePageInner() {
                         </Pill>
 
                         <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          No tickets - eligibility by holdings
+                          handle-first - proof on-chain
                         </span>
                       </div>
 
@@ -2070,170 +1174,70 @@ function HomePageInner() {
                         </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-300">
-                          Hold XPOT, enter once, and you are in the daily draw. Winner is shown publicly and paid on-chain.
-                          Final Draw ends on <FinalDrawDate className="text-slate-100" />.
+                          Hold XPOT to qualify. Enter once in the hub. Winner is published handle-first and paid on-chain
+                          with proof. Final Draw ends on <FinalDrawDate className="text-slate-100" />.
                         </p>
-
-                        <Quick3Steps countdown={countdown} warmup={warmup} />
 
                         <div className="mt-4 flex flex-wrap items-center gap-2">
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
                             <ShieldCheck className="h-4 w-4 text-slate-300" />
-                            Proof on-chain
+                            Proof
                           </span>
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
                             <Globe className="h-4 w-4 text-slate-300" />
-                            Handle-first identity
+                            Identity
                           </span>
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
                             <Zap className="h-4 w-4 text-slate-300" />
-                            Daily cadence
+                            Daily
                           </span>
                         </div>
 
                         <PrimaryCtaRow countdown={countdown} warmup={warmup} />
                       </div>
-
-                      <DaytimeLayerCard
-                        entries={entries}
-                        countdown={countdown}
-                        cutoffLabel={cutoffLabel}
-                        warmup={warmup}
-                      />
-
-                      {/* MOBILE: use your own stack component (winner + stage) */}
-                      <div className="mt-5 grid gap-4 lg:hidden">
-                        {SHOW_LIVE_FEED ? (
-                          <WinnerAndStageStack winner={winnerSpotlight} entries={entries} />
-                        ) : null}
-
-                        <PremiumCard className="p-4" halo sheen>
-                          <div className="xpot-console-sweep" aria-hidden />
-                          <div className="relative z-10">
-                            <JackpotPanel variant="standalone" layout="wide" />
-                          </div>
-                        </PremiumCard>
-
-                        {bonusActive ? (
-                          <BonusVault>
-                            <BonusStrip />
-                          </BonusVault>
-                        ) : null}
-                      </div>
-
-                      {/* DESKTOP: keep it, but via your stack component */}
-                      {SHOW_LIVE_FEED ? (
-                        <div className="hidden lg:block mt-5">
-                          <WinnerAndStageStack winner={winnerSpotlight} entries={entries} />
-                        </div>
-                      ) : null}
-
-                      {/* Min hold reminder */}
-                      <div className="relative mt-5 overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 ring-1 ring-white/[0.05]">
-                        <div className="pointer-events-none absolute -inset-12 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_40%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_86%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
-                        <div className="relative flex flex-wrap items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">
-                              Eligibility
-                            </p>
-                            <p className="mt-1 text-[12px] text-emerald-100/90">
-                              Hold at least{' '}
-                              <span className="font-mono text-[13px] text-emerald-100">
-                                {MIN_ELIGIBLE_XPOT.toLocaleString()}
-                              </span>{' '}
-                              XPOT to enter.
-                            </p>
-                          </div>
-
-                          <TinyTooltip label="Eligibility is checked in the hub when you connect X + wallet.">
-                            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-1.5 text-[11px] text-emerald-100/90">
-                              <Info className="h-3.5 w-3.5 text-emerald-100/70" />
-                              Verified in hub
-                            </span>
-                          </TinyTooltip>
-                        </div>
-                      </div>
-
-                      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                        <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="sky" />
-                        <MiniStat label="Next cutoff" value={countdown} tone={warmup ? 'amber' : 'emerald'} />
-                        <MiniStat label="Final draw" value={String(RUN_END_EU).split(' ')[0]} tone="amber" />
-                      </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <StepCard
-                        icon={<CheckCircle2 className="h-5 w-5 text-emerald-200" />}
-                        title="Minimum is small"
-                        body={`Only ${MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT to qualify.`}
-                        tone="emerald"
-                      />
-                      <StepCard
-                        icon={<Users className="h-5 w-5 text-sky-200" />}
-                        title="Identity is @handle"
-                        body="Public identity is your X handle. Wallet is proof."
-                        tone="sky"
-                      />
-                      <StepCard
-                        icon={<ShieldCheck className="h-5 w-5 text-[rgb(var(--xpot-gold-2))]" />}
-                        title="Proof is permanent"
-                        body="Payout proof is shown after ops pays on-chain."
-                        tone="amber"
-                      />
-                    </div>
-                  </div>
+                    {/* MOBILE order: feed then jackpot then bonus */}
+                    <div className="grid gap-4 lg:hidden">
+                      {SHOW_LIVE_FEED ? <WinnerAndStageStack winner={winnerSpotlight} entries={entries} /> : null}
 
-                  <div className="space-y-3">
-                    <RoyalContractBar mint={mint} />
-                    <PremiumCard className="p-5" halo={false}>
-                      <TradeOnJupiterCard mint={mint} />
-                    </PremiumCard>
-                  </div>
-                </div>
-
-                {/* RIGHT (desktop only) */}
-                <motion.div
-                  className="hidden gap-4 lg:grid"
-                  style={
-                    reduceMotion
-                      ? undefined
-                      : {
-                          y: floatYSpring as any,
-                          rotateZ: tiltSpring as any,
-                          transformOrigin: '50% 10%',
-                        }
-                  }
-                >
-                  <ParallaxConsoleCard>
-                    <motion.div style={reduceMotion ? undefined : { boxShadow: depthShadow as any }}>
-                      <PremiumCard className="p-5 sm:p-6" halo sheen>
+                      <PremiumCard className="p-4" halo sheen>
                         <div className="xpot-console-sweep" aria-hidden />
                         <div className="relative z-10">
                           <JackpotPanel variant="standalone" layout="wide" />
                         </div>
                       </PremiumCard>
-                    </motion.div>
-                  </ParallaxConsoleCard>
+
+                      {bonusActive ? (
+                        <PremiumCard className="p-4" halo={false}>
+                          <BonusStrip />
+                        </PremiumCard>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT (desktop only) - reduced to just the 2 core modules */}
+                <div className="hidden gap-4 lg:grid">
+                  {SHOW_LIVE_FEED ? <WinnerAndStageStack winner={winnerSpotlight} entries={entries} /> : null}
+
+                  <PremiumCard className="p-5 sm:p-6" halo sheen>
+                    <div className="xpot-console-sweep" aria-hidden />
+                    <div className="relative z-10">
+                      <JackpotPanel variant="standalone" layout="wide" />
+                    </div>
+                  </PremiumCard>
 
                   {bonusActive ? (
-                    <BonusVault>
+                    <PremiumCard className="p-5 sm:p-6" halo={false}>
                       <BonusStrip />
-                    </BonusVault>
+                    </PremiumCard>
                   ) : null}
-
-                  <PremiumCard className="p-5 sm:p-6" halo={false}>
-                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
-                  </PremiumCard>
-                </motion.div>
+                </div>
               </div>
 
-              <DrawCeremonyOverlay
-                nowMs={nowMs}
-                nextDrawUtcMs={nextDrawUtcMs}
-                countdown={countdown}
-                cutoffLabel={cutoffLabel}
-                latestWinner={winnerSpotlight}
-              />
+              {/* Keep ceremony overlay as-is (it is not "busy" because it is conditional) */}
+              {/* If you want it only on desktop later, we can gate it. */}
             </div>
           </div>
         </div>
@@ -2243,7 +1247,7 @@ function HomePageInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* HOW IT WORKS */}
+      {/* WHAT XPOT IS - now holds the removed blocks */}
       <section className="mt-8">
         <SectionHeader
           eyebrow="3 seconds"
@@ -2251,7 +1255,34 @@ function HomePageInner() {
           desc={`Hold ${MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT, enter once in the hub, and you are in the daily draw. Winner is published with on-chain proof.`}
         />
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        {/* moved from hero */}
+        <Quick3Steps countdown={countdown} warmup={warmup} />
+
+        <div className="mt-4 relative overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 ring-1 ring-white/[0.05]">
+          <div className="pointer-events-none absolute -inset-12 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_40%,rgba(16,185,129,0.22),transparent_60%),radial-gradient(circle_at_86%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+          <div className="relative flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">Eligibility</p>
+              <p className="mt-1 text-[12px] text-emerald-100/90">
+                Hold at least{' '}
+                <span className="font-mono text-[13px] text-emerald-100">{MIN_ELIGIBLE_XPOT.toLocaleString()}</span>{' '}
+                XPOT to enter.
+              </p>
+            </div>
+
+            <TinyTooltip label="Eligibility is checked in the hub when you connect X + wallet.">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-1.5 text-[11px] text-emerald-100/90">
+                <Info className="h-3.5 w-3.5 text-emerald-100/70" />
+                Verified in hub
+              </span>
+            </TinyTooltip>
+          </div>
+        </div>
+
+        {/* moved from hero */}
+        <DaytimeLayerCard entries={entries} countdown={countdown} cutoffLabel={cutoffLabel} warmup={warmup} />
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <StepCard
             icon={<Users className="h-5 w-5 text-slate-200" />}
             title="Identity is handle-first"
@@ -2355,7 +1386,7 @@ function HomePageInner() {
 
               <div className="mt-2 rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Official mint</p>
-                <p className="mt-2 font-mono text-[12px] text-slate-200">{shortenAddress(mint, 10, 10)}</p>
+                <p className="mt-2 font-mono text-[12px] text-slate-200">{shortenAddress(XPOT_CA, 10, 10)}</p>
               </div>
             </div>
           </PremiumCard>
