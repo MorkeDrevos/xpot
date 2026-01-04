@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Users } from 'lucide-react';
 
@@ -36,6 +37,10 @@ function makeKey(e: EntryRow, idx: number) {
   const h = normalizeHandle(e?.handle);
   const t = e?.createdAt ?? '';
   return e?.id ? String(e.id) : `${h}-${t}-${idx}`;
+}
+
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
 }
 
 function useLocalHandle() {
@@ -216,45 +221,56 @@ function MiniDot({
   );
 }
 
-function ProfileHoverCard({ e, isMe }: { e: EntryRow; isMe: boolean }) {
-  const handle = normalizeHandle(e.handle);
-  const name = e.name ? String(e.name).trim() : '';
+function HoverProfileCard({
+  entry,
+  isMe,
+  pos,
+}: {
+  entry: EntryRow;
+  isMe: boolean;
+  pos: { left: number; top: number };
+}) {
+  const handle = normalizeHandle(entry.handle);
+  const name = entry.name ? String(entry.name).trim() : '';
 
   return (
     <motion.div
       className={[
-        'pointer-events-none absolute left-1/2 top-full z-30 mt-4 -translate-x-1/2',
-        'w-[300px] overflow-hidden rounded-2xl border border-white/12 bg-slate-950/85 backdrop-blur-xl',
-        'shadow-[0_40px_140px_rgba(0,0,0,0.75)]',
+        'fixed z-[9999]',
+        'w-[320px] overflow-hidden rounded-2xl border border-white/12 bg-slate-950/86 backdrop-blur-xl',
+        'shadow-[0_40px_160px_rgba(0,0,0,0.82)]',
       ].join(' ')}
-      initial={{ opacity: 0, y: 10, scale: 0.98, filter: 'blur(8px)' }}
+      style={{ left: pos.left, top: pos.top, transform: 'translateX(-50%)' }}
+      initial={{ opacity: 0, y: 10, scale: 0.985, filter: 'blur(10px)' }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, y: 10, scale: 0.985, filter: 'blur(10px)' }}
+      exit={{ opacity: 0, y: 10, scale: 0.985, filter: 'blur(12px)' }}
       transition={{ duration: 0.16, ease: 'easeOut' }}
     >
-      <div className="h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.65),rgba(56,189,248,0.35),transparent)] opacity-80" />
+      <div className="h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.70),rgba(56,189,248,0.35),transparent)] opacity-85" />
 
-      <div className="p-4 flex items-center gap-3">
-        <Avatar src={e.avatarUrl} label={handle} verified={e.verified} size={54} />
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <Avatar src={entry.avatarUrl} label={handle} verified={entry.verified} size={56} />
 
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-[14px] font-semibold text-slate-100">{handle}</span>
-            {isMe ? (
-              <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
-                You
-              </span>
-            ) : null}
-          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="truncate text-[14px] font-semibold text-slate-100">{handle}</div>
+              {isMe ? (
+                <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                  You
+                </span>
+              ) : null}
+            </div>
 
-          {name ? (
-            <div className="truncate text-[13px] text-slate-400">{name}</div>
-          ) : (
-            <div className="text-[12px] text-slate-500">x.com profile</div>
-          )}
+            {name ? (
+              <div className="truncate text-[13px] text-slate-400">{name}</div>
+            ) : (
+              <div className="text-[12px] text-slate-500">x.com profile</div>
+            )}
 
-          <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200">
-            View profile on X
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-slate-200">
+              Open profile on X
+            </div>
           </div>
         </div>
       </div>
@@ -303,7 +319,7 @@ function TapSheet({
             exit={{ y: 40, opacity: 0 }}
             transition={reduceMotion ? undefined : { duration: 0.2, ease: 'easeOut' }}
           >
-            <div className="mx-auto h-1.5 w-12 rounded-full bg-white/10 mt-3" />
+            <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/10" />
 
             <div className="p-5">
               <div className="flex items-center gap-4">
@@ -390,6 +406,14 @@ export default function EnteringStageLive({
 
   const [sheetEntry, setSheetEntry] = useState<EntryRow | null>(null);
 
+  // Hover state (desktop): render portal card so it’s not clipped by overflow containers
+  const [hoverEntry, setHoverEntry] = useState<EntryRow | null>(null);
+  const hoverElRef = useRef<HTMLElement | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     if (!newestKey) return;
     if (prevNewestKey.current && prevNewestKey.current !== newestKey) {
@@ -408,6 +432,40 @@ export default function EnteringStageLive({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [sheetEntry]);
+
+  const recomputeHoverPos = () => {
+    const el = hoverElRef.current;
+    if (!el) return;
+
+    const r = el.getBoundingClientRect();
+    const cardW = 320;
+    const pad = 12;
+
+    const desiredLeft = r.left + r.width / 2;
+    const minLeft = pad + cardW / 2;
+    const maxLeft = window.innerWidth - pad - cardW / 2;
+
+    const left = clamp(desiredLeft, minLeft, maxLeft);
+    const top = r.bottom + 14;
+
+    setHoverPos({ left, top });
+  };
+
+  useEffect(() => {
+    if (!hoverEntry) return;
+
+    recomputeHoverPos();
+    const onScroll = () => recomputeHoverPos();
+    const onResize = () => recomputeHoverPos();
+
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoverEntry]);
 
   const Outer = embedded ? 'div' : 'section';
   const outerClass = embedded
@@ -539,10 +597,28 @@ export default function EnteringStageLive({
                               target={isTouch ? undefined : '_blank'}
                               rel={isTouch ? undefined : 'nofollow noopener noreferrer'}
                               className={[
-                                'group relative inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5',
+                                'relative inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5',
                                 'border-white/10 bg-white/[0.02] hover:bg-white/[0.045] transition',
                                 isMe ? 'border-emerald-300/20 bg-emerald-500/10' : '',
                               ].join(' ')}
+                              onMouseEnter={ev => {
+                                if (isTouch) return;
+                                hoverElRef.current = ev.currentTarget as unknown as HTMLElement;
+                                setHoverEntry(e);
+                                // compute now
+                                const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+                                const cardW = 320;
+                                const pad = 12;
+                                const desiredLeft = r.left + r.width / 2;
+                                const minLeft = pad + cardW / 2;
+                                const maxLeft = window.innerWidth - pad - cardW / 2;
+                                setHoverPos({ left: clamp(desiredLeft, minLeft, maxLeft), top: r.bottom + 14 });
+                              }}
+                              onMouseLeave={() => {
+                                if (isTouch) return;
+                                hoverElRef.current = null;
+                                setHoverEntry(null);
+                              }}
                               initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6, filter: 'blur(8px)' }}
                               animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
                               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(8px)' }}
@@ -557,7 +633,6 @@ export default function EnteringStageLive({
                                 size={Math.max(30, avatarSize)}
                               />
 
-                              {/* handle + name */}
                               <div className="min-w-0 leading-tight pr-1">
                                 <div className="max-w-[150px] truncate text-[12px] font-semibold text-slate-200">
                                   {handle}
@@ -568,13 +643,6 @@ export default function EnteringStageLive({
                                   </div>
                                 ) : null}
                               </div>
-
-                              {/* desktop hover card */}
-                              {!isTouch ? (
-                                <div className="absolute left-1/2 top-full -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                                  <ProfileHoverCard e={e} isMe={isMe} />
-                                </div>
-                              ) : null}
                             </motion.a>
                           );
                         })}
@@ -690,6 +758,22 @@ export default function EnteringStageLive({
       </Outer>
 
       <TapSheet open={Boolean(sheetEntry)} onClose={() => setSheetEntry(null)} entry={sheetEntry} isMe={sheetIsMe} />
+
+      {/* PORTAL hover card (desktop only) */}
+      {mounted && !isTouch
+        ? createPortal(
+            <AnimatePresence>
+              {hoverEntry ? (
+                <HoverProfileCard
+                  entry={hoverEntry}
+                  isMe={Boolean(localHandle && normalizeHandle(localHandle) === normalizeHandle(hoverEntry.handle))}
+                  pos={hoverPos}
+                />
+              ) : null}
+            </AnimatePresence>,
+            document.body
+          )
+        : null}
     </>
   );
 }
