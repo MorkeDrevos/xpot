@@ -508,34 +508,113 @@ type PublicWinner = {
   payoutUsd?: number;
 };
 
+function pickString(...vals: any[]) {
+  for (const v of vals) {
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+function pickNumber(...vals: any[]) {
+  for (const v of vals) {
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string') {
+      const n = Number(v);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return 0;
+}
+
 function normalizePublicWinner(raw: any): PublicWinner | null {
   if (!raw || typeof raw !== 'object') return null;
 
-  const id = typeof raw.id === 'string' ? raw.id : '';
-  const drawDate = typeof raw.drawDate === 'string' ? raw.drawDate : null;
-  const wallet = typeof raw.wallet === 'string' ? raw.wallet : null;
-
-  const amount = typeof raw.amount === 'number' ? raw.amount : Number(raw.amount ?? 0);
-  const handle = raw.handle == null ? null : String(raw.handle);
-  const name = raw.name == null ? null : String(raw.name);
-  const avatarUrl = raw.avatarUrl == null ? null : String(raw.avatarUrl);
-  const txUrl = raw.txUrl == null ? null : String(raw.txUrl);
-  const isPaidOut = Boolean(raw.isPaidOut);
-
+  const id = pickString(raw.id, raw.winnerId, raw.ticketId, raw.drawId) || '';
   if (!id) return null;
+
+  // wallet can be in many places depending on include() shape
+  const wallet =
+    pickString(
+      raw.wallet,
+      raw.walletAddress,
+      raw.winnerWallet,
+      raw.ticketWallet,
+      raw?.ticket?.wallet?.address,
+      raw?.ticket?.wallet?.publicKey,
+      raw?.wallet?.address,
+      raw?.wallet?.publicKey,
+    ) || null;
+
+  // handle/name/avatar often live on user or ticket.user or profile fields
+  const handle =
+    pickString(
+      raw.handle,
+      raw.xHandle,
+      raw.twitterHandle,
+      raw.username,
+      raw?.user?.handle,
+      raw?.user?.xHandle,
+      raw?.ticket?.user?.handle,
+      raw?.ticket?.wallet?.user?.handle,
+    ) || null;
+
+  const name =
+    pickString(
+      raw.name,
+      raw.displayName,
+      raw?.user?.name,
+      raw?.user?.displayName,
+      raw?.ticket?.user?.name,
+      raw?.ticket?.wallet?.user?.name,
+    ) || null;
+
+  const avatarUrl =
+    pickString(
+      raw.avatarUrl,
+      raw.avatar,
+      raw.imageUrl,
+      raw?.user?.avatarUrl,
+      raw?.user?.imageUrl,
+      raw?.ticket?.user?.avatarUrl,
+      raw?.ticket?.wallet?.user?.imageUrl,
+    ) || null;
+
+  // amount fields vary a LOT
+  const amount = pickNumber(
+    raw.amount,
+    raw.amountXpot,
+    raw.payoutXpot,
+    raw.rewardXpot,
+    raw.jackpotXpot,
+    raw?.draw?.jackpotXpot,
+    raw?.payout?.amount,
+  );
+
+  // tx url or signature (build url if only signature exists)
+  const txUrl =
+    pickString(raw.txUrl, raw.tx, raw.txHash, raw.signature) ||
+    (pickString(raw.txSig, raw.payoutSig) ? `https://solscan.io/tx/${pickString(raw.txSig, raw.payoutSig)}` : null);
+
+  const isPaidOut =
+    Boolean(raw.isPaidOut) ||
+    Boolean(raw.paid) ||
+    Boolean(raw.isPaid) ||
+    (typeof raw.status === 'string' ? raw.status.toUpperCase() === 'PAID' : false);
+
+  const drawDate = pickString(raw.drawDate, raw.date, raw.createdAt, raw?.draw?.date, raw?.draw?.closesAt) || null;
 
   return {
     id,
     drawDate,
     wallet,
-    amount: Number.isFinite(amount) ? amount : 0,
+    amount,
     handle,
     name,
     avatarUrl,
     txUrl,
     isPaidOut,
-    jackpotUsd: typeof raw.jackpotUsd === 'number' ? raw.jackpotUsd : Number(raw.jackpotUsd ?? 0),
-    payoutUsd: typeof raw.payoutUsd === 'number' ? raw.payoutUsd : Number(raw.payoutUsd ?? 0),
+    jackpotUsd: pickNumber(raw.jackpotUsd, raw?.draw?.jackpotUsd),
+    payoutUsd: pickNumber(raw.payoutUsd, raw?.payout?.usd),
   };
 }
 
@@ -642,6 +721,12 @@ function WinnersRow({
   w: PublicWinner;
   dense?: boolean;
 }) {
+  const walletLabel = w.wallet ? shortWallet(w.wallet) : '—';
+const rewardLabel = w.amount && w.amount > 0 ? `${Math.floor(w.amount).toLocaleString()} XPOT` : '—';
+
+// IMPORTANT: if backend sends paid=true but amount is 0, don't show PAID
+const paidUi = Boolean(w.isPaidOut) && Boolean(w.amount && w.amount > 0);
+
   const handle = w.handle ? normalizeHandle(w.handle) : null;
   const xUrl = handle ? toXProfileUrl(handle) : null;
 
@@ -692,26 +777,36 @@ function WinnersRow({
         </div>
 
         <div className="shrink-0 text-right">
-          <StatusPill tone={w.isPaidOut ? 'emerald' : 'sky'}>
-            <Crown className="h-3.5 w-3.5" />
-            {w.isPaidOut ? 'Paid' : 'Winner'}
-          </StatusPill>
+          <StatusPill tone={paidUi ? 'emerald' : 'sky'}>
+  <Crown className="h-3.5 w-3.5" />
+  {paidUi ? 'Paid' : 'Winner'}
+</StatusPill>
         </div>
       </div>
 
       <div className={`mt-3 grid gap-2 ${dense ? '' : 'sm:grid-cols-2'}`}>
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
-          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">Wallet</span>
-          <span className="font-mono text-xs text-slate-100">{shortWallet(w.wallet || '')}</span>
-        </div>
+  {/* WALLET */}
+  <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
+    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">
+      Wallet
+    </span>
+    <span className="font-mono text-xs text-slate-100">
+      {w.wallet ? shortWallet(w.wallet) : '—'}
+    </span>
+  </div>
 
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
-          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">Reward</span>
-          <span className="text-xs font-semibold text-slate-100">
-            {Math.floor(w.amount || 0).toLocaleString()} XPOT
-          </span>
-        </div>
-      </div>
+  {/* REWARD */}
+  <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
+    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">
+      Reward
+    </span>
+    <span className="text-xs font-semibold text-slate-100">
+      {w.amount && w.amount > 0
+        ? `${Math.floor(w.amount).toLocaleString()} XPOT`
+        : '—'}
+    </span>
+  </div>
+</div>
 
       {w.txUrl ? (
         <div className="mt-3">
