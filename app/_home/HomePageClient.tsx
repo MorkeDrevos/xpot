@@ -1090,13 +1090,17 @@ function HomePageInner() {
                 </div>
 
                 {/* RIGHT - Jackpot first */}
-                <div className="min-w-0 grid gap-4">
-                  <PremiumCard className="p-5 sm:p-6" halo sheen>
-                    <div className="xpot-console-sweep" aria-hidden />
-                    <div className="relative z-10">
-                      <JackpotPanel variant="standalone" layout="wide" mode="hero" />
-                    </div>
-                  </PremiumCard>
+<div className="min-w-0 grid gap-4">
+  <div className="relative">
+    <JackpotPanel variant="standalone" layout="wide" mode="hero" />
+  </div>
+
+  {bonusActive ? (
+    <PremiumCard className="p-5 sm:p-6" halo={false}>
+      <BonusStrip />
+    </PremiumCard>
+  ) : null}
+</div>
 
                   {bonusActive ? (
                     <PremiumCard className="p-5 sm:p-6" halo={false}>
