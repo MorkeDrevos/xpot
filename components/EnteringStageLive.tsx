@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ExternalLink, ShieldCheck, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 export type EntryRow = {
   id?: string;
@@ -54,10 +54,12 @@ function useLocalHandle() {
 function Avatar({
   src,
   label,
-  size = 18,
+  verified,
+  size = 26,
 }: {
   src?: string | null;
   label: string;
+  verified?: boolean;
   size?: number;
 }) {
   const handle = useMemo(() => normalizeHandle(label).replace(/^@/, '').trim(), [label]);
@@ -77,9 +79,18 @@ function Avatar({
     return s.slice(0, 2).toUpperCase();
   }, [handle]);
 
+  // VIP tags: verified gets gold outline, others neutral, zero icons
+  const ring = verified
+    ? 'ring-2 ring-[rgba(var(--xpot-gold),0.35)] shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.16),0_0_22px_rgba(245,158,11,0.14)]'
+    : 'ring-1 ring-white/[0.08]';
+
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]"
+      className={[
+        'relative shrink-0 overflow-hidden rounded-full border bg-white/[0.03]',
+        verified ? 'border-[rgba(var(--xpot-gold),0.25)]' : 'border-white/10',
+        ring,
+      ].join(' ')}
       style={{ width: size, height: size }}
       title={normalizeHandle(label)}
     >
@@ -94,12 +105,12 @@ function Avatar({
           onError={() => setFailed(true)}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center font-mono text-[9px] text-slate-200">
+        <div className="flex h-full w-full items-center justify-center font-mono text-[11px] text-slate-200">
           {initials}
         </div>
       )}
-      <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.10),transparent_60%)]" />
+
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.12),transparent_60%)]" />
     </div>
   );
 }
@@ -145,8 +156,8 @@ export default function EnteringStageLive({
   const list = useMemo(() => sanitize(entries), [entries]);
   const has = list.length > 0;
 
-  // newest first, keep it compact
-  const row = list.slice(0, 14);
+  // one-line, larger avatars + text + name after
+  const row = list.slice(0, 16);
   const newest = row[0] ?? null;
 
   // subtle “new entrant” glow when newest changes
@@ -216,9 +227,9 @@ export default function EnteringStageLive({
           </span>
         </div>
 
-        {/* center one-line chips */}
+        {/* one-line row */}
         <div className="relative min-w-0 flex-1">
-          {/* edge fades (premium) */}
+          {/* edge fades */}
           <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-[linear-gradient(90deg,rgba(2,6,23,0.92),transparent)]" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-[linear-gradient(270deg,rgba(2,6,23,0.92),transparent)]" />
 
@@ -226,6 +237,7 @@ export default function EnteringStageLive({
             <div className="flex items-center gap-2 pr-6">
               {has ? (
                 <>
+                  {/* newest - bigger + premium pulse */}
                   <AnimatePresence initial={false}>
                     {newest ? (
                       <motion.a
@@ -234,8 +246,8 @@ export default function EnteringStageLive({
                         target="_blank"
                         rel="nofollow noopener noreferrer"
                         className={[
-                          'group relative inline-flex items-center gap-2 rounded-full border px-3 py-2 transition',
-                          'border-white/12 bg-white/[0.04] hover:bg-white/[0.06]',
+                          'group relative inline-flex items-center gap-3 rounded-full border px-3.5 py-2.5 transition',
+                          'border-white/12 bg-white/[0.045] hover:bg-white/[0.065]',
                         ].join(' ')}
                         initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6, filter: 'blur(8px)' }}
                         animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
@@ -244,7 +256,6 @@ export default function EnteringStageLive({
                         aria-label={`Open ${normalizeHandle(newest.handle)} on X`}
                         title={`Open ${normalizeHandle(newest.handle)} on X`}
                       >
-                        {/* premium flash ring */}
                         {!reduceMotion && flash ? (
                           <motion.div
                             className="pointer-events-none absolute inset-0 rounded-full"
@@ -253,30 +264,43 @@ export default function EnteringStageLive({
                             transition={{ duration: 1.0, ease: 'easeInOut' }}
                             style={{
                               boxShadow:
-                                '0 0 0 1px rgba(16,185,129,0.18), 0 0 28px rgba(16,185,129,0.12)',
+                                '0 0 0 1px rgba(16,185,129,0.18), 0 0 30px rgba(16,185,129,0.12)',
                             }}
                           />
                         ) : null}
 
-                        <Avatar src={newest.avatarUrl} label={newest.handle} size={20} />
-                        <span className="text-[12px] font-semibold text-slate-100">
-                          {normalizeHandle(newest.handle)}
-                        </span>
+                        <Avatar
+                          src={newest.avatarUrl}
+                          label={newest.handle}
+                          verified={newest.verified}
+                          size={34}
+                        />
 
-                        {newest.verified ? <ShieldCheck className="h-4 w-4 text-sky-200/90" /> : null}
+                        <div className="min-w-0 leading-tight">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-[13px] font-semibold text-slate-100">
+                              {normalizeHandle(newest.handle)}
+                            </span>
+                            {localHandle &&
+                            normalizeHandle(localHandle) === normalizeHandle(newest.handle) ? (
+                              <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                                You
+                              </span>
+                            ) : null}
+                          </div>
 
-                        {localHandle && normalizeHandle(localHandle) === normalizeHandle(newest.handle) ? (
-                          <span className="ml-1 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
-                            You
-                          </span>
-                        ) : null}
-
-                        <ExternalLink className="ml-1 h-4 w-4 text-slate-600 transition group-hover:text-slate-300" />
+                          {/* show name after */}
+                          {newest.name ? (
+                            <div className="truncate text-[11px] text-slate-400">{newest.name}</div>
+                          ) : (
+                            <div className="truncate text-[11px] text-slate-600">x.com profile</div>
+                          )}
+                        </div>
                       </motion.a>
                     ) : null}
                   </AnimatePresence>
 
-                  {/* remaining chips */}
+                  {/* rest - larger avatars + handle + name after */}
                   {row.slice(1).map((e, idx) => {
                     const handle = normalizeHandle(e.handle);
                     const key = makeKey(e, idx + 1);
@@ -289,18 +313,33 @@ export default function EnteringStageLive({
                         target="_blank"
                         rel="nofollow noopener noreferrer"
                         className={[
-                          'group inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 transition',
-                          'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
+                          'group inline-flex items-center gap-2.5 rounded-full border px-3 py-2 transition',
+                          'border-white/10 bg-white/[0.02] hover:bg-white/[0.045]',
                           isMe ? 'border-emerald-300/20 bg-emerald-500/10' : '',
                         ].join(' ')}
                         aria-label={`Open ${handle} on X`}
                         title={`Open ${handle} on X`}
                       >
-                        <Avatar src={e.avatarUrl} label={handle} size={18} />
-                        <span className="max-w-[140px] truncate text-[11px] font-medium text-slate-200">
-                          {handle}
-                        </span>
-                        {e.verified ? <ShieldCheck className="h-3.5 w-3.5 text-sky-200/80" /> : null}
+                        <Avatar src={e.avatarUrl} label={handle} verified={e.verified} size={28} />
+
+                        <div className="min-w-0 leading-tight">
+                          <div className="flex items-center gap-2">
+                            <span className="max-w-[150px] truncate text-[12px] font-semibold text-slate-200">
+                              {handle}
+                            </span>
+                            {isMe ? (
+                              <span className="rounded-full border border-emerald-300/20 bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100/90">
+                                You
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {e.name ? (
+                            <div className="max-w-[190px] truncate text-[11px] text-slate-400">{e.name}</div>
+                          ) : (
+                            <div className="truncate text-[11px] text-slate-600">x.com profile</div>
+                          )}
+                        </div>
                       </a>
                     );
                   })}
