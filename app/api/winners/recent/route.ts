@@ -45,7 +45,6 @@ export async function GET(req: NextRequest) {
     const payload = winners.map(w => {
       const user: any = (w as any)?.ticket?.wallet?.user ?? null;
 
-      // try common field names, fall back safely
       const handle =
         user?.xHandle ??
         user?.handle ??
@@ -67,6 +66,15 @@ export async function GET(req: NextRequest) {
         user?.profileImageUrl ??
         null;
 
+      // ✅ IMPORTANT:
+      // Your schema uses payoutUsd (float8) but it's actually XPOT amount.
+      // We'll treat it as XPOT amount everywhere in the UI.
+      const amountXpot =
+        (w as any)?.payoutUsd ??
+        (w as any)?.amountXpot ??
+        (w as any)?.payoutXpot ??
+        null;
+
       return {
         id: w.id,
         kind: (w as any).kind ?? (w as any).winnerKind ?? null,
@@ -81,12 +89,7 @@ export async function GET(req: NextRequest) {
         name,
         avatarUrl,
 
-        // payout + proof
-        amountXpot:
-          (w as any)?.amountXpot ??
-          (w as any)?.payoutXpot ??
-          (w as any)?.jackpotXpot ??
-          null,
+        amountXpot,
 
         isPaidOut: (w as any)?.isPaidOut ?? null,
         txUrl: (w as any)?.txUrl ?? null,
