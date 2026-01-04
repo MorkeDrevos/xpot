@@ -36,7 +36,6 @@ import XpotPageShell from '@/components/XpotPageShell';
 import XpotFooter from '@/components/XpotFooter';
 import FinalDrawDate from '@/components/FinalDrawDate';
 import RotatingAnnouncement from '@/components/RotatingAnnouncement';
-import WinnerAndStageStack from '@/components/WinnerAndStageStack';
 
 import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
 
@@ -1090,9 +1089,10 @@ function HomePageInner() {
 
           <PremiumCard className="p-5 sm:p-6" halo sheen>
             <div className="pointer-events-none absolute -inset-28 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(16,185,129,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
-            <div className="relative z-10">
-              <WinnerAndStageStack winner={winnerSpotlight} entries={entries} />
-            </div>
+            <div className="grid gap-4">
+  <WinnerSpotlightCard winner={winner} />
+  <EnteringStageLive entries={entries} />
+</div>
           </PremiumCard>
         </section>
       ) : null}
