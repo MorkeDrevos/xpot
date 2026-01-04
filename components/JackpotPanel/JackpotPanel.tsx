@@ -31,7 +31,6 @@ export type JackpotPanelProps = {
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 const PRICE_POLL_MS = 4000; // 4s
-// const WINNER_POLL_MS = 15_000; // 15s (disabled for now)
 
 const MILESTONES = [
   5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
@@ -100,12 +99,6 @@ function useSmoothNumber(target: number | null, opts?: { durationMs?: number }) 
 
   return value;
 }
-
-/* ===========================
-   Latest winner (DISABLED)
-   ===========================
-   Kept as a block so you can re-enable safely later without merge pain.
-*/
 
 export default function JackpotPanel({
   isLocked,
@@ -224,7 +217,6 @@ export default function JackpotPanel({
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
-  // More premium than borders: ring + deep glass
   const panelChrome =
     variant === 'embedded'
       ? 'w-full rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/10 shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
@@ -248,9 +240,10 @@ export default function JackpotPanel({
     isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : '',
   ].join(' ');
 
-  const usdSize = isHero
-    ? 'text-[4.6rem] leading-[0.90] sm:text-[6.2rem] sm:leading-[0.90] lg:text-[7.4rem] lg:leading-[0.88]'
-    : 'text-5xl leading-[0.95] sm:text-[4.75rem] sm:leading-[0.92] lg:text-[5.4rem] lg:leading-[0.90]';
+  // BIGGER, better scaling across your actual layout width
+  const usdClampStyle: React.CSSProperties = isHero
+    ? { fontSize: 'clamp(3.9rem, 5.7vw, 7.2rem)', lineHeight: '0.88' }
+    : { fontSize: 'clamp(3.0rem, 4.9vw, 5.4rem)', lineHeight: '0.92' };
 
   return (
     <section
@@ -260,61 +253,37 @@ export default function JackpotPanel({
         isHero ? '-mt-3 sm:-mt-5' : '',
       ].join(' ')}
     >
-      {/* tiny, self-contained premium motion (no extra deps) */}
+      {/* Self-contained “alive” motion, premium not noisy */}
       <style jsx>{`
         @keyframes xpotSweep {
-          0% {
-            transform: translateX(-30%) skewX(-12deg);
-            opacity: 0.0;
-          }
-          20% {
-            opacity: 0.55;
-          }
-          55% {
-            opacity: 0.18;
-          }
-          100% {
-            transform: translateX(130%) skewX(-12deg);
-            opacity: 0.0;
-          }
+          0% { transform: translateX(-30%) skewX(-12deg); opacity: 0.0; }
+          18% { opacity: 0.58; }
+          55% { opacity: 0.18; }
+          100% { transform: translateX(130%) skewX(-12deg); opacity: 0.0; }
         }
 
         @keyframes xpotFloat {
-          0% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-2px);
-          }
-          100% {
-            transform: translateY(0px);
-          }
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-2px); }
+          100% { transform: translateY(0px); }
         }
 
         @keyframes xpotBreathe {
-          0% {
-            opacity: 0.22;
-          }
-          50% {
-            opacity: 0.46;
-          }
-          100% {
-            opacity: 0.22;
-          }
+          0% { opacity: 0.18; transform: scale(1); }
+          50% { opacity: 0.44; transform: scale(1.01); }
+          100% { opacity: 0.18; transform: scale(1); }
         }
 
-        .xpot-live-sweep {
-          animation: xpotSweep 2.9s ease-in-out infinite;
+        @keyframes xpotGridDrift {
+          0% { transform: translateX(-6%) translateY(0%); opacity: 0.12; }
+          50% { transform: translateX(6%) translateY(-2%); opacity: 0.22; }
+          100% { transform: translateX(-6%) translateY(0%); opacity: 0.12; }
         }
 
-        .xpot-usd-float {
-          animation: xpotFloat 4.2s ease-in-out infinite;
-          will-change: transform;
-        }
-
-        .xpot-ambient-breathe {
-          animation: xpotBreathe 5.2s ease-in-out infinite;
-        }
+        .xpot-live-sweep { animation: xpotSweep 3.2s ease-in-out infinite; }
+        .xpot-usd-float { animation: xpotFloat 4.6s ease-in-out infinite; will-change: transform; }
+        .xpot-ambient-breathe { animation: xpotBreathe 5.4s ease-in-out infinite; }
+        .xpot-grid-drift { animation: xpotGridDrift 9.2s ease-in-out infinite; }
       `}</style>
 
       <div>
@@ -340,7 +309,6 @@ export default function JackpotPanel({
           </div>
         )}
 
-        {/* Slab */}
         <div
           ref={slabRef}
           className={[
@@ -349,11 +317,8 @@ export default function JackpotPanel({
             layout === 'wide' ? 'w-full' : '',
             layout === 'auto' && autoWide ? 'w-full' : '',
           ].join(' ')}
-          style={{
-            boxShadow: '0 40px 140px rgba(0,0,0,0.60)',
-          }}
+          style={{ boxShadow: '0 40px 140px rgba(0,0,0,0.60)' }}
         >
-          {/* Ambient glow layer */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-3xl"
@@ -367,7 +332,6 @@ export default function JackpotPanel({
             }}
           />
 
-          {/* Soft sweep */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-3xl opacity-60"
@@ -417,7 +381,6 @@ export default function JackpotPanel({
           </div>
 
           <div className="relative mt-5 grid gap-4">
-            {/* Main USD console */}
             <div
               className={[
                 'relative overflow-hidden rounded-2xl border bg-black/30 px-4 py-4 sm:px-5',
@@ -425,21 +388,37 @@ export default function JackpotPanel({
               ].join(' ')}
               style={{
                 background:
-                  'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.10), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.07), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.32), rgba(0,0,0,0.06))',
+                  'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.11), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.08), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.34), rgba(0,0,0,0.06))',
               }}
             >
-              {/* Ambient breathing aura (always subtle) */}
+              {/* ambient aura */}
               <div
                 aria-hidden
                 className="pointer-events-none absolute -inset-10 rounded-[28px] xpot-ambient-breathe"
                 style={{
                   background:
-                    'radial-gradient(circle at 18% 35%, rgba(124,200,255,0.12), transparent 58%), radial-gradient(circle at 82% 18%, rgba(236,72,153,0.09), transparent 62%)',
+                    'radial-gradient(circle at 18% 35%, rgba(124,200,255,0.14), transparent 58%), radial-gradient(circle at 82% 18%, rgba(236,72,153,0.10), transparent 62%)',
                   filter: 'blur(22px)',
                 }}
               />
 
-              {/* Update aura (only on ticks) */}
+              {/* micro grid shimmer drift (super subtle) */}
+              <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60">
+                <div
+                  className="absolute inset-0 xpot-grid-drift"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
+                    backgroundSize: '48px 48px',
+                    maskImage:
+                      'radial-gradient(circle at 40% 35%, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.35) 40%, transparent 72%)',
+                    WebkitMaskImage:
+                      'radial-gradient(circle at 40% 35%, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.35) 40%, transparent 72%)',
+                  }}
+                />
+              </div>
+
+              {/* update aura (tick only) */}
               <div
                 aria-hidden
                 className={[
@@ -448,67 +427,65 @@ export default function JackpotPanel({
                 ].join(' ')}
                 style={{
                   background:
-                    'radial-gradient(circle at 30% 30%, rgba(124,200,255,0.16), transparent 55%), radial-gradient(circle at 80% 20%, rgba(236,72,153,0.10), transparent 60%)',
+                    'radial-gradient(circle at 30% 30%, rgba(124,200,255,0.18), transparent 55%), radial-gradient(circle at 80% 20%, rgba(236,72,153,0.11), transparent 60%)',
                   filter: 'blur(10px)',
                 }}
               />
 
-              {/* Premium sweep line (feels "alive") */}
+              {/* premium sweep */}
               <div aria-hidden className="pointer-events-none absolute inset-0">
                 <div
                   className={[
-                    'absolute -left-1/2 top-0 h-full w-1/2 opacity-[0.22]',
-                    justUpdated ? 'opacity-[0.38]' : '',
+                    'absolute -left-1/2 top-0 h-full w-1/2 opacity-[0.18]',
+                    justUpdated ? 'opacity-[0.36]' : '',
                     'xpot-live-sweep',
                   ].join(' ')}
                   style={{
                     background:
-                      'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.16) 40%, rgba(124,200,255,0.12) 55%, transparent 100%)',
+                      'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 40%, rgba(124,200,255,0.14) 55%, transparent 100%)',
                     filter: 'blur(0.3px)',
                   }}
                 />
               </div>
 
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              {/* slightly tighter top spacing so the number owns the card */}
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3">
                   <div className="relative">
-                    {/* faint outline glow to boost perceived size */}
                     <div
                       aria-hidden
                       className={[
-                        'pointer-events-none absolute inset-0 translate-y-[2px] blur-[10px] opacity-0 transition-opacity duration-300',
-                        justUpdated ? 'opacity-100' : 'opacity-60',
+                        'pointer-events-none absolute inset-0 translate-y-[2px] blur-[12px] opacity-60',
+                        justUpdated ? 'opacity-100' : '',
                       ].join(' ')}
                       style={{
                         background:
-                          'radial-gradient(circle at 30% 40%, rgba(124,200,255,0.26), transparent 60%), radial-gradient(circle at 80% 25%, rgba(236,72,153,0.16), transparent 62%)',
+                          'radial-gradient(circle at 30% 40%, rgba(124,200,255,0.28), transparent 60%), radial-gradient(circle at 80% 25%, rgba(236,72,153,0.18), transparent 62%)',
                       }}
                     />
 
                     <div
                       className={[
                         'relative xpot-usd-live xpot-usd-float font-semibold tabular-nums transition-all duration-300 ease-out',
-                        usdSize,
                         justUpdated ? 'scale-[1.02]' : '',
                         justUpdated
-                          ? 'text-[#7CC8FF] drop-shadow-[0_0_46px_rgba(124,200,255,0.20)]'
+                          ? 'text-[#7CC8FF] drop-shadow-[0_0_54px_rgba(124,200,255,0.22)]'
                           : 'text-white',
                       ].join(' ')}
                       style={{
-                        textShadow: justUpdated ? '0 0 32px rgba(124,200,255,0.16)' : '0 0 26px rgba(124,200,255,0.10)',
-                        letterSpacing: isHero ? '-0.02em' : '-0.015em',
+                        ...usdClampStyle,
+                        textShadow: justUpdated ? '0 0 40px rgba(124,200,255,0.18)' : '0 0 30px rgba(124,200,255,0.12)',
+                        letterSpacing: isHero ? '-0.03em' : '-0.02em',
                       }}
                     >
                       {displayUsdText}
                     </div>
 
-                    {/* tiny "tick" sparkle dots (only when updating) */}
                     <div
                       aria-hidden
                       className={[
-                        'pointer-events-none absolute -right-2 -top-2 hidden sm:block',
+                        'pointer-events-none absolute -right-2 -top-2 hidden sm:block transition-opacity duration-300',
                         justUpdated ? 'opacity-100' : 'opacity-0',
-                        'transition-opacity duration-300',
                       ].join(' ')}
                     >
                       <div className="h-2 w-2 rounded-full bg-sky-300 shadow-[0_0_18px_rgba(124,200,255,0.55)]" />
@@ -528,7 +505,7 @@ export default function JackpotPanel({
                     className={[
                       'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
                       justUpdated
-                        ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_20px_rgba(59,167,255,0.10)]'
+                        ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_22px_rgba(59,167,255,0.10)]'
                         : '',
                     ].join(' ')}
                   >
@@ -578,7 +555,6 @@ export default function JackpotPanel({
               */}
             </div>
 
-            {/* Details */}
             <details className="mt-0 group">
               <summary
                 className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-3 text-sm text-slate-200 transition hover:bg-black/20"
