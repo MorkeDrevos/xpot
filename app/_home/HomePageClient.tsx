@@ -888,42 +888,11 @@ function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boole
         <ExternalLink className="h-4 w-4 text-slate-500" />
       </a>
 
-      <div className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-300">
-        <Timer className="h-4 w-4 text-slate-400" />
-        Next draw in <span className="font-mono font-semibold text-slate-100">{countdown}</span>
-      </div>
-    </div>
-  );
-}
-
-function CopyMintRow() {
-  const [copied, setCopied] = useState(false);
-
-  async function onCopy() {
-    try {
-      await navigator.clipboard.writeText(XPOT_CA);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1200);
-    } catch {
-      setCopied(false);
-    }
-  }
-
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
-      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/35 px-4 py-2 text-[12px] text-slate-200 ring-1 ring-white/[0.05]">
-        <span className="text-slate-400">Mint</span>
-        <span className="font-mono">{shortenAddress(XPOT_CA, 10, 10)}</span>
-      </div>
-
-      <button
-        type="button"
-        onClick={onCopy}
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-      >
-        {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4 text-slate-300" />}
-        {copied ? 'Copied' : 'Copy mint'}
-      </button>
+      <div className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-5 py-3 text-[13px] font-semibold text-slate-300">
+  <Timer className="h-4 w-4 text-slate-400" />
+  Next draw in{' '}
+  <span className="font-mono text-slate-100">{countdown}</span>
+</div>
     </div>
   );
 }
@@ -1055,9 +1024,9 @@ function StepRail() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-100/85">Step 3</p>
           <div className="mt-2 flex items-center gap-2 text-[13px] font-semibold text-slate-50">
             <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
-            Winner + proof at 22:00 Madrid
+            Winner revealed at 22:00 Madrid
           </div>
-          <p className="mt-1 text-[12px] leading-relaxed text-slate-200/80">On-chain payout link shown.</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-slate-200/80">TX shown after claim.</p>
         </div>
       </div>
     </div>
@@ -1190,19 +1159,18 @@ function HomePageInner() {
                       </Pill>
 
                       <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                        Handle-first identity + on-chain proof
+                        NO TICKETS - JUST XPOT HOLDINGS
                       </span>
                     </div>
 
                     <div className="mt-4">
                       {/* ORIGINAL H1 (back) */}
                       <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                        One protocol. One identity. One daily <span className="xpot-xpotword">XPOT</span> draw.
+                        One protocol. One daily <span className="xpot-xpotword">XPOT</span> draw.
                       </h1>
 
                       <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300">
-                        Hold XPOT to qualify. Claim entry each day in the hub. Winner is published with a real @handle
-                        and paid on-chain.
+                        Hold XPOT. Claim your daily entry.
                       </p>
 
                       {/* FINAL DRAW - promoted */}
@@ -1257,7 +1225,6 @@ function HomePageInner() {
 </div>
 
                       <PrimaryCtaRow countdown={countdown} warmup={warmup} />
-                      <CopyMintRow />
 
                       <div className="mt-5">
   <WinnerCelebrationCard winner={winnerSpotlight} />
