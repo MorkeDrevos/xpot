@@ -246,6 +246,16 @@ export default function JackpotPanel({
   const winnerPulseTimer = useRef<number | null>(null);
   const lastWinnerIdRef = useRef<string | null>(null);
 
+  // winner avatar fallback state (fixes empty circle if avatar fails)
+  const normalizedHandle = normalizeHandle(latestWinner?.handle ?? null);
+  const winnerLabel = normalizedHandle ? `@${normalizedHandle}` : null;
+  const [winnerAvatarOk, setWinnerAvatarOk] = useState(true);
+
+  useEffect(() => {
+    // reset when handle changes
+    setWinnerAvatarOk(true);
+  }, [normalizedHandle]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -398,8 +408,6 @@ export default function JackpotPanel({
     isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : '',
   ].join(' ');
 
-  const normalizedHandle = normalizeHandle(latestWinner?.handle ?? null);
-  const winnerLabel = normalizedHandle ? `@${normalizedHandle}` : null;
   const winnerWallet = latestWinner?.wallet ? shortWallet(latestWinner.wallet) : null;
   const winnerName = winnerLabel ?? winnerWallet ?? null;
 
@@ -482,26 +490,29 @@ export default function JackpotPanel({
           </div>
         )}
 
-        {/* HEADER */}
-        <div className="relative z-10 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-100">Today&apos;s XPOT</p>
-            <p className="mt-1 text-xs text-slate-400">Live value, next draw countdown, and the latest winner.</p>
-          </div>
+        {/* HEADER (hide in hero mode to avoid duplicated messaging) */}
+        {!isHero && (
+          <div className="relative z-10 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-100">Today&apos;s XPOT</p>
+              <p className="mt-1 text-xs text-slate-400">Live value, next draw countdown, and the latest winner.</p>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
-              Live
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
+                <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]" />
+                Live
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* MAIN SLAB (background removed completely) */}
         <div
           ref={slabRef}
           className={[
-            'relative z-10 mt-4 overflow-hidden border-y border-slate-800/80 bg-transparent px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
+            'relative z-10 overflow-hidden border-y border-slate-800/80 bg-transparent',
+            isHero ? 'mt-3 px-4 py-4 sm:mt-4 sm:rounded-2xl sm:border sm:p-6' : 'mt-4 px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
             layout === 'wide' ? 'w-full' : '',
             layout === 'auto' && autoWide ? 'w-full' : '',
           ].join(' ')}
@@ -699,7 +710,6 @@ export default function JackpotPanel({
                       <div className="mt-2 flex items-center gap-3">
                         {normalizedHandle ? (
                           <span className="relative shrink-0">
-                            {/* avatar */}
                             <span
                               className="absolute -inset-[2px] rounded-full"
                               style={{
@@ -707,33 +717,33 @@ export default function JackpotPanel({
                                   'radial-gradient(circle_at_35%_30%, rgba(255,226,160,0.35), transparent 62%)',
                               }}
                             />
-                            <img
-                              src={xAvatarUrl(normalizedHandle)}
-                              alt={`${winnerLabel ?? 'Winner'} avatar`}
-                              className="relative h-10 w-10 rounded-full border"
-                              style={{
-                                borderColor: 'rgba(255,210,122,0.28)',
-                                boxShadow: '0 0 24px rgba(245,200,76,0.14)',
-                              }}
-                              loading="lazy"
-                              referrerPolicy="no-referrer"
-                              onError={e => {
-                                const el = e.currentTarget;
-                                el.style.display = 'none';
-                              }}
-                            />
-                            {/* fallback initial */}
-                            <span
-                              className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-full border text-sm font-semibold"
-                              style={{
-                                borderColor: 'rgba(255,210,122,0.28)',
-                                color: 'rgba(255,226,160,0.96)',
-                                background: 'rgba(0,0,0,0.22)',
-                              }}
-                              aria-hidden
-                            >
-                              {normalizedHandle.slice(0, 1).toUpperCase()}
-                            </span>
+                            {winnerAvatarOk ? (
+                              <img
+                                src={xAvatarUrl(normalizedHandle)}
+                                alt={`${winnerLabel ?? 'Winner'} avatar`}
+                                className="relative h-10 w-10 rounded-full border"
+                                style={{
+                                  borderColor: 'rgba(255,210,122,0.28)',
+                                  boxShadow: '0 0 24px rgba(245,200,76,0.14)',
+                                }}
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                                onError={() => setWinnerAvatarOk(false)}
+                              />
+                            ) : (
+                              <span
+                                className="relative flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold"
+                                style={{
+                                  borderColor: 'rgba(255,210,122,0.28)',
+                                  color: 'rgba(255,226,160,0.96)',
+                                  background: 'rgba(0,0,0,0.22)',
+                                  boxShadow: '0 0 24px rgba(245,200,76,0.12)',
+                                }}
+                                aria-hidden
+                              >
+                                {normalizedHandle.slice(0, 1).toUpperCase()}
+                              </span>
+                            )}
                           </span>
                         ) : null}
 
