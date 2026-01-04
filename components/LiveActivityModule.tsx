@@ -2,9 +2,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Crown, ExternalLink, Users } from 'lucide-react';
 
+// ✅ Re-export EntryRow so HomePageClient can import it from this module
+export type { EntryRow } from '@/components/EnteringStageLive';
 import type { EntryRow } from '@/components/EnteringStageLive';
 
 export type LiveWinnerRow = {
@@ -12,6 +14,8 @@ export type LiveWinnerRow = {
   handle: string | null;
   name?: string | null;
   avatarUrl?: string | null;
+
+  // kept for compatibility, but we will NOT display it
   wallet: string | null;
 
   amount?: number | null;
@@ -19,13 +23,18 @@ export type LiveWinnerRow = {
 
   drawDate: string | null; // ISO string
   txUrl?: string | null;
-  isPaidOut?: boolean;
 
   kind?: 'MAIN' | 'BONUS' | null;
   label?: string | null;
 
   verified?: boolean;
 };
+
+const ROUTE_HUB = '/hub';
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ');
+}
 
 function normalizeHandle(h: string | null | undefined) {
   const s = String(h ?? '').trim();
@@ -71,14 +80,47 @@ function formatEuTime(iso?: string | null) {
 function formatXpotAmount(winner: LiveWinnerRow | null) {
   const raw =
     typeof winner?.amountXpot === 'number'
-      ? winner?.amountXpot
+      ? winner.amountXpot
       : typeof winner?.amount === 'number'
-        ? winner?.amount
+        ? winner.amount
         : null;
 
   if (!raw || raw <= 0) return null;
-  const n = Math.round(raw);
-  return n.toLocaleString('en-US');
+  return Math.round(raw).toLocaleString('en-US');
+}
+
+function useIsTouch() {
+  const [touch, setTouch] = useState(false);
+  useEffect(() => {
+    const onFirstTouch = () => setTouch(true);
+    window.addEventListener('touchstart', onFirstTouch, { passive: true, once: true });
+    return () => window.removeEventListener('touchstart', onFirstTouch as any);
+  }, []);
+  return touch;
+}
+
+function useOutsideClose(open: boolean, onClose: () => void) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const el = ref.current;
+      if (!el) return;
+      if (e.target && el.contains(e.target as Node)) return;
+      onClose();
+    };
+
+    window.addEventListener('mousedown', onDown, true);
+    window.addEventListener('touchstart', onDown, true);
+    return () => {
+      window.removeEventListener('mousedown', onDown, true);
+      window.removeEventListener('touchstart', onDown, true);
+    };
+  }, [open, onClose]);
+
+  return ref;
 }
 
 function Avatar({
@@ -93,13 +135,14 @@ function Avatar({
   const clean = normalizeHandle(handle).replace(/^@/, '');
   const resolvedSrc = useMemo(() => {
     if (src) return src;
-    const cacheKey = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
+    // Cache-bust a couple times per day so it updates but stays fast
+    const cacheKey = Math.floor(Date.now() / (8 * 60 * 60 * 1000));
     return `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cacheKey}`;
   }, [src, clean]);
 
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-full ring-1 ring-white/15 bg-white/5"
+      className="relative shrink-0 overflow-hidden rounded-full bg-white/[0.06] ring-1 ring-white/15"
       style={{ width: size, height: size }}
       aria-hidden
     >
@@ -111,25 +154,15 @@ function Avatar({
         loading="lazy"
         referrerPolicy="no-referrer"
       />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.16),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_18%,rgba(255,255,255,0.18),transparent_55%)]" />
     </div>
   );
 }
 
-function useIsTouch() {
-  const [touch, setTouch] = useState(false);
-  useEffect(() => {
-    const onFirstTouch = () => setTouch(true);
-    window.addEventListener('touchstart', onFirstTouch, { passive: true, once: true });
-    return () => window.removeEventListener('touchstart', onFirstTouch as any);
-  }, []);
-  return touch;
-}
-
 /**
- * Avatar tooltip.
- * - Desktop: hover/focus
- * - Mobile: tap toggles (first tap shows tooltip)
+ * Premium tooltip:
+ * - Desktop: hover/focus shows tooltip
+ * - Mobile: first tap shows tooltip (prevents nav), second tap opens X
  */
 function AvatarTooltip({
   handle,
@@ -150,101 +183,107 @@ function AvatarTooltip({
 }) {
   const isTouch = useIsTouch();
   const [open, setOpen] = useState(false);
-  const closeTimer = useRef<number | null>(null);
+
+  const boxRef = useOutsideClose(open, () => setOpen(false));
 
   const labelTop = normalizeHandle(handle);
   const labelSub = name ? String(name).trim() : '';
   const labelMeta = meta ? String(meta).trim() : '';
 
-  const closeSoon = () => {
-    if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setOpen(false), 120);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    };
-  }, []);
-
-  const onEnter = () => {
+  const hoverOpen = () => {
     if (isTouch) return;
-    if (closeTimer.current) window.clearTimeout(closeTimer.current);
     setOpen(true);
   };
 
-  const onLeave = () => {
+  const hoverClose = () => {
     if (isTouch) return;
-    closeSoon();
+    setOpen(false);
   };
 
-  const onToggleTouch = (e: React.MouseEvent) => {
+  const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!isTouch) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setOpen(v => !v);
+    // Mobile behavior:
+    // - if closed: open tooltip, prevent nav
+    // - if open: allow navigation (second tap)
+    if (!open) {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(true);
+    }
   };
 
   return (
-    <span className="relative inline-flex">
+    <div className="relative inline-flex" ref={boxRef}>
       <a
         href={href}
         target="_blank"
         rel="nofollow noopener noreferrer"
-        className="inline-flex items-center"
-        onMouseEnter={onEnter}
-        onMouseLeave={onLeave}
-        onFocus={onEnter}
-        onBlur={onLeave}
-        onClick={onToggleTouch}
+        className="group inline-flex items-center"
+        onMouseEnter={hoverOpen}
+        onMouseLeave={hoverClose}
+        onFocus={hoverOpen}
+        onBlur={hoverClose}
+        onClick={onClick}
         aria-label={`Open ${labelTop} on X`}
       >
-        <Avatar src={avatarUrl} handle={handle} size={size} />
+        <div className="relative">
+          <Avatar src={avatarUrl} handle={handle} size={size} />
+          <div className="pointer-events-none absolute -inset-1 rounded-full opacity-0 ring-2 ring-white/20 transition-opacity group-hover:opacity-100" />
+        </div>
       </a>
 
       {open ? (
         <div
-          className={[
-            'absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2',
-            'min-w-[240px] max-w-[320px]',
-            'rounded-2xl border border-white/10 bg-black/88 backdrop-blur',
-            'px-3 py-2 shadow-[0_30px_90px_rgba(0,0,0,0.6)]',
-          ].join(' ')}
+          className={cx(
+            'absolute left-1/2 top-full z-30 mt-2 -translate-x-1/2',
+            'w-[260px] max-w-[78vw]',
+            'rounded-3xl border border-white/12 bg-slate-950/85 backdrop-blur-xl',
+            'shadow-[0_30px_110px_rgba(0,0,0,0.75)]',
+          )}
+          role="tooltip"
           onMouseEnter={() => {
             if (isTouch) return;
-            if (closeTimer.current) window.clearTimeout(closeTimer.current);
+            setOpen(true);
           }}
-          onMouseLeave={onLeave}
-          role="tooltip"
+          onMouseLeave={hoverClose}
         >
-          <div className="flex items-start gap-3">
-            <Avatar src={avatarUrl} handle={handle} size={34} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <div className="truncate text-[12px] font-semibold text-slate-100">{labelTop}</div>
-                {verified ? (
-                  <span className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
-                    verified
-                  </span>
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.28),rgba(255,255,255,0.06),rgba(56,189,248,0.16),transparent)]" />
+          <div className="p-3">
+            <div className="flex items-start gap-3">
+              <Avatar src={avatarUrl} handle={handle} size={38} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="truncate text-[12px] font-semibold text-slate-100">{labelTop}</div>
+                  {verified ? (
+                    <span className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
+                      verified
+                    </span>
+                  ) : null}
+                </div>
+
+                {labelSub ? <div className="truncate text-[11px] text-slate-300/80">{labelSub}</div> : null}
+                {labelMeta ? <div className="mt-1 text-[10px] text-slate-400">{labelMeta}</div> : null}
+
+                <div className="mt-3">
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="nofollow noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                  >
+                    Open on X <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                  </a>
+                </div>
+
+                {isTouch ? (
+                  <div className="mt-2 text-[10px] text-slate-500">Tip: tap avatar again to open X.</div>
                 ) : null}
               </div>
-
-              {labelSub ? <div className="truncate text-[11px] text-slate-300/80">{labelSub}</div> : null}
-              {labelMeta ? <div className="mt-1 text-[10px] text-slate-400">{labelMeta}</div> : null}
-
-              <a
-                href={href}
-                target="_blank"
-                rel="nofollow noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-100/90 hover:text-slate-50"
-              >
-                Open on X <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-              </a>
             </div>
           </div>
         </div>
       ) : null}
-    </span>
+    </div>
   );
 }
 
@@ -259,6 +298,7 @@ function cleanEntries(entries: EntryRow[]) {
     const key = `${h}-${e.createdAt ?? ''}`;
     if (seen.has(key)) continue;
     seen.add(key);
+
     out.push({
       ...e,
       handle: h,
@@ -271,6 +311,67 @@ function cleanEntries(entries: EntryRow[]) {
   return out;
 }
 
+function CompactRow({
+  handle,
+  name,
+  time,
+  avatarUrl,
+  verified,
+}: {
+  handle: string;
+  name?: string | null;
+  time?: string | null;
+  avatarUrl?: string | null;
+  verified?: boolean;
+}) {
+  const href = toXProfileUrl(handle);
+  const meta = time ? `Madrid time: ${time}` : null;
+
+  return (
+    <div
+      className={cx(
+        'group relative flex items-center justify-between gap-3',
+        'rounded-2xl border border-white/10 bg-white/[0.02]',
+        'px-3 py-2',
+        'hover:bg-white/[0.04] hover:border-white/14 transition',
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <AvatarTooltip
+          handle={handle}
+          name={name ?? ''}
+          meta={meta}
+          avatarUrl={avatarUrl ?? null}
+          href={href}
+          verified={verified}
+          size={34}
+        />
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <a
+              href={href}
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              className="truncate text-[13px] font-semibold text-slate-100"
+              title={handle}
+            >
+              {handle}
+            </a>
+            <ExternalLink className="h-3.5 w-3.5 text-slate-600 opacity-0 transition-opacity group-hover:opacity-100" />
+          </div>
+          {name ? <div className="truncate text-[11px] text-slate-400">{name}</div> : null}
+        </div>
+      </div>
+
+      <div className="shrink-0 text-right">
+        {time ? <div className="text-[11px] font-semibold text-slate-200">{time}</div> : null}
+        <div className="text-[10px] text-slate-500">today</div>
+      </div>
+    </div>
+  );
+}
+
 export default function LiveActivityModule({
   winner,
   entries,
@@ -281,7 +382,7 @@ export default function LiveActivityModule({
   className?: string;
 }) {
   const list = useMemo(() => cleanEntries(entries), [entries]);
-  const top = list.slice(0, 8);
+  const top = list.slice(0, 6);
 
   const winnerHandle = normalizeHandle(winner?.handle ?? '');
   const winnerName = winner?.name ? String(winner.name).trim() : '';
@@ -289,24 +390,22 @@ export default function LiveActivityModule({
   const winnerPrize = formatXpotAmount(winner);
   const winnerHref = toXProfileUrl(winnerHandle);
 
-  const ROUTE_HUB = '/hub';
-
   return (
     <section
-      className={[
+      className={cx(
         'relative overflow-hidden rounded-[28px] sm:rounded-[34px]',
         'border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]',
-        'shadow-[0_40px_140px_rgba(0,0,0,0.6)]',
+        'shadow-[0_50px_160px_rgba(0,0,0,0.65)]',
         className,
-      ].join(' ')}
+      )}
     >
       {/* premium seam */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.08),rgba(56,189,248,0.22),transparent)]" />
-      {/* calm aura */}
-      <div className="pointer-events-none absolute -inset-28 opacity-70 blur-3xl bg-[radial-gradient(circle_at_14%_18%,rgba(var(--xpot-gold),0.12),transparent_60%),radial-gradient(circle_at_86%_22%,rgba(56,189,248,0.10),transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.34),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)]" />
+      {/* soft aura */}
+      <div className="pointer-events-none absolute -inset-28 opacity-60 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.12),transparent_58%),radial-gradient(circle_at_84%_22%,rgba(56,189,248,0.10),transparent_60%)]" />
 
       <div className="relative p-4 sm:p-6">
-        {/* Header */}
+        {/* header */}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Live activity</p>
@@ -325,12 +424,12 @@ export default function LiveActivityModule({
           </Link>
         </div>
 
-        {/* Content grid */}
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-          {/* Spotlight (winner) */}
+        {/* layout */}
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+          {/* WINNER */}
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.35),transparent)]" />
-            <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.16),transparent_62%),radial-gradient(circle_at_70%_10%,rgba(56,189,248,0.10),transparent_62%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.36),transparent)]" />
+            <div className="pointer-events-none absolute inset-0 opacity-55 bg-[radial-gradient(circle_at_18%_28%,rgba(var(--xpot-gold),0.10),transparent_60%)]" />
 
             <div className="p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
@@ -354,7 +453,30 @@ export default function LiveActivityModule({
                 )}
               </div>
 
-              {/* Winner identity row */}
+              {/* promo amount */}
+              <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.02] p-4 sm:p-5">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+                  WINNER JUST TOOK HOME
+                </div>
+
+                <div className="mt-2 flex items-end justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-[34px] leading-none font-semibold tracking-tight text-[rgb(var(--xpot-gold-2))]">
+                      {winnerPrize ? `×${winnerPrize}` : '—'}
+                    </div>
+                    <div className="mt-2 text-[11px] text-slate-400">XPOT</div>
+                  </div>
+
+                  <div className="shrink-0">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/35 px-3 py-1.5 text-[11px] font-semibold text-slate-200">
+                      <Users className="h-3.5 w-3.5 text-sky-200" />
+                      published handle-first
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* identity row */}
               <div className="mt-4 flex items-center gap-3">
                 <AvatarTooltip
                   handle={winnerHandle}
@@ -372,49 +494,27 @@ export default function LiveActivityModule({
                       href={winnerHref}
                       target="_blank"
                       rel="nofollow noopener noreferrer"
-                      className="truncate text-[16px] font-semibold text-slate-100 hover:text-white transition"
+                      className="truncate text-[16px] font-semibold text-slate-100"
                       title={winnerHandle}
                     >
                       {winnerHandle}
                     </a>
                     <ExternalLink className="h-4 w-4 text-slate-600" />
                   </div>
+
                   {winnerName ? <div className="truncate text-[12px] text-slate-400">{winnerName}</div> : null}
                   {winnerWhen ? <div className="mt-1 text-[11px] text-slate-500">{winnerWhen}</div> : null}
                 </div>
               </div>
 
-              {/* PRIZE HERO */}
-              <div className="mt-4 relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] ring-1 ring-white/[0.06] px-4 py-4 sm:px-5 sm:py-5">
-                <div className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl bg-[radial-gradient(circle_at_30%_35%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_80%_15%,rgba(56,189,248,0.12),transparent_60%)]" />
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.08),transparent)]" />
-
-                <div className="relative">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Won</p>
-
-                  <div className="mt-2 flex items-end gap-3">
-                    <div className="text-[34px] sm:text-[44px] leading-none font-semibold tracking-tight text-[rgb(var(--xpot-gold-2))]">
-                      {winnerPrize ? `×${winnerPrize}` : '—'}
-                    </div>
-                    <div className="pb-1">
-                      <span className="inline-flex items-center rounded-full border border-[rgba(var(--xpot-gold),0.25)] bg-[rgba(var(--xpot-gold),0.08)] px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-[rgb(var(--xpot-gold-2))]">
-                        XPOT
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="mt-2 text-[12px] text-slate-400">
-                    Published handle-first. Proof shown when paid.
-                  </p>
-                </div>
-              </div>
+              {/* NOTE: wallet intentionally removed */}
             </div>
           </div>
 
-          {/* Recent entries */}
+          {/* ENTRIES */}
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.28),transparent)]" />
-            <div className="pointer-events-none absolute -inset-24 opacity-60 blur-3xl bg-[radial-gradient(circle_at_85%_10%,rgba(56,189,248,0.12),transparent_60%),radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.26),transparent)]" />
+            <div className="pointer-events-none absolute inset-0 opacity-55 bg-[radial-gradient(circle_at_84%_22%,rgba(56,189,248,0.10),transparent_60%)]" />
 
             <div className="p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
@@ -429,45 +529,16 @@ export default function LiveActivityModule({
                 {top.length ? (
                   top.map((e, idx) => {
                     const handle = normalizeHandle(e.handle);
-                    const href = toXProfileUrl(handle);
                     const t = e.createdAt ? formatEuTime(e.createdAt) : '';
-                    const meta = t ? `Madrid time: ${t}` : null;
-
                     return (
-                      <div
+                      <CompactRow
                         key={`${handle}-${e.createdAt ?? idx}`}
-                        className="group flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2 hover:bg-white/[0.035] transition"
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <AvatarTooltip
-                            handle={handle}
-                            name={e.name ?? ''}
-                            meta={meta}
-                            avatarUrl={e.avatarUrl ?? null}
-                            href={href}
-                            size={34}
-                            verified={Boolean((e as any)?.verified)}
-                          />
-
-                          <div className="min-w-0">
-                            <a
-                              href={href}
-                              target="_blank"
-                              rel="nofollow noopener noreferrer"
-                              className="truncate text-[13px] font-semibold text-slate-100 group-hover:text-white transition"
-                              title={handle}
-                            >
-                              {handle}
-                            </a>
-                            {e.name ? <div className="truncate text-[11px] text-slate-400">{e.name}</div> : null}
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 text-right">
-                          {t ? <div className="text-[11px] font-semibold text-slate-200">{t}</div> : null}
-                          <div className="text-[10px] text-slate-500">today</div>
-                        </div>
-                      </div>
+                        handle={handle}
+                        name={e.name ?? ''}
+                        time={t || null}
+                        avatarUrl={e.avatarUrl ?? null}
+                        verified={Boolean((e as any)?.verified)}
+                      />
                     );
                   })
                 ) : (
@@ -477,7 +548,9 @@ export default function LiveActivityModule({
                 )}
               </div>
 
-              <div className="mt-4 text-[11px] text-slate-500">Tip: hover (desktop) or tap (mobile) avatars.</div>
+              <div className="mt-4 text-[11px] text-slate-500">
+                Tip: hover (desktop) or tap (mobile) avatars.
+              </div>
             </div>
           </div>
         </div>
