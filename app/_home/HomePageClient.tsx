@@ -743,7 +743,7 @@ async function fetchFirstOk<T = any>(urls: string[]): Promise<T | null> {
  *    GET /api/winners/recent?limit=1
  */
 function useLatestWinnerCard() {
-  const [winner, setWinner] = useState<LiveWinnerRow | null>(null);
+  const [winner, setWinner] = useState<WinnerRow | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -1047,7 +1047,7 @@ function HomePageInner() {
                         </Pill>
 
                         <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                          NO TICKETS - JUST 100,000 XPOT HOLDINGS
+                          NO TICKETS - JUST XPOT HOLDINGS
                         </span>
                       </div>
 
