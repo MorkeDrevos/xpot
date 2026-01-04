@@ -107,7 +107,7 @@ function Avatar({
 
   // VIP tags: verified gets gold outline, others neutral
   const frame = verified
-    ? 'border-[rgba(var(--xpot-gold),0.35)] ring-2 ring-[rgba(var(--xpot-gold),0.28)] shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.16),0_0_26px_rgba(245,158,11,0.12)]'
+    ? 'border-[rgba(var(--xpot-gold),0.42)] ring-2 ring-[rgba(var(--xpot-gold),0.30)] shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.18),0_0_30px_rgba(245,158,11,0.14)]'
     : 'border-white/12 ring-1 ring-white/[0.08]';
 
   return (
@@ -137,6 +137,9 @@ function Avatar({
 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.12),transparent_60%)]" />
       <div className="pointer-events-none absolute inset-0 ring-1 ring-white/[0.06]" />
+
+      {/* subtle “spotlight” halo */}
+      <div className="pointer-events-none absolute -inset-7 opacity-50 blur-2xl bg-[radial-gradient(circle_at_50%_35%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_40%_60%,rgba(var(--xpot-gold),0.11),transparent_64%)]" />
     </div>
   );
 }
@@ -162,11 +165,16 @@ function MiniDot({
   const [failed, setFailed] = useState(false);
 
   const cls = verified
-    ? 'border-[rgba(var(--xpot-gold),0.38)] ring-1 ring-[rgba(var(--xpot-gold),0.22)]'
+    ? 'border-[rgba(var(--xpot-gold),0.42)] ring-1 ring-[rgba(var(--xpot-gold),0.26)]'
     : 'border-white/14 ring-1 ring-white/[0.06]';
 
   return (
-    <span className={['relative inline-flex h-3.5 w-3.5 overflow-hidden rounded-full border bg-white/[0.04]', cls].join(' ')}>
+    <span
+      className={[
+        'relative inline-flex h-3.5 w-3.5 overflow-hidden rounded-full border bg-white/[0.04]',
+        cls,
+      ].join(' ')}
+    >
       {resolvedSrc && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -184,25 +192,21 @@ function MiniDot({
   );
 }
 
-function TooltipCard({
-  e,
-  isMe,
-}: {
-  e: EntryRow;
-  isMe: boolean;
-}) {
+function TooltipCard({ e, isMe }: { e: EntryRow; isMe: boolean }) {
   const handle = normalizeHandle(e.handle);
   const name = e.name ? String(e.name).trim() : '';
   return (
     <div
       className={[
         'pointer-events-none absolute left-1/2 top-full z-20 mt-3 -translate-x-1/2',
-        'w-[240px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80',
-        'ring-1 ring-white/[0.06] shadow-[0_30px_120px_rgba(0,0,0,0.70)]',
+        'w-[260px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/82',
+        'ring-1 ring-white/[0.06] shadow-[0_30px_120px_rgba(0,0,0,0.72)]',
         'backdrop-blur-xl',
       ].join(' ')}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.65),rgba(56,189,248,0.35),transparent)] opacity-70" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.70),rgba(56,189,248,0.40),transparent)] opacity-80" />
+      <div className="pointer-events-none absolute -inset-10 opacity-60 blur-3xl bg-[radial-gradient(circle_at_30%_10%,rgba(var(--xpot-gold),0.12),transparent_60%),radial-gradient(circle_at_70%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+
       <div className="p-3">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -252,7 +256,6 @@ export default function EnteringStageLive({
   const row = list.slice(0, max);
   const newest = row[0] ?? null;
 
-  // premium “new entrant” calm sweep (not neon flash)
   const newestKey = useMemo(() => (newest ? makeKey(newest, 0) : null), [newest]);
   const prevNewestKey = useRef<string | null>(null);
   const [newPulse, setNewPulse] = useState(false);
@@ -261,7 +264,7 @@ export default function EnteringStageLive({
     if (!newestKey) return;
     if (prevNewestKey.current && prevNewestKey.current !== newestKey) {
       setNewPulse(true);
-      const t = window.setTimeout(() => setNewPulse(false), reduceMotion ? 300 : 1200);
+      const t = window.setTimeout(() => setNewPulse(false), reduceMotion ? 320 : 1400);
       return () => window.clearTimeout(t);
     }
     prevNewestKey.current = newestKey;
@@ -271,97 +274,170 @@ export default function EnteringStageLive({
   const outerClass = embedded
     ? ['relative', className].join(' ')
     : [
-        'relative overflow-hidden rounded-[22px] border border-white/10 bg-slate-950/18 ring-1 ring-white/[0.05]',
-        'shadow-[0_30px_140px_rgba(0,0,0,0.60)]',
+        'relative overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/18 ring-1 ring-white/[0.05]',
+        'shadow-[0_34px_160px_rgba(0,0,0,0.62)]',
         className,
       ].join(' ');
 
   return (
     <Outer className={outerClass}>
       <style jsx global>{`
-  @keyframes xpotLiveDot {
-    0% { opacity: 0.55; transform: scale(0.95); }
-    55% { opacity: 1; transform: scale(1.06); }
-    100% { opacity: 0.55; transform: scale(0.95); }
-  }
-  .xpot-live-dot { animation: xpotLiveDot 1.35s ease-in-out infinite; }
+        @keyframes xpotLiveDot {
+          0% {
+            opacity: 0.55;
+            transform: scale(0.95);
+          }
+          55% {
+            opacity: 1;
+            transform: scale(1.08);
+          }
+          100% {
+            opacity: 0.55;
+            transform: scale(0.95);
+          }
+        }
+        .xpot-live-dot {
+          animation: xpotLiveDot 1.35s ease-in-out infinite;
+        }
 
-  @keyframes xpotAuraBreath {
-    0% { opacity: 0.35; }
-    55% { opacity: 0.60; }
-    100% { opacity: 0.35; }
-  }
-  .xpot-aura-breath { animation: xpotAuraBreath 3.6s ease-in-out infinite; }
+        /* Hollywood “stage lights” shimmer */
+        @keyframes xpotStageSweep {
+          0% {
+            transform: translateX(-65%) skewX(-16deg);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.16;
+          }
+          55% {
+            opacity: 0.10;
+          }
+          100% {
+            transform: translateX(65%) skewX(-16deg);
+            opacity: 0;
+          }
+        }
+        .xpot-stage-sweep {
+          position: absolute;
+          inset: -140px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 28%,
+            rgba(var(--xpot-gold), 0.22) 50%,
+            rgba(56, 189, 248, 0.12) 72%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          animation: xpotStageSweep 10.8s ease-in-out infinite;
+        }
 
-  @keyframes xpotNewSweep {
-    0% { transform: translateX(-70%) skewX(-18deg); opacity: 0; }
-    22% { opacity: 0.20; }
-    65% { opacity: 0.10; }
-    100% { transform: translateX(70%) skewX(-18deg); opacity: 0; }
-  }
-  .xpot-new-sweep {
-    position: absolute;
-    inset: -70px;
-    pointer-events: none;
-    background: linear-gradient(
-      100deg,
-      transparent 0%,
-      rgba(255,255,255,0.05) 30%,
-      rgba(var(--xpot-gold),0.16) 50%,
-      rgba(56,189,248,0.10) 70%,
-      transparent 100%
-    );
-    mix-blend-mode: screen;
-    opacity: 0;
-  }
-  .xpot-new-sweep.on { animation: xpotNewSweep 1.35s ease-in-out 1; }
+        /* “new entrant” hero sweep */
+        @keyframes xpotNewSweep {
+          0% {
+            transform: translateX(-75%) skewX(-18deg);
+            opacity: 0;
+          }
+          20% {
+            opacity: 0.22;
+          }
+          60% {
+            opacity: 0.12;
+          }
+          100% {
+            transform: translateX(75%) skewX(-18deg);
+            opacity: 0;
+          }
+        }
+        .xpot-new-sweep {
+          position: absolute;
+          inset: -90px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(var(--xpot-gold), 0.18) 50%,
+            rgba(56, 189, 248, 0.10) 70%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+        }
+        .xpot-new-sweep.on {
+          animation: xpotNewSweep 1.6s ease-in-out 1;
+        }
 
-  @media (prefers-reduced-motion: reduce) {
-    .xpot-live-dot { animation: none; }
-    .xpot-aura-breath { animation: none; opacity: 0.45; }
-    .xpot-new-sweep.on { animation: none; opacity: 0; }
-  }
-`}</style>
+        /* breathing rim glow (expensive, alive) */
+        @keyframes xpotAuraBreath {
+          0% {
+            opacity: 0.38;
+          }
+          55% {
+            opacity: 0.70;
+          }
+          100% {
+            opacity: 0.38;
+          }
+        }
+        .xpot-aura-breath {
+          animation: xpotAuraBreath 4.2s ease-in-out infinite;
+        }
 
-{/* Premium ambient aura (alive) */}
-<div className="pointer-events-none absolute -inset-[2px] rounded-[22px] opacity-60 blur-xl xpot-aura-breath
-  bg-[radial-gradient(circle_at_18%_45%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_82%_50%,rgba(16,185,129,0.14),transparent_58%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.12),transparent_60%)]"
-/>
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-live-dot {
+            animation: none;
+          }
+          .xpot-stage-sweep {
+            animation: none;
+            opacity: 0.08;
+          }
+          .xpot-aura-breath {
+            animation: none;
+            opacity: 0.60;
+          }
+          .xpot-new-sweep.on {
+            animation: none;
+            opacity: 0;
+          }
+        }
+      `}</style>
 
-{/* Thin luminous rim (expensive, not neon) */}
-<div className="pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-white/[0.08]" />
-<div className="pointer-events-none absolute inset-0 rounded-[22px]
-  shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_50px_rgba(56,189,248,0.08),0_0_45px_rgba(16,185,129,0.06)]"
-/>
+      {/* Hollywood ambient “stage lights” */}
+      <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_14%_40%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_86%_44%,rgba(16,185,129,0.08),transparent_64%),radial-gradient(circle_at_55%_110%,rgba(var(--xpot-gold),0.10),transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
 
-      {!embedded ? (
-        <>
-          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_16%_40%,rgba(56,189,248,0.08),transparent_62%),radial-gradient(circle_at_84%_42%,rgba(16,185,129,0.07),transparent_64%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.06),transparent_58%)]" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.05] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(56,189,248,0.30),transparent)] opacity-70" />
-        </>
-      ) : null}
+      {/* expensive rim + glow */}
+      <div className="pointer-events-none absolute -inset-[2px] rounded-[26px] opacity-65 blur-xl xpot-aura-breath bg-[radial-gradient(circle_at_18%_45%,rgba(56,189,248,0.20),transparent_55%),radial-gradient(circle_at_82%_50%,rgba(16,185,129,0.15),transparent_58%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.13),transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 rounded-[26px] ring-1 ring-white/[0.08]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.62),rgba(56,189,248,0.40),transparent)] opacity-80" />
 
-{/* FULL container sweep (alive) */}
-<div className={['xpot-new-sweep', newPulse && !reduceMotion ? 'on' : ''].join(' ')} />
+      {/* perpetual stage sweep (subtle, always-on) */}
+      <div className="xpot-stage-sweep" />
+
+      {/* full container “new entrant” sweep */}
+      <div className={['xpot-new-sweep', newPulse && !reduceMotion ? 'on' : ''].join(' ')} />
+
       <div className="relative flex items-center gap-3 px-4 py-3 sm:px-5">
-        {/* label */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+        {/* label - now feels like a plaque */}
+        <div className="relative inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.035] px-3 py-1.5">
+          <div className="pointer-events-none absolute -inset-3 opacity-50 blur-2xl bg-[radial-gradient(circle_at_30%_30%,rgba(var(--xpot-gold),0.10),transparent_60%),radial-gradient(circle_at_70%_60%,rgba(56,189,248,0.08),transparent_64%)]" />
           <Users className="h-4 w-4 text-sky-200" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-200">
             {label}
           </span>
         </div>
 
         {/* runway */}
         <div className="relative min-w-0 flex-1">
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-[linear-gradient(90deg,rgba(2,6,23,0.92),transparent)]" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-[linear-gradient(270deg,rgba(2,6,23,0.92),transparent)]" />
+          {/* cinematic fades */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-[linear-gradient(90deg,rgba(2,6,23,0.94),transparent)]" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-[linear-gradient(270deg,rgba(2,6,23,0.94),transparent)]" />
 
           <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <div className="relative flex items-center gap-2 pr-6">
-              <div className={['xpot-new-sweep', newPulse && !reduceMotion ? 'on' : ''].join(' ')} />
-
               {has ? (
                 <>
                   {/* ULTRA: avatars only, hover reveals */}
@@ -371,6 +447,7 @@ export default function EnteringStageLive({
                         const key = makeKey(e, idx);
                         const handle = normalizeHandle(e.handle);
                         const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
+
                         return (
                           <motion.a
                             key={key}
@@ -378,21 +455,34 @@ export default function EnteringStageLive({
                             target="_blank"
                             rel="nofollow noopener noreferrer"
                             className="group relative inline-flex items-center"
-                            initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6, filter: 'blur(8px)' }}
-                            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-                            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(8px)' }}
-                            transition={reduceMotion ? undefined : { duration: 0.22, ease: 'easeOut' }}
+                            initial={
+                              reduceMotion
+                                ? { opacity: 1 }
+                                : { opacity: 0, y: 10, filter: 'blur(10px)' }
+                            }
+                            animate={
+                              reduceMotion
+                                ? { opacity: 1 }
+                                : { opacity: 1, y: 0, filter: 'blur(0px)' }
+                            }
+                            exit={
+                              reduceMotion
+                                ? { opacity: 0 }
+                                : { opacity: 0, y: -10, filter: 'blur(10px)' }
+                            }
+                            transition={reduceMotion ? undefined : { duration: 0.28, ease: 'easeOut' }}
                             aria-label={`Open ${handle} on X`}
                             title={handle}
                           >
+                            {/* subtle “footlight” under each avatar */}
+                            <div className="pointer-events-none absolute -bottom-2 left-1/2 h-8 w-10 -translate-x-1/2 opacity-60 blur-xl bg-[radial-gradient(circle_at_50%_70%,rgba(var(--xpot-gold),0.12),transparent_70%)]" />
                             <Avatar
                               src={e.avatarUrl}
                               label={handle}
                               verified={e.verified}
-                              size={Math.max(28, avatarSize)}
+                              size={Math.max(30, avatarSize)}
                             />
 
-                            {/* hover reveal */}
                             <div className="hidden group-hover:block">
                               <TooltipCard e={e} isMe={isMe} />
                             </div>
@@ -409,6 +499,7 @@ export default function EnteringStageLive({
                         const key = makeKey(e, idx);
                         const handle = normalizeHandle(e.handle);
                         const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
+
                         return (
                           <motion.a
                             key={key}
@@ -420,10 +511,22 @@ export default function EnteringStageLive({
                               'border-white/10 bg-white/[0.02] hover:bg-white/[0.045]',
                               isMe ? 'border-emerald-300/20 bg-emerald-500/10' : '',
                             ].join(' ')}
-                            initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6, filter: 'blur(8px)' }}
-                            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-                            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(8px)' }}
-                            transition={reduceMotion ? undefined : { duration: 0.22, ease: 'easeOut' }}
+                            initial={
+                              reduceMotion
+                                ? { opacity: 1 }
+                                : { opacity: 0, y: 10, filter: 'blur(10px)' }
+                            }
+                            animate={
+                              reduceMotion
+                                ? { opacity: 1 }
+                                : { opacity: 1, y: 0, filter: 'blur(0px)' }
+                            }
+                            exit={
+                              reduceMotion
+                                ? { opacity: 0 }
+                                : { opacity: 0, y: -10, filter: 'blur(10px)' }
+                            }
+                            transition={reduceMotion ? undefined : { duration: 0.26, ease: 'easeOut' }}
                             aria-label={`Open ${handle} on X`}
                             title={handle}
                           >
@@ -451,7 +554,7 @@ export default function EnteringStageLive({
                         const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
 
                         const border = e.verified
-                          ? 'border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.06)]'
+                          ? 'border-[rgba(var(--xpot-gold),0.32)] bg-[rgba(var(--xpot-gold),0.07)]'
                           : 'border-white/10 bg-white/[0.02]';
 
                         return (
@@ -466,10 +569,22 @@ export default function EnteringStageLive({
                               'hover:bg-white/[0.045]',
                               isMe ? 'ring-1 ring-emerald-300/20' : 'ring-1 ring-white/[0.04]',
                             ].join(' ')}
-                            initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6, filter: 'blur(8px)' }}
-                            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-                            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(8px)' }}
-                            transition={reduceMotion ? undefined : { duration: 0.22, ease: 'easeOut' }}
+                            initial={
+                              reduceMotion
+                                ? { opacity: 1 }
+                                : { opacity: 0, y: 10, filter: 'blur(10px)' }
+                            }
+                            animate={
+                              reduceMotion
+                                ? { opacity: 1 }
+                                : { opacity: 1, y: 0, filter: 'blur(0px)' }
+                            }
+                            exit={
+                              reduceMotion
+                                ? { opacity: 0 }
+                                : { opacity: 0, y: -10, filter: 'blur(10px)' }
+                            }
+                            transition={reduceMotion ? undefined : { duration: 0.26, ease: 'easeOut' }}
                             aria-label={`Open ${handle} on X`}
                             title={handle}
                           >
@@ -477,7 +592,7 @@ export default function EnteringStageLive({
                               src={e.avatarUrl}
                               label={handle}
                               verified={e.verified}
-                              size={Math.max(26, avatarSize)}
+                              size={Math.max(28, avatarSize)}
                             />
 
                             <div className="min-w-0 leading-tight">
