@@ -109,7 +109,7 @@ type LatestWinner = {
   amount?: number | null;
   handle?: string | null;
   wallet?: string | null;
-  txSignature?: string | null; // Solana tx signature (preferred verification link)
+  txSignature?: string | null;
 };
 
 function shortWallet(w: string, head = 4, tail = 4) {
@@ -409,7 +409,6 @@ export default function JackpotPanel({
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
-      {/* Local shimmer keyframes (so you don't need a global css edit) */}
       <style jsx global>{`
         @keyframes xpotWinnerSweep {
           0% {
@@ -466,22 +465,15 @@ export default function JackpotPanel({
           </div>
         </div>
 
-        {/* MAIN SLAB */}
+        {/* MAIN SLAB (background removed completely) */}
         <div
           ref={slabRef}
           className={[
-            'relative z-10 mt-5 overflow-hidden border-y border-slate-800/80 bg-black/25 px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
+            'relative z-10 mt-5 overflow-hidden border-y border-slate-800/80 bg-transparent px-4 py-4 sm:rounded-2xl sm:border sm:p-5',
             layout === 'wide' ? 'w-full' : '',
             layout === 'auto' && autoWide ? 'w-full' : '',
           ].join(' ')}
         >
-          <div className="pointer-events-none absolute inset-0">
-            <div className="xpot-engine absolute inset-0" />
-            <div className="xpot-aurora absolute inset-0 opacity-70" />
-            <div className="xpot-noise absolute inset-0 opacity-[0.10]" />
-            <div className="xpot-scan absolute inset-0 opacity-[0.12]" />
-          </div>
-
           {/* Marketing row */}
           <div className="relative flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -602,7 +594,7 @@ export default function JackpotPanel({
                 <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Live market price feed</p>
               )}
 
-              {/* ✅ Latest winner (celebration shimmer on winnerPulse only) */}
+              {/* Latest winner */}
               {showWinnerStrip && (
                 <WinnerWrapper
                   {...winnerWrapperProps}
@@ -626,7 +618,6 @@ export default function JackpotPanel({
                         : '0 0 0 1px rgba(255,255,255,0.04)',
                   }}
                 >
-                  {/* shimmer overlays - only while winnerPulse is true */}
                   {winnerPulse && (
                     <div className="pointer-events-none absolute inset-0">
                       <div
