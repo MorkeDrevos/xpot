@@ -219,8 +219,8 @@ export default function JackpotPanel({
 
   const panelChrome =
     variant === 'embedded'
-      ? 'w-full rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/10 shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
-      : 'w-full rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/10 shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
+      ? 'w-full rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/[0.06] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
+      : 'w-full rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.06] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
 
   const capsuleWrap = 'group relative inline-flex max-w-full items-center';
 
@@ -478,10 +478,9 @@ export default function JackpotPanel({
           <div className="relative mt-5 grid gap-4">
             <div
   className={[
-    'xpot-usd-box relative overflow-hidden rounded-2xl border bg-black/30',
-    'px-5 py-5 sm:px-7 sm:py-6 lg:px-8 lg:py-7',
-    justUpdated ? 'border-sky-400/35' : 'border-slate-800/70',
-  ].join(' ')}
+  'xpot-usd-box relative overflow-hidden rounded-2xl border',
+  justUpdated ? 'border-sky-400/25' : 'border-white/[0.05]',
+].join(' ')}
               data-hero={isHero ? '1' : '0'}
               style={{
                 background:
@@ -579,7 +578,7 @@ export default function JackpotPanel({
       <UsdEstimateBadge compact />
       <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Estimated value</span>
 
-      <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-300 md:px-3 md:text-[10px]">
+      <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-300 md:px-3 md:text-[10px]">
         <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
         <span className="leading-none">Live</span>
       </span>
@@ -593,7 +592,7 @@ export default function JackpotPanel({
               <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
                 <span
                   className={[
-                    'inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
+                    'inline-flex items-center rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition-shadow',
                     countPulse ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.16),0_0_18px_rgba(59,167,255,0.10)]' : '',
                   ].join(' ')}
                 >
@@ -784,7 +783,7 @@ export default function JackpotPanel({
                       </div>
 
                       <div className="mt-3">
-                        <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
+                        <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/[0.06]">
                           <div
                             className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.12)]"
                             style={{
