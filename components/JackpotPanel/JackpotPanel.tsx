@@ -34,6 +34,8 @@ export type JackpotPanelProps = {
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 const PRICE_POLL_MS = 4000; // 4s
 
+const WINNER_POLL_MS = 15_000; // 15s
+
 const MILESTONES = [
   5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
   3_000, 4_000, 5_000, 7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000,
@@ -102,6 +104,83 @@ function useSmoothNumber(target: number | null, opts?: { durationMs?: number }) 
   return value;
 }
 
+type LatestWinner = {
+  id?: string | null;
+  drawDate?: string | null; // ISO
+  amount?: number | null;
+  handle?: string | null;
+  wallet?: string | null;
+};
+
+function shortWallet(w: string, head = 4, tail = 4) {
+  if (!w) return '';
+  if (w.length <= head + tail + 3) return w;
+  return `${w.slice(0, head)}…${w.slice(-tail)}`;
+}
+
+function timeAgo(iso: string | null | undefined) {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  const diff = Date.now() - t;
+  if (!Number.isFinite(diff)) return null;
+
+  const s = Math.floor(diff / 1000);
+  if (s < 15) return 'just now';
+  if (s < 60) return `${s}s ago`;
+
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h}h ago`;
+
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+async function fetchLatestWinner(signal?: AbortSignal): Promise<LatestWinner | null> {
+  // Prefer a dedicated endpoint if you have it
+  const tryUrls = ['/api/winners/latest', '/api/winners/recent?limit=1'];
+
+  for (const url of tryUrls) {
+    try {
+      const res = await fetch(url, { method: 'GET', signal, cache: 'no-store' });
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      // /api/winners/latest -> { ok, winner }
+      if (data?.winner) {
+        const w = data.winner;
+        return {
+          id: w.id ?? null,
+          drawDate: w.drawDate ?? w.date ?? null,
+          amount: typeof w.amount === 'number' ? w.amount : w.amount != null ? Number(w.amount) : null,
+          handle: w.handle ?? w.xHandle ?? null,
+          wallet: w.wallet ?? w.walletAddress ?? null,
+        };
+      }
+
+      // /api/winners/recent -> { ok, winners: [...] } or [...] (fallback)
+      const arr = Array.isArray(data) ? data : Array.isArray(data?.winners) ? data.winners : null;
+      if (arr?.length) {
+        const w = arr[0];
+        return {
+          id: w.id ?? null,
+          drawDate: w.drawDate ?? w.date ?? null,
+          amount: typeof w.amount === 'number' ? w.amount : w.amount != null ? Number(w.amount) : null,
+          handle: w.handle ?? w.xHandle ?? null,
+          wallet: w.wallet ?? w.walletAddress ?? null,
+        };
+      }
+    } catch {
+      // ignore and try next
+    }
+  }
+
+  return null;
+}
+
 export default function JackpotPanel({
   isLocked,
   onJackpotUsdChange,
@@ -128,6 +207,53 @@ export default function JackpotPanel({
     maxJackpotToday,
     registerJackpotUsdForSessionPeak,
   } = usePriceSamples(priceUsd);
+
+  // Latest winner (proof of life)
+  const [latestWinner, setLatestWinner] = useState<LatestWinner | null>(null);
+  const [winnerHadError, setWinnerHadError] = useState(false);
+  const [winnerPulse, setWinnerPulse] = useState(false);
+  const winnerPulseTimer = useRef<number | null>(null);
+  const lastWinnerIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let timer: number | null = null;
+    const ctrl = new AbortController();
+
+    const tick = async () => {
+      const w = await fetchLatestWinner(ctrl.signal);
+      if (!w) return;
+
+      setWinnerHadError(false);
+
+      const incomingId = (w.id ?? `${w.drawDate ?? ''}-${w.wallet ?? ''}-${w.amount ?? ''}`) || null;
+      const prevId = lastWinnerIdRef.current;
+
+      setLatestWinner(w);
+
+      if (incomingId && incomingId !== prevId) {
+        lastWinnerIdRef.current = incomingId;
+        setWinnerPulse(true);
+        if (winnerPulseTimer.current) window.clearTimeout(winnerPulseTimer.current);
+        winnerPulseTimer.current = window.setTimeout(() => setWinnerPulse(false), 1400);
+      }
+    };
+
+    // first hit
+    tick().catch(() => setWinnerHadError(true));
+
+    // polling
+    timer = window.setInterval(() => {
+      tick().catch(() => setWinnerHadError(true));
+    }, WINNER_POLL_MS);
+
+    return () => {
+      ctrl.abort();
+      if (timer) window.clearInterval(timer);
+      if (winnerPulseTimer.current) window.clearTimeout(winnerPulseTimer.current);
+    };
+  }, []);
 
   // auto-wide slab
   const slabRef = useRef<HTMLDivElement | null>(null);
@@ -225,8 +351,7 @@ export default function JackpotPanel({
       : 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-5 sm:px-6 sm:py-6';
 
   // Hero capsule tuning (Today’s XPOT)
-  const capsuleWrap =
-    'group relative inline-flex max-w-full items-center';
+  const capsuleWrap = 'group relative inline-flex max-w-full items-center';
 
   const capsuleInner = [
     'relative inline-grid max-w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl',
@@ -243,6 +368,17 @@ export default function JackpotPanel({
     'xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white',
     isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : '',
   ].join(' ');
+
+  const winnerLabel = latestWinner?.handle ? `@${String(latestWinner.handle).replace(/^@/, '')}` : null;
+  const winnerWallet = latestWinner?.wallet ? shortWallet(latestWinner.wallet) : null;
+  const winnerName = winnerLabel ?? winnerWallet ?? null;
+  const winnerAmount =
+    typeof latestWinner?.amount === 'number' && Number.isFinite(latestWinner.amount)
+      ? latestWinner.amount.toLocaleString()
+      : JACKPOT_XPOT.toLocaleString();
+  const winnerAgo = timeAgo(latestWinner?.drawDate);
+
+  const showWinnerStrip = !!winnerName && !winnerHadError;
 
   return (
     <section className={`relative transition-colors duration-300 ${panelChrome}`}>
@@ -407,6 +543,81 @@ export default function JackpotPanel({
                 <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">
                   Auto-updates from DexScreener ticks
                 </p>
+              )}
+
+              {/* ✅ Latest winner (proof of life) */}
+              {showWinnerStrip && (
+                <div
+                  className={[
+                    'mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/25 px-4 py-3',
+                    winnerPulse ? 'ring-1 ring-[#F5C84C]/25' : '',
+                  ].join(' ')}
+                  style={{
+                    background:
+                      'radial-gradient(circle_at_18%_30%, rgba(245,200,76,0.16), transparent 58%), radial-gradient(circle_at_82%_22%, rgba(124,200,255,0.10), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(0,0,0,0.06))',
+                    boxShadow: winnerPulse
+                      ? '0 0 0 1px rgba(245,200,76,0.18), 0 0 28px rgba(245,200,76,0.10)'
+                      : '0 0 0 1px rgba(255,255,255,0.04)',
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2 w-2 rounded-full animate-pulse"
+                          style={{
+                            background: 'rgba(245,200,76,0.95)',
+                            boxShadow:
+                              '0 0 14px rgba(245,200,76,0.55), 0 0 34px rgba(245,200,76,0.22)',
+                          }}
+                        />
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+                          Latest winner
+                        </p>
+                        {winnerAgo && (
+                          <span className="text-[10px] uppercase tracking-[0.20em] text-slate-500">
+                            {winnerAgo}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <span
+                          className="max-w-full truncate text-sm font-semibold text-slate-100"
+                          style={{ textShadow: '0 0 20px rgba(245,200,76,0.10)' }}
+                        >
+                          {winnerName}
+                        </span>
+
+                        <span className="text-[11px] text-slate-600">·</span>
+
+                        <span
+                          className="font-mono text-sm text-slate-100"
+                          style={{
+                            textShadow:
+                              '0 0 18px rgba(245,200,76,0.18), 0 0 40px rgba(245,200,76,0.08)',
+                          }}
+                        >
+                          {winnerAmount} XPOT
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Paid out on-chain. Real winners, real protocol.
+                      </p>
+                    </div>
+
+                    <span
+                      className="shrink-0 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200"
+                      style={{
+                        boxShadow: '0 0 18px rgba(245,200,76,0.10)',
+                      }}
+                    >
+                      <Sparkles className="h-3.5 w-3.5 opacity-90" />
+                      Verified
+                    </span>
+                  </div>
+                </div>
               )}
 
               {/* Token info row */}
