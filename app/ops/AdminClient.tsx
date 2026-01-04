@@ -3,7 +3,6 @@
 
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import XpotLogoLottie from '@/components/XpotLogoLottie';
-import JackpotPanel from '@/components/JackpotPanel';
 import XpotPageShell from '@/components/XpotPageShell';
 import OperationsCenterBadge from '@/components/OperationsCenterBadge';
 
@@ -28,7 +27,7 @@ const MAX_RECENT_WINNERS = 10;
 // Preference order: /api/admin (your legacy stable routes) -> /api/ops (newer experimental routes)
 const API_BASE_CANDIDATES = ['/api/admin', '/api/ops'] as const;
 
-// ✅ admin endpoint that actually exists (manual trigger you showed)
+// Known admin endpoint you already have in prod/dev (manual trigger)
 const ADMIN_PICK_WINNER_API = '/api/admin/draw/pick-winner';
 
 type DrawStatus = 'open' | 'closed' | 'completed';
@@ -333,8 +332,6 @@ export default function AdminPage() {
     [winners, visibleWinnerCount],
   );
 
-  const [liveJackpotUsd, setLiveJackpotUsd] = useState<number | null>(null);
-
   const [countdownText, setCountdownText] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
@@ -397,7 +394,6 @@ export default function AdminPage() {
   }
 
   async function probeApiBase(): Promise<string | null> {
-    // Try /health on each candidate, no auth required (your routes typically exist + return ok)
     for (const base of API_BASE_CANDIDATES) {
       try {
         const res = await fetch(`${base}/health`, { cache: 'no-store' });
@@ -409,7 +405,6 @@ export default function AdminPage() {
     return null;
   }
 
-  // Detect API base once we have a token (so we can load ops-mode etc right away)
   useEffect(() => {
     if (!adminToken) return;
 
@@ -420,7 +415,7 @@ export default function AdminPage() {
       if (cancelled) return;
 
       if (!detected) {
-        setApiBase('/api/admin'); // default
+        setApiBase('/api/admin');
         setApiBanner(
           'No Ops/Admin API detected on this deployment (missing /api/admin/* and /api/ops/*). Deploy backend routes to use Operations Center.',
         );
@@ -438,12 +433,12 @@ export default function AdminPage() {
 
   // IMPORTANT:
   // - authedFetch THROWS on failures so UI doesn't silently show "no draw"
-  // - never flips state into infinite loops on 404; we use apiBase detection instead
   async function authedFetch(input: string, init?: RequestInit) {
     if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
     const headers = new Headers(init?.headers || {});
-    headers.set('Content-Type', 'application/json');
+    // Only set content-type when we actually send a body
+    if (init?.body) headers.set('Content-Type', 'application/json');
     headers.set('x-xpot-admin-key', adminToken.trim());
 
     const res = await fetch(input, { ...init, headers, cache: 'no-store' });
@@ -598,7 +593,6 @@ export default function AdminPage() {
 
     setCancelingDropId(dropId);
     try {
-      // Most of your implementations use /bonus with ?id=...
       const data = await authedFetch(`${api('/bonus')}?id=${encodeURIComponent(dropId)}`, {
         method: 'POST',
       });
@@ -627,8 +621,26 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
-      // Explicitly call your known endpoint
-      const data = await authedFetch(ADMIN_PICK_WINNER_API, { method: 'POST' });
+      // Try the detected base first, then hard fallback to legacy known path.
+      const candidates = [
+        api('/draw/pick-winner'), // -> /api/admin/draw/pick-winner OR /api/ops/draw/pick-winner
+        ADMIN_PICK_WINNER_API, // -> /api/admin/draw/pick-winner
+      ];
+
+      let data: any = null;
+      let lastErr: any = null;
+
+      for (const url of candidates) {
+        try {
+          data = await authedFetch(url, { method: 'POST' });
+          lastErr = null;
+          break;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+
+      if (!data) throw lastErr || new Error('Failed to pick winner');
 
       const raw = (data as any).winner;
       if (!raw) throw new Error('No winner returned from API');
@@ -649,7 +661,7 @@ export default function AdminPage() {
       const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
       setPickSuccess(`Main XPOT winner: ${normalized.ticketCode || '(no ticket)'} (${shortAddr})`);
 
-      // Refresh winners list from the detected API
+      // Refresh winners list
       try {
         const winnersData = await authedFetch(api('/winners'));
         setWinners((winnersData as any).winners ?? []);
@@ -809,12 +821,11 @@ export default function AdminPage() {
   // ── Load Today, tickets, winners, upcoming ──
   useEffect(() => {
     if (!adminToken) return;
-    if (!apiBase) return; // wait until detected
+    if (!apiBase) return;
 
     let cancelled = false;
 
     async function loadAll() {
-      // Ops mode
       try {
         await loadOpsMode();
       } catch (err) {
@@ -957,9 +968,10 @@ export default function AdminPage() {
 
       const totalSeconds = Math.floor(diffMs / 1000);
       const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const minutes = String.floor ? '' : ''; // (never used; keep TS happy)
+      const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
       const seconds = String(totalSeconds % 60).padStart(2, '0');
-      setNextBonusCountdown(`${hours}:${minutes}:${seconds}`);
+      setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
     }
 
     updateCountdown();
@@ -999,7 +1011,8 @@ export default function AdminPage() {
 
     setIsSavingToken(true);
     try {
-      if (typeof window !== 'undefined') window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
+      if (typeof window !== 'undefined')
+        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
       setAdminToken(tokenInput.trim());
       setTokenAccepted(true);
       setApiBase(null); // re-detect after unlock
@@ -1044,44 +1057,6 @@ export default function AdminPage() {
           {apiBanner}
         </div>
       )}
-
-      {/* ✅ FULL-WIDTH HERO */}
-      <section className="relative mt-4">
-        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
-          <div className="relative overflow-hidden border-y border-slate-800/60 bg-slate-950/40">
-            <div
-              className="pointer-events-none absolute inset-0 opacity-80"
-              style={{
-                background:
-                  'radial-gradient(900px 420px at 18% 35%, rgba(168,85,247,0.22), rgba(0,0,0,0) 62%),' +
-                  'radial-gradient(760px 380px at 78% 30%, rgba(56,189,248,0.16), rgba(0,0,0,0) 60%),' +
-                  'radial-gradient(900px 520px at 50% 100%, rgba(16,185,129,0.10), rgba(0,0,0,0) 62%)',
-              }}
-            />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.30),rgba(2,6,23,0.75))]" />
-
-            <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-              <div className="relative">
-                <div
-                  className="absolute -inset-1 rounded-[32px] opacity-40 blur-2xl"
-                  style={{
-                    background:
-                      'radial-gradient(500px 220px at 30% 50%, rgba(168,85,247,0.22), rgba(0,0,0,0) 70%),' +
-                      'radial-gradient(520px 240px at 70% 45%, rgba(56,189,248,0.14), rgba(0,0,0,0) 72%)',
-                  }}
-                />
-                <div className="relative rounded-[32px] border border-slate-800/70 bg-slate-950/35 shadow-[0_30px_90px_rgba(0,0,0,0.60)]">
-                  <div className="p-4 sm:p-6">
-                    <JackpotPanel isLocked={isDrawLocked} onJackpotUsdChange={setLiveJackpotUsd} variant="embedded" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-[linear-gradient(to_bottom,rgba(2,6,23,0),rgba(2,6,23,0.95))]" />
-          </div>
-        </div>
-      </section>
 
       {/* Admin key band */}
       <section className="relative mt-5">
@@ -1168,7 +1143,9 @@ export default function AdminPage() {
                       {todayDraw && (
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                            todayDraw.status === 'open' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-800 text-slate-300'
+                            todayDraw.status === 'open'
+                              ? 'bg-emerald-500/10 text-emerald-300'
+                              : 'bg-slate-800 text-slate-300'
                           }`}
                         >
                           {todayDraw.status.toUpperCase()}
@@ -1193,9 +1170,9 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today&apos;s XPOT (live)</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today&apos;s XPOT</p>
                     <div className="mt-1">
-                      <UsdPill amount={liveJackpotUsd} size="sm" />
+                      <UsdPill amount={todayDraw?.jackpotUsd ?? null} size="sm" />
                     </div>
                   </div>
                 </div>
@@ -1229,7 +1206,9 @@ export default function AdminPage() {
                         {!isAutoActive && (
                           <button
                             type="button"
-                            disabled={isPickingWinner || !adminToken || todayLoading || !todayDraw || todayDraw.status !== 'open'}
+                            disabled={
+                              isPickingWinner || !adminToken || todayLoading || !todayDraw || todayDraw.status !== 'open'
+                            }
                             onClick={handlePickMainWinner}
                             className={`
                               ${BTN_CROWN} px-7 py-3 text-sm transition-all ease-out duration-300
@@ -1629,7 +1608,12 @@ export default function AdminPage() {
                         </div>
 
                         {w.txUrl && (
-                          <a href={w.txUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-[11px] text-emerald-300 hover:text-emerald-200">
+                          <a
+                            href={w.txUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 inline-flex text-[11px] text-emerald-300 hover:text-emerald-200"
+                          >
                             View TX
                           </a>
                         )}
