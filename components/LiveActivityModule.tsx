@@ -1,197 +1,190 @@
-// components/LiveActivityModule.tsx
+// app/_home/HomePageClient.tsx
 'use client';
 
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  createContext,
+  useContext,
+} from 'react';
 import Link from 'next/link';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Crown, ExternalLink, Sparkles, Users } from 'lucide-react';
+import { useReducedMotion } from 'framer-motion';
+import {
+  ArrowRight,
+  BadgeCheck,
+  CheckCircle2,
+  ChevronDown,
+  Crown,
+  ExternalLink,
+  Globe,
+  Info,
+  Radio,
+  ShieldCheck,
+  Sparkles,
+  Timer,
+  Users,
+  Wand2,
+  Zap,
+  Copy,
+  Check,
+} from 'lucide-react';
 
-// ✅ Re-export EntryRow so HomePageClient can import it from this module
-export type { EntryRow } from '@/components/EnteringStageLive';
-import type { EntryRow } from '@/components/EnteringStageLive';
+import JackpotPanel from '@/components/JackpotPanel';
+import BonusStrip from '@/components/BonusStrip';
+import XpotPageShell from '@/components/XpotPageShell';
+import XpotFooter from '@/components/XpotFooter';
+import FinalDrawDate from '@/components/FinalDrawDate';
+import RotatingAnnouncement from '@/components/RotatingAnnouncement';
 
-export type LiveWinnerRow = {
-  id: string;
-  handle: string | null;
-  name?: string | null;
-  avatarUrl?: string | null;
+import LiveActivityModule, { type LiveWinnerRow, type EntryRow } from '@/components/LiveActivityModule';
 
-  // kept for compatibility, but NOT displayed
-  wallet: string | null;
-
-  amount?: number | null;
-  amountXpot?: number | null;
-
-  drawDate: string | null; // ISO string
-  txUrl?: string | null;
-
-  kind?: 'MAIN' | 'BONUS' | null;
-  label?: string | null;
-
-  verified?: boolean;
-};
+import { RUN_DAYS, RUN_START, RUN_END, RUN_START_EU, RUN_END_EU } from '@/lib/xpotRun';
 
 const ROUTE_HUB = '/hub';
+const ROUTE_TOKENOMICS_RESERVE = '/tokenomics?tab=rewards&focus=reserve';
 
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ');
+const XPOT_CA =
+  process.env.NEXT_PUBLIC_XPOT_MINT ||
+  process.env.NEXT_PUBLIC_XPOT_CA ||
+  'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
+
+const XPOT_JUP_SWAP_URL =
+  process.env.NEXT_PUBLIC_XPOT_JUP_SWAP_URL ||
+  `https://jup.ag/?sell=So11111111111111111111111111111111111111112&buy=${XPOT_CA}`;
+
+const XPOT_DEXSCREENER_URL =
+  process.env.NEXT_PUBLIC_XPOT_DEXSCREENER_URL || `https://dexscreener.com/solana/${XPOT_CA}`;
+
+const XPOT_SOLSCAN_URL =
+  process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
+
+const BTN_GREEN =
+  'inline-flex items-center justify-center rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition';
+
+const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
+const GOLD_TEXT_DIM = 'text-[rgba(var(--xpot-gold-2),0.85)]';
+const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
+const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
+const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
+
+const MIN_ELIGIBLE_XPOT = 100_000;
+
+/* ─────────────────────────────────────────────
+   Shared countdown context (single source of truth)
+───────────────────────────────────────────── */
+
+type NextDrawState = {
+  nowMs: number;
+  nextDrawUtcMs: number;
+  countdown: string;
+  cutoffLabel: string;
+};
+
+const NextDrawContext = createContext<NextDrawState | null>(null);
+
+function useNextDraw() {
+  const ctx = useContext(NextDrawContext);
+  if (!ctx) throw new Error('useNextDraw must be used within NextDrawProvider');
+  return ctx;
 }
 
-function normalizeHandle(h: string | null | undefined) {
-  const s = String(h ?? '').trim();
-  if (!s) return '@unknown';
-  return s.startsWith('@') ? s : `@${s}`;
-}
+function NextDrawProvider({ children }: { children: ReactNode }) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
-function toXProfileUrl(handle: string) {
-  const h = normalizeHandle(handle).replace(/^@/, '');
-  return `https://x.com/${encodeURIComponent(h)}`;
-}
-
-function safeTimeMs(iso?: string | null) {
-  const t = iso ? Date.parse(iso) : NaN;
-  return Number.isFinite(t) ? t : 0;
-}
-
-function formatEuDateTime(iso?: string | null) {
-  const ms = safeTimeMs(iso);
-  if (!ms) return '';
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Madrid',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(new Date(ms));
-}
-
-function formatEuTime(iso?: string | null) {
-  const ms = safeTimeMs(iso);
-  if (!ms) return '';
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Madrid',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(new Date(ms));
-}
-
-function formatXpotAmount(winner: LiveWinnerRow | null) {
-  const raw =
-    typeof winner?.amountXpot === 'number'
-      ? winner.amountXpot
-      : typeof winner?.amount === 'number'
-        ? winner.amount
-        : null;
-
-  if (!raw || raw <= 0) return null;
-  return Math.round(raw).toLocaleString('en-US');
-}
-
-function useIsTouch() {
-  const [touch, setTouch] = useState(false);
   useEffect(() => {
-    const onFirstTouch = () => setTouch(true);
-    window.addEventListener('touchstart', onFirstTouch, { passive: true, once: true });
-    return () => window.removeEventListener('touchstart', onFirstTouch as any);
+    let interval: number | null = null;
+
+    const start = () => {
+      interval = window.setInterval(() => setNowMs(Date.now()), 1000);
+    };
+
+    const msToNextSecond = 1000 - (Date.now() % 1000);
+    const t = window.setTimeout(() => {
+      setNowMs(Date.now());
+      start();
+    }, msToNextSecond);
+
+    return () => {
+      window.clearTimeout(t);
+      if (interval) window.clearInterval(interval);
+    };
   }, []);
-  return touch;
+
+  const nextDrawUtcMs = useMemo(() => getNextMadridCutoffUtcMs(22, new Date(nowMs)), [nowMs]);
+  const countdown = useMemo(() => formatCountdown(nextDrawUtcMs - nowMs), [nextDrawUtcMs, nowMs]);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('xpot:next-draw', {
+        detail: { nowMs, nextDrawUtcMs, countdown, cutoffLabel: 'Madrid 22:00' },
+      }),
+    );
+  }, [nowMs, nextDrawUtcMs, countdown]);
+
+  const value = useMemo<NextDrawState>(
+    () => ({ nowMs, nextDrawUtcMs, countdown, cutoffLabel: 'Madrid 22:00' }),
+    [nowMs, nextDrawUtcMs, countdown],
+  );
+
+  return <NextDrawContext.Provider value={value}>{children}</NextDrawContext.Provider>;
 }
 
-function useOutsideClose(open: boolean, onClose: () => void) {
-  const ref = useRef<HTMLDivElement | null>(null);
+/* ─────────────────────────────────────────────
+   Small UI helpers
+───────────────────────────────────────────── */
+
+function Pill({
+  children,
+  tone = 'slate',
+}: {
+  children: ReactNode;
+  tone?: 'slate' | 'emerald' | 'amber' | 'sky' | 'violet';
+}) {
+  const map: Record<string, string> = {
+    slate:
+      'border-slate-700/70 bg-slate-900/70 text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
+    emerald:
+      'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
+    amber: `${GOLD_BORDER} ${GOLD_BG_WASH} ${GOLD_TEXT} ${GOLD_RING_SHADOW}`,
+    sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
+    violet:
+      'border-violet-400/45 bg-violet-500/10 text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.16)]',
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 leading-none text-[10px] font-semibold uppercase tracking-[0.18em] ${map[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function useBodyMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+}
+
+function TinyTooltip({ label, children }: { label: string; children: ReactNode }) {
+  const mounted = useBodyMounted();
+
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const anchorRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
 
-    const onDown = (e: MouseEvent | TouchEvent) => {
-      const el = ref.current;
-      if (!el) return;
-      if (e.target && el.contains(e.target as Node)) return;
-      onClose();
-    };
-
-    window.addEventListener('mousedown', onDown, true);
-    window.addEventListener('touchstart', onDown, true);
-    return () => {
-      window.removeEventListener('mousedown', onDown, true);
-      window.removeEventListener('touchstart', onDown, true);
-    };
-  }, [open, onClose]);
-
-  return ref;
-}
-
-function Avatar({
-  src,
-  handle,
-  size,
-  ring = true,
-}: {
-  src?: string | null;
-  handle: string;
-  size: number;
-  ring?: boolean;
-}) {
-  const clean = normalizeHandle(handle).replace(/^@/, '');
-  const resolvedSrc = useMemo(() => {
-    if (src) return src;
-    const cacheKey = Math.floor(Date.now() / (8 * 60 * 60 * 1000));
-    return `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cacheKey}`;
-  }, [src, clean]);
-
-  return (
-    <div
-      className={cx(
-        'relative shrink-0 overflow-hidden rounded-full bg-white/[0.06]',
-        ring && 'ring-1 ring-white/15',
-      )}
-      style={{ width: size, height: size }}
-      aria-hidden
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={resolvedSrc}
-        alt={normalizeHandle(handle)}
-        className="h-full w-full object-cover"
-        loading="lazy"
-        referrerPolicy="no-referrer"
-      />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_18%,rgba(255,255,255,0.18),transparent_55%)]" />
-    </div>
-  );
-}
-
-/**
- * Tooltip rendered in a portal so it never gets clipped by overflow-hidden
- * or goes behind other panels.
- */
-function TooltipPortal({
-  open,
-  anchorEl,
-  children,
-}: {
-  open: boolean;
-  anchorEl: HTMLElement | null;
-  children: React.ReactNode;
-}) {
-  const [mounted, setMounted] = useState(false);
-  const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null);
-
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    if (!open || !anchorEl) return;
-
     const update = () => {
-      const r = anchorEl.getBoundingClientRect();
-      // Center under anchor, clamp within viewport
-      const desiredLeft = r.left + r.width / 2;
-      const top = r.bottom + 10;
-
-      setPos({ left: desiredLeft, top, width: r.width });
+      const el = anchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setPos({ left: r.left + r.width / 2, top: r.bottom + 10 });
     };
 
     update();
@@ -201,602 +194,1255 @@ function TooltipPortal({
       window.removeEventListener('scroll', update, true);
       window.removeEventListener('resize', update);
     };
-  }, [open, anchorEl]);
+  }, [open]);
 
-  if (!mounted || !open || !pos) return null;
+  return (
+    <span className="relative inline-flex items-center">
+      <span
+        ref={anchorRef}
+        className="group inline-flex items-center"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+      >
+        {children}
+      </span>
 
-  return createPortal(
-    <div
-      className="fixed z-[9999]"
-      style={{
-        left: pos.left,
-        top: pos.top,
-        transform: 'translateX(-50%)',
-        pointerEvents: 'auto',
-      }}
-    >
-      {children}
-    </div>,
-    document.body,
+      {open && pos && mounted && typeof document !== 'undefined' && document.body
+        ? createPortal(
+            <div
+              className="fixed z-[9999] -translate-x-1/2 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 text-[11px] leading-relaxed text-slate-200 shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
+              style={{ left: pos.left, top: pos.top }}
+              role="tooltip"
+            >
+              {label}
+            </div>,
+            document.body,
+          )
+        : null}
+    </span>
   );
+}
+
+function PremiumCard({
+  children,
+  className = '',
+  halo = true,
+  sheen = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  halo?: boolean;
+  sheen?: boolean;
+}) {
+  return (
+    <section
+      className={[
+        'relative overflow-hidden rounded-[32px]',
+        'bg-white/[0.03] backdrop-blur-xl',
+        'shadow-[0_40px_140px_rgba(0,0,0,0.55)]',
+        'ring-1 ring-white/[0.06]',
+        sheen ? 'xpot-sheen' : '',
+        className,
+      ].join(' ')}
+    >
+      {halo && (
+        <div className="pointer-events-none absolute -inset-28 bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.22),transparent_58%),radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.18),transparent_60%),radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.14),transparent_60%),radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.10),transparent_62%)] opacity-90" />
+      )}
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
+      <div className="relative z-10">{children}</div>
+    </section>
+  );
+}
+
+function shortenAddress(addr: string, left = 6, right = 6) {
+  if (!addr) return '';
+  if (addr.length <= left + right + 3) return addr;
+  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
+}
+
+function normalizeHandle(h: string | null | undefined) {
+  const s = String(h ?? '').trim();
+  if (!s) return '@unknown';
+  return s.startsWith('@') ? s : `@${s}`;
+}
+
+function toXProfileUrl(handle: string | null | undefined) {
+  const h = normalizeHandle(handle).replace(/^@/, '');
+  return `https://x.com/${encodeURIComponent(h)}`;
+}
+
+function formatNumber(n: number) {
+  return n.toLocaleString();
+}
+
+/* ─────────────────────────────────────────────
+   Premium cosmic backdrop
+───────────────────────────────────────────── */
+
+function CosmicHeroBackdrop() {
+  return (
+    <>
+      <style jsx global>{`
+        @keyframes xpotHeroRotate {
+          0% {
+            transform: translateZ(0) rotate(0deg) scale(1);
+          }
+          100% {
+            transform: translateZ(0) rotate(360deg) scale(1);
+          }
+        }
+        @keyframes xpotHeroSheen {
+          0% {
+            transform: translateX(-25%) translateY(-10%) rotate(8deg);
+            opacity: 0;
+          }
+          20% {
+            opacity: 0.28;
+          }
+          60% {
+            opacity: 0.18;
+          }
+          100% {
+            transform: translateX(25%) translateY(10%) rotate(8deg);
+            opacity: 0;
+          }
+        }
+        @keyframes xpotConsoleSweep {
+          0% {
+            transform: translateX(-55%) skewX(-12deg);
+            opacity: 0;
+          }
+          15% {
+            opacity: 0.22;
+          }
+          55% {
+            opacity: 0.1;
+          }
+          100% {
+            transform: translateX(55%) skewX(-12deg);
+            opacity: 0;
+          }
+        }
+        .xpot-console-sweep {
+          position: absolute;
+          inset: -40px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 30%,
+            rgba(var(--xpot-gold), 0.1) 48%,
+            rgba(56, 189, 248, 0.06) 66%,
+            transparent 100%
+          );
+          mix-blend-mode: screen;
+          opacity: 0;
+          filter: blur(0.2px);
+          animation: xpotConsoleSweep 12s ease-in-out infinite;
+          z-index: 2;
+        }
+        .xpot-hero-engine {
+          position: absolute;
+          inset: -180px;
+          pointer-events: none;
+          opacity: 0.85;
+        }
+        .xpot-hero-engine::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 999px;
+          background: radial-gradient(circle at 30% 25%, rgba(16, 185, 129, 0.18), transparent 55%),
+            radial-gradient(circle at 70% 25%, rgba(56, 189, 248, 0.14), transparent 58%),
+            radial-gradient(circle at 55% 70%, rgba(var(--xpot-gold), 0.12), transparent 62%),
+            radial-gradient(circle at 30% 80%, rgba(139, 92, 246, 0.12), transparent 60%);
+          animation: xpotHeroRotate 44s linear infinite;
+          transform-origin: center;
+          opacity: 0.95;
+        }
+        .xpot-hero-engine::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 999px;
+          background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05), transparent 55%);
+          opacity: 0.55;
+          mix-blend-mode: screen;
+        }
+        .xpot-hero-grain {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.22;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+          background-size: 260px 260px;
+          mix-blend-mode: overlay;
+        }
+        .xpot-hero-sheen {
+          position: absolute;
+          inset: -60px;
+          pointer-events: none;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.06) 32%,
+            rgba(var(--xpot-gold), 0.08) 50%,
+            rgba(56, 189, 248, 0.06) 68%,
+            transparent 100%
+          );
+          transform: rotate(8deg);
+          animation: xpotHeroSheen 9.8s ease-in-out infinite;
+          mix-blend-mode: screen;
+          opacity: 0;
+        }
+        @keyframes xpotPulseGold {
+          0% {
+            box-shadow: 0 0 0 0 rgba(var(--xpot-gold), 0);
+          }
+          50% {
+            box-shadow: 0 0 0 1px rgba(var(--xpot-gold), 0.22), 0 0 18px rgba(var(--xpot-gold), 0.18);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(var(--xpot-gold), 0);
+          }
+        }
+        .xpot-warmup-ring {
+          animation: xpotPulseGold 2.8s ease-in-out infinite;
+          border-radius: 999px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-warmup-ring {
+            animation: none;
+          }
+        }
+
+        @keyframes xpotMicroGlow {
+          0% {
+            opacity: 0.35;
+            transform: translateY(0);
+          }
+          50% {
+            opacity: 0.55;
+            transform: translateY(-1px);
+          }
+          100% {
+            opacity: 0.35;
+            transform: translateY(0);
+          }
+        }
+        .xpot-micro-glow {
+          animation: xpotMicroGlow 2.9s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .xpot-micro-glow {
+            animation: none;
+          }
+        }
+      `}</style>
+
+      <div className="xpot-hero-engine" aria-hidden />
+      <div className="xpot-hero-sheen" aria-hidden />
+      <div className="xpot-hero-grain" aria-hidden />
+      <div className="xpot-console-sweep" aria-hidden />
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Madrid cutoff helpers
+───────────────────────────────────────────── */
+
+function getMadridParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+
+  const get = (type: string, fallback = '0') =>
+    Number(parts.find(p => p.type === type)?.value ?? fallback);
+
+  return {
+    y: get('year', '0'),
+    m: get('month', '1'),
+    d: get('day', '1'),
+    hh: get('hour', '0'),
+    mm: get('minute', '0'),
+    ss: get('second', '0'),
+  };
+}
+
+function getMadridOffsetMs(now = new Date()) {
+  const p = getMadridParts(now);
+  const asUtc = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss);
+  return asUtc - now.getTime();
+}
+
+function getMadridUtcMsFromWallClock(
+  yy: number,
+  mm: number,
+  dd: number,
+  hh: number,
+  mi: number,
+  ss: number,
+  now = new Date(),
+) {
+  const offsetMs = getMadridOffsetMs(now);
+  const asUtc = Date.UTC(yy, mm - 1, dd, hh, mi, ss);
+  return asUtc - offsetMs;
+}
+
+function ymdToSerialUtc(yy: number, mm: number, dd: number) {
+  return Math.floor(Date.UTC(yy, mm - 1, dd) / 86_400_000);
+}
+
+function addYmdDays(yy: number, mm: number, dd: number, days: number) {
+  const base = new Date(Date.UTC(yy, mm - 1, dd, 12, 0, 0));
+  base.setUTCDate(base.getUTCDate() + days);
+  return { y: base.getUTCFullYear(), m: base.getUTCMonth() + 1, d: base.getUTCDate() };
+}
+
+function calcRunProgress(now = new Date()) {
+  const p = getMadridParts(now);
+
+  const runStartCutoffUtc = getMadridUtcMsFromWallClock(
+    RUN_START.y,
+    RUN_START.m,
+    RUN_START.d,
+    RUN_START.hh,
+    RUN_START.mm,
+    0,
+    now,
+  );
+
+  const runEndCutoffUtc = getMadridUtcMsFromWallClock(
+    RUN_END.y,
+    RUN_END.m,
+    RUN_END.d,
+    RUN_END.hh,
+    RUN_END.mm,
+    0,
+    now,
+  );
+
+  const todayCutoffUtc = getMadridUtcMsFromWallClock(p.y, p.m, p.d, 22, 0, 0, now);
+  const anchorYmd =
+    now.getTime() >= todayCutoffUtc ? { y: p.y, m: p.m, d: p.d } : addYmdDays(p.y, p.m, p.d, -1);
+
+  const started = now.getTime() >= runStartCutoffUtc;
+
+  let day = 0;
+  if (started) {
+    const diffDays =
+      ymdToSerialUtc(anchorYmd.y, anchorYmd.m, anchorYmd.d) -
+      ymdToSerialUtc(RUN_START.y, RUN_START.m, RUN_START.d);
+    day = Math.max(1, diffDays + 1);
+  }
+
+  day = Math.max(0, Math.min(RUN_DAYS, day));
+  const daysRemaining = Math.max(0, RUN_DAYS - day);
+
+  const ended = now.getTime() >= runEndCutoffUtc;
+
+  return { day, daysRemaining, started, ended };
+}
+
+function getNextMadridCutoffUtcMs(cutoffHour = 22, now = new Date()) {
+  const p = getMadridParts(now);
+
+  let targetUtc = getMadridUtcMsFromWallClock(p.y, p.m, p.d, cutoffHour, 0, 0, now);
+
+  if (now.getTime() >= targetUtc) {
+    const next = addYmdDays(p.y, p.m, p.d, 1);
+    targetUtc = getMadridUtcMsFromWallClock(next.y, next.m, next.d, cutoffHour, 0, 0, now);
+  }
+
+  return targetUtc;
+}
+
+function formatCountdown(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const hh = Math.floor(s / 3600);
+  const mm = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
+}
+
+function setMeta(name: string, content: string) {
+  let tag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute('name', name);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute('content', content);
+}
+
+/* Bonus visibility */
+function useBonusActive() {
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function probe() {
+      try {
+        const r = await fetch('/api/bonus/upcoming', { cache: 'no-store' });
+        if (!alive) return;
+
+        if (!r.ok) {
+          setActive(false);
+          return;
+        }
+
+        const data = (await r.json().catch(() => null)) as any;
+        setActive(Boolean(data?.bonus?.scheduledAt));
+      } catch {
+        if (!alive) return;
+        setActive(false);
+      }
+    }
+
+    probe();
+    const t = window.setInterval(probe, 15_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  return active;
+}
+
+async function fetchFirstOk<T = any>(urls: string[]): Promise<T | null> {
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const data = (await r.json().catch(() => null)) as T | null;
+      if (data) return data;
+    } catch {}
+  }
+  return null;
 }
 
 /**
- * Premium tooltip:
- * - Desktop: hover/focus shows tooltip
- * - Mobile: first tap shows tooltip (prevents nav), second tap opens X
+ * ✅ Home page uses the SAME canonical source as /winners page first:
+ *    GET /api/winners/recent?limit=1
  */
-function AvatarTooltip({
-  handle,
-  name,
-  meta,
-  avatarUrl,
-  href,
-  verified,
-  size = 34,
-  glow = 'gold',
-}: {
-  handle: string;
-  name?: string | null;
-  meta?: string | null;
-  avatarUrl?: string | null;
-  href: string;
-  verified?: boolean;
-  size?: number;
-  glow?: 'gold' | 'sky';
-}) {
-  const isTouch = useIsTouch();
-  const [open, setOpen] = useState(false);
-  const boxRef = useOutsideClose(open, () => setOpen(false));
-  const anchorRef = useRef<HTMLAnchorElement | null>(null);
+function useLatestWinnerCard() {
+  const [winner, setWinner] = useState<LiveWinnerRow | null>(null);
 
-  const labelTop = normalizeHandle(handle);
-  const labelSub = name ? String(name).trim() : '';
-  const labelMeta = meta ? String(meta).trim() : '';
+  useEffect(() => {
+    let alive = true;
 
-  const hoverOpen = () => {
-    if (isTouch) return;
-    setOpen(true);
-  };
-  const hoverClose = () => {
-    if (isTouch) return;
-    setOpen(false);
-  };
+    async function load() {
+      const data = await fetchFirstOk<any>([
+        '/api/winners/recent?limit=1',
+        '/api/public/winners/latest',
+        '/api/public/winners?latest=1',
+        '/api/public/winners?limit=1',
+        '/api/public/winners',
+      ]);
 
-  const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!isTouch) return;
-    if (!open) {
-      e.preventDefault();
-      e.stopPropagation();
-      setOpen(true);
+      if (!alive) return;
+
+      let w: any = null;
+
+      if (data && Array.isArray(data?.winners) && data.winners[0]) {
+        const x = data.winners[0];
+
+        const safeId =
+          x?.id ??
+          x?.winnerId ??
+          x?.txSig ??
+          x?.txHash ??
+          (x?.drawDate ? `win_${String(x.drawDate)}` : 'latest');
+
+        w = {
+          id: String(safeId),
+          handle: x.handle ?? x.xHandle ?? null,
+          name: x.name ?? x.xName ?? null,
+          avatarUrl: x.avatarUrl ?? x.xAvatarUrl ?? null,
+          wallet: x.wallet ?? x.walletAddress ?? x.walletAddr ?? null,
+          amountXpot:
+            typeof x.amountXpot === 'number'
+              ? x.amountXpot
+              : typeof x.amount === 'number'
+                ? x.amount
+                : null,
+          amount: typeof x.amount === 'number' ? x.amount : null,
+          drawDate: x.drawDate ?? x.date ?? x.createdAt ?? null,
+          txUrl: x.txUrl ?? x.txLink ?? null,
+          isPaidOut: typeof x.isPaidOut === 'boolean' ? x.isPaidOut : Boolean(x.txUrl ?? x.txLink),
+          kind: (x.kind ?? x.winnerKind ?? x.type ?? null) as any,
+          label: x.label ?? null,
+        };
+      } else if (data?.ok === true && data?.winner) {
+        const x = data.winner;
+
+        const safeId =
+          x?.id ??
+          x?.winnerId ??
+          x?.txSig ??
+          x?.txHash ??
+          (x?.drawDate ? `win_${String(x.drawDate)}` : 'latest');
+
+        w = {
+          id: String(safeId),
+          handle: x.handle ?? null,
+          name: x.name ?? null,
+          avatarUrl: x.avatarUrl ?? null,
+          wallet: x.wallet ?? null,
+          amountXpot: typeof x.amountXpot === 'number' ? x.amountXpot : null,
+          amount: typeof x.amount === 'number' ? x.amount : null,
+          drawDate: x.drawDate ?? null,
+          txUrl: x.txUrl ?? null,
+          isPaidOut: Boolean(x.isPaidOut),
+          kind: x.kind ?? null,
+          label: x.label ?? null,
+        };
+      } else if (Array.isArray(data?.winners) && data.winners[0]) {
+        const x = data.winners[0] as LiveWinnerRow;
+        w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
+      } else if (Array.isArray(data) && data[0]) {
+        const x = data[0] as LiveWinnerRow;
+        w = { ...x, id: String((x as any).id ?? (x.drawDate ? `win_${x.drawDate}` : 'latest')) };
+      }
+
+      setWinner(w && w.id ? (w as LiveWinnerRow) : null);
     }
-  };
 
-  const glowClass =
-    glow === 'gold'
-      ? 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.22),0_18px_60px_rgba(var(--xpot-gold),0.10)]'
-      : 'shadow-[0_0_0_1px_rgba(56,189,248,0.22),0_18px_60px_rgba(56,189,248,0.10)]';
+    load();
+    const t = window.setInterval(load, 12_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  return winner;
+}
+
+function useLatestEntriesTelemetry() {
+  const [entries, setEntries] = useState<EntryRow[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      const data = await fetchFirstOk<any>([
+        '/api/public/entries/latest',
+        '/api/public/entries?latest=1',
+        '/api/public/entries?limit=24',
+        '/api/public/entries',
+      ]);
+
+      if (!alive) return;
+
+      const arr = Array.isArray(data?.entries)
+        ? (data.entries as EntryRow[])
+        : Array.isArray(data)
+          ? (data as EntryRow[])
+          : [];
+
+      setEntries(arr.filter(e => Boolean(e?.handle)));
+    }
+
+    load();
+    const t = window.setInterval(load, 10_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  return entries;
+}
+
+/* ─────────────────────────────────────────────
+   Phase helpers
+───────────────────────────────────────────── */
+
+function useDrawPhase(nowMs: number, nextDrawUtcMs: number) {
+  const msLeft = nextDrawUtcMs - nowMs;
+  const warmup = msLeft > 0 && msLeft <= 2 * 60 * 60 * 1000;
+  return { msLeft, warmup };
+}
+
+/* ─────────────────────────────────────────────
+   Mission banner
+───────────────────────────────────────────── */
+
+function MissionBanner() {
+  return (
+    <div className="relative border-y border-slate-900/60 bg-slate-950/55 backdrop-blur">
+      <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_60%),radial-gradient(circle_at_82%_0%,rgba(56,189,248,0.16),transparent_62%)]" />
+      <div className="relative mx-auto max-w-7xl px-4 py-3 sm:px-6">
+        <RotatingAnnouncement reservesHref={ROUTE_TOKENOMICS_RESERVE} />
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Page building blocks (new)
+───────────────────────────────────────────── */
+
+function SectionHeader({
+  eyebrow,
+  title,
+  desc,
+  right,
+}: {
+  eyebrow?: string;
+  title: string;
+  desc?: string;
+  right?: ReactNode;
+}) {
+  return (
+    <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        {eyebrow ? (
+          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">{eyebrow}</p>
+        ) : null}
+        <h2 className="mt-2 text-pretty text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">{title}</h2>
+        {desc ? <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-slate-400">{desc}</p> : null}
+      </div>
+
+      {right ? <div className="shrink-0">{right}</div> : null}
+    </div>
+  );
+}
+
+function MetricChip({
+  label,
+  value,
+  tone = 'slate',
+  icon,
+}: {
+  label: string;
+  value: ReactNode;
+  tone?: 'slate' | 'emerald' | 'sky' | 'amber' | 'violet';
+  icon?: ReactNode;
+}) {
+  const toneClass =
+    tone === 'emerald'
+      ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100'
+      : tone === 'sky'
+        ? 'border-sky-400/20 bg-sky-500/10 text-sky-100'
+        : tone === 'amber'
+          ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] text-slate-100'
+          : tone === 'violet'
+            ? 'border-violet-400/20 bg-violet-500/10 text-violet-100'
+            : 'border-white/10 bg-white/[0.03] text-slate-200';
 
   return (
-    <div className="relative inline-flex" ref={boxRef}>
-      <a
-        ref={anchorRef}
-        href={href}
-        target="_blank"
-        rel="nofollow noopener noreferrer"
-        className="group inline-flex items-center"
-        onMouseEnter={hoverOpen}
-        onMouseLeave={hoverClose}
-        onFocus={hoverOpen}
-        onBlur={hoverClose}
-        onClick={onClick}
-        aria-label={`Open ${labelTop} on X`}
-      >
-        <div className="relative">
-          <div className={cx('rounded-full', glowClass)}>
-            <Avatar src={avatarUrl} handle={handle} size={size} />
-          </div>
-          <div className="pointer-events-none absolute -inset-1 rounded-full opacity-0 ring-2 ring-white/20 transition-opacity group-hover:opacity-100" />
+    <div className={`relative overflow-hidden rounded-2xl border ${toneClass} px-4 py-3 ring-1 ring-white/[0.05]`}>
+      <div className="pointer-events-none absolute -inset-20 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(255,255,255,0.06),transparent_62%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_40%_0%,rgba(var(--xpot-gold),0.08),transparent_62%)]" />
+      <div className="relative flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] opacity-80">{label}</p>
+          <div className="mt-1 text-[13px] font-semibold text-slate-50">{value}</div>
         </div>
+        {icon ? (
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/30">
+            {icon}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boolean }) {
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-3">
+      <Link
+        href={ROUTE_HUB}
+        className={`${BTN_GREEN} group px-6 py-3.5 text-sm ${warmup ? 'xpot-warmup-ring' : ''}`}
+        title="Open the hub"
+      >
+        Claim today&apos;s entry
+        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+      </Link>
+
+      <a
+        href={XPOT_JUP_SWAP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+        title="Buy XPOT on Jupiter"
+      >
+        Buy XPOT
+        <ExternalLink className="h-4 w-4 text-slate-500" />
       </a>
 
-      <TooltipPortal open={open} anchorEl={anchorRef.current}>
-        <div
-          className={cx(
-            'w-[278px] max-w-[84vw]',
-            'rounded-[22px] border border-white/12 bg-slate-950/90 backdrop-blur-xl',
-            'shadow-[0_30px_120px_rgba(0,0,0,0.78)]',
-          )}
-          role="tooltip"
-          onMouseEnter={() => {
-            if (isTouch) return;
-            setOpen(true);
-          }}
-          onMouseLeave={hoverClose}
-        >
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.28),rgba(255,255,255,0.06),rgba(56,189,248,0.16),transparent)]" />
-          <div className="p-3">
-            <div className="flex items-start gap-3">
-              <Avatar src={avatarUrl} handle={handle} size={42} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <div className="truncate text-[12px] font-semibold text-slate-100">{labelTop}</div>
-                  {verified ? (
-                    <span className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
-                      verified
-                    </span>
-                  ) : null}
-                </div>
-
-                {labelSub ? <div className="truncate text-[11px] text-slate-300/80">{labelSub}</div> : null}
-                {labelMeta ? <div className="mt-1 text-[10px] text-slate-400">{labelMeta}</div> : null}
-
-                <div className="mt-3">
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="nofollow noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-                  >
-                    Open on X <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                  </a>
-                </div>
-
-                {isTouch ? (
-                  <div className="mt-2 text-[10px] text-slate-500">Tip: tap avatar again to open X.</div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      </TooltipPortal>
+      <div className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-3 text-[12px] text-slate-300">
+        <Timer className="h-4 w-4 text-slate-400" />
+        Next draw in <span className="font-mono font-semibold text-slate-100">{countdown}</span>
+      </div>
     </div>
   );
 }
 
-function cleanEntries(entries: EntryRow[]) {
-  const arr = Array.isArray(entries) ? entries : [];
-  const out: EntryRow[] = [];
-  const seen = new Set<string>();
+function CopyMintRow() {
+  const [copied, setCopied] = useState(false);
 
-  for (const e of arr) {
-    if (!e?.handle) continue;
-    const h = normalizeHandle(e.handle);
-    const key = `${h}-${e.createdAt ?? ''}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-
-    out.push({
-      ...e,
-      handle: h,
-      createdAt: e.createdAt ?? '',
-      name: e.name ? String(e.name).trim() : '',
-    });
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(XPOT_CA);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      setCopied(false);
+    }
   }
 
-  out.sort((a, b) => safeTimeMs(b.createdAt) - safeTimeMs(a.createdAt));
-  return out;
-}
-
-function EntryRowLine({ e, idx }: { e: EntryRow; idx: number }) {
-  const handle = normalizeHandle(e.handle);
-  const href = toXProfileUrl(handle);
-  const t = e.createdAt ? formatEuTime(e.createdAt) : '';
-  const meta = t ? `Madrid time: ${t}` : null;
-
   return (
-    <div
-      className={cx(
-        'group flex items-center justify-between gap-3 rounded-2xl',
-        'border border-white/10 bg-white/[0.02] px-3 py-2',
-        'hover:bg-white/[0.04] hover:border-white/14 transition',
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <AvatarTooltip
-          handle={handle}
-          name={e.name ?? ''}
-          meta={meta}
-          avatarUrl={e.avatarUrl ?? null}
-          href={href}
-          verified={Boolean((e as any)?.verified)}
-          size={34}
-          glow="sky"
-        />
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <a
-              href={href}
-              target="_blank"
-              rel="nofollow noopener noreferrer"
-              className="truncate text-[13px] font-semibold text-slate-100"
-              title={handle}
-            >
-              {handle}
-            </a>
-            <ExternalLink className="h-3.5 w-3.5 text-slate-600 opacity-0 transition-opacity group-hover:opacity-100" />
-          </div>
-          {e.name ? <div className="truncate text-[11px] text-slate-400">{e.name}</div> : null}
-        </div>
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/35 px-4 py-2 text-[12px] text-slate-200 ring-1 ring-white/[0.05]">
+        <span className="text-slate-400">Mint</span>
+        <span className="font-mono">{shortenAddress(XPOT_CA, 10, 10)}</span>
       </div>
 
-      <div className="shrink-0 text-right">
-        {t ? <div className="text-[11px] font-semibold text-slate-200">{t}</div> : null}
-        <div className="text-[10px] text-slate-500">{idx === 0 ? 'just now' : 'today'}</div>
-      </div>
+      <button
+        type="button"
+        onClick={onCopy}
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+      >
+        {copied ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4 text-slate-300" />}
+        {copied ? 'Copied' : 'Copy mint'}
+      </button>
     </div>
   );
 }
 
-function BubbleEntrants({
-  entries,
-  onJoinHref,
-}: {
-  entries: EntryRow[];
-  onJoinHref: string;
-}) {
-  const isTouch = useIsTouch();
-  const top = entries.slice(0, 24);
+function WinnerMiniCard({ winner }: { winner: LiveWinnerRow | null }) {
+  const handle = winner?.handle ? normalizeHandle(winner.handle) : null;
+  const xUrl = handle ? toXProfileUrl(handle) : null;
 
-  // size tiers feel like a market bubble map (big newest)
-  const sizeForIndex = (i: number) => {
-    if (i === 0) return 74;
-    if (i <= 2) return 62;
-    if (i <= 5) return 54;
-    if (i <= 11) return 46;
-    return 40;
-  };
+  const amount = typeof winner?.amountXpot === 'number' ? winner.amountXpot : typeof winner?.amount === 'number' ? winner.amount : null;
 
   return (
-    <div className="relative">
-      {/* bubble bed */}
-      <div className="pointer-events-none absolute -inset-16 opacity-70 blur-3xl bg-[radial-gradient(circle_at_25%_20%,rgba(56,189,248,0.14),transparent_60%),radial-gradient(circle_at_70%_25%,rgba(168,85,247,0.10),transparent_62%),radial-gradient(circle_at_45%_85%,rgba(255,255,255,0.06),transparent_62%)]" />
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
+      <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_14%_25%,rgba(var(--xpot-gold),0.14),transparent_62%),radial-gradient(circle_at_80%_25%,rgba(56,189,248,0.10),transparent_62%)]" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+            Winner just took home
+          </p>
 
-      <div
-        className={cx(
-          'relative rounded-[24px] border border-white/10 bg-white/[0.02]',
-          'p-3 sm:p-4',
-        )}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-400">
-            Fresh entrants
-          </div>
-
-          <a
-            href={onJoinHref}
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-          >
-            Join now <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-          </a>
-        </div>
-
-        {/* bubble cloud */}
-        <div
-          className={cx(
-            'mt-4 flex flex-wrap items-center justify-center gap-3',
-            'sm:gap-4',
-          )}
-        >
-          {top.length ? (
-            top.map((e, i) => {
-              const handle = normalizeHandle(e.handle);
-              const href = toXProfileUrl(handle);
-              const t = e.createdAt ? formatEuTime(e.createdAt) : '';
-              const meta = t ? `Madrid time: ${t}` : null;
-
-              const size = sizeForIndex(i);
-
-              // premium glow: newest = gold-ish, rest = sky
-              const glow = i <= 2 ? 'gold' : 'sky';
-
-              return (
-                <div
-                  key={`${handle}-${e.createdAt ?? i}`}
-                  className={cx(
-                    'relative',
-                    // tiny jitter so it doesn’t look like a strict grid
-                    i % 3 === 0 ? 'translate-y-[2px]' : i % 3 === 1 ? '-translate-y-[3px]' : 'translate-y-0',
-                  )}
-                  style={{ width: size, height: size }}
-                >
-                  <div
-                    className={cx(
-                      'absolute inset-0 rounded-full',
-                      'bg-slate-950/30',
-                      'ring-1 ring-white/10',
-                      glow === 'gold'
-                        ? 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.20),0_22px_70px_rgba(var(--xpot-gold),0.10)]'
-                        : 'shadow-[0_0_0_1px_rgba(56,189,248,0.18),0_22px_70px_rgba(56,189,248,0.08)]',
-                    )}
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <div className="inline-flex items-center gap-2">
+              <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+                {winner?.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={winner.avatarUrl}
+                    alt={handle ? `${handle} avatar` : 'Winner avatar'}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
                   />
-                  <div className="absolute inset-0 grid place-items-center">
-                    <AvatarTooltip
-                      handle={handle}
-                      name={e.name ?? ''}
-                      meta={meta}
-                      avatarUrl={e.avatarUrl ?? null}
-                      href={href}
-                      verified={Boolean((e as any)?.verified)}
-                      size={Math.max(30, Math.floor(size * 0.72))}
-                      glow={glow}
-                    />
-                  </div>
+                ) : (
+                  <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
+                )}
+              </span>
 
-                  {/* label for desktop only (keeps bubbles clean) */}
-                  {!isTouch ? (
-                    <div className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-semibold text-slate-400/90">
-                      {i === 0 ? 'just now' : 'today'}
-                    </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  {handle ? (
+                    <a
+                      href={xUrl ?? '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-[14px] font-semibold text-slate-50 hover:text-white transition"
+                      title="Open X profile"
+                    >
+                      {handle}
+                    </a>
+                  ) : (
+                    <span className="truncate text-[14px] font-semibold text-slate-50">Pending</span>
+                  )}
+
+                  {winner?.kind ? (
+                    <Pill tone={winner.kind === 'BONUS' ? 'violet' : 'amber'}>
+                      <Sparkles className="h-3.5 w-3.5" />
+                      {winner.kind === 'BONUS' ? 'Bonus' : 'Main'}
+                    </Pill>
                   ) : null}
                 </div>
-              );
-            })
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-3 text-[12px] text-slate-400">
-              No entries yet.
-            </div>
-          )}
-        </div>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <div className="text-[11px] text-slate-500">Tap bubbles to preview. Tap again to open X.</div>
-          <div className="text-[11px] text-slate-500">Live, handle-first.</div>
+                <div className="mt-1 text-[12px] text-slate-400">
+                  {winner?.txUrl ? (
+                    <a
+                      href={winner.txUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition"
+                    >
+                      On-chain proof
+                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                    </a>
+                  ) : (
+                    <span>Proof appears after payout</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grow" />
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.05]">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Payout</div>
+              <div className={`mt-1 text-[16px] font-semibold ${GOLD_TEXT}`}>
+                {amount ? `${formatNumber(amount)} XPOT` : '—'}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-export default function LiveActivityModule({
-  winner,
-  entries,
-  className = '',
-}: {
-  winner: LiveWinnerRow | null;
-  entries: EntryRow[];
-  className?: string;
-}) {
-  const list = useMemo(() => cleanEntries(entries), [entries]);
-  const topList = list.slice(0, 7);
-
-  const winnerHandle = normalizeHandle(winner?.handle ?? '');
-  const winnerName = winner?.name ? String(winner.name).trim() : '';
-  const winnerWhen = formatEuDateTime(winner?.drawDate ?? null);
-  const winnerPrize = formatXpotAmount(winner);
-  const winnerHref = toXProfileUrl(winnerHandle);
-
-  const entrantsToday = list.length;
-
-  const [entryView, setEntryView] = useState<'bubbles' | 'list'>('bubbles');
-
+function StepRail() {
   return (
-    <section
-      className={cx(
-        'relative overflow-hidden rounded-[30px] sm:rounded-[40px]',
-        'border border-white/10 bg-white/[0.02] ring-1 ring-white/[0.05]',
-        'shadow-[0_60px_180px_rgba(0,0,0,0.65)]',
-        className,
-      )}
-    >
-      {/* top couture seam */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.36),rgba(255,255,255,0.06),rgba(56,189,248,0.18),transparent)]" />
-      {/* big aura */}
-      <div className="pointer-events-none absolute -inset-40 opacity-60 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(var(--xpot-gold),0.14),transparent_58%),radial-gradient(circle_at_82%_18%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_40%_90%,rgba(168,85,247,0.08),transparent_60%)]" />
-
-      <div className="relative p-4 sm:p-6">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
-              <Sparkles className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-200">
-                Live activity
-              </span>
-            </div>
-            <div className="mt-2 text-pretty text-[15px] sm:text-[16px] font-semibold text-slate-50">
-              The XPOT stage - winners and fresh entrants
-            </div>
-            <div className="mt-1 text-[12px] text-slate-400">Hover desktop. Tap mobile.</div>
+    <div className="grid gap-3 sm:grid-cols-3">
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-5 ring-1 ring-white/[0.06]">
+        <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.22),transparent_62%),radial-gradient(circle_at_80%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+        <div className="relative">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">Step 1</p>
+          <div className="mt-2 flex items-center gap-2 text-[13px] font-semibold text-slate-50">
+            <CheckCircle2 className="h-4 w-4 text-emerald-200" />
+            Hold {formatNumber(MIN_ELIGIBLE_XPOT)} XPOT
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-300">
-              <Users className="h-4 w-4 text-sky-200" />
-              <span className="font-semibold text-slate-100">{entrantsToday || 0}</span>
-              <span className="text-slate-500">entered today</span>
-            </div>
-
-            <Link
-              href={ROUTE_HUB}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-            >
-              Enter today&apos;s XPOT
-              <ExternalLink className="h-4 w-4 text-slate-500" />
-            </Link>
-          </div>
+          <p className="mt-1 text-[12px] leading-relaxed text-emerald-100/75">In your connected wallet.</p>
         </div>
+      </div>
 
-        {/* Layout */}
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-          {/* WINNER VAULT */}
-          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),transparent)]" />
-            <div className="pointer-events-none absolute -inset-10 opacity-60 bg-[radial-gradient(circle_at_20%_20%,rgba(var(--xpot-gold),0.16),transparent_55%),radial-gradient(circle_at_70%_10%,rgba(56,189,248,0.10),transparent_50%)]" />
-            <div className="pointer-events-none absolute inset-0 opacity-30 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%,transparent_65%,rgba(255,255,255,0.04))]" />
-
-            <div className="p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
-                  <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-200">
-                    Winner vault
-                  </span>
-                </div>
-
-                {winner?.txUrl ? (
-                  <a
-                    href={winner.txUrl}
-                    target="_blank"
-                    rel="nofollow noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.05] transition"
-                    title="Open on-chain proof"
-                  >
-                    Proof <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                  </a>
-                ) : (
-                  <span className="text-[11px] text-slate-500">Proof pending</span>
-                )}
-              </div>
-
-              <div className="mt-4 rounded-[26px] border border-white/10 bg-white/[0.02] p-4 sm:p-5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.38em] text-slate-500">
-                  WINNER JUST TOOK HOME
-                </div>
-
-                <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-                  <div>
-                    <div className="text-[40px] sm:text-[48px] leading-none font-semibold tracking-tight text-[rgb(var(--xpot-gold-2))]">
-                      {winnerPrize ? `×${winnerPrize}` : '—'}
-                    </div>
-                    <div className="mt-2 text-[11px] text-slate-400">XPOT</div>
-                  </div>
-
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/35 px-3 py-2 text-[11px] font-semibold text-slate-200">
-                    <Sparkles className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-                    published handle-first
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-3 rounded-[22px] border border-white/10 bg-white/[0.02] px-3 py-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <AvatarTooltip
-                    handle={winnerHandle}
-                    name={winnerName}
-                    meta={winnerWhen ? `Madrid time: ${winnerWhen}` : null}
-                    avatarUrl={winner?.avatarUrl ?? null}
-                    href={winnerHref}
-                    size={46}
-                    verified={Boolean((winner as any)?.verified)}
-                    glow="gold"
-                  />
-
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={winnerHref}
-                        target="_blank"
-                        rel="nofollow noopener noreferrer"
-                        className="truncate text-[15px] font-semibold text-slate-100"
-                        title={winnerHandle}
-                      >
-                        {winnerHandle}
-                      </a>
-                      <ExternalLink className="h-4 w-4 text-slate-600" />
-                    </div>
-                    {winnerName ? <div className="truncate text-[12px] text-slate-400">{winnerName}</div> : null}
-                  </div>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  {winnerWhen ? <div className="text-[11px] font-semibold text-slate-200">{winnerWhen}</div> : null}
-                  <div className="text-[10px] text-slate-500">Madrid time</div>
-                </div>
-              </div>
-
-              <div className="mt-4 text-[11px] text-slate-500">
-                Tip: hover (desktop) or tap (mobile) avatars to preview profile.
-              </div>
-            </div>
+      <div className="relative overflow-hidden rounded-3xl border border-sky-400/20 bg-sky-500/10 p-5 ring-1 ring-white/[0.06]">
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
+        <div className="relative">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sky-100/85">Step 2</p>
+          <div className="mt-2 flex items-center gap-2 text-[13px] font-semibold text-slate-50">
+            <Wand2 className="h-4 w-4 text-sky-200" />
+            Claim daily entry in hub
           </div>
+          <p className="mt-1 text-[12px] leading-relaxed text-sky-100/75">X + wallet verification.</p>
+        </div>
+      </div>
 
-          {/* ENTRY STREAM */}
-          <div className="relative rounded-[28px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(56,189,248,0.28),transparent)]" />
-            <div className="pointer-events-none absolute -inset-10 opacity-55 bg-[radial-gradient(circle_at_80%_18%,rgba(56,189,248,0.14),transparent_55%),radial-gradient(circle_at_20%_80%,rgba(168,85,247,0.07),transparent_55%)]" />
+      <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] p-5 ring-1 ring-white/[0.06]">
+        <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
+        <div className="relative">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-100/85">Step 3</p>
+          <div className="mt-2 flex items-center gap-2 text-[13px] font-semibold text-slate-50">
+            <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+            Winner + proof at 22:00 Madrid
+          </div>
+          <p className="mt-1 text-[12px] leading-relaxed text-slate-200/80">On-chain payout link shown.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            <div className="p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
-                  <Users className="h-4 w-4 text-sky-200" />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-200">
-                    Entry stream
-                  </span>
-                </div>
+function FAQItem({
+  q,
+  a,
+  defaultOpen = false,
+}: {
+  q: string;
+  a: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] ring-1 ring-white/[0.05]">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+        aria-expanded={open}
+      >
+        <span className="text-[14px] font-semibold text-slate-50">{q}</span>
+        <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open ? (
+        <div className="px-6 pb-6">
+          <div className="h-px bg-white/10" />
+          <div className="pt-4 text-[12px] leading-relaxed text-slate-400">{a}</div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
-                <div className="flex items-center gap-2">
-                  <div className="hidden sm:block text-[11px] text-slate-500">
-                    {entrantsToday ? `${entrantsToday} today` : '—'}
+/* ─────────────────────────────────────────────
+   Home page (redesigned)
+───────────────────────────────────────────── */
+
+function HomePageInner() {
+  const bonusActive = useBonusActive();
+  const winnerSpotlight = useLatestWinnerCard();
+  const entries = useLatestEntriesTelemetry();
+
+  const SHOW_LIVE_FEED = true;
+
+  const { countdown, cutoffLabel, nowMs, nextDrawUtcMs } = useNextDraw();
+  const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
+  const { warmup } = useDrawPhase(nowMs, nextDrawUtcMs);
+
+  useEffect(() => {
+    const t = run.ended
+      ? `XPOT - Final Draw live (${RUN_END_EU})`
+      : run.started
+        ? `XPOT - Day ${run.day}/${RUN_DAYS} (Next draw ${cutoffLabel})`
+        : `XPOT - Run starts ${RUN_START_EU}`;
+
+    document.title = t;
+    setMeta(
+      'description',
+      `XPOT is a daily draw protocol with handle-first identity and on-chain proof. Final draw: ${RUN_END_EU}.`,
+    );
+  }, [run.day, run.started, run.ended, cutoffLabel]);
+
+  const hero = (
+    <section className="relative">
+      <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+14px)]" />
+      <MissionBanner />
+
+      <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.70))]" />
+
+        <div className="relative z-10 mx-auto w-full max-w-none px-3 sm:px-6 lg:px-10 2xl:px-14">
+          <div className="py-5 sm:py-7">
+            <div className="relative w-full overflow-hidden rounded-[40px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              <CosmicHeroBackdrop />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.30),transparent)]" />
+
+              {/* New layout: RIGHT (Jackpot) dominates */}
+              <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,1.28fr)_minmax(0,0.72fr)] 2xl:grid-cols-[minmax(0,1.36fr)_minmax(0,0.64fr)]">
+                {/* RIGHT - Jackpot hero */}
+                <div className="min-w-0 order-1 lg:order-2">
+                  <div className="relative -mt-1 lg:-mt-2">
+                    <JackpotPanel variant="standalone" layout="wide" mode="hero" />
                   </div>
 
-                  {/* view toggle */}
-                  <div className="inline-flex rounded-full border border-white/10 bg-white/[0.02] p-1">
-                    <button
-                      type="button"
-                      onClick={() => setEntryView('bubbles')}
-                      className={cx(
-                        'rounded-full px-3 py-1 text-[11px] font-semibold transition',
-                        entryView === 'bubbles'
-                          ? 'bg-white/[0.06] text-slate-100'
-                          : 'text-slate-400 hover:text-slate-200',
-                      )}
-                    >
-                      Bubbles
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEntryView('list')}
-                      className={cx(
-                        'rounded-full px-3 py-1 text-[11px] font-semibold transition',
-                        entryView === 'list'
-                          ? 'bg-white/[0.06] text-slate-100'
-                          : 'text-slate-400 hover:text-slate-200',
-                      )}
-                    >
-                      List
-                    </button>
+                  {bonusActive ? (
+                    <div className="mt-4">
+                      <PremiumCard className="p-5 sm:p-6" halo={false}>
+                        <BonusStrip />
+                      </PremiumCard>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 grid gap-3">
+                    <MetricChip
+                      label="Cadence"
+                      value={
+                        <span className="inline-flex items-center gap-2">
+                          <span className="font-mono text-slate-100">{countdown}</span>
+                          <span className="text-slate-400">to cutoff</span>
+                        </span>
+                      }
+                      tone={warmup ? 'amber' : 'sky'}
+                      icon={<Timer className="h-4 w-4 text-slate-200" />}
+                    />
+                    <MetricChip
+                      label="Eligibility"
+                      value={
+                        <span className="inline-flex items-center gap-2">
+                          <span className="font-mono text-slate-100">{formatNumber(MIN_ELIGIBLE_XPOT)}</span>
+                          <span className="text-slate-400">XPOT minimum</span>
+                        </span>
+                      }
+                      tone="emerald"
+                      icon={<BadgeCheck className="h-4 w-4 text-emerald-200" />}
+                    />
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-4">
-                {entryView === 'bubbles' ? (
-                  <BubbleEntrants entries={list} onJoinHref={ROUTE_HUB} />
-                ) : (
-                  <div className="space-y-2">
-                    {topList.length ? (
-                      topList.map((e, idx) => (
-                        <EntryRowLine key={`${e.handle}-${e.createdAt ?? idx}`} e={e} idx={idx} />
-                      ))
-                    ) : (
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-3 text-[12px] text-slate-400">
-                        No entries yet.
+                {/* LEFT - Identity + proof + winner spotlight */}
+                <div className="min-w-0 order-2 lg:order-1">
+                  <div className="relative">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <Pill tone={warmup ? 'amber' : 'emerald'}>
+                        <Radio className="h-3.5 w-3.5" />
+                        {run.ended ? 'Final draw' : warmup ? 'Warm-up' : run.started ? 'Live run' : 'Pre-run'}
+                      </Pill>
+
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+                        Handle-first identity + on-chain proof
+                      </span>
+                    </div>
+
+                    <div className="mt-4">
+                      <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                        The daily <span className="xpot-xpotword">XPOT</span> moment.
+                      </h1>
+
+                      <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300">
+                        Hold XPOT to qualify. Claim entry each day in the hub. Winner is published with a real @handle
+                        and paid on-chain. Final Draw ends on <FinalDrawDate className="text-slate-100" />.
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                          <Users className="h-4 w-4 text-slate-300" />
+                          Real handles
+                        </span>
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                          <ShieldCheck className="h-4 w-4 text-slate-300" />
+                          Proof
+                        </span>
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                          <Globe className="h-4 w-4 text-slate-300" />
+                          One cadence
+                        </span>
+
+                        <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
+                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
+                            <Info className="h-4 w-4 text-emerald-100/70" />
+                            Verified in hub
+                          </span>
+                        </TinyTooltip>
                       </div>
-                    )}
 
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <div className="text-[11px] text-slate-500">Fast, clean, mobile-first.</div>
-                      <Link
-                        href={ROUTE_HUB}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-                      >
-                        Join now <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                      </Link>
+                      <PrimaryCtaRow countdown={countdown} warmup={warmup} />
+                      <CopyMintRow />
+
+                      <div className="mt-5">
+                        <WinnerMiniCard winner={winnerSpotlight} />
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
-              <div className="mt-4 text-[11px] text-slate-500">
-                {entryView === 'bubbles'
-                  ? 'Bubble map is for hype. Switch to list for scanning.'
-                  : 'List is for scanning. Switch to bubbles for hype.'}
+              {/* Under-hero rail */}
+              <div className="relative z-10 px-4 pb-5 sm:px-6 sm:pb-6 lg:px-8 lg:pb-7">
+                <div className="h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
+                <div className="mt-5">
+                  <StepRail />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </section>
+  );
+
+  return (
+    <XpotPageShell pageTag="home" fullBleedTop={hero}>
+      {/* LIVE ACTIVITY */}
+      {SHOW_LIVE_FEED ? (
+        <div className="mt-10">
+          <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
+        </div>
+      ) : null}
+
+      {/* THE PROTOCOL, MADE CLEAR */}
+      <section className="mt-10">
+        <SectionHeader
+          eyebrow="The protocol"
+          title="Simple, public, verifiable"
+          desc="XPOT is built for social proof. Handles are the face of the protocol. On-chain proof is the backbone."
+          right={
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={XPOT_DEXSCREENER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+              >
+                Chart
+                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+              </a>
+              <a
+                href={XPOT_SOLSCAN_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+              >
+                Explorer
+                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+              </a>
+            </div>
+          }
+        />
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <PremiumCard className="p-6" halo>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Pill tone="sky">
+                <Users className="h-3.5 w-3.5" />
+                Identity surface
+              </Pill>
+
+              <Pill tone="amber">
+                <ShieldCheck className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                Proof surface
+              </Pill>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Handle-first</p>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
+                  Your @handle is the public identity. It is what the crowd sees in winners and live activity.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">On-chain proof</p>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
+                  When paid, the winner card shows the transaction link. Anyone can verify the payout.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">One cadence</p>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
+                  Daily cutoff at 22:00 Madrid. One rhythm for everyone. The countdown never lies.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">No tickets</p>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
+                  Eligibility is holdings-based. Claim in the hub to register your daily entry.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3 text-sm`}>
+                Enter the hub
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+          </PremiumCard>
+
+          <PremiumCard className="p-6" halo={false}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Quick actions</p>
+
+            <div className="mt-4 grid gap-2">
+              <Link
+                href={ROUTE_HUB}
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-[13px] font-semibold text-emerald-100 hover:bg-emerald-500/14 transition"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-emerald-200" />
+                  Claim entry (hub)
+                </span>
+                <ArrowRight className="h-4 w-4 opacity-80" />
+              </Link>
+
+              <a
+                href={XPOT_JUP_SWAP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-emerald-200" />
+                  Buy on Jupiter
+                </span>
+                <ExternalLink className="h-4 w-4 text-slate-500" />
+              </a>
+
+              <Link
+                href={ROUTE_TOKENOMICS_RESERVE}
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
+                  Reserves
+                </span>
+                <ChevronDown className="h-4 w-4 text-slate-500" />
+              </Link>
+
+              <div className="mt-2 rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Eligibility check</p>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
+                  Connect X + wallet in the hub and we verify holdings and identity. If you qualify, you can claim for
+                  today.
+                </p>
+              </div>
+            </div>
+          </PremiumCard>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="mt-10">
+        <SectionHeader
+          eyebrow="FAQ"
+          title="Common questions"
+          desc="Homepage stays hype and simple. Hub is where the entry and verification happens."
+        />
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <FAQItem
+            q="Do I need to buy tickets?"
+            a="No. Eligibility is based on XPOT holdings. If you qualify, you claim a daily entry in the hub."
+            defaultOpen
+          />
+          <FAQItem
+            q="How do I verify a payout?"
+            a={
+              <span>
+                Winner cards show a transaction link once paid. Open it in the explorer to verify on-chain proof.
+              </span>
+            }
+          />
+          <FAQItem
+            q="Why show avatars and handles?"
+            a="Because XPOT is handle-first. Social identity is the surface layer and it makes activity instantly human."
+          />
+          <FAQItem
+            q="When is the Final Draw?"
+            a={
+              <span>
+                Final draw is scheduled for <span className="text-slate-200">{String(RUN_END_EU)}</span>. Countdown on
+                this page always shows the next daily cutoff.
+              </span>
+            }
+          />
+        </div>
+
+        <div className="mt-6">
+          <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`}>
+            Go to the hub
+            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      </section>
+
+      {/* FOOTER (unchanged) */}
+      <XpotFooter />
+    </XpotPageShell>
+  );
+}
+
+export default function HomePageClient() {
+  return (
+    <NextDrawProvider>
+      <HomePageInner />
+    </NextDrawProvider>
   );
 }
