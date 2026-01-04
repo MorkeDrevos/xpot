@@ -58,7 +58,6 @@ function useIsTouch() {
 
   useEffect(() => {
     const check = () => {
-      // If the device can hover, we treat it as desktop.
       const canHover =
         typeof window !== 'undefined' &&
         window.matchMedia &&
@@ -131,7 +130,6 @@ function Avatar({
     return s.slice(0, 2).toUpperCase();
   }, [handle]);
 
-  // VIP tags: verified gets gold outline, others neutral
   const frame = verified
     ? 'border-[rgba(var(--xpot-gold),0.35)] ring-2 ring-[rgba(var(--xpot-gold),0.22)] shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.14),0_0_28px_rgba(245,158,11,0.10)]'
     : 'border-white/12 ring-1 ring-white/[0.08]';
@@ -146,7 +144,6 @@ function Avatar({
       style={{ width: size, height: size }}
       title={normalizeHandle(label)}
     >
-      {/* shimmer overlay only for verified */}
       {verified ? <span className="pointer-events-none absolute inset-0 xpot-verified-sheen" /> : null}
 
       {resolvedSrc && !failed ? (
@@ -219,7 +216,6 @@ function MiniDot({
   );
 }
 
-/** Animated X-style hover card (desktop only) */
 function ProfileHoverCard({ e, isMe }: { e: EntryRow; isMe: boolean }) {
   const handle = normalizeHandle(e.handle);
   const name = e.name ? String(e.name).trim() : '';
@@ -266,7 +262,6 @@ function ProfileHoverCard({ e, isMe }: { e: EntryRow; isMe: boolean }) {
   );
 }
 
-/** Mobile tap sheet (bottom) */
 function TapSheet({
   open,
   onClose,
@@ -312,12 +307,7 @@ function TapSheet({
 
             <div className="p-5">
               <div className="flex items-center gap-4">
-                <Avatar
-                  src={entry.avatarUrl}
-                  label={handle}
-                  verified={entry.verified}
-                  size={64}
-                />
+                <Avatar src={entry.avatarUrl} label={handle} verified={entry.verified} size={64} />
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -358,9 +348,7 @@ function TapSheet({
                 </button>
               </div>
 
-              <div className="mt-4 text-center text-[11px] text-slate-500">
-                Tap outside to dismiss
-              </div>
+              <div className="mt-4 text-center text-[11px] text-slate-500">Tap outside to dismiss</div>
             </div>
           </motion.div>
         </>
@@ -412,7 +400,6 @@ export default function EnteringStageLive({
     prevNewestKey.current = newestKey;
   }, [newestKey, reduceMotion]);
 
-  // close sheet on escape
   useEffect(() => {
     if (!sheetEntry) return;
     const onKey = (ev: KeyboardEvent) => {
@@ -477,7 +464,6 @@ export default function EnteringStageLive({
           }
           .xpot-new-sweep.on { animation: xpotNewSweep 1.35s ease-in-out 1; }
 
-          /* Verified shimmer (subtle, premium) */
           @keyframes xpotVerifiedSheen {
             0% { transform: translateX(-120%) skewX(-16deg); opacity: 0; }
             20% { opacity: 0.22; }
@@ -499,9 +485,7 @@ export default function EnteringStageLive({
             animation: xpotVerifiedSheen 6.5s ease-in-out infinite;
             opacity: 0;
           }
-          .xpot-verified-shimmer:hover .xpot-verified-sheen {
-            animation-duration: 4.2s;
-          }
+          .xpot-verified-shimmer:hover .xpot-verified-sheen { animation-duration: 4.2s; }
 
           @media (prefers-reduced-motion: reduce) {
             .xpot-live-dot { animation: none; }
@@ -511,32 +495,13 @@ export default function EnteringStageLive({
           }
         `}</style>
 
-        {/* Premium ambient aura (alive) */}
-        <div
-          className="pointer-events-none absolute -inset-[2px] rounded-[22px] opacity-60 blur-xl xpot-aura-breath
-          bg-[radial-gradient(circle_at_18%_45%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_82%_50%,rgba(16,185,129,0.14),transparent_58%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.12),transparent_60%)]"
-        />
-
-        {/* Thin luminous rim (expensive, not neon) */}
+        <div className="pointer-events-none absolute -inset-[2px] rounded-[22px] opacity-60 blur-xl xpot-aura-breath bg-[radial-gradient(circle_at_18%_45%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_82%_50%,rgba(16,185,129,0.14),transparent_58%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.12),transparent_60%)]" />
         <div className="pointer-events-none absolute inset-0 rounded-[22px] ring-1 ring-white/[0.08]" />
-        <div
-          className="pointer-events-none absolute inset-0 rounded-[22px]
-          shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_50px_rgba(56,189,248,0.08),0_0_45px_rgba(16,185,129,0.06)]"
-        />
+        <div className="pointer-events-none absolute inset-0 rounded-[22px] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_50px_rgba(56,189,248,0.08),0_0_45px_rgba(16,185,129,0.06)]" />
 
-        {!embedded ? (
-          <>
-            <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_16%_40%,rgba(56,189,248,0.08),transparent_62%),radial-gradient(circle_at_84%_42%,rgba(16,185,129,0.07),transparent_64%),radial-gradient(circle_at_50%_120%,rgba(var(--xpot-gold),0.06),transparent_58%)]" />
-            <div className="pointer-events-none absolute inset-0 opacity-[0.05] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:18px_18px]" />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(56,189,248,0.30),transparent)] opacity-70" />
-          </>
-        ) : null}
-
-        {/* FULL container sweep (alive) */}
         <div className={['xpot-new-sweep', newPulse && !reduceMotion ? 'on' : ''].join(' ')} />
 
         <div className="relative flex items-center gap-3 px-4 py-3 sm:px-5">
-          {/* label */}
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
             <Users className="h-4 w-4 text-sky-200" />
             <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
@@ -544,7 +509,6 @@ export default function EnteringStageLive({
             </span>
           </div>
 
-          {/* runway */}
           <div className="relative min-w-0 flex-1">
             <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-[linear-gradient(90deg,rgba(2,6,23,0.92),transparent)]" />
             <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-[linear-gradient(270deg,rgba(2,6,23,0.92),transparent)]" />
@@ -555,12 +519,12 @@ export default function EnteringStageLive({
 
                 {has ? (
                   <>
-                    {/* ULTRA: avatars only (desktop hover card, mobile tap sheet) */}
                     {variant === 'ultra' ? (
                       <AnimatePresence initial={false}>
                         {row.map((e, idx) => {
                           const key = makeKey(e, idx);
                           const handle = normalizeHandle(e.handle);
+                          const name = e.name ? String(e.name).trim() : '';
                           const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
 
                           return (
@@ -574,7 +538,11 @@ export default function EnteringStageLive({
                               }}
                               target={isTouch ? undefined : '_blank'}
                               rel={isTouch ? undefined : 'nofollow noopener noreferrer'}
-                              className="group relative inline-flex items-center"
+                              className={[
+                                'group relative inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5',
+                                'border-white/10 bg-white/[0.02] hover:bg-white/[0.045] transition',
+                                isMe ? 'border-emerald-300/20 bg-emerald-500/10' : '',
+                              ].join(' ')}
                               initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6, filter: 'blur(8px)' }}
                               animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
                               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(8px)' }}
@@ -589,15 +557,23 @@ export default function EnteringStageLive({
                                 size={Math.max(30, avatarSize)}
                               />
 
-                              {/* desktop hover only */}
-                              {!isTouch ? (
-                                <AnimatePresence>
-                                  <div className="absolute left-1/2 top-full -translate-x-1/2">
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                                      <ProfileHoverCard e={e} isMe={isMe} />
-                                    </div>
+                              {/* handle + name */}
+                              <div className="min-w-0 leading-tight pr-1">
+                                <div className="max-w-[150px] truncate text-[12px] font-semibold text-slate-200">
+                                  {handle}
+                                </div>
+                                {name ? (
+                                  <div className="max-w-[160px] truncate text-[11px] text-slate-500">
+                                    {name}
                                   </div>
-                                </AnimatePresence>
+                                ) : null}
+                              </div>
+
+                              {/* desktop hover card */}
+                              {!isTouch ? (
+                                <div className="absolute left-1/2 top-full -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                  <ProfileHoverCard e={e} isMe={isMe} />
+                                </div>
                               ) : null}
                             </motion.a>
                           );
@@ -605,14 +581,12 @@ export default function EnteringStageLive({
                       </AnimatePresence>
                     ) : null}
 
-                    {/* TICKER: handle text only with tiny dot avatar */}
                     {variant === 'ticker' ? (
                       <AnimatePresence initial={false}>
                         {row.map((e, idx) => {
                           const key = makeKey(e, idx);
                           const handle = normalizeHandle(e.handle);
                           const isMe = Boolean(localHandle && normalizeHandle(localHandle) === handle);
-
                           return (
                             <motion.a
                               key={key}
@@ -646,7 +620,6 @@ export default function EnteringStageLive({
                       </AnimatePresence>
                     ) : null}
 
-                    {/* VIP: verified gold outline, others neutral, zero icons */}
                     {variant === 'vip' ? (
                       <AnimatePresence initial={false}>
                         {row.map((e, idx) => {
@@ -677,13 +650,7 @@ export default function EnteringStageLive({
                               aria-label={`Open ${handle} on X`}
                               title={handle}
                             >
-                              <Avatar
-                                src={e.avatarUrl}
-                                label={handle}
-                                verified={e.verified}
-                                size={Math.max(26, avatarSize)}
-                              />
-
+                              <Avatar src={e.avatarUrl} label={handle} verified={e.verified} size={Math.max(26, avatarSize)} />
                               <div className="min-w-0 leading-tight">
                                 <div className="flex items-center gap-2">
                                   <span className="max-w-[170px] truncate text-[12.5px] font-semibold text-slate-200">
@@ -714,24 +681,15 @@ export default function EnteringStageLive({
             </div>
           </div>
 
-          {/* live count */}
           <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
             <span className="xpot-live-dot h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              Live
-            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Live</span>
             <span className="font-mono text-[11px] text-slate-200">{list.length}</span>
           </div>
         </div>
       </Outer>
 
-      {/* Mobile tap sheet */}
-      <TapSheet
-        open={Boolean(sheetEntry)}
-        onClose={() => setSheetEntry(null)}
-        entry={sheetEntry}
-        isMe={sheetIsMe}
-      />
+      <TapSheet open={Boolean(sheetEntry)} onClose={() => setSheetEntry(null)} entry={sheetEntry} isMe={sheetIsMe} />
     </>
   );
 }
