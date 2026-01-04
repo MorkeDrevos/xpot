@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Crown, ExternalLink, Sparkles, Users } from 'lucide-react';
+import { Crown, Sparkles, Users } from 'lucide-react';
 
 /* ======================================================
-   TYPES (TOP-LEVEL EXPORTS — REQUIRED FOR BUILD)
+   TYPES (TOP-LEVEL EXPORTS - REQUIRED FOR BUILD)
 ====================================================== */
 
 export type EntryRow = {
@@ -26,7 +26,11 @@ export type LiveWinnerRow = {
   wallet: string | null;
   amount?: number | null;
   amountXpot?: number | null;
+
+  // NOTE: We present this everywhere as the CLAIM timestamp (on-chain payout time).
+  // Even if your backend historically used it as "drawDate", UI treats it as "claimedAt".
   drawDate: string | null;
+
   txUrl?: string | null;
   kind?: 'MAIN' | 'BONUS' | null;
   label?: string | null;
@@ -44,8 +48,9 @@ function cx(...c: Array<string | false | null | undefined>) {
 }
 
 function normalizeHandle(h?: string | null) {
-  if (!h) return '@unknown';
-  return h.startsWith('@') ? h : `@${h}`;
+  const s = String(h ?? '').trim();
+  if (!s) return '@unknown';
+  return s.startsWith('@') ? s : `@${s}`;
 }
 
 function toXProfileUrl(handle: string) {
@@ -82,6 +87,11 @@ function formatXpot(w: LiveWinnerRow | null) {
   const v = w?.amountXpot ?? w?.amount;
   if (!v) return null;
   return Math.round(v).toLocaleString('en-US');
+}
+
+function isValidIso(iso?: string | null) {
+  if (!iso) return false;
+  return Number.isFinite(Date.parse(iso));
 }
 
 /* ======================================================
@@ -271,6 +281,13 @@ export default function LiveActivityModule({
 
   const prize = formatXpot(winner);
   const winnerHandle = normalizeHandle(winner?.handle ?? '');
+  const winnerName = winner?.name?.trim() || null;
+
+  // Present drawDate as CLAIMED timestamp everywhere (per your new rule)
+  const claimedIso = isValidIso(winner?.drawDate) ? winner?.drawDate : null;
+  const claimedLabel = claimedIso ? formatDateTime(claimedIso) : null;
+
+  const xHref = toXProfileUrl(winnerHandle);
 
   return (
     <section
@@ -287,9 +304,7 @@ export default function LiveActivityModule({
               <Sparkles className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
               Live activity
             </div>
-            <div className="text-lg font-semibold text-white mt-1">
-              The XPOT stage
-            </div>
+            <div className="text-lg font-semibold text-white mt-1">The XPOT stage</div>
           </div>
 
           <Link
@@ -309,32 +324,71 @@ export default function LiveActivityModule({
                 <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
                 Winner
               </div>
-              {winner?.txUrl && (
-                <a
-                  href={winner.txUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-slate-400 hover:text-white"
-                >
-                  Proof ↗
-                </a>
+
+              <div className="flex items-center gap-2">
+                {winner?.txUrl && (
+                  <a
+                    href={winner.txUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
+                    View proof
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* PROMO LINE */}
+            <div className="text-[10px] uppercase tracking-[0.32em] text-slate-400">
+              Winner just took home
+            </div>
+
+            {/* AMOUNT */}
+            <div className="mt-1 flex items-baseline gap-2">
+              <div className="text-[44px] font-semibold text-[rgb(var(--xpot-gold-2))] leading-none">
+                {prize ? `×${prize}` : '—'}
+              </div>
+              <div className="text-xs text-slate-400">XPOT</div>
+            </div>
+
+            {/* CLAIMED DATE */}
+            <div className="mt-2 text-xs text-slate-400">
+              {claimedLabel ? (
+                <>
+                  <span className="uppercase tracking-[0.22em] text-[10px] text-slate-500 mr-2">
+                    Claimed
+                  </span>
+                  <span className="text-slate-300">{claimedLabel}</span>
+                </>
+              ) : (
+                <span className="text-slate-500">Claim time pending</span>
               )}
             </div>
 
-            <div className="text-[44px] font-semibold text-[rgb(var(--xpot-gold-2))] leading-none">
-              {prize ? `×${prize}` : '—'}
-            </div>
-            <div className="text-xs text-slate-400 mt-1">XPOT</div>
-
+            {/* WINNER IDENTITY */}
             <div className="mt-4 flex items-center gap-3">
               <AvatarTooltip
                 handle={winnerHandle}
-                name={winner?.name}
+                name={winnerName}
                 avatarUrl={winner?.avatarUrl}
-                meta={winner?.drawDate ? formatDateTime(winner.drawDate) : null}
-                size={48}
+                meta={claimedLabel ? `Claimed ${claimedLabel}` : null}
+                size={52}
               />
-              <div className="font-semibold text-white">{winnerHandle}</div>
+              <div className="min-w-0">
+                <a
+                  href={xHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-white hover:text-[rgb(var(--xpot-gold-2))] truncate inline-flex items-center gap-2"
+                >
+                  <span className="truncate">{winnerHandle}</span>
+                  <span className="text-slate-500 text-xs">↗</span>
+                </a>
+                {winnerName && (
+                  <div className="text-xs text-slate-400 truncate">{winnerName}</div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -350,9 +404,7 @@ export default function LiveActivityModule({
                   onClick={() => setView('bubbles')}
                   className={cx(
                     'px-3 py-1 rounded-full text-xs',
-                    view === 'bubbles'
-                      ? 'bg-white/10 text-white'
-                      : 'text-slate-400',
+                    view === 'bubbles' ? 'bg-white/10 text-white' : 'text-slate-400',
                   )}
                 >
                   Bubbles
@@ -361,9 +413,7 @@ export default function LiveActivityModule({
                   onClick={() => setView('list')}
                   className={cx(
                     'px-3 py-1 rounded-full text-xs',
-                    view === 'list'
-                      ? 'bg-white/10 text-white'
-                      : 'text-slate-400',
+                    view === 'list' ? 'bg-white/10 text-white' : 'text-slate-400',
                   )}
                 >
                   List
