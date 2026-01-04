@@ -27,7 +27,7 @@ const MAX_RECENT_WINNERS = 10;
 // Preference order: /api/admin (your legacy stable routes) -> /api/ops (newer experimental routes)
 const API_BASE_CANDIDATES = ['/api/admin', '/api/ops'] as const;
 
-// ✅ admin endpoint that actually exists (manual trigger you showed)
+// ✅ known legacy endpoint you have (manual trigger)
 const ADMIN_PICK_WINNER_API = '/api/admin/draw/pick-winner';
 
 type DrawStatus = 'open' | 'closed' | 'completed';
@@ -274,8 +274,8 @@ function toTodayDrawFromLive(live: LiveDrawPayload['draw']): TodayDraw | null {
     status: mapLiveStatus(live.status),
     ticketsCount: 0,
     closesAt: live.closesAt,
-    jackpotUsd: undefined,
-    rolloverUsd: undefined,
+    jackpotUsd: 0,
+    rolloverUsd: 0,
   };
 }
 
@@ -393,19 +393,11 @@ export default function AdminPage() {
     return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
   }
 
-  async function probeApiBase(token: string): Promise<string | null> {
-    // If /health returns 401, that STILL proves the route exists on this deployment.
+  async function probeApiBase(): Promise<string | null> {
     for (const base of API_BASE_CANDIDATES) {
       try {
-        const res = await fetch(`${base}/health`, {
-          cache: 'no-store',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-xpot-admin-key': token.trim(),
-          },
-        });
-
-        if (res.ok || res.status === 401) return base;
+        const res = await fetch(`${base}/health`, { cache: 'no-store' });
+        if (res.ok) return base;
       } catch {
         // ignore
       }
@@ -420,13 +412,13 @@ export default function AdminPage() {
     let cancelled = false;
 
     (async () => {
-      const detected = await probeApiBase(adminToken);
+      const detected = await probeApiBase();
       if (cancelled) return;
 
       if (!detected) {
         setApiBase('/api/admin'); // default
         setApiBanner(
-          'No Ops/Admin API detected on this deployment. Deploy backend routes to use Operations Center.',
+          'No Ops/Admin API detected on this deployment (missing /api/admin/* and /api/ops/*). Deploy backend routes to use Operations Center.',
         );
         return;
       }
@@ -441,13 +433,24 @@ export default function AdminPage() {
   }, [adminToken]);
 
   // IMPORTANT:
-  // - authedFetch THROWS on failures so UI doesn't silently show "no draw"
+  // - authedFetch THROWS on failures
+  // - send multiple header names to stay compatible with older routes (fixes 401/UNAUTHED in UI)
   async function authedFetch(input: string, init?: RequestInit) {
     if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
+    const token = adminToken.trim();
     const headers = new Headers(init?.headers || {});
-    headers.set('Content-Type', 'application/json');
-    headers.set('x-xpot-admin-key', adminToken.trim());
+
+    // keep json header only when we actually send a body
+    if (init?.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+
+    // primary (new)
+    headers.set('x-xpot-admin-key', token);
+    // backwards compat (old variants)
+    headers.set('x-admin-key', token);
+    headers.set('x-xpot-admin-token', token);
+    // some older middleware checks Authorization
+    if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
 
     const res = await fetch(input, { ...init, headers, cache: 'no-store' });
 
@@ -459,7 +462,7 @@ export default function AdminPage() {
     }
 
     if (!res.ok) {
-      const msg = data?.error || `Request failed (${res.status})`;
+      const msg = data?.error || data?.message || `Request failed (${res.status})`;
       throw new Error(msg);
     }
 
@@ -601,7 +604,6 @@ export default function AdminPage() {
 
     setCancelingDropId(dropId);
     try {
-      // Most of your implementations use /bonus with ?id=...
       const data = await authedFetch(`${api('/bonus')}?id=${encodeURIComponent(dropId)}`, {
         method: 'POST',
       });
@@ -630,15 +632,34 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
-      // Explicitly call your known endpoint
-      const data = await authedFetch(ADMIN_PICK_WINNER_API, { method: 'POST' });
+      // Try candidates so "pick winner" works on both /api/admin and /api/ops deployments.
+      const candidates = [
+        ADMIN_PICK_WINNER_API,
+        api('/draw/pick-winner'),
+        api('/pick-winner'),
+      ].filter(Boolean);
 
-      const raw = (data as any).winner;
+      let data: any = null;
+      let lastErr: any = null;
+
+      for (const url of candidates) {
+        try {
+          data = await authedFetch(url, { method: 'POST' });
+          lastErr = null;
+          break;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+
+      if (!data) throw lastErr || new Error('Failed to pick winner');
+
+      const raw = (data as any).winner ?? (data as any);
       if (!raw) throw new Error('No winner returned from API');
 
       const normalized: AdminWinner = {
-        id: `main:${raw.ticketId ?? raw.code ?? Date.now()}`,
-        drawId: todayDraw?.id ?? 'today',
+        id: `main:${raw.ticketId ?? raw.id ?? raw.code ?? Date.now()}`,
+        drawId: todayDraw?.id ?? raw.drawId ?? 'today',
         date: new Date().toISOString(),
         ticketCode: String(raw.code ?? raw.ticketCode ?? ''),
         walletAddress: String(raw.wallet ?? raw.walletAddress ?? ''),
@@ -646,6 +667,7 @@ export default function AdminPage() {
         isPaidOut: !!raw.isPaidOut,
         kind: 'main',
         label: 'Main XPOT winner',
+        txUrl: raw.txUrl ?? null,
       };
 
       const addr = normalized.walletAddress || '';
@@ -959,12 +981,10 @@ export default function AdminPage() {
       }
 
       const totalSeconds = Math.floor(diffMs / 1000);
-
       const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
       const seconds = String(totalSeconds % 60).padStart(2, '0');
-
-      setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
+      setNextBonusCountdown(`${hours}:${minutes}:${seconds}`);
     }
 
     updateCountdown();
@@ -1038,10 +1058,14 @@ export default function AdminPage() {
     drawDateValue = new Date(closesAtDate.getTime() + DAY_MS);
   }
 
+  // If we removed JackpotPanel, we still show *some* value.
+  // Prefer server-provided todayDraw.jackpotUsd, else 0.
+  const todayXpotUsd = todayDraw?.jackpotUsd ?? 0;
+
   return (
     <XpotPageShell
       title="Operations Center"
-      subtitle="Control room for today&apos;s XPOT"
+      subtitle="Control room for today's XPOT"
       rightSlot={<OperationsCenterBadge live={true} autoDraw={isAutoActive} />}
     >
       {apiBanner && (
@@ -1050,7 +1074,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ✅ Hero + JackpotPanel removed (requested) */}
+      {/* ✅ HERO + JACKPOT PANEL REMOVED */}
 
       {/* Admin key band */}
       <section className="relative mt-5">
@@ -1115,9 +1139,9 @@ export default function AdminPage() {
               <div className="pt-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-100">Today&apos;s round</p>
+                    <p className="text-sm font-semibold text-slate-100">Today's round</p>
                     <p className="mt-1 text-xs text-slate-400">
-                      Live overview of today&apos;s XPOT draw, entries, rollovers and prize pool.
+                      Live overview of today's XPOT draw, entries, rollovers and prize pool.
                     </p>
                   </div>
 
@@ -1137,9 +1161,7 @@ export default function AdminPage() {
                       {todayDraw && (
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                            todayDraw.status === 'open'
-                              ? 'bg-emerald-500/10 text-emerald-300'
-                              : 'bg-slate-800 text-slate-300'
+                            todayDraw.status === 'open' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-800 text-slate-300'
                           }`}
                         >
                           {todayDraw.status.toUpperCase()}
@@ -1164,9 +1186,9 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today&apos;s XPOT (USD)</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today's XPOT (USD)</p>
                     <div className="mt-1">
-                      <UsdPill amount={todayDraw?.jackpotUsd ?? 0} size="sm" />
+                      <UsdPill amount={todayXpotUsd} size="sm" />
                     </div>
                   </div>
                 </div>
@@ -1207,7 +1229,7 @@ export default function AdminPage() {
                               ${isWarningCritical ? 'ring-2 ring-[rgba(var(--xpot-gold),0.32)] shadow-lg scale-[1.02]' : ''}
                             `}
                           >
-                            {isPickingWinner ? 'Picking winner...' : 'Crown today&apos;s XPOT winner'}
+                            {isPickingWinner ? 'Picking winner...' : "Crown today's XPOT winner"}
                           </button>
                         )}
 
@@ -1236,7 +1258,7 @@ export default function AdminPage() {
                           disabled={creatingDraw || !adminToken}
                           className={`${BTN_VAULT} px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-50`}
                         >
-                          {creatingDraw ? 'Creating today&apos;s draw...' : 'Create today&apos;s draw (dev)'}
+                          {creatingDraw ? "Creating today's draw..." : "Create today's draw (dev)"}
                         </button>
                       )}
                     </div>
@@ -1259,7 +1281,7 @@ export default function AdminPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-100">Schedule bonus XPOT</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Line up hype bonuses from today&apos;s ticket pool. At the scheduled time, one extra winner will be picked.
+                  Line up hype bonuses from today's ticket pool. At the scheduled time, one extra winner will be picked.
                 </p>
 
                 <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-slate-500">Manual schedule - off-chain</p>
@@ -1453,7 +1475,7 @@ export default function AdminPage() {
           <section className="xpot-panel px-5 py-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-100">Today&apos;s XPOT entries</p>
+                <p className="text-sm font-semibold text-slate-100">Today's XPOT entries</p>
                 <p className="mt-1 text-xs text-slate-400">Every entry that has been issued for the current XPOT round.</p>
               </div>
 
@@ -1469,7 +1491,7 @@ export default function AdminPage() {
               ) : ticketsError ? (
                 <p className="text-xs text-amber-300">{ticketsError}</p>
               ) : tickets.length === 0 ? (
-                <p className="text-xs text-slate-500">No entries yet for today&apos;s XPOT.</p>
+                <p className="text-xs text-slate-500">No entries yet for today's XPOT.</p>
               ) : (
                 <>
                   {visibleTickets.map(t => (
@@ -1536,7 +1558,7 @@ export default function AdminPage() {
                 <p className="text-xs text-amber-300">{winnersError}</p>
               ) : winners.length === 0 ? (
                 <div className="xpot-card px-4 py-3 text-xs text-slate-500">
-                  No completed draws yet. Once you pick winners and mark XPOT as paid, they&apos;ll appear here.
+                  No completed draws yet. Once you pick winners and mark XPOT as paid, they'll appear here.
                 </div>
               ) : (
                 <>
@@ -1635,7 +1657,7 @@ export default function AdminPage() {
               </li>
               <li className="flex gap-2">
                 <CalendarClock className="h-4 w-4 text-slate-500" />
-                Countdown is based on <span className="font-semibold text-slate-200">closesAt</span> from today&apos;s draw and synced to server time.
+                Countdown is based on <span className="font-semibold text-slate-200">closesAt</span> from today's draw and synced to server time.
               </li>
               <li className="flex gap-2">
                 <Crown className="h-4 w-4 text-slate-500" />
@@ -1663,7 +1685,7 @@ export default function AdminPage() {
 
             {!envAutoAllowed && modePending === 'AUTO' && (
               <div className="mt-3 rounded-2xl border border-[rgba(var(--xpot-gold),0.40)] bg-[rgba(var(--xpot-gold),0.10)] px-4 py-3 text-xs text-[rgb(var(--xpot-gold-2))]">
-                AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won&apos;t take effect until allowed.
+                AUTO is locked in this environment (or disabled by env). You can still save AUTO in DB, but it won't take effect until allowed.
               </div>
             )}
 
@@ -1726,7 +1748,7 @@ export default function AdminPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-50">Unlock XPOT operations center</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Step inside the live XPOT control deck. Monitor today&apos;s round, entries, wallets and reward execution - secured behind your private{' '}
+                  Step inside the live XPOT control deck. Monitor today's round, entries, wallets and reward execution - secured behind your private{' '}
                   <span className="font-semibold text-slate-200">admin key</span>.
                 </p>
               </div>
@@ -1766,7 +1788,7 @@ export default function AdminPage() {
               <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3 text-[11px] text-slate-400">
                 <div className="flex items-start gap-2">
                   <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-300" />
-                  <p>If your token is wrong you&apos;ll just see request failures - nothing breaks.</p>
+                  <p>If your token is wrong you'll just see request failures - nothing breaks.</p>
                 </div>
               </div>
             </div>
