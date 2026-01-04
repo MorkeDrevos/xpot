@@ -12,20 +12,11 @@ import {
 } from 'react';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  useScroll,
-  useSpring,
-  useTransform,
-} from 'framer-motion';
+import { useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
-  Check,
   CheckCircle2,
   ChevronDown,
-  Copy,
   Crown,
   ExternalLink,
   Globe,
@@ -34,7 +25,6 @@ import {
   ShieldCheck,
   Sparkles,
   Timer,
-  TrendingUp,
   Users,
   Wand2,
   Zap,
@@ -68,20 +58,13 @@ const XPOT_DEXSCREENER_URL =
 const XPOT_SOLSCAN_URL =
   process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
-const XPOT_SIGN = '✕';
-
-const BTN_PRIMARY =
-  'inline-flex items-center justify-center rounded-full xpot-btn-vault xpot-focus-gold font-semibold transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40';
-
 const BTN_GREEN =
   'inline-flex items-center justify-center rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition';
 
 const GOLD_TEXT = 'text-[rgb(var(--xpot-gold-2))]';
 const GOLD_TEXT_DIM = 'text-[rgba(var(--xpot-gold-2),0.85)]';
 const GOLD_BORDER = 'border-[rgba(var(--xpot-gold),0.35)]';
-const GOLD_BORDER_SOFT = 'border-[rgba(var(--xpot-gold),0.25)]';
 const GOLD_BG_WASH = 'bg-[rgba(var(--xpot-gold),0.06)]';
-const GOLD_BG_WASH_2 = 'bg-[rgba(var(--xpot-gold),0.08)]';
 const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
 
 const MIN_ELIGIBLE_XPOT = 100_000;
@@ -268,12 +251,6 @@ function PremiumCard({
       <div className="relative z-10">{children}</div>
     </section>
   );
-}
-
-function normalizeHandle(h: string | null | undefined) {
-  const s = String(h ?? '').trim();
-  if (!s) return '@unknown';
-  return s.startsWith('@') ? s : `@${s}`;
 }
 
 function shortenAddress(addr: string, left = 6, right = 6) {
@@ -716,19 +693,6 @@ function useBonusActive() {
   return active;
 }
 
-/* Reduced motion hook (local) */
-function useLocalReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const m = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = () => setReduced(Boolean(m.matches));
-    apply();
-    m.addEventListener?.('change', apply);
-    return () => m.removeEventListener?.('change', apply);
-  }, []);
-  return reduced;
-}
-
 /* ─────────────────────────────────────────────
    Winners + entries telemetry (public)
 ───────────────────────────────────────────── */
@@ -875,125 +839,12 @@ function useLatestEntriesTelemetry() {
    Daytime layer + warm-up
 ───────────────────────────────────────────── */
 
-type DrawPhase = 'daytime' | 'warmup' | 'final_minute' | 'drawing' | 'reveal';
-
 function useDrawPhase(nowMs: number, nextDrawUtcMs: number) {
   const msLeft = nextDrawUtcMs - nowMs;
 
   const warmup = msLeft > 0 && msLeft <= 2 * 60 * 60 * 1000;
-  const finalMinute = msLeft > 0 && msLeft <= 60 * 1000;
-  const due = msLeft <= 0;
 
-  return { msLeft, warmup, finalMinute, due };
-}
-
-function DaytimeLayerCard({
-  entries,
-  countdown,
-  cutoffLabel,
-  warmup,
-}: {
-  entries: EntryRow[];
-  countdown: string;
-  cutoffLabel: string;
-  warmup: boolean;
-}) {
-  const [signal, setSignal] = useState<string>('XPOT is building for tonight’s draw');
-  const [pulse, setPulse] = useState(0);
-
-  const entryCount = Array.isArray(entries) ? entries.length : 0;
-
-  const milestone = useMemo(() => {
-    const marks = [25, 50, 100, 250, 500, 1000];
-    const reached = marks.filter(m => entryCount >= m);
-    const next = marks.find(m => entryCount < m) ?? null;
-    return { reached: reached.at(-1) ?? null, next };
-  }, [entryCount]);
-
-  useEffect(() => {
-    const lines = [
-      'Entry window open',
-      'Feed is live',
-      'Identity cache warming',
-      'Proof index ready',
-      'Liquidity signal stable',
-    ];
-
-    const warmupLines = [
-      'Final window approaching',
-      'Lock sequence arming',
-      'Winner selection preparing',
-      'Ceremony triggers at zero',
-    ];
-
-    const t = window.setInterval(() => {
-      setPulse(p => p + 1);
-      const pickFrom = warmup ? warmupLines : lines;
-      const i = Math.floor(Math.random() * pickFrom.length);
-      setSignal(pickFrom[i]);
-    }, 14_000);
-
-    return () => window.clearInterval(t);
-  }, [warmup]);
-
-  const tone = warmup ? 'amber' : 'sky';
-
-  return (
-    <div className="relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/25 ring-1 ring-white/[0.05]">
-      <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_14%_30%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(16,185,129,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
-      <div className="relative px-5 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Pill tone={tone}>
-            <Sparkles className="h-3.5 w-3.5" />
-            {warmup ? 'Warm-up layer' : 'Daytime layer'}
-          </Pill>
-
-          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Next cutoff {cutoffLabel}</span>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[12px] text-slate-300">{signal}</p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Next draw in <span className="font-mono text-slate-200">{countdown}</span>
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span
-              className={[
-                'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px]',
-                warmup
-                  ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] text-slate-100'
-                  : 'border-white/10 bg-white/[0.03] text-slate-200',
-              ].join(' ')}
-            >
-              <Users className="h-4 w-4 text-slate-300" />
-              Live entries <span className="font-mono text-slate-100">{entryCount}</span>
-            </span>
-
-            {milestone.next ? (
-              <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] text-slate-300">
-                Next milestone <span className="font-mono text-slate-100">{milestone.next}</span>
-              </span>
-            ) : (
-              <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] text-slate-300">
-                Milestones active
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="pointer-events-none absolute right-4 top-4 h-2 w-2 rounded-full bg-white/10">
-          <span
-            key={pulse}
-            className="absolute inset-0 rounded-full bg-white/20"
-            style={{ animation: 'ping 1.4s cubic-bezier(0,0,0.2,1) 1' } as any}
-          />
-        </div>
-      </div>
-    </div>
-  );
+  return { msLeft, warmup };
 }
 
 /* ─────────────────────────────────────────────
@@ -1058,7 +909,9 @@ function StepCard({
       : 'border-white/10';
 
   return (
-    <div className={`relative overflow-hidden rounded-3xl border ${border} bg-white/[0.03] p-5 ring-1 ring-white/[0.05]`}>
+    <div
+      className={`relative overflow-hidden rounded-3xl border ${border} bg-white/[0.03] p-5 ring-1 ring-white/[0.05]`}
+    >
       <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_60%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.08),transparent_62%)]" />
       <div className="relative">
         <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/40">
@@ -1115,7 +968,6 @@ function HomePageInner() {
 
   const { countdown, cutoffLabel, nowMs, nextDrawUtcMs } = useNextDraw();
   const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
-
   const { warmup } = useDrawPhase(nowMs, nextDrawUtcMs);
 
   useEffect(() => {
@@ -1147,13 +999,12 @@ function HomePageInner() {
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
 
               <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,1.0fr)_minmax(0,1.12fr)]">
-                {/* LEFT - reduced */}
+                {/* LEFT */}
                 <div className="flex flex-col justify-between gap-5 lg:pt-8">
                   <div className="space-y-5">
                     <div className="relative p-2 sm:p-3">
                       <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(16,185,129,0.14),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(56,189,248,0.11),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
 
-                      {/* status row */}
                       <div className="relative flex flex-wrap items-center justify-between gap-3">
                         <Pill tone={warmup ? 'amber' : 'emerald'}>
                           <Radio className="h-3.5 w-3.5" />
@@ -1165,7 +1016,6 @@ function HomePageInner() {
                         </span>
                       </div>
 
-                      {/* headline */}
                       <div className="relative mt-4">
                         <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
                           One protocol.
@@ -1196,35 +1046,15 @@ function HomePageInner() {
                         <PrimaryCtaRow countdown={countdown} warmup={warmup} />
                       </div>
                     </div>
-
-                    {/* MOBILE order: feed then jackpot then bonus */}
-                    <div className="grid gap-4 lg:hidden">
-                      {SHOW_LIVE_FEED ? <WinnerAndStageStack winner={winnerSpotlight} entries={entries} /> : null}
-
-                      <PremiumCard className="p-4" halo sheen>
-                        <div className="xpot-console-sweep" aria-hidden />
-                        <div className="relative z-10">
-                          <JackpotPanel variant="standalone" layout="wide" />
-                        </div>
-                      </PremiumCard>
-
-                      {bonusActive ? (
-                        <PremiumCard className="p-4" halo={false}>
-                          <BonusStrip />
-                        </PremiumCard>
-                      ) : null}
-                    </div>
                   </div>
                 </div>
 
-                {/* RIGHT (desktop only) - reduced to just the 2 core modules */}
-                <div className="hidden gap-4 lg:grid">
-                  {SHOW_LIVE_FEED ? <WinnerAndStageStack winner={winnerSpotlight} entries={entries} /> : null}
-
+                {/* RIGHT - Jackpot first (no duplicate mobile/desktop blocks) */}
+                <div className="grid gap-4">
                   <PremiumCard className="p-5 sm:p-6" halo sheen>
                     <div className="xpot-console-sweep" aria-hidden />
                     <div className="relative z-10">
-                      <JackpotPanel variant="standalone" layout="wide" />
+                      <JackpotPanel variant="standalone" layout="wide" mode="hero" />
                     </div>
                   </PremiumCard>
 
@@ -1233,11 +1063,13 @@ function HomePageInner() {
                       <BonusStrip />
                     </PremiumCard>
                   ) : null}
+
+                  {/* NOTE: We intentionally moved the live winner + entries OUT of the hero.
+                      Jackpot is the star. Live activity gets its own premium section below. */}
                 </div>
               </div>
 
-              {/* Keep ceremony overlay as-is (it is not "busy" because it is conditional) */}
-              {/* If you want it only on desktop later, we can gate it. */}
+              {/* Keep ceremony overlay as-is (it is conditional) */}
             </div>
           </div>
         </div>
@@ -1247,15 +1079,32 @@ function HomePageInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* WHAT XPOT IS - now holds the removed blocks */}
-      <section className="mt-8">
+      {/* LIVE ACTIVITY - separated from hero so it doesn't cheapen the first impression */}
+      {SHOW_LIVE_FEED ? (
+        <section className="mt-8">
+          <SectionHeader
+            eyebrow="Live"
+            title="Latest winner and live entries"
+            desc="This is the public surface. Winner is handle-first, proof is on-chain."
+          />
+
+          <PremiumCard className="p-5 sm:p-6" halo sheen>
+            <div className="pointer-events-none absolute -inset-28 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_18%,rgba(56,189,248,0.12),transparent_62%),radial-gradient(circle_at_82%_24%,rgba(16,185,129,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.12),transparent_62%)]" />
+            <div className="relative z-10">
+              <WinnerAndStageStack winner={winnerSpotlight} entries={entries} />
+            </div>
+          </PremiumCard>
+        </section>
+      ) : null}
+
+      {/* WHAT XPOT IS */}
+      <section className="mt-10">
         <SectionHeader
           eyebrow="3 seconds"
           title="What XPOT is"
           desc={`Hold ${MIN_ELIGIBLE_XPOT.toLocaleString()} XPOT, enter once in the hub, and you are in the daily draw. Winner is published with on-chain proof.`}
         />
 
-        {/* moved from hero */}
         <Quick3Steps countdown={countdown} warmup={warmup} />
 
         <div className="mt-4 relative overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 ring-1 ring-white/[0.05]">
@@ -1278,9 +1127,6 @@ function HomePageInner() {
             </TinyTooltip>
           </div>
         </div>
-
-        {/* moved from hero */}
-        <DaytimeLayerCard entries={entries} countdown={countdown} cutoffLabel={cutoffLabel} warmup={warmup} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <StepCard
