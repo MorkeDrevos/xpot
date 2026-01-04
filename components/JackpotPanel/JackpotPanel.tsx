@@ -338,23 +338,23 @@ export default function JackpotPanel({
 
         /* Container query sizing (best) */
         .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
-  font-size: clamp(2.9rem, 16cqw, 8.2rem);
-  line-height: 0.86;
+  font-size: clamp(3.6rem, 20cqw, 10.2rem);
+  line-height: 0.84;
 }
 .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
-  font-size: clamp(2.4rem, 14cqw, 6.2rem);
-  line-height: 0.90;
+  font-size: clamp(2.9rem, 18cqw, 7.6rem);
+  line-height: 0.88;
 }
 
         /* Fallback if a browser doesn't support cqw */
         @supports not (font-size: 1cqw) {
           .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
-  font-size: clamp(2.9rem, 7.2vw, 8.2rem);
-  line-height: 0.86;
+  font-size: clamp(3.6rem, 8.8vw, 10.2rem);
+  line-height: 0.84;
 }
 .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
-  font-size: clamp(2.4rem, 6.0vw, 6.2rem);
-  line-height: 0.90;
+  font-size: clamp(2.9rem, 7.4vw, 7.6rem);
+  line-height: 0.88;
 }
         }
       `}</style>
@@ -537,81 +537,53 @@ export default function JackpotPanel({
                 />
               </div>
 
-              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-3 sm:flex-1 sm:min-w-0">
-                  <div className="relative max-w-full overflow-hidden sm:flex-1 sm:min-w-0">
-                    <div
-                      aria-hidden
-                      className={[
-                        'pointer-events-none absolute inset-0 translate-y-[2px] blur-[12px] opacity-60',
-                        justUpdated ? 'opacity-100' : '',
-                      ].join(' ')}
-                      style={{
-                        background:
-                          'radial-gradient(circle at 30% 40%, rgba(124,200,255,0.28), transparent 60%), radial-gradient(circle at 80% 25%, rgba(236,72,153,0.18), transparent 62%)',
-                      }}
-                    />
+              <div className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:justify-between">
+  {/* LEFT: USD amount (auto-fits the box width, never spills) */}
+  <div className="min-w-0 overflow-hidden">
+    <div className="relative">
+      <div
+        aria-hidden
+        className={[
+          'pointer-events-none absolute inset-0 translate-y-[2px] blur-[12px] opacity-60',
+          justUpdated ? 'opacity-100' : '',
+        ].join(' ')}
+        style={{
+          background:
+            'radial-gradient(circle at 30% 40%, rgba(124,200,255,0.28), transparent 60%), radial-gradient(circle at 80% 25%, rgba(236,72,153,0.18), transparent 62%)',
+        }}
+      />
 
-                    <div className="relative flex min-w-0 flex-1 items-center">
-  <div
-    className={[
-      'xpot-usd-live xpot-usd-float font-semibold tabular-nums text-white',
-      'leading-none',
-      'min-w-0 overflow-hidden',
-      justUpdated ? 'text-[#7CC8FF]' : '',
-    ].join(' ')}
-    style={{
-      fontSize: isHero
-        ? 'clamp(5.8rem, 9.5vw, 10.5rem)'
-        : 'clamp(4.2rem, 8vw, 7.2rem)',
-      lineHeight: '0.85',
-      letterSpacing: '-0.035em',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-    }}
-  >
-    {displayUsdText}
+      <div
+        className={[
+          'xpot-usd-amount xpot-usd-live xpot-usd-float font-semibold tabular-nums',
+          'min-w-0 overflow-hidden text-white',
+          justUpdated ? 'text-[#7CC8FF]' : '',
+        ].join(' ')}
+        style={{
+          letterSpacing: isHero ? '-0.04em' : '-0.035em',
+          textShadow: justUpdated
+            ? '0 0 44px rgba(124,200,255,0.18)'
+            : '0 0 34px rgba(124,200,255,0.12)',
+        }}
+      >
+        {displayUsdText}
+      </div>
+    </div>
+
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <UsdEstimateBadge compact />
+      <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Estimated value</span>
+
+      <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-300 md:px-3 md:text-[10px]">
+        <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
+        <span className="leading-none">Live</span>
+      </span>
+    </div>
   </div>
+
+  {/* RIGHT: (kept empty on desktop so USD stays dominant) */}
+  <div className="hidden sm:block" />
 </div>
-
-                    <div
-                      aria-hidden
-                      className={[
-                        'pointer-events-none absolute -right-2 -top-2 hidden sm:block transition-opacity duration-300',
-                        justUpdated ? 'opacity-100' : 'opacity-0',
-                      ].join(' ')}
-                    >
-                      <div className="h-2 w-2 rounded-full bg-sky-300 shadow-[0_0_18px_rgba(124,200,255,0.55)]" />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 sm:mb-2">
-                    <UsdEstimateBadge compact />
-                    <span className="hidden text-[11px] uppercase tracking-[0.22em] text-slate-500 sm:inline">
-                      Estimated value
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 sm:mb-2 sm:justify-end shrink-0">
-                  <span
-                    className={[
-                      'inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03]',
-                      'px-2 py-0.5 text-[9px] sm:px-2.5 sm:py-1 sm:text-[10px] md:px-3',
-                      'font-semibold uppercase tracking-[0.16em] text-slate-300',
-                      'transition-shadow',
-                      justUpdated
-                        ? 'shadow-[0_0_0_1px_rgba(124,200,255,0.18),0_0_18px_rgba(59,167,255,0.10)]'
-                        : '',
-                    ].join(' ')}
-                    aria-label="Live"
-                    title="Live"
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
-                    <span className="leading-none">Live</span>
-                  </span>
-                </div>
-              </div>
 
               <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
                 <span
