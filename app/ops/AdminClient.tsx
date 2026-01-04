@@ -27,7 +27,7 @@ const MAX_RECENT_WINNERS = 10;
 // Preference order: /api/admin (your legacy stable routes) -> /api/ops (newer experimental routes)
 const API_BASE_CANDIDATES = ['/api/admin', '/api/ops'] as const;
 
-// Known admin endpoint you already have in prod/dev (manual trigger)
+// ✅ admin endpoint that actually exists (manual trigger you showed)
 const ADMIN_PICK_WINNER_API = '/api/admin/draw/pick-winner';
 
 type DrawStatus = 'open' | 'closed' | 'completed';
@@ -274,8 +274,8 @@ function toTodayDrawFromLive(live: LiveDrawPayload['draw']): TodayDraw | null {
     status: mapLiveStatus(live.status),
     ticketsCount: 0,
     closesAt: live.closesAt,
-    jackpotUsd: 0,
-    rolloverUsd: 0,
+    jackpotUsd: undefined,
+    rolloverUsd: undefined,
   };
 }
 
@@ -393,11 +393,19 @@ export default function AdminPage() {
     return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
   }
 
-  async function probeApiBase(): Promise<string | null> {
+  async function probeApiBase(token: string): Promise<string | null> {
+    // If /health returns 401, that STILL proves the route exists on this deployment.
     for (const base of API_BASE_CANDIDATES) {
       try {
-        const res = await fetch(`${base}/health`, { cache: 'no-store' });
-        if (res.ok) return base;
+        const res = await fetch(`${base}/health`, {
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-xpot-admin-key': token.trim(),
+          },
+        });
+
+        if (res.ok || res.status === 401) return base;
       } catch {
         // ignore
       }
@@ -405,19 +413,20 @@ export default function AdminPage() {
     return null;
   }
 
+  // Detect API base once we have a token
   useEffect(() => {
     if (!adminToken) return;
 
     let cancelled = false;
 
     (async () => {
-      const detected = await probeApiBase();
+      const detected = await probeApiBase(adminToken);
       if (cancelled) return;
 
       if (!detected) {
-        setApiBase('/api/admin');
+        setApiBase('/api/admin'); // default
         setApiBanner(
-          'No Ops/Admin API detected on this deployment (missing /api/admin/* and /api/ops/*). Deploy backend routes to use Operations Center.',
+          'No Ops/Admin API detected on this deployment. Deploy backend routes to use Operations Center.',
         );
         return;
       }
@@ -437,8 +446,7 @@ export default function AdminPage() {
     if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
     const headers = new Headers(init?.headers || {});
-    // Only set content-type when we actually send a body
-    if (init?.body) headers.set('Content-Type', 'application/json');
+    headers.set('Content-Type', 'application/json');
     headers.set('x-xpot-admin-key', adminToken.trim());
 
     const res = await fetch(input, { ...init, headers, cache: 'no-store' });
@@ -593,6 +601,7 @@ export default function AdminPage() {
 
     setCancelingDropId(dropId);
     try {
+      // Most of your implementations use /bonus with ?id=...
       const data = await authedFetch(`${api('/bonus')}?id=${encodeURIComponent(dropId)}`, {
         method: 'POST',
       });
@@ -621,26 +630,8 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
-      // Try the detected base first, then hard fallback to legacy known path.
-      const candidates = [
-        api('/draw/pick-winner'), // -> /api/admin/draw/pick-winner OR /api/ops/draw/pick-winner
-        ADMIN_PICK_WINNER_API, // -> /api/admin/draw/pick-winner
-      ];
-
-      let data: any = null;
-      let lastErr: any = null;
-
-      for (const url of candidates) {
-        try {
-          data = await authedFetch(url, { method: 'POST' });
-          lastErr = null;
-          break;
-        } catch (e) {
-          lastErr = e;
-        }
-      }
-
-      if (!data) throw lastErr || new Error('Failed to pick winner');
+      // Explicitly call your known endpoint
+      const data = await authedFetch(ADMIN_PICK_WINNER_API, { method: 'POST' });
 
       const raw = (data as any).winner;
       if (!raw) throw new Error('No winner returned from API');
@@ -661,7 +652,7 @@ export default function AdminPage() {
       const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
       setPickSuccess(`Main XPOT winner: ${normalized.ticketCode || '(no ticket)'} (${shortAddr})`);
 
-      // Refresh winners list
+      // Refresh winners list from the detected API
       try {
         const winnersData = await authedFetch(api('/winners'));
         setWinners((winnersData as any).winners ?? []);
@@ -821,11 +812,12 @@ export default function AdminPage() {
   // ── Load Today, tickets, winners, upcoming ──
   useEffect(() => {
     if (!adminToken) return;
-    if (!apiBase) return;
+    if (!apiBase) return; // wait until detected
 
     let cancelled = false;
 
     async function loadAll() {
+      // Ops mode
       try {
         await loadOpsMode();
       } catch (err) {
@@ -968,11 +960,11 @@ export default function AdminPage() {
 
       const totalSeconds = Math.floor(diffMs / 1000);
 
-const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-const seconds = String(totalSeconds % 60).padStart(2, '0');
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
 
-setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
+      setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
     }
 
     updateCountdown();
@@ -1012,8 +1004,7 @@ setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
 
     setIsSavingToken(true);
     try {
-      if (typeof window !== 'undefined')
-        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
+      if (typeof window !== 'undefined') window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
       setAdminToken(tokenInput.trim());
       setTokenAccepted(true);
       setApiBase(null); // re-detect after unlock
@@ -1058,6 +1049,8 @@ setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
           {apiBanner}
         </div>
       )}
+
+      {/* ✅ Hero + JackpotPanel removed (requested) */}
 
       {/* Admin key band */}
       <section className="relative mt-5">
@@ -1171,9 +1164,9 @@ setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
                   </div>
 
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today&apos;s XPOT</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Today&apos;s XPOT (USD)</p>
                     <div className="mt-1">
-                      <UsdPill amount={todayDraw?.jackpotUsd ?? null} size="sm" />
+                      <UsdPill amount={todayDraw?.jackpotUsd ?? 0} size="sm" />
                     </div>
                   </div>
                 </div>
@@ -1207,9 +1200,7 @@ setNextBonusCountdown(`${hours}:${mm}:${seconds}`);
                         {!isAutoActive && (
                           <button
                             type="button"
-                            disabled={
-                              isPickingWinner || !adminToken || todayLoading || !todayDraw || todayDraw.status !== 'open'
-                            }
+                            disabled={isPickingWinner || !adminToken || todayLoading || !todayDraw || todayDraw.status !== 'open'}
                             onClick={handlePickMainWinner}
                             className={`
                               ${BTN_CROWN} px-7 py-3 text-sm transition-all ease-out duration-300
