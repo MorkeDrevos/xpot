@@ -27,8 +27,6 @@ export type JackpotPanelProps = {
   badgeTooltip?: string;
   layout?: JackpotPanelLayout;
   mode?: JackpotPanelMode; // optional "hero" mode used on homepage
-  /** Desktop-only: auto expand "More details" on hover/focus */
-  hoverExpand?: boolean;
 };
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
@@ -102,33 +100,6 @@ function useSmoothNumber(target: number | null, opts?: { durationMs?: number }) 
   return value;
 }
 
-function useHoverCapable() {
-  const [capable, setCapable] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
-    const apply = () => setCapable(Boolean(mq?.matches));
-    apply();
-
-    if (!mq) return;
-
-    // Safari still uses addListener in some versions
-    const anyMq = mq as any;
-    if (typeof mq.addEventListener === 'function') {
-      mq.addEventListener('change', apply);
-      return () => mq.removeEventListener('change', apply);
-    }
-    if (typeof anyMq.addListener === 'function') {
-      anyMq.addListener(apply);
-      return () => anyMq.removeListener(apply);
-    }
-  }, []);
-
-  return capable;
-}
-
 export default function JackpotPanel({
   isLocked,
   onJackpotUsdChange,
@@ -137,7 +108,6 @@ export default function JackpotPanel({
   badgeTooltip,
   layout = 'auto',
   mode = 'default',
-  hoverExpand = true,
 }: JackpotPanelProps) {
   const isHero = mode === 'hero';
 
@@ -254,11 +224,13 @@ export default function JackpotPanel({
 
   const capsuleWrap = 'group relative inline-flex max-w-full items-center';
 
+  // ✅ FIX: minmax(0, 1fr) + overflow hidden prevents the value from painting over "Daily"
   const capsuleInner = [
     'relative grid max-w-full grid-cols-1 gap-2 rounded-2xl',
-    'sm:inline-grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-3',
+    'sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3',
     isHero ? 'bg-black/65 px-4 py-3 sm:px-6 sm:py-4' : 'bg-black/55 px-3 py-2.5 sm:px-4 sm:py-3',
     'shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl',
+    'overflow-hidden',
   ].join(' ');
 
   const capsuleTag = [
@@ -268,9 +240,11 @@ export default function JackpotPanel({
     isHero ? 'border-white/12 bg-white/[0.04] text-slate-100' : 'border-white/10 bg-white/[0.03] text-slate-200',
   ].join(' ');
 
+  // ✅ FIX: remove whitespace-nowrap, allow truncation, keep unit from shrinking
   const capsuleValue = [
-    'xpot-pool-hero inline-flex items-baseline justify-center gap-2 font-mono tabular-nums text-white',
-    'whitespace-nowrap',
+    'xpot-pool-hero inline-flex min-w-0 items-baseline justify-center gap-2',
+    'font-mono tabular-nums text-white',
+    'overflow-hidden',
     isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : 'text-[1.0rem] sm:text-[1.05rem]',
   ].join(' ');
 
@@ -278,32 +252,17 @@ export default function JackpotPanel({
     ? { fontSize: 'clamp(4.6rem, 7.2vw, 8.4rem)', lineHeight: '0.86' }
     : { fontSize: 'clamp(3.4rem, 5.8vw, 6.4rem)', lineHeight: '0.90' };
 
-  // Hover-expand logic (desktop only)
-  const hoverCapable = useHoverCapable();
-  const canHoverExpand = Boolean(hoverExpand && hoverCapable);
-
-  const [hovered, setHovered] = useState(false);
+  // ✅ Click-only details (no hover)
   const [manualOpen, setManualOpen] = useState(false);
-
-  const isOpen = manualOpen || (canHoverExpand && hovered);
-
-  useEffect(() => {
-    // If device becomes non-hover capable, drop hover state
-    if (!canHoverExpand) setHovered(false);
-  }, [canHoverExpand]);
+  const isOpen = manualOpen;
 
   return (
     <section
       className={[
-        'relative transition-transform duration-300',
+        'relative',
         panelChrome,
         isHero ? '-mt-3 sm:-mt-5' : '',
-        canHoverExpand ? 'hover:scale-[1.01] hover:shadow-[0_45px_160px_rgba(0,0,0,0.70)]' : '',
       ].join(' ')}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocusCapture={() => setHovered(true)}
-      onBlurCapture={() => setHovered(false)}
     >
       <style jsx>{`
         @keyframes xpotSweep {
@@ -346,21 +305,15 @@ export default function JackpotPanel({
           will-change: max-height, opacity, transform;
         }
         .xpot-details-open .xpot-details-body {
-          max-height: 1200px; /* big enough for your content */
+          max-height: 1200px;
           opacity: 1;
           transform: translateY(0px);
         }
-        /* ✅ Hero-only: spill the details band left so it visually spans the hero */
-        .xpot-spill-wrap {
-          position: relative;
-        }
 
-        /* default: no spill (mobile / smaller screens) */
-        .xpot-spill-band {
-          position: relative;
-        }
+        /* Hero-only: spill the details band left so it visually spans the hero */
+        .xpot-spill-wrap { position: relative; }
+        .xpot-spill-band { position: relative; }
 
-        /* spill only on large screens where you have the 2-column hero */
         @media (min-width: 1024px) {
           .xpot-spill-band {
             width: calc(100% + var(--xpot-spill-left, 560px));
@@ -440,12 +393,13 @@ export default function JackpotPanel({
                     Today&apos;s XPOT
                   </span>
 
-                  <div className="min-w-0 px-1 text-center">
+                  {/* ✅ FIX: overflow-hidden here too so the center can’t paint over the right pill */}
+                  <div className="min-w-0 overflow-hidden px-1 text-center">
                     <span className={capsuleValue} style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}>
-                      <span className="xpot-pool-num inline-block max-w-full truncate">
+                      <span className="xpot-pool-num inline-block min-w-0 max-w-full truncate">
                         {JACKPOT_XPOT.toLocaleString()}
                       </span>
-                      <span className="xpot-pool-unit">XPOT</span>
+                      <span className="xpot-pool-unit shrink-0">XPOT</span>
                     </span>
                   </div>
 
@@ -638,7 +592,7 @@ export default function JackpotPanel({
               */}
             </div>
 
-            {/* Controlled details with hover-expand (desktop) */}
+            {/* Controlled details (click-only) */}
             <div className={['group xpot-spill-wrap', isOpen ? 'xpot-details-open' : ''].join(' ')}>
               <button
                 type="button"
@@ -653,7 +607,12 @@ export default function JackpotPanel({
                   </span>
                   <span className="text-xs text-slate-400">Token info, range, milestones</span>
                 </span>
-                <ChevronDown className={['h-4 w-4 text-slate-400 transition-transform', isOpen ? 'rotate-180' : ''].join(' ')} />
+                <ChevronDown
+                  className={[
+                    'h-4 w-4 text-slate-400 transition-transform',
+                    isOpen ? 'rotate-180' : '',
+                  ].join(' ')}
+                />
               </button>
 
               <div id="xpot-more-details" className={['xpot-details-body', isHero ? 'xpot-spill-band' : ''].join(' ')}>
