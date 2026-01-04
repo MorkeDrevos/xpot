@@ -156,7 +156,9 @@ function UsdPill({
   return (
     <span className={cls}>
       <span className="font-mono text-[0.92em]">{value}</span>
-      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">USD</span>
+      <span className="ml-1 text-[0.7em] uppercase tracking-[0.16em] text-emerald-400">
+        USD
+      </span>
     </span>
   );
 }
@@ -180,7 +182,9 @@ function XpotPill({
   return (
     <span className={cls}>
       <span className="font-mono tracking-[0.14em] text-[0.9em]">{amountStr}</span>
-      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">{unit}</span>
+      <span className="ml-2 text-[0.68em] uppercase tracking-[0.24em] text-slate-400">
+        {unit}
+      </span>
     </span>
   );
 }
@@ -291,6 +295,20 @@ const BTN_VAULT = 'xpot-btn xpot-btn-vault';
 const BTN_UTILITY = 'xpot-btn';
 const BTN_DANGER = 'xpot-btn xpot-btn-danger';
 const BTN_CROWN = BTN_VAULT;
+
+// ✅ Guarantee API URLs are absolute, not relative to /ops, /hub etc.
+function toAbsolutePath(url: string) {
+  if (!url) return url;
+
+  // keep absolute URLs intact
+  if (/^https?:\/\//i.test(url)) return url;
+
+  // already absolute path
+  if (url.startsWith('/')) return url;
+
+  // fix: "api/admin/today" -> "/api/admin/today"
+  return `/${url}`;
+}
 
 export default function AdminPage() {
   const [adminToken, setAdminToken] = useState<string | null>(null);
@@ -407,7 +425,8 @@ export default function AdminPage() {
     headers.set('x-xpot-admin-token', token);
     if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
 
-    const res = await fetch(input, { ...init, headers, cache: 'no-store' });
+    const abs = toAbsolutePath(input);
+    const res = await fetch(abs, { ...init, headers, cache: 'no-store' });
 
     let data: any = null;
     try {
@@ -437,16 +456,14 @@ export default function AdminPage() {
     }
 
     // also try both bases even if caller passed "/today" (non-/api)
-    if (!path.startsWith('/api/')) {
-      // already added
-    } else {
+    if (path.startsWith('/api/')) {
       // If they passed "/api/admin/..." or "/api/ops/...", add the sibling base version too
       if (path.startsWith('/api/admin/')) paths.push(path.replace('/api/admin/', '/api/ops/'));
       if (path.startsWith('/api/ops/')) paths.push(path.replace('/api/ops/', '/api/admin/'));
     }
 
     let lastErr: any = null;
-    for (const url of Array.from(new Set(paths))) {
+    for (const url of Array.from(new Set(paths)).map(toAbsolutePath)) {
       try {
         return await authedFetch(url, init);
       } catch (e: any) {
@@ -543,7 +560,12 @@ export default function AdminPage() {
       window.location.reload();
     } catch (err: any) {
       console.error('[XPOT] create today draw error:', err);
-      alert(String(err?.message || 'Unexpected error creating today’s round').replace(/^HTTP_\d+:/, ''));
+      alert(
+        String(err?.message || 'Unexpected error creating today’s round').replace(
+          /^HTTP_\d+:/,
+          '',
+        ),
+      );
     } finally {
       setCreatingDraw(false);
     }
@@ -561,7 +583,9 @@ export default function AdminPage() {
     }
 
     if (!todayDraw) {
-      setBonusError('No draw detected for today yet. Create today’s draw first or wait for auto-create.');
+      setBonusError(
+        'No draw detected for today yet. Create today’s draw first or wait for auto-create.',
+      );
       return;
     }
 
@@ -606,7 +630,9 @@ export default function AdminPage() {
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setBonusError('Bonus scheduling routes are not deployed on this environment yet.');
       } else {
-        setBonusError(String(err?.message || 'Failed to schedule bonus XPOT.').replace(/^HTTP_\d+:/, ''));
+        setBonusError(
+          String(err?.message || 'Failed to schedule bonus XPOT.').replace(/^HTTP_\d+:/, ''),
+        );
       }
     } finally {
       setBonusSubmitting(false);
@@ -631,14 +657,18 @@ export default function AdminPage() {
       if (data && (data as any).ok === false)
         throw new Error((data as any).error || 'Failed to cancel drop');
 
-      setUpcomingDrops(prev => prev.map(d => (d.id === dropId ? { ...d, status: 'CANCELLED' } : d)));
+      setUpcomingDrops(prev =>
+        prev.map(d => (d.id === dropId ? { ...d, status: 'CANCELLED' } : d)),
+      );
     } catch (err: any) {
       console.error('[ADMIN] cancel drop error', err);
 
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setCancelDropError('Bonus routes are not deployed on this environment yet.');
       } else {
-        setCancelDropError(String(err?.message || 'Failed to cancel bonus drop.').replace(/^HTTP_\d+:/, ''));
+        setCancelDropError(
+          String(err?.message || 'Failed to cancel bonus drop.').replace(/^HTTP_\d+:/, ''),
+        );
       }
     } finally {
       setCancelingDropId(null);
@@ -712,7 +742,9 @@ export default function AdminPage() {
 
       setTodayDraw(prev => (prev ? { ...prev, status: 'closed' } : prev));
     } catch (err: any) {
-      setPickError(String(err?.message || 'Failed to pick main XPOT winner').replace(/^HTTP_\d+:/, ''));
+      setPickError(
+        String(err?.message || 'Failed to pick main XPOT winner').replace(/^HTTP_\d+:/, ''),
+      );
     } finally {
       setIsPickingWinner(false);
     }
@@ -764,7 +796,9 @@ export default function AdminPage() {
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setBonusPickError('Bonus routes are not deployed on this environment yet.');
       } else {
-        setBonusPickError(String(err?.message || 'Failed to pick bonus winner').replace(/^HTTP_\d+:/, ''));
+        setBonusPickError(
+          String(err?.message || 'Failed to pick bonus winner').replace(/^HTTP_\d+:/, ''),
+        );
       }
     } finally {
       setIsPickingBonusWinner(false);
@@ -824,7 +858,9 @@ export default function AdminPage() {
       if (isHttp(err, 404) || isHttp(err, 405)) {
         setMarkPaidError('Mark-paid route is not deployed on this environment yet.');
       } else {
-        setMarkPaidError(String(err?.message || 'Failed to mark as paid').replace(/^HTTP_\d+:/, ''));
+        setMarkPaidError(
+          String(err?.message || 'Failed to mark as paid').replace(/^HTTP_\d+:/, ''),
+        );
       }
     } finally {
       setSavingPaidId(null);
@@ -1112,8 +1148,7 @@ export default function AdminPage() {
 
     setIsSavingToken(true);
     try {
-      if (typeof window !== 'undefined')
-        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
+      if (typeof window !== 'undefined') window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
       setAdminToken(tokenInput.trim());
       setTokenAccepted(true);
       setApiBanner(null);
