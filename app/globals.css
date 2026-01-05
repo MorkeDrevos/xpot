@@ -20,18 +20,16 @@
   --xpot-bg-1: #020313;
   --xpot-bg-2: #04061a;
 
-  /* Accents (fixed) */
-  --xpot-accent-primary: 56 189 248; /* sky */
-  --xpot-accent-secondary: 99 102 241; /* violet */
-  --xpot-accent-glow: 236 72 153; /* magenta */
-  --xpot-accent-success: 16 185 129; /* emerald */
+    /* Accents (fixed) */
+  --xpot-accent-primary: 56, 189, 248; /* sky */
+  --xpot-accent-secondary: 99, 102, 241; /* violet */
+  --xpot-accent-glow: 236, 72, 153; /* magenta */
+  --xpot-accent-success: 16, 185, 129; /* emerald */
 
-  /* -------------------------------------------------------------
-     Vault gold (premium - replaces "yellow/amber" brand accents)
-  ------------------------------------------------------------- */
-  --xpot-gold: 214 176 79; /* base */
-  --xpot-gold-2: 242 214 128; /* highlight (use for text on dark) */
-  --xpot-gold-ink: 18 12 2; /* text on gold background */
+  /* Vault gold */
+  --xpot-gold: 214, 176, 79; /* base */
+  --xpot-gold-2: 242, 214, 128; /* highlight */
+  --xpot-gold-ink: 18, 12, 2; /* text on gold background */
 
   --xpot-glow-gold:
     0 0 0 1px rgba(var(--xpot-gold), 0.22),
