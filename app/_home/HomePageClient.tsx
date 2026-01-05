@@ -1070,6 +1070,36 @@ function HomePageInner() {
 Claim once per day in the hub.
                       </p>
 
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                          <Users className="h-4 w-4 text-slate-300" />
+                          Real handles
+                          <span className="text-slate-500">•</span>
+                          <ShieldCheck className="h-4 w-4 text-slate-300" />
+                          On-chain proof
+                          <span className="text-slate-500">•</span>
+                          <Globe className="h-4 w-4 text-slate-300" />
+                          One cadence
+                        </span>
+
+                        <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
+                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
+                            <Info className="h-4 w-4 text-emerald-100/70" />
+                            Verified in hub
+                          </span>
+                        </TinyTooltip>
+                      </div>
+
+                      <PrimaryCtaRow countdown={countdown} warmup={warmup} />
+
+                      <div className="mt-5">
+                        <WinnerCelebrationCard winner={winnerSpotlight} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
                       {/* FINAL DRAW - promoted */}
                       <div className="mt-4">
                         <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-3 ring-1 ring-white/[0.06]">
@@ -1101,36 +1131,6 @@ Claim once per day in the hub.
                         </div>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
-                          <Users className="h-4 w-4 text-slate-300" />
-                          Real handles
-                          <span className="text-slate-500">•</span>
-                          <ShieldCheck className="h-4 w-4 text-slate-300" />
-                          On-chain proof
-                          <span className="text-slate-500">•</span>
-                          <Globe className="h-4 w-4 text-slate-300" />
-                          One cadence
-                        </span>
-
-                        <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
-                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
-                            <Info className="h-4 w-4 text-emerald-100/70" />
-                            Verified in hub
-                          </span>
-                        </TinyTooltip>
-                      </div>
-
-                      <PrimaryCtaRow countdown={countdown} warmup={warmup} />
-
-                      <div className="mt-5">
-                        <WinnerCelebrationCard winner={winnerSpotlight} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Under-hero rail */}
               <div className="relative z-10 px-4 pb-5 sm:px-6 sm:pb-6 lg:px-8 lg:pb-7">
                 <div className="h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
@@ -1157,32 +1157,39 @@ Claim once per day in the hub.
       {/* THE PROTOCOL, MADE CLEAR */}
       <section className="mt-10">
         <SectionHeader
-          eyebrow="The protocol"
-          title="Simple, public, verifiable"
-          desc="XPOT is built for social proof. Handles are the face of the protocol. On-chain proof is the backbone."
-          right={
-            <div className="flex flex-wrap items-center gap-2">
-              <a
-                href={XPOT_DEXSCREENER_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-              >
-                Chart
-                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-              </a>
-              <a
-                href={XPOT_SOLSCAN_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-              >
-                Explorer
-                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-              </a>
-            </div>
-          }
-        />
+  eyebrow="The protocol"
+  title="Simple, public, verifiable"
+  desc="XPOT is built for social proof. Handles are the face of the protocol. On-chain proof is the backbone."
+  right={
+    <div className="flex flex-wrap items-center gap-2">
+      <a
+        href={XPOT_DEXSCREENER_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+      >
+        Chart
+        <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+      </a>
+      <a
+        href={XPOT_SOLSCAN_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+      >
+        Explorer
+        <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+      </a>
+    </div>
+  }
+/>
+
+{/* protocol clarification */}
+<div className="mb-4 max-w-3xl text-[12px] leading-relaxed text-slate-400">
+  Top holder concentration reflects protocol-controlled wallets
+  (liquidity, treasury, strategy execution, and community rewards),
+  not private individuals.
+</div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <PremiumCard className="p-6" halo>
