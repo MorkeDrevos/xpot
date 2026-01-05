@@ -258,46 +258,70 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             Primary venue is Jupiter. Always verify the mint and use official links.
           </p>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <a
-              href={XPOT_JUP_SWAP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={[
-                BTN_ROYAL_PRIMARY,
-                'group px-5 py-2.5 text-[13px] !text-slate-950',
-                'shadow-[0_24px_90px_rgba(var(--xpot-gold),0.20),0_18px_60px_rgba(0,0,0,0.55)]',
-              ].join(' ')}
-              title="Trade XPOT on Jupiter"
-            >
-              Trade on Jupiter
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+  {/* PRIMARY */}
+  <a
+    href={XPOT_JUP_SWAP_URL}
+    target="_blank"
+    rel="noopener noreferrer"
+    title="Trade XPOT on Jupiter"
+    className="
+      xpot-btn-vault
+      group
+      relative
+      inline-flex items-center justify-center
+      w-full sm:w-auto
+      px-6 py-3.5
+      text-sm font-semibold
+      transition
+      hover:brightness-[1.03]
+      active:brightness-[0.99]
+      active:scale-[0.99]
+    "
+  >
+    Trade on Jupiter
+    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+  </a>
 
-            <a
-              href={XPOT_DEXSCREENER_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={BTN_ROYAL_SECONDARY + ' px-4 py-2'}
-              title="View chart"
-            >
-              <TrendingUp className="h-4 w-4 text-slate-300" />
-              View chart
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-            </a>
+  {/* SECONDARIES */}
+  <div className="flex gap-2">
+    <a
+      href={XPOT_DEXSCREENER_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="View chart"
+      className="
+        xpot-btn
+        xpot-btn-utility
+        w-full sm:w-auto
+        px-4 py-2.5
+        text-[13px]
+      "
+    >
+      <TrendingUp className="h-4 w-4" />
+      Chart
+      <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+    </a>
 
-            <a
-              href={XPOT_SOLSCAN_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={BTN_ROYAL_SECONDARY + ' px-4 py-2'}
-              title="View on Solscan"
-            >
-              <ShieldCheck className="h-4 w-4 text-slate-300" />
-              Explorer
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-            </a>
-          </div>
+    <a
+      href={XPOT_SOLSCAN_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="View on Solscan"
+      className="
+        xpot-btn
+        xpot-btn-utility
+        w-full sm:w-auto
+        px-4 py-2.5
+        text-[13px]
+      "
+    >
+      <ShieldCheck className="h-4 w-4" />
+      Explorer
+      <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+    </a>
+  </div>
+</div>
 
           <p className="mt-3 font-mono text-[11px] text-slate-500">mint: {shortenAddress(mint, 8, 8)}</p>
         </div>
@@ -536,19 +560,37 @@ function HomeInner() {
 
                       {/* CTAs */}
                       <div className="mt-6 flex flex-wrap items-center gap-3">
-                        <Link href={ROUTE_HUB} className={`${BTN_ROYAL_PRIMARY} group`} title="Enter the hub">
-                          Enter the hub
-                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
-                            style={{
-                              background:
-                                'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
-                                'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
-                            }}
-                          />
-                        </Link>
+                        <Link
+  href={ROUTE_HUB}
+  title="Enter the hub"
+  className="
+    xpot-btn-vault
+    group
+    relative
+    inline-flex items-center justify-center
+    w-full sm:w-auto
+    rounded-full
+    px-6 py-3.5
+    text-sm font-semibold
+    transition
+    hover:brightness-[1.03]
+    active:brightness-[0.99]
+    active:scale-[0.99]
+  "
+>
+  Enter the hub
+  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+
+  <span
+    aria-hidden
+    className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
+    style={{
+      background:
+        'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
+        'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
+    }}
+  />
+</Link>
 
                         <a
                           href={XPOT_JUP_SWAP_URL}
@@ -925,10 +967,24 @@ function HomeInner() {
               </p>
             </div>
 
-            <Link href={ROUTE_HUB} className={`${BTN_ROYAL_PRIMARY} group px-5 py-2.5 text-sm`} title="Claim your entry">
-              Claim your entry
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            <Link
+  href={ROUTE_HUB}
+  title="Claim your entry"
+  className="
+    xpot-btn-vault
+    group
+    w-full sm:w-auto
+    px-6 py-3
+    text-sm font-semibold
+    rounded-full
+    inline-flex items-center justify-center
+    transition
+    active:scale-[0.99]
+  "
+>
+  Claim your entry
+  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+</Link>
           </div>
         </PremiumCard>
       </section>
