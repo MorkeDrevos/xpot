@@ -1100,37 +1100,6 @@ Claim once per day in the hub.
                 </div>
               </div>
 
-                      {/* FINAL DRAW - promoted */}
-                      <div className="mt-4">
-                        <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-3 ring-1 ring-white/[0.06]">
-                          <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_82%_20%,rgba(56,189,248,0.10),transparent_62%)]" />
-                          <div className="relative flex flex-wrap items-center gap-3">
-                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/30">
-                              <CalendarClock className={`h-5 w-5 ${GOLD_TEXT}`} />
-                            </span>
-                            <div className="min-w-0">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-                                Final Draw ends
-                              </p>
-                              <p className="mt-1 text-[13px] font-semibold text-slate-50">
-                                <span className={`${GOLD_TEXT}`}>28/02/2045 22:00</span>
-                                <span className="text-slate-400"> (Madrid)</span>
-                              </p>
-                            </div>
-                            <div className="grow" />
-                            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200">
-                              <Timer className="h-4 w-4 text-slate-300" />
-                              Next cutoff <span className="font-mono font-semibold text-slate-100">{countdown}</span>
-                            </span>
-                          </div>
-
-                          {/* keeps FinalDrawDate component in sync if you later change run end */}
-                          <div className="sr-only">
-                            <FinalDrawDate />
-                          </div>
-                        </div>
-                      </div>
-
               {/* Under-hero rail */}
               <div className="relative z-10 px-4 pb-5 sm:px-6 sm:pb-6 lg:px-8 lg:pb-7">
                 <div className="h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
@@ -1153,6 +1122,37 @@ Claim once per day in the hub.
           <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
         </div>
       ) : null}
+
+      {/* FINAL DRAW */}
+<section className="mt-10">
+  <PremiumCard className="p-6" halo={false}>
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/30">
+        <CalendarClock className={`h-5 w-5 ${GOLD_TEXT}`} />
+      </span>
+
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Final Draw ends</p>
+        <p className="mt-1 text-[14px] font-semibold text-slate-50">
+          <span className={`${GOLD_TEXT}`}>28/02/2045 22:00</span>
+          <span className="text-slate-400"> (Madrid)</span>
+        </p>
+      </div>
+
+      <div className="grow" />
+
+      <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200">
+        <Timer className="h-4 w-4 text-slate-300" />
+        Next cutoff <span className="font-mono font-semibold text-slate-100">{countdown}</span>
+      </span>
+    </div>
+
+    {/* keep component in sync */}
+    <div className="sr-only">
+      <FinalDrawDate />
+    </div>
+  </PremiumCard>
+</section>
 
       {/* THE PROTOCOL, MADE CLEAR */}
       <section className="mt-10">
