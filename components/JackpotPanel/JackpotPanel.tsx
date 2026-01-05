@@ -143,8 +143,12 @@ export default function JackpotPanel({
     if (!RO) return;
 
     let raf = 0;
-    const WIDE_ON = 900;
-    const WIDE_OFF = 840;
+
+    // NOTE:
+    // "wide" is only used for subtle styling toggles, but we still compute it.
+    // These thresholds are tuned so mid-size desktop/laptop screens flip "wide" sooner.
+    const WIDE_ON = 820; // was 900
+    const WIDE_OFF = 760; // was 840
 
     const applyWidth = (w: number) => {
       const curr = autoWideRef.current;
@@ -217,6 +221,20 @@ export default function JackpotPanel({
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
+  // Wider feel on smaller laptops:
+  // When this panel lives in the right column on the homepage, the parent grid can feel tight.
+  // We "spill" a little into the gap on md/lg (WITHOUT breaking mobile).
+  const heroSpill =
+    isHero && variant !== 'embedded'
+      ? [
+          // slightly wider on medium/desktop
+          'md:-mr-2 md:pr-2',
+          'lg:-mr-4 lg:pr-4',
+          'xl:-mr-6 xl:pr-6',
+          '2xl:-mr-8 2xl:pr-8',
+        ].join(' ')
+      : '';
+
   // Borders toned down (less “white frame”)
   const panelChrome =
     variant === 'embedded'
@@ -252,7 +270,7 @@ export default function JackpotPanel({
   const isOpen = manualOpen;
 
   return (
-    <section className={['relative', panelChrome, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
+    <section className={['relative', panelChrome, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
       <style jsx>{`
         @keyframes xpotSweep {
           0% { transform: translateX(-30%) skewX(-12deg); opacity: 0.0; }
@@ -388,6 +406,8 @@ export default function JackpotPanel({
           className={[
             'relative z-10 overflow-visible rounded-3xl bg-black/10 ring-1 ring-white/5',
             isHero ? 'mt-3 px-4 py-4 sm:mt-4 sm:p-6' : 'mt-4 px-4 py-4 sm:p-5',
+            // when "wide" / "autoWide" we just ensure no accidental max widths ever apply
+            'w-full max-w-none',
             layout === 'wide' ? 'w-full' : '',
             layout === 'auto' && autoWide ? 'w-full' : '',
           ].join(' ')}
@@ -539,7 +559,7 @@ export default function JackpotPanel({
                 />
               </div>
 
-              {/* ✅ INNER PADDING WRAPPER (this is the “needs padding around number” fix) */}
+              {/* ✅ INNER PADDING WRAPPER */}
               <div className="relative z-10 px-4 py-4 sm:px-5 sm:py-5">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:justify-between">
                   <div className="min-w-0 overflow-hidden">
@@ -563,7 +583,7 @@ export default function JackpotPanel({
                           justUpdated ? 'text-[#7CC8FF]' : '',
                         ].join(' ')}
                         style={{
-                          transform: 'translateY(1px)', // 👈 THIS is where you add it
+                          transform: 'translateY(1px)',
                           textShadow: justUpdated
                             ? '0 0 44px rgba(124,200,255,0.18)'
                             : '0 0 34px rgba(124,200,255,0.12)',
