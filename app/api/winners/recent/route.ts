@@ -22,64 +22,30 @@ function safeIso(d: unknown) {
 }
 
 /**
- * Prisma can return numeric columns as:
- * - number
- * - string
- * - Prisma.Decimal (object with toNumber()/toString())
- * This converts best-effort to number, else null.
+ * Your DB currently has jackpotUsd / payoutUsd populated (seen in Prisma Studio).
+ * The UI wants "amountXpot". Until you store a dedicated XPOT amount column,
+ * we treat jackpotUsd / payoutUsd as the XPOT amount fallback.
  */
-function coerceNumber(v: any): number | null {
-  if (v === null || v === undefined) return null;
-
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-
-  if (typeof v === 'string') {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  // Prisma.Decimal or similar
-  if (typeof v === 'object') {
-    // Prefer toNumber if present
-    const toNumber = (v as any)?.toNumber;
-    if (typeof toNumber === 'function') {
-      try {
-        const n = toNumber.call(v);
-        return typeof n === 'number' && Number.isFinite(n) ? n : null;
-      } catch {}
-    }
-
-    // Fallback to string parse
-    const toString = (v as any)?.toString;
-    if (typeof toString === 'function') {
-      try {
-        const s = toString.call(v);
-        if (typeof s === 'string') {
-          const n = Number(s);
-          return Number.isFinite(n) ? n : null;
-        }
-      } catch {}
-    }
-  }
-
-  return null;
-}
-
 function pickAmountXpot(w: any): number | null {
   const candidates = [
     w?.amountXpot,
     w?.payoutXpot,
+    w?.jackpotXpot,
     w?.amount,
     w?.payoutAmount,
 
-    // extra common shapes if you ever stored it nested
-    w?.draw?.amountXpot,
-    w?.draw?.payoutXpot,
+    // IMPORTANT: your schema/data shows these exist and are filled
+    w?.jackpotUsd,
+    w?.payoutUsd,
   ];
 
   for (const c of candidates) {
-    const n = coerceNumber(c);
-    if (typeof n === 'number' && Number.isFinite(n)) return n;
+    if (typeof c === 'number' && Number.isFinite(c)) return c;
+    // sometimes Prisma can hand back Decimal-like values
+    if (c && typeof c === 'object' && typeof (c as any).toNumber === 'function') {
+      const n = (c as any).toNumber();
+      if (typeof n === 'number' && Number.isFinite(n)) return n;
+    }
   }
 
   return null;
@@ -146,10 +112,7 @@ export async function GET(req: NextRequest) {
       .map(w => w.walletAddress ?? w.ticket?.walletAddress ?? w.ticket?.wallet?.address)
       .filter(Boolean) as string[];
 
-    const walletToUser = new Map<
-      string,
-      { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }
-    >();
+    const walletToUser = new Map<string, { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }>();
 
     if (walletAddrsNeedingLookup.length) {
       const wallets = await prisma.wallet.findMany({
@@ -172,7 +135,11 @@ export async function GET(req: NextRequest) {
       const wallet = ticket?.wallet;
       const user = wallet?.user;
 
-      const walletAddress = w.walletAddress ?? ticket?.walletAddress ?? wallet?.address ?? null;
+      const walletAddress =
+        w.walletAddress ??
+        ticket?.walletAddress ??
+        wallet?.address ??
+        null;
 
       const fallbackUser = walletAddress ? walletToUser.get(walletAddress) : null;
 
@@ -187,7 +154,7 @@ export async function GET(req: NextRequest) {
 
         ticketCode: w.ticketCode ?? ticket?.code ?? null,
 
-        // ✅ THIS is the key fix
+        // ✅ now actually populated from jackpotUsd/payoutUsd too
         amountXpot: pickAmountXpot(w),
 
         walletAddress,
@@ -217,6 +184,9 @@ export async function GET(req: NextRequest) {
     );
   } catch (err: any) {
     console.error('GET /api/winners/recent error', err);
-    return NextResponse.json({ ok: false, error: err?.message || 'INTERNAL_ERROR' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
+      { status: 500 },
+    );
   }
 }
