@@ -1165,17 +1165,6 @@ function HomePageInner() {
       {/* CTAs */}
       <PrimaryCtaRow countdown={countdown} warmup={warmup} />
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-slate-400">
-  <Link
-    href="/tokenomics"
-    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-  >
-    Tokenomics & proof <ArrowRight className="h-4 w-4 opacity-70" />
-  </Link>
-
-  <span className="text-slate-600">Public wallets, vesting, reserves.</span>
-</div>
-
       {/* Divider */}
       <div className="mt-5 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.22),rgba(255,255,255,0.06),transparent)]" />
 
