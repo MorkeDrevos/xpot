@@ -21,15 +21,21 @@ function safeIso(d: unknown) {
   }
 }
 
-function toNumberOrNull(v: any): number | null {
+/**
+ * Prisma can return numbers as:
+ * - number (Int/Float)
+ * - string (some drivers/serializers)
+ * - bigint (BigInt)
+ * - Decimal-like (object with toNumber())
+ *
+ * We normalize all of those to a JS number.
+ */
+function coerceNumber(v: any): number | null {
   try {
     if (v === null || v === undefined) return null;
 
-    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
-
-    if (typeof v === 'string') {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
+    if (typeof v === 'number') {
+      return Number.isFinite(v) ? v : null;
     }
 
     if (typeof v === 'bigint') {
@@ -37,15 +43,21 @@ function toNumberOrNull(v: any): number | null {
       return Number.isFinite(n) ? n : null;
     }
 
-    if (typeof v === 'object') {
-      if (typeof v.toNumber === 'function') {
-        const n = v.toNumber();
-        return typeof n === 'number' && Number.isFinite(n) ? n : null;
-      }
-      if (typeof v.toString === 'function') {
-        const n = Number(v.toString());
-        return Number.isFinite(n) ? n : null;
-      }
+    if (typeof v === 'string') {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    // Decimal-like (Prisma.Decimal has toNumber())
+    if (typeof v === 'object' && typeof v.toNumber === 'function') {
+      const n = v.toNumber();
+      return typeof n === 'number' && Number.isFinite(n) ? n : null;
+    }
+
+    // Fallback: valueOf() sometimes yields string/number
+    if (typeof v === 'object' && typeof v.valueOf === 'function') {
+      const vv = v.valueOf();
+      if (vv !== v) return coerceNumber(vv);
     }
 
     return null;
@@ -55,26 +67,11 @@ function toNumberOrNull(v: any): number | null {
 }
 
 function pickAmountXpot(w: any): number | null {
-  const candidates = [
-    // Winner row fields
-    w?.amountXpot,
-    w?.payoutXpot,
-    w?.amount,
-    w?.payoutAmount,
-
-    // Draw row fields (common in many schemas)
-    w?.draw?.amountXpot,
-    w?.draw?.payoutXpot,
-    w?.draw?.amount,
-    w?.draw?.payoutAmount,
-    w?.draw?.poolXpot,
-    w?.draw?.poolAmountXpot,
-    w?.draw?.rewardXpot,
-  ];
+  const candidates = [w?.amountXpot, w?.payoutXpot, w?.amount, w?.payoutAmount];
 
   for (const c of candidates) {
-    const n = toNumberOrNull(c);
-    if (n !== null) return n;
+    const n = coerceNumber(c);
+    if (typeof n === 'number' && Number.isFinite(n)) return n;
   }
 
   return null;
@@ -129,6 +126,7 @@ export async function GET(req: NextRequest) {
 
     for (const w of rows) {
       const key = String(w.drawId ?? '') || String(w.draw?.id ?? '') || String(w.id);
+
       if (seen.has(key)) continue;
       seen.add(key);
       uniq.push(w);
@@ -165,6 +163,7 @@ export async function GET(req: NextRequest) {
       const user = wallet?.user;
 
       const walletAddress = w.walletAddress ?? ticket?.walletAddress ?? wallet?.address ?? null;
+
       const fallbackUser = walletAddress ? walletToUser.get(walletAddress) : null;
 
       return {
@@ -178,7 +177,7 @@ export async function GET(req: NextRequest) {
 
         ticketCode: w.ticketCode ?? ticket?.code ?? null,
 
-        // FIX: pick from winner OR draw and normalize to real number
+        // ✅ FIX: normalize Decimal/BigInt/string -> number
         amountXpot: pickAmountXpot(w),
 
         walletAddress,
