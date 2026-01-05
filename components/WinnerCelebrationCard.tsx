@@ -97,7 +97,7 @@ export default function WinnerCelebrationCard({
                 LATEST WINNER
               </p>
               <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-500">
-                Winner just took home
+                
               </p>
 
               {claimedLabel ? (
