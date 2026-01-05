@@ -1183,6 +1183,50 @@ function DonutAllocation({
   );
 }
 
+function TransparencyNoteBar({
+  href = '/learn',
+  onLearn,
+}: {
+  href?: string;
+  onLearn?: () => void;
+}) {
+  return (
+    <div className="mt-5 mobile-flat rounded-[26px] border border-white/10 bg-slate-950/45 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur-xl overflow-hidden">
+      {/* subtle frame + glow */}
+      <div className="pointer-events-none absolute inset-0 opacity-60 hidden sm:block bg-[radial-gradient(circle_at_12%_30%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_86%_40%,rgba(var(--xpot-gold),0.14),transparent_60%)]" />
+      <div className="relative z-10 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/25">
+                <ShieldCheck className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
+              </span>
+              Transparency note
+            </span>
+
+            <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(var(--xpot-gold),0.35)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgb(var(--xpot-gold-2))]">
+              Treasury & protocol wallets
+            </span>
+          </div>
+
+          <Link
+            href={href}
+            onClick={onLearn}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(var(--xpot-gold),0.35)] bg-[linear-gradient(180deg,rgba(var(--xpot-gold),0.16),rgba(var(--xpot-gold),0.06))] px-5 py-2.5 text-sm font-semibold text-[rgb(var(--xpot-gold-2))] hover:bg-[linear-gradient(180deg,rgba(var(--xpot-gold),0.20),rgba(var(--xpot-gold),0.08))] transition"
+          >
+            Learn more <ArrowRight className="h-4 w-4 opacity-80" />
+          </Link>
+        </div>
+
+        <p className="mt-3 text-sm leading-relaxed text-slate-300">
+          Top holder concentration reflects <span className="font-semibold text-slate-100">protocol-controlled wallets</span>{' '}
+          (liquidity pool, treasury, strategy execution, and community rewards) - not private individuals.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function TokenomicsPageInner() {
   const searchParams = useSearchParams();
   const supply = 50_000_000_000;
@@ -1568,6 +1612,7 @@ function TokenomicsPageInner() {
 
                 {/* Tiny proof links */}
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
+                <TransparencyNoteBar href="/tokenomics#vaults" />
                   <Link
                     href="/tokenomics?tab=rewards&focus=reserve"
                     className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
