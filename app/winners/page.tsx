@@ -88,7 +88,14 @@ function isValidHttpUrl(u: string | null | undefined) {
   return /^https?:\/\/.+/i.test(u);
 }
 
+function fmtInt(n: number) {
+  return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+// ─────────────────────────────────────────────
 // Madrid cutoff + ICS download (client-safe)
+// ─────────────────────────────────────────────
+
 const MADRID_TZ = 'Europe/Madrid';
 const MADRID_CUTOFF_HH = 22;
 const MADRID_CUTOFF_MM = 0;
@@ -221,7 +228,10 @@ function downloadTextFile(filename: string, content: string, mime = 'text/plain'
   }
 }
 
+// ─────────────────────────────────────────────
 // UI atoms
+// ─────────────────────────────────────────────
+
 function Badge({
   children,
   tone = 'slate',
@@ -383,7 +393,7 @@ export default function WinnersPage() {
           label: w.label ?? null,
           drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
           ticketCode: w.ticketCode ?? w.code ?? null,
-          amountXpot: w.amountXpot ?? w.amount ?? null,
+          amountXpot: typeof w.amountXpot === 'number' ? w.amountXpot : typeof w.amount === 'number' ? w.amount : null,
           walletAddress: w.walletAddress ?? w.wallet ?? null,
           handle: w.handle ?? w.xHandle ?? null,
           name: w.name ?? w.xName ?? null,
@@ -477,8 +487,6 @@ export default function WinnersPage() {
 
     return arr;
   }, [filteredRows]);
-
-  const visibleGrouped = grouped;
 
   const totals = useMemo(() => {
     const main = filteredRows.filter(r => String(r.kind || '').toUpperCase() === 'MAIN').length;
@@ -620,7 +628,7 @@ export default function WinnersPage() {
                 <div className="xpot-card px-4 py-4 text-sm text-slate-500">No winners yet.</div>
               ) : (
                 <div className="space-y-6">
-                  {visibleGrouped.map(g => (
+                  {grouped.map(g => (
                     <section key={g.key} className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
@@ -636,11 +644,16 @@ export default function WinnersPage() {
                           const hasTx = isValidHttpUrl(w.txUrl);
                           const verified = hasTx || w.isPaidOut === true;
 
-                          // IMPORTANT: pass a NUMBER to GoldAmount (string can render as “nothing”)
-                          const amountVal =
+                          // IMPORTANT:
+                          // - GoldAmount expects a STRING
+                          // - We only render GoldAmount when we actually have a numeric amount
+                          const amountNum =
                             typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot)
-                              ? Math.round(w.amountXpot)
+                              ? w.amountXpot
                               : null;
+
+                          const hasAmount = amountNum !== null;
+                          const amountText = hasAmount ? fmtInt(Math.round(amountNum as number)) : null;
 
                           return (
                             <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
@@ -699,8 +712,8 @@ export default function WinnersPage() {
 
                                 <div className="flex justify-start sm:justify-center">
                                   <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
-                                    {amountVal !== null ? (
-                                      <GoldAmount value={amountVal} suffix="XPOT" size="md" />
+                                    {hasAmount && amountText ? (
+                                      <GoldAmount value={amountText} suffix="XPOT" size="md" />
                                     ) : (
                                       <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-slate-300">
                                         <span className="opacity-60">—</span> XPOT
