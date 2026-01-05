@@ -1165,40 +1165,20 @@ function HomePageInner() {
       {/* CTAs */}
       <PrimaryCtaRow countdown={countdown} warmup={warmup} />
 
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-slate-400">
+  <Link
+    href="/tokenomics"
+    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+  >
+    Tokenomics & proof <ArrowRight className="h-4 w-4 opacity-70" />
+  </Link>
+
+  <span className="text-slate-600">Public wallets, vesting, reserves.</span>
+</div>
+
       {/* Divider */}
       <div className="mt-5 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.22),rgba(255,255,255,0.06),transparent)]" />
 
-      {/* Treasury note (calmer, more premium) */}
-      <div className="mt-5 max-w-2xl">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.06]">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH}`}>
-                  <ShieldCheck className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                </span>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                  Treasury & protocol wallets
-                </p>
-              </div>
-
-              <p className="mt-2 text-[12px] leading-relaxed text-slate-300/90">
-                Top holder concentration reflects protocol-controlled wallets (liquidity pool, treasury, strategy
-                execution, and community rewards) - not private individuals.
-              </p>
-            </div>
-
-            <Link
-              href={ROUTE_TOKENOMICS_RESERVE}
-              className={`shrink-0 inline-flex items-center gap-2 rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH} px-4 py-2 text-[12px] font-semibold ${GOLD_TEXT} hover:bg-[rgba(var(--xpot-gold),0.14)] transition`}
-              title="Learn more in Tokenomics"
-            >
-              Learn more
-              <ArrowRight className="h-3.5 w-3.5 opacity-70" />
-            </Link>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </div>
