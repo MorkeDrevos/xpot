@@ -12,6 +12,9 @@ type WinnerSpotlight = {
   txUrl?: string | null;
   amountXpot?: number | null;
   kind?: 'MAIN' | 'BONUS' | null;
+
+  // Optional - if you pass it from HomePageClient later, we'll show date-only (no time)
+  drawDate?: string | null;
 };
 
 function normalizeHandle(h: string | null | undefined) {
@@ -23,6 +26,23 @@ function normalizeHandle(h: string | null | undefined) {
 function xProfileUrl(handle: string | null | undefined) {
   const h = normalizeHandle(handle).replace(/^@/, '');
   return `https://x.com/${encodeURIComponent(h)}`;
+}
+
+function safeTimeMs(iso?: string | null) {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? t : 0;
+}
+
+// ✅ date-only (no time)
+function formatDateOnly(iso?: string | null) {
+  const ms = safeTimeMs(iso);
+  if (!ms) return '';
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Madrid',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(ms));
 }
 
 function formatXp(amount?: number | null) {
@@ -39,10 +59,18 @@ export default function WinnerCelebrationCard({
   className?: string;
 }) {
   const hasWinner = Boolean(winner?.handle || winner?.txUrl || winner?.avatarUrl);
+
+  // ✅ no "x" prefix - amount is just "1,000,000"
   const amount = formatXp(winner?.amountXpot ?? 1_000_000);
 
   const handleNorm = useMemo(() => normalizeHandle(winner?.handle), [winner?.handle]);
   const profileUrl = useMemo(() => xProfileUrl(winner?.handle), [winner?.handle]);
+
+  // ✅ if you provide drawDate/claimedAt, we show "Claimed 3 Jan 2026" (no time)
+  const claimedLabel = useMemo(
+    () => (winner?.drawDate ? formatDateOnly(winner.drawDate) : ''),
+    [winner?.drawDate],
+  );
 
   return (
     <section
@@ -69,10 +97,18 @@ export default function WinnerCelebrationCard({
             </span>
 
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-400">
-                LATEST WINNER
-              </p>
-              <p className="mt-0.5 text-[12px] text-slate-300">Paid on-chain, published with a real @handle</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-400">LATEST WINNER</p>
+
+              {/* ✅ remove "Verified on-chain" vibe - keep it clean */}
+              <p className="mt-0.5 text-[12px] text-slate-300">Published with a real @handle</p>
+
+              {/* ✅ optional claimed line, date-only */}
+              {claimedLabel ? (
+                <p className="mt-1 text-[11px] text-slate-400">
+                  <span className="uppercase tracking-[0.22em] text-[10px] text-slate-500 mr-2">Claimed</span>
+                  <span className="text-slate-300">{claimedLabel}</span>
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -86,13 +122,7 @@ export default function WinnerCelebrationCard({
           {/* identity */}
           <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
             <div className="min-w-0 flex-1">
-              <a
-                href={profileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="group block"
-                title="Open X profile"
-              >
+              <a href={profileUrl} target="_blank" rel="noreferrer" className="group block" title="Open X profile">
                 <XAccountIdentity
                   name={winner?.name ?? null}
                   handle={winner?.handle ?? null}
@@ -101,7 +131,7 @@ export default function WinnerCelebrationCard({
                   subtitle={winner?.kind === 'BONUS' ? 'Bonus winner' : null}
                 />
 
-                {/* small external link hint, aligned right like a premium affordance */}
+                {/* premium affordance */}
                 <div className="mt-2 flex items-center gap-2 text-[12px] text-slate-400">
                   <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5">
                     Open profile
@@ -147,8 +177,9 @@ export default function WinnerCelebrationCard({
               <span className="text-[14px] font-semibold text-[rgb(var(--xpot-gold))]">XPOT</span>
             </div>
 
+            {/* ✅ remove the "verified holder" language */}
             <p className="relative mt-2 text-[12px] leading-relaxed text-slate-300">
-              Every day, one verified holder claims entry and one handle gets paid. No anonymous winners.
+              Every day, one handle gets paid. No anonymous winners.
             </p>
           </div>
         </div>
