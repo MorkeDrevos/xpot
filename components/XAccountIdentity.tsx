@@ -4,16 +4,16 @@ import React from 'react';
 import { ExternalLink } from 'lucide-react';
 
 export type XAccountIdentityProps = {
-  name?: string | null; // display name (e.g. "Mørke Drevos")
-  handle: string | null; // e.g. "@MorkeDrevos" or "MorkeDrevos"
+  name?: string | null;
+  handle: string | null;
   avatarUrl?: string | null;
   verified?: boolean | null;
 
-  // optional right-side action (e.g. small external icon)
   showExternalIcon?: boolean;
-
-  // optional small line under handle (e.g. "New GUY")
   subtitle?: string | null;
+
+  /** NEW: avatar size in px (default = 48) */
+  size?: number;
 
   className?: string;
 };
@@ -30,7 +30,6 @@ function toXProfileUrl(handle: string) {
 }
 
 function XVerifiedBadge({ className = '' }: { className?: string }) {
-  // Simple X-like verified badge (blue check)
   return (
     <span
       className={[
@@ -58,6 +57,7 @@ export default function XAccountIdentity({
   verified,
   showExternalIcon = true,
   subtitle,
+  size = 48, // ✅ default stays exactly like today
   className = '',
 }: XAccountIdentityProps) {
   const h = normalizeHandle(handle);
@@ -69,29 +69,32 @@ export default function XAccountIdentity({
       target="_blank"
       rel="noreferrer"
       className={[
-        'group flex min-w-0 items-center gap-3',
-        'rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3',
+        'group flex min-w-0 items-center gap-4',
+        'rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3',
         'hover:bg-white/[0.05] transition',
         className,
       ].join(' ')}
       title={`Open ${h} on X`}
     >
-      <div className="relative shrink-0">
-        <div className="h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40">
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt={name ? `${name} avatar` : `${h} avatar`}
-              className="h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="h-full w-full bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.12),transparent_60%)]" />
-          )}
-        </div>
+      {/* AVATAR */}
+      <div
+        className="relative shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40"
+        style={{ width: size, height: size }}
+      >
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatarUrl}
+            alt={name ? `${name} avatar` : `${h} avatar`}
+            className="h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="h-full w-full bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.12),transparent_60%)]" />
+        )}
       </div>
 
+      {/* TEXT */}
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-[18px] font-semibold tracking-tight text-white">
