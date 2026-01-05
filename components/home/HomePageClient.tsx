@@ -75,7 +75,10 @@ const XPOT_SOLSCAN_URL =
 
 // Royal = ceremonial gold + onyx + precision highlights (premium, not cheesy)
 const BTN_ROYAL_PRIMARY =
-  'relative inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold text-slate-950 ' +
+  'relative inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold ' +
+  // ✅ fallback (always valid)
+  'bg-amber-200 text-slate-950 ' +
+  // ✅ if --xpot-gold exists, this overrides; if invalid, fallback stays
   'bg-[linear-gradient(135deg,rgba(var(--xpot-gold),0.98),rgba(255,255,255,0.90),rgba(56,189,248,0.22))] ' +
   'shadow-[0_26px_90px_rgba(var(--xpot-gold),0.22),0_18px_55px_rgba(0,0,0,0.55)] ' +
   'hover:brightness-[1.05] active:brightness-[0.98] transition ' +
