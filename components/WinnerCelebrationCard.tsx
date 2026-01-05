@@ -46,8 +46,20 @@ function formatXp(amount?: number | null) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n);
 }
 
-/** keep this OUTSIDE the component so TS never does weird narrowing */
-type IdentityBorder = 'white' | 'gold';
+/**
+ * ✅ BUILD FIX:
+ * Vercel/TS sometimes narrows constant unions too aggressively and flags
+ * `IDENTITY_BORDER === 'gold'` as impossible.
+ *
+ * Solution: no comparisons, just pick a style preset.
+ */
+const IDENTITY_STYLE = {
+  border: 'border-white/15',
+  bg: 'bg-white/[0.04]',
+} as const;
+
+// If you want gold later, change ONLY these two lines:
+// const IDENTITY_STYLE = { border: 'border-[rgba(var(--xpot-gold),0.28)]', bg: 'bg-[rgba(var(--xpot-gold),0.06)]' } as const;
 
 export default function WinnerCelebrationCard({
   winner,
@@ -71,21 +83,9 @@ export default function WinnerCelebrationCard({
 
   const kindLabel = winner?.kind === 'BONUS' ? 'BONUS' : 'MAIN';
 
-  // ✅ IMPORTANT:
-  // DO NOT use `as const` here.
-  // Also keep the union type explicit.
-  const IDENTITY_BORDER: IdentityBorder = 'white'; // change to 'gold' if you want
-
-  // ✅ TS-safe, no "unintentional comparison" errors
-  const identityBorderClass =
-    IDENTITY_BORDER === 'gold'
-      ? 'border-[rgba(var(--xpot-gold),0.28)]'
-      : 'border-white/15';
-
-  const identityBgClass =
-    IDENTITY_BORDER === 'gold'
-      ? 'bg-[rgba(var(--xpot-gold),0.06)]'
-      : 'bg-white/[0.04]';
+  // ✅ no TS narrowing comparisons
+  const identityBorderClass = IDENTITY_STYLE.border;
+  const identityBgClass = IDENTITY_STYLE.bg;
 
   return (
     <section
