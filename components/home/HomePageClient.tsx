@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import {
   ArrowRight,
@@ -69,8 +69,18 @@ const XPOT_DEXSCREENER_URL =
 const XPOT_SOLSCAN_URL =
   process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
-const BTN_GREEN =
-  'inline-flex items-center justify-center rounded-full bg-emerald-400 text-slate-950 font-semibold shadow-[0_18px_60px_rgba(16,185,129,0.45)] hover:bg-emerald-300 transition';
+// Royal = fewer “green SaaS” vibes, more ceremonial gold + deep onyx + precision highlights.
+const BTN_ROYAL_PRIMARY =
+  'relative inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold text-slate-950 ' +
+  'bg-[linear-gradient(135deg,rgba(var(--xpot-gold),0.98),rgba(255,255,255,0.88),rgba(56,189,248,0.22))] ' +
+  'shadow-[0_26px_90px_rgba(var(--xpot-gold),0.22),0_18px_55px_rgba(0,0,0,0.55)] ' +
+  'hover:brightness-[1.05] active:brightness-[0.98] transition ' +
+  'ring-1 ring-white/[0.14]';
+
+const BTN_ROYAL_SECONDARY =
+  'inline-flex items-center justify-center rounded-full px-5 py-3 text-[13px] font-semibold ' +
+  'border border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.06] transition ' +
+  'shadow-[0_12px_40px_rgba(0,0,0,0.35)]';
 
 function setMeta(name: string, content: string) {
   if (typeof document === 'undefined') return;
@@ -108,8 +118,8 @@ function RoyalContractBar({ mint }: { mint: string }) {
       >
         <div
           className="
-            pointer-events-none absolute -inset-10 rounded-full opacity-70 blur-2xl
-            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.22),transparent_60%),
+            pointer-events-none absolute -inset-10 rounded-full opacity-80 blur-2xl
+            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.24),transparent_62%),
                 radial-gradient(circle_at_85%_35%,rgba(255,255,255,0.06),transparent_62%)]
           "
         />
@@ -157,7 +167,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
 function TradeOnJupiterCard({ mint }: { mint: string }) {
   return (
     <div className="relative overflow-hidden">
-      <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_16%_20%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_85%_25%,rgba(16,185,129,0.12),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+      <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_16%_20%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_85%_25%,rgba(16,185,129,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.18),transparent_62%)]" />
 
       <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -172,9 +182,9 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
               target="_blank"
               rel="noopener noreferrer"
               className={[
-                BTN_GREEN,
-                'group px-5 py-2.5 text-[13px]',
-                'shadow-[0_18px_70px_rgba(16,185,129,0.25)]',
+                BTN_ROYAL_PRIMARY,
+                'group px-5 py-2.5 text-[13px] !text-slate-950',
+                'shadow-[0_24px_90px_rgba(var(--xpot-gold),0.20),0_18px_60px_rgba(0,0,0,0.55)]',
               ].join(' ')}
               title="Trade XPOT on Jupiter"
             >
@@ -186,7 +196,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
               href={XPOT_DEXSCREENER_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] text-slate-200 hover:bg-white/[0.06] transition"
+              className={BTN_ROYAL_SECONDARY + ' px-4 py-2'}
               title="View chart"
             >
               <TrendingUp className="h-4 w-4 text-slate-300" />
@@ -198,7 +208,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
               href={XPOT_SOLSCAN_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] text-slate-200 hover:bg-white/[0.06] transition"
+              className={BTN_ROYAL_SECONDARY + ' px-4 py-2'}
               title="View on Solscan"
             >
               <ShieldCheck className="h-4 w-4 text-slate-300" />
@@ -278,11 +288,24 @@ function HomeInner() {
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.60))]" />
 
+        {/* Royal filigree wash (subtle, premium, not cheesy) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-70"
+          style={{
+            background:
+              'radial-gradient(circle at 12% 18%, rgba(var(--xpot-gold),0.16), transparent 55%),' +
+              'radial-gradient(circle at 86% 22%, rgba(56,189,248,0.10), transparent 58%),' +
+              'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06), transparent 62%),' +
+              'linear-gradient(90deg, rgba(0,0,0,0), rgba(var(--xpot-gold),0.04), rgba(0,0,0,0))',
+          }}
+        />
+
         <div className="relative z-10 w-full px-0">
           <div className="py-5 sm:py-7">
             <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
               <CosmicHeroBackdrop />
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.45),rgba(255,255,255,0.08),rgba(56,189,248,0.25),transparent)]" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.28),transparent)]" />
 
               <div
                 className="
@@ -296,6 +319,24 @@ function HomeInner() {
                   <div className="space-y-6">
                     <div className="relative p-2 sm:p-3">
                       <div className="relative mt-4">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <span
+                            className={[
+                              'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.26em]',
+                              `border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`,
+                              'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10),0_18px_60px_rgba(0,0,0,0.55)]',
+                            ].join(' ')}
+                          >
+                            <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                            Royal protocol run
+                          </span>
+
+                          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+                            <Radio className="h-3.5 w-3.5 text-emerald-200" />
+                            Live cadence
+                          </span>
+                        </div>
+
                         <h1 className="text-5xl font-semibold tracking-tight text-white">
                           One protocol.
                           <br />
@@ -303,9 +344,12 @@ function HomeInner() {
                         </h1>
 
                         <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
-                          Daily draws are the heartbeat. <span className="text-slate-200">Final Draw</span> is the ending
-                          - <FinalDrawDate className="text-slate-200" />.
+                          Ceremonial by design. Verifiable by default. <span className="text-slate-200">Final Draw</span>{' '}
+                          ends on <FinalDrawDate className="text-slate-200" />.
                         </p>
+
+                        {/* Thin royal divider */}
+                        <div className="mt-5 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),transparent)]" />
                       </div>
 
                       {/* MOBILE: jackpot right after H1 */}
@@ -319,6 +363,14 @@ function HomeInner() {
                       </div>
 
                       <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
+                        <div
+                          className="pointer-events-none absolute -inset-12 opacity-70 blur-2xl"
+                          style={{
+                            background:
+                              'radial-gradient(circle at 18% 40%, rgba(var(--xpot-gold),0.14), transparent 60%),' +
+                              'radial-gradient(circle at 82% 30%, rgba(56,189,248,0.08), transparent 62%)',
+                          }}
+                        />
                         <div className="relative flex flex-wrap items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
@@ -331,6 +383,16 @@ function HomeInner() {
                               <span className="text-[11px] text-slate-500">Madrid 22:00</span>
                             </p>
                           </div>
+
+                          <span
+                            className={[
+                              'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]',
+                              `border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`,
+                            ].join(' ')}
+                          >
+                            <Zap className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                            Cutoff approaches
+                          </span>
                         </div>
                       </div>
 
@@ -338,7 +400,7 @@ function HomeInner() {
                         <div className="mt-5">
                           <BonusVault>
                             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                              <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.18)]">
+                              <span className="inline-flex items-center gap-2 rounded-full border-violet-400/25 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.18)] border">
                                 <span className="relative flex h-2 w-2">
                                   <span className="absolute inset-0 rounded-full bg-violet-400/60 animate-ping" />
                                   <span className="relative h-2 w-2 rounded-full bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.9)]" />
@@ -370,10 +432,30 @@ function HomeInner() {
                       ) : null}
 
                       <div className="mt-6 flex flex-wrap items-center gap-3">
-                        <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-6 py-3.5 text-sm`} title="Enter the hub">
+                        <Link href={ROUTE_HUB} className={`${BTN_ROYAL_PRIMARY} group`} title="Enter the hub">
                           Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
+                            style={{
+                              background:
+                                'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
+                                'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
+                            }}
+                          />
                         </Link>
+
+                        <a
+                          href={XPOT_JUP_SWAP_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={BTN_ROYAL_SECONDARY}
+                          title="Buy XPOT on Jupiter"
+                        >
+                          Buy XPOT
+                          <ExternalLink className="ml-2 h-4 w-4 text-slate-500" />
+                        </a>
                       </div>
 
                       {SHOW_LIVE_FEED && latestWinner ? (
@@ -386,7 +468,11 @@ function HomeInner() {
                             <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">live</span>
                           </div>
                           <div className="mt-3 text-sm text-slate-200">
-                            {latestWinner.handle ? latestWinner.handle : latestWinner.wallet ? shortenAddress(latestWinner.wallet, 6, 6) : 'winner'}
+                            {latestWinner.handle
+                              ? latestWinner.handle
+                              : latestWinner.wallet
+                                ? shortenAddress(latestWinner.wallet, 6, 6)
+                                : 'winner'}
                           </div>
                         </div>
                       ) : null}
@@ -396,7 +482,9 @@ function HomeInner() {
                       <PremiumCard className="p-5 sm:p-6" halo={false}>
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                              Contract
+                            </p>
                             <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
                               Always verify the official mint before interacting.
                             </p>
@@ -445,6 +533,9 @@ function HomeInner() {
                   </PremiumCard>
                 </motion.div>
               </div>
+
+              {/* Bottom royal edge */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.08),transparent)]" />
             </div>
           </div>
         </div>
@@ -492,12 +583,10 @@ function HomeInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
+              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
             </div>
 
-            <Link href={ROUTE_HUB} className={`${BTN_GREEN} group px-5 py-2.5 text-sm`}>
+            <Link href={ROUTE_HUB} className={`${BTN_ROYAL_PRIMARY} group px-5 py-2.5 text-sm`} title="Claim your entry">
               Claim your entry
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
@@ -609,7 +698,9 @@ function HomeInner() {
 
             <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="flex items-center gap-3">
-                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}>
+                <span
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}
+                >
                   <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
                 </span>
                 <div>
@@ -618,7 +709,9 @@ function HomeInner() {
                 </div>
               </div>
               <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                <li>Final draw: <FinalDrawDate variant="short" /></li>
+                <li>
+                  Final draw: <FinalDrawDate variant="short" />
+                </li>
                 <li>Daily cadence builds the arc</li>
                 <li>Proof stays public</li>
               </ul>
