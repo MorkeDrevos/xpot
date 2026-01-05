@@ -28,6 +28,10 @@ type WinnerKind = 'MAIN' | 'BONUS';
 
 type WinnerRow = {
   id: string;
+
+  // ✅ IMPORTANT: drawId is the canonical de-dupe key (one draw = one winner row)
+  drawId?: string | null;
+
   kind?: WinnerKind | string | null;
 
   drawDate?: string | null;
@@ -311,7 +315,14 @@ function WinnerIdentity({
 }
 
 function makeDedupeKey(w: WinnerRow) {
-  // Prefer strong unique identifiers first
+  // ✅ Canonical: one draw = one winner row
+  const drawId = (w.drawId || '').trim();
+  if (drawId) {
+    const k = String(w.kind || '').toUpperCase();
+    return `draw:${drawId}|${k || 'WIN'}`;
+  }
+
+  // Prefer strong unique identifiers next
   const sig = (w.txSig || '').trim();
   if (sig) return `sig:${sig}`;
 
@@ -339,28 +350,58 @@ export default function WinnersPage() {
   const [kindFilter, setKindFilter] = useState<'ALL' | 'MAIN' | 'BONUS'>('ALL');
   const [showTxOnly, setShowTxOnly] = useState(false);
 
-  const [visibleDays, setVisibleDays] = useState(7);
-
   const liveIsOpen = false;
 
   useEffect(() => {
     let alive = true;
 
-    async function load() {
+    async function loadAll() {
       try {
         setError(null);
         setLoading(true);
 
-        const res = await fetch('/api/winners/recent?limit=1000', { cache: 'no-store' });
-        if (!res.ok) throw new Error('Failed to load winners');
+        // ✅ We must display ALL winners.
+        // We try to paginate if the API returns a cursor. If it doesn’t, we still fetch a large limit.
+        const all: any[] = [];
+        let cursor: string | null = null;
 
-        const data = await res.json();
-        const winners = Array.isArray(data?.winners) ? data.winners : [];
+        // safety cap (prevents infinite loops if backend bugs)
+        for (let page = 0; page < 20; page++) {
+          const params = new URLSearchParams();
+          params.set('limit', '5000'); // big page size so "all winners" loads in one go if possible
+          if (cursor) params.set('cursor', cursor);
+
+          const res = await fetch(`/api/winners/recent?${params.toString()}`, { cache: 'no-store' });
+          if (!res.ok) throw new Error('Failed to load winners');
+
+          const data = await res.json();
+
+          const batch = Array.isArray(data?.winners) ? data.winners : [];
+          for (const w of batch) all.push(w);
+
+          // support common cursor shapes
+          const next =
+            (typeof data?.nextCursor === 'string' && data.nextCursor) ||
+            (typeof data?.cursor === 'string' && data.cursor) ||
+            (typeof data?.next_page_token === 'string' && data.next_page_token) ||
+            null;
+
+          if (!next || batch.length === 0) {
+            cursor = null;
+            break;
+          }
+
+          cursor = next;
+        }
 
         if (!alive) return;
 
-        const mapped: WinnerRow[] = winners.map((w: any) => ({
+        const mapped: WinnerRow[] = all.map((w: any) => ({
           id: String(w.id ?? crypto.randomUUID()),
+
+          // ✅ pull draw id if backend provides it (many of your endpoints do)
+          drawId: w.drawId ?? w.draw_id ?? w.draw?.id ?? null,
+
           kind: w.kind ?? w.winnerKind ?? w.type ?? null,
           label: w.label ?? null,
           drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
@@ -382,7 +423,7 @@ export default function WinnersPage() {
         // 1) Sort newest first (by drawDate, fallback: 0)
         mapped.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
 
-        // 2) Dedupe (keep first occurrence, which is newest because of sort)
+        // 2) Dedupe by drawId (preferred), otherwise strong ids
         const seen = new Set<string>();
         const deduped: WinnerRow[] = [];
         for (const r of mapped) {
@@ -402,7 +443,7 @@ export default function WinnersPage() {
       }
     }
 
-    load();
+    loadAll();
     return () => {
       alive = false;
     };
@@ -431,6 +472,7 @@ export default function WinnersPage() {
         r.txSig || '',
         r.txUrl || '',
         r.label || '',
+        r.drawId || '',
       ]
         .join(' ')
         .toLowerCase();
@@ -452,7 +494,6 @@ export default function WinnersPage() {
         map.set(key, { key, ms, items: [r] });
       } else {
         existing.items.push(r);
-        // ensure group ms is the newest ms inside that day
         existing.ms = Math.max(existing.ms, ms);
       }
     }
@@ -460,7 +501,7 @@ export default function WinnersPage() {
     const arr = Array.from(map.values());
     arr.sort((a, b) => b.ms - a.ms);
 
-    // also sort items within each day (newest first)
+    // sort items within each day (newest first)
     for (const g of arr) {
       g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
     }
@@ -468,7 +509,8 @@ export default function WinnersPage() {
     return arr;
   }, [filteredRows]);
 
-  const visibleGrouped = useMemo(() => grouped.slice(0, visibleDays), [grouped, visibleDays]);
+  // ✅ show ALL days (no “recent only”)
+  const visibleGrouped = grouped;
 
   const totals = useMemo(() => {
     const main = filteredRows.filter(r => String(r.kind || '').toUpperCase() === 'MAIN').length;
@@ -632,10 +674,7 @@ export default function WinnersPage() {
                               : '—';
 
                           return (
-                            <article
-                              key={makeDedupeKey(w)}
-                              className="xpot-card px-4 py-4"
-                            >
+                            <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span
                                   className={[
@@ -719,21 +758,6 @@ export default function WinnersPage() {
                       </div>
                     </section>
                   ))}
-
-                  {grouped.length > visibleDays && (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        className="xpot-btn h-11 w-full text-sm"
-                        onClick={() => setVisibleDays(v => Math.min(v + 7, grouped.length))}
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          <ChevronDown className="h-4 w-4" />
-                          Load more days
-                        </span>
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
