@@ -258,7 +258,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             Primary venue is Jupiter. Always verify the mint and use official links.
           </p>
 
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="mt-3 grid gap-2 sm:flex sm:items-center">
   {/* PRIMARY */}
   <a
     href={XPOT_JUP_SWAP_URL}
@@ -270,6 +270,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       group
       relative
       inline-flex items-center justify-center
+      rounded-full
       w-full sm:w-auto
       px-6 py-3.5
       text-sm font-semibold
@@ -281,20 +282,32 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
   >
     Trade on Jupiter
     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+
+    {/* Lightshow glow (new) */}
+    <span
+      aria-hidden
+      className="pointer-events-none absolute -inset-10 opacity-70 blur-2xl"
+      style={{
+        background:
+          'radial-gradient(circle at 22% 40%, rgba(56,189,248,0.14), transparent 58%),' + // sky
+          'radial-gradient(circle at 78% 30%, rgba(236,72,153,0.10), transparent 62%),' + // magenta
+          'radial-gradient(circle at 45% 65%, rgba(var(--xpot-gold),0.16), transparent 60%)', // gold
+      }}
+    />
   </a>
 
-  {/* SECONDARIES */}
-  <div className="flex gap-2">
+  {/* SECONDARIES (mobile: 2 columns, desktop: inline) */}
+  <div className="grid grid-cols-2 gap-2 sm:flex">
     <a
       href={XPOT_DEXSCREENER_URL}
       target="_blank"
       rel="noopener noreferrer"
       title="View chart"
       className="
-        xpot-btn
-        xpot-btn-utility
+        xpot-btn xpot-btn-utility
+        rounded-full
         w-full sm:w-auto
-        px-4 py-2.5
+        px-4 py-3
         text-[13px]
       "
     >
@@ -309,10 +322,10 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       rel="noopener noreferrer"
       title="View on Solscan"
       className="
-        xpot-btn
-        xpot-btn-utility
+        xpot-btn xpot-btn-utility
+        rounded-full
         w-full sm:w-auto
-        px-4 py-2.5
+        px-4 py-3
         text-[13px]
       "
     >
