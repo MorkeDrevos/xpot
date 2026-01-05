@@ -22,24 +22,42 @@ function safeIso(d: any) {
   }
 }
 
+function pickAmountXpot(w: any): number | null {
+  const candidates = [
+    w?.amountXpot,
+    w?.payoutXpot,
+    w?.amount, // some schemas use "amount"
+    w?.payoutAmount,
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === 'number' && Number.isFinite(c)) return c;
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const limit = intParam(req.nextUrl.searchParams.get('limit'), 50);
 
     /**
      * ✅ ONE DRAW = ONE PUBLIC WINNER
-     * We query draws, not winners.
+     * Query winners, but dedupe by drawId.
+     *
+     * NOTE:
+     * - `distinct: ['drawId']` ensures max 1 winner per draw.
+     * - We over-fetch a bit so distinct still returns enough rows.
      */
-    const draws = await prisma.draw.findMany({
-      where: {
-        status: 'closed',
-      },
-      orderBy: {
-        drawDate: 'desc',
-      },
-      take: limit,
+    const raw = await prisma.winner.findMany({
+      take: Math.min(limit * 5, 5000),
+      orderBy: [
+        // prefer winner "date" if you have it, else fallback to drawDate via relation
+        { date: 'desc' as any },
+        { createdAt: 'desc' as any },
+      ],
+      distinct: ['drawId'] as any,
       include: {
-        winner: true,
+        draw: true,
         ticket: {
           include: {
             wallet: {
@@ -52,42 +70,49 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const payload = draws
-      .filter(d => d.winner) // safety
-      .map(d => {
-        const w = d.winner!;
-        const user = d.ticket?.wallet?.user;
+    // If your DB contains winners attached to non-closed draws, filter them out here.
+    const winners = raw
+      .filter(w => {
+        const draw = (w as any).draw;
+        // if draw has status, enforce closed; otherwise just allow it
+        return !draw?.status || draw.status === 'closed';
+      })
+      .slice(0, limit);
 
-        const amountXpot =
-          typeof (w as any).payoutUsd === 'number' && Number.isFinite((w as any).payoutUsd)
-            ? (w as any).payoutUsd
-            : null;
+    const payload = winners.map(w => {
+      const draw = (w as any).draw;
+      const ticket = (w as any).ticket;
+      const wallet = ticket?.wallet;
+      const user = wallet?.user;
 
-        return {
-          // ✅ canonical IDs
-          id: w.id,
-          drawId: d.id,
+      return {
+        // ✅ canonical IDs
+        id: w.id,
+        drawId: (w as any).drawId ?? draw?.id ?? null,
 
-          kind: (w as any).kind ?? 'MAIN',
-          label: (w as any).label ?? null,
+        kind: (w as any).kind ?? 'MAIN',
+        label: (w as any).label ?? null,
 
-          drawDate: safeIso(d.drawDate),
-          ticketCode: (w as any).ticketCode ?? null,
+        // prefer draw.drawDate, fallback to winner.date
+        drawDate: safeIso(draw?.drawDate ?? (w as any).date ?? (w as any).createdAt),
 
-          amountXpot,
+        // ticket code (winner may store it, or ticket may store it)
+        ticketCode: (w as any).ticketCode ?? ticket?.code ?? null,
 
-          walletAddress: d.ticket?.wallet?.address ?? null,
+        amountXpot: pickAmountXpot(w),
 
-          // X identity
-          handle: user?.xHandle ?? null,
-          name: (user as any)?.xName ?? null,
-          avatarUrl: (user as any)?.xAvatarUrl ?? null,
+        walletAddress: wallet?.address ?? null,
 
-          isPaidOut: typeof (w as any).isPaidOut === 'boolean' ? (w as any).isPaidOut : null,
-          txUrl: (w as any).txUrl ?? null,
-          txSig: (w as any).txSig ?? null,
-        };
-      });
+        // X identity
+        handle: user?.xHandle ?? null,
+        name: (user as any)?.xName ?? null,
+        avatarUrl: (user as any)?.xAvatarUrl ?? null,
+
+        isPaidOut: typeof (w as any).isPaidOut === 'boolean' ? (w as any).isPaidOut : null,
+        txUrl: (w as any).txUrl ?? null,
+        txSig: (w as any).txSig ?? null,
+      };
+    });
 
     return NextResponse.json(
       {
