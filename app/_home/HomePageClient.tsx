@@ -318,89 +318,6 @@ function CompactWinnerRow({
   );
 }
 
-function CollapsibleWinner({
-  winner,
-}: {
-  winner: LiveWinnerRow | null;
-}) {
-  const [expanded, setExpanded] = useState(true);
-
-  // collapse behavior tuning
-  const AUTO_COLLAPSE_MS = 18_000;
-
-  const key = useMemo(() => winnerKey(winner), [winner]);
-
-  // load state per-winner
-  useEffect(() => {
-    if (!key) return;
-    try {
-      const v = window.localStorage.getItem(`xpot:home:winner:${key}:expanded`);
-      if (v === '0') setExpanded(false);
-      else if (v === '1') setExpanded(true);
-      else setExpanded(true);
-    } catch {
-      setExpanded(true);
-    }
-  }, [key]);
-
-  // auto-collapse after a while (only if user has not already collapsed for this winner)
-  useEffect(() => {
-    if (!key) return;
-    if (!expanded) return;
-
-    let alreadySet = false;
-    try {
-      const v = window.localStorage.getItem(`xpot:home:winner:${key}:expanded`);
-      alreadySet = v === '0' || v === '1';
-    } catch {}
-
-    // If user never expressed preference, we can auto-collapse once per winner.
-    if (alreadySet) return;
-
-    const t = window.setTimeout(() => {
-      setExpanded(false);
-      try {
-        window.localStorage.setItem(`xpot:home:winner:${key}:expanded`, '0');
-      } catch {}
-    }, AUTO_COLLAPSE_MS);
-
-    return () => window.clearTimeout(t);
-  }, [key, expanded]);
-
-  const set = (v: boolean) => {
-    setExpanded(v);
-    if (!key) return;
-    try {
-      window.localStorage.setItem(`xpot:home:winner:${key}:expanded`, v ? '1' : '0');
-    } catch {}
-  };
-
-  if (!expanded) {
-    return <CompactWinnerRow winner={winner} onExpand={() => set(true)} />;
-  }
-
-  return (
-    <div className="relative">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Latest winner</p>
-        <button
-          type="button"
-          onClick={() => set(false)}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-          title="Collapse"
-        >
-          Hide
-          <ChevronDown className="h-4 w-4 text-slate-400" />
-        </button>
-      </div>
-
-      <div className="mt-2">
-        <WinnerCelebrationCard winner={winner as any} />
-      </div>
-    </div>
-  );
-}
-
 /* ─────────────────────────────────────────────
    Premium cosmic backdrop
 ───────────────────────────────────────────── */
@@ -1223,11 +1140,6 @@ function HomePageInner() {
                       </div>
 
                       <PrimaryCtaRow countdown={countdown} warmup={warmup} />
-
-                      {/* Winner card that auto-collapses after a while */}
-                      <div className="mt-5">
-                        <CollapsibleWinner winner={winnerSpotlight} />
-                      </div>
 
                       {/* Treasury note belongs here (not in the lower Protocol section) */}
                       <div className="mt-4 max-w-2xl">
