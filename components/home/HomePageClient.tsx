@@ -69,10 +69,10 @@ const XPOT_DEXSCREENER_URL =
 const XPOT_SOLSCAN_URL =
   process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
-// Royal = fewer “green SaaS” vibes, more ceremonial gold + deep onyx + precision highlights.
+// Royal = ceremonial gold + onyx + precision highlights (premium, not cheesy)
 const BTN_ROYAL_PRIMARY =
   'relative inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold text-slate-950 ' +
-  'bg-[linear-gradient(135deg,rgba(var(--xpot-gold),0.98),rgba(255,255,255,0.88),rgba(56,189,248,0.22))] ' +
+  'bg-[linear-gradient(135deg,rgba(var(--xpot-gold),0.98),rgba(255,255,255,0.90),rgba(56,189,248,0.22))] ' +
   'shadow-[0_26px_90px_rgba(var(--xpot-gold),0.22),0_18px_55px_rgba(0,0,0,0.55)] ' +
   'hover:brightness-[1.05] active:brightness-[0.98] transition ' +
   'ring-1 ring-white/[0.14]';
@@ -288,7 +288,6 @@ function HomeInner() {
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.60))]" />
 
-        {/* Royal filigree wash (subtle, premium, not cheesy) */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-70"
@@ -314,7 +313,6 @@ function HomeInner() {
                   lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
                 "
               >
-                {/* LEFT */}
                 <div className="flex flex-col justify-between gap-6 lg:pt-8">
                   <div className="space-y-6">
                     <div className="relative p-2 sm:p-3">
@@ -348,11 +346,9 @@ function HomeInner() {
                           ends on <FinalDrawDate className="text-slate-200" />.
                         </p>
 
-                        {/* Thin royal divider */}
                         <div className="mt-5 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),transparent)]" />
                       </div>
 
-                      {/* MOBILE: jackpot right after H1 */}
                       <div className="mt-4 grid gap-4 lg:hidden">
                         <PremiumCard className="p-4" halo sheen>
                           <div className="xpot-console-sweep" aria-hidden />
@@ -400,7 +396,7 @@ function HomeInner() {
                         <div className="mt-5">
                           <BonusVault>
                             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                              <span className="inline-flex items-center gap-2 rounded-full border-violet-400/25 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.18)] border">
+                              <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.18)]">
                                 <span className="relative flex h-2 w-2">
                                   <span className="absolute inset-0 rounded-full bg-violet-400/60 animate-ping" />
                                   <span className="relative h-2 w-2 rounded-full bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.9)]" />
@@ -502,11 +498,10 @@ function HomeInner() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
-                    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
+                    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="sky" />
                   </div>
                 </div>
 
-                {/* RIGHT (desktop only) */}
                 <motion.div
                   className="hidden gap-4 lg:grid"
                   style={
@@ -534,7 +529,6 @@ function HomeInner() {
                 </motion.div>
               </div>
 
-              {/* Bottom royal edge */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.08),transparent)]" />
             </div>
           </div>
@@ -545,7 +539,6 @@ function HomeInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* HOW IT WORKS */}
       <section className="mt-7">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -573,7 +566,7 @@ function HomeInner() {
                 <Users className="h-3.5 w-3.5" />
                 X identity
               </Pill>
-              <Pill tone="violet">
+              <Pill tone="sky">
                 <Timer className="h-3.5 w-3.5" />
                 Daily cadence
               </Pill>
@@ -583,7 +576,9 @@ function HomeInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public arc and provable outcomes.
+              </p>
             </div>
 
             <Link href={ROUTE_HUB} className={`${BTN_ROYAL_PRIMARY} group px-5 py-2.5 text-sm`} title="Claim your entry">
@@ -594,7 +589,6 @@ function HomeInner() {
         </PremiumCard>
       </section>
 
-      {/* PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -626,12 +620,11 @@ function HomeInner() {
         </div>
       </section>
 
-      {/* ECOSYSTEM */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <Pill tone="violet">
+              <Pill tone="sky">
                 <Blocks className="h-3.5 w-3.5" />
                 Built to scale
               </Pill>
@@ -720,7 +713,6 @@ function HomeInner() {
         </PremiumCard>
       </section>
 
-      {/* FAQ */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo={false}>
           <div className="flex flex-wrap items-start justify-between gap-4">
