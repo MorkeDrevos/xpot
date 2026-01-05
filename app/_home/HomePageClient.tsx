@@ -1,4 +1,3 @@
-// app/_home/HomePageClient.tsx
 'use client';
 
 import {
@@ -28,8 +27,6 @@ import {
   Users,
   Wand2,
   Zap,
-  Copy,
-  Check,
   CalendarClock,
 } from 'lucide-react';
 
@@ -255,23 +252,6 @@ function PremiumCard({
       <div className="relative z-10">{children}</div>
     </section>
   );
-}
-
-function shortenAddress(addr: string, left = 6, right = 6) {
-  if (!addr) return '';
-  if (addr.length <= left + right + 3) return addr;
-  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
-}
-
-function normalizeHandle(h: string | null | undefined) {
-  const s = String(h ?? '').trim();
-  if (!s) return '@unknown';
-  return s.startsWith('@') ? s : `@${s}`;
-}
-
-function toXProfileUrl(handle: string | null | undefined) {
-  const h = normalizeHandle(handle).replace(/^@/, '');
-  return `https://x.com/${encodeURIComponent(h)}`;
 }
 
 function formatNumber(n: number) {
@@ -674,6 +654,7 @@ function useLatestWinnerCard() {
           handle: x.handle ?? x.xHandle ?? null,
           name: x.name ?? x.xName ?? null,
           avatarUrl: x.avatarUrl ?? x.xAvatarUrl ?? null,
+          verified: typeof x.verified === 'boolean' ? x.verified : (x?.isVerified ?? null),
           wallet: x.wallet ?? x.walletAddress ?? x.walletAddr ?? null,
           amountXpot:
             typeof x.amountXpot === 'number'
@@ -703,6 +684,7 @@ function useLatestWinnerCard() {
           handle: x.handle ?? null,
           name: x.name ?? null,
           avatarUrl: x.avatarUrl ?? null,
+          verified: typeof x.verified === 'boolean' ? x.verified : (x?.isVerified ?? null),
           wallet: x.wallet ?? null,
           amountXpot: typeof x.amountXpot === 'number' ? x.amountXpot : null,
           amount: typeof x.amount === 'number' ? x.amount : null,
@@ -889,103 +871,8 @@ function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boole
       </a>
 
       <div className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-5 py-3 text-[13px] font-semibold text-slate-300">
-  <Timer className="h-4 w-4 text-slate-400" />
-  Next draw in{' '}
-  <span className="font-mono text-slate-100">{countdown}</span>
-</div>
-    </div>
-  );
-}
-
-function WinnerMiniCard({ winner }: { winner: LiveWinnerRow | null }) {
-  const handle = winner?.handle ? normalizeHandle(winner.handle) : null;
-  const xUrl = handle ? toXProfileUrl(handle) : null;
-
-  const amount =
-    typeof winner?.amountXpot === 'number'
-      ? winner.amountXpot
-      : typeof winner?.amount === 'number'
-        ? winner.amount
-        : null;
-
-  return (
-    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/25 p-5 ring-1 ring-white/[0.05]">
-      <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_14%_25%,rgba(var(--xpot-gold),0.14),transparent_62%),radial-gradient(circle_at_80%_25%,rgba(56,189,248,0.10),transparent_62%)]" />
-      <div className="relative flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-            Winner just took home
-          </p>
-
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <div className="inline-flex items-center gap-2">
-              <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
-                {winner?.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={winner.avatarUrl}
-                    alt={handle ? `${handle} avatar` : 'Winner avatar'}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
-                )}
-              </span>
-
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  {handle ? (
-                    <a
-                      href={xUrl ?? '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="truncate text-[14px] font-semibold text-slate-50 hover:text-white transition"
-                      title="Open X profile"
-                    >
-                      {handle}
-                    </a>
-                  ) : (
-                    <span className="truncate text-[14px] font-semibold text-slate-50">Pending</span>
-                  )}
-
-                  {winner?.kind ? (
-                    <Pill tone={winner.kind === 'BONUS' ? 'violet' : 'amber'}>
-                      <Sparkles className="h-3.5 w-3.5" />
-                      {winner.kind === 'BONUS' ? 'Bonus' : 'Main'}
-                    </Pill>
-                  ) : null}
-                </div>
-
-                <div className="mt-1 text-[12px] text-slate-400">
-                  {winner?.txUrl ? (
-                    <a
-                      href={winner.txUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition"
-                    >
-                      TX
-                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                    </a>
-                  ) : (
-                    <span>Proof appears after payout</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="grow" />
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.05]">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Payout</div>
-              <div className={`mt-1 text-[16px] font-semibold ${GOLD_TEXT}`}>
-                {amount ? `${formatNumber(amount)} XPOT` : '—'}
-              </div>
-            </div>
-          </div>
-        </div>
+        <Timer className="h-4 w-4 text-slate-400" />
+        Next draw in <span className="font-mono text-slate-100">{countdown}</span>
       </div>
     </div>
   );
@@ -1164,7 +1051,6 @@ function HomePageInner() {
                     </div>
 
                     <div className="mt-4">
-                      {/* ORIGINAL H1 (back) */}
                       <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
                         One protocol. One daily <span className="xpot-xpotword">XPOT</span> draw.
                       </h1>
@@ -1197,38 +1083,38 @@ function HomePageInner() {
                             </span>
                           </div>
 
-                          {/* keeps FinalDrawDate component in sync if you later change run end */}
                           <div className="sr-only">
                             <FinalDrawDate />
                           </div>
                         </div>
                       </div>
 
+                      {/* Trust bar (decluttered) */}
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
-    <Users className="h-4 w-4 text-slate-300" />
-    Real handles
-    <span className="text-slate-500">•</span>
-    <ShieldCheck className="h-4 w-4 text-slate-300" />
-    On-chain proof
-    <span className="text-slate-500">•</span>
-    <Globe className="h-4 w-4 text-slate-300" />
-    One cadence
-  </span>
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                          <Users className="h-4 w-4 text-slate-300" />
+                          Real handles
+                          <span className="text-slate-500">•</span>
+                          <ShieldCheck className="h-4 w-4 text-slate-300" />
+                          On-chain proof
+                          <span className="text-slate-500">•</span>
+                          <Globe className="h-4 w-4 text-slate-300" />
+                          One cadence
+                        </span>
 
-  <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
-    <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
-      <Info className="h-4 w-4 text-emerald-100/70" />
-      Verified in hub
-    </span>
-  </TinyTooltip>
-</div>
+                        <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
+                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
+                            <Info className="h-4 w-4 text-emerald-100/70" />
+                            Verified in hub
+                          </span>
+                        </TinyTooltip>
+                      </div>
 
                       <PrimaryCtaRow countdown={countdown} warmup={warmup} />
 
                       <div className="mt-5">
-  <WinnerCelebrationCard winner={winnerSpotlight} />
-</div>
+                        <WinnerCelebrationCard winner={winnerSpotlight} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1251,11 +1137,9 @@ function HomePageInner() {
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
       {/* LIVE ACTIVITY */}
-      {SHOW_LIVE_FEED ? (
-        <div className="mt-10">
-          <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
-        </div>
-      ) : null}
+      <div className="mt-10">
+        <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
+      </div>
 
       {/* THE PROTOCOL, MADE CLEAR */}
       <section className="mt-10">
@@ -1398,7 +1282,6 @@ function HomePageInner() {
           desc="Homepage stays hype and simple. Hub is where the entry and verification happens."
         />
 
-        {/* ✅ no tab pre-opened */}
         <div className="grid gap-4 lg:grid-cols-2">
           <FAQItem
             q="Do I need to buy tickets?"
