@@ -530,7 +530,7 @@ export default function WinnersPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-100">Winner log</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Completed draws and bonus drops. Link out to the TX whenever available.
+                  Completed draws and bonus drops. 
                 </p>
               </div>
 
@@ -678,8 +678,6 @@ export default function WinnersPage() {
             </div>
 
             <div className="mt-6 xpot-divider" />
-            <div className="mt-4 text-xs text-slate-500">Next upgrade: verified TX and a compact “Proof” drawer per win.</div>
-          </div>
         </section>
 
         {/* Footer */}
