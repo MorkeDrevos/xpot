@@ -909,7 +909,7 @@ function StepRail() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sky-100/85">Step 2</p>
           <div className="mt-2 flex items-center gap-2 text-[13px] font-semibold text-slate-50">
             <Wand2 className="h-4 w-4 text-sky-200" />
-            Claim daily entry in hub
+            Claim daily entry in the hub
           </div>
           <p className="mt-1 text-[12px] leading-relaxed text-sky-100/75">X + wallet verification.</p>
         </div>
