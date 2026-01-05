@@ -10,7 +10,6 @@ import GoldAmount from '@/components/GoldAmount';
 import {
   BadgeCheck,
   CalendarClock,
-  ChevronDown,
   Crown,
   ExternalLink,
   Info,
@@ -29,7 +28,7 @@ type WinnerKind = 'MAIN' | 'BONUS';
 type WinnerRow = {
   id: string;
 
-  // ✅ IMPORTANT: drawId is the canonical de-dupe key (one draw = one winner row)
+  // drawId is the canonical de-dupe key (one draw = one winner row)
   drawId?: string | null;
 
   kind?: WinnerKind | string | null;
@@ -66,7 +65,6 @@ function safeTimeMs(iso?: string | null) {
 function formatDate(date: string) {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '—';
-  // date-only, no time
   return d.toLocaleDateString('en-GB');
 }
 
@@ -90,14 +88,7 @@ function isValidHttpUrl(u: string | null | undefined) {
   return /^https?:\/\/.+/i.test(u);
 }
 
-function fmtInt(n: number) {
-  return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
-}
-
-// ─────────────────────────────────────────────
 // Madrid cutoff + ICS download (client-safe)
-// ─────────────────────────────────────────────
-
 const MADRID_TZ = 'Europe/Madrid';
 const MADRID_CUTOFF_HH = 22;
 const MADRID_CUTOFF_MM = 0;
@@ -145,7 +136,6 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
-  // Adjust so that formatting back into the target TZ matches the intended wall-clock time.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
 
@@ -231,10 +221,7 @@ function downloadTextFile(filename: string, content: string, mime = 'text/plain'
   }
 }
 
-// ─────────────────────────────────────────────
 // UI atoms
-// ─────────────────────────────────────────────
-
 function Badge({
   children,
   tone = 'slate',
@@ -315,14 +302,12 @@ function WinnerIdentity({
 }
 
 function makeDedupeKey(w: WinnerRow) {
-  // ✅ Canonical: one draw = one winner row
   const drawId = (w.drawId || '').trim();
   if (drawId) {
     const k = String(w.kind || '').toUpperCase();
     return `draw:${drawId}|${k || 'WIN'}`;
   }
 
-  // Prefer strong unique identifiers next
   const sig = (w.txSig || '').trim();
   if (sig) return `sig:${sig}`;
 
@@ -332,7 +317,6 @@ function makeDedupeKey(w: WinnerRow) {
   const id = (w.id || '').trim();
   if (id) return `id:${id}`;
 
-  // Fallback fingerprint: date + kind + handle + wallet + amount
   const d = (w.drawDate || '').trim();
   const k = String(w.kind || '').toUpperCase();
   const h = (normalizeHandle(w.handle) || '').trim();
@@ -360,15 +344,12 @@ export default function WinnersPage() {
         setError(null);
         setLoading(true);
 
-        // ✅ We must display ALL winners.
-        // We try to paginate if the API returns a cursor. If it doesn’t, we still fetch a large limit.
         const all: any[] = [];
         let cursor: string | null = null;
 
-        // safety cap (prevents infinite loops if backend bugs)
         for (let page = 0; page < 20; page++) {
           const params = new URLSearchParams();
-          params.set('limit', '5000'); // big page size so "all winners" loads in one go if possible
+          params.set('limit', '5000');
           if (cursor) params.set('cursor', cursor);
 
           const res = await fetch(`/api/winners/recent?${params.toString()}`, { cache: 'no-store' });
@@ -379,7 +360,6 @@ export default function WinnersPage() {
           const batch = Array.isArray(data?.winners) ? data.winners : [];
           for (const w of batch) all.push(w);
 
-          // support common cursor shapes
           const next =
             (typeof data?.nextCursor === 'string' && data.nextCursor) ||
             (typeof data?.cursor === 'string' && data.cursor) ||
@@ -398,32 +378,23 @@ export default function WinnersPage() {
 
         const mapped: WinnerRow[] = all.map((w: any) => ({
           id: String(w.id ?? crypto.randomUUID()),
-
-          // ✅ pull draw id if backend provides it (many of your endpoints do)
           drawId: w.drawId ?? w.draw_id ?? w.draw?.id ?? null,
-
           kind: w.kind ?? w.winnerKind ?? w.type ?? null,
           label: w.label ?? null,
           drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
           ticketCode: w.ticketCode ?? w.code ?? null,
-
           amountXpot: w.amountXpot ?? w.amount ?? null,
-
           walletAddress: w.walletAddress ?? w.wallet ?? null,
-
           handle: w.handle ?? w.xHandle ?? null,
           name: w.name ?? w.xName ?? null,
           avatarUrl: w.avatarUrl ?? w.xAvatarUrl ?? null,
-
           isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
           txUrl: w.txUrl ?? w.txLink ?? null,
           txSig: w.txSig ?? w.signature ?? null,
         }));
 
-        // 1) Sort newest first (by drawDate, fallback: 0)
         mapped.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
 
-        // 2) Dedupe by drawId (preferred), otherwise strong ids
         const seen = new Set<string>();
         const deduped: WinnerRow[] = [];
         for (const r of mapped) {
@@ -482,7 +453,6 @@ export default function WinnersPage() {
   }, [rows, query, kindFilter, showTxOnly]);
 
   const grouped = useMemo(() => {
-    // group by date-only key, but keep a real ms sort key (newest first)
     const map = new Map<string, { key: string; ms: number; items: WinnerRow[] }>();
 
     for (const r of filteredRows) {
@@ -501,7 +471,6 @@ export default function WinnersPage() {
     const arr = Array.from(map.values());
     arr.sort((a, b) => b.ms - a.ms);
 
-    // sort items within each day (newest first)
     for (const g of arr) {
       g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
     }
@@ -509,7 +478,6 @@ export default function WinnersPage() {
     return arr;
   }, [filteredRows]);
 
-  // ✅ show ALL days (no “recent only”)
   const visibleGrouped = grouped;
 
   const totals = useMemo(() => {
@@ -668,10 +636,11 @@ export default function WinnersPage() {
                           const hasTx = isValidHttpUrl(w.txUrl);
                           const verified = hasTx || w.isPaidOut === true;
 
-                          const amountText =
+                          // IMPORTANT: pass a NUMBER to GoldAmount (string can render as “nothing”)
+                          const amountVal =
                             typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot)
-                              ? fmtInt(Math.round(w.amountXpot))
-                              : '—';
+                              ? Math.round(w.amountXpot)
+                              : null;
 
                           return (
                             <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
@@ -730,7 +699,13 @@ export default function WinnersPage() {
 
                                 <div className="flex justify-start sm:justify-center">
                                   <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
-                                    <GoldAmount value={amountText} suffix="XPOT" size="md" />
+                                    {amountVal !== null ? (
+                                      <GoldAmount value={amountVal} suffix="XPOT" size="md" />
+                                    ) : (
+                                      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-slate-300">
+                                        <span className="opacity-60">—</span> XPOT
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
 
