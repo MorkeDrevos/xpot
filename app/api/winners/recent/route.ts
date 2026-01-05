@@ -21,7 +21,6 @@ function safeIso(d: unknown) {
   }
 }
 
-// ✅ Convert Prisma.Decimal / string / bigint / number -> number | null
 function toNumberOrNull(v: any): number | null {
   try {
     if (v === null || v === undefined) return null;
@@ -38,7 +37,6 @@ function toNumberOrNull(v: any): number | null {
       return Number.isFinite(n) ? n : null;
     }
 
-    // Prisma.Decimal usually has toNumber() and toString()
     if (typeof v === 'object') {
       if (typeof v.toNumber === 'function') {
         const n = v.toNumber();
@@ -57,12 +55,28 @@ function toNumberOrNull(v: any): number | null {
 }
 
 function pickAmountXpot(w: any): number | null {
-  const candidates = [w?.amountXpot, w?.payoutXpot, w?.amount, w?.payoutAmount];
+  const candidates = [
+    // Winner row fields
+    w?.amountXpot,
+    w?.payoutXpot,
+    w?.amount,
+    w?.payoutAmount,
+
+    // Draw row fields (common in many schemas)
+    w?.draw?.amountXpot,
+    w?.draw?.payoutXpot,
+    w?.draw?.amount,
+    w?.draw?.payoutAmount,
+    w?.draw?.poolXpot,
+    w?.draw?.poolAmountXpot,
+    w?.draw?.rewardXpot,
+  ];
 
   for (const c of candidates) {
     const n = toNumberOrNull(c);
-    if (typeof n === 'number') return n;
+    if (n !== null) return n;
   }
+
   return null;
 }
 
@@ -153,8 +167,6 @@ export async function GET(req: NextRequest) {
       const walletAddress = w.walletAddress ?? ticket?.walletAddress ?? wallet?.address ?? null;
       const fallbackUser = walletAddress ? walletToUser.get(walletAddress) : null;
 
-      const amountXpot = pickAmountXpot(w);
-
       return {
         id: w.id,
         drawId: w.drawId ?? draw?.id ?? null,
@@ -163,10 +175,11 @@ export async function GET(req: NextRequest) {
         label: w.label ?? null,
 
         drawDate: safeIso(draw?.drawDate ?? w.date ?? w.createdAt),
+
         ticketCode: w.ticketCode ?? ticket?.code ?? null,
 
-        // ✅ now always a real number when present
-        amountXpot,
+        // FIX: pick from winner OR draw and normalize to real number
+        amountXpot: pickAmountXpot(w),
 
         walletAddress,
 
