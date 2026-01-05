@@ -1194,15 +1194,44 @@ Claim once per day in the hub.
 />
 
 {/* protocol clarification */}
-<div className="mb-6 max-w-3xl rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 ring-1 ring-white/[0.06]">
-  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-    Holder distribution
-  </p>
-  <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
-    Top holder concentration reflects protocol-controlled wallets
-    (liquidity, treasury, strategy execution, and community rewards),
-    not private individuals.
-  </p>
+<div className="mb-6 max-w-3xl">
+  <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-4 ring-1 ring-white/[0.06]">
+    {/* subtle premium glow */}
+    <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_12%_30%,rgba(var(--xpot-gold),0.16),transparent_62%),radial-gradient(circle_at_78%_0%,rgba(56,189,248,0.10),transparent_60%)]" />
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),transparent)]" />
+
+    <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/35 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-200">
+            <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH}`}>
+              <ShieldCheck className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+            </span>
+            Transparency note
+          </span>
+
+          <span className={`inline-flex items-center gap-2 rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH} px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.28em] ${GOLD_TEXT}`}>
+            Treasury & protocol wallets
+          </span>
+        </div>
+
+        <p className="mt-3 text-[13px] leading-relaxed text-slate-200/90">
+          Top holder concentration reflects <span className="font-semibold text-slate-50">protocol-controlled wallets</span>
+          (liquidity pool, treasury, strategy execution, and community rewards) - not private individuals.
+        </p>
+      </div>
+
+      <div className="shrink-0 pt-1">
+        <Link
+          href={ROUTE_TOKENOMICS_RESERVE}
+          className={`group inline-flex items-center gap-2 rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH} px-4 py-2 text-[12px] font-semibold ${GOLD_TEXT} hover:bg-[rgba(var(--xpot-gold),0.14)] transition`}
+        >
+          Learn more
+          <ArrowRight className="h-3.5 w-3.5 opacity-70 transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      </div>
+    </div>
+  </div>
 </div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
