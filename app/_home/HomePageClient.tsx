@@ -271,6 +271,54 @@ function formatNumber(n: number) {
 }
 
 /* ─────────────────────────────────────────────
+   Winner collapse helpers (home only)
+───────────────────────────────────────────── */
+
+function winnerKey(w: LiveWinnerRow | null) {
+  if (!w) return null;
+  const id = (w as any)?.id ? String((w as any).id) : '';
+  const d = w.drawDate ? String(w.drawDate) : '';
+  const t = w.txUrl ? String(w.txUrl) : '';
+  const k = w.kind ? String(w.kind) : '';
+  const base = id || d || t || 'latest';
+  return `w:${base}:${k}`;
+}
+
+function CompactWinnerRow({
+  winner,
+  onExpand,
+}: {
+  winner: LiveWinnerRow | null;
+  onExpand: () => void;
+}) {
+  const handle = normalizeHandle(winner?.handle ?? null);
+  return (
+    <div className="rounded-[28px] border border-white/10 bg-white/[0.025] p-4 ring-1 ring-white/[0.05]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Latest winner</p>
+          <p className="mt-1 text-[13px] font-semibold text-slate-100">
+            <span className="text-slate-300">{handle}</span>
+            <span className="text-slate-500"> • </span>
+            <span className={`${GOLD_TEXT}`}>1,000,000 XPOT</span>
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onExpand}
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+          title="Expand winner card"
+        >
+          View
+          <Sparkles className="h-4 w-4 text-slate-300" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Premium cosmic backdrop
 ───────────────────────────────────────────── */
 
@@ -1045,58 +1093,84 @@ function HomePageInner() {
                   </div>
                 </div>
 
-                {/* LEFT - Identity + proof + winner */}
-                <div className="min-w-0 order-2 lg:order-1">
-                  <div className="relative">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <Pill tone={warmup ? 'amber' : 'emerald'}>
-                        <Radio className="h-3.5 w-3.5" />
-                        {run.ended ? 'Final draw' : warmup ? 'Warm-up' : run.started ? 'Live run' : 'Pre-run'}
-                      </Pill>
+                {/* LEFT - Identity + proof (calmer, structured) */}
+<div className="min-w-0 order-2 lg:order-1">
+  <div className="relative">
+    {/* Top row */}
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <Pill tone={warmup ? 'amber' : 'emerald'}>
+        <Radio className="h-3.5 w-3.5" />
+        {run.ended ? 'Final draw' : warmup ? 'Warm-up' : run.started ? 'Live run' : 'Pre-run'}
+      </Pill>
 
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                        NO TICKETS - JUST XPOT HOLDINGS
-                      </span>
-                    </div>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+        NO TICKETS - JUST XPOT HOLDINGS
+      </span>
+    </div>
 
-                    <div className="mt-4">
-                      {/* ORIGINAL H1 (back) */}
-                      <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                        One protocol. One daily <span className="xpot-xpotword">XPOT</span> draw.
-                      </h1>
+    {/* Divider */}
+    <div className="mt-4 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
 
-                      <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300">
-                        A daily entry, unlocked by XPOT holdings. Claim once per day in the hub.
-                      </p>
+    {/* Headline + copy */}
+    <div className="mt-5">
+      <h1 className="text-balance text-[34px] font-semibold tracking-tight text-white sm:text-5xl">
+        One protocol.
+        <span className="text-white/90"> One daily </span>
+        <span className="xpot-xpotword">XPOT</span>
+        <span className="text-white/90"> draw.</span>
+      </h1>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
-                          <Users className="h-4 w-4 text-slate-300" />
-                          Real handles
-                          <span className="text-slate-500">•</span>
-                          <ShieldCheck className="h-4 w-4 text-slate-300" />
-                          On-chain proof
-                          <span className="text-slate-500">•</span>
-                          <Globe className="h-4 w-4 text-slate-300" />
-                          One cadence
-                        </span>
+      <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300/90">
+        A daily entry, unlocked by XPOT holdings.
+        <br />
+        Claim once per day in the hub.
+      </p>
 
-                        <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
-                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
-                            <Info className="h-4 w-4 text-emerald-100/70" />
-                            Verified in hub
-                          </span>
-                        </TinyTooltip>
-                      </div>
+      {/* Micro-proof row (quieter, with dividers) */}
+      <div className="mt-4 max-w-2xl rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 ring-1 ring-white/[0.05]">
+        <div className="flex flex-wrap items-center gap-y-2">
+          <div className="inline-flex items-center gap-2 text-[12px] text-slate-200">
+            <Users className="h-4 w-4 text-slate-300" />
+            Real handles
+          </div>
 
-                      <PrimaryCtaRow countdown={countdown} warmup={warmup} />
+          <div className="mx-3 hidden h-4 w-px bg-white/10 sm:block" />
 
-                      <div className="mt-5">
-                        <WinnerCelebrationCard winner={winnerSpotlight} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          <div className="inline-flex items-center gap-2 text-[12px] text-slate-200">
+            <ShieldCheck className="h-4 w-4 text-slate-300" />
+            On-chain proof
+          </div>
+
+          <div className="mx-3 hidden h-4 w-px bg-white/10 sm:block" />
+
+          <div className="inline-flex items-center gap-2 text-[12px] text-slate-200">
+            <Globe className="h-4 w-4 text-slate-300" />
+            One cadence
+          </div>
+
+          <div className="grow" />
+
+          <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/25 px-3 py-1.5 text-[12px] text-emerald-100/90">
+              <Info className="h-4 w-4 text-emerald-100/70" />
+              Verified in hub
+            </span>
+          </TinyTooltip>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="mt-5 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)]" />
+
+      {/* CTAs */}
+      <PrimaryCtaRow countdown={countdown} warmup={warmup} />
+
+      {/* Divider */}
+      <div className="mt-5 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.22),rgba(255,255,255,0.06),transparent)]" />
+
+    </div>
+  </div>
+</div>
               </div>
 
               {/* Under-hero rail */}
@@ -1114,124 +1188,83 @@ function HomePageInner() {
   );
 
   return (
-  <XpotPageShell pageTag="home" fullBleedTop={hero}>
-    {/* LIVE ACTIVITY */}
-    {SHOW_LIVE_FEED ? (
-      <div className="mt-10">
-        <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
-      </div>
-    ) : null}
-
-    {/* FINAL DRAW */}
-<section className="mt-10">
-  <div className="relative overflow-hidden rounded-[32px] border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] shadow-[0_40px_140px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.06]">
-    <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_82%_10%,rgba(56,189,248,0.14),transparent_62%)]" />
-    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.65),rgba(255,255,255,0.12),transparent)]" />
-
-    <div className="relative p-6 sm:p-7">
-      <div className="flex flex-wrap items-center gap-4">
-        <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-          <CalendarClock className={`h-6 w-6 ${GOLD_TEXT}`} />
-        </span>
-
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-            Final Draw ends
-          </p>
-          <p className="mt-1 text-[16px] font-semibold text-slate-50 sm:text-[18px]">
-            <span className={`${GOLD_TEXT}`}>28/02/2045 22:00</span>
-            <span className="text-slate-400"> (Madrid)</span>
-          </p>
-          <p className="mt-1 text-[12px] leading-relaxed text-slate-300/80">
-            The protocol runs daily until the final cutoff - every day is a public checkpoint.
-          </p>
+    <XpotPageShell pageTag="home" fullBleedTop={hero}>
+      {/* LIVE ACTIVITY */}
+      {SHOW_LIVE_FEED ? (
+        <div className="mt-10">
+          <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
         </div>
+      ) : null}
 
-        <div className="grow" />
+      {/* FINAL DRAW */}
+      <section className="mt-10">
+        <div className="relative overflow-hidden rounded-[32px] border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] shadow-[0_40px_140px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.06]">
+          <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_82%_10%,rgba(56,189,248,0.14),transparent_62%)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.65),rgba(255,255,255,0.12),transparent)]" />
 
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2.5 text-[12px] font-semibold text-slate-200">
-          <Timer className="h-4 w-4 text-slate-300" />
-          Next cutoff <span className="font-mono text-slate-50">{countdown}</span>
-        </span>
-      </div>
+          <div className="relative p-6 sm:p-7">
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+                <CalendarClock className={`h-6 w-6 ${GOLD_TEXT}`} />
+              </span>
 
-      <div className="sr-only">
-        <FinalDrawDate />
-      </div>
-    </div>
-  </div>
-</section>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">Final Draw ends</p>
+                <p className="mt-1 text-[16px] font-semibold text-slate-50 sm:text-[18px]">
+                  <span className={`${GOLD_TEXT}`}>28/02/2045 22:00</span>
+                  <span className="text-slate-400"> (Madrid)</span>
+                </p>
+                <p className="mt-1 text-[12px] leading-relaxed text-slate-300/80">
+                  The protocol runs daily until the final cutoff - every day is a public checkpoint.
+                </p>
+              </div>
+
+              <div className="grow" />
+
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2.5 text-[12px] font-semibold text-slate-200">
+                <Timer className="h-4 w-4 text-slate-300" />
+                Next cutoff <span className="font-mono text-slate-50">{countdown}</span>
+              </span>
+            </div>
+
+            <div className="sr-only">
+              <FinalDrawDate />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* THE PROTOCOL, MADE CLEAR */}
       <section className="mt-10">
         <SectionHeader
-  eyebrow="The protocol"
-  title="Simple, public, verifiable"
-  desc="XPOT is built for social proof. Handles are the face of the protocol. On-chain proof is the backbone."
-  right={
-    <div className="flex flex-wrap items-center gap-2">
-      <a
-        href={XPOT_DEXSCREENER_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-      >
-        Chart
-        <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-      </a>
-      <a
-        href={XPOT_SOLSCAN_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-      >
-        Explorer
-        <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-      </a>
-    </div>
-  }
-/>
+          eyebrow="The protocol"
+          title="Simple, public, verifiable"
+          desc="XPOT is built for social proof. Handles are the face of the protocol. On-chain proof is the backbone."
+          right={
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={XPOT_DEXSCREENER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+              >
+                Chart
+                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+              </a>
+              <a
+                href={XPOT_SOLSCAN_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+              >
+                Explorer
+                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+              </a>
+            </div>
+          }
+        />
 
-{/* protocol clarification */}
-<div className="mb-6 max-w-3xl">
-  <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-4 ring-1 ring-white/[0.06]">
-    {/* subtle premium glow */}
-    <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_12%_30%,rgba(var(--xpot-gold),0.16),transparent_62%),radial-gradient(circle_at_78%_0%,rgba(56,189,248,0.10),transparent_60%)]" />
-    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),transparent)]" />
-
-    <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/35 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-200">
-            <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH}`}>
-              <ShieldCheck className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-            </span>
-            Transparency note
-          </span>
-
-          <span className={`inline-flex items-center gap-2 rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH} px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.28em] ${GOLD_TEXT}`}>
-            Treasury & protocol wallets
-          </span>
-        </div>
-
-        <p className="mt-3 text-[13px] leading-relaxed text-slate-200/90">
-          Top holder concentration reflects <span className="font-semibold text-slate-50">protocol-controlled wallets</span>
-          (liquidity pool, treasury, strategy execution, and community rewards) - not private individuals.
-        </p>
-      </div>
-
-      <div className="shrink-0 pt-1">
-        <Link
-          href={ROUTE_TOKENOMICS_RESERVE}
-          className={`group inline-flex items-center gap-2 rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH} px-4 py-2 text-[12px] font-semibold ${GOLD_TEXT} hover:bg-[rgba(var(--xpot-gold),0.14)] transition`}
-        >
-          Learn more
-          <ArrowRight className="h-3.5 w-3.5 opacity-70 transition-transform group-hover:translate-x-0.5" />
-        </Link>
-      </div>
-    </div>
-  </div>
-</div>
+        {/* ✅ removed the duplicate "protocol clarification" block from here */}
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <PremiumCard className="p-6" halo>
@@ -1327,8 +1360,7 @@ function HomePageInner() {
               <div className="mt-2 rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Eligibility check</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
-                  Connect X + wallet in the hub and we verify holdings and identity. If you qualify, you can claim for
-                  today.
+                  Connect X + wallet in the hub and we verify holdings and identity. If you qualify, you can claim for today.
                 </p>
               </div>
             </div>
@@ -1344,7 +1376,6 @@ function HomePageInner() {
           desc="Homepage stays hype and simple. Hub is where the entry and verification happens."
         />
 
-        {/* ✅ no tab pre-opened */}
         <div className="grid gap-4 lg:grid-cols-2">
           <FAQItem
             q="Do I need to buy tickets?"
@@ -1352,11 +1383,7 @@ function HomePageInner() {
           />
           <FAQItem
             q="How do I verify a payout?"
-            a={
-              <span>
-                Winner cards show a transaction link once paid. Open it in the explorer to verify on-chain proof.
-              </span>
-            }
+            a={<span>Winner cards show a transaction link once paid. Open it in the explorer to verify on-chain proof.</span>}
           />
           <FAQItem
             q="Why show avatars and handles?"
@@ -1367,8 +1394,7 @@ function HomePageInner() {
             a={
               <span>
                 Final draw ends on <span className={`${GOLD_TEXT} font-semibold`}>28/02/2045 22:00</span>
-                <span className="text-slate-400"> (Madrid)</span>. Countdown on this page always shows the next daily
-                cutoff.
+                <span className="text-slate-400"> (Madrid)</span>. Countdown on this page always shows the next daily cutoff.
               </span>
             }
           />
