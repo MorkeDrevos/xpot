@@ -1124,34 +1124,44 @@ Claim once per day in the hub.
     ) : null}
 
     {/* FINAL DRAW */}
-    <section className="mt-10">
-      <PremiumCard className="p-6" halo={false}>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-            <CalendarClock className={`h-5 w-5 ${GOLD_TEXT}`} />
-          </span>
+<section className="mt-10">
+  <div className="relative overflow-hidden rounded-[32px] border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] shadow-[0_40px_140px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.06]">
+    <div className="pointer-events-none absolute -inset-28 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.22),transparent_60%),radial-gradient(circle_at_82%_10%,rgba(56,189,248,0.14),transparent_62%)]" />
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.65),rgba(255,255,255,0.12),transparent)]" />
 
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Final Draw ends</p>
-            <p className="mt-1 text-[14px] font-semibold text-slate-50">
-              <span className={`${GOLD_TEXT}`}>28/02/2045 22:00</span>
-              <span className="text-slate-400"> (Madrid)</span>
-            </p>
-          </div>
+    <div className="relative p-6 sm:p-7">
+      <div className="flex flex-wrap items-center gap-4">
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+          <CalendarClock className={`h-6 w-6 ${GOLD_TEXT}`} />
+        </span>
 
-          <div className="grow" />
-
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200">
-            <Timer className="h-4 w-4 text-slate-300" />
-            Next cutoff <span className="font-mono font-semibold text-slate-100">{countdown}</span>
-          </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+            Final Draw ends
+          </p>
+          <p className="mt-1 text-[16px] font-semibold text-slate-50 sm:text-[18px]">
+            <span className={`${GOLD_TEXT}`}>28/02/2045 22:00</span>
+            <span className="text-slate-400"> (Madrid)</span>
+          </p>
+          <p className="mt-1 text-[12px] leading-relaxed text-slate-300/80">
+            The protocol runs daily until the final cutoff - every day is a public checkpoint.
+          </p>
         </div>
 
-        <div className="sr-only">
-          <FinalDrawDate />
-        </div>
-      </PremiumCard>
-    </section>
+        <div className="grow" />
+
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2.5 text-[12px] font-semibold text-slate-200">
+          <Timer className="h-4 w-4 text-slate-300" />
+          Next cutoff <span className="font-mono text-slate-50">{countdown}</span>
+        </span>
+      </div>
+
+      <div className="sr-only">
+        <FinalDrawDate />
+      </div>
+    </div>
+  </div>
+</section>
 
       {/* THE PROTOCOL, MADE CLEAR */}
       <section className="mt-10">
