@@ -10,10 +10,10 @@ function intParam(v: string | null, fallback: number) {
   return Math.max(1, Math.min(5000, Math.floor(n)));
 }
 
-function safeIso(d: any) {
+function safeIso(d: unknown) {
   try {
     if (!d) return null;
-    const dt = d instanceof Date ? d : new Date(d);
+    const dt = d instanceof Date ? d : new Date(d as any);
     if (Number.isNaN(dt.getTime())) return null;
     return dt.toISOString();
   } catch {
@@ -27,7 +27,6 @@ function pickAmountXpot(w: any): number | null {
     w?.payoutXpot,
     w?.amount,
     w?.payoutAmount,
-    w?.payoutUsd, // if you were (temporarily) storing XPOT amount here
   ];
   for (const c of candidates) {
     if (typeof c === 'number' && Number.isFinite(c)) return c;
@@ -38,14 +37,20 @@ function pickAmountXpot(w: any): number | null {
 export async function GET(req: NextRequest) {
   try {
     const limit = intParam(req.nextUrl.searchParams.get('limit'), 50);
-
-    // 1) Confirm DB has winners at all (this instantly tells us if you're on the wrong DB/env)
-    const total = await prisma.winner.count();
-
-    // 2) Fetch winners (no distinct, no draw.status filter). We overfetch so we can dedupe.
-    // We try multiple orderings because your schema might not have date/createdAt.
-    let rows: any[] = [];
     const take = Math.min(limit * 10, 5000);
+
+    // Debug: DB fingerprint (kills env confusion forever)
+    let dbInfo: { db: string; host: string | null; port: number | null } | null = null;
+    try {
+      const rows = await prisma.$queryRaw<
+        Array<{ db: string; host: string | null; port: number | null }>
+      >`SELECT current_database()::text AS db, inet_server_addr()::text AS host, inet_server_port()::int AS port`;
+      dbInfo = rows?.[0] ?? null;
+    } catch {
+      dbInfo = null;
+    }
+
+    const total = await prisma.winner.count();
 
     const include = {
       draw: true,
@@ -60,23 +65,22 @@ export async function GET(req: NextRequest) {
       },
     } as const;
 
-    // Try winner.date
+    // Fetch winners with best-effort ordering
+    let rows: any[] = [];
     try {
       rows = await (prisma.winner as any).findMany({
         take,
-        orderBy: { date: 'desc' },
+        orderBy: [{ date: 'desc' }],
         include,
       });
     } catch {
-      // Try winner.createdAt
       try {
         rows = await (prisma.winner as any).findMany({
           take,
-          orderBy: { createdAt: 'desc' },
+          orderBy: [{ createdAt: 'desc' }],
           include,
         });
       } catch {
-        // Last resort: no orderBy (still returns data)
         rows = await (prisma.winner as any).findMany({
           take,
           include,
@@ -84,14 +88,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 3) Deduplicate: ONE DRAW = ONE PUBLIC WINNER
-    // Prefer drawId if present, else fallback to included draw.id, else winner.id (so nothing disappears)
+    // Dedupe: ONE drawId = ONE winner (fallbacks if drawId missing)
     const seen = new Set<string>();
     const uniq: any[] = [];
     for (const w of rows) {
       const key =
         String((w as any).drawId ?? '') ||
         String((w as any).draw?.id ?? '') ||
+        // last resort: bucket by drawDate (date-only) to avoid double winners on same day
+        String(((w as any).draw?.drawDate ?? (w as any).date ?? (w as any).createdAt)?.toString?.() ?? w.id) ||
         String(w.id);
 
       if (seen.has(key)) continue;
@@ -100,11 +105,61 @@ export async function GET(req: NextRequest) {
       if (uniq.length >= limit) break;
     }
 
+    // Fallback lookup for missing user/avatar:
+    // If a Winner has walletAddress but ticket->wallet->user is missing, resolve via Wallet.address.
+    const missingWalletAddrs = Array.from(
+      new Set(
+        uniq
+          .map(w => (w as any).walletAddress as string | null)
+          .filter(Boolean)
+          .filter(addr => {
+            const ticket = (w as any).ticket;
+            const wallet = ticket?.wallet;
+            const user = wallet?.user;
+            return !user; // missing linkage
+          }) as string[],
+      ),
+    );
+
+    const walletToUser = new Map<
+      string,
+      { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }
+    >();
+
+    if (missingWalletAddrs.length) {
+      const wallets = await prisma.wallet.findMany({
+        where: { address: { in: missingWalletAddrs } },
+        include: { user: true },
+      });
+
+      for (const wa of wallets) {
+        walletToUser.set(wa.address, {
+          xHandle: wa.user?.xHandle ?? null,
+          xName: (wa.user as any)?.xName ?? null,
+          xAvatarUrl: (wa.user as any)?.xAvatarUrl ?? null,
+        });
+      }
+    }
+
     const payload = uniq.map(w => {
       const draw = (w as any).draw;
       const ticket = (w as any).ticket;
-      const wallet = ticket?.wallet;
-      const user = wallet?.user;
+
+      const ticketWallet = ticket?.wallet;
+      const ticketUser = ticketWallet?.user;
+
+      const winnerWalletAddress =
+        (w as any).walletAddress ??
+        ticket?.walletAddress ??
+        ticketWallet?.address ??
+        null;
+
+      // Prefer the ticket->wallet->user chain, else fallback map via Winner.walletAddress
+      const fallbackUser = winnerWalletAddress ? walletToUser.get(winnerWalletAddress) : null;
+
+      const handle = ticketUser?.xHandle ?? fallbackUser?.xHandle ?? null;
+      const name = (ticketUser as any)?.xName ?? fallbackUser?.xName ?? null;
+      const avatarUrl = (ticketUser as any)?.xAvatarUrl ?? fallbackUser?.xAvatarUrl ?? null;
 
       return {
         id: w.id,
@@ -120,11 +175,12 @@ export async function GET(req: NextRequest) {
 
         amountXpot: pickAmountXpot(w),
 
-        walletAddress: wallet?.address ?? null,
+        // IMPORTANT: use Winner.walletAddress if present (it may exist even when relations are broken)
+        walletAddress: winnerWalletAddress,
 
-        handle: user?.xHandle ?? null,
-        name: (user as any)?.xName ?? null,
-        avatarUrl: (user as any)?.xAvatarUrl ?? null,
+        handle,
+        name,
+        avatarUrl,
 
         isPaidOut: typeof (w as any).isPaidOut === 'boolean' ? (w as any).isPaidOut : null,
         txUrl: (w as any).txUrl ?? null,
@@ -132,8 +188,8 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 4) Debug meta to end this guessing forever
     const meta = {
+      db: dbInfo, // { db, host, port } when available
       totalWinnersInDb: total,
       fetchedRows: rows.length,
       returned: payload.length,
