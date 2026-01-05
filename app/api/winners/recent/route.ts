@@ -4,10 +4,11 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+// allow large limits for archive pages
 function intParam(v: string | null, fallback: number) {
   const n = v ? Number(v) : NaN;
   if (!Number.isFinite(n)) return fallback;
-  return Math.max(1, Math.min(80, Math.floor(n)));
+  return Math.max(1, Math.min(5000, Math.floor(n)));
 }
 
 function safeIso(d: any) {
@@ -23,18 +24,27 @@ function safeIso(d: any) {
 
 export async function GET(req: NextRequest) {
   try {
-    const limit = intParam(req.nextUrl.searchParams.get('limit'), 20);
+    const limit = intParam(req.nextUrl.searchParams.get('limit'), 50);
 
-    const winners = await prisma.winner.findMany({
-      orderBy: { date: 'desc' },
+    /**
+     * ✅ ONE DRAW = ONE PUBLIC WINNER
+     * We query draws, not winners.
+     */
+    const draws = await prisma.draw.findMany({
+      where: {
+        status: 'closed',
+      },
+      orderBy: {
+        drawDate: 'desc',
+      },
       take: limit,
       include: {
-        draw: true,
+        winner: true,
         ticket: {
           include: {
             wallet: {
               include: {
-                user: true, // xHandle / xName / xAvatarUrl
+                user: true,
               },
             },
           },
@@ -42,48 +52,50 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const payload = winners.map(w => {
-      const user = w.ticket?.wallet?.user;
+    const payload = draws
+      .filter(d => d.winner) // safety
+      .map(d => {
+        const w = d.winner!;
+        const user = d.ticket?.wallet?.user;
 
-      // IMPORTANT:
-      // You said payoutUsd is actually XPOT amount (historical naming).
-      // So amountXpot = payoutUsd.
-      const amountXpot =
-        typeof (w as any).payoutUsd === 'number' && Number.isFinite((w as any).payoutUsd)
-          ? (w as any).payoutUsd
-          : null;
+        const amountXpot =
+          typeof (w as any).payoutUsd === 'number' && Number.isFinite((w as any).payoutUsd)
+            ? (w as any).payoutUsd
+            : null;
 
-      // Prefer draw.drawDate if it exists, fallback to winner.date, then createdAt
-      const drawDate =
-        safeIso((w as any).draw?.drawDate) ?? safeIso((w as any).date) ?? safeIso((w as any).createdAt);
+        return {
+          // ✅ canonical IDs
+          id: w.id,
+          drawId: d.id,
 
-      return {
-        id: w.id,
+          kind: (w as any).kind ?? 'MAIN',
+          label: (w as any).label ?? null,
 
-        kind: (w as any).kind ?? null,
-        label: (w as any).label ?? null,
+          drawDate: safeIso(d.drawDate),
+          ticketCode: (w as any).ticketCode ?? null,
 
-        drawDate,
-        ticketCode: (w as any).ticketCode ?? null,
+          amountXpot,
 
-        // XPOT amount:
-        amountXpot,
+          walletAddress: d.ticket?.wallet?.address ?? null,
 
-        walletAddress: (w as any).walletAddress ?? null,
+          // X identity
+          handle: user?.xHandle ?? null,
+          name: (user as any)?.xName ?? null,
+          avatarUrl: (user as any)?.xAvatarUrl ?? null,
 
-        // X identity (if present)
-        handle: user?.xHandle ?? null,
-        name: (user as any)?.xName ?? null,
-        avatarUrl: (user as any)?.xAvatarUrl ?? null,
+          isPaidOut: typeof (w as any).isPaidOut === 'boolean' ? (w as any).isPaidOut : null,
+          txUrl: (w as any).txUrl ?? null,
+          txSig: (w as any).txSig ?? null,
+        };
+      });
 
-        // payout/proof
-        isPaidOut: typeof (w as any).isPaidOut === 'boolean' ? (w as any).isPaidOut : null,
-        txUrl: (w as any).txUrl ?? null,
-        txSig: (w as any).txSig ?? null,
-      };
-    });
-
-    return NextResponse.json({ ok: true, winners: payload }, { status: 200 });
+    return NextResponse.json(
+      {
+        ok: true,
+        winners: payload,
+      },
+      { status: 200 },
+    );
   } catch (err: any) {
     console.error('GET /api/winners/recent error', err);
     return NextResponse.json(
